@@ -14,6 +14,8 @@ export interface Category {
     id: string;
     name: string;
     businessId: string;
+    description?: string;
+    image?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -93,8 +95,23 @@ export interface Order {
     tableNumber?: string;
     totalAmount: number;
     items: OrderItem[];
+    branch?: {
+        id: string;
+        name: string;
+        business?: {
+            id: string;
+            name: string;
+        };
+    };
     createdAt: string;
     updatedAt: string;
+}
+
+export interface PaginatedResponse<T> {
+    data: T[];
+    total: number;
+    page: number;
+    limit: number;
 }
 
 export interface CreateCategoryDto {
@@ -152,6 +169,7 @@ export interface CreateOrderDto {
     tableNumber?: string;
     notes?: string;
     items: { itemId?: string, offerId?: string, quantity: number }[];
+    deviceId?: string;
 }
 
 // --- API Functions ---
@@ -177,6 +195,11 @@ export const deleteCategory = async (id: string) => {
 export const getItems = async (params: { branchId?: string, categoryId?: string, search?: string } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
     return await api.get(`/admin/catalogue/items${qs ? `?${qs}` : ''}`);
+};
+
+export const getItemsPublic = async (branchId: string, params: { categoryId?: string, search?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
+    return await api.get(`/public/catalogue/items/branch/${branchId}${qs ? `?${qs}` : ''}`);
 };
 
 export const getCatalogueItem = async (id: string, branchId?: string) => {
@@ -218,10 +241,19 @@ export const updateOrderStatus = async (id: string, status: OrderStatus) => {
     return await api.patch(`/catalogue/orders/${id}/status`, { status });
 };
 
+export const createOrder = async (data: CreateOrderDto) => {
+    return await api.post('/catalogue/orders', data);
+};
+
 // Offers
 export const getOffersAdmin = async (params: { branchId?: string } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
     return await api.get(`/catalogue/offers/admin${qs ? `?${qs}` : ''}`);
+};
+
+export const getOffersPublic = async (branchId: string, params: { search?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
+    return await api.get(`/catalogue/offers/public/${branchId}${qs ? `?${qs}` : ''}`);
 };
 
 export const getOfferDetails = async (id: string) => {
@@ -243,7 +275,7 @@ export const deleteOffer = async (id: string) => {
 // --- Hooks ---
 
 export const useCatalogueCategories = () => {
-    return useQuery({
+    return useQuery<Category[]>({
         queryKey: ['catalogue', 'categories'],
         queryFn: () => getCategories(),
     });
@@ -280,14 +312,22 @@ export const useDeleteCatalogueCategory = () => {
 };
 
 export const useCatalogueItems = (params: { branchId?: string, categoryId?: string, search?: string } = {}) => {
-    return useQuery({
+    return useQuery<CatalogueItem[]>({
         queryKey: ['catalogue', 'items', params],
         queryFn: () => getItems(params),
     });
 };
 
+export const useCatalogueItemsPublic = (branchId: string, params: { categoryId?: string, search?: string } = {}) => {
+    return useQuery<PaginatedResponse<CatalogueItem>>({
+        queryKey: ['catalogue', 'items', 'public', branchId, params],
+        queryFn: () => getItemsPublic(branchId, params),
+        enabled: !!branchId,
+    });
+};
+
 export const useCatalogueItem = (id: string, branchId?: string) => {
-    return useQuery({
+    return useQuery<CatalogueItem>({
         queryKey: ['catalogue', 'item', id, branchId],
         queryFn: () => getCatalogueItem(id, branchId),
         enabled: !!id,
@@ -335,14 +375,21 @@ export const useImportCatalogueItem = () => {
 };
 
 export const useCatalogueOrders = (params: { branchId?: string, status?: string, search?: string } = {}) => {
-    return useQuery({
+    return useQuery<PaginatedResponse<Order>>({
         queryKey: ['catalogue', 'orders', params],
         queryFn: () => getOrders(params),
     });
 };
 
+export const useCustomerOrders = () => {
+    return useQuery<Order[]>({
+        queryKey: ['catalogue', 'orders', 'customer'],
+        queryFn: () => api.get('/catalogue/orders/my-orders'),
+    });
+};
+
 export const useCatalogueOrderDetails = (id: string) => {
-    return useQuery({
+    return useQuery<Order>({
         queryKey: ['catalogue', 'orders', id],
         queryFn: () => getOrderDetails(id),
         enabled: !!id,
@@ -363,6 +410,14 @@ export const useCatalogueOffersAdmin = (params: { branchId?: string } = {}) => {
     return useQuery<CatalogueOffer[]>({
         queryKey: ['catalogue', 'offers', 'admin', params],
         queryFn: () => getOffersAdmin(params),
+    });
+};
+
+export const useCatalogueOffersPublic = (branchId: string, params: { search?: string } = {}) => {
+    return useQuery<PaginatedResponse<CatalogueOffer>>({
+        queryKey: ['catalogue', 'offers', 'public', branchId, params],
+        queryFn: () => getOffersPublic(branchId, params),
+        enabled: !!branchId,
     });
 };
 
@@ -401,5 +456,11 @@ export const useDeleteCatalogueOffer = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'offers'] });
         },
+    });
+};
+
+export const useCreateCatalogueOrder = () => {
+    return useMutation({
+        mutationFn: createOrder,
     });
 };

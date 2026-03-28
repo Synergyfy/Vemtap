@@ -5,6 +5,7 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { CatalogueOrderItem } from './catalogue-order-item.entity';
+import { Device } from '../../devices/entities/device.entity';
 
 export enum CatalogueOrderStatus {
   NEW = 'new',
@@ -77,4 +78,11 @@ export class CatalogueOrder extends AbstractBaseEntity {
     cascade: true,
   })
   items: CatalogueOrderItem[];
+
+  @ManyToOne(() => Device, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'deviceId' })
+  device: Device;
+
+  @Column({ type: 'uuid', nullable: true })
+  deviceId: string;
 }

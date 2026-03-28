@@ -7,6 +7,7 @@ import { useSendReply, useChatTemplates, useStartConversation, useStartBranchCon
 import { useRewards } from '@/services/loyalty/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
 import Spinner from '../ui/Spinner';
@@ -36,6 +37,7 @@ export default function ChatInput({
     const [isStarting, setIsStarting] = useState(false);
     const user = useAuthStore(s => s.user);
     const { activeBranchId, setActiveBranch } = useActiveBranch();
+    const searchParams = useSearchParams();
     const { data: branches = [] } = useBranches();
     const addPendingMessage = useChatStore(s => s.addPendingMessage);
     const linkPendingThread = useChatStore(s => s.linkPendingThread);
@@ -87,7 +89,12 @@ export default function ChatInput({
         if (conversationId && drafts[conversationId]) {
             setText(drafts[conversationId]);
         } else {
-            setText('');
+            const orderId = searchParams.get('orderId');
+            if (orderId && !conversationId) {
+                setText(`Inquiry regarding order #${orderId.slice(0, 8)}`);
+            } else {
+                setText('');
+            }
         }
         // Small delay to allow value to mount
         setTimeout(() => {

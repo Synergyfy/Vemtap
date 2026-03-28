@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import {
   CatalogueOrder,
   CatalogueOrderStatus,
@@ -14,7 +14,10 @@ import { CatalogueItem, CatalogueItemStatus } from '../catalogue/entities/catalo
 import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Visit } from '../visitors/entities/visit.entity';
+import { Device } from '../devices/entities/device.entity';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PushNotificationService } from '../notifications/push-notification.service';
 import {
   CreateCatalogueOrderDto,
   CatalogueOrderQueryDto,
@@ -36,7 +39,12 @@ export class CatalogueOrderService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(Visit)
+    private readonly visitRepository: Repository<Visit>,
+    @InjectRepository(Device)
+    private readonly deviceRepository: Repository<Device>,
     private readonly loyaltyService: LoyaltyService,
+    private readonly pushNotificationService: PushNotificationService,
   ) {}
 
   async createOrder(dto: CreateCatalogueOrderDto) {
@@ -161,9 +169,18 @@ export class CatalogueOrderService {
       totalAmount,
       items: orderItems,
       stockDeducted: true,
+      deviceId: dto.deviceId,
     });
 
     const savedOrder = await this.orderRepository.save(order);
+
+    // Trigger notification to branch staff
+    this.pushNotificationService.sendToBranchStaff(
+      branch.id,
+      'New Order Received',
+      `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
+      { orderId: savedOrder.id, type: 'NEW_ORDER' },
+    ).catch(err => console.error('Failed to send staff notification:', err));
 
     // 5. Deduct stock IMMEDIATELY (locking the spot)
     for (const orderItem of order.items) {
@@ -242,12 +259,72 @@ export class CatalogueOrderService {
             staff.id,
           );
         }
+
+        // --- RECORD VISIT ON ORDER COMPLETION ---
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const existingVisit = await this.visitRepository.findOne({
+          where: {
+            customerId: order.customerId,
+            branchId: order.branchId,
+            createdAt: MoreThanOrEqual(startOfDay),
+          },
+        });
+
+        if (!existingVisit) {
+          const hasPreviousVisits = await this.visitRepository.count({
+            where: { customerId: order.customerId, branchId: order.branchId },
+          });
+
+          const visit = this.visitRepository.create({
+            customerId: order.customerId,
+            branchId: order.branchId,
+            businessId: order.businessId,
+            deviceId: order.deviceId,
+            orderId: order.id,
+            status: hasPreviousVisits > 0 ? 'returning' : 'new',
+          });
+          await this.visitRepository.save(visit);
+        }
+
         order.loyaltyAwarded = true;
     }
 
     order.status = status;
-    return this.orderRepository.save(order);
-  }
+    const updatedOrder = await this.orderRepository.save(order);
+
+    // Trigger notification to customer on status change
+    let title = '';
+    let body = '';
+
+    if (status === CatalogueOrderStatus.PROCESSING) {
+      title = 'Order Processing';
+      body = `Your order (#${order.id.slice(0, 8)}) is now being prepared.`;
+    } else if (status === CatalogueOrderStatus.COMPLETED) {
+      title = 'Order Completed';
+      body = `Your order (#${order.id.slice(0, 8)}) has been completed. Thank you!`;
+    } else if (status === CatalogueOrderStatus.CANCELLED) {
+      title = 'Order Cancelled';
+      body = `Your order (#${order.id.slice(0, 8)}) has been cancelled.`;
+    } else if (status === CatalogueOrderStatus.REJECTED) {
+      title = 'Order Rejected';
+      body = `Your order (#${order.id.slice(0, 8)}) has been rejected.`;
+    }
+
+    if (title && body) {
+      this.pushNotificationService.sendNotification(
+        order.customerId,
+        title,
+        body,
+        { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
+        true,
+      ).catch(err => console.error('Failed to send customer notification:', err));
+    }
+
+    return updatedOrder;
+    }
+    }
 
   private async deductStock(item: CatalogueItem, quantity: number) {
     if (item.stockQuantity !== null) {
@@ -301,7 +378,7 @@ export class CatalogueOrderService {
 
     const [data, total] = await this.orderRepository.findAndCount({
       where,
-      relations: ['items', 'items.item', 'items.offer', 'customer'],
+      relations: ['items', 'items.item', 'items.offer', 'customer', 'branch'],
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
@@ -309,6 +386,15 @@ export class CatalogueOrderService {
 
     return { data, total, page, limit };
   }
+
+  async findAllByCustomer(customerId: string) {
+    return this.orderRepository.find({
+      where: { customerId },
+      relations: ['items', 'items.item', 'items.offer', 'branch', 'branch.business'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
 
   async findOneOrder(orderId: string, businessId: string) {
     const order = await this.orderRepository.findOne({

@@ -34,18 +34,6 @@ import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
 
-export class RecordVisitResponse {
-  message: string;
-  visit: {
-    id: string;
-    createdAt: Date;
-  };
-  loyalty: any | null;
-  context: {
-    branchId: string;
-  };
-}
-
 export class SendCampaignBody {
   channel: Channel;
   message: string;
@@ -323,7 +311,7 @@ export class VisitorsService {
 
   async create(
     createVisitorDto: CreateVisitorDto | VisitorSignupDto,
-    branchId: string,
+    branchId?: string,
   ): Promise<VisitorResponseDto> {
     const dto = createVisitorDto as CreateVisitorDto & {
       deviceId?: string;
@@ -368,52 +356,55 @@ export class VisitorsService {
       );
     }
 
-    const branch = await this.branchRepository.findOne({
-      where: { id: branchId },
-    });
-    if (!branch) {
-      throw new NotFoundException(`Branch with ID ${branchId} not found`);
-    }
+    // If branchId is provided, record visit and contact
+    if (branchId) {
+      const branch = await this.branchRepository.findOne({
+        where: { id: branchId },
+      });
+      if (!branch) {
+        throw new NotFoundException(`Branch with ID ${branchId} not found`);
+      }
 
-    const visit = this.visitRepository.create({
-      customer: user,
-      branchId,
-      businessId: branch.businessId,
-      deviceId: dto.deviceId,
-      status: 'new',
-    } as any) as unknown as Visit;
-    await this.visitRepository.save(visit);
-
-    let contact = await this.contactRepository.findOne({
-      where: [
-        { branchId, email: user.email },
-        { branchId, phone: user.phone },
-      ],
-    });
-
-    if (!contact) {
-      contact = this.contactRepository.create({
+      const visit = this.visitRepository.create({
+        customer: user,
         branchId,
         businessId: branch.businessId,
-        email: user.email,
-        phone: user.phone,
-        name: `${user.firstName} ${user.lastName}`,
-        optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
-      } as any) as unknown as Contact;
-      await this.contactRepository.save(contact);
+        deviceId: dto.deviceId,
+        status: 'new',
+      } as any) as unknown as Visit;
+      await this.visitRepository.save(visit);
+
+      let contact = await this.contactRepository.findOne({
+        where: [
+          { branchId, email: user.email },
+          { branchId, phone: user.phone },
+        ],
+      });
+
+      if (!contact) {
+        contact = this.contactRepository.create({
+          branchId,
+          businessId: branch.businessId,
+          email: user.email,
+          phone: user.phone,
+          name: `${user.firstName} ${user.lastName}`,
+          optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
+        } as any) as unknown as Contact;
+        await this.contactRepository.save(contact);
+      }
+
+      const visitCount = await this.visitRepository.count({
+        where: { customer: { id: user.id }, branchId },
+      });
+
+      const triggerType =
+        visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
+
+      await this.automationService.trigger(triggerType, {
+        branchId,
+        customerId: user.id,
+      });
     }
-
-    const visitCount = await this.visitRepository.count({
-      where: { customer: { id: user.id }, branchId },
-    });
-
-    const triggerType =
-      visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
-
-    await this.automationService.trigger(triggerType, {
-      branchId,
-      customerId: user.id,
-    });
 
     const updatedUser = await this.userRepository.findOne({
       where: { id: user.id },
@@ -426,95 +417,6 @@ export class VisitorsService {
     });
 
     return this.mapToVisitorDto(updatedUser!);
-  }
-
-  async recordVisit(
-    userId: string,
-    deviceCode: string,
-  ): Promise<RecordVisitResponse> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId, role: UserRole.CUSTOMER },
-    });
-    if (!user) {
-      throw new NotFoundException('Customer not found');
-    }
-
-    const device = await this.deviceRepository.findOne({
-      where: { code: deviceCode, status: DeviceStatus.ACTIVE },
-      relations: ['branch'],
-    });
-    if (!device) {
-      throw new NotFoundException(
-        `Active device with code ${deviceCode} not found`,
-      );
-    }
-
-    const branchId = device.branchId;
-    const businessId = device.branch?.businessId;
-
-    const visit = this.visitRepository.create({
-      customer: user,
-      branchId,
-      businessId,
-      deviceId: device.id,
-      status: 'returning',
-    } as any) as unknown as Visit;
-    await this.visitRepository.save(visit);
-
-    device.totalScans += 1;
-    await this.deviceRepository.save(device);
-
-    let contact = await this.contactRepository.findOne({
-      where: [
-        { branchId, email: user.email },
-        { branchId, phone: user.phone },
-      ],
-    });
-
-    if (!contact) {
-      contact = this.contactRepository.create({
-        branchId,
-        businessId,
-        email: user.email,
-        phone: user.phone,
-        name: `${user.firstName} ${user.lastName}`.trim(),
-        optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
-      } as any) as unknown as Contact;
-      await this.contactRepository.save(contact);
-    }
-
-    const visitCount = await this.visitRepository.count({
-      where: {
-        customer: { id: user.id },
-        branchId,
-      },
-    });
-
-    await this.automationService.trigger(
-      visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG,
-      {
-        branchId,
-        customerId: userId,
-      },
-    );
-
-    // Points awarding logic should be moved to a generic "award points on tap" if needed,
-    // but based on requirements, points are given by staff or via code.
-    // However, if we want to keep the "tap to earn points" feature, we can award 1 point.
-    const loyaltyResult: any = null;
-    // For now, points are manual or via code as per the new requirements.
-
-    return {
-      message: 'Visit recorded successfully',
-      visit: {
-        id: visit.id,
-        createdAt: visit.createdAt,
-      },
-      loyalty: loyaltyResult,
-      context: {
-        branchId,
-      },
-    };
   }
 
   async findOne(

@@ -8,7 +8,10 @@ import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Visit } from '../visitors/entities/visit.entity';
+import { Device } from '../devices/entities/device.entity';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -19,8 +22,11 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
       CatalogueOffer,
       User,
       Branch,
+      Visit,
+      Device,
     ]),
     LoyaltyModule,
+    NotificationsModule,
   ],
   controllers: [CatalogueOrdersController],
   providers: [CatalogueOrderService],

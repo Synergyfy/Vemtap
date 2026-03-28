@@ -91,20 +91,7 @@ export default function ProductDetailsPage() {
             </button>
 
             <PageHeader
-                title={
-                    <div className="flex items-center gap-3">
-                        {item.name}
-                        {item.itemType === 'service' ? (
-                            <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-blue-100">
-                                <Cog size={12} /> Service
-                            </span>
-                        ) : (
-                            <span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-amber-100">
-                                <Box size={12} /> Product
-                            </span>
-                        )}
-                    </div>
-                }
+                title={item.name}
                 description={item.shortDescription}
                 actions={
                     <div className="flex items-center gap-3">
@@ -143,7 +130,7 @@ export default function ProductDetailsPage() {
                         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
                             <h4 className="text-xs font-black text-text-secondary uppercase tracking-widest mb-4">Gallery</h4>
                             <div className="grid grid-cols-3 gap-3">
-                                {item.galleryImages.map((img, idx) => (
+                                {item.galleryImages.map((img: string, idx: number) => (
                                     <div key={idx} className="aspect-square rounded-xl overflow-hidden border border-gray-50">
                                         <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
                                     </div>

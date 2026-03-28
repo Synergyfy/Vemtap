@@ -73,6 +73,11 @@ export class CreateCatalogueOrderDto {
   @IsNotEmpty()
   @IsUUID()
   branchId: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-device' })
+  @IsOptional()
+  @IsUUID()
+  deviceId?: string;
 }
 
 export class UpdateCatalogueOrderStatusDto {

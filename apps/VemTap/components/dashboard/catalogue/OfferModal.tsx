@@ -211,11 +211,11 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
     };
 
     const selectedItems = useMemo(() => {
-        return allItems.filter(item => formData.itemIds.includes(item.id));
+        return allItems.filter((item: CatalogueItem) => formData.itemIds.includes(item.id));
     }, [allItems, formData.itemIds]);
 
     const calculatedBasePrice = useMemo(() => {
-        return selectedItems.reduce((sum, item) => sum + Number(item.price), 0);
+        return selectedItems.reduce((sum: number, item: CatalogueItem) => sum + Number(item.price), 0);
     }, [selectedItems]);
 
     const finalPrice = useMemo(() => {
@@ -557,7 +557,7 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                         </span>
                                     </div>
                                     <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-2xl p-2 space-y-1 custom-scrollbar">
-                                        {allItems.map(item => (
+                                        {allItems.map((item: CatalogueItem) => (
                                             <button
                                                 key={item.id}
                                                 type="button"

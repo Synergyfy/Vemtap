@@ -4,6 +4,7 @@ import React from 'react';
 import Modal from '@/components/ui/Modal';
 import { 
     Order, 
+    OrderItem,
     useUpdateCatalogueOrderStatus,
     useCatalogueOrderDetails 
 } from '@/services/catalogue/hooks';
@@ -95,9 +96,11 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {order.items.map((item) => (
+                                    {order.items.map((item: OrderItem) => (
                                         <tr key={item.id}>
-                                            <td className="px-4 py-3 font-bold text-text-main">{item.item?.name || 'Unknown Item'}</td>
+                                            <td className="px-4 py-3 font-bold text-text-main">
+                                                {item.offer?.name || item.item?.name || 'Unknown Item'}
+                                            </td>
                                             <td className="px-4 py-3 text-center font-medium text-text-secondary">{item.quantity}</td>
                                             <td className="px-4 py-3 text-right font-bold text-text-main">₦{(Number(item.priceAtOrder) * item.quantity).toLocaleString()}</td>
                                         </tr>

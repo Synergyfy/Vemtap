@@ -23,7 +23,11 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import { UserRole } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+
+interface RequestWithUser extends Request {
+  user: User;
+}
 
 @ApiTags('Catalogue Orders')
 @Controller('catalogue/orders')
@@ -38,12 +42,24 @@ export class CatalogueOrdersController {
   }
 
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('my-orders')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'List orders for the authenticated customer' })
+  async getMyOrders(@Req() req: RequestWithUser) {
+    return this.orderService.findAllByCustomer(req.user.id);
+  }
+
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('catalogue')
   @ApiOperation({ summary: 'List orders for the business (Admin)' })
-  async listOrders(@Query() query: CatalogueOrderQueryDto, @Req() req: any) {
+  async listOrders(
+    @Query() query: CatalogueOrderQueryDto,
+    @Req() req: RequestWithUser,
+  ) {
     return this.orderService.findAllOrders(req.user.businessId, query);
   }
 
@@ -53,7 +69,10 @@ export class CatalogueOrdersController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('catalogue')
   @ApiOperation({ summary: 'Get order details (Admin)' })
-  async getOrder(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+  async getOrder(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
     return this.orderService.findOneOrder(id, req.user.businessId);
   }
 
@@ -66,8 +85,13 @@ export class CatalogueOrdersController {
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateCatalogueOrderStatusDto,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ) {
-    return this.orderService.updateStatus(id, dto.status, req.user.businessId, req.user);
+    return this.orderService.updateStatus(
+      id,
+      dto.status,
+      req.user.businessId,
+      req.user,
+    );
   }
 }

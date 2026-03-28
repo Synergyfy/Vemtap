@@ -5,7 +5,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { Plus, Edit2, Trash2, Search, Filter, Image as ImageIcon, Box, Cog } from 'lucide-react';
-import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem, useCatalogueCategories } from '@/services/catalogue/hooks';
+import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem, useCatalogueCategories, Category } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
@@ -19,7 +19,7 @@ export default function ProductsPage() {
     const [selectedCategoryId, setSelectedCategoryId] = useState('');
     
     const { data: items = [], isLoading } = useCatalogueItems({ 
-        branchId: activeBranchId, 
+        branchId: activeBranchId || '', 
         categoryId: selectedCategoryId,
         search: searchQuery 
     });
@@ -227,7 +227,7 @@ export default function ProductsPage() {
                     onChange={(e) => setSelectedCategoryId(e.target.value)}
                 >
                     <option value="">All Categories</option>
-                    {categories.map((cat: any) => (
+                    {categories.map((cat: Category) => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                 </select>

@@ -1,8 +1,9 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Device } from '../../devices/entities/device.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.entity';
 
 @Entity('visits')
 export class Visit extends AbstractBaseEntity {
@@ -41,4 +42,11 @@ export class Visit extends AbstractBaseEntity {
     default: 'new',
   })
   status: 'new' | 'returning';
+
+  @OneToOne(() => CatalogueOrder, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'orderId' })
+  order: CatalogueOrder;
+
+  @Column({ type: 'uuid', nullable: true })
+  orderId: string;
 }

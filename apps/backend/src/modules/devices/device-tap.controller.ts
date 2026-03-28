@@ -61,32 +61,4 @@ export class DeviceTapController {
       },
     };
   }
-
-  @Public()
-  @AllowPending()
-  @Post('record/:code')
-  @ApiOperation({
-    summary: 'Record a visit for an anonymous or identified user',
-  })
-  async recordVisit(
-    @Param('code') code: string,
-    @Body()
-    dto: { visitorId?: string; name?: string; email?: string; phone?: string },
-  ) {
-    const device = await this.devicesService.findByCode(code);
-    if (!device) {
-      throw new NotFoundException('Device not found');
-    }
-
-    // If visitorId is provided, we use recordVisit
-    if (dto.visitorId) {
-      return this.visitorsService.recordVisit(dto.visitorId, code);
-    }
-
-    // Otherwise we might want to create a temporary visit or wait for signup
-    // For now, let's just return success if it's an anonymous tap context
-    // The actual visit record usually happens after identity is established in user-step
-
-    return { message: 'Tap recognized', deviceCode: code };
-  }
 }
