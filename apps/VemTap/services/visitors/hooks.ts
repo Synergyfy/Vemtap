@@ -251,6 +251,10 @@ export const useReturningVisitorStats = (branchId?: string, enabled: boolean = t
 };
 
 export const useMessagingVisitorsByBranch = (branchId?: string, query?: { search?: string }) => {
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    
     const stableQuery = useMemo(() => JSON.stringify(query || {}), [query]);
 
     return useQuery<Visitor[]>({
@@ -259,9 +263,13 @@ export const useMessagingVisitorsByBranch = (branchId?: string, query?: { search
             const params = new URLSearchParams();
             if (branchId) params.append('branchId', branchId);
             if (query?.search) params.append('search', query.search);
-            return await api.get(`/visitors/list/branch?${params.toString()}`);
+            // Use high limit to get "all" visitors for the branch context
+            params.append('limit', '1000'); 
+            const response = await api.get(`/visitors?${params.toString()}`);
+            // The paginated endpoint returns { data: Visitor[], total: number, ... }
+            return response.data || [];
         },
-        enabled: !!branchId,
+        enabled: isAuthenticated && !!branchId,
         staleTime: STALE_TIME,
         gcTime: GC_TIME,
         refetchOnWindowFocus: false,

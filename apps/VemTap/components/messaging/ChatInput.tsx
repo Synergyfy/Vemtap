@@ -401,6 +401,15 @@ export default function ChatInput({
         }
 
         if (e.key === 'Enter' && !e.shiftKey) {
+            // On mobile/tablet, Enter should act as Shift+Enter (add newline) instead of sending
+            const isMobileOrTablet = typeof window !== 'undefined' && window.innerWidth < 1024;
+            
+            if (isMobileOrTablet) {
+                // Let the default behavior (or Shift+Enter behavior) happen - although we might need to manually insert newline for some cases
+                // but actually, just NOT calling e.preventDefault() and NOT calling handleSend() will allow it to behave normally (add newline)
+                return;
+            }
+
             e.preventDefault();
             if (!isSending) handleSend();
         }

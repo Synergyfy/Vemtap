@@ -246,9 +246,8 @@ export class VisitorsController {
   async findAll(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query() filter: BranchFilterDto,
   ): Promise<PaginatedVisitorResponseDto> {
-    const context = await this.getResolvedContext(req, filter);
+    const context = await this.getResolvedContext(req, query);
     return this.visitorsService.findAll(
       query,
       context.branchId,
