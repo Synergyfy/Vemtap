@@ -12,7 +12,7 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap
+    MessageCircle, LucideIcon, Zap, ShoppingBag
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -223,6 +223,19 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'User Experience', href: '/dashboard/engagement/experience' },
                 { label: 'Form Creator', href: '/dashboard/engagement/forms' },
+            ]
+        },
+        {
+            id: 'catalogue',
+            label: 'Catalogue',
+            icon: ShoppingBag,
+            roles: ['owner', 'manager'],
+            submenu: [
+                { label: 'Overview', href: '/dashboard/catalogue' },
+                { label: 'Items', href: '/dashboard/catalogue/products' },
+                { label: 'Offers', href: '/dashboard/catalogue/offers' },
+                { label: 'Categories', href: '/dashboard/catalogue/categories' },
+                { label: 'Orders', href: '/dashboard/catalogue/orders' },
             ]
         },
         {

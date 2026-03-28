@@ -705,36 +705,35 @@ export default function BusinessProfilePage() {
 
                 // Handle socials via engagement field in branch
                 const currentEngagement = branch.engagement || {};
-                const engagementUpdates: any = {};
-
-                const mapSocial = (platform: string, currentUrl: string) => {
-                    const originalLink = currentEngagement[platform]?.link || '';
-                    if (hasChanged(currentUrl, originalLink)) {
-                        let profileHandle = currentUrl;
-                        const platformConfig = SOCIAL_PLATFORMS.find(p => p.id === platform);
-                        if (platformConfig?.prefix && currentUrl.startsWith(platformConfig.prefix)) {
-                            profileHandle = currentUrl.replace(platformConfig.prefix, '');
-                        }
-                        
-                        engagementUpdates[platform] = {
-                            profile: profileHandle,
-                            link: currentUrl
-                        };
+                const platforms = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'youtube', 'google', 'trustpilot', 'custom'];
+                const urls = [instagramUrl, facebookUrl, xUrl, linkedinUrl, tiktokUrl, youtubeUrl, reviewUrl, trustpilotUrl, customLink];
+                
+                let socialsChanged = false;
+                platforms.forEach((p, i) => {
+                    const originalLink = currentEngagement[p]?.link || '';
+                    if (hasChanged(urls[i], originalLink)) {
+                        socialsChanged = true;
                     }
-                };
+                });
 
-                mapSocial('instagram', instagramUrl);
-                mapSocial('facebook', facebookUrl);
-                mapSocial('x', xUrl);
-                mapSocial('linkedin', linkedinUrl);
-                mapSocial('tiktok', tiktokUrl);
-                mapSocial('youtube', youtubeUrl);
-                mapSocial('google', reviewUrl);
-                mapSocial('trustpilot', trustpilotUrl);
-                mapSocial('custom', customLink);
-
-                if (Object.keys(engagementUpdates).length > 0) {
-                    branchUpdates.engagement = engagementUpdates;
+                if (socialsChanged) {
+                    const fullEngagement: any = {};
+                    platforms.forEach((platform, i) => {
+                        const currentUrl = urls[i];
+                        if (currentUrl) {
+                            let profileHandle = currentUrl;
+                            const platformConfig = SOCIAL_PLATFORMS.find(p => p.id === platform);
+                            if (platformConfig?.prefix && currentUrl.startsWith(platformConfig.prefix)) {
+                                profileHandle = currentUrl.replace(platformConfig.prefix, '');
+                            }
+                            
+                            fullEngagement[platform] = {
+                                profile: profileHandle,
+                                link: currentUrl
+                            };
+                        }
+                    });
+                    branchUpdates.engagement = fullEngagement;
                 }
 
                 if (Object.keys(branchUpdates).length > 0) {

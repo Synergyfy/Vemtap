@@ -35,7 +35,7 @@ export default function AllVisitorsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
+    const [selectedVisitorsForMsg, setSelectedVisitorsForMsg] = useState<Visitor[] | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
     const [deleteVisitorId, setDeleteVisitorId] = useState<string | null>(null);
@@ -125,13 +125,13 @@ export default function AllVisitorsPage() {
     const [showChannelSelector, setShowChannelSelector] = useState(false);
 
     const handleInviteVisitor = (visitor: Visitor) => {
-        setSelectedVisitorForMsg(visitor);
+        setSelectedVisitorsForMsg([visitor]);
         setShowChannelSelector(true);
     };
 
     const handleSendMessage = () => {
         if (visitors.length > 0) {
-            setSelectedVisitorForMsg(visitors[0]);
+            setSelectedVisitorsForMsg(visitors);
             setShowChannelSelector(true);
         } else {
             toast('No visitors available to message');
@@ -325,20 +325,24 @@ export default function AllVisitorsPage() {
                 isOpen={showChannelSelector}
                 onClose={() => {
                     setShowChannelSelector(false);
-                    setSelectedVisitorForMsg(null);
+                    setSelectedVisitorsForMsg(null);
                 }}
                 onSelectInApp={handleSelectInApp}
                 onSelectExternal={handleSelectExternal}
-                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
+                recipientName={selectedVisitorsForMsg?.length === 1 
+                    ? getVisitorDisplayName(selectedVisitorsForMsg[0]) 
+                    : (selectedVisitorsForMsg && selectedVisitorsForMsg.length > 1 ? `${selectedVisitorsForMsg.length} Visitors` : '')}
             />
 
             <SendMessageModal
-                isOpen={!!selectedVisitorForMsg && !showChannelSelector}
-                onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
-                recipientPhone={selectedVisitorForMsg?.phone}
-                recipientEmail={selectedVisitorForMsg?.email}
-                visitors={selectedVisitorForMsg ? [selectedVisitorForMsg] : undefined}
+                isOpen={!!selectedVisitorsForMsg && !showChannelSelector}
+                onClose={() => setSelectedVisitorsForMsg(null)}
+                recipientName={selectedVisitorsForMsg?.length === 1 
+                    ? getVisitorDisplayName(selectedVisitorsForMsg[0]) 
+                    : (selectedVisitorsForMsg && selectedVisitorsForMsg.length > 1 ? `${selectedVisitorsForMsg.length} Visitors` : '')}
+                recipientPhone={selectedVisitorsForMsg?.length === 1 ? selectedVisitorsForMsg[0].phone : undefined}
+                recipientEmail={selectedVisitorsForMsg?.length === 1 ? selectedVisitorsForMsg[0].email : undefined}
+                visitors={selectedVisitorsForMsg || undefined}
                 initialChannel={selectedChannelForMsg}
                 allowedChannels={allowedChannelsForMsg}
                 type="welcome"

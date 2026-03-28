@@ -7,6 +7,7 @@ import { useSendReply, useChatTemplates, useStartConversation, useStartBranchCon
 import { useRewards } from '@/services/loyalty/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
 import Spinner from '../ui/Spinner';
@@ -35,8 +36,10 @@ export default function ChatInput({
     const [showMediaOptions, setShowMediaOptions] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const user = useAuthStore(s => s.user);
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const { activeBranchId, setActiveBranch } = useActiveBranch();
-    const { data: branches = [] } = useBranches();
+    const searchParams = useSearchParams();
+    const { data: branches = [] } = useBranches(!isCustomer);
     const addPendingMessage = useChatStore(s => s.addPendingMessage);
     const linkPendingThread = useChatStore(s => s.linkPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
@@ -54,8 +57,8 @@ export default function ChatInput({
 
     // Fetch templates and rewards for the current branch
     const effectiveBranchId = activeBranchId! || branches[0]?.id;
-    const { data: templates = [] } = useChatTemplates(effectiveBranchId);
-    const { data: rewards = [] } = useRewards(effectiveBranchId);
+    const { data: templates = [] } = useChatTemplates(effectiveBranchId, !isCustomer && !!effectiveBranchId);
+    const { data: rewards = [] } = useRewards(effectiveBranchId, !isCustomer && !!effectiveBranchId);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +90,12 @@ export default function ChatInput({
         if (conversationId && drafts[conversationId]) {
             setText(drafts[conversationId]);
         } else {
-            setText('');
+            const orderId = searchParams.get('orderId');
+            if (orderId && !conversationId) {
+                setText(`Inquiry regarding order #${orderId.slice(0, 8)}`);
+            } else {
+                setText('');
+            }
         }
         // Small delay to allow value to mount
         setTimeout(() => {
@@ -98,7 +106,6 @@ export default function ChatInput({
         }, 10);
     }, [conversationId]);
 
-    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Unified reply mutation (handles both business and customer endpoints)
@@ -394,6 +401,15 @@ export default function ChatInput({
         }
 
         if (e.key === 'Enter' && !e.shiftKey) {
+            // On mobile/tablet, Enter should act as Shift+Enter (add newline) instead of sending
+            const isMobileOrTablet = typeof window !== 'undefined' && window.innerWidth < 1024;
+            
+            if (isMobileOrTablet) {
+                // Let the default behavior (or Shift+Enter behavior) happen - although we might need to manually insert newline for some cases
+                // but actually, just NOT calling e.preventDefault() and NOT calling handleSend() will allow it to behave normally (add newline)
+                return;
+            }
+
             e.preventDefault();
             if (!isSending) handleSend();
         }
