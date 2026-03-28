@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
-import { MessageSquare, Send, Smartphone, Edit3, Check, Users, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, Smartphone, Edit3, Check, Users, Loader2, Rocket, MessageCircle } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useSendMessage } from '@/services/messaging/hooks';
@@ -211,17 +211,26 @@ export default function SendMessageModal({
     }, [initialSegmentId, isOpen]);
 
     const ComingSoonOverlay = ({ channel }: { channel: string }) => (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-2xl" />
-            <div className="relative z-30 bg-white p-8 rounded-[2rem] border border-gray-100 shadow-2xl scale-100">
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Edit3 className="text-primary animate-pulse" size={32} />
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+            <div className="absolute inset-0 bg-white/75 backdrop-blur-md rounded-2xl" />
+            <div className="relative z-[60] bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-2xl scale-100 max-w-sm">
+                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-primary">
+                    <Rocket size={32} className="animate-bounce" />
                 </div>
-                <h3 className="text-lg font-black text-text-main tracking-tight">{channel} Support</h3>
-                <p className="text-xs text-text-secondary mt-2 max-w-[200px] leading-relaxed font-medium">
+                <h3 className="text-xl font-black text-text-main tracking-tight">{channel} Support</h3>
+                <p className="text-xs text-text-secondary mt-2 max-w-[240px] mx-auto leading-relaxed font-medium">
                     Automated {channel} campaigns are coming soon to VemTap. We&apos;re currently finalizing our carrier integrations.
                 </p>
-                <div className="mt-6 px-4 py-2 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full uppercase tracking-wider inline-flex items-center gap-2">
+                
+                <button 
+                    onClick={() => handleChannelChange('WhatsApp')}
+                    className="mt-8 w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                    <MessageCircle size={18} />
+                    Use WhatsApp Instead
+                </button>
+
+                <div className="mt-6 px-4 py-2 bg-gray-50 text-gray-400 text-[10px] font-black rounded-full uppercase tracking-wider inline-flex items-center gap-2 border border-gray-100">
                     <Check size={12} /> Coming Soon
                 </div>
             </div>
@@ -365,7 +374,6 @@ export default function SendMessageModal({
                                 className="w-full bg-gray-50 border border-gray-100 rounded-xl p-5 font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all text-sm resize-none"
                                 placeholder="Type your message here..."
                             />
-                            {(selectedChannel === 'SMS' || selectedChannel === 'Email') && <ComingSoonOverlay channel={selectedChannel} />}
                             <div className="flex items-center justify-between gap-4 px-1">
                                 <p className="text-[10px] text-text-secondary font-medium">
                                     Use <code className="text-primary font-bold">{"{Name}"}</code>, <code className="text-primary font-bold">{"{FirstName}"}</code>, or <code className="text-primary font-bold">{"{Points}"}</code>.
@@ -496,6 +504,11 @@ export default function SendMessageModal({
                             </span>
                         </div>
                     </div>
+
+                    {/* Channel Overlays */}
+                    {(selectedChannel === 'SMS' || selectedChannel === 'Email') && (
+                        <ComingSoonOverlay channel={selectedChannel} />
+                    )}
                 </div>
             )}
         </Modal>
