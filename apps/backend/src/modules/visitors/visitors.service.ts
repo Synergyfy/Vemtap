@@ -209,7 +209,7 @@ export class VisitorsService {
     const total = parseInt(totalRaw?.count || '0', 10);
 
     const data: VisitorResponseDto[] = sortedUsers.map((user) =>
-      this.mapToVisitorDto(user),
+      this.mapToVisitorDto(user, branchId, businessId),
     );
 
     let filteredData = data;
@@ -416,7 +416,7 @@ export class VisitorsService {
       },
     });
 
-    return this.mapToVisitorDto(updatedUser!);
+    return this.mapToVisitorDto(updatedUser!, branchId);
   }
 
   async findOne(
@@ -441,10 +441,10 @@ export class VisitorsService {
       // If user exists but has no visits in this context, we still return the user if they exist globally
       const baseUser = await this.userRepository.findOne({ where: { id } });
       if (!baseUser) throw new NotFoundException('Visitor not found');
-      return this.mapToVisitorDto(baseUser);
+      return this.mapToVisitorDto(baseUser, branchId, businessId);
     }
 
-    return this.mapToVisitorDto(user);
+    return this.mapToVisitorDto(user, branchId, businessId);
   }
 
   async update(
@@ -882,9 +882,21 @@ export class VisitorsService {
     });
   }
 
-  private mapToVisitorDto(user: User): VisitorResponseDto {
-    const visits = user.visits || [];
-    // Assuming visits are ordered DESC (latest first) from query
+  private mapToVisitorDto(
+    user: User,
+    branchId?: string,
+    businessId?: string,
+  ): VisitorResponseDto {
+    let visits = user.visits || [];
+
+    // Filter visits based on context if provided
+    if (branchId) {
+      visits = visits.filter((v) => v.branchId === branchId);
+    } else if (businessId) {
+      visits = visits.filter((v) => v.businessId === businessId);
+    }
+
+    // Assuming visits are ordered DESC (latest first) from query or we sort here
     const lastVisit = visits.length > 0 ? visits[0].createdAt : user.createdAt;
     const visitCount = visits.length;
 
