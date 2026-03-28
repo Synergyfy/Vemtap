@@ -8,6 +8,7 @@ import {
   IsBoolean,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 
 export enum VisitorStatus {
   NEW = 'new',
@@ -17,7 +18,7 @@ export enum VisitorStatus {
   ALL = 'all',
 }
 
-export class VisitorQueryDto {
+export class VisitorQueryDto extends BranchFilterDto {
   @ApiProperty({
     required: false,
     description: 'Search by name, email or phone',
@@ -48,19 +49,4 @@ export class VisitorQueryDto {
   @IsInt()
   @Min(1)
   limit?: number = 10;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  branchId?: string;
-
-  @ApiProperty({
-    description: 'Fetch for all branches (Owner only)',
-    example: true,
-    required: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  @Transform(({ value }) => value === 'true' || value === true)
-  allBranches?: boolean;
 }

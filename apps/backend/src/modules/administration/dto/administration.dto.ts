@@ -50,6 +50,11 @@ export class AdminCreateAgentDto {
 }
 
 export class GenerateImpersonationTokenDto {
+  @ApiProperty({ example: 'agent-uuid', required: false })
+  @IsUUID()
+  @IsOptional()
+  actorId?: string;
+
   @ApiProperty({ example: 'branch-uuid' })
   @IsUUID()
   @IsNotEmpty()

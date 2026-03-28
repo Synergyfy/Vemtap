@@ -43,7 +43,6 @@ import {
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
-import { RecordVisitResponse } from './visitors.service';
 import {
   AdminSendMessageDto,
   AdminSendRewardDto,
@@ -247,9 +246,8 @@ export class VisitorsController {
   async findAll(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query() filter: BranchFilterDto,
   ): Promise<PaginatedVisitorResponseDto> {
-    const context = await this.getResolvedContext(req, filter);
+    const context = await this.getResolvedContext(req, query);
     return this.visitorsService.findAll(
       query,
       context.branchId,
@@ -371,11 +369,6 @@ export class VisitorsController {
   @Post('signup')
   @ApiOperation({ summary: 'Public visitor signup (Customer Only)' })
   @ApiBody({ type: VisitorSignupDto })
-  @ApiQuery({
-    name: 'branchId',
-    type: String,
-    description: 'The UUID of the branch',
-  })
   @ApiResponse({
     status: 201,
     description: 'Visitor registered successfully',
@@ -383,9 +376,8 @@ export class VisitorsController {
   })
   async publicSignup(
     @Body() dto: VisitorSignupDto,
-    @Query() query: VisitorSignupQueryDto,
   ): Promise<VisitorResponseDto> {
-    return this.visitorsService.create(dto, query.branchId);
+    return this.visitorsService.create(dto);
   }
 
   @Post()
@@ -405,17 +397,6 @@ export class VisitorsController {
   ): Promise<VisitorResponseDto> {
     const branchId = await this.getBranchId(req, filter.branchId);
     return this.visitorsService.create(createVisitorDto, branchId);
-  }
-
-  @Post('record-visit')
-  @Roles(UserRole.CUSTOMER)
-  @AllowPending()
-  @ApiOperation({ summary: 'Record a visit via device tap (Customer Only)' })
-  async recordVisit(
-    @Body() dto: DeviceTapDto,
-    @Req() req: any,
-  ): Promise<RecordVisitResponse> {
-    return this.visitorsService.recordVisit(req.user.id, dto.deviceCode);
   }
 
   @Patch(':id')

@@ -21,10 +21,11 @@ import { Repeat, Users, Star, AlertTriangle, Gift, Award, Send } from 'lucide-re
 import { useRouter } from 'next/navigation';
 
 export default function ReturningVisitorsPage() {
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
+    const [isBulkMsgOpen, setIsBulkMsgOpen] = useState(false);
+    const [selectedVisitorsForMsg, setSelectedVisitorsForMsg] = useState<Visitor[] | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [showChannelSelector, setShowChannelSelector] = useState(false);
+    const [isBulkChannelSelector, setIsBulkChannelSelector] = useState(false);
     const [selectedChannelForMsg, setSelectedChannelForMsg] = useState<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>('In-App');
     const [allowedChannelsForMsg, setAllowedChannelsForMsg] = useState<Array<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>>(['In-App', 'WhatsApp', 'SMS', 'Email']);
 
@@ -37,43 +38,36 @@ export default function ReturningVisitorsPage() {
 
     const returningVisitors = paginatedData?.data || [];
 
-    const createRewardMutation = useMutation({
-        mutationFn: async (rewardData: any) => {
-            const payload = {
-                ...rewardData,
-                branchId: activeBranchId || undefined,
-            };
-            return await api.post('/visitors/rewards', payload);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setIsCreateModalOpen(false);
-            toast.success('Reward created successfully');
-        },
-        onError: (err: any) => {
-            console.error('Reward creation error:', err);
-            toast.error(err.response?.data?.message || 'Failed to create reward');
-        }
-    });
-
-    const handleCreateReward = async (rewardData: any) => {
-        await createRewardMutation.mutateAsync(rewardData);
+    const handleMessageVisitor = (visitor: Visitor) => {
+        setSelectedVisitorsForMsg([visitor]);
+        setIsBulkChannelSelector(false);
+        setShowChannelSelector(true);
     };
 
-    const handleRewardVisitor = (visitor: Visitor) => {
-        setSelectedVisitorForMsg(visitor);
-        setShowChannelSelector(true);
+    const handleSendMessageToAll = () => {
+        if (returningVisitors.length > 0) {
+            setIsBulkChannelSelector(true);
+            setShowChannelSelector(true);
+        } else {
+            toast.error('No returning visitors to message');
+        }
     };
 
     const handleSelectInApp = () => {
         setSelectedChannelForMsg('In-App');
         setAllowedChannelsForMsg(['In-App']);
+        if (isBulkChannelSelector) {
+            setIsBulkMsgOpen(true);
+        }
         setShowChannelSelector(false);
     };
 
     const handleSelectExternal = () => {
         setSelectedChannelForMsg('WhatsApp');
         setAllowedChannelsForMsg(['WhatsApp', 'SMS', 'Email']);
+        if (isBulkChannelSelector) {
+            setIsBulkMsgOpen(true);
+        }
         setShowChannelSelector(false);
     };
 
@@ -142,7 +136,7 @@ export default function ReturningVisitorsPage() {
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        handleRewardVisitor(item);
+                        handleMessageVisitor(item);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-primary-hover transition-colors"
                 >
@@ -160,40 +154,47 @@ export default function ReturningVisitorsPage() {
                 description="Monitor loyalty and reward your repeat customers"
                 actions={
                     <button
-                        onClick={() => setIsCreateModalOpen(true)}
+                        onClick={handleSendMessageToAll}
                         className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20"
                     >
-                        <Gift size={18} />
-                        Create Reward
+                        <Send size={18} />
+                        Send Message
                     </button>
                 }
             />
 
-            <RewardCreationModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onCreate={handleCreateReward}
-                defaultAudience="returning"
+            <SendMessageModal
+                isOpen={isBulkMsgOpen}
+                onClose={() => setIsBulkMsgOpen(false)}
+                recipientName={`${returningVisitors.length} Returning Visitors`}
+                visitors={returningVisitors}
+                initialChannel={selectedChannelForMsg}
+                allowedChannels={allowedChannelsForMsg}
+                type="reward"
             />
 
             <MessagingChannelSelectorModal
                 isOpen={showChannelSelector}
                 onClose={() => {
                     setShowChannelSelector(false);
-                    setSelectedVisitorForMsg(null);
+                    setSelectedVisitorsForMsg(null);
                 }}
                 onSelectInApp={handleSelectInApp}
                 onSelectExternal={handleSelectExternal}
-                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
+                recipientName={selectedVisitorsForMsg?.length === 1 
+                    ? getVisitorDisplayName(selectedVisitorsForMsg[0]) 
+                    : (selectedVisitorsForMsg && selectedVisitorsForMsg.length > 1 ? `${selectedVisitorsForMsg.length} Visitors` : '')}
             />
 
             <SendMessageModal
-                isOpen={!!selectedVisitorForMsg && !showChannelSelector}
-                onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
-                recipientPhone={selectedVisitorForMsg?.phone}
-                recipientEmail={selectedVisitorForMsg?.email}
-                visitors={selectedVisitorForMsg ? [selectedVisitorForMsg] : undefined}
+                isOpen={!!selectedVisitorsForMsg && !showChannelSelector}
+                onClose={() => setSelectedVisitorsForMsg(null)}
+                recipientName={selectedVisitorsForMsg?.length === 1 
+                    ? getVisitorDisplayName(selectedVisitorsForMsg[0]) 
+                    : (selectedVisitorsForMsg && selectedVisitorsForMsg.length > 1 ? `${selectedVisitorsForMsg.length} Visitors` : '')}
+                recipientPhone={selectedVisitorsForMsg?.length === 1 ? selectedVisitorsForMsg[0].phone : undefined}
+                recipientEmail={selectedVisitorsForMsg?.length === 1 ? selectedVisitorsForMsg[0].email : undefined}
+                visitors={selectedVisitorsForMsg || undefined}
                 initialChannel={selectedChannelForMsg}
                 allowedChannels={allowedChannelsForMsg}
                 type="reward"

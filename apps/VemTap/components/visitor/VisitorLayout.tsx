@@ -45,7 +45,7 @@ export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset,
                 <div className="absolute -bottom-[10%] left-[20%] size-[50%] rounded-full bg-blue-400/5 blur-[120px] animate-pulse" />
             </div>
 
-            <main className="grow flex items-center justify-center w-full max-w-2xl relative">
+            <main className="grow flex flex-col items-center w-full max-w-4xl relative">
                 {children}
             </main>
 
