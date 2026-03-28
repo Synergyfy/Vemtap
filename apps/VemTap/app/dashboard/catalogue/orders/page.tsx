@@ -13,10 +13,11 @@ export default function OrdersPage() {
     const { activeBranchId } = useActiveBranch();
     const [statusFilter, setStatusFilter] = useState('all');
     
-    const { data: orders = [], isLoading } = useCatalogueOrders({ 
-        branchId: activeBranchId, 
+    const { data: ordersData, isLoading } = useCatalogueOrders({ 
+        branchId: activeBranchId ?? undefined, 
         status: statusFilter !== 'all' ? statusFilter : undefined
     });
+    const orders = ((ordersData as any)?.data as Order[]) || [];
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);

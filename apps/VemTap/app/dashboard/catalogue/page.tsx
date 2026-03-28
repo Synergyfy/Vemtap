@@ -4,16 +4,17 @@ import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
 import { ShoppingBag, LayoutGrid, ClipboardList, Clock } from 'lucide-react';
-import { useCatalogueItems, useCatalogueCategories, useCatalogueOrders } from '@/services/catalogue/hooks';
+import { useCatalogueItems, useCatalogueCategories, useCatalogueOrders, Order } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Link from 'next/link';
 
 export default function CatalogueOverviewPage() {
     const { activeBranchId } = useActiveBranch();
     
-    const { data: items = [] } = useCatalogueItems({ branchId: activeBranchId });
+    const { data: items = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
     const { data: categories = [] } = useCatalogueCategories();
-    const { data: orders = [] } = useCatalogueOrders({ branchId: activeBranchId });
+    const { data: ordersData } = useCatalogueOrders({ branchId: activeBranchId ?? undefined });
+    const orders = ((ordersData as any)?.data as Order[]) || [];
     
     const pendingOrders = orders.filter(o => o.status === 'new' || o.status === 'processing').length;
 
@@ -41,7 +42,7 @@ export default function CatalogueOverviewPage() {
         },
         {
             label: 'Total Orders',
-            value: orders.length.toString(),
+            value: ((ordersData as any)?.total || orders.length).toString(),
             icon: ClipboardList,
             color: 'green' as const,
             href: '/dashboard/catalogue/orders'

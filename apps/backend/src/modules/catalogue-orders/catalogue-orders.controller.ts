@@ -68,6 +68,6 @@ export class CatalogueOrdersController {
     @Body() dto: UpdateCatalogueOrderStatusDto,
     @Req() req: any,
   ) {
-    return this.orderService.updateStatus(id, dto.status, req.user.businessId);
+    return this.orderService.updateStatus(id, dto.status, req.user.businessId, req.user);
   }
 }

@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { CatalogueOrder } from './catalogue-order.entity';
 import { CatalogueItem } from '../../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer } from '../../catalogue/entities/catalogue-offer.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('catalogue_order_items')
@@ -20,6 +21,13 @@ export class CatalogueOrderItem extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   itemId: string;
 
+  @ManyToOne(() => CatalogueOffer, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'offerId' })
+  offer: CatalogueOffer;
+
+  @Column({ type: 'uuid', nullable: true })
+  offerId: string;
+
   @ApiProperty({ example: 2 })
   @Column({ type: 'int' })
   quantity: number;
@@ -35,4 +43,8 @@ export class CatalogueOrderItem extends AbstractBaseEntity {
     },
   })
   priceAtOrder: number;
+
+  @ApiProperty({ example: 10, nullable: true })
+  @Column({ type: 'int', nullable: true })
+  loyaltyPointsAtOrder: number | null;
 }

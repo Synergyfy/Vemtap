@@ -4,7 +4,11 @@ import { api } from '@/lib/api';
 // --- Types ---
 
 export type CatalogueItemStatus = 'active' | 'inactive' | 'out_of_stock' | 'suspended';
-export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled';
+export type CatalogueItemType = 'product' | 'service';
+export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'rejected';
+export type DiscountType = 'percentage' | 'fixed' | 'none';
+export type CatalogueOfferPricingType = 'sum' | 'percentage_discount' | 'fixed_discount_price';
+export type CatalogueOfferStatus = 'active' | 'inactive';
 
 export interface Category {
     id: string;
@@ -26,22 +30,50 @@ export interface CatalogueItem {
     category?: Category;
     businessId: string;
     status: CatalogueItemStatus;
+    itemType: CatalogueItemType;
     sku?: string;
+    discountType: DiscountType;
+    discountValue: number | null;
     stockQuantity?: number;
     allowBackOrder: boolean;
     isSuspended: boolean;
     suspensionNote?: string;
+    loyaltyPoints?: number | null;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface CatalogueOffer {
+    id: string;
+    name: string;
+    description: string;
+    mainImage: string;
+    galleryImages?: string[];
+    quantity: number | null;
+    pricingType: CatalogueOfferPricingType;
+    discountValue: number | null;
+    fixedPrice: number | null;
+    calculatedPrice: number;
+    loyaltyPoints: number | null;
+    rewardId: string | null;
+    businessId: string;
+    branchId: string;
+    status: CatalogueOfferStatus;
+    items: CatalogueItem[];
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface OrderItem {
     id: string;
     orderId: string;
-    itemId: string;
+    itemId?: string;
     item?: CatalogueItem;
+    offerId?: string;
+    offer?: CatalogueOffer;
     quantity: number;
     priceAtOrder: number;
+    loyaltyPointsAtOrder?: number | null;
 }
 
 export interface Order {
@@ -79,8 +111,12 @@ export interface CreateItemDto {
     categoryId: string;
     branchId: string;
     sku?: string;
+    itemType?: CatalogueItemType;
+    discountType?: DiscountType;
+    discountValue?: number;
     stockQuantity?: number;
     allowBackOrder?: boolean;
+    loyaltyPoints?: number;
 }
 
 export interface UpdateItemDto extends Partial<CreateItemDto> {
@@ -88,13 +124,34 @@ export interface UpdateItemDto extends Partial<CreateItemDto> {
     applyGlobally?: boolean;
 }
 
-export interface CreateOrderDto {
-    businessId: string;
+export interface CreateCatalogueOfferDto {
+    name: string;
+    description: string;
+    mainImage?: string;
+    galleryImages?: string[];
+    quantity?: number;
+    pricingType: CatalogueOfferPricingType;
+    discountValue?: number;
+    fixedPrice?: number;
+    loyaltyPoints?: number;
+    rewardId?: string;
     branchId: string;
-    customerId: string;
+    itemIds: string[];
+}
+
+export interface UpdateCatalogueOfferDto extends Partial<CreateCatalogueOfferDto> {
+    status?: CatalogueOfferStatus;
+}
+
+export interface CreateOrderDto {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email?: string;
+    branchId: string;
     tableNumber?: string;
     notes?: string;
-    items: { itemId: string, quantity: number }[];
+    items: { itemId?: string, offerId?: string, quantity: number }[];
 }
 
 // --- API Functions ---
@@ -159,6 +216,28 @@ export const getOrderDetails = async (id: string) => {
 
 export const updateOrderStatus = async (id: string, status: OrderStatus) => {
     return await api.patch(`/catalogue/orders/${id}/status`, { status });
+};
+
+// Offers
+export const getOffersAdmin = async (params: { branchId?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
+    return await api.get(`/catalogue/offers/admin${qs ? `?${qs}` : ''}`);
+};
+
+export const getOfferDetails = async (id: string) => {
+    return await api.get(`/catalogue/offers/public/details/${id}`);
+};
+
+export const createOffer = async (data: CreateCatalogueOfferDto) => {
+    return await api.post('/catalogue/offers', data);
+};
+
+export const updateOffer = async (id: string, data: UpdateCatalogueOfferDto) => {
+    return await api.patch(`/catalogue/offers/${id}`, data);
+};
+
+export const deleteOffer = async (id: string) => {
+    return await api.delete(`/catalogue/offers/${id}`);
 };
 
 // --- Hooks ---
@@ -276,6 +355,51 @@ export const useUpdateCatalogueOrderStatus = () => {
         mutationFn: ({ id, status }: { id: string, status: OrderStatus }) => updateOrderStatus(id, status),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'orders'] });
+        },
+    });
+};
+
+export const useCatalogueOffersAdmin = (params: { branchId?: string } = {}) => {
+    return useQuery<CatalogueOffer[]>({
+        queryKey: ['catalogue', 'offers', 'admin', params],
+        queryFn: () => getOffersAdmin(params),
+    });
+};
+
+export const useCatalogueOfferDetails = (id: string) => {
+    return useQuery<CatalogueOffer>({
+        queryKey: ['catalogue', 'offers', id],
+        queryFn: () => getOfferDetails(id),
+        enabled: !!id,
+    });
+};
+
+export const useCreateCatalogueOffer = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: createOffer,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'offers'] });
+        },
+    });
+};
+
+export const useUpdateCatalogueOffer = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string, data: UpdateCatalogueOfferDto }) => updateOffer(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'offers'] });
+        },
+    });
+};
+
+export const useDeleteCatalogueOffer = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: deleteOffer,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'offers'] });
         },
     });
 };

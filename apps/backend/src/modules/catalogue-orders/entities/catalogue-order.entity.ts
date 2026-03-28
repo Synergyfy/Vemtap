@@ -11,6 +11,7 @@ export enum CatalogueOrderStatus {
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  REJECTED = 'rejected',
 }
 
 @Entity('catalogue_orders')
@@ -63,6 +64,14 @@ export class CatalogueOrder extends AbstractBaseEntity {
     },
   })
   totalAmount: number;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  loyaltyAwarded: boolean;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  stockDeducted: boolean;
 
   @OneToMany(() => CatalogueOrderItem, (item: CatalogueOrderItem) => item.order, {
     cascade: true,

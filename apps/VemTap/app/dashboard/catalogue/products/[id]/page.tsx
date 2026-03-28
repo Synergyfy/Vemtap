@@ -6,7 +6,7 @@ import { useCatalogueItem, useDeleteCatalogueItem, CatalogueItem } from '@/servi
 import PageHeader from '@/components/dashboard/PageHeader';
 import { 
     ChevronLeft, Edit2, Trash2, Package, Tag, 
-    Layers, ShoppingBag, Info, CheckCircle2, XCircle, Clock
+    Layers, ShoppingBag, Info, CheckCircle2, XCircle, Clock, Percent, Box, Cog
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
@@ -55,6 +55,16 @@ export default function ProductDetailsPage() {
         }
     };
 
+    const calculateDiscountedPrice = (item: CatalogueItem) => {
+        if (!item.discountType || item.discountType === 'none' || !item.discountValue) return null;
+        if (item.discountType === 'percentage') {
+            return Number(item.price) - (Number(item.price) * (Number(item.discountValue) / 100));
+        }
+        return Number(item.discountValue);
+    };
+
+    const discountedPrice = calculateDiscountedPrice(item);
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'active': 
@@ -81,7 +91,20 @@ export default function ProductDetailsPage() {
             </button>
 
             <PageHeader
-                title={item.name}
+                title={
+                    <div className="flex items-center gap-3">
+                        {item.name}
+                        {item.itemType === 'service' ? (
+                            <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-blue-100">
+                                <Cog size={12} /> Service
+                            </span>
+                        ) : (
+                            <span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-amber-100">
+                                <Box size={12} /> Product
+                            </span>
+                        )}
+                    </div>
+                }
                 description={item.shortDescription}
                 actions={
                     <div className="flex items-center gap-3">
@@ -136,7 +159,19 @@ export default function ProductDetailsPage() {
                         <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
                             <div>
                                 <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Pricing</p>
-                                <h3 className="text-3xl font-black text-primary">₦{Number(item.price).toLocaleString()}</h3>
+                                {discountedPrice ? (
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-3xl font-black text-primary">₦{discountedPrice.toLocaleString()}</h3>
+                                            <span className="px-2 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-black">
+                                                {item.discountType === 'percentage' ? `${item.discountValue}% OFF` : 'SPECIAL PRICE'}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-text-secondary font-bold line-through">₦{Number(item.price).toLocaleString()}</p>
+                                    </div>
+                                ) : (
+                                    <h3 className="text-3xl font-black text-text-main">₦{Number(item.price).toLocaleString()}</h3>
+                                )}
                             </div>
                             <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-between">
                                 <span className="text-xs font-bold text-text-secondary">Current Status</span>
@@ -156,9 +191,9 @@ export default function ProductDetailsPage() {
                                     </div>
                                     <span className={cn(
                                         "text-sm font-black",
-                                        (item.stockQuantity || 0) <= 5 ? "text-red-500" : "text-text-main"
+                                        item.itemType === 'service' ? "text-text-secondary" : ((item.stockQuantity || 0) <= 5 ? "text-red-500" : "text-text-main")
                                     )}>
-                                        {item.stockQuantity} Units
+                                        {item.itemType === 'service' ? 'N/A' : `${item.stockQuantity} Units`}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
@@ -181,9 +216,9 @@ export default function ProductDetailsPage() {
                                     </div>
                                     <span className={cn(
                                         "text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg",
-                                        item.allowBackOrder ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-text-secondary"
+                                        item.itemType === 'service' ? "bg-gray-50 text-text-secondary" : (item.allowBackOrder ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-text-secondary")
                                     )}>
-                                        {item.allowBackOrder ? 'ENABLED' : 'DISABLED'}
+                                        {item.itemType === 'service' ? 'N/A' : (item.allowBackOrder ? 'ENABLED' : 'DISABLED')}
                                     </span>
                                 </div>
                             </div>

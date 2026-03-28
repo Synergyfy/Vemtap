@@ -232,7 +232,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Overview', href: '/dashboard/catalogue' },
-                { label: 'Products', href: '/dashboard/catalogue/products' },
+                { label: 'Items', href: '/dashboard/catalogue/products' },
+                { label: 'Offers', href: '/dashboard/catalogue/offers' },
                 { label: 'Categories', href: '/dashboard/catalogue/categories' },
                 { label: 'Orders', href: '/dashboard/catalogue/orders' },
             ]

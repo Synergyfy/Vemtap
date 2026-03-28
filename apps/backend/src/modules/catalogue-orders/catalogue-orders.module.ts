@@ -5,8 +5,10 @@ import { CatalogueOrdersController } from './catalogue-orders.controller';
 import { CatalogueOrder } from './entities/catalogue-order.entity';
 import { CatalogueOrderItem } from './entities/catalogue-order-item.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 @Module({
   imports: [
@@ -14,9 +16,11 @@ import { Branch } from '../branches/entities/branch.entity';
       CatalogueOrder,
       CatalogueOrderItem,
       CatalogueItem,
+      CatalogueOffer,
       User,
       Branch,
     ]),
+    LoyaltyModule,
   ],
   controllers: [CatalogueOrdersController],
   providers: [CatalogueOrderService],

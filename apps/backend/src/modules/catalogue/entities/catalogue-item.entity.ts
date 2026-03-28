@@ -19,6 +19,17 @@ export enum CatalogueItemStatus {
   SUSPENDED = 'suspended',
 }
 
+export enum CatalogueItemType {
+  PRODUCT = 'product',
+  SERVICE = 'service',
+}
+
+export enum DiscountType {
+  PERCENTAGE = 'percentage',
+  FIXED = 'fixed',
+  NONE = 'none',
+}
+
 @Entity('catalogue_items')
 export class CatalogueItem extends AbstractBaseEntity {
   @ApiProperty({ example: 'Cheeseburger' })
@@ -79,9 +90,44 @@ export class CatalogueItem extends AbstractBaseEntity {
   })
   status: CatalogueItemStatus;
 
+  @ApiProperty({
+    enum: CatalogueItemType,
+    example: CatalogueItemType.PRODUCT,
+  })
+  @Column({
+    type: 'enum',
+    enum: CatalogueItemType,
+    default: CatalogueItemType.PRODUCT,
+  })
+  itemType: CatalogueItemType;
+
   @ApiProperty({ example: 'CB-001', nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   sku: string;
+
+  @ApiProperty({
+    enum: DiscountType,
+    example: DiscountType.NONE,
+  })
+  @Column({
+    type: 'enum',
+    enum: DiscountType,
+    default: DiscountType.NONE,
+  })
+  discountType: DiscountType;
+
+  @ApiProperty({ example: 10, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => (value ? parseFloat(value) : null),
+    },
+  })
+  discountValue: number | null;
 
   @ApiProperty({ example: 50, nullable: true })
   @Column({ type: 'int', nullable: true })
@@ -94,6 +140,10 @@ export class CatalogueItem extends AbstractBaseEntity {
   @ApiProperty({ example: false })
   @Column({ default: false })
   isSuspended: boolean;
+
+  @ApiProperty({ example: 10, nullable: true })
+  @Column({ type: 'int', nullable: true })
+  loyaltyPoints: number | null;
 
   @ApiProperty({ example: 'Policy violation', nullable: true })
   @Column({ type: 'text', nullable: true })

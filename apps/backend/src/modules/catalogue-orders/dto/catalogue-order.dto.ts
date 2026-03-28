@@ -15,10 +15,15 @@ import { Type } from 'class-transformer';
 import { CatalogueOrderStatus } from '../entities/catalogue-order.entity';
 
 export class OrderItemDto {
-  @ApiProperty({ example: 'uuid-of-item' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'uuid-of-item' })
+  @IsOptional()
   @IsUUID()
-  itemId: string;
+  itemId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-offer' })
+  @IsOptional()
+  @IsUUID()
+  offerId?: string;
 
   @ApiProperty({ example: 2 })
   @IsNotEmpty()

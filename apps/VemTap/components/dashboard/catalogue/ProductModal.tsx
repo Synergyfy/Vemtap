@@ -1,19 +1,21 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Modal from '@/components/ui/Modal';
-import { 
-    CatalogueItem, 
-    useCreateCatalogueItem, 
-    useUpdateCatalogueItem, 
-    useCatalogueCategories 
+import {
+    CatalogueItem,
+    useCreateCatalogueItem,
+    useUpdateCatalogueItem,
+    useCatalogueCategories,
+    DiscountType,
+    CatalogueItemType
 } from '@/services/catalogue/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import toast from 'react-hot-toast';
-import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Box, Cog, Coins } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { cn } from '@/lib/utils';
 import Cropper, { Point, Area } from 'react-easy-crop';
@@ -63,7 +65,7 @@ const CropperModal: React.FC<{
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
                 </div>
-                
+
                 <div className="relative h-[400px] w-full bg-slate-200">
                     <Cropper
                         image={image}
@@ -110,7 +112,11 @@ const productSchema = z.object({
     categoryId: z.string().min(1, 'Category is required'),
     branchId: z.string().min(1, 'Branch is required'),
     sku: z.string().optional(),
+    itemType: z.enum(['product', 'service']).default('product'),
+    discountType: z.enum(['none', 'percentage', 'fixed']).default('none'),
+    discountValue: z.coerce.number().min(0, 'Value must be positive').optional(),
     stockQuantity: z.coerce.number().min(0, 'Stock must be positive').optional(),
+    loyaltyPoints: z.coerce.number().min(0, 'Points must be positive').optional(),
     allowBackOrder: z.boolean().default(true),
     applyGlobally: z.boolean().default(false),
 });
@@ -141,8 +147,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
     const mainInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
 
-    const { register, handleSubmit, reset, formState: { errors } } = useForm<ProductFormValues>({
-        resolver: zodResolver(productSchema),
+    const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<ProductFormValues>({
+        resolver: zodResolver(productSchema) as any,
         defaultValues: {
             name: '',
             price: 0,
@@ -151,11 +157,18 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             categoryId: '',
             branchId: activeBranchId || '',
             sku: '',
+            itemType: 'product',
+            discountType: 'none',
+            discountValue: 0,
             stockQuantity: 0,
+            loyaltyPoints: 0,
             allowBackOrder: true,
             applyGlobally: false,
         },
     });
+
+    const selectedDiscountType = watch('discountType');
+    const selectedItemType = watch('itemType');
 
     useEffect(() => {
         if (isOpen) {
@@ -168,7 +181,11 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     categoryId: product.categoryId,
                     branchId: activeBranchId || product.businessId,
                     sku: product.sku || '',
+                    itemType: product.itemType || 'product',
+                    discountType: product.discountType || 'none',
+                    discountValue: product.discountValue || 0,
                     stockQuantity: product.stockQuantity || 0,
+                    loyaltyPoints: product.loyaltyPoints || 0,
                     allowBackOrder: product.allowBackOrder,
                     applyGlobally: false,
                 });
@@ -183,7 +200,11 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     categoryId: '',
                     branchId: activeBranchId || '',
                     sku: '',
+                    itemType: 'product',
+                    discountType: 'none',
+                    discountValue: 0,
                     stockQuantity: 0,
+                    loyaltyPoints: 0,
                     allowBackOrder: true,
                     applyGlobally: false,
                 });
@@ -231,7 +252,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
         reader.readAsDataURL(blob);
     };
 
-    const onSubmit = async (values: ProductFormValues) => {
+    const onSubmit: SubmitHandler<ProductFormValues> = async (values) => {
         setIsUploading(true);
         let toastId: string | undefined;
 
@@ -242,7 +263,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             // Upload new images to Cloudinary
             if (localMainFile || localGalleryFiles.length > 0) {
                 toastId = toast.loading('Uploading images...');
-                
+
                 if (localMainFile) {
                     mainImageUrl = await uploadToCloudinary(localMainFile);
                 }
@@ -251,7 +272,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     const uploadedGallery = await Promise.all(localGalleryFiles.map(f => uploadToCloudinary(f)));
                     finalGalleryUrls = [...finalGalleryUrls, ...uploadedGallery];
                 }
-                
+
                 toast.dismiss(toastId);
             }
 
@@ -261,24 +282,21 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                 return;
             }
 
-            // Extract applyGlobally and clean values for the backend
             const { applyGlobally, ...restValues } = values;
 
-            const submissionData = { 
-                ...restValues, 
+            const submissionData = {
+                ...restValues,
                 mainImage: mainImageUrl,
                 galleryImages: finalGalleryUrls
             };
 
             if (product) {
-                // For updates, the backend accepts applyGlobally in the DTO
-                await updateMutation.mutateAsync({ 
-                    id: product.id, 
-                    data: { ...submissionData, applyGlobally } as any 
+                await updateMutation.mutateAsync({
+                    id: product.id,
+                    data: { ...submissionData, applyGlobally } as any
                 });
                 toast.success('Product updated successfully');
             } else {
-                // For creation, applyGlobally is NOT allowed in the DTO
                 await createMutation.mutateAsync(submissionData as any);
                 toast.success('Product created successfully');
             }
@@ -295,17 +313,17 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
         <>
             <AnimatePresence>
                 {croppingImage && (
-                    <CropperModal 
-                        image={croppingImage.url} 
-                        onCropComplete={handleCropComplete} 
-                        onClose={() => setCroppingImage(null)} 
+                    <CropperModal
+                        image={croppingImage.url}
+                        onCropComplete={handleCropComplete}
+                        onClose={() => setCroppingImage(null)}
                     />
                 )}
             </AnimatePresence>
 
-            <Modal 
-                isOpen={isOpen} 
-                onClose={onClose} 
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
                 title={product ? 'Edit Product' : 'Add Product'}
                 size="lg"
             >
@@ -313,15 +331,45 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Core Info */}
                         <div className="space-y-6 md:col-span-2">
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Product Name *</label>
-                                <input {...register('name')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-bold text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
-                                {errors.name && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.name.message}</p>}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Product Name *</label>
+                                    <input {...register('name')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-bold text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
+                                    {errors.name && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.name.message}</p>}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Item Type *</label>
+                                    <div className="grid grid-cols-2 gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
+                                        <button
+                                            type="button"
+                                            onClick={() => setValue('itemType', 'product')}
+                                            className={cn(
+                                                "h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase transition-all",
+                                                selectedItemType === 'product' ? "bg-white text-primary shadow-sm" : "text-text-secondary hover:text-text-main"
+                                            )}
+                                        >
+                                            <Box size={14} />
+                                            Product
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setValue('itemType', 'service')}
+                                            className={cn(
+                                                "h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase transition-all",
+                                                selectedItemType === 'service' ? "bg-white text-primary shadow-sm" : "text-text-secondary hover:text-text-main"
+                                            )}
+                                        >
+                                            <Cog size={14} />
+                                            Service
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Price (₦) *</label>
+                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Original Price (₦) *</label>
                                     <input type="number" step="0.01" {...register('price')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" />
                                 </div>
                                 <div className="space-y-2">
@@ -332,13 +380,54 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Discount Section */}
+                            <div className="p-6 bg-primary/5 rounded-xl border border-primary/10 space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <Tag size={16} className="text-primary" />
+                                    <h4 className="text-xs font-black text-primary uppercase tracking-widest">Pricing & Discounts</h4>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">Discount Type</label>
+                                        <select
+                                            {...register('discountType')}
+                                            className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer"
+                                        >
+                                            <option value="none">No Discount</option>
+                                            <option value="percentage">Percentage Off (%)</option>
+                                            <option value="fixed">Fixed Price (₦)</option>
+                                        </select>
+                                    </div>
+
+                                    {selectedDiscountType !== 'none' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
+                                                {selectedDiscountType === 'percentage' ? 'Percentage (%)' : 'Discounted Price (₦)'}
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    {...register('discountValue')}
+                                                    className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
+                                                />
+                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
+                                                    {selectedDiscountType === 'percentage' ? <Percent size={14} /> : <span className="text-xs font-bold">₦</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Images Section */}
                         <div className="space-y-4 md:col-span-2">
                             <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Main Product Image *</label>
                             <input type="file" ref={mainInputRef} onChange={handleMainUpload} accept="image/*" className="hidden" />
-                            <div 
+                            <div
                                 onClick={() => mainInputRef.current?.click()}
                                 className={cn(
                                     "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
@@ -374,8 +463,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm group">
                                         <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button 
-                                                type="button" 
+                                            <button
+                                                type="button"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     const newPreviews = [...galleryPreviews];
@@ -408,9 +497,19 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                             </select>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Stock Quantity</label>
-                            <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" />
+                        <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Stock Quantity</label>
+                                <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-text-secondary uppercase tracking-widest flex items-center gap-2">
+                                    <Coins size={14} className="text-amber-500" />
+                                    Loyalty Points
+                                </label>
+                                <input type="number" {...register('loyaltyPoints')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="Points on purchase" />
+                            </div>
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
@@ -439,6 +538,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <div>
                                     <p className="text-sm font-bold text-text-main group-hover:text-primary transition-colors">Apply Globally</p>
                                     <p className="text-[10px] text-text-secondary font-medium">Update this product across all branches</p>
+                                    <p className="text-[9px] text-amber-600 font-bold uppercase mt-1 italic">Note: Loyalty points will also be applied globally.</p>
                                 </div>
                             </label>
                         )}

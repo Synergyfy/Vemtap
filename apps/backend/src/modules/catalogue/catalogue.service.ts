@@ -80,6 +80,12 @@ export class CatalogueService {
     });
     if (!branch) throw new BadRequestException('Branch not found or unauthorized');
 
+    // Auto-generate SKU if not provided
+    if (!dto.sku) {
+      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+      dto.sku = `SKU-${randomPart}`;
+    }
+
     const item = this.itemRepository.create({
       ...dto,
       businessId,

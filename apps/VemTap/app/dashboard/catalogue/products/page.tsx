@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { Plus, Edit2, Trash2, Search, Filter, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Filter, Image as ImageIcon, Box, Cog } from 'lucide-react';
 import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem, useCatalogueCategories } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
@@ -56,6 +56,29 @@ export default function ProductsPage() {
         router.push(`/dashboard/catalogue/products/${item.id}`);
     };
 
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'active': 
+                return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">ACTIVE</span>;
+            case 'inactive': 
+                return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">INACTIVE</span>;
+            case 'out_of_stock': 
+                return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">OUT OF STOCK</span>;
+            case 'suspended': 
+                return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">SUSPENDED</span>;
+            default: 
+                return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-black uppercase tracking-wider w-fit">{status.toUpperCase()}</span>;
+        }
+    };
+
+    const calculateDiscountedPrice = (item: CatalogueItem) => {
+        if (!item.discountType || item.discountType === 'none' || !item.discountValue) return null;
+        if (item.discountType === 'percentage') {
+            return Number(item.price) - (Number(item.price) * (Number(item.discountValue) / 100));
+        }
+        return Number(item.discountValue);
+    };
+
     const columns: Column<CatalogueItem>[] = [
         {
             header: 'Product',
@@ -69,28 +92,82 @@ export default function ProductsPage() {
                         </div>
                     )}
                     <div>
-                        <p className="font-bold text-text-main group-hover:text-primary transition-colors">{item.name}</p>
-                        <p className="text-[10px] text-text-secondary uppercase">{item.category?.name || 'Uncategorized'}</p>
+                        <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-text-main group-hover:text-primary transition-colors">{item.name}</p>
+                            {item.itemType === 'service' ? (
+                                <span className="p-1 bg-blue-50 text-blue-600 rounded-md" title="Service">
+                                    <Cog size={10} />
+                                </span>
+                            ) : (
+                                <span className="p-1 bg-amber-50 text-amber-600 rounded-md" title="Product">
+                                    <Box size={10} />
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-text-secondary font-black uppercase tracking-tighter">{item.sku || 'NO SKU'}</p>
                     </div>
                 </div>
             )
         },
         {
-            header: 'Price',
+            header: 'Category',
             accessor: (item: CatalogueItem) => (
-                <span className="font-medium">₦{item.price.toLocaleString()}</span>
+                <span className="px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-text-main">
+                    {item.category?.name || 'Uncategorized'}
+                </span>
             )
+        },
+        {
+            header: 'Price',
+            accessor: (item: CatalogueItem) => {
+                const discountedPrice = calculateDiscountedPrice(item);
+                return (
+                    <div className="flex flex-col">
+                        {discountedPrice ? (
+                            <>
+                                <span className="text-xs text-text-secondary line-through">₦{Number(item.price).toLocaleString()}</span>
+                                <span className="font-black text-primary">₦{discountedPrice.toLocaleString()}</span>
+                            </>
+                        ) : (
+                            <span className="font-black text-text-main">₦{Number(item.price).toLocaleString()}</span>
+                        )}
+                    </div>
+                );
+            }
+        },
+        {
+            header: 'Status',
+            accessor: (item: CatalogueItem) => getStatusBadge(item.status)
         },
         {
             header: 'Stock',
             accessor: (item: CatalogueItem) => (
                 <div className="flex flex-col">
-                    <span className={`font-medium ${item.stockQuantity <= 5 ? 'text-red-500' : 'text-text-main'}`}>
-                        {item.stockQuantity} in stock
-                    </span>
-                    {item.allowBackOrder && (
-                        <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-tighter">Backorder enabled</span>
+                    {item.itemType === 'product' ? (
+                        <>
+                            <span className={`text-xs font-black ${(item.stockQuantity ?? 0) <= 5 ? 'text-red-500' : 'text-text-main'}`}>
+                                {item.stockQuantity ?? 0} In Stock
+                            </span>
+                            {item.allowBackOrder && (
+                                <span className="text-[9px] text-emerald-600 font-black uppercase tracking-tighter">Backorder</span>
+                            )}
+                        </>
+                    ) : (
+                        <span className="text-[10px] text-text-secondary font-black uppercase tracking-widest">N/A (Service)</span>
                     )}
+                </div>
+            )
+        },
+        {
+            header: 'Created',
+            accessor: (item: CatalogueItem) => (
+                <div className="flex flex-col">
+                    <span className="text-xs font-bold text-text-main">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}
+                    </span>
+                    <span className="text-[10px] text-text-secondary font-medium uppercase">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
                 </div>
             )
         },

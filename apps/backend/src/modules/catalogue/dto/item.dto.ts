@@ -11,7 +11,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CatalogueItemStatus } from '../entities/catalogue-item.entity';
+import { CatalogueItemStatus, CatalogueItemType, DiscountType } from '../entities/catalogue-item.entity';
 
 export class CreateCatalogueItemDto {
   @ApiProperty({ example: 'Cheeseburger' })
@@ -57,6 +57,23 @@ export class CreateCatalogueItemDto {
   @IsString()
   sku?: string;
 
+  @ApiPropertyOptional({ enum: CatalogueItemType, default: CatalogueItemType.PRODUCT })
+  @IsOptional()
+  @IsEnum(CatalogueItemType)
+  itemType?: CatalogueItemType = CatalogueItemType.PRODUCT;
+
+  @ApiPropertyOptional({ enum: DiscountType, default: DiscountType.NONE })
+  @IsOptional()
+  @IsEnum(DiscountType)
+  discountType?: DiscountType = DiscountType.NONE;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  discountValue?: number;
+
   @ApiPropertyOptional({ example: 50 })
   @IsOptional()
   @IsNumber()
@@ -68,6 +85,13 @@ export class CreateCatalogueItemDto {
   @IsOptional()
   @IsBoolean()
   allowBackOrder?: boolean = true;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPoints?: number;
 
   @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()
@@ -124,6 +148,23 @@ export class UpdateCatalogueItemDto {
   @IsString()
   sku?: string;
 
+  @ApiPropertyOptional({ enum: CatalogueItemType })
+  @IsOptional()
+  @IsEnum(CatalogueItemType)
+  itemType?: CatalogueItemType;
+
+  @ApiPropertyOptional({ enum: DiscountType })
+  @IsOptional()
+  @IsEnum(DiscountType)
+  discountType?: DiscountType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  discountValue?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
@@ -135,6 +176,13 @@ export class UpdateCatalogueItemDto {
   @IsOptional()
   @IsBoolean()
   allowBackOrder?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPoints?: number;
 
   @ApiPropertyOptional({ description: 'If provided, the edit will be isolated to this branch' })
   @IsOptional()
