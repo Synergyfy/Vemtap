@@ -15,7 +15,9 @@ import {
     ShieldCheck,
     Loader2,
     ChevronRight,
-    X
+    X,
+    LayoutGrid,
+    List
 } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -25,7 +27,7 @@ import {
     useCreateCatalogueOrder,
     useCatalogueCategoriesPublic 
 } from '@/services/catalogue/hooks';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
@@ -43,9 +45,16 @@ export default function ProductsPage() {
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [sortBy, setSortBy] = useState('newest');
     const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
+    const [qty, setQty] = useState(1);
     const [pendingOrder, setPendingOrder] = useState<{product: CatalogueItem, qty: number} | null>(null);
+
+    // Reset qty when product changes
+    React.useEffect(() => {
+        if (selectedProduct) setQty(1);
+    }, [selectedProduct]);
 
     // Debounce search
     React.useEffect(() => {
@@ -179,6 +188,28 @@ export default function ProductsPage() {
                             </select>
                             <SlidersHorizontal className="absolute right-4 top-1/2 -translate-y-1/2 text-primary pointer-events-none" size={18} />
                         </div>
+                        <div className="flex bg-white p-1 rounded-2xl shadow-sm self-stretch sm:self-auto">
+                            <button 
+                                onClick={() => setViewMode('grid')}
+                                className={cn(
+                                    "flex-1 sm:flex-none px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
+                                    viewMode === 'grid' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
+                                )}
+                            >
+                                <LayoutGrid size={18} />
+                                <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Grid</span>
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('list')}
+                                className={cn(
+                                    "flex-1 sm:flex-none px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
+                                    viewMode === 'list' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
+                                )}
+                            >
+                                <List size={18} />
+                                <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">List</span>
+                            </button>
+                        </div>
                     </div>
                 </section>
 
@@ -203,37 +234,98 @@ export default function ProductsPage() {
                 </section>
 
                 {/* Products Grid */}
-                <section className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <section className={cn(
+                    "grid gap-4 sm:gap-8",
+                    viewMode === 'grid' ? "grid-cols-2" : "grid-cols-1"
+                )}>
                     {products.map((product) => (
                         <motion.div
                             key={product.id}
                             layout
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            onClick={() => setSelectedProduct(product)}
-                            className="bg-white p-6 asymmetric-leaf shadow-xl hover:shadow-2xl transition-all group border border-slate-50 cursor-pointer"
+                            onClick={() => router.push(`/${params.slug}/${params.code}/products/${product.id}`)}
+                            className={cn(
+                                "bg-white asymmetric-leaf shadow-xl hover:shadow-2xl transition-all group border border-slate-50 cursor-pointer overflow-hidden",
+                                viewMode === 'grid' ? "p-4 sm:p-6" : "p-4 sm:p-6 flex gap-4 sm:gap-8 items-center"
+                            )}
                         >
-                            <div className="w-full aspect-square rounded-2xl overflow-hidden mb-6 bg-slate-50 relative">
-                                <img 
-                                    src={product.mainImage || '/placeholder.png'} 
-                                    alt={product.name}
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                />
+                            <div className={cn(
+                                "rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0 overflow-hidden relative",
+                                viewMode === 'grid' ? "w-full aspect-square mb-4" : "size-20 sm:size-24"
+                            )}>
+                                {product.mainImage ? (
+                                    <img 
+                                        src={product.mainImage} 
+                                        alt={product.name}
+                                        className="size-full object-cover transition-transform duration-700"
+                                    />
+                                ) : (
+                                    <ShoppingBag size={viewMode === 'grid' ? 48 : 32} strokeWidth={2} />
+                                )}
                                 {product.loyaltyPoints && product.loyaltyPoints > 0 && (
-                                    <div className="absolute top-4 left-4 bg-amber-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
-                                        <Star size={12} fill="currentColor" />
-                                        +{product.loyaltyPoints} Pts
+                                    <div className={cn(
+                                        "absolute top-2 left-2 sm:top-4 sm:left-4 bg-amber-500 text-white rounded-xl font-black uppercase tracking-widest flex items-center gap-1 shadow-lg z-10",
+                                        viewMode === 'grid' ? "px-2 py-1 text-[8px] sm:px-3 sm:py-1.5 sm:text-[10px]" : "px-2 py-1 text-[8px] sm:px-3 sm:py-1.5 sm:text-[10px]"
+                                    )}>
+                                        <Star size={viewMode === 'grid' ? 10 : 12} fill="currentColor" />
+                                        +{product.loyaltyPoints} {viewMode === 'grid' ? 'Pts' : 'Points'}
                                     </div>
                                 )}
+                                {viewMode === 'grid' && (
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedProduct(product);
+                                        }}
+                                        className="absolute bottom-2 right-2 size-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all z-20"
+                                    >
+                                        <Plus size={20} strokeWidth={3} />
+                                    </button>
+                                )}
                             </div>
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-start">
-                                    <h3 className="font-headline font-bold text-xl text-on-surface group-hover:text-primary transition-colors truncate pr-4">
+                            <div className={cn(
+                                "flex flex-col gap-1",
+                                viewMode === 'list' && "flex-grow"
+                            )}>
+                                <div className={cn(
+                                    "flex justify-between items-start",
+                                    viewMode === 'list' ? "flex-col sm:flex-row sm:items-center gap-1" : "flex-col gap-1"
+                                )}>
+                                    <h3 className={cn(
+                                        "font-headline font-bold text-on-surface group-hover:text-primary transition-colors truncate pr-2",
+                                        viewMode === 'grid' ? "text-base sm:text-xl w-full" : "text-lg sm:text-2xl"
+                                    )}>
                                         {product.name}
                                     </h3>
-                                    <span className="text-primary font-black text-lg">₦{Number(product.price).toLocaleString()}</span>
+                                    <span className={cn(
+                                        "text-primary font-black whitespace-nowrap",
+                                        viewMode === 'grid' ? "text-sm sm:text-lg" : "text-base sm:text-2xl"
+                                    )}>{formatPrice(product.price)}</span>
                                 </div>
-                                <p className="text-outline text-sm line-clamp-2 font-medium">{product.description}</p>
+                                <p className={cn(
+                                    "text-outline text-sm font-medium",
+                                    viewMode === 'grid' ? "line-clamp-1" : "line-clamp-2"
+                                )}>{product.description}</p>
+                                
+                                <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 bg-primary/10 text-primary text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg">
+                                            {product.category?.name || 'General'}
+                                        </span>
+                                    </div>
+                                    {viewMode === 'list' && (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedProduct(product);
+                                            }}
+                                            className="px-6 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-colors"
+                                        >
+                                            Order Now
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     ))}
@@ -299,7 +391,7 @@ export default function ProductsPage() {
                                         <h2 className="text-3xl font-headline font-black text-on-surface tracking-tight">
                                             {selectedProduct.name}
                                         </h2>
-                                        <p className="text-4xl font-black text-primary">₦{Number(selectedProduct.price).toLocaleString()}</p>
+                                        <p className="text-4xl font-black text-primary">{formatPrice(selectedProduct.price)}</p>
                                     </div>
 
                                     <div className="space-y-4">
@@ -307,6 +399,25 @@ export default function ProductsPage() {
                                         <p className="text-slate-600 font-medium leading-relaxed">
                                             {selectedProduct.description}
                                         </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-black uppercase tracking-[0.3em] text-outline">Select Quantity</h4>
+                                        <div className="flex items-center gap-6 bg-slate-50 p-2 rounded-2xl w-fit">
+                                            <button 
+                                                onClick={() => setQty(Math.max(1, qty - 1))}
+                                                className="size-12 rounded-xl bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors"
+                                            >
+                                                <Minus size={20} />
+                                            </button>
+                                            <span className="w-12 text-center text-xl font-black">{qty}</span>
+                                            <button 
+                                                onClick={() => setQty(qty + 1)}
+                                                className="size-12 rounded-xl bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors"
+                                            >
+                                                <Plus size={20} />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -321,7 +432,7 @@ export default function ProductsPage() {
                                     </div>
 
                                     <button
-                                        onClick={() => handleOrder(selectedProduct, 1)}
+                                        onClick={() => handleOrder(selectedProduct, qty)}
                                         disabled={isSubmitting}
                                         className="w-full h-20 bg-primary text-white text-xl font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
                                     >

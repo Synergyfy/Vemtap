@@ -13,7 +13,9 @@ import {
     Loader2,
     ChevronRight,
     X,
-    SlidersHorizontal
+    SlidersHorizontal,
+    LayoutGrid,
+    List
 } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -23,7 +25,7 @@ import {
     useCreateCatalogueOrder,
     useCatalogueCategoriesPublic 
 } from '@/services/catalogue/hooks';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
@@ -41,6 +43,7 @@ export default function ServicesPage() {
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [sortBy, setSortBy] = useState('newest');
     const [selectedService, setSelectedService] = useState<CatalogueItem | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list for services
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<{service: CatalogueItem, qty: number} | null>(null);
@@ -175,6 +178,28 @@ export default function ServicesPage() {
                             </select>
                             <SlidersHorizontal className="absolute right-4 top-1/2 -translate-y-1/2 text-primary pointer-events-none" size={18} />
                         </div>
+                        <div className="flex bg-white p-1 rounded-2xl shadow-sm self-stretch sm:self-auto">
+                            <button 
+                                onClick={() => setViewMode('grid')}
+                                className={cn(
+                                    "flex-1 sm:flex-none px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
+                                    viewMode === 'grid' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
+                                )}
+                            >
+                                <LayoutGrid size={18} />
+                                <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Grid</span>
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('list')}
+                                className={cn(
+                                    "flex-1 sm:flex-none px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
+                                    viewMode === 'list' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
+                                )}
+                            >
+                                <List size={18} />
+                                <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">List</span>
+                            </button>
+                        </div>
                     </div>
 
                 </section>
@@ -199,36 +224,83 @@ export default function ServicesPage() {
                     </div>
                 </section>
 
-                <section className="space-y-6">
+                <section className={cn(
+                    "grid gap-4 sm:gap-6",
+                    viewMode === 'grid' ? "grid-cols-2" : "grid-cols-1"
+                )}>
                     {services.map((service) => (
                         <motion.div
                             key={service.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            onClick={() => setSelectedService(service)}
-                            className="flex items-center gap-6 bg-white p-6 asymmetric-leaf shadow-xl hover:translate-x-2 transition-transform cursor-pointer border border-slate-50 group"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            onClick={() => router.push(`/${params.slug}/${params.code}/services/${service.id}`)}
+                            className={cn(
+                                "bg-white asymmetric-leaf shadow-xl hover:shadow-2xl transition-all cursor-pointer border border-slate-50 group overflow-hidden",
+                                viewMode === 'grid' ? "p-4 sm:p-6 flex flex-col" : "p-6 flex items-center gap-6"
+                            )}
                         >
-                            <div className="size-16 sm:size-20 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shrink-0 overflow-hidden">
+                            <div className={cn(
+                                "rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0 overflow-hidden relative",
+                                viewMode === 'grid' ? "w-full aspect-square mb-4" : "size-16 sm:size-20"
+                            )}>
                                 {service.mainImage ? (
                                     <img src={service.mainImage} alt={service.name} className="size-full object-cover" />
                                 ) : (
-                                    <Calendar size={32} strokeWidth={2.5} />
+                                    <Calendar size={viewMode === 'grid' ? 40 : 32} strokeWidth={2.5} />
+                                )}
+                                {service.loyaltyPoints && service.loyaltyPoints > 0 && (
+                                    <span className="absolute top-2 left-2 bg-amber-500 text-white px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg z-10">
+                                        <Star size={10} fill="currentColor" />
+                                        +{service.loyaltyPoints}
+                                    </span>
                                 )}
                             </div>
                             <div className="flex-grow min-w-0">
-                                <h4 className="font-headline font-bold text-on-surface text-xl truncate">{service.name}</h4>
-                                <p className="text-on-surface-variant text-sm font-medium line-clamp-1">{service.description}</p>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <span className="text-primary font-black">₦{Number(service.price).toLocaleString()}</span>
-                                    {service.loyaltyPoints && service.loyaltyPoints > 0 && (
-                                        <span className="text-[10px] font-black uppercase text-amber-500 flex items-center gap-1">
-                                            <Star size={12} fill="currentColor" />
-                                            +{service.loyaltyPoints} Pts
-                                        </span>
-                                    )}
+                                <h4 className={cn(
+                                    "font-headline font-bold text-on-surface truncate",
+                                    viewMode === 'grid' ? "text-base sm:text-lg" : "text-xl"
+                                )}>{service.name}</h4>
+                                <p className={cn(
+                                    "text-on-surface-variant font-medium",
+                                    viewMode === 'grid' ? "text-xs line-clamp-1" : "text-sm line-clamp-1"
+                                )}>{service.description}</p>
+                                <div className={cn(
+                                    "flex items-center gap-3 mt-2",
+                                    viewMode === 'grid' ? "flex-col items-start gap-1" : "justify-between"
+                                )}>
+                                    <span className={cn(
+                                        "text-primary font-black",
+                                        viewMode === 'grid' ? "text-sm" : "text-base"
+                                    )}>{formatPrice(service.price)}</span>
+                                    
+                                    <div className="flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+                                        {viewMode === 'list' ? (
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedService(service);
+                                                }}
+                                                className="px-6 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-colors"
+                                            >
+                                                Book Now
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedService(service);
+                                                }}
+                                                className="w-full py-2 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                Book Now
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                            <ChevronRight className="text-outline group-hover:text-primary transition-colors shrink-0" size={24} />
+                            {viewMode === 'list' && (
+                                <ChevronRight className="text-outline group-hover:text-primary transition-colors shrink-0" size={24} />
+                            )}
                         </motion.div>
                     ))}
 
@@ -243,7 +315,7 @@ export default function ServicesPage() {
 
             <PremiumBottomNav />
 
-            {/* Service Detail Modal */}
+            {/* Service Detail Modal - (Optional: Kept for quick view if needed, but routing is preferred now) */}
             <AnimatePresence>
                 {selectedService && (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
@@ -281,7 +353,7 @@ export default function ServicesPage() {
                                             {selectedService.name}
                                         </h2>
                                         <div className="flex justify-center items-center gap-4">
-                                            <p className="text-3xl font-black text-primary">₦{Number(selectedService.price).toLocaleString()}</p>
+                                            <p className="text-3xl font-black text-primary">{formatPrice(selectedService.price)}</p>
                                         </div>
                                     </div>
                                 </div>

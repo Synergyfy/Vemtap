@@ -14,7 +14,10 @@ import {
     X,
     Sparkles,
     ShoppingBag,
-    Search
+    Search,
+    LayoutGrid,
+    List,
+    Plus
 } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -23,7 +26,7 @@ import {
     CatalogueOffer, 
     useCreateCatalogueOrder 
 } from '@/services/catalogue/hooks';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
@@ -39,6 +42,7 @@ export default function OffersPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedOffer, setSelectedOffer] = useState<CatalogueOffer | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list for offers
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
     const [pendingOffer, setPendingOffer] = useState<{offer: CatalogueOffer, qty: number} | null>(null);
@@ -150,9 +154,35 @@ export default function OffersPage() {
                             className="w-full pl-12 pr-4 py-4 bg-white border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/60"
                         />
                     </div>
+
+                    <div className="flex bg-white p-1 rounded-2xl shadow-sm w-full max-w-[200px] mx-auto">
+                        <button 
+                            onClick={() => setViewMode('grid')}
+                            className={cn(
+                                "flex-1 px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
+                                viewMode === 'grid' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
+                            )}
+                        >
+                            <LayoutGrid size={18} />
+                            <span className="text-xs font-bold uppercase tracking-wider">Grid</span>
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('list')}
+                            className={cn(
+                                "flex-1 px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
+                                viewMode === 'list' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
+                            )}
+                        >
+                            <List size={18} />
+                            <span className="text-xs font-bold uppercase tracking-wider">List</span>
+                        </button>
+                    </div>
                 </section>
 
-                <section className="space-y-8">
+                <section className={cn(
+                    "grid gap-6 sm:gap-8",
+                    viewMode === 'grid' ? "grid-cols-2" : "grid-cols-1"
+                )}>
                     {offers.map((offer) => {
                         const originalPrice = offer.items.reduce((sum, i) => sum + Number(i.price), 0);
                         const savings = originalPrice - offer.calculatedPrice;
@@ -163,33 +193,96 @@ export default function OffersPage() {
                                 key={offer.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                onClick={() => setSelectedOffer(offer)}
-                                className="relative w-full aspect-[16/9] bg-primary-container rounded-lg asymmetric-leaf overflow-hidden group shadow-2xl shadow-primary/10 cursor-pointer"
+                                onClick={() => router.push(`/${params.slug}/${params.code}/offers/${offer.id}`)}
+                                className={cn(
+                                    "relative w-full bg-primary-container rounded-lg asymmetric-leaf overflow-hidden group shadow-2xl shadow-primary/10 cursor-pointer",
+                                    viewMode === 'grid' ? "aspect-square sm:aspect-[4/5]" : "aspect-[16/9]"
+                                )}
                             >
                                 <img 
                                     src={offer.mainImage || '/placeholder.png'} 
                                     className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60 transition-transform duration-700 group-hover:scale-105"
                                     alt={offer.name}
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8">
-                                    <div className="flex justify-between items-end">
-                                        <div className="space-y-2">
-                                            <span className="bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 w-fit inline-block">
-                                                SAVE ₦{savings.toLocaleString()}
-                                            </span>
-                                            <h2 className="text-3xl font-headline font-bold text-white leading-tight">{offer.name}</h2>
-                                            <p className="text-white/80 text-sm max-w-xs line-clamp-1">{offer.description}</p>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4 sm:p-8">
+                                    <div className={cn(
+                                        "flex justify-between items-end",
+                                        viewMode === 'grid' ? "flex-col items-start gap-4" : ""
+                                    )}>
+                                        <div className="space-y-1 sm:space-y-2">
+                                            {savings > 0 && (
+                                                <span className="bg-secondary-container text-on-secondary-container px-3 py-0.5 sm:px-4 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-4 w-fit inline-block">
+                                                    SAVE {formatPrice(savings)}
+                                                </span>
+                                            )}
+                                            <h2 className={cn(
+                                                "font-headline font-bold text-white leading-tight",
+                                                viewMode === 'grid' ? "text-xl sm:text-2xl" : "text-3xl"
+                                            )}>{offer.name}</h2>
+                                            {viewMode === 'list' && (
+                                                <p className="text-white/80 text-sm max-w-xs line-clamp-1">{offer.description}</p>
+                                            )}
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-white/50 text-sm line-through font-bold">₦{originalPrice.toLocaleString()}</p>
-                                            <p className="text-4xl font-black text-white font-display tracking-tight">₦{offer.calculatedPrice.toLocaleString()}</p>
+                                        <div className={cn(
+                                            "text-right",
+                                            viewMode === 'grid' ? "text-left w-full flex items-baseline gap-2" : ""
+                                        )}>
+                                            {savings > 0 && (
+                                                <p className="text-white/50 text-xs sm:text-sm line-through font-bold">{formatPrice(originalPrice)}</p>
+                                            )}
+                                            <p className={cn(
+                                                "font-black text-white font-display tracking-tight",
+                                                viewMode === 'grid' ? "text-2xl sm:text-3xl" : "text-4xl"
+                                            )}>{formatPrice(offer.calculatedPrice)}</p>
                                         </div>
                                     </div>
+                                    <div className="mt-4 flex justify-between items-center sm:hidden">
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedOffer(offer);
+                                            }}
+                                            className="px-4 py-2 bg-white text-primary text-[10px] font-black uppercase tracking-widest rounded-xl"
+                                        >
+                                            Claim Offer
+                                        </button>
+                                    </div>
+                                    {viewMode === 'list' && (
+                                        <div className="hidden sm:block">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedOffer(offer);
+                                                }}
+                                                className="px-8 py-3 bg-white text-primary text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-opacity-90 transition-all"
+                                            >
+                                                Claim Now
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="absolute top-6 right-6 bg-white text-primary size-16 rounded-full flex flex-col items-center justify-center shadow-xl transform group-hover:rotate-12 transition-transform">
-                                    <span className="text-lg font-black leading-none">{percent}%</span>
-                                    <span className="text-[8px] font-black uppercase">OFF</span>
-                                </div>
+                                {viewMode === 'grid' && (
+                                    <div className="absolute bottom-4 right-4 hidden sm:block">
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedOffer(offer);
+                                            }}
+                                            className="size-12 bg-white text-primary flex items-center justify-center rounded-2xl shadow-xl hover:scale-110 active:scale-95 transition-all"
+                                        >
+                                            <Plus size={24} strokeWidth={3} />
+                                        </button>
+                                    </div>
+                                )}
+                                {percent > 0 && (
+                                    <div className={cn(
+                                        "absolute bg-white text-primary rounded-full flex flex-col items-center justify-center shadow-xl transform group-hover:rotate-12 transition-transform",
+                                        viewMode === 'grid' ? "top-3 right-3 size-12" : "top-6 right-6 size-16"
+                                    )}>
+                                        <span className={cn("font-black leading-none", viewMode === 'grid' ? "text-base" : "text-lg")}>{percent}%</span>
+                                        <span className="text-[8px] font-black uppercase">OFF</span>
+                                    </div>
+                                )}
                             </motion.div>
                         );
                     })}
@@ -255,7 +348,7 @@ export default function OffersPage() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-emerald-400 text-xs font-black uppercase">Final Price</p>
-                                            <p className="text-3xl font-black text-emerald-600">₦{selectedOffer.calculatedPrice.toLocaleString()}</p>
+                                            <p className="text-3xl font-black text-emerald-600">{formatPrice(selectedOffer.calculatedPrice)}</p>
                                         </div>
                                     </div>
 
