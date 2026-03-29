@@ -220,7 +220,7 @@ export default function ServicesPage() {
                                 <p className="text-on-surface-variant text-sm font-medium line-clamp-1">{service.description}</p>
                                 <div className="flex items-center gap-3 mt-2">
                                     <span className="text-primary font-black">₦{Number(service.price).toLocaleString()}</span>
-                                    {service.loyaltyPoints > 0 && (
+                                    {service.loyaltyPoints && service.loyaltyPoints > 0 && (
                                         <span className="text-[10px] font-black uppercase text-amber-500 flex items-center gap-1">
                                             <Star size={12} fill="currentColor" />
                                             +{service.loyaltyPoints} Pts

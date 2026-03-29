@@ -219,7 +219,7 @@ export default function ProductsPage() {
                                     alt={product.name}
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />
-                                {product.loyaltyPoints > 0 && (
+                                {product.loyaltyPoints && product.loyaltyPoints > 0 && (
                                     <div className="absolute top-4 left-4 bg-amber-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
                                         <Star size={12} fill="currentColor" />
                                         +{product.loyaltyPoints} Pts
@@ -289,7 +289,7 @@ export default function ProductsPage() {
                                             <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg">
                                                 {selectedProduct.category?.name || 'General'}
                                             </span>
-                                            {selectedProduct.loyaltyPoints > 0 && (
+                                            {selectedProduct.loyaltyPoints && selectedProduct.loyaltyPoints > 0 && (
                                                 <span className="px-3 py-1 bg-amber-100 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1">
                                                     <Star size={10} fill="currentColor" />
                                                     {selectedProduct.loyaltyPoints} Points
