@@ -120,6 +120,6 @@ export const createDevice = async (data: any): Promise<Device> => {
     return await api.post('/devices', data);
 };
 
-export const fetchDeviceByCode = async (code: string): Promise<{ business: BusinessData & { id: string }; branch: { id: string; name: string }; device: Device }> => {
+export const fetchDeviceByCode = async (code: string): Promise<{ business: BusinessData & { id: string }; branch: { id: string; name: string; welcomeMessage?: string; logoUrl?: string; productCount?: number; serviceCount?: number; offerCount?: number }; device: Device }> => {
     return await api.get(`/tap/context/${code}`);
 };

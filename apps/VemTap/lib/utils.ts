@@ -35,6 +35,15 @@ export const calculateStrength = (password: string) => {
   return { percentage, color, label };
 };
 
+export function formatPrice(amount: string | number) {
+  const num = Number(amount);
+  if (isNaN(num)) return '₦0';
+  return '₦' + num.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export const suggestPassword = () => {
   const charset = {
       upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',

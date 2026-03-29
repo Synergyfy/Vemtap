@@ -179,6 +179,10 @@ export const getCategories = async () => {
     return await api.get('/admin/catalogue/categories');
 };
 
+export const getCategoriesPublic = async (branchId: string) => {
+    return await api.get(`/public/catalogue/categories/branch/${branchId}`);
+};
+
 export const createCategory = async (data: CreateCategoryDto) => {
     return await api.post('/admin/catalogue/categories', data);
 };
@@ -281,6 +285,14 @@ export const useCatalogueCategories = () => {
     });
 };
 
+export const useCatalogueCategoriesPublic = (branchId: string) => {
+    return useQuery<Category[]>({
+        queryKey: ['catalogue', 'categories', 'public', branchId],
+        queryFn: () => getCategoriesPublic(branchId),
+        enabled: !!branchId,
+    });
+};
+
 export const useCreateCatalogueCategory = () => {
     const queryClient = useQueryClient();
     return useMutation({
@@ -318,10 +330,26 @@ export const useCatalogueItems = (params: { branchId?: string, categoryId?: stri
     });
 };
 
-export const useCatalogueItemsPublic = (branchId: string, params: { categoryId?: string, search?: string } = {}) => {
+export const useCatalogueItemsPublic = (
+    branchId: string, 
+    params: { 
+        categoryId?: string, 
+        search?: string, 
+        itemType?: CatalogueItemType,
+        minPrice?: number,
+        maxPrice?: number,
+        sortBy?: string,
+        page?: number,
+        limit?: number
+    } = {}
+) => {
     return useQuery<PaginatedResponse<CatalogueItem>>({
         queryKey: ['catalogue', 'items', 'public', branchId, params],
-        queryFn: () => getItemsPublic(branchId, params),
+        queryFn: () => {
+            const queryParams = { ...params };
+            const qs = new URLSearchParams(Object.entries(queryParams).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
+            return api.get(`/public/catalogue/items/branch/${branchId}${qs ? `?${qs}` : ''}`);
+        },
         enabled: !!branchId,
     });
 };

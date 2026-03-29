@@ -227,8 +227,27 @@ export class CatalogueQueryDto {
   @IsUUID()
   categoryId?: string;
 
-  @ApiPropertyOptional({ enum: ['newest', 'oldest', 'most_popular'] })
+  @ApiPropertyOptional({ enum: CatalogueItemType })
   @IsOptional()
-  @IsEnum(['newest', 'oldest', 'most_popular'])
+  @IsEnum(CatalogueItemType)
+  itemType?: CatalogueItemType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional({ enum: ['newest', 'oldest', 'most_popular', 'price_asc', 'price_desc'] })
+  @IsOptional()
+  @IsEnum(['newest', 'oldest', 'most_popular', 'price_asc', 'price_desc'])
   sortBy?: string = 'newest';
 }
