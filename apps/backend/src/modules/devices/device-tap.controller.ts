@@ -9,6 +9,9 @@ import {
 } from '@nestjs/common';
 import { DevicesService } from './devices.service';
 import { VisitorsService } from '../visitors/visitors.service';
+import { CatalogueService } from '../catalogue/catalogue.service';
+import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
+import { CatalogueItemType } from '../catalogue/entities/catalogue-item.entity';
 import { Public } from '../../common/decorators/public.decorator';
 import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -19,6 +22,8 @@ export class DeviceTapController {
   constructor(
     private readonly devicesService: DevicesService,
     private readonly visitorsService: VisitorsService,
+    private readonly catalogueService: CatalogueService,
+    private readonly catalogueOfferService: CatalogueOfferService,
   ) {}
 
   @Public()
@@ -40,6 +45,13 @@ export class DeviceTapController {
       throw new BadRequestException('Device is not linked to any branch');
     }
 
+    const branchId = deviceWithRelations.branch.id;
+    const [productCount, serviceCount, offerCount] = await Promise.all([
+      this.catalogueService.countItemsByType(branchId, CatalogueItemType.PRODUCT),
+      this.catalogueService.countItemsByType(branchId, CatalogueItemType.SERVICE),
+      this.catalogueOfferService.countOffers(branchId),
+    ]);
+
     return {
       device: {
         id: deviceWithRelations.id,
@@ -53,6 +65,9 @@ export class DeviceTapController {
         welcomeMessage: deviceWithRelations.branch.welcomeMessage,
         successMessage: deviceWithRelations.branch.successMessage,
         logoUrl: deviceWithRelations.branch.logoUrl,
+        productCount,
+        serviceCount,
+        offerCount,
       },
       business: {
         id: deviceWithRelations.branch.business.id,

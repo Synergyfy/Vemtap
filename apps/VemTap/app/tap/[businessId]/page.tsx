@@ -19,6 +19,16 @@ export default function PublicTapPage() {
         const handleTap = async () => {
             if (!businessId) return;
 
+            // Access latest store state to check if we already have the context
+            const state = useCustomerFlowStore.getState();
+            if (state.businessId && (state.deviceCode === businessId || state.businessId === businessId)) {
+                const businessSlug = (state.storeName || 'business').toLowerCase().replace(/\s+/g, '-');
+                const targetCode = state.deviceCode || (businessId as string);
+                const search = typeof window !== 'undefined' ? window.location.search : '';
+                router.replace(`/${businessSlug}/${targetCode}${search}`);
+                return;
+            }
+
             try {
                 // Fetch live device context using the correct /tap/context/:code endpoint
                 const context = await fetchDeviceByCode(businessId as string);

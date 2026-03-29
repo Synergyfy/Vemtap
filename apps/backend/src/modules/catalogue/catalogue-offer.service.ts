@@ -134,6 +134,15 @@ export class CatalogueOfferService {
     return offer;
   }
 
+  async countOffers(branchId: string) {
+    return this.offerRepository.count({
+      where: {
+        branchId,
+        status: CatalogueOfferStatus.ACTIVE,
+      },
+    });
+  }
+
   private calculatePrice(offer: CatalogueOffer, items: CatalogueItem[]) {
     const sum = items.reduce((acc, item) => acc + Number(item.price), 0);
     switch (offer.pricingType) {

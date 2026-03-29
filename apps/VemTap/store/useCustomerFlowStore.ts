@@ -133,6 +133,11 @@ interface CustomerFlowState {
     customPrivacyMessage: string | null;
     customRewardMessage: string | null;
     logoUrl: string | null;
+
+    productCount: number;
+    serviceCount: number;
+    offerCount: number;
+
     redemptionStatus: 'none' | 'pending' | 'approved' | 'declined';
     lastRedemptionId: string | null;
 
@@ -236,6 +241,11 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             customPrivacyMessage: null,
             customRewardMessage: null,
             logoUrl: null,
+
+            productCount: 0,
+            serviceCount: 0,
+            offerCount: 0,
+
             redemptionStatus: 'none',
             lastRedemptionId: null,
 
@@ -275,8 +285,10 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 isReturningUser: false,
                 visitCount: 1,
                 showFeedback: false,
-                businessId: null,
-                branchId: null,
+                // Preserving context to avoid redundant fetches
+                // businessId: null,
+                // branchId: null,
+                // deviceCode: null,
                 customWelcomeMessage: null,
                 customWelcomeTitle: null,
                 customWelcomeButton: null,
@@ -326,6 +338,9 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     customRewardMessage: branch.rewardMessage || b.rewardMessage,
                     hasRewardSetup: branch.rewardEnabled ?? b.rewardEnabled,
                     logoUrl: branch.logoUrl || b.logoUrl,
+                    productCount: branch.productCount || 0,
+                    serviceCount: branch.serviceCount || 0,
+                    offerCount: branch.offerCount || 0,
                     isFirstTimeVisit: device.isFirstTimeVisit ?? true,
                     isReturningUser: !(device.isFirstTimeVisit ?? true),
                     engagementSettings: {
