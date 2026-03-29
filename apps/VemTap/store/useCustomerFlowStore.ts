@@ -107,6 +107,7 @@ interface CustomerFlowState {
     } | null;
     isReturningUser: boolean;
     isFirstTimeVisit: boolean;
+    completedScanning: boolean;
     visitSource: string | null;
 
     // Dynamic Customization
@@ -174,7 +175,7 @@ interface CustomerFlowState {
     setRewardSetup: (has: boolean) => void;
     setBusinessType: (type: BusinessType) => void;
     getBusinessConfig: () => BusinessConfig;
-    initializeFromBusiness: (business: any) => void;
+    initializeFromBusiness: (business: any, skipAnimation?: boolean) => void;
     updateCustomSettings: (settings: {
         welcomeMessage?: string;
         welcomeTitle?: string;
@@ -218,6 +219,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             userData: null,
             isReturningUser: false,
             isFirstTimeVisit: true,
+            completedScanning: false,
             visitSource: null,
 
             businessId: null,
@@ -310,7 +312,18 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 logoUrl: businessConfigs[type].logoUrl || null
             }),
             getBusinessConfig: () => businessConfigs[get().businessType],
-            initializeFromBusiness: (device) => {
+            initializeFromBusiness: (device, skipAnimation) => {
+                const state = get();
+                // Calculate if we should skip animation
+                // 1. Explicitly requested via skipAnimation
+                // 2. Returning visitor according to backend
+                // 3. User is already on this device and at a portal step
+                const isReturning = !(device.isFirstTimeVisit ?? true);
+                const isAlreadyActiveOnThisDevice = state.deviceCode === device.code && 
+                    ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM'].includes(state.currentStep);
+                
+                const finalSkipAnimation = skipAnimation || isReturning || isAlreadyActiveOnThisDevice;
+
                 const b = device.business || {};
                 const branch = device.branch || {};
                 const hasEngagement = !!device.owner?.engagement;
@@ -342,7 +355,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     serviceCount: branch.serviceCount || 0,
                     offerCount: branch.offerCount || 0,
                     isFirstTimeVisit: device.isFirstTimeVisit ?? true,
-                    isReturningUser: !(device.isFirstTimeVisit ?? true),
+                    isReturningUser: isReturning,
                     engagementSettings: {
                         showReview: hasEngagement
                             ? (branch.showReview ?? b.showReview ?? ownerEngagement.showReview ?? true)
@@ -364,7 +377,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                             ? ownerEngagement.postSubmitFormIds
                             : [],
                     },
-                    currentStep: 'SCANNING'
+                    currentStep: finalSkipAnimation ? (['SELECT_TYPE', 'SCANNING', 'IDENTIFYING'].includes(state.currentStep) ? 'PORTAL_MENU' : state.currentStep) : 'SCANNING'
                 });
             },
             updateCustomSettings: (settings) => set((state) => ({

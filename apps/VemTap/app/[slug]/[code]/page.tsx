@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'react-hot-toast';
-import { fetchDeviceByCode } from '@/lib/api/devices';
+import { useDeviceTapContext } from '@/services/devices/hooks';
 import { api } from '@/lib/api';
 
 // Components
@@ -130,53 +130,45 @@ export default function DynamicTapJourneyPage() {
 
     const { isAuthenticated, login } = useAuthStore();
     
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: deviceContext, isLoading: isQueryLoading, isError } = useDeviceTapContext(deviceCode);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showInitialAuth, setShowInitialAuth] = useState(false);
     const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
-        const initJourney = async () => {
-            if (!deviceCode) return;
-            
-            // Access latest store state without making them dependencies
-            const state = useCustomerFlowStore.getState();
-            
-            try {
-                // If we already have the data for THIS device, don't refetch
-                if (state.businessId && deviceCode === state.deviceCode) {
-                    setIsLoading(false);
-                    
-                    // Only transition to menu if we are in initial steps
-                    const currentStepInState = state.currentStep;
-                    if (currentStepInState === 'SELECT_TYPE' || currentStepInState === 'SCANNING' || currentStepInState === 'IDENTIFYING') {
-                        setStep('PORTAL_MENU');
-                        if (!isAuthenticated) {
-                            setShowInitialAuth(true);
-                        }
-                    }
-                    return;
-                }
+        setIsMounted(true);
+    }, []);
 
-                // If no data or device changed, fetch context
-                const device = await fetchDeviceByCode(deviceCode);
-                if (device) {
-                    initializeFromBusiness(device);
-                    
-                    // After initialization, if first arrival, start scanning flow
-                    if (useCustomerFlowStore.getState().currentStep === 'SCANNING') {
-                        // The scanning flow is handled by other effects
-                    }
-                }
-            } catch (err) {
-                console.error('Journey Init Failed:', err);
-                router.push('/tap/invalid');
-            } finally {
-                setIsLoading(false);
+    useEffect(() => {
+        if (!isMounted || !deviceContext) return;
+
+        const state = useCustomerFlowStore.getState();
+        
+        // Ultimate skip logic:
+        // 1. We already have the session for THIS device in the store
+        // 2. The portal is ALREADY active (never revert to scanning)
+        // 3. The backend says this device visit is not a first-time visit
+        const isAlreadyOnThisDevice = state.deviceCode === deviceCode && !!state.businessId;
+        const isPortalStep = ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM'].includes(state.currentStep);
+        const isReturningVisitor = deviceContext.device?.isFirstTimeVisit === false;
+        
+        const shouldSkipAnimation = isAlreadyOnThisDevice || isPortalStep || isReturningVisitor;
+        
+        initializeFromBusiness(deviceContext, shouldSkipAnimation);
+
+        if (shouldSkipAnimation) {
+            if (!isAuthenticated) {
+                setShowInitialAuth(true);
             }
-        };
-        initJourney();
-    }, [deviceCode]); // ONLY depend on deviceCode
+        }
+    }, [deviceCode, deviceContext, initializeFromBusiness, isAuthenticated, isMounted]);
+
+    useEffect(() => {
+        if (isMounted && isError) {
+            router.push('/tap/invalid');
+        }
+    }, [isError, router, isMounted]);
 
     useEffect(() => {
         if (currentStep === 'SCANNING') {
@@ -253,7 +245,7 @@ export default function DynamicTapJourneyPage() {
         }
     };
 
-    if (isLoading) {
+    if (isQueryLoading && !deviceContext) {
         return (
             <div className="min-h-screen bg-[#fafbfc] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
