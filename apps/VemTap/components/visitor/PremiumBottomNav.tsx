@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useGuestCartStore } from '@/store/useGuestCartStore';
 import { useCartSummary } from '@/services/catalogue-cart/hooks';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export const PremiumBottomNav = () => {
     const router = useRouter();
@@ -21,8 +22,10 @@ export const PremiumBottomNav = () => {
 
     // Cart count — server for auth users, guest store for others
     const { data: cartSummary } = useCartSummary(isAuthenticated ? branchId : null);
-    const guestSummary = useGuestCartStore((s) =>
-        branchId ? s.getSummaryForBranch(branchId) : { itemCount: 0, total: 0 }
+    const guestSummary = useGuestCartStore(
+        useShallow((s) =>
+            branchId ? s.getSummaryForBranch(branchId) : { itemCount: 0, total: 0 }
+        )
     );
     const cartCount = isAuthenticated
         ? (cartSummary?.itemCount ?? 0)

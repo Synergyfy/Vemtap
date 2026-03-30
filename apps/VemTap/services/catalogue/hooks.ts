@@ -441,7 +441,7 @@ export const useCatalogueOffersAdmin = (params: { branchId?: string } = {}) => {
     });
 };
 
-export const useCatalogueOffersPublic = (branchId: string, params: { search?: string } = {}) => {
+export const useCatalogueOffersPublic = (branchId: string, params: { search?: string, sortBy?: string } = {}) => {
     return useQuery<PaginatedResponse<CatalogueOffer>>({
         queryKey: ['catalogue', 'offers', 'public', branchId, params],
         queryFn: () => getOffersPublic(branchId, params),

@@ -178,6 +178,11 @@ export class CatalogueOfferQueryDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsUUID()
   branchId?: string;
 }

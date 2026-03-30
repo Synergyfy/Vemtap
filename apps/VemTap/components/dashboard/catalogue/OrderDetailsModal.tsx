@@ -10,6 +10,7 @@ import {
 } from '@/services/catalogue/hooks';
 import toast from 'react-hot-toast';
 import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { formatOrderDate } from '@/lib/utils/date';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
@@ -80,7 +81,9 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                         <div>
                             <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-2">Order Info</p>
                             <p className="font-bold text-text-main text-sm">{order.tableNumber ? `Table ${order.tableNumber}` : 'Walk-in'}</p>
-                            <p className="text-xs text-text-secondary">{new Date(order.createdAt).toLocaleString()}</p>
+                            <p className="text-xs text-text-secondary">
+                                {formatOrderDate(order.createdAt)} at {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
                         </div>
                     </div>
 

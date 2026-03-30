@@ -15,6 +15,7 @@ import {
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGuestCartStore } from '@/store/useGuestCartStore';
+import { useShallow } from 'zustand/react/shallow';
 import {
     useCart,
     useUpdateCartItem,
@@ -33,7 +34,21 @@ export default function CartPage() {
     const router = useRouter();
     const { branchId, storeName, logoUrl, setUserData } = useCustomerFlowStore();
     const { isAuthenticated, user, login } = useAuthStore();
-    const guestCartStore = useGuestCartStore();
+    
+    // Guest cart selectors (optimised)
+    const guestItems = useGuestCartStore(
+        useShallow((s) => (branchId ? s.getItemsForBranch(branchId) : []))
+    );
+    const guestSummary = useGuestCartStore(
+        useShallow((s) =>
+            branchId ? s.getSummaryForBranch(branchId) : { itemCount: 0, total: 0 }
+        )
+    );
+    
+    const addItem = useGuestCartStore((s) => s.addItem);
+    const updateQuantity = useGuestCartStore((s) => s.updateQuantity);
+    const removeItem = useGuestCartStore((s) => s.removeItem);
+
     useCartMergeOnLogin(branchId);
 
     const [notes, setNotes] = useState('');
@@ -47,10 +62,6 @@ export default function CartPage() {
     const removeItemMutation = useRemoveCartItem(branchId || '');
     const checkoutMutation = useCheckoutCart(branchId || '');
 
-    // Guest cart
-    const guestItems = branchId ? guestCartStore.getItemsForBranch(branchId) : [];
-    const guestSummary = branchId ? guestCartStore.getSummaryForBranch(branchId) : { itemCount: 0, total: 0 };
-
     // Which cart to show
     const cartItems = isAuthenticated ? (serverCart?.items || []) : guestItems;
     const cartTotal = isAuthenticated ? (serverCart?.total || 0) : guestSummary.total;
@@ -61,7 +72,7 @@ export default function CartPage() {
         if (isAuthenticated) {
             updateItemMutation.mutate({ cartItemId: id, quantity: newQty });
         } else {
-            guestCartStore.updateQuantity(id, newQty);
+            updateQuantity(id, newQty);
         }
     };
 
@@ -71,7 +82,7 @@ export default function CartPage() {
                 onSuccess: () => toast.success('Item removed'),
             });
         } else {
-            guestCartStore.removeItem(id);
+            removeItem(id);
             toast.success('Item removed');
         }
     };
