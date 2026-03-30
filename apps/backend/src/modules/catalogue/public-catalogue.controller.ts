@@ -35,4 +35,13 @@ export class PublicCatalogueController {
   async listCategories(@Param('businessId', ParseUUIDPipe) businessId: string) {
     return this.catalogueService.findAllCategories(businessId);
   }
+
+  @Public()
+  @Get('categories/branch/:branchId')
+  @ApiOperation({ summary: 'List categories with active items for a specific branch' })
+  async listCategoriesByBranch(
+    @Param('branchId', ParseUUIDPipe) branchId: string,
+  ) {
+    return this.catalogueService.findAllCategoriesByBranch(branchId);
+  }
 }

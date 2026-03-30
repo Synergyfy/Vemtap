@@ -10,6 +10,7 @@ import { CatalogueCategory } from './entities/catalogue-category.entity';
 import {
   CatalogueItem,
   CatalogueItemStatus,
+  CatalogueItemType,
 } from './entities/catalogue-item.entity';
 import {
   CreateCatalogueCategoryDto,
@@ -208,6 +209,7 @@ export class CatalogueService {
     const qb = this.itemRepository
       .createQueryBuilder('item')
       .innerJoin('item.branches', 'branch', 'branch.id = :branchId', { branchId })
+      .leftJoinAndSelect('item.category', 'category')
       .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
       .andWhere('item.isSuspended = :isSuspended', { isSuspended: false });
 
@@ -215,7 +217,8 @@ export class CatalogueService {
       qb.andWhere(
         new Brackets((inner) => {
           inner.where('item.name ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('item.shortDescription ILIKE :search', { search: `%${query.search}%` });
+            .orWhere('item.shortDescription ILIKE :search', { search: `%${query.search}%` })
+            .orWhere('item.description ILIKE :search', { search: `%${query.search}%` });
         }),
       );
     }
@@ -224,10 +227,28 @@ export class CatalogueService {
       qb.andWhere('item.categoryId = :categoryId', { categoryId: query.categoryId });
     }
 
+    if (query.itemType) {
+      qb.andWhere('item.itemType = :itemType', { itemType: query.itemType });
+    }
+
+    if (query.minPrice !== undefined) {
+      qb.andWhere('item.price >= :minPrice', { minPrice: query.minPrice });
+    }
+
+    if (query.maxPrice !== undefined) {
+      qb.andWhere('item.price <= :maxPrice', { maxPrice: query.maxPrice });
+    }
+
     // Sorting
     switch (query.sortBy) {
       case 'oldest':
         qb.orderBy('item.createdAt', 'ASC');
+        break;
+      case 'price_asc':
+        qb.orderBy('item.price', 'ASC');
+        break;
+      case 'price_desc':
+        qb.orderBy('item.price', 'DESC');
         break;
       case 'most_popular':
         // Placeholder for popularity logic, defaulting to newest for now
@@ -245,6 +266,21 @@ export class CatalogueService {
       .getManyAndCount();
 
     return { data, total, page: query.page ?? 1, limit: query.limit ?? 10 };
+  }
+
+  async findAllCategoriesByBranch(branchId: string) {
+    // Return categories that have at least one active, non-suspended item in this branch
+    const categories = await this.categoryRepository
+      .createQueryBuilder('category')
+      .innerJoin('category.items', 'item')
+      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', { branchId })
+      .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
+      .andWhere('item.isSuspended = :isSuspended', { isSuspended: false })
+      .select(['category.id', 'category.name'])
+      .distinct(true)
+      .getMany();
+    
+    return categories;
   }
 
   async findOneItem(id: string, branchId?: string) {
@@ -276,5 +312,15 @@ export class CatalogueService {
     }
 
     return qb.getMany();
+  }
+
+  async countItemsByType(branchId: string, itemType: CatalogueItemType) {
+    return this.itemRepository
+      .createQueryBuilder('item')
+      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', { branchId })
+      .where('item.itemType = :itemType', { itemType })
+      .andWhere('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
+      .andWhere('item.isSuspended = :isSuspended', { isSuspended: false })
+      .getCount();
   }
 }

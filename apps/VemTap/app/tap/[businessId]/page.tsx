@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { fetchDeviceByCode } from '@/lib/api/devices';
+import { useDeviceTapContext } from '@/services/devices/hooks';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { motion } from 'framer-motion';
 
@@ -14,61 +14,67 @@ export default function PublicTapPage() {
     const initializeFromBusiness = useCustomerFlowStore(state => state.initializeFromBusiness);
     const recordVisit = useCustomerFlowStore(state => state.recordVisit);
     const [error, setError] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
-        const handleTap = async () => {
-            if (!businessId) return;
+        setIsMounted(true);
+    }, []);
 
-            try {
-                // Fetch live device context using the correct /tap/context/:code endpoint
-                const context = await fetchDeviceByCode(businessId as string);
+    const { data: context, isLoading, isError } = useDeviceTapContext(businessId as string);
 
-                if (context) {
-                    const { business, branch, device } = context;
+    useEffect(() => {
+        if (!isMounted || !businessId) return;
 
-                    // Initialize the customer flow with live data
-                    initializeFromBusiness({
-                        id: business.id,
-                        name: business.name,
-                        type: business.type || 'RETAIL',
-                        welcomeMessage: business.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
-                        welcomeTitle: business.welcomeTitle || 'Welcome',
-                        newUserWelcomeMessage: business.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
-                        newUserWelcomeTitle: business.welcomeTitle || 'Welcome',
-                        successMessage: business.successMessage || 'Thank you for visiting! We look forward to seeing you again.',
-                        rewardEnabled: business.rewardEnabled ?? false,
-                        logoUrl: business.logoUrl || null,
-                        branchId: branch.id,
-                        currentDeviceId: device.id,
-                        deviceCode: device.code,
-                        deviceName: device.name,
-                        isFirstTimeVisit: device.isFirstTimeVisit ?? true
-                    } as any);
+        const state = useCustomerFlowStore.getState();
+        
+        // 1. Immediate redirect if we already have the context in store
+        if (state.businessId && (state.deviceCode === businessId || state.businessId === businessId)) {
+            const businessSlug = (state.storeName || 'business').toLowerCase().replace(/\s+/g, '-');
+            const targetCode = state.deviceCode || (businessId as string);
+            const search = typeof window !== 'undefined' ? window.location.search : '';
+            router.replace(`/${businessSlug}/${targetCode}${search}`);
+            return;
+        }
 
-                    // Record the visit logic - if returning, we skip the scanning animation
-                    if (!device.isFirstTimeVisit) {
-                        recordVisit();
-                    }
+        // 2. Handle data from hook
+        if (context) {
+            const { business, branch, device } = context;
 
-                    // Get the business slug (prefer name for the URL)
-                    const businessSlug = (business.name || 'business').toLowerCase().replace(/\s+/g, '-');
-                    const targetCode = device.code || businessId;
+            initializeFromBusiness({
+                id: business.id,
+                name: business.name,
+                type: business.type || 'RETAIL',
+                welcomeMessage: business.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
+                welcomeTitle: business.welcomeTitle || 'Welcome',
+                newUserWelcomeMessage: business.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
+                newUserWelcomeTitle: business.welcomeTitle || 'Welcome',
+                successMessage: business.successMessage || 'Thank you for visiting! We look forward to seeing you again.',
+                rewardEnabled: business.rewardEnabled ?? false,
+                logoUrl: business.logoUrl || null,
+                branchId: branch.id,
+                currentDeviceId: device.id,
+                deviceCode: device.code,
+                deviceName: device.name,
+                isFirstTimeVisit: device.isFirstTimeVisit ?? true
+            } as any, true); // true to skip initial scanning animation on redirect
 
-                    // Redirect to the dynamic business/code route with same query params (source, v, n etc.)
-                    const search = typeof window !== 'undefined' ? window.location.search : '';
-                    router.push(`/${businessSlug}/${targetCode}${search}`);
-                } else {
-                    console.warn('Device not found for code:', businessId);
-                    setError(true);
-                }
-            } catch (err) {
-                console.error('Tap processing failed:', err);
-                setError(true);
+            if (!device.isFirstTimeVisit) {
+                recordVisit();
             }
-        };
 
-        handleTap();
-    }, [businessId, initializeFromBusiness, recordVisit, router]);
+            const businessSlug = (business.name || 'business').toLowerCase().replace(/\s+/g, '-');
+            const targetCode = device.code || (businessId as string);
+            const search = typeof window !== 'undefined' ? window.location.search : '';
+            router.push(`/${businessSlug}/${targetCode}${search}`);
+        }
+    }, [businessId, context, initializeFromBusiness, recordVisit, router, isMounted]);
+
+    useEffect(() => {
+        if (isMounted && isError) {
+            setError(true);
+        }
+    }, [isError, isMounted]);
+
 
     if (error) {
         return (
