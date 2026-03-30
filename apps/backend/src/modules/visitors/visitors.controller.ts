@@ -10,7 +10,9 @@ import {
   Query,
   Req,
   UseGuards,
+  Headers,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import {
   ApiTags,
   ApiOperation,
@@ -378,6 +380,66 @@ export class VisitorsController {
     @Body() dto: VisitorSignupDto,
   ): Promise<VisitorResponseDto> {
     return this.visitorsService.create(dto);
+  }
+
+  // --- Smart Visit Tracking ---
+
+  @Post('portal-visit')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'Record a portal visit (Customer Only)',
+    description:
+      'Automatically called when an authenticated customer reaches the portal menu. ' +
+      'Implements session idempotency, 4h cooldown, and IP rate limiting to prevent fraud. ' +
+      'Returns the sessionToken which must be included in subsequent order payloads.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        deviceCode: { type: 'string', example: 'LT-8829-X' },
+        sessionToken: {
+          type: 'string',
+          example: 'uuid-v4',
+          description: 'Optional: if omitted, the server generates one.',
+        },
+      },
+      required: ['deviceCode'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Visit recorded (or existing visit returned if within cooldown)',
+    schema: {
+      type: 'object',
+      properties: {
+        visitId: { type: 'string' },
+        sessionToken: { type: 'string' },
+        isNewVisit: { type: 'boolean' },
+      },
+    },
+  })
+  async recordPortalVisit(
+    @Req() req: any,
+    @Body() body: { deviceCode: string; sessionToken?: string },
+  ): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
+    const customerId = req.user.id as string;
+    const ipAddress: string =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ??
+      req.socket?.remoteAddress ??
+      req.ip;
+    const userAgent = req.headers['user-agent'] as string | undefined;
+
+    // Use the client-provided token (for resume after refresh) or generate a fresh one.
+    const sessionToken = body.sessionToken ?? randomUUID();
+
+    return this.visitorsService.recordPortalVisit({
+      customerId,
+      deviceCode: body.deviceCode,
+      sessionToken,
+      ipAddress,
+      userAgent,
+    });
   }
 
   @Post()

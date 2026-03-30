@@ -13,7 +13,7 @@ interface VisitorLayoutProps {
 export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset, onCredentialResponse, brandColor }) => {
     const brandVars = buildBrandCssVars(brandColor || undefined);
     return (
-        <div style={brandVars} className="min-h-screen bg-[#fafbfc] font-body flex flex-col items-center py-20 px-6 antialiased">
+        <div style={brandVars} className="min-h-screen bg-[#fafbfc] font-body flex flex-col items-center pt-2 pb-12 px-5 antialiased">
             <Script
                 src="https://accounts.google.com/gsi/client"
                 strategy="afterInteractive"
@@ -28,16 +28,6 @@ export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset,
                 }}
             />
 
-            <nav className="fixed top-0 left-0 right-0 z-60 px-10 py-8 flex items-center justify-end pointer-events-none">
-                <div className="flex items-center gap-4 pointer-events-auto">
-                    <button onClick={onReset} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">
-                        Restart
-                    </button>
-                    <div className="size-8 rounded-full border-2 border-gray-100 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-sm text-gray-300">help</span>
-                    </div>
-                </div>
-            </nav>
 
             <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
                 <div className="absolute -top-[10%] -left-[10%] size-[50%] rounded-full bg-primary/5 blur-[120px] animate-pulse" />

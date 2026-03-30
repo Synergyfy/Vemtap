@@ -16,7 +16,8 @@ import {
     ShoppingBag,
     Sparkles,
     Flame,
-    ShieldCheck
+    ShieldCheck,
+    X
 } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -39,6 +40,7 @@ export default function OfferDetailPage() {
     const { data: offer, isLoading } = useCatalogueOfferDetails(params.id as string);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
+    const [previewItem, setPreviewItem] = useState<any>(null);
 
     const createOrderMutation = useCreateCatalogueOrder();
 
@@ -133,7 +135,7 @@ export default function OfferDetailPage() {
                 <div className="size-10" />
             </header>
 
-            <main className="pt-20 md:pt-24 px-4 md:px-6 max-w-5xl mx-auto space-y-8 md:space-y-12 pb-20">
+            <main className="pt-20 md:pt-24 px-4 md:px-6 max-w-4xl mx-auto space-y-8 md:space-y-12 pb-20">
                 {/* Hero Card */}
                 <div className="relative isolate overflow-hidden bg-primary-container asymmetric-leaf-lg aspect-[4/3] md:aspect-[16/9] shadow-2xl">
                     <img 
@@ -141,7 +143,7 @@ export default function OfferDetailPage() {
                         className="absolute inset-0 size-full object-cover mix-blend-overlay opacity-60" 
                         alt="" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent flex flex-col justify-end p-6 md:p-20">
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent flex flex-col justify-end p-6 md:p-12">
                         <div className="space-y-4 md:space-y-6 max-w-2xl">
                             {percent > 0 && (
                                 <div className="flex items-center gap-2 bg-white text-primary px-4 md:px-6 py-2 rounded-full w-fit font-black uppercase tracking-widest text-sm md:text-lg shadow-xl animate-pulse">
@@ -149,10 +151,10 @@ export default function OfferDetailPage() {
                                     <span>{percent}% OFF</span>
                                 </div>
                             )}
-                            <h1 className="text-3xl md:text-7xl font-headline font-black tracking-tight leading-[1.05]">
+                            <h1 className="text-3xl md:text-5xl font-headline font-black tracking-tight leading-[1.05]">
                                 {offer.name}
                             </h1>
-                            <p className="text-base md:text-xl text-white/80 font-medium leading-relaxed">
+                            <p className="text-base md:text-lg text-white/80 font-medium leading-relaxed">
                                 {offer.description}
                             </p>
                         </div>
@@ -162,21 +164,27 @@ export default function OfferDetailPage() {
                 </div>
 
                 {/* Offer Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-12">
                         {/* Items in the bundle */}
                         <div className="space-y-4 md:space-y-6">
                             <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] opacity-60">What's in the bundle</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                                 {offer.items.map((item) => (
-                                    <div key={item.id} className="group bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] p-4 md:p-6 hover:bg-white/10 transition-all cursor-pointer">
-                                        <div className="flex items-center gap-3 md:gap-5">
-                                            <div className="size-14 md:size-20 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl shrink-0">
+                                    <div 
+                                        key={item.id} 
+                                        onClick={() => setPreviewItem(item)}
+                                        className="group bg-white/5 border border-white/10 rounded-2xl md:rounded-[1.5rem] p-4 md:p-5 hover:bg-white/10 transition-all cursor-pointer active:scale-95"
+                                    >
+                                        <div className="flex items-center gap-3 md:gap-4">
+                                            <div className="size-14 md:size-16 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl shrink-0">
                                                 <img src={item.mainImage || '/placeholder.png'} className="size-full object-cover group-hover:scale-110 transition-transform" alt="" />
                                             </div>
                                             <div className="flex-grow">
                                                 <p className="text-base md:text-lg font-black group-hover:text-primary transition-colors">{item.name}</p>
-                                                <p className="text-[10px] font-black uppercase tracking-[0.1em] opacity-60">{item.category?.name || 'Item'}</p>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.1em] opacity-60">
+                                                    {item.category?.name || (item.itemType === 'service' ? 'Service' : 'Product')}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -185,42 +193,42 @@ export default function OfferDetailPage() {
                         </div>
 
                         {/* Why this offer */}
-                        <div className="grid grid-cols-3 gap-3 md:gap-6">
-                            <div className="p-4 md:p-8 bg-white text-slate-900 rounded-2xl md:rounded-[2rem] space-y-2 md:space-y-4 flex flex-col items-center sm:items-start text-center sm:text-left">
-                                <Flame className="text-primary size-6 md:size-10" />
+                        <div className="grid grid-cols-3 gap-3 md:gap-4">
+                            <div className="p-4 md:p-6 bg-white text-slate-900 rounded-2xl md:rounded-[1.5rem] space-y-2 md:space-y-3 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <Flame className="text-primary size-6 md:size-8" />
                                 <div className="space-y-1">
                                     <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Demand</h4>
-                                    <p className="text-sm md:text-xl font-black">Limited</p>
+                                    <p className="text-sm md:text-lg font-black">Limited</p>
                                 </div>
                             </div>
-                            <div className="p-4 md:p-8 bg-primary text-white rounded-2xl md:rounded-[2rem] space-y-2 md:space-y-4 flex flex-col items-center sm:items-start text-center sm:text-left">
-                                <Sparkles className="size-6 md:size-10" />
+                            <div className="p-4 md:p-6 bg-primary text-white rounded-2xl md:rounded-[1.5rem] space-y-2 md:space-y-3 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <Sparkles className="size-6 md:size-8" />
                                 <div className="space-y-1">
                                     <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Rewards</h4>
-                                    <p className="text-sm md:text-xl font-black">+{offer.loyaltyPoints || 0} Pts</p>
+                                    <p className="text-sm md:text-lg font-black">+{offer.loyaltyPoints || 0} Pts</p>
                                 </div>
                             </div>
-                            <div className="p-4 md:p-8 bg-white/10 border border-white/10 rounded-2xl md:rounded-[2rem] space-y-2 md:space-y-4 flex flex-col items-center sm:items-start text-center sm:text-left">
-                                <ShieldCheck className="text-emerald-400 size-6 md:size-10" />
+                            <div className="p-4 md:p-6 bg-white/10 border border-white/10 rounded-2xl md:rounded-[1.5rem] space-y-2 md:space-y-3 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <ShieldCheck className="text-emerald-400 size-6 md:size-8" />
                                 <div className="space-y-1">
                                     <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Value</h4>
-                                    <p className="text-sm md:text-xl font-black">Best</p>
+                                    <p className="text-sm md:text-lg font-black">Best</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Pricing Card */}
-                    <div className="lg:sticky lg:top-32 h-fit space-y-8">
-                        <div className="bg-white text-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-2xl space-y-6 md:space-y-8">
-                            <div className="space-y-4">
+                    <div className="lg:sticky lg:top-32 h-fit space-y-6">
+                        <div className="bg-white text-slate-900 p-6 md:p-7 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl space-y-6 md:space-y-7">
+                            <div className="space-y-3">
                                 <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-outline text-center">Exclusive Pricing</p>
                                 <div className="space-y-2 text-center">
                                     <div className="flex items-center justify-center gap-3">
-                                        <p className="text-lg md:text-2xl text-slate-400 line-through font-bold">{formatPrice(originalPrice)}</p>
-                                        <p className="text-sm md:text-xl bg-primary text-white px-3 py-1 rounded-full font-black">-{percent}%</p>
+                                        <p className="text-lg md:text-xl text-slate-400 line-through font-bold">{formatPrice(originalPrice)}</p>
+                                        <p className="text-sm md:text-base bg-primary text-white px-3 py-1 rounded-full font-black">-{percent}%</p>
                                     </div>
-                                    <p className="text-4xl md:text-6xl font-black text-slate-900 font-display">{formatPrice(offer.calculatedPrice)}</p>
+                                    <p className="text-4xl md:text-5xl font-black text-slate-900 font-display">{formatPrice(offer.calculatedPrice)}</p>
                                     <p className="text-[10px] md:text-xs font-black text-emerald-600 uppercase tracking-widest pt-1">Total Savings: {formatPrice(savings)}</p>
                                 </div>
                             </div>
@@ -228,7 +236,7 @@ export default function OfferDetailPage() {
                             <button
                                 onClick={handleClaim}
                                 disabled={isSubmitting}
-                                className="group relative w-full h-16 bg-slate-900 text-white text-lg font-black rounded-2xl shadow-xl hover:bg-black hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 uppercase tracking-widest"
+                                className="group relative w-full h-14 bg-slate-900 text-white text-base font-black rounded-xl shadow-xl hover:bg-black hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 uppercase tracking-widest"
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin" /> : (
                                      <>
@@ -259,6 +267,69 @@ export default function OfferDetailPage() {
                     )}
                 </button>
             </div>
+
+            {/* Item Preview Modal */}
+            <AnimatePresence>
+                {previewItem && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setPreviewItem(null)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-lg bg-surface text-on-surface rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+                        >
+                            <button 
+                                onClick={() => setPreviewItem(null)}
+                                className="absolute top-4 right-4 z-10 size-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:bg-white/20 transition-all"
+                            >
+                                <X size={20} className="text-white" />
+                            </button>
+
+                            <div className="overflow-y-auto no-scrollbar">
+                                <div className="relative aspect-video w-full">
+                                    <img 
+                                        src={previewItem.mainImage || '/placeholder.png'} 
+                                        alt={previewItem.name}
+                                        className="size-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                                    <div className="absolute bottom-6 left-6 right-6">
+                                        <span className="px-3 py-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-3 inline-block">
+                                            {previewItem.category?.name || (previewItem.itemType === 'service' ? 'Service' : 'Product')}
+                                        </span>
+                                        <h2 className="text-2xl md:text-3xl font-headline font-black text-white tracking-tight leading-tight">
+                                            {previewItem.name}
+                                        </h2>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 md:p-8 space-y-6">
+                                    <div className="space-y-3">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-outline">Description</h4>
+                                        <p className="text-sm md:text-base leading-relaxed text-slate-600 font-medium whitespace-pre-wrap">
+                                            {previewItem.description || previewItem.shortDescription || 'No description available for this item.'}
+                                        </p>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setPreviewItem(null)}
+                                        className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-widest text-xs"
+                                    >
+                                        Back to Offer
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Auth Form Modal */}
             <AnimatePresence>

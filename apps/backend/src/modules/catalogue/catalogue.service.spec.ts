@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { CatalogueCategory } from './entities/catalogue-category.entity';
 import { CatalogueItem, CatalogueItemStatus } from './entities/catalogue-item.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('CatalogueService', () => {
@@ -44,6 +45,7 @@ describe('CatalogueService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        { provide: SubscriptionsService, useValue: { getCapabilities: jest.fn().mockResolvedValue({ capabilities: { catalogueCategories: { enabled: true }, catalogueItems: { enabled: true } } }) } },
         CatalogueService,
         {
           provide: getRepositoryToken(CatalogueCategory),

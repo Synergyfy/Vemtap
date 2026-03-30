@@ -118,24 +118,37 @@ export class CatalogueOfferService {
   }
 
   async findAllOffersPublic(branchId: string, query: CatalogueOfferQueryDto) {
-    const { page = 1, limit = 10, search } = query;
+    const { page = 1, limit = 10, search, sortBy = 'newest' } = query;
     const skip = (page - 1) * limit;
-
+  
     const qb = this.offerRepository.createQueryBuilder('offer')
       .leftJoinAndSelect('offer.items', 'item')
       .where('offer.branchId = :branchId', { branchId })
       .andWhere('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE });
-
+  
     if (search) {
       qb.andWhere('offer.name ILIKE :search', { search: `%${search}%` });
     }
-
+  
+    // Apply sorting
+    switch (sortBy) {
+      case 'price_asc':
+        qb.orderBy('offer.calculatedPrice', 'ASC');
+        break;
+      case 'price_desc':
+        qb.orderBy('offer.calculatedPrice', 'DESC');
+        break;
+      case 'newest':
+      default:
+        qb.orderBy('offer.createdAt', 'DESC');
+        break;
+    }
+  
     const [data, total] = await qb
       .skip(skip)
       .take(limit)
-      .orderBy('offer.createdAt', 'DESC')
       .getManyAndCount();
-
+  
     return { data, total, page, limit };
   }
 

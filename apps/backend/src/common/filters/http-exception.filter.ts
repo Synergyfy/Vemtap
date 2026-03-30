@@ -43,9 +43,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Log the error for tracking
     if (status >= 500) {
+      const stack = exception instanceof Error ? exception.stack : (exception as any)?.stack || JSON.stringify(exception) || 'No stack trace';
       this.logger.error(
         `${request.method} ${request.url} ${status} - ${JSON.stringify(errorResponse)}`,
-        exception instanceof Error ? exception.stack : '',
+        stack,
       );
     } else {
       this.logger.warn(
