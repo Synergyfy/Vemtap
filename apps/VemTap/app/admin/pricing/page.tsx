@@ -13,7 +13,7 @@ import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
-type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'> & {
+type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers'> & {
     id?: string;
     monthlyPrice: string;
     trialDurationDays: string;
@@ -23,6 +23,9 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     teamMembersLimit: string;
     loyaltyLimit: string;
     branchLimit: string;
+    maxCatalogueItems: string;
+    maxCatalogueCategories: string;
+    maxCatalogueOffers: string;
 };
 
 const defaultNewPlan: EditablePlanForm = {
@@ -44,6 +47,10 @@ const defaultNewPlan: EditablePlanForm = {
     branchLimit: '',
     analyticsEnabled: false,
     analyticsLevel: 'basic',
+    catalogueEnabled: false,
+    maxCatalogueItems: '',
+    maxCatalogueCategories: '',
+    maxCatalogueOffers: '',
     isActive: true,
     description: '',
     isPopular: false,
@@ -69,6 +76,10 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     branchLimit: (plan.branchLimit ?? 1).toString(),
     analyticsEnabled: !!plan.analyticsEnabled,
     analyticsLevel: plan.analyticsLevel || 'basic',
+    catalogueEnabled: !!plan.catalogueEnabled,
+    maxCatalogueItems: (plan.maxCatalogueItems ?? 0).toString(),
+    maxCatalogueCategories: (plan.maxCatalogueCategories ?? 0).toString(),
+    maxCatalogueOffers: (plan.maxCatalogueOffers ?? 0).toString(),
     isActive: plan.isActive ?? true,
     description: plan.description || '',
     isPopular: !!plan.isPopular,
@@ -226,6 +237,10 @@ export default function AdminPricingPage() {
         branchLimit: toNumber(plan.branchLimit),
         analyticsEnabled: !!plan.analyticsEnabled,
         analyticsLevel: plan.analyticsLevel || 'basic',
+        catalogueEnabled: !!plan.catalogueEnabled,
+        maxCatalogueItems: toNumber(plan.maxCatalogueItems),
+        maxCatalogueCategories: toNumber(plan.maxCatalogueCategories),
+        maxCatalogueOffers: toNumber(plan.maxCatalogueOffers),
         isActive: plan.isActive ?? true,
         description: plan.description || '',
         isPopular: !!plan.isPopular,
@@ -263,7 +278,9 @@ export default function AdminPricingPage() {
                 'whatsappCredits', 'emailCredits', 'teamMembersEnabled',
                 'teamMembersLimit', 'loyaltyEnabled', 'loyaltyLimit',
                 'branchesEnabled', 'branchLimit', 'analyticsEnabled',
-                'analyticsLevel', 'isActive', 'description', 'isPopular'
+                'analyticsLevel', 'catalogueEnabled', 'maxCatalogueItems',
+                'maxCatalogueCategories', 'maxCatalogueOffers',
+                'isActive', 'description', 'isPopular'
             ];
 
             editableFields.forEach((k) => {
@@ -273,8 +290,6 @@ export default function AdminPricingPage() {
                 let changed = false;
                 if (Array.isArray(newVal)) {
                     if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) changed = true;
-                } else if (typeof newVal === 'number' || typeof oldVal === 'number') {
-                    if (Number(newVal) !== Number(oldVal)) changed = true;
                 } else {
                     if (newVal !== oldVal) changed = true;
                 }
@@ -298,7 +313,7 @@ export default function AdminPricingPage() {
     };
 
     const setNumericField = (
-        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'>,
+        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers'>,
         value: string,
     ) => {
         setEditingPlan((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -874,6 +889,121 @@ export default function AdminPricingPage() {
                                                     <option value="basic">Basic</option>
                                                     <option value="advanced">Advanced</option>
                                                 </select>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div 
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.catalogueEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        catalogueEnabled: nextEnabled,
+                                                        maxCatalogueItems: nextEnabled ? (prev.maxCatalogueItems || '1') : '0',
+                                                        maxCatalogueCategories: nextEnabled ? (prev.maxCatalogueCategories || '1') : '0',
+                                                        maxCatalogueOffers: nextEnabled ? (prev.maxCatalogueOffers || '1') : '0'
+                                                    };
+                                                })}
+                                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.catalogueEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.catalogueEnabled ? 'translate-x-6' : ''}`} />
+                                            </div>
+                                            <label className="text-sm font-bold text-text-main">Catalogue Feature</label>
+                                        </div>
+                                    </div>
+
+                                    {currentPlan.catalogueEnabled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="grid grid-cols-1 gap-4 pt-2 border-t border-slate-200"
+                                        >
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between ml-1">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Items</label>
+                                                        <label className="flex items-center gap-1 cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={currentPlan.maxCatalogueItems === '-1'} 
+                                                                onChange={(e) => setNumericField('maxCatalogueItems', e.target.checked ? '-1' : '1')}
+                                                                className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                            />
+                                                            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                        </label>
+                                                    </div>
+                                                    {currentPlan.maxCatalogueItems === '-1' ? (
+                                                        <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                            Unlimited
+                                                        </div>
+                                                    ) : (
+                                                        <FormattedNumberInput 
+                                                            value={currentPlan.maxCatalogueItems === '0' ? '' : currentPlan.maxCatalogueItems} 
+                                                            onChange={(value) => setNumericField('maxCatalogueItems', value)} 
+                                                            className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                            placeholder="0" 
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between ml-1">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Categories</label>
+                                                        <label className="flex items-center gap-1 cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={currentPlan.maxCatalogueCategories === '-1'} 
+                                                                onChange={(e) => setNumericField('maxCatalogueCategories', e.target.checked ? '-1' : '1')}
+                                                                className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                            />
+                                                            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                        </label>
+                                                    </div>
+                                                    {currentPlan.maxCatalogueCategories === '-1' ? (
+                                                        <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                            Unlimited
+                                                        </div>
+                                                    ) : (
+                                                        <FormattedNumberInput 
+                                                            value={currentPlan.maxCatalogueCategories === '0' ? '' : currentPlan.maxCatalogueCategories} 
+                                                            onChange={(value) => setNumericField('maxCatalogueCategories', value)} 
+                                                            className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                            placeholder="0" 
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between ml-1">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Offers</label>
+                                                        <label className="flex items-center gap-1 cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={currentPlan.maxCatalogueOffers === '-1'} 
+                                                                onChange={(e) => setNumericField('maxCatalogueOffers', e.target.checked ? '-1' : '1')}
+                                                                className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                            />
+                                                            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                        </label>
+                                                    </div>
+                                                    {currentPlan.maxCatalogueOffers === '-1' ? (
+                                                        <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                            Unlimited
+                                                        </div>
+                                                    ) : (
+                                                        <FormattedNumberInput 
+                                                            value={currentPlan.maxCatalogueOffers === '0' ? '' : currentPlan.maxCatalogueOffers} 
+                                                            onChange={(value) => setNumericField('maxCatalogueOffers', value)} 
+                                                            className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                            placeholder="0" 
+                                                        />
+                                                    )}
+                                                </div>
                                             </div>
                                         </motion.div>
                                     )}

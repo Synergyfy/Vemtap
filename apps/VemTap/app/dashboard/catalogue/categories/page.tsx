@@ -8,8 +8,13 @@ import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { useCatalogueCategories, useDeleteCatalogueCategory, Category } from '@/services/catalogue/hooks';
 import toast from 'react-hot-toast';
 import CategoryModal from '@/components/dashboard/catalogue/CategoryModal';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
+import UsageIndicator from '@/components/dashboard/UsageIndicator';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { Tag } from 'lucide-react';
 
 export default function CategoriesPage() {
+    const { capabilities } = useSubscriptionStore();
     const { data: categories = [], isLoading } = useCatalogueCategories();
     const deleteMutation = useDeleteCatalogueCategory();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,8 +76,17 @@ export default function CategoriesPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8">
-            <PageHeader
+        <PageLockWrapper feature="catalogue" featureName="Catalogue">
+            <div className="p-4 md:p-8">
+                <div className="mb-6">
+                    <UsageIndicator
+                        label="Categories Limit"
+                        usage={capabilities?.capabilities?.catalogueCategories}
+                        icon={<Tag size={18} />}
+                    />
+                </div>
+
+                <PageHeader
                 title="Product Categories"
                 description="Organize your products into groups"
                 actions={
@@ -105,5 +119,6 @@ export default function CategoriesPage() {
                 category={selectedCategory}
             />
         </div>
+        </PageLockWrapper>
     );
 }

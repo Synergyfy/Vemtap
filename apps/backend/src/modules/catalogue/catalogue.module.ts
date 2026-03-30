@@ -9,10 +9,12 @@ import { CatalogueOffer } from './entities/catalogue-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOfferService } from './catalogue-offer.service';
 import { CatalogueOfferController } from './catalogue-offer.controller';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([CatalogueCategory, CatalogueItem, CatalogueOffer, Branch]),
+    SubscriptionsModule,
   ],
   controllers: [AdminCatalogueController, PublicCatalogueController, CatalogueOfferController],
   providers: [CatalogueService, CatalogueOfferService],

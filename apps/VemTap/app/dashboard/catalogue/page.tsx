@@ -7,6 +7,7 @@ import { ShoppingBag, LayoutGrid, ClipboardList, Clock } from 'lucide-react';
 import { useCatalogueItems, useCatalogueCategories, useCatalogueOrders, Order } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Link from 'next/link';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 export default function CatalogueOverviewPage() {
     const { activeBranchId } = useActiveBranch();
@@ -50,11 +51,12 @@ export default function CatalogueOverviewPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8">
-            <PageHeader
-                title="Catalogue Overview"
-                description="Manage your product offerings and track customer orders"
-            />
+        <PageLockWrapper feature="catalogue" featureName="Catalogue">
+            <div className="p-4 md:p-8">
+                <PageHeader
+                    title="Catalogue Overview"
+                    description="Manage your product offerings and track customer orders"
+                />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {stats.map((stat, index) => (
@@ -121,5 +123,6 @@ export default function CatalogueOverviewPage() {
                 </div>
             </div>
         </div>
+        </PageLockWrapper>
     );
 }

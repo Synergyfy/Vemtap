@@ -22,6 +22,7 @@ import {
   CatalogueQueryDto,
 } from './dto/item.dto';
 import { Branch } from '../branches/entities/branch.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
 export class CatalogueService {
@@ -32,11 +33,25 @@ export class CatalogueService {
     private readonly itemRepository: Repository<CatalogueItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   // --- Categories ---
 
   async createCategory(dto: CreateCatalogueCategoryDto, businessId: string) {
+    const caps = await this.subscriptionsService.getCapabilities(businessId);
+    if (!caps.capabilities.catalogueCategories.enabled) {
+      throw new ForbiddenException('Catalogue feature is not enabled for your plan');
+    }
+
+    if (
+      caps.capabilities.catalogueCategories.limit !== 'unlimited' &&
+      typeof caps.capabilities.catalogueCategories.remaining === 'number' &&
+      caps.capabilities.catalogueCategories.remaining <= 0
+    ) {
+      throw new ForbiddenException('You have reached the limit for catalogue categories');
+    }
+
     const category = this.categoryRepository.create({
       ...dto,
       businessId,
@@ -80,6 +95,19 @@ export class CatalogueService {
       where: { id: dto.branchId, businessId },
     });
     if (!branch) throw new BadRequestException('Branch not found or unauthorized');
+
+    const caps = await this.subscriptionsService.getCapabilities(businessId);
+    if (!caps.capabilities.catalogueItems.enabled) {
+      throw new ForbiddenException('Catalogue feature is not enabled for your plan');
+    }
+
+    if (
+      caps.capabilities.catalogueItems.limit !== 'unlimited' &&
+      typeof caps.capabilities.catalogueItems.remaining === 'number' &&
+      caps.capabilities.catalogueItems.remaining <= 0
+    ) {
+      throw new ForbiddenException('You have reached the limit for catalogue items');
+    }
 
     // Auto-generate SKU if not provided
     if (!dto.sku) {

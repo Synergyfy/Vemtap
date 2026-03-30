@@ -5,6 +5,8 @@ import { CatalogueOffer, CatalogueOfferPricingType, CatalogueOfferStatus } from 
 import { CatalogueItem } from './entities/catalogue-item.entity';
 import { CreateCatalogueOfferDto, UpdateCatalogueOfferDto, CatalogueOfferQueryDto } from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class CatalogueOfferService {
@@ -15,9 +17,23 @@ export class CatalogueOfferService {
     private readonly itemRepository: Repository<CatalogueItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
+    const caps = await this.subscriptionsService.getCapabilities(businessId);
+    if (!caps.capabilities.catalogueOffers.enabled) {
+      throw new ForbiddenException('Catalogue feature is not enabled for your plan');
+    }
+
+    if (
+      caps.capabilities.catalogueOffers.limit !== 'unlimited' &&
+      typeof caps.capabilities.catalogueOffers.remaining === 'number' &&
+      caps.capabilities.catalogueOffers.remaining <= 0
+    ) {
+      throw new ForbiddenException('You have reached the limit for catalogue offers');
+    }
+
     const branch = await this.branchRepository.findOne({
       where: { id: dto.branchId, businessId },
     });
