@@ -121,95 +121,50 @@ export default function ProductDetailPage() {
 
     return (
         <div className="min-h-screen bg-surface font-body text-on-surface pb-32">
-            <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 bg-surface/70 backdrop-blur-xl z-50">
-                <button onClick={() => router.back()} className="p-3 bg-white/80 backdrop-blur-md rounded-2xl shadow-sm hover:bg-white transition-colors">
-                    <ArrowLeft size={24} />
-                </button>
-                <span className="text-xl font-black font-headline tracking-tight">{storeName}</span>
-                <div className="size-10" /> {/* Spacer */}
-            </header>
-
-            <main className="pt-24 px-6 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-                {/* Image Gallery */}
-                <div className="space-y-6">
-                    <div className="relative aspect-square bg-white rounded-[3rem] overflow-hidden shadow-2xl group">
-                        <AnimatePresence mode="wait">
-                            <motion.img 
-                                key={activeImageIndex}
-                                initial={{ opacity: 0, scale: 1.1 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 0.5 }}
-                                src={images[activeImageIndex]} 
-                                alt={product.name}
-                                className="size-full object-cover"
-                            />
-                        </AnimatePresence>
-                        
-                        {images.length > 1 && (
-                            <div className="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                    onClick={() => setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
-                                    className="size-12 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:bg-white active:scale-90 transition-all"
-                                >
-                                    <ChevronLeft size={24} />
-                                </button>
-                                <button 
-                                    onClick={() => setActiveImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
-                                    className="size-12 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:bg-white active:scale-90 transition-all"
-                                >
-                                    <ChevronRight size={24} />
-                                </button>
-                            </div>
-                        )}
-                        
-                        {product.loyaltyPoints && product.loyaltyPoints > 0 && (
-                            <div className="absolute top-8 left-8 bg-amber-500 text-white px-6 py-2 rounded-2xl font-black uppercase tracking-widest flex items-center gap-2 shadow-2xl">
-                                <Star size={20} fill="currentColor" />
-                                +{product.loyaltyPoints} Points
-                            </div>
-                        )}
+            <div className="relative h-[45vh] md:h-[60vh] w-full overflow-hidden">
+                <header className="absolute top-0 left-0 w-full px-6 py-6 md:py-8 flex justify-between items-center z-30">
+                    <button onClick={() => router.back()} className="size-12 md:size-14 bg-white/20 backdrop-blur-xl rounded-xl md:rounded-2xl flex items-center justify-center text-white border border-white/20 shadow-2xl hover:bg-white hover:text-slate-900 transition-all">
+                        <ArrowLeft size={24} className="md:size-28" />
+                    </button>
+                    <div className="bg-white/20 backdrop-blur-xl px-4 md:px-6 py-2 rounded-xl md:rounded-2xl text-white font-black font-headline tracking-widest text-[10px] md:text-sm border border-white/20 uppercase">
+                        {storeName}
                     </div>
-                    
-                    {images.length > 1 && (
-                        <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
-                            {images.map((img, idx) => (
-                                <button 
-                                    key={idx}
-                                    onClick={() => setActiveImageIndex(idx)}
-                                    className={cn(
-                                        "size-24 rounded-2xl overflow-hidden shadow-sm transition-all shrink-0 border-2",
-                                        activeImageIndex === idx ? "border-primary scale-105 shadow-primary/20" : "border-transparent opacity-60 hover:opacity-100"
-                                    )}
-                                >
-                                    <img src={img} alt="" className="size-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                    <div className="size-10" /> {/* Spacer */}
+                </header>
 
-                {/* Product Info */}
-                <div className="space-y-12 h-fit lg:sticky lg:top-32">
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <span className="px-4 py-1.5 bg-primary/10 text-primary text-xs font-black uppercase tracking-[0.2em] rounded-full">
-                                {product.category?.name || 'Premium Product'}
-                            </span>
-                            <h1 className="text-4xl sm:text-6xl font-headline font-black text-on-surface tracking-tight leading-[1.1]">
-                                {product.name}
-                            </h1>
-                        </div>
-                        
-                        <div className="flex items-center gap-6">
-                            <p className="text-5xl font-black text-primary font-display">{formatPrice(product.price)}</p>
-                            <div className="flex flex-col text-outline text-xs font-bold uppercase tracking-widest">
-                                <span>Free shipping</span>
-                                <span>In stock</span>
+                <AnimatePresence mode="wait">
+                    <motion.img 
+                        key={activeImageIndex}
+                        initial={{ opacity: 0, scale: 1.1 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.5 }}
+                        src={images[activeImageIndex]} 
+                        alt={product.name}
+                        className="size-full object-cover"
+                    />
+                </AnimatePresence>
+            </div>
+
+            <main className="relative -mt-24 md:-mt-32 px-4 md:px-6 max-w-4xl mx-auto z-40 pb-20">
+                <div className="bg-white asymmetric-leaf p-5 md:p-14 shadow-2xl border border-slate-50 space-y-10 md:space-y-12">
+                    <div className="space-y-4 md:space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 md:gap-6">
+                            <div className="space-y-1 md:space-y-2">
+                                <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
+                                    {product.category?.name || 'Exclusive Product'}
+                                </span>
+                                <h1 className="text-2xl md:text-6xl font-headline font-black text-on-surface tracking-tight leading-[1.1]">
+                                    {product.name}
+                                </h1>
+                            </div>
+                            <div className="text-left sm:text-right">
+                                <p className="text-[10px] md:text-sm font-black text-outline uppercase tracking-widest">Premium Price</p>
+                                <p className="text-3xl md:text-5xl font-black text-primary font-display">{formatPrice(product.price)}</p>
                             </div>
                         </div>
 
-                        <p className="text-xl text-slate-600 font-medium leading-relaxed">
+                        <p className="text-base md:text-xl text-slate-600 font-medium leading-relaxed">
                             {product.description}
                         </p>
                     </div>

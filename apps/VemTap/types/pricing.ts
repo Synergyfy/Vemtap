@@ -22,6 +22,10 @@ export interface PricingPlan {
     branchLimit: number;
     analyticsEnabled: boolean;
     analyticsLevel: 'basic' | 'advanced' | 'none';
+    catalogueEnabled: boolean;
+    maxCatalogueItems: number;
+    maxCatalogueCategories: number;
+    maxCatalogueOffers: number;
     isActive: boolean;
     description: string;
     isPopular?: boolean;

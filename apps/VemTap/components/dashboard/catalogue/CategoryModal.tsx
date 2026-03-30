@@ -78,6 +78,7 @@ export default function CategoryModal({ isOpen, onClose, category }: CategoryMod
                         placeholder="e.g. Appetizers, Drinks, Main Course"
                         className={`w-full h-12 bg-gray-50 border ${errors.name ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all`}
                     />
+                    <p className="text-[10px] text-text-secondary font-medium ml-1">Organize items into groups like 'Breakfast' or 'Appetizers' for better browsing.</p>
                     {errors.name && (
                         <p className="text-[10px] text-red-500 font-bold uppercase tracking-wider">{errors.name.message}</p>
                     )}

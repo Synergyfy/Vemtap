@@ -24,6 +24,9 @@ import {
 } from '../payments/entities/payment.entity';
 import { SubscriptionCapabilities } from './types/capabilities';
 import { CreditService } from '../messaging/services/credit.service';
+import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -40,6 +43,12 @@ export class SubscriptionsService {
     private readonly branchRepository: Repository<Branch>,
     @InjectRepository(Device)
     private readonly deviceRepository: Repository<Device>,
+    @InjectRepository(CatalogueCategory)
+    private readonly catalogueCategoryRepository: Repository<CatalogueCategory>,
+    @InjectRepository(CatalogueItem)
+    private readonly catalogueItemRepository: Repository<CatalogueItem>,
+    @InjectRepository(CatalogueOffer)
+    private readonly catalogueOfferRepository: Repository<CatalogueOffer>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
@@ -360,6 +369,16 @@ export class SubscriptionsService {
     });
     const usedBranches = branches.filter((b) => !b.isMainBranch).length;
 
+    const usedCatalogueItems = await this.catalogueItemRepository.count({
+      where: { businessId },
+    });
+    const usedCatalogueCategories = await this.catalogueCategoryRepository.count({
+      where: { businessId },
+    });
+    const usedCatalogueOffers = await this.catalogueOfferRepository.count({
+      where: { businessId },
+    });
+
     const usedLoyaltyPrograms = 0;
 
     return {
@@ -416,6 +435,50 @@ export class SubscriptionsService {
         },
         messaging: {
           enabled: plan.messagingEnabled,
+        },
+        catalogueItems: {
+          enabled: plan.catalogueEnabled,
+          limit:
+            plan.maxCatalogueItems === -1 || plan.maxCatalogueItems === null
+              ? 'unlimited'
+              : plan.maxCatalogueItems,
+          used: usedCatalogueItems,
+          remaining: !plan.catalogueEnabled
+            ? 0
+            : plan.maxCatalogueItems === -1 || plan.maxCatalogueItems === null
+              ? 'unlimited'
+              : Math.max(0, plan.maxCatalogueItems - usedCatalogueItems),
+        },
+        catalogueCategories: {
+          enabled: plan.catalogueEnabled,
+          limit:
+            plan.maxCatalogueCategories === -1 ||
+            plan.maxCatalogueCategories === null
+              ? 'unlimited'
+              : plan.maxCatalogueCategories,
+          used: usedCatalogueCategories,
+          remaining: !plan.catalogueEnabled
+            ? 0
+            : plan.maxCatalogueCategories === -1 ||
+                plan.maxCatalogueCategories === null
+              ? 'unlimited'
+              : Math.max(
+                  0,
+                  plan.maxCatalogueCategories - usedCatalogueCategories,
+                ),
+        },
+        catalogueOffers: {
+          enabled: plan.catalogueEnabled,
+          limit:
+            plan.maxCatalogueOffers === -1 || plan.maxCatalogueOffers === null
+              ? 'unlimited'
+              : plan.maxCatalogueOffers,
+          used: usedCatalogueOffers,
+          remaining: !plan.catalogueEnabled
+            ? 0
+            : plan.maxCatalogueOffers === -1 || plan.maxCatalogueOffers === null
+              ? 'unlimited'
+              : Math.max(0, plan.maxCatalogueOffers - usedCatalogueOffers),
         },
         features: plan.features || [],
         credits: {

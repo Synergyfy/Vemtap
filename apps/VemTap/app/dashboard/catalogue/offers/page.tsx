@@ -13,9 +13,14 @@ import {
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import OfferModal from '@/components/dashboard/catalogue/OfferModal';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
+import UsageIndicator from '@/components/dashboard/UsageIndicator';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { Tag } from 'lucide-react';
 
 export default function OffersPage() {
     const { activeBranchId } = useActiveBranch();
+    const { capabilities } = useSubscriptionStore();
     const [searchQuery, setSearchQuery] = useState('');
     
     const { data: offers = [], isLoading } = useCatalogueOffersAdmin({ 
@@ -174,8 +179,17 @@ export default function OffersPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8">
-            <PageHeader
+        <PageLockWrapper feature="catalogue" featureName="Catalogue">
+            <div className="p-4 md:p-8">
+                <div className="mb-6">
+                    <UsageIndicator
+                        label="Offers Limit"
+                        usage={capabilities?.capabilities?.catalogueOffers}
+                        icon={<Gift size={18} />}
+                    />
+                </div>
+
+                <PageHeader
                 title="Bundle Offers"
                 description="Create and manage item bundles with special pricing and rewards"
                 actions={
@@ -222,5 +236,6 @@ export default function OffersPage() {
                 activeBranchId={activeBranchId || undefined}
             />
         </div>
+        </PageLockWrapper>
     );
 }

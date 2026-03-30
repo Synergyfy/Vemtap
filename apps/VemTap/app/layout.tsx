@@ -68,6 +68,12 @@ export const metadata: Metadata = {
     },
 };
 
+export const viewport = {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+};
+
 import QueryProvider from "./providers/QueryProvider";
 import AuthProvider from "@/components/providers/AuthProvider";
 import CookieBanner from "@/components/shared/CookieBanner";

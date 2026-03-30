@@ -21,6 +21,9 @@ export interface SubscriptionCapabilities {
     messaging: {
       enabled: boolean;
     };
+    catalogueItems: CapabilityLimit;
+    catalogueCategories: CapabilityLimit;
+    catalogueOffers: CapabilityLimit;
     features: string[];
     credits: {
       sms: number;

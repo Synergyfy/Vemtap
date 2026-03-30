@@ -138,20 +138,20 @@ export default function ServicesPage() {
 
     return (
         <div className="min-h-screen bg-surface font-body text-on-surface pb-32">
-            <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 bg-surface/70 backdrop-blur-xl z-50">
-                <div className="flex items-center gap-3">
+            <header className="fixed top-0 left-0 w-full flex justify-between items-center px-4 md:px-6 py-3 md:py-4 bg-surface/70 backdrop-blur-xl z-50">
+                <div className="flex items-center gap-2 md:gap-3">
                     <button onClick={() => router.push(`/${params.slug}/${params.code}`)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={20} className="md:size-6" />
                     </button>
-                    <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-headline tracking-tight">
+                    <span className="text-lg md:text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-headline tracking-tight">
                         {storeName}
                     </span>
                 </div>
             </header>
 
-            <main className="pt-24 px-6 max-w-4xl mx-auto space-y-12">
-                <section className="space-y-6">
-                    <h1 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
+            <main className="pt-20 md:pt-24 px-4 md:px-6 max-w-4xl mx-auto space-y-8 md:space-y-12">
+                <section className="space-y-4 md:space-y-6">
+                    <h1 className="text-2xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
                         Expert <span className="bg-gradient-to-r from-tertiary to-secondary bg-clip-text text-transparent">Professional Services</span>
                     </h1>
                     
@@ -236,7 +236,7 @@ export default function ServicesPage() {
                             onClick={() => router.push(`/${params.slug}/${params.code}/services/${service.id}`)}
                             className={cn(
                                 "bg-white asymmetric-leaf shadow-xl hover:shadow-2xl transition-all cursor-pointer border border-slate-50 group overflow-hidden",
-                                viewMode === 'grid' ? "p-4 sm:p-6 flex flex-col" : "p-6 flex items-center gap-6"
+                                viewMode === 'grid' ? "p-3 md:p-6 flex flex-col" : "p-4 md:p-6 flex items-center gap-4 md:gap-6"
                             )}
                         >
                             <div className={cn(
@@ -258,7 +258,7 @@ export default function ServicesPage() {
                             <div className="flex-grow min-w-0">
                                 <h4 className={cn(
                                     "font-headline font-bold text-on-surface truncate",
-                                    viewMode === 'grid' ? "text-base sm:text-lg" : "text-xl"
+                                    viewMode === 'grid' ? "text-sm md:text-lg" : "text-xl"
                                 )}>{service.name}</h4>
                                 <p className={cn(
                                     "text-on-surface-variant font-medium",
@@ -330,7 +330,7 @@ export default function ServicesPage() {
                             initial={{ y: '100%' }}
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
-                            className="relative w-full max-w-2xl bg-white rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+                            className="relative w-full max-w-2xl bg-white rounded-t-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
                         >
                             <button 
                                 onClick={() => setSelectedService(null)}
@@ -339,21 +339,21 @@ export default function ServicesPage() {
                                 <X size={24} />
                             </button>
 
-                            <div className="overflow-y-auto no-scrollbar p-8 space-y-10">
+                            <div className="overflow-y-auto no-scrollbar p-5 md:p-8 space-y-8 md:space-y-10">
                                 <div className="space-y-4 text-center">
-                                    <div className="size-24 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
+                                    <div className="size-24 bg-primary/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
                                         {selectedService.mainImage ? (
-                                            <img src={selectedService.mainImage} alt={selectedService.name} className="size-full object-cover rounded-[2rem]" />
+                                            <img src={selectedService.mainImage} alt={selectedService.name} className="size-full object-cover rounded-2xl md:rounded-[2rem]" />
                                         ) : (
                                             <Calendar size={48} strokeWidth={2.5} />
                                         )}
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="text-3xl font-headline font-black text-on-surface tracking-tight">
+                                        <h2 className="text-xl md:text-3xl font-headline font-black text-on-surface tracking-tight">
                                             {selectedService.name}
                                         </h2>
                                         <div className="flex justify-center items-center gap-4">
-                                            <p className="text-3xl font-black text-primary">{formatPrice(selectedService.price)}</p>
+                                            <p className="text-2xl md:text-3xl font-black text-primary">{formatPrice(selectedService.price)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -366,11 +366,11 @@ export default function ServicesPage() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-6 bg-surface rounded-3xl flex flex-col items-center gap-3 text-center">
+                                    <div className="p-4 md:p-6 bg-surface rounded-2xl md:rounded-3xl flex flex-col items-center gap-3 text-center">
                                         <ShieldCheck className="text-primary" size={24} />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Certified Experts</span>
                                     </div>
-                                    <div className="p-6 bg-surface rounded-3xl flex flex-col items-center gap-3 text-center">
+                                    <div className="p-4 md:p-6 bg-surface rounded-2xl md:rounded-3xl flex flex-col items-center gap-3 text-center">
                                         <Clock className="text-tertiary" size={24} />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Same Day Booking</span>
                                     </div>
@@ -379,7 +379,7 @@ export default function ServicesPage() {
                                 <button
                                     onClick={() => handleBooking(selectedService, 1)}
                                     disabled={isSubmitting}
-                                    className="w-full h-20 bg-slate-900 text-white text-xl font-black rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-black hover:-translate-y-1 active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
+                                    className="w-full h-16 md:h-20 bg-slate-900 text-white text-lg md:text-xl font-black rounded-2xl md:rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-black hover:-translate-y-1 active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" /> : (
                                         <>
