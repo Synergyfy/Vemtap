@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'react-hot-toast';
 import { useDeviceTapContext } from '@/services/devices/hooks';
+import { useRecordPortalVisit } from '@/services/visits/hooks';
 import { api } from '@/lib/api';
 
 // Components
@@ -164,7 +165,8 @@ const DynamicTapJourneyPage = () => {
         currentStep, setStep, storeName, setUserData, resetFlow,
         initializeFromBusiness, branchId, logoUrl, businessId,
         customWelcomeMessage, productCount, serviceCount, offerCount,
-        formCount, engagementSettings, selectedFormCode, setSelectedFormCode
+        formCount, engagementSettings, selectedFormCode, setSelectedFormCode,
+        sessionToken, setSessionToken
     } = useCustomerFlowStore();
 
     const { isAuthenticated, login } = useAuthStore();
@@ -174,6 +176,9 @@ const DynamicTapJourneyPage = () => {
     const [showInitialAuth, setShowInitialAuth] = useState(false);
     const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
     const [isMounted, setIsMounted] = useState(false);
+    const portalVisitFired = useRef(false);
+
+    const { mutate: recordPortalVisit } = useRecordPortalVisit();
 
     useEffect(() => {
         setIsMounted(true);
@@ -220,6 +225,32 @@ const DynamicTapJourneyPage = () => {
             return () => clearTimeout(timer);
         }
     }, [currentStep, setStep, isAuthenticated]);
+
+    // Auto-record portal visit once when authenticated customer reaches PORTAL_MENU
+    useEffect(() => {
+        if (
+            currentStep === 'PORTAL_MENU' &&
+            isAuthenticated &&
+            deviceCode &&
+            !portalVisitFired.current
+        ) {
+            portalVisitFired.current = true;
+            const existingToken = sessionToken ?? undefined;
+            recordPortalVisit(
+                { deviceCode, sessionToken: existingToken },
+                {
+                    onSuccess: (data) => {
+                        // Store the server-confirmed token for use at checkout
+                        setSessionToken(data.sessionToken);
+                    },
+                    onError: () => {
+                        // Silently fail — visit recording is non-blocking
+                        portalVisitFired.current = false;
+                    },
+                },
+            );
+        }
+    }, [currentStep, isAuthenticated, deviceCode, sessionToken, setSessionToken, recordPortalVisit]);
 
     const handleAction = (id: string) => {
         if (id === 'order') {

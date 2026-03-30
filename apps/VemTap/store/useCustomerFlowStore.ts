@@ -209,6 +209,10 @@ interface CustomerFlowState {
     resetVisitCountAfterRedemption: (threshold: number) => void;
     setRedirect: (id: string, url: string) => void;
     setVisitSource: (source: string | null) => void;
+
+    // Visit session tracking
+    sessionToken: string | null;
+    setSessionToken: (token: string | null) => void;
 }
 
 export const useCustomerFlowStore = create<CustomerFlowState>()(
@@ -278,6 +282,8 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 { id: 'q3', text: 'Any other feedback?', type: 'text' }
             ],
             redirects: {},
+
+            sessionToken: null,
 
             setActiveForm: (form) => set({ activeForm: form }),
             setSelectedFormCode: (code: string | null) => set({ selectedFormCode: code }),
@@ -435,4 +441,5 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 redirects: { ...state.redirects, [id]: url }
             })),
             setVisitSource: (source) => set({ visitSource: source }),
+            setSessionToken: (token) => set({ sessionToken: token }),
         }), { name: 'customer-flow-storage' }));

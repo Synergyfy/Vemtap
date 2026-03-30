@@ -78,6 +78,15 @@ export class CreateCatalogueOrderDto {
   @IsOptional()
   @IsUUID()
   deviceId?: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-v4-session-token',
+    description:
+      'Session token from the portal visit. Used to upgrade the visit to patronage on order completion.',
+  })
+  @IsOptional()
+  @IsUUID()
+  sessionToken?: string;
 }
 
 export class UpdateCatalogueOrderStatusDto {

@@ -122,7 +122,7 @@ export const useMergeGuestCart = () => {
 export const useCheckoutCart = (branchId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { branchId: string; notes?: string; tableNumber?: string; deviceId?: string }) => {
+    mutationFn: async (data: { branchId: string; notes?: string; tableNumber?: string; deviceId?: string; sessionToken?: string }) => {
       const response = await api.post('/catalogue/cart/checkout', data);
       return response.data;
     },
