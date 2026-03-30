@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useGuestCartStore } from '@/store/useGuestCartStore';
+import { useAddToCart } from '@/services/catalogue-cart/hooks';
 import { 
     useCatalogueOffersPublic, 
     CatalogueOffer, 
@@ -41,7 +43,46 @@ export default function OffersPage() {
     
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [selectedOffer, setSelectedOffer] = useState<CatalogueOffer | null>(null);
+
+    const { isAuthenticated } = useAuthStore();
+    const guestCart = useGuestCartStore();
+    const { mutateAsync: addToCartServer } = useAddToCart();
+    const [isAddingToCart, setIsAddingToCart] = useState<string | null>(null);
+
+    const handleAddToCart = async (offer: any, quantity: number = 1) => {
+        if (!branchId) return;
+        setIsAddingToCart(offer.id);
+
+        try {
+            if (isAuthenticated) {
+                await addToCartServer({
+                    branchId,
+                    offerId: offer.id,
+                    quantity
+                });
+            } else {
+                guestCart.addItem({
+                    branchId,
+                    offerId: offer.id,
+                    quantity,
+                    name: offer.name,
+                    price: offer.calculatedPrice || offer.discountValue || 0,
+                    image: offer.mainImage,
+                    itemType: 'offer'
+                });
+            }
+            toast.success('Added to cart!', { icon: '🛒' });
+        } catch (error) {
+            toast.error('Failed to add to cart');
+        } finally {
+            setIsAddingToCart(null);
+            if (selectedOffer) {
+                setSelectedOffer(null);
+                setQty(1);
+            }
+        }
+    };
+const [selectedOffer, setSelectedOffer] = useState<CatalogueOffer | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list for offers
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
@@ -249,6 +290,16 @@ export default function OffersPage() {
                                     </div>
                                     {viewMode === 'list' && (
                                         <div className="hidden sm:block">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAddToCart(offer, 1);
+                                                }}
+                                                disabled={isAddingToCart === offer.id}
+                                                className="px-4 py-2 bg-slate-100 text-slate-800 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-colors mr-2"
+                                            >
+                                                Add to Cart
+                                            </button>
                                             <button 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
