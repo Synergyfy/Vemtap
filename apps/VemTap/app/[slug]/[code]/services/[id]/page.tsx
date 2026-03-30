@@ -120,15 +120,15 @@ export default function ServiceDetailPage() {
     return (
         <div className="min-h-screen bg-surface font-body text-on-surface pb-32">
             {/* Header / Hero Section */}
-            <div className="relative h-[60vh] w-full overflow-hidden">
-                <header className="absolute top-0 left-0 w-full px-6 py-8 flex justify-between items-center z-30">
-                    <button onClick={() => router.back()} className="size-14 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center text-white border border-white/20 shadow-2xl hover:bg-white hover:text-slate-900 transition-all">
-                        <ArrowLeft size={28} />
+            <div className="relative h-[45vh] md:h-[60vh] w-full overflow-hidden">
+                <header className="absolute top-0 left-0 w-full px-6 py-6 md:py-8 flex justify-between items-center z-30">
+                    <button onClick={() => router.back()} className="size-12 md:size-14 bg-white/20 backdrop-blur-xl rounded-xl md:rounded-2xl flex items-center justify-center text-white border border-white/20 shadow-2xl hover:bg-white hover:text-slate-900 transition-all">
+                        <ArrowLeft size={24} className="md:size-28" />
                     </button>
-                    <div className="bg-white/20 backdrop-blur-xl px-6 py-2 rounded-2xl text-white font-black font-headline tracking-widest text-sm border border-white/20 uppercase">
+                    <div className="bg-white/20 backdrop-blur-xl px-4 md:px-6 py-2 rounded-xl md:rounded-2xl text-white font-black font-headline tracking-widest text-[10px] md:text-sm border border-white/20 uppercase">
                         {storeName}
                     </div>
-                    <div className="size-14" />
+                    <div className="size-10 md:size-14" />
                 </header>
 
                 <AnimatePresence mode="wait">
@@ -168,37 +168,37 @@ export default function ServiceDetailPage() {
             </div>
 
             {/* Content Section */}
-            <main className="relative -mt-32 px-6 max-w-4xl mx-auto z-40 pb-20">
-                <div className="bg-white asymmetric-leaf p-8 sm:p-14 shadow-2xl border border-slate-50 space-y-12">
-                    <div className="space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                            <div className="space-y-2">
-                                <span className="px-4 py-1.5 bg-primary/10 text-primary text-xs font-black uppercase tracking-[0.2em] rounded-full">
+            <main className="relative -mt-24 md:-mt-32 px-4 md:px-6 max-w-4xl mx-auto z-40 pb-20">
+                <div className="bg-white asymmetric-leaf p-5 md:p-14 shadow-2xl border border-slate-50 space-y-10 md:space-y-12">
+                    <div className="space-y-4 md:space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 md:gap-6">
+                            <div className="space-y-1 md:space-y-2">
+                                <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
                                     {service.category?.name || 'Exclusive Service'}
                                 </span>
-                                <h1 className="text-4xl sm:text-6xl font-headline font-black text-on-surface tracking-tight leading-[1.1]">
+                                <h1 className="text-2xl md:text-6xl font-headline font-black text-on-surface tracking-tight leading-[1.1]">
                                     {service.name}
                                 </h1>
                             </div>
-                            <div className="text-right">
-                                <p className="text-sm font-black text-outline uppercase tracking-widest">Pricing Policy</p>
-                                <p className="text-5xl font-black text-primary font-display">{formatPrice(service.price)}</p>
+                            <div className="text-left sm:text-right">
+                                <p className="text-[10px] md:text-sm font-black text-outline uppercase tracking-widest">Pricing Policy</p>
+                                <p className="text-3xl md:text-5xl font-black text-primary font-display">{formatPrice(service.price)}</p>
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 sm:gap-8 pt-4">
-                            <div className="flex items-center gap-2 px-6 py-3 bg-slate-50 rounded-2xl text-slate-600">
-                                <Clock size={20} className="text-primary" />
-                                <span className="text-xs font-black uppercase tracking-widest">Instant Booking</span>
+                        <div className="flex flex-wrap items-center gap-3 md:gap-8 pt-2 md:pt-4">
+                            <div className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-slate-50 rounded-xl md:rounded-2xl text-slate-600">
+                                <Clock size={16} className="md:size-20 text-primary" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Instant Booking</span>
                             </div>
-                            <div className="flex items-center gap-2 px-6 py-3 bg-slate-50 rounded-2xl text-slate-600">
-                                <ShieldCheck size={20} className="text-emerald-500" />
-                                <span className="text-xs font-black uppercase tracking-widest">Premium quality</span>
+                            <div className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-slate-50 rounded-xl md:rounded-2xl text-slate-600">
+                                <ShieldCheck size={16} className="md:size-20 text-emerald-500" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Premium quality</span>
                             </div>
                             {service.loyaltyPoints && service.loyaltyPoints > 0 && (
-                                <div className="flex items-center gap-2 px-6 py-3 bg-amber-50 rounded-2xl text-amber-600">
-                                    <Star size={20} fill="currentColor" />
-                                    <span className="text-xs font-black uppercase tracking-widest">+{service.loyaltyPoints} Reward Points</span>
+                                <div className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-amber-50 rounded-xl md:rounded-2xl text-amber-600">
+                                    <Star size={16} className="md:size-20" fill="currentColor" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">+{service.loyaltyPoints} Rewards</span>
                                 </div>
                             )}
                         </div>
