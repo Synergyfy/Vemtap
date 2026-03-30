@@ -43,7 +43,8 @@ export default function ServicesPage() {
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [sortBy, setSortBy] = useState('newest');
     const [selectedService, setSelectedService] = useState<CatalogueItem | null>(null);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list for services
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<{service: CatalogueItem, qty: number} | null>(null);
@@ -141,88 +142,34 @@ export default function ServicesPage() {
             <header className="fixed top-0 left-0 w-full flex justify-between items-center px-4 md:px-6 py-3 md:py-4 bg-surface/70 backdrop-blur-xl z-50">
                 <div className="flex items-center gap-2 md:gap-3">
                     <button onClick={() => router.push(`/${params.slug}/${params.code}`)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                        <ArrowLeft size={20} className="md:size-6" />
+                        <ArrowLeft size={18} className="md:size-6" />
                     </button>
-                    <span className="text-lg md:text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-headline tracking-tight">
+                    <span className="text-base md:text-xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-headline tracking-tight">
                         {storeName}
                     </span>
                 </div>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => setIsFilterOpen(true)}
+                        className="p-2.5 bg-white shadow-sm border border-slate-100 rounded-xl text-primary hover:bg-primary hover:text-white transition-all flex items-center gap-2"
+                    >
+                        <SlidersHorizontal size={18} />
+                        <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Filter</span>
+                        { (searchQuery || selectedCategory !== 'All' || sortBy !== 'newest') && (
+                            <div className="size-1.5 bg-secondary rounded-full animate-pulse" />
+                        )}
+                    </button>
+                </div>
             </header>
 
-            <main className="pt-20 md:pt-24 px-4 md:px-6 max-w-4xl mx-auto space-y-8 md:space-y-12">
-                <section className="space-y-4 md:space-y-6">
-                    <h1 className="text-2xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
-                        Expert <span className="bg-gradient-to-r from-tertiary to-secondary bg-clip-text text-transparent">Professional Services</span>
-                    </h1>
-                    
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-grow">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" size={20} />
-                            <input 
-                                type="text" 
-                                placeholder="Search services..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-12 pr-4 py-4 bg-white border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/60"
-                            />
-                        </div>
-                        <div className="relative shrink-0">
-                            <select 
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="h-full pl-4 pr-10 py-4 bg-white border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all text-sm font-bold text-slate-600 appearance-none cursor-pointer min-w-[160px]"
-                            >
-                                <option value="newest">Newest First</option>
-                                <option value="price_asc">Price: Lowest</option>
-                                <option value="price_desc">Price: Highest</option>
-                            </select>
-                            <SlidersHorizontal className="absolute right-4 top-1/2 -translate-y-1/2 text-primary pointer-events-none" size={18} />
-                        </div>
-                        <div className="flex bg-white p-1 rounded-2xl shadow-sm self-stretch sm:self-auto">
-                            <button 
-                                onClick={() => setViewMode('grid')}
-                                className={cn(
-                                    "flex-1 sm:flex-none px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
-                                    viewMode === 'grid' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
-                                )}
-                            >
-                                <LayoutGrid size={18} />
-                                <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Grid</span>
-                            </button>
-                            <button 
-                                onClick={() => setViewMode('list')}
-                                className={cn(
-                                    "flex-1 sm:flex-none px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2",
-                                    viewMode === 'list' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-outline hover:bg-slate-50"
-                                )}
-                            >
-                                <List size={18} />
-                                <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">List</span>
-                            </button>
-                        </div>
+            <main className="pt-16 md:pt-20 px-4 md:px-6 max-w-4xl mx-auto space-y-4 md:space-y-6 flex flex-col">
+                {/* Header Info */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-baseline gap-2">
+                        <h1 className="text-sm md:text-lg font-black font-headline uppercase tracking-widest text-on-surface">Premium Services</h1>
+                        <span className="text-[10px] md:text-xs font-bold text-outline">({catalogueResponse?.total || 0})</span>
                     </div>
-
-                </section>
-
-                {/* Categories */}
-                <section className="overflow-hidden -mx-6">
-                    <div className="flex gap-4 overflow-x-auto px-6 py-2 no-scrollbar">
-                        {categories.map((cat) => (
-                            <button
-                                key={cat.id}
-                                onClick={() => setSelectedCategory(cat.id)}
-                                className={cn(
-                                    "px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-sm border whitespace-nowrap",
-                                    selectedCategory === cat.id 
-                                        ? "bg-primary text-white border-primary shadow-primary/20 scale-105" 
-                                        : "bg-white text-outline border-slate-100 hover:border-primary/20"
-                                )}
-                            >
-                                {cat.name}
-                            </button>
-                        ))}
-                    </div>
-                </section>
+                </div>
 
                 <section className={cn(
                     "grid gap-4 sm:gap-6",
@@ -236,12 +183,12 @@ export default function ServicesPage() {
                             onClick={() => router.push(`/${params.slug}/${params.code}/services/${service.id}`)}
                             className={cn(
                                 "bg-white asymmetric-leaf shadow-xl hover:shadow-2xl transition-all cursor-pointer border border-slate-50 group overflow-hidden",
-                                viewMode === 'grid' ? "p-3 md:p-6 flex flex-col" : "p-4 md:p-6 flex items-center gap-4 md:gap-6"
+                                viewMode === 'grid' ? "p-2 md:p-5 flex flex-col" : "p-4 md:p-6 flex items-center gap-4 md:gap-6"
                             )}
                         >
                             <div className={cn(
-                                "rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0 overflow-hidden relative",
-                                viewMode === 'grid' ? "w-full aspect-square mb-4" : "size-16 sm:size-20"
+                                "rounded-lg md:rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0 overflow-hidden relative",
+                                viewMode === 'grid' ? "w-full aspect-[1.2] mb-2 md:mb-4" : "size-16 sm:size-20"
                             )}>
                                 {service.mainImage ? (
                                     <img src={service.mainImage} alt={service.name} className="size-full object-cover" />
@@ -254,48 +201,70 @@ export default function ServicesPage() {
                                         +{service.loyaltyPoints}
                                     </span>
                                 )}
+                                <div className="absolute top-2 right-2 z-10">
+                                    <span className="px-2 py-1 bg-white/90 backdrop-blur-md text-primary text-[6px] md:text-[9px] font-black uppercase tracking-widest rounded-md shadow-sm border border-primary/10">
+                                        {service.category?.name || 'General'}
+                                    </span>
+                                </div>
                             </div>
                             <div className="flex-grow min-w-0">
                                 <h4 className={cn(
                                     "font-headline font-bold text-on-surface truncate",
-                                    viewMode === 'grid' ? "text-sm md:text-lg" : "text-xl"
+                                    viewMode === 'grid' ? "text-[12px] md:text-lg line-clamp-1" : "text-xl"
                                 )}>{service.name}</h4>
                                 <p className={cn(
-                                    "text-on-surface-variant font-medium",
-                                    viewMode === 'grid' ? "text-xs line-clamp-1" : "text-sm line-clamp-1"
+                                    "text-on-surface-variant/70 font-medium mt-0.5 min-h-[1.2em]",
+                                    viewMode === 'grid' ? "text-[9px] md:text-sm line-clamp-1" : "text-sm line-clamp-1"
                                 )}>{service.description}</p>
-                                <div className={cn(
-                                    "flex items-center gap-3 mt-2",
-                                    viewMode === 'grid' ? "flex-col items-start gap-1" : "justify-between"
-                                )}>
+                                <div className="flex flex-col gap-1 md:gap-3 mt-auto">
                                     <span className={cn(
                                         "text-primary font-black",
-                                        viewMode === 'grid' ? "text-sm" : "text-base"
+                                        viewMode === 'grid' ? "text-[11px] md:text-sm" : "text-base"
                                     )}>{formatPrice(service.price)}</span>
                                     
-                                    <div className="flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
-                                        {viewMode === 'list' ? (
+                                    {viewMode === 'grid' ? (
+                                        <div className="grid grid-cols-2 gap-1 w-full mt-1">
+                                            <button 
+                                                className="py-1.5 bg-slate-100 text-slate-800 text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-slate-200 transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toast.success('Added to cart!', { icon: '🛒' });
+                                                }}
+                                            >
+                                                Cart
+                                            </button>
+                                            <button 
+                                                className="py-1.5 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedService(service);
+                                                }}
+                                            >
+                                                Book
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2 w-full sm:w-auto mt-0.5 md:mt-0">
+                                            <button 
+                                                className="px-4 py-2 bg-slate-100 text-slate-800 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-colors opacity-70"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toast.success('Service added to cart!', { icon: '🛒' });
+                                                }}
+                                            >
+                                                Add to Cart
+                                            </button>
                                             <button 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setSelectedService(service);
                                                 }}
-                                                className="px-6 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-colors"
+                                                className="px-4 py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-colors"
                                             >
                                                 Book Now
                                             </button>
-                                        ) : (
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedService(service);
-                                                }}
-                                                className="w-full py-2 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                Book Now
-                                            </button>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             {viewMode === 'list' && (
@@ -376,17 +345,145 @@ export default function ServicesPage() {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => handleBooking(selectedService, 1)}
-                                    disabled={isSubmitting}
-                                    className="w-full h-16 md:h-20 bg-slate-900 text-white text-lg md:text-xl font-black rounded-2xl md:rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-black hover:-translate-y-1 active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => toast.success('Service added to cart!', { icon: '🛒' })}
+                                        className="flex-1 h-14 md:h-16 bg-slate-100 text-slate-800 text-sm md:text-base font-black rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                                    >
+                                        Add to Cart
+                                    </button>
+                                    <button
+                                        onClick={() => handleBooking(selectedService, 1)}
+                                        disabled={isSubmitting}
+                                        className="flex-[1.5] h-14 md:h-16 bg-slate-900 text-white text-sm md:text-base font-black rounded-2xl md:rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-black hover:-translate-y-1 active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
+                                    >
+                                        {isSubmitting ? <Loader2 className="animate-spin" /> : (
+                                            <>
+                                                <Calendar size={24} />
+                                                Book Now
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {isFilterOpen && (
+                    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsFilterOpen(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            className="relative w-full max-w-lg bg-surface rounded-t-[2rem] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+                        >
+                            <div className="p-6 md:p-8 space-y-8 max-h-[85vh] overflow-y-auto">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl md:text-2xl font-black font-headline tracking-tight text-on-surface">Filter Services</h2>
+                                    <button onClick={() => setIsFilterOpen(false)} className="size-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors">
+                                        <X size={20} />
+                                    </button>
+                                </div>
+
+                                {/* Search */}
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-outline">Search Services</h4>
+                                    <div className="relative">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" size={18} />
+                                        <input 
+                                            type="text" 
+                                            placeholder="What service do you need?"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-4 bg-white border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/60"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Sort */}
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-outline">Sort By</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            { id: 'newest', name: 'Newest First' },
+                                            { id: 'price_asc', name: 'Price: Low to High' },
+                                            { id: 'price_desc', name: 'Price: High to Low' }
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setSortBy(opt.id)}
+                                                className={cn(
+                                                    "px-4 py-2 rounded-xl text-xs font-bold transition-all border",
+                                                    sortBy === opt.id ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" : "bg-white text-outline border-slate-100"
+                                                )}
+                                            >
+                                                {opt.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Categories */}
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-outline">Categories</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {categories.map((cat) => (
+                                            <button
+                                                key={cat.id}
+                                                onClick={() => setSelectedCategory(cat.id)}
+                                                className={cn(
+                                                    "px-4 py-2 rounded-xl text-xs font-bold transition-all border",
+                                                    selectedCategory === cat.id ? "bg-primary text-white border-primary" : "bg-white text-outline border-slate-100"
+                                                )}
+                                            >
+                                                {cat.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* View Mode */}
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-outline">Display View</h4>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setViewMode('grid')}
+                                            className={cn(
+                                                "flex-1 px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-3 border",
+                                                viewMode === 'grid' ? "bg-primary text-white border-primary" : "bg-white text-outline border-slate-100"
+                                            )}
+                                        >
+                                            <LayoutGrid size={18} />
+                                            <span className="text-xs font-bold uppercase tracking-wider">Grid View</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => setViewMode('list')}
+                                            className={cn(
+                                                "flex-1 px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-3 border",
+                                                viewMode === 'list' ? "bg-primary text-white border-primary" : "bg-white text-outline border-slate-100"
+                                            )}
+                                        >
+                                            <List size={18} />
+                                            <span className="text-xs font-bold uppercase tracking-wider">List View</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={() => setIsFilterOpen(false)}
+                                    className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-widest text-xs"
                                 >
-                                    {isSubmitting ? <Loader2 className="animate-spin" /> : (
-                                        <>
-                                            <Calendar size={24} />
-                                            Confirm Booking
-                                        </>
-                                    )}
+                                    Apply filters
                                 </button>
                             </div>
                         </motion.div>

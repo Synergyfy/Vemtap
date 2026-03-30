@@ -21,7 +21,7 @@ export const PremiumBottomNav = () => {
     ];
 
     return (
-        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-2 bg-surface/80 backdrop-blur-xl rounded-t-[3rem] border-t border-slate-200 shadow-[0_-20px_40px_rgba(0,74,198,0.05)]">
+        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-3 pt-1.5 bg-surface/80 backdrop-blur-xl rounded-t-3xl border-t border-slate-200 shadow-[0_-15px_30px_rgba(0,74,198,0.05)]">
             {navItems.map((item) => {
                 const isActive = pathname === item.path;
                 return (
@@ -29,16 +29,19 @@ export const PremiumBottomNav = () => {
                         key={item.id}
                         onClick={() => router.push(item.path)}
                         className={cn(
-                            "flex flex-col items-center justify-center p-2 transition-all duration-300",
+                            "flex flex-col items-center justify-center p-1.5 transition-all duration-300",
                             isActive 
-                                ? "bg-primary text-white rounded-full p-4 mb-4 transform -translate-y-4 shadow-lg shadow-primary/20 scale-110" 
+                                ? "bg-primary text-white rounded-full p-3 mb-2 transform -translate-y-2 shadow-lg shadow-primary/20 scale-105" 
                                 : "text-slate-400 hover:text-primary"
                         )}
                     >
-                        <item.icon size={isActive ? 28 : 24} />
-                        {!isActive && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{item.label}</span>
-                        )}
+                        <item.icon size={isActive ? 22 : 18} />
+                        <span className={cn(
+                            "text-[9px] font-bold uppercase tracking-wider mt-0.5 transition-all",
+                            isActive ? "block" : "block opacity-80"
+                        )}>
+                            {item.label}
+                        </span>
                     </button>
                 );
             })}
