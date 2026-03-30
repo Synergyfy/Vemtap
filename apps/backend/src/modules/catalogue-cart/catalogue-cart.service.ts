@@ -121,11 +121,9 @@ export class CatalogueCartService {
       name = item.name;
       image = item.mainImage;
     } else if (dto.offerId) {
-      const offer = await this.offerRepository.createQueryBuilder('offer')
-        .innerJoin('offer.branches', 'branch')
-        .where('offer.id = :offerId', { offerId: dto.offerId })
-        .andWhere('branch.id = :branchId', { branchId })
-        .getOne();
+      const offer = await this.offerRepository.findOne({
+        where: { id: dto.offerId, branchId },
+      });
 
       if (!offer) throw new NotFoundException('Offer not found or not available in this branch');
       if (offer.status !== CatalogueOfferStatus.ACTIVE) throw new BadRequestException('Offer is not active');

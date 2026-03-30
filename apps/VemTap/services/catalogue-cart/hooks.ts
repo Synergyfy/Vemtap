@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../api';
-import { useAuthStore } from '../../store/useAuthStore';
-import { CatalogueItem } from '../catalogue/types';
-import { CatalogueOffer } from '../offers/types';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
+import { CatalogueItem, CatalogueOffer } from '@/services/catalogue/hooks';
 
 export interface CartItem {
   id: string;
@@ -36,12 +35,7 @@ export const useCart = (branchId: string | null) => {
   const { isAuthenticated } = useAuthStore();
   return useQuery<Cart>({
     queryKey: ['cart', branchId],
-    queryFn: async () => {
-      const response = await api.get('/catalogue/cart', {
-        params: { branchId },
-      });
-      return response.data;
-    },
+    queryFn: () => api.get(`/catalogue/cart?branchId=${branchId}`),
     enabled: !!branchId && isAuthenticated,
   });
 };
@@ -50,12 +44,7 @@ export const useCartSummary = (branchId: string | null) => {
   const { isAuthenticated } = useAuthStore();
   return useQuery<CartSummary>({
     queryKey: ['cart', 'summary', branchId],
-    queryFn: async () => {
-      const response = await api.get('/catalogue/cart/summary', {
-        params: { branchId },
-      });
-      return response.data;
-    },
+    queryFn: () => api.get(`/catalogue/cart/summary?branchId=${branchId}`),
     enabled: !!branchId && isAuthenticated,
     staleTime: 30_000,
   });
@@ -108,12 +97,7 @@ export const useRemoveCartItem = (branchId: string) => {
 export const useClearCart = (branchId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const response = await api.delete('/catalogue/cart', {
-        params: { branchId },
-      });
-      return response.data;
-    },
+    mutationFn: () => api.delete(`/catalogue/cart?branchId=${branchId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart', branchId] });
       queryClient.invalidateQueries({ queryKey: ['cart', 'summary', branchId] });

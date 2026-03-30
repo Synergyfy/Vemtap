@@ -23,6 +23,7 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGuestCartStore } from '@/store/useGuestCartStore';
 import { useAddToCart } from '@/services/catalogue-cart/hooks';
+import { useCartMergeOnLogin } from '@/hooks/useCartMergeOnLogin';
 import { 
     useCatalogueOffersPublic, 
     CatalogueOffer, 
@@ -40,53 +41,45 @@ export default function OffersPage() {
     const router = useRouter();
     const { branchId, storeName, logoUrl, setUserData } = useCustomerFlowStore();
     const { isAuthenticated, user, login } = useAuthStore();
-    
+    const guestCart = useGuestCartStore();
+    const addToCartMutation = useAddToCart();
+    useCartMergeOnLogin(branchId);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-
-    const { isAuthenticated } = useAuthStore();
-    const guestCart = useGuestCartStore();
-    const { mutateAsync: addToCartServer } = useAddToCart();
+    const [selectedOffer, setSelectedOffer] = useState<CatalogueOffer | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showAuthForm, setShowAuthForm] = useState(false);
+    const [pendingOffer, setPendingOffer] = useState<{offer: CatalogueOffer, qty: number} | null>(null);
     const [isAddingToCart, setIsAddingToCart] = useState<string | null>(null);
+    const [qty, setQty] = useState(1);
 
-    const handleAddToCart = async (offer: any, quantity: number = 1) => {
+    const handleAddToCart = async (offer: CatalogueOffer, quantity: number = 1) => {
         if (!branchId) return;
         setIsAddingToCart(offer.id);
-
         try {
             if (isAuthenticated) {
-                await addToCartServer({
-                    branchId,
-                    offerId: offer.id,
-                    quantity
-                });
+                await addToCartMutation.mutateAsync({ branchId, offerId: offer.id, quantity });
             } else {
                 guestCart.addItem({
                     branchId,
                     offerId: offer.id,
                     quantity,
                     name: offer.name,
-                    price: offer.calculatedPrice || offer.discountValue || 0,
-                    image: offer.mainImage,
-                    itemType: 'offer'
+                    price: Number(offer.calculatedPrice),
+                    image: offer.mainImage ?? undefined,
+                    itemType: 'offer',
                 });
             }
             toast.success('Added to cart!', { icon: '🛒' });
-        } catch (error) {
+            if (selectedOffer) setSelectedOffer(null);
+        } catch {
             toast.error('Failed to add to cart');
         } finally {
             setIsAddingToCart(null);
-            if (selectedOffer) {
-                setSelectedOffer(null);
-                setQty(1);
-            }
         }
     };
-const [selectedOffer, setSelectedOffer] = useState<CatalogueOffer | null>(null);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list for offers
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showAuthForm, setShowAuthForm] = useState(false);
-    const [pendingOffer, setPendingOffer] = useState<{offer: CatalogueOffer, qty: number} | null>(null);
 
     // Debounce search
     useEffect(() => {

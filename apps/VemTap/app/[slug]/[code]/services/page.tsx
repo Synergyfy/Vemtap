@@ -15,7 +15,8 @@ import {
     X,
     SlidersHorizontal,
     LayoutGrid,
-    List
+    List,
+    ShoppingCart
 } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -25,6 +26,9 @@ import {
     useCreateCatalogueOrder,
     useCatalogueCategoriesPublic 
 } from '@/services/catalogue/hooks';
+import { useAddToCart } from '@/services/catalogue-cart/hooks';
+import { useGuestCartStore } from '@/store/useGuestCartStore';
+import { useCartMergeOnLogin } from '@/hooks/useCartMergeOnLogin';
 import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
@@ -48,6 +52,31 @@ export default function ServicesPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<{service: CatalogueItem, qty: number} | null>(null);
+
+    // Cart
+    const addToCartMutation = useAddToCart();
+    const guestCartStore = useGuestCartStore();
+    useCartMergeOnLogin(branchId);
+
+    const handleAddToCart = (item: CatalogueItem, quantity = 1) => {
+        if (isAuthenticated) {
+            addToCartMutation.mutate(
+                { branchId: branchId!, itemId: item.id, quantity },
+                { onSuccess: () => toast.success(`${item.name} added to cart!`, { icon: '🛒' }) }
+            );
+        } else {
+            guestCartStore.addItem({
+                branchId: branchId!,
+                itemId: item.id,
+                quantity,
+                name: item.name,
+                price: Number(item.price),
+                image: item.mainImage ?? undefined,
+                itemType: 'service',
+            });
+            toast.success(`${item.name} added to cart!`, { icon: '🛒' });
+        }
+    };
 
     // Debounce search
     useEffect(() => {
@@ -228,7 +257,7 @@ export default function ServicesPage() {
                                                 className="py-1.5 bg-slate-100 text-slate-800 text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-slate-200 transition-colors"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    toast.success('Added to cart!', { icon: '🛒' });
+                                                    handleAddToCart(service);
                                                 }}
                                             >
                                                 Cart
@@ -246,10 +275,10 @@ export default function ServicesPage() {
                                     ) : (
                                         <div className="flex gap-2 w-full sm:w-auto mt-0.5 md:mt-0">
                                             <button 
-                                                className="px-4 py-2 bg-slate-100 text-slate-800 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-colors opacity-70"
+                                                className="px-4 py-2 bg-slate-100 text-slate-800 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-colors"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    toast.success('Service added to cart!', { icon: '🛒' });
+                                                    handleAddToCart(service);
                                                 }}
                                             >
                                                 Add to Cart
@@ -347,9 +376,10 @@ export default function ServicesPage() {
 
                                 <div className="flex gap-4">
                                     <button
-                                        onClick={() => toast.success('Service added to cart!', { icon: '🛒' })}
+                                        onClick={() => selectedService && handleAddToCart(selectedService)}
                                         className="flex-1 h-14 md:h-16 bg-slate-100 text-slate-800 text-sm md:text-base font-black rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                                     >
+                                        <ShoppingCart size={20} />
                                         Add to Cart
                                     </button>
                                     <button
