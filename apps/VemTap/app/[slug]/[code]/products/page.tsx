@@ -147,21 +147,21 @@ export default function ProductsPage() {
     return (
         <div className="min-h-screen bg-surface font-body text-on-surface pb-32">
             {/* Top Bar */}
-            <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 bg-surface/70 backdrop-blur-xl z-50">
-                <div className="flex items-center gap-3">
+            <header className="fixed top-0 left-0 w-full flex justify-between items-center px-4 md:px-6 py-3 md:py-4 bg-surface/70 backdrop-blur-xl z-50">
+                <div className="flex items-center gap-2 md:gap-3">
                     <button onClick={() => router.push(`/${params.slug}/${params.code}`)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={20} className="md:size-6" />
                     </button>
-                    <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-headline tracking-tight">
+                    <span className="text-lg md:text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-headline tracking-tight">
                         {storeName}
                     </span>
                 </div>
             </header>
 
-            <main className="pt-24 px-6 max-w-4xl mx-auto space-y-10">
+            <main className="pt-20 md:pt-24 px-4 md:px-6 max-w-4xl mx-auto space-y-8 md:space-y-10">
                 {/* Search & Header */}
-                <section className="space-y-6">
-                    <h1 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
+                <section className="space-y-4 md:space-y-6">
+                    <h1 className="text-2xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
                         Our <span className="bg-gradient-to-r from-primary to-secondary-container bg-clip-text text-transparent">Premium Menu</span>
                     </h1>
                     
@@ -247,7 +247,7 @@ export default function ProductsPage() {
                             onClick={() => router.push(`/${params.slug}/${params.code}/products/${product.id}`)}
                             className={cn(
                                 "bg-white asymmetric-leaf shadow-xl hover:shadow-2xl transition-all group border border-slate-50 cursor-pointer overflow-hidden",
-                                viewMode === 'grid' ? "p-4 sm:p-6" : "p-4 sm:p-6 flex gap-4 sm:gap-8 items-center"
+                                viewMode === 'grid' ? "p-3 md:p-6" : "p-3 md:p-6 flex gap-4 md:gap-8 items-center"
                             )}
                         >
                             <div className={cn(
@@ -294,13 +294,13 @@ export default function ProductsPage() {
                                 )}>
                                     <h3 className={cn(
                                         "font-headline font-bold text-on-surface group-hover:text-primary transition-colors truncate pr-2",
-                                        viewMode === 'grid' ? "text-base sm:text-xl w-full" : "text-lg sm:text-2xl"
+                                        viewMode === 'grid' ? "text-sm md:text-xl w-full" : "text-lg md:text-2xl"
                                     )}>
                                         {product.name}
                                     </h3>
                                     <span className={cn(
                                         "text-primary font-black whitespace-nowrap",
-                                        viewMode === 'grid' ? "text-sm sm:text-lg" : "text-base sm:text-2xl"
+                                        viewMode === 'grid' ? "text-xs md:text-lg" : "text-base md:text-2xl"
                                     )}>{formatPrice(product.price)}</span>
                                 </div>
                                 <p className={cn(
@@ -356,7 +356,7 @@ export default function ProductsPage() {
                             initial={{ y: '100%' }}
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
-                            className="relative w-full max-w-2xl bg-white rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+                            className="relative w-full max-w-2xl bg-white rounded-t-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
                         >
                             <button 
                                 onClick={() => setSelectedProduct(null)}
@@ -375,23 +375,23 @@ export default function ProductsPage() {
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                                 </div>
 
-                                <div className="p-8 space-y-8">
-                                    <div className="space-y-2">
+                                <div className="p-5 md:p-8 space-y-6 md:space-y-8">
+                                    <div className="space-y-1 md:space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg">
+                                            <span className="px-3 py-1 bg-primary/10 text-primary text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-lg">
                                                 {selectedProduct.category?.name || 'General'}
                                             </span>
                                             {selectedProduct.loyaltyPoints && selectedProduct.loyaltyPoints > 0 && (
-                                                <span className="px-3 py-1 bg-amber-100 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1">
-                                                    <Star size={10} fill="currentColor" />
+                                                <span className="px-3 py-1 bg-amber-100 text-amber-600 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1">
+                                                    <Star size={8} className="md:size-[10px]" fill="currentColor" />
                                                     {selectedProduct.loyaltyPoints} Points
                                                 </span>
                                             )}
                                         </div>
-                                        <h2 className="text-3xl font-headline font-black text-on-surface tracking-tight">
+                                        <h2 className="text-xl md:text-3xl font-headline font-black text-on-surface tracking-tight">
                                             {selectedProduct.name}
                                         </h2>
-                                        <p className="text-4xl font-black text-primary">{formatPrice(selectedProduct.price)}</p>
+                                        <p className="text-2xl md:text-4xl font-black text-primary">{formatPrice(selectedProduct.price)}</p>
                                     </div>
 
                                     <div className="space-y-4">
@@ -434,7 +434,7 @@ export default function ProductsPage() {
                                     <button
                                         onClick={() => handleOrder(selectedProduct, qty)}
                                         disabled={isSubmitting}
-                                        className="w-full h-20 bg-primary text-white text-xl font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
+                                        className="w-full h-16 md:h-20 bg-primary text-white text-lg md:text-xl font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
                                     >
                                         {isSubmitting ? <Loader2 className="animate-spin" /> : (
                                             <>

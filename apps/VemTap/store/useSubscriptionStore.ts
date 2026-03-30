@@ -12,7 +12,7 @@ interface SubscriptionState {
   fetchCapabilities: () => Promise<void>;
   hasFeature: (feature: string) => boolean;
   isFeatureLocked: (feature: string) => boolean;
-  isLimitReached: (key: 'teamMembers' | 'loyaltyPrograms' | 'branches') => boolean;
+  isLimitReached: (key: 'teamMembers' | 'loyaltyPrograms' | 'branches' | 'catalogueItems' | 'catalogueCategories' | 'catalogueOffers') => boolean;
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()(
@@ -62,7 +62,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         return caps.capabilities.features.includes(feature);
       },
 
-      isLimitReached: (key: 'teamMembers' | 'loyaltyPrograms' | 'branches') => {
+      isLimitReached: (key: 'teamMembers' | 'loyaltyPrograms' | 'branches' | 'catalogueItems' | 'catalogueCategories' | 'catalogueOffers') => {
         const caps = get().capabilities;
         if (!caps) return false;
         const item = caps.capabilities[key];
@@ -91,6 +91,10 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           'teamMembers': 'teamMembers',
           'staff': 'teamMembers',
           'messaging': 'messaging',
+          'catalogue': 'catalogue',
+          'catalogue_items': 'catalogueItems',
+          'catalogue_categories': 'catalogueCategories',
+          'catalogue_offers': 'catalogueOffers',
         };
 
         const backendFeature = featureMapping[feature] || feature;
@@ -117,6 +121,22 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
         if (backendFeature === 'teamMembers') {
           return !caps.capabilities.teamMembers.enabled;
+        }
+
+        if (backendFeature === 'catalogue') {
+          return !caps.capabilities.catalogueItems?.enabled; // Using catalogueItems enabled as proxy for main catalogue
+        }
+
+        if (backendFeature === 'catalogueItems') {
+          return !caps.capabilities.catalogueItems?.enabled;
+        }
+
+        if (backendFeature === 'catalogueCategories') {
+          return !caps.capabilities.catalogueCategories?.enabled;
+        }
+
+        if (backendFeature === 'catalogueOffers') {
+          return !caps.capabilities.catalogueOffers?.enabled;
         }
 
         return !caps.capabilities.features.includes(backendFeature);

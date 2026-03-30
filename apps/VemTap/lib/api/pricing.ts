@@ -31,6 +31,10 @@ const normalizePlan = (raw: any): PricingPlan => ({
     branchLimit: toNumber(raw?.branchLimit),
     analyticsEnabled: Boolean(raw?.analyticsEnabled),
     analyticsLevel: raw?.analyticsLevel === 'advanced' || raw?.analyticsLevel === 'none' ? raw.analyticsLevel : 'basic',
+    catalogueEnabled: Boolean(raw?.catalogueEnabled),
+    maxCatalogueItems: toNumber(raw?.maxCatalogueItems),
+    maxCatalogueCategories: toNumber(raw?.maxCatalogueCategories),
+    maxCatalogueOffers: toNumber(raw?.maxCatalogueOffers),
     isActive: raw?.isActive ?? true,
     description: String(raw?.description ?? ''),
     isPopular: Boolean(raw?.isPopular),
@@ -45,7 +49,9 @@ const toPlanPayload = (plan: Partial<PricingPlan>) => {
         'trialDurationDays', 'smsCredits', 'whatsappCredits', 'emailCredits',
         'messagingEnabled', 'teamMembersEnabled', 'teamMembersLimit',
         'loyaltyEnabled', 'loyaltyLimit', 'branchesEnabled', 'branchLimit',
-        'analyticsEnabled', 'analyticsLevel', 'isActive', 'description', 'isPopular'
+        'analyticsEnabled', 'analyticsLevel', 'catalogueEnabled',
+        'maxCatalogueItems', 'maxCatalogueCategories', 'maxCatalogueOffers',
+        'isActive', 'description', 'isPopular'
     ];
 
     fields.forEach(field => {

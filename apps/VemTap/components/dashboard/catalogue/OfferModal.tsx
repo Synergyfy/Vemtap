@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
     X, Plus, Trash2, Image as ImageIcon, 
-    Calculator, Gift, ShoppingBag, Info, Loader2, Save
+    Calculator, Gift, ShoppingBag, Info, Loader2, Save, HelpCircle
 } from 'lucide-react';
+import Tooltip from '@/components/ui/Tooltip';
 import { 
     CatalogueOffer, 
     CatalogueOfferPricingType, 
@@ -373,7 +374,12 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest text-amber-600">Loyalty Points</label>
+                                                <label className="block text-xs font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest text-amber-600 flex items-center gap-2">
+                                                    Loyalty Points
+                                                    <Tooltip content="Bonus points awarded to the customer for purchasing this entire bundle.">
+                                                        <HelpCircle size={14} className="text-amber-500 cursor-help" />
+                                                    </Tooltip>
+                                                </label>
                                                 <input
                                                     type="number"
                                                     placeholder="0"
@@ -439,9 +445,6 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                                                 newPreviews.splice(idx, 1);
                                                                 setGalleryPreviews(newPreviews);
                                                                 if (url.startsWith('blob:') || url.startsWith('data:')) {
-                                                                    // If it was a local file, remove it from localGalleryFiles too
-                                                                    // This is slightly complex as localGalleryFiles index might not match exactly if we deleted older Cloudinary ones
-                                                                    // But for simplicity in this MVP:
                                                                     setLocalGalleryFiles(prev => prev.filter((_, i) => i !== (idx - (galleryPreviews.length - localGalleryFiles.length))));
                                                                 }
                                                             }}
@@ -467,6 +470,9 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                     <h3 className="text-sm font-black text-text-main mb-4 flex items-center gap-2 uppercase tracking-widest">
                                         <Gift size={16} className="text-emerald-500" />
                                         Instant Reward
+                                        <Tooltip content="A loyalty reward (coupon, gift, etc.) that the customer receives immediately upon completing this purchase.">
+                                            <HelpCircle size={14} className="text-emerald-500 cursor-help" />
+                                        </Tooltip>
                                     </h3>
                                     <select
                                         className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none cursor-pointer"
@@ -491,19 +497,27 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                     </h3>
                                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
                                         <div className="flex p-1 bg-white border border-gray-200 rounded-xl">
-                                            {(['sum', 'percentage_discount', 'fixed_discount_price'] as CatalogueOfferPricingType[]).map((type) => (
-                                                <button
-                                                    key={type}
-                                                    type="button"
-                                                    onClick={() => setFormData({ ...formData, pricingType: type })}
-                                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
-                                                        formData.pricingType === type 
-                                                            ? 'bg-primary text-white shadow-md' 
-                                                            : 'text-text-secondary hover:bg-gray-50'
-                                                    }`}
-                                                >
-                                                    {type.split('_')[0]}
-                                                </button>
+                                            {['sum', 'percentage_discount', 'fixed_discount_price'].map((type) => (
+                                                 <Tooltip 
+                                                     key={type} 
+                                                     content={
+                                                         type === 'sum' ? "Total price is simply the combined price of all items." :
+                                                         type === 'percentage_discount' ? "Apply a custom percentage discount to the bundle total." :
+                                                         "Set a specific fixed price for this entire bundle."
+                                                     }
+                                                 >
+                                                     <button
+                                                         type="button"
+                                                         onClick={() => setFormData({ ...formData, pricingType: type as any })}
+                                                         className={`w-full py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                                                             formData.pricingType === type 
+                                                                 ? 'bg-primary text-white shadow-md' 
+                                                                 : 'text-text-secondary hover:bg-gray-50'
+                                                         }`}
+                                                     >
+                                                         {type.split('_')[0]}
+                                                     </button>
+                                                 </Tooltip>
                                             ))}
                                         </div>
 
@@ -556,6 +570,7 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                             {formData.itemIds.length} Selected
                                         </span>
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium mb-3 ml-1 italic">Select at least one product or service to include in this bundle.</p>
                                     <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-2xl p-2 space-y-1 custom-scrollbar">
                                         {allItems.map((item: CatalogueItem) => (
                                             <button

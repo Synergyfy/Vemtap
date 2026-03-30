@@ -58,8 +58,8 @@ const PortalWelcome = ({
             exit={{ opacity: 0, y: -20 }}
             className="w-full space-y-12 py-4"
         >
-            <div className="space-y-6">
-                <h1 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
+            <div className="space-y-4 md:space-y-6">
+                <h1 className="text-2xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
                     Welcome to <span className="bg-gradient-to-r from-primary to-secondary-container bg-clip-text text-transparent">{branchName}</span>
                 </h1>
                 
@@ -69,10 +69,10 @@ const PortalWelcome = ({
                     ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-primary to-tertiary opacity-40" />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-8">
-                        <span className="bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-4 w-fit">Featured Branch</span>
-                        <h2 className="text-2xl font-headline font-bold text-white mb-2 leading-tight">Premium Experience</h2>
-                        <p className="text-white/80 text-xs mb-6 max-w-xs">{welcomeMessage || "Experience the best of our services and products tailored just for you."}</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-5 md:p-8">
+                        <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[8px] md:text-[10px] font-bold uppercase tracking-widest mb-2 md:mb-4 w-fit">Featured Branch</span>
+                        <h2 className="text-xl md:text-2xl font-headline font-bold text-white mb-1 md:mb-2 leading-tight">Premium Experience</h2>
+                        <p className="text-white/80 text-[10px] md:text-xs mb-4 md:mb-6 max-w-xs">{welcomeMessage || "Experience the best of our services and products tailored just for you."}</p>
                     </div>
                 </div>
             </div>
@@ -85,17 +85,17 @@ const PortalWelcome = ({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + (idx * 0.1) }}
                         onClick={() => onAction(item.id)}
-                        className="group relative flex flex-col gap-4 p-8 bg-white asymmetric-leaf border border-slate-50 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all text-left"
+                        className="group relative flex flex-col gap-3 md:gap-4 p-5 md:p-8 bg-white asymmetric-leaf border border-slate-50 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all text-left"
                     >
-                        <div className={cn("size-16 rounded-2xl flex items-center justify-center shadow-inner transition-transform group-hover:scale-110", item.bg, item.color)}>
-                            <item.icon size={32} strokeWidth={2.5} />
+                        <div className={cn("size-12 md:size-16 rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner transition-transform group-hover:scale-110", item.bg, item.color)}>
+                            <item.icon size={24} className="md:size-8" strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h3 className="text-xl font-headline font-bold text-slate-900 tracking-tight">{item.label}</h3>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{item.desc}</p>
+                            <h3 className="text-lg md:text-xl font-headline font-bold text-slate-900 tracking-tight">{item.label}</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 md:mt-1">{item.desc}</p>
                         </div>
-                        <div className="absolute top-8 right-8 size-10 rounded-full bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ChevronRight className="text-primary" size={20} />
+                        <div className="absolute top-5 right-5 md:top-8 md:right-8 size-8 md:size-10 rounded-full bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ChevronRight className="text-primary" size={16} />
                         </div>
                     </motion.button>
                 ))}

@@ -19,6 +19,9 @@ import { MessagingModule } from '../messaging/messaging.module';
 
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
+import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import { Device } from '../devices/entities/device.entity';
       User,
       Branch,
       Device,
+      CatalogueCategory,
+      CatalogueItem,
+      CatalogueOffer,
     ]),
     forwardRef(() => BusinessesModule),
     PaymentsModule,

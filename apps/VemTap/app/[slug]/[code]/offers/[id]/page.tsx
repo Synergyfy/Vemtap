@@ -122,37 +122,37 @@ export default function OfferDetailPage() {
 
     return (
         <div className="min-h-screen bg-slate-900 font-body text-white pb-32">
-            <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 bg-slate-900/70 backdrop-blur-xl z-50 border-b border-white/10">
-                <button onClick={() => router.back()} className="p-3 bg-white/10 backdrop-blur-md rounded-2xl hover:bg-white/20 transition-all border border-white/10">
-                    <ArrowLeft size={24} />
+            <header className="fixed top-0 left-0 w-full flex justify-between items-center px-4 md:px-6 py-3 md:py-4 bg-slate-900/70 backdrop-blur-xl z-50 border-b border-white/10">
+                <button onClick={() => router.back()} className="p-2 md:p-3 bg-white/10 backdrop-blur-md rounded-xl md:rounded-2xl hover:bg-white/20 transition-all border border-white/10">
+                    <ArrowLeft size={20} className="md:size-6" />
                 </button>
                 <div className="flex flex-col items-center">
-                    <span className="text-xs font-black tracking-[0.3em] uppercase opacity-60">Exclusive Deal</span>
-                    <span className="text-xl font-bold font-headline tracking-tighter">{storeName}</span>
+                    <span className="text-[10px] md:text-xs font-black tracking-[0.3em] uppercase opacity-60">Exclusive Deal</span>
+                    <span className="text-lg md:text-xl font-bold font-headline tracking-tighter">{storeName}</span>
                 </div>
                 <div className="size-10" />
             </header>
 
-            <main className="pt-24 px-6 max-w-5xl mx-auto space-y-12 pb-20">
+            <main className="pt-20 md:pt-24 px-4 md:px-6 max-w-5xl mx-auto space-y-8 md:space-y-12 pb-20">
                 {/* Hero Card */}
-                <div className="relative isolate overflow-hidden bg-primary-container asymmetric-leaf-lg aspect-[16/9] shadow-2xl">
+                <div className="relative isolate overflow-hidden bg-primary-container asymmetric-leaf-lg aspect-[4/3] md:aspect-[16/9] shadow-2xl">
                     <img 
                         src={offer.mainImage || '/placeholder.png'} 
                         className="absolute inset-0 size-full object-cover mix-blend-overlay opacity-60" 
                         alt="" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent flex flex-col justify-end p-10 sm:p-20">
-                        <div className="space-y-6 max-w-2xl">
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent flex flex-col justify-end p-6 md:p-20">
+                        <div className="space-y-4 md:space-y-6 max-w-2xl">
                             {percent > 0 && (
-                                <div className="flex items-center gap-2 bg-white text-primary px-6 py-2 rounded-full w-fit font-black uppercase tracking-widest text-lg shadow-xl animate-pulse">
-                                    <Sparkles size={24} />
+                                <div className="flex items-center gap-2 bg-white text-primary px-4 md:px-6 py-2 rounded-full w-fit font-black uppercase tracking-widest text-sm md:text-lg shadow-xl animate-pulse">
+                                    <Sparkles size={16} className="md:size-6" />
                                     <span>{percent}% OFF</span>
                                 </div>
                             )}
-                            <h1 className="text-5xl sm:text-7xl font-headline font-black tracking-tight leading-[1.05]">
+                            <h1 className="text-3xl md:text-7xl font-headline font-black tracking-tight leading-[1.05]">
                                 {offer.name}
                             </h1>
-                            <p className="text-xl text-white/80 font-medium leading-relaxed">
+                            <p className="text-base md:text-xl text-white/80 font-medium leading-relaxed">
                                 {offer.description}
                             </p>
                         </div>
@@ -165,18 +165,18 @@ export default function OfferDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                     <div className="lg:col-span-2 space-y-12">
                         {/* Items in the bundle */}
-                        <div className="space-y-6">
-                            <h3 className="text-xs font-black uppercase tracking-[0.4em] opacity-60">What's in the bundle</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-4 md:space-y-6">
+                            <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] opacity-60">What's in the bundle</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                                 {offer.items.map((item) => (
-                                    <div key={item.id} className="group bg-white/5 border border-white/10 rounded-[2rem] p-6 hover:bg-white/10 transition-all cursor-pointer">
-                                        <div className="flex items-center gap-5">
-                                            <div className="size-20 rounded-2xl overflow-hidden shadow-2xl shrink-0">
+                                    <div key={item.id} className="group bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] p-4 md:p-6 hover:bg-white/10 transition-all cursor-pointer">
+                                        <div className="flex items-center gap-3 md:gap-5">
+                                            <div className="size-14 md:size-20 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl shrink-0">
                                                 <img src={item.mainImage || '/placeholder.png'} className="size-full object-cover group-hover:scale-110 transition-transform" alt="" />
                                             </div>
                                             <div className="flex-grow">
-                                                <p className="text-lg font-black group-hover:text-primary transition-colors">{item.name}</p>
-                                                <p className="text-xs font-black uppercase tracking-[0.1em] opacity-60">{item.category?.name || 'Item'}</p>
+                                                <p className="text-base md:text-lg font-black group-hover:text-primary transition-colors">{item.name}</p>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.1em] opacity-60">{item.category?.name || 'Item'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -185,26 +185,26 @@ export default function OfferDetailPage() {
                         </div>
 
                         {/* Why this offer */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                            <div className="p-8 bg-white text-slate-900 rounded-[2rem] space-y-4">
-                                <Flame className="text-primary size-10" />
+                        <div className="grid grid-cols-3 gap-3 md:gap-6">
+                            <div className="p-4 md:p-8 bg-white text-slate-900 rounded-2xl md:rounded-[2rem] space-y-2 md:space-y-4 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <Flame className="text-primary size-6 md:size-10" />
                                 <div className="space-y-1">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60">Demand</h4>
-                                    <p className="text-xl font-black">Limited Time</p>
+                                    <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Demand</h4>
+                                    <p className="text-sm md:text-xl font-black">Limited</p>
                                 </div>
                             </div>
-                            <div className="p-8 bg-primary text-white rounded-[2rem] space-y-4">
-                                <Sparkles className="size-10" />
+                            <div className="p-4 md:p-8 bg-primary text-white rounded-2xl md:rounded-[2rem] space-y-2 md:space-y-4 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <Sparkles className="size-6 md:size-10" />
                                 <div className="space-y-1">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60">Rewards</h4>
-                                    <p className="text-xl font-black">+{offer.loyaltyPoints || 0} Points</p>
+                                    <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Rewards</h4>
+                                    <p className="text-sm md:text-xl font-black">+{offer.loyaltyPoints || 0} Pts</p>
                                 </div>
                             </div>
-                            <div className="p-8 bg-white/10 border border-white/10 rounded-[2rem] space-y-4">
-                                <ShieldCheck className="text-emerald-400 size-10" />
+                            <div className="p-4 md:p-8 bg-white/10 border border-white/10 rounded-2xl md:rounded-[2rem] space-y-2 md:space-y-4 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <ShieldCheck className="text-emerald-400 size-6 md:size-10" />
                                 <div className="space-y-1">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60">Guarantee</h4>
-                                    <p className="text-xl font-black">Best Value</p>
+                                    <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Value</h4>
+                                    <p className="text-sm md:text-xl font-black">Best</p>
                                 </div>
                             </div>
                         </div>
@@ -212,16 +212,16 @@ export default function OfferDetailPage() {
 
                     {/* Pricing Card */}
                     <div className="lg:sticky lg:top-32 h-fit space-y-8">
-                        <div className="bg-white text-slate-900 p-10 rounded-[3rem] shadow-2xl space-y-8">
+                        <div className="bg-white text-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-2xl space-y-6 md:space-y-8">
                             <div className="space-y-4">
-                                <p className="text-xs font-black uppercase tracking-[0.2em] text-outline text-center">Exclusive Pricing</p>
-                                <div className="space-y-1 text-center">
-                                    <div className="flex items-center justify-center gap-4">
-                                        <p className="text-2xl text-slate-400 line-through font-bold">{formatPrice(originalPrice)}</p>
-                                        <p className="text-xl bg-primary text-white px-3 py-1 rounded-full font-black">-{percent}%</p>
+                                <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-outline text-center">Exclusive Pricing</p>
+                                <div className="space-y-2 text-center">
+                                    <div className="flex items-center justify-center gap-3">
+                                        <p className="text-lg md:text-2xl text-slate-400 line-through font-bold">{formatPrice(originalPrice)}</p>
+                                        <p className="text-sm md:text-xl bg-primary text-white px-3 py-1 rounded-full font-black">-{percent}%</p>
                                     </div>
-                                    <p className="text-6xl font-black text-slate-900 font-display">{formatPrice(offer.calculatedPrice)}</p>
-                                    <p className="text-xs font-black text-emerald-600 uppercase tracking-widest pt-2">Total Savings: {formatPrice(savings)}</p>
+                                    <p className="text-4xl md:text-6xl font-black text-slate-900 font-display">{formatPrice(offer.calculatedPrice)}</p>
+                                    <p className="text-[10px] md:text-xs font-black text-emerald-600 uppercase tracking-widest pt-1">Total Savings: {formatPrice(savings)}</p>
                                 </div>
                             </div>
 

@@ -11,10 +11,14 @@ import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
 
 import { useRouter } from 'next/navigation';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
+import UsageIndicator from '@/components/dashboard/UsageIndicator';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
 export default function ProductsPage() {
     const { activeBranchId } = useActiveBranch();
     const router = useRouter();
+    const { capabilities } = useSubscriptionStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState('');
     
@@ -195,8 +199,17 @@ export default function ProductsPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8">
-            <PageHeader
+        <PageLockWrapper feature="catalogue" featureName="Catalogue">
+            <div className="p-4 md:p-8">
+                <div className="mb-6">
+                    <UsageIndicator
+                        label="Products Limit"
+                        usage={capabilities?.capabilities?.catalogueItems}
+                        icon={<Box size={18} />}
+                    />
+                </div>
+
+                <PageHeader
                 title="Products & Menu"
                 description="Manage your items and their availability"
                 actions={
@@ -254,5 +267,6 @@ export default function ProductsPage() {
                 activeBranchId={activeBranchId || undefined}
             />
         </div>
+        </PageLockWrapper>
     );
 }

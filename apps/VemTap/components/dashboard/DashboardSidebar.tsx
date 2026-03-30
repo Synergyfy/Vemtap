@@ -230,6 +230,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             label: 'Catalogue',
             icon: ShoppingBag,
             roles: ['owner', 'manager'],
+            feature: 'catalogue',
+            featureName: 'Catalogue',
             submenu: [
                 { label: 'Overview', href: '/dashboard/catalogue' },
                 { label: 'Items', href: '/dashboard/catalogue/products' },

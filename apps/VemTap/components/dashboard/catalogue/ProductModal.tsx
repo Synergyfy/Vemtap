@@ -15,7 +15,8 @@ import {
 } from '@/services/catalogue/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import toast from 'react-hot-toast';
-import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Box, Cog, Coins } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Box, Cog, Coins, HelpCircle } from 'lucide-react';
+import Tooltip from '@/components/ui/Tooltip';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { cn } from '@/lib/utils';
 import Cropper, { Point, Area } from 'react-easy-crop';
@@ -339,7 +340,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Item Type *</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Item Type *</label>
+                                        <Tooltip content="Products are physical goods, while Services are time-based bookings.">
+                                            <HelpCircle size={14} className="text-text-secondary cursor-help" />
+                                        </Tooltip>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
                                         <button
                                             type="button"
@@ -371,6 +377,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Original Price (₦) *</label>
                                     <input type="number" step="0.01" {...register('price')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" />
+                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Base price before any discounts are applied.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Category *</label>
@@ -386,6 +393,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <div className="flex items-center gap-2">
                                     <Tag size={16} className="text-primary" />
                                     <h4 className="text-xs font-black text-primary uppercase tracking-widest">Pricing & Discounts</h4>
+                                    <Tooltip content="Percentage Off (%) reduces price by a fraction, Fixed Price (₦) sets a specific discounted amount.">
+                                        <HelpCircle size={14} className="text-primary cursor-help" />
+                                    </Tooltip>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -507,6 +517,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <label className="text-xs font-black text-text-secondary uppercase tracking-widest flex items-center gap-2">
                                     <Coins size={14} className="text-amber-500" />
                                     Loyalty Points
+                                    <Tooltip content="Customers earn these points upon successful order completion.">
+                                        <HelpCircle size={14} className="text-text-secondary cursor-help" />
+                                    </Tooltip>
                                 </label>
                                 <input type="number" {...register('loyaltyPoints')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="Points on purchase" />
                             </div>
