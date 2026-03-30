@@ -68,9 +68,9 @@ const PortalWelcome = ({
 
     return (
         <motion.div 
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
             className="w-full space-y-4 md:space-y-6 pt-0 pb-6"
         >
             <div className="flex items-center gap-4 mb-4 border-b border-slate-100/50 pb-4">
@@ -290,114 +290,123 @@ const DynamicTapJourneyPage = () => {
             onReset={resetFlow}
             brandColor={useCustomerFlowStore.getState().engagementSettings?.brandColor}
         >
-            <AnimatePresence mode="wait">
-                {currentStep === 'SCANNING' && <StepScanning storeName={storeName} />}
-                
-                {currentStep === 'IDENTIFYING' && <StepIdentifying />}
+            <div className={cn(
+                "relative w-full transition-all duration-700",
+                showInitialAuth ? "blur-2xl scale-[0.98] pointer-events-none opacity-60" : "blur-0 scale-100"
+            )}>
+                <AnimatePresence mode="wait">
+                    {currentStep === 'SCANNING' && <StepScanning key="scanning" storeName={storeName} />}
+                    
+                    {currentStep === 'IDENTIFYING' && <StepIdentifying key="identifying" />}
 
-                {currentStep === 'PORTAL_MENU' && (
-                    <div className="relative w-full">
-                        <div className={cn(
-                            "transition-all duration-700",
-                            showInitialAuth ? "blur-2xl scale-[0.98] pointer-events-none opacity-60" : "blur-0 scale-100"
-                        )}>
-                            <PortalWelcome 
-                                branchName={storeName}
-                                welcomeMessage={customWelcomeMessage || undefined}
-                                logoUrl={logoUrl || undefined}
-                                onAction={handleAction}
-                                productCount={productCount}
-                                serviceCount={serviceCount}
-                                offerCount={offerCount}
-                                formCount={formCount}
-                                isFirstTimeVisit={deviceContext?.device?.isFirstTimeVisit ?? true}
-                                isReturningUser={!!deviceContext?.device?.isReturningUser}
-                                engagement={engagementSettings}
+                    {currentStep === 'PORTAL_MENU' && (
+                        <PortalWelcome 
+                            key="portal-menu"
+                            branchName={storeName}
+                            welcomeMessage={customWelcomeMessage || undefined}
+                            logoUrl={logoUrl || undefined}
+                            onAction={handleAction}
+                            productCount={productCount}
+                            serviceCount={serviceCount}
+                            offerCount={offerCount}
+                            formCount={formCount}
+                            isFirstTimeVisit={deviceContext?.device?.isFirstTimeVisit ?? true}
+                            isReturningUser={!!deviceContext?.device?.isReturningUser}
+                            engagement={engagementSettings}
+                        />
+                    )}
+
+                    {currentStep === 'FORM' && (
+                        <StepForm
+                            key="form-step"
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            customWelcomeTitle="Join to Continue"
+                            customWelcomeMessage="Quickly share your details to proceed with your request."
+                            submitLabel="Complete Registration"
+                            isSubmitting={isSubmitting}
+                            onBack={() => {
+                                setPendingAction(null);
+                                setStep('PORTAL_MENU');
+                            }}
+                            onSubmit={onRegistrationComplete}
+                        />
+                    )}
+
+                    {currentStep === 'SOCIAL_CONNECT' && (
+                        <StepSocialConnect 
+                            key="social"
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            engagement={engagementSettings}
+                            onBack={() => setStep('PORTAL_MENU')}
+                        />
+                    )}
+
+                    {currentStep === 'FORMS_LIST' && (
+                        <StepFormList 
+                            key="forms-list"
+                            branchId={branchId || ''}
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            onSelect={(form) => {
+                                setSelectedFormCode(form.uniqueCode);
+                                setStep('DYNAMIC_FORM');
+                            }}
+                            onBack={() => setStep('PORTAL_MENU')}
+                        />
+                    )}
+
+                    {currentStep === 'DYNAMIC_FORM' && selectedFormCode && (
+                        <StepDynamicForm 
+                            key={`dynamic-form-${selectedFormCode}`}
+                            formCode={selectedFormCode}
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            isAuthenticated={isAuthenticated}
+                            onRequireAuth={(action) => {
+                                setPendingAction(() => action);
+                                setShowInitialAuth(true);
+                            }}
+                            onBack={() => setStep('FORMS_LIST')}
+                            onSuccess={() => {
+                                setStep('FORMS_LIST');
+                            }}
+                        />
+                    )}
+                </AnimatePresence>
+            </div>
+
+            <AnimatePresence>
+                {showInitialAuth && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/5 backdrop-blur-sm"
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-lg"
+                        >
+                            <StepForm
+                                storeName={storeName}
+                                logoUrl={logoUrl}
+                                customWelcomeTitle={pendingAction ? "Identification Required" : "One Last Step"}
+                                customWelcomeMessage={pendingAction ? "Please share your details to proceed with your submission." : "Please share your details to unlock our premium services and exclusive rewards."}
+                                submitLabel={pendingAction ? "Identify & Submit" : "Start My Experience"}
+                                isSubmitting={isSubmitting}
+                                onBack={() => {
+                                    setShowInitialAuth(false);
+                                    setPendingAction(null);
+                                }}
+                                onSubmit={onRegistrationComplete}
                             />
-                        </div>
-
-                        <AnimatePresence>
-                            {showInitialAuth && (
-                                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                                    <motion.div 
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="absolute inset-0 bg-black/5 backdrop-blur-sm"
-                                    />
-                                    <motion.div 
-                                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                        className="relative w-full max-w-lg"
-                                    >
-                                        <StepForm
-                                            storeName={storeName}
-                                            logoUrl={logoUrl}
-                                            customWelcomeTitle="One Last Step"
-                                            customWelcomeMessage="Please share your details to unlock our premium services and exclusive rewards."
-                                            submitLabel="Start My Experience"
-                                            isSubmitting={isSubmitting}
-                                            onBack={() => {
-                                                setShowInitialAuth(false);
-                                            }}
-                                            onSubmit={onRegistrationComplete}
-                                        />
-                                    </motion.div>
-                                </div>
-                            )}
-                        </AnimatePresence>
+                        </motion.div>
                     </div>
-                )}
-
-                {currentStep === 'FORM' && (
-                    <StepForm
-                        storeName={storeName}
-                        logoUrl={logoUrl}
-                        customWelcomeTitle="Join to Continue"
-                        customWelcomeMessage="Quickly share your details to proceed with your request."
-                        submitLabel="Complete Registration"
-                        isSubmitting={isSubmitting}
-                        onBack={() => {
-                            setPendingAction(null);
-                            setStep('PORTAL_MENU');
-                        }}
-                        onSubmit={onRegistrationComplete}
-                    />
-                )}
-
-                {currentStep === 'SOCIAL_CONNECT' && (
-                    <StepSocialConnect 
-                        storeName={storeName}
-                        logoUrl={logoUrl}
-                        engagement={engagementSettings}
-                        onBack={() => setStep('PORTAL_MENU')}
-                    />
-                )}
-
-                {currentStep === 'FORMS_LIST' && (
-                    <StepFormList 
-                        branchId={branchId || ''}
-                        storeName={storeName}
-                        logoUrl={logoUrl}
-                        onSelect={(form) => {
-                            setSelectedFormCode(form.uniqueCode);
-                            setStep('DYNAMIC_FORM');
-                        }}
-                        onBack={() => setStep('PORTAL_MENU')}
-                    />
-                )}
-
-                {currentStep === 'DYNAMIC_FORM' && selectedFormCode && (
-                    <StepDynamicForm 
-                        formCode={selectedFormCode}
-                        storeName={storeName}
-                        logoUrl={logoUrl}
-                        onBack={() => setStep('FORMS_LIST')}
-                        onSuccess={() => {
-                            setStep('FORMS_LIST');
-                        }}
-                    />
                 )}
             </AnimatePresence>
         </VisitorLayout>

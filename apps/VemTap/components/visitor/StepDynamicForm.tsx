@@ -19,6 +19,8 @@ interface StepDynamicFormProps {
     formCode: string;
     storeName: string;
     logoUrl?: string | null;
+    isAuthenticated: boolean;
+    onRequireAuth: (action: () => void) => void;
     onBack: () => void;
     onSuccess: () => void;
 }
@@ -27,6 +29,8 @@ export const StepDynamicForm: React.FC<StepDynamicFormProps> = ({
     formCode,
     storeName,
     logoUrl,
+    isAuthenticated,
+    onRequireAuth,
     onBack,
     onSuccess
 }) => {
@@ -47,9 +51,6 @@ export const StepDynamicForm: React.FC<StepDynamicFormProps> = ({
         },
         onSuccess: () => {
             setIsSubmitted(true);
-            setTimeout(() => {
-                onSuccess();
-            }, 2500);
         }
     });
 
@@ -62,12 +63,20 @@ export const StepDynamicForm: React.FC<StepDynamicFormProps> = ({
     });
 
     const onFormSubmit = (data: any) => {
-        // Transform data into the expected answers array
-        const answers = Object.entries(data).map(([fieldId, value]) => ({
-            fieldId,
-            value
-        }));
-        submitMutation.mutate({ answers });
+        const performSubmit = () => {
+            // Transform data into the expected answers array
+            const answers = Object.entries(data).map(([fieldId, value]) => ({
+                fieldId,
+                value
+            }));
+            submitMutation.mutate({ answers });
+        };
+
+        if (!isAuthenticated) {
+            onRequireAuth(performSubmit);
+        } else {
+            performSubmit();
+        }
     };
 
     if (isLoading) {
@@ -100,13 +109,21 @@ export const StepDynamicForm: React.FC<StepDynamicFormProps> = ({
                     <div className="size-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6">
                         <CheckCircle2 className="size-10 text-emerald-500" />
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 mb-2">Thank You!</h2>
-                    <p className="text-sm font-medium text-slate-500 max-w-[250px]">
-                        Your response has been successfully submitted.
+                    <h2 className="text-2xl font-black text-slate-900 mb-2">
+                        {form.successTitle || "Thank You!"}
+                    </h2>
+                    <p className="text-sm font-medium text-slate-500 max-w-[280px]">
+                        {form.successMessage || "Your response has been successfully submitted."}
                     </p>
-                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-8 animate-pulse">
-                        Returning to list...
-                    </p>
+
+                    <div className="mt-10 w-full">
+                        <button 
+                            onClick={onSuccess}
+                            className={presets.button}
+                        >
+                            <span>Continue</span>
+                        </button>
+                    </div>
                 </div>
             </motion.div>
         );
