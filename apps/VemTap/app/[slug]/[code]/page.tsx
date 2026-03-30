@@ -14,14 +14,18 @@ import { VisitorLayout } from '@/components/visitor/VisitorLayout';
 import { StepScanning } from '@/components/visitor/StepScanning';
 import { StepIdentifying } from '@/components/visitor/StepIdentifying';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
+import { StepSocialConnect } from '@/components/visitor/StepSocialConnect';
+import { StepFormList } from '@/components/visitor/StepFormList';
+import { StepDynamicForm } from '@/components/visitor/StepDynamicForm';
 import { 
     ShoppingBag, 
     Calendar, 
     Gift, 
-    MessageSquare, 
     ChevronRight, 
     ShieldCheck,
-    Clock
+    Clock,
+    ClipboardList,
+    Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,55 +33,69 @@ import { cn } from '@/lib/utils';
 
 const PortalWelcome = ({ 
     branchName, 
-    welcomeMessage, 
     logoUrl, 
-    onAction,
-    productCount = 0,
-    serviceCount = 0,
-    offerCount = 0
+    welcomeMessage, 
+    onAction, 
+    productCount, 
+    serviceCount, 
+    offerCount,
+    formCount,
+    isFirstTimeVisit,
+    isReturningUser,
+    engagement
 }: { 
     branchName: string, 
-    welcomeMessage: string | null, 
-    logoUrl: string | null, 
-    onAction: (action: string) => void,
+    logoUrl?: string, 
+    welcomeMessage?: string, 
+    onAction: (id: string) => void,
     productCount?: number,
     serviceCount?: number,
-    offerCount?: number
+    offerCount?: number,
+    formCount?: number,
+    isFirstTimeVisit?: boolean,
+    isReturningUser?: boolean,
+    engagement?: any
 }) => {
     const actions = [
         { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
         { id: 'service', label: 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Reservations & Slots', count: serviceCount },
         { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
-        { id: 'chat', label: 'Support Chat', icon: MessageSquare, color: 'text-indigo-500', bg: 'bg-indigo-50', desc: 'Direct Assistance', count: 1 },
-    ].filter(action => action.count > 0);
+        { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
+        { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
+    ].filter(action => action.count && action.count > 0);
+
+    const isCompact = actions.length <= 4;
 
     return (
         <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full space-y-12 py-4"
+            exit={{ opacity: 0, y: -5 }}
+            className="w-full space-y-4 md:space-y-6 pt-0 pb-6"
         >
-            <div className="space-y-4 md:space-y-6">
-                <h1 className="text-2xl md:text-5xl font-headline font-extrabold text-on-surface leading-[1.1] tracking-tight">
-                    Welcome to <span className="bg-gradient-to-r from-primary to-secondary-container bg-clip-text text-transparent">{branchName}</span>
-                </h1>
-                
-                <div className="relative w-full aspect-[16/9] bg-primary-container rounded-lg asymmetric-leaf overflow-hidden group shadow-2xl shadow-primary/10">
-                    {logoUrl ? (
-                        <img alt={branchName} className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60 transition-transform duration-700 group-hover:scale-105" src={logoUrl} />
-                    ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary to-tertiary opacity-40" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-5 md:p-8">
-                        <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[8px] md:text-[10px] font-bold uppercase tracking-widest mb-2 md:mb-4 w-fit">Featured Branch</span>
-                        <h2 className="text-xl md:text-2xl font-headline font-bold text-white mb-1 md:mb-2 leading-tight">Premium Experience</h2>
-                        <p className="text-white/80 text-[10px] md:text-xs mb-4 md:mb-6 max-w-xs">{welcomeMessage || "Experience the best of our services and products tailored just for you."}</p>
+            <div className="flex items-center gap-4 mb-4 border-b border-slate-100/50 pb-4">
+                {logoUrl ? (
+                    <div className="size-12 md:size-16 rounded-full border-2 border-white shadow-lg overflow-hidden bg-white shrink-0 transition-transform group-hover:scale-105">
+                        <img src={logoUrl} alt={branchName} className="size-full object-cover" />
                     </div>
+                ) : (
+                    <div className="size-12 md:size-16 rounded-full bg-primary flex items-center justify-center text-white shadow-lg shrink-0">
+                        <span className="font-headline font-black text-lg md:text-xl uppercase tracking-tighter">
+                            {branchName.charAt(0)}
+                        </span>
+                    </div>
+                )}
+                <div className="space-y-0.5 flex-grow">
+                    <h1 className="text-lg md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight">
+                       Welcome to {branchName}
+                    </h1>
+                    <p className="text-on-surface-variant text-[9px] md:text-[10px] max-w-xs font-medium opacity-70 italic line-clamp-1">
+                        {welcomeMessage || "Select an option below to get started"}
+                    </p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-3 md:gap-6">
                 {actions.map((item, idx) => (
                     <motion.button
                         key={item.id}
@@ -85,30 +103,49 @@ const PortalWelcome = ({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + (idx * 0.1) }}
                         onClick={() => onAction(item.id)}
-                        className="group relative flex flex-col gap-3 md:gap-4 p-5 md:p-8 bg-white asymmetric-leaf border border-slate-50 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all text-left"
+                        className={cn(
+                            "group relative flex border border-slate-50 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all text-left overflow-hidden bg-white asymmetric-leaf",
+                            isCompact 
+                                ? "flex-row items-center gap-2 md:gap-4 p-2.5 md:p-6" 
+                                : "flex-col gap-3 md:gap-5 p-5 md:p-8"
+                        )}
                     >
-                        <div className={cn("size-12 md:size-16 rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner transition-transform group-hover:scale-110", item.bg, item.color)}>
-                            <item.icon size={24} className="md:size-8" strokeWidth={2.5} />
+                        <div className={cn(
+                            "rounded-lg md:rounded-xl flex items-center justify-center shadow-inner shrink-0 transition-transform group-hover:scale-105",
+                            item.bg, 
+                            item.color,
+                            isCompact ? "size-10 md:size-14" : "size-12 md:size-16"
+                        )}>
+                            <item.icon size={isCompact ? 18 : 24} className={isCompact ? "md:size-7" : "md:size-8"} strokeWidth={2.5} />
                         </div>
-                        <div>
-                            <h3 className="text-lg md:text-xl font-headline font-bold text-slate-900 tracking-tight">{item.label}</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 md:mt-1">{item.desc}</p>
+                        <div className="min-w-0">
+                            <h3 className={cn(
+                                "font-headline font-bold text-slate-900 tracking-tight leading-tight truncate",
+                                isCompact ? "text-[11px] md:text-lg" : "text-lg md:text-xl"
+                            )}>{item.label}</h3>
+                            <p className={cn(
+                                "text-slate-400 font-bold uppercase tracking-widest mt-0.5",
+                                isCompact ? "text-[8px] hidden md:block" : "text-[10px]"
+                            )}>{item.desc}</p>
                         </div>
-                        <div className="absolute top-5 right-5 md:top-8 md:right-8 size-8 md:size-10 rounded-full bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ChevronRight className="text-primary" size={16} />
+                        <div className={cn(
+                            "absolute p-1 opacity-10 group-hover:opacity-100 transition-opacity",
+                            isCompact ? "-right-1 bottom-0" : "top-5 right-5 md:top-8 md:right-8"
+                        )}>
+                            <ChevronRight className="text-primary" size={isCompact ? 12 : 16} />
                         </div>
                     </motion.button>
                 ))}
             </div>
 
-            <div className="flex justify-center gap-8 py-6 opacity-50 border-t border-slate-100">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <ShieldCheck size={14} />
+            <div className="flex justify-center gap-6 py-4 opacity-40 border-t border-slate-100/50">
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    <ShieldCheck size={12} />
                     Verified
                 </div>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <Clock size={14} />
-                    Fast Support
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    <Clock size={12} />
+                    Instant Service
                 </div>
             </div>
         </motion.div>
@@ -117,15 +154,17 @@ const PortalWelcome = ({
 
 // --- Main Page Component ---
 
-export default function DynamicTapJourneyPage() {
+const DynamicTapJourneyPage = () => {
     const params = useParams();
     const router = useRouter();
     const deviceCode = params.code as string;
+    const slug = params.slug as string;
 
     const {
         currentStep, setStep, storeName, setUserData, resetFlow,
         initializeFromBusiness, branchId, logoUrl, businessId,
-        customWelcomeMessage, productCount, serviceCount, offerCount
+        customWelcomeMessage, productCount, serviceCount, offerCount,
+        formCount, engagementSettings, selectedFormCode, setSelectedFormCode
     } = useCustomerFlowStore();
 
     const { isAuthenticated, login } = useAuthStore();
@@ -145,12 +184,8 @@ export default function DynamicTapJourneyPage() {
 
         const state = useCustomerFlowStore.getState();
         
-        // Ultimate skip logic:
-        // 1. We already have the session for THIS device in the store
-        // 2. The portal is ALREADY active (never revert to scanning)
-        // 3. The backend says this device visit is not a first-time visit
         const isAlreadyOnThisDevice = state.deviceCode === deviceCode && !!state.businessId;
-        const isPortalStep = ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM'].includes(state.currentStep);
+        const isPortalStep = ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM', 'FORMS_LIST', 'DYNAMIC_FORM', 'SOCIAL_CONNECT'].includes(state.currentStep);
         const isReturningVisitor = deviceContext.device?.isFirstTimeVisit === false;
         
         const shouldSkipAnimation = isAlreadyOnThisDevice || isPortalStep || isReturningVisitor;
@@ -188,23 +223,17 @@ export default function DynamicTapJourneyPage() {
 
     const handleAction = (id: string) => {
         if (id === 'order') {
-            router.push(`/${params.slug}/${deviceCode}/products`);
+            router.push(`/${slug}/${deviceCode}/products`);
         } else if (id === 'service') {
-            router.push(`/${params.slug}/${deviceCode}/services`);
+            router.push(`/${slug}/${deviceCode}/services`);
         } else if (id === 'offers') {
-            router.push(`/${params.slug}/${deviceCode}/offers`);
-        } else if (id === 'chat') {
-            const navigateToChat = () => {
-                const businessBranchId = branchId || businessId;
-                router.push(`/customer/messaging/chat?branchId=${businessBranchId}`);
-            };
-
-            if (!isAuthenticated) {
-                setPendingAction(() => navigateToChat);
-                setStep('FORM');
-            } else {
-                navigateToChat();
-            }
+            router.push(`/${slug}/${deviceCode}/offers`);
+        } else if (id === 'forms') {
+            setStep('FORMS_LIST');
+        } else if (id === 'engagement') {
+            setStep('SOCIAL_CONNECT');
+        } else {
+            router.push(`/${slug}/${deviceCode}/${id}`);
         }
     };
 
@@ -274,12 +303,16 @@ export default function DynamicTapJourneyPage() {
                         )}>
                             <PortalWelcome 
                                 branchName={storeName}
-                                welcomeMessage={customWelcomeMessage}
-                                logoUrl={logoUrl}
+                                welcomeMessage={customWelcomeMessage || undefined}
+                                logoUrl={logoUrl || undefined}
                                 onAction={handleAction}
                                 productCount={productCount}
                                 serviceCount={serviceCount}
                                 offerCount={offerCount}
+                                formCount={formCount}
+                                isFirstTimeVisit={deviceContext?.device?.isFirstTimeVisit ?? true}
+                                isReturningUser={!!deviceContext?.device?.isReturningUser}
+                                engagement={engagementSettings}
                             />
                         </div>
 
@@ -306,7 +339,6 @@ export default function DynamicTapJourneyPage() {
                                             submitLabel="Start My Experience"
                                             isSubmitting={isSubmitting}
                                             onBack={() => {
-                                                // Optional: allow back to re-scan or just close
                                                 setShowInitialAuth(false);
                                             }}
                                             onSubmit={onRegistrationComplete}
@@ -333,7 +365,43 @@ export default function DynamicTapJourneyPage() {
                         onSubmit={onRegistrationComplete}
                     />
                 )}
+
+                {currentStep === 'SOCIAL_CONNECT' && (
+                    <StepSocialConnect 
+                        storeName={storeName}
+                        logoUrl={logoUrl}
+                        engagement={engagementSettings}
+                        onBack={() => setStep('PORTAL_MENU')}
+                    />
+                )}
+
+                {currentStep === 'FORMS_LIST' && (
+                    <StepFormList 
+                        branchId={branchId || ''}
+                        storeName={storeName}
+                        logoUrl={logoUrl}
+                        onSelect={(form) => {
+                            setSelectedFormCode(form.uniqueCode);
+                            setStep('DYNAMIC_FORM');
+                        }}
+                        onBack={() => setStep('PORTAL_MENU')}
+                    />
+                )}
+
+                {currentStep === 'DYNAMIC_FORM' && selectedFormCode && (
+                    <StepDynamicForm 
+                        formCode={selectedFormCode}
+                        storeName={storeName}
+                        logoUrl={logoUrl}
+                        onBack={() => setStep('FORMS_LIST')}
+                        onSuccess={() => {
+                            setStep('FORMS_LIST');
+                        }}
+                    />
+                )}
             </AnimatePresence>
         </VisitorLayout>
     );
-}
+};
+
+export default DynamicTapJourneyPage;
