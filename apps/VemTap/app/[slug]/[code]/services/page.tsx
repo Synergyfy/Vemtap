@@ -27,11 +27,18 @@ import {
     useCatalogueCategoriesPublic 
 } from '@/services/catalogue/hooks';
 import { useAddToCart } from '@/services/catalogue-cart/hooks';
+import { 
+    useCart, 
+    useUpdateCartItem, 
+    useRemoveCartItem 
+} from '@/services/catalogue-cart/hooks';
 import { useGuestCartStore } from '@/store/useGuestCartStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useCartMergeOnLogin } from '@/hooks/useCartMergeOnLogin';
 import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
+import { FloatingCartSummary } from '@/components/visitor/FloatingCartSummary';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { api } from '@/lib/api';
 import { User } from '@/store/useAuthStore';
@@ -55,8 +62,54 @@ export default function ServicesPage() {
 
     // Cart
     const addToCartMutation = useAddToCart();
+    const updateItemMutation = useUpdateCartItem(branchId || '');
+    const removeItemMutation = useRemoveCartItem(branchId || '');
+    const { data: serverCart } = useCart(branchId);
+    
+    const guestItems = useGuestCartStore(
+        useShallow((s) => (branchId ? s.getItemsForBranch(branchId) : []))
+    );
     const guestCartStore = useGuestCartStore();
     useCartMergeOnLogin(branchId);
+
+    const getCartQuantity = (itemId: string) => {
+        if (isAuthenticated) {
+            return serverCart?.items.find(i => i.itemId === itemId)?.quantity || 0;
+        } else {
+            return guestItems.find(i => i.itemId === itemId)?.quantity || 0;
+        }
+    };
+
+    const handleUpdateQuantity = (item: CatalogueItem, delta: number) => {
+        const currentQty = getCartQuantity(item.id);
+        const newQty = currentQty + delta;
+        
+        if (isAuthenticated) {
+            const cartItem = serverCart?.items.find(i => i.itemId === item.id);
+            if (newQty <= 0 && cartItem) {
+                removeItemMutation.mutate(cartItem.id);
+            } else if (cartItem) {
+                updateItemMutation.mutate({ cartItemId: cartItem.id, quantity: newQty });
+            } else if (newQty > 0) {
+                addToCartMutation.mutate({ branchId: branchId!, itemId: item.id, quantity: newQty });
+            }
+        } else {
+            const guestItem = guestItems.find(i => i.id === item.id || i.itemId === item.id);
+            if (guestItem) {
+                guestCartStore.updateQuantity(guestItem.id, newQty);
+            } else if (newQty > 0) {
+                guestCartStore.addItem({
+                    branchId: branchId!,
+                    itemId: item.id,
+                    quantity: newQty,
+                    name: item.name,
+                    price: Number(item.price),
+                    image: item.mainImage ?? undefined,
+                    itemType: 'service',
+                });
+            }
+        }
+    };
 
     const handleAddToCart = (item: CatalogueItem, quantity = 1) => {
         if (isAuthenticated) {
@@ -252,46 +305,78 @@ export default function ServicesPage() {
                                     )}>{formatPrice(service.price)}</span>
                                     
                                     {viewMode === 'grid' ? (
-                                        <div className="grid grid-cols-2 gap-1 w-full mt-1">
-                                            <button 
-                                                className="py-1.5 bg-slate-100 text-slate-800 text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-slate-200 transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleAddToCart(service);
-                                                }}
-                                            >
-                                                Cart
-                                            </button>
-                                            <button 
-                                                className="py-1.5 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedService(service);
-                                                }}
-                                            >
-                                                Book
-                                            </button>
+                                        <div className="mt-2 h-8">
+                                            {getCartQuantity(service.id) === 0 ? (
+                                                <button 
+                                                    className="w-full h-full bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-1.5"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleUpdateQuantity(service, 1);
+                                                    }}
+                                                >
+                                                    <Plus size={10} strokeWidth={4} />
+                                                    Add
+                                                </button>
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-between bg-slate-100 rounded-lg p-1 overflow-hidden">
+                                                    <button 
+                                                        className="size-6 bg-white rounded-md flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateQuantity(service, -1);
+                                                        }}
+                                                    >
+                                                        <Minus size={10} strokeWidth={4} />
+                                                    </button>
+                                                    <span className="text-[10px] font-black">{getCartQuantity(service.id)}</span>
+                                                    <button 
+                                                        className="size-6 bg-white rounded-md flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateQuantity(service, 1);
+                                                        }}
+                                                    >
+                                                        <Plus size={10} strokeWidth={4} />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
-                                        <div className="flex gap-2 w-full sm:w-auto mt-0.5 md:mt-0">
-                                            <button 
-                                                className="px-4 py-2 bg-slate-100 text-slate-800 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleAddToCart(service);
-                                                }}
-                                            >
-                                                Add to Cart
-                                            </button>
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedService(service);
-                                                }}
-                                                className="px-4 py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-colors"
-                                            >
-                                                Book Now
-                                            </button>
+                                        <div className="h-10 mt-2">
+                                            {getCartQuantity(service.id) === 0 ? (
+                                                <button 
+                                                    className="px-6 h-full bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleUpdateQuantity(service, 1);
+                                                    }}
+                                                >
+                                                    <Plus size={12} strokeWidth={4} />
+                                                    Add to Cart
+                                                </button>
+                                            ) : (
+                                                <div className="h-full flex items-center bg-slate-100 rounded-xl p-1 gap-4 overflow-hidden w-fit">
+                                                    <button 
+                                                        className="size-8 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors text-red-500"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateQuantity(service, -1);
+                                                        }}
+                                                    >
+                                                        <Minus size={14} strokeWidth={4} />
+                                                    </button>
+                                                    <span className="text-sm font-black w-4 text-center">{getCartQuantity(service.id)}</span>
+                                                    <button 
+                                                        className="size-8 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateQuantity(service, 1);
+                                                        }}
+                                                    >
+                                                        <Plus size={14} strokeWidth={4} />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -311,6 +396,7 @@ export default function ServicesPage() {
                 </section>
             </main>
 
+            {branchId && <FloatingCartSummary branchId={branchId} />}
             <PremiumBottomNav />
 
             {/* Service Detail Modal - (Optional: Kept for quick view if needed, but routing is preferred now) */}
@@ -376,23 +462,18 @@ export default function ServicesPage() {
 
                                 <div className="flex gap-4">
                                     <button
-                                        onClick={() => selectedService && handleAddToCart(selectedService)}
-                                        className="flex-1 h-14 md:h-16 bg-slate-100 text-slate-800 text-sm md:text-base font-black rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                                        onClick={() => {
+                                            if (selectedService) {
+                                                const currentQty = getCartQuantity(selectedService.id);
+                                                handleUpdateQuantity(selectedService, 1 - currentQty);
+                                                setSelectedService(null);
+                                                toast.success('Cart updated!');
+                                            }
+                                        }}
+                                        className="flex-1 h-14 md:h-16 bg-primary text-white text-sm md:text-base font-black rounded-2xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-xl shadow-primary/20"
                                     >
                                         <ShoppingCart size={20} />
-                                        Add to Cart
-                                    </button>
-                                    <button
-                                        onClick={() => handleBooking(selectedService, 1)}
-                                        disabled={isSubmitting}
-                                        className="flex-[1.5] h-14 md:h-16 bg-slate-900 text-white text-sm md:text-base font-black rounded-2xl md:rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-black hover:-translate-y-1 active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 uppercase tracking-widest"
-                                    >
-                                        {isSubmitting ? <Loader2 className="animate-spin" /> : (
-                                            <>
-                                                <Calendar size={24} />
-                                                Book Now
-                                            </>
-                                        )}
+                                        Update Cart
                                     </button>
                                 </div>
                             </div>

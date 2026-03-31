@@ -246,7 +246,7 @@ export class VisitorsService {
       .getRawOne();
     const totalVisitors = parseInt(totalVisitorsRaw?.count || '0', 10);
 
-    // Total visits in this context
+    // Total visits in this context (all visit types — any tap counts)
     const totalVisitsCount = await this.visitRepository.count({
       where: contextWhere,
     });
@@ -265,7 +265,9 @@ export class VisitorsService {
       .getRawMany();
     const newVisitorsCount = newVisitorsRaw.length;
 
-    // Returning Visitors: Customers with more than 1 visit in this context
+    // Returning Visitors: Customers with more than 1 visit (any type) in this context.
+    // The 4-hour cooldown in recordPortalVisit prevents the same tap from generating
+    // multiple rows, so COUNT > 1 reliably means the customer came back on a separate occasion.
     const returningVisitorsRaw = await this.visitRepository
       .createQueryBuilder('visit')
       .select('visit.customerId')
@@ -649,6 +651,7 @@ export class VisitorsService {
       );
     }
 
+    // Any visit type counts — customers with > 1 visit are returning.
     const dataQb = baseQb.clone()
       .select([
         'user.id as id',
@@ -713,7 +716,12 @@ export class VisitorsService {
       });
     }
 
-    const totalVisitors = await totalVisitorsQb.getCount();
+    // Use COUNT(DISTINCT user.id) instead of getCount() — getCount() on a join
+    // returns matching rows not unique users, inflating the denominator.
+    const totalVisitorsRaw = await totalVisitorsQb
+      .select('COUNT(DISTINCT user.id)', 'count')
+      .getRawOne();
+    const totalVisitors = parseInt(totalVisitorsRaw?.count || '0', 10);
 
     const returningCountQb = this.userRepository
       .createQueryBuilder('user')
@@ -730,7 +738,14 @@ export class VisitorsService {
 
     const returningCountRaw = await this.dataSource.createQueryBuilder()
       .select('COUNT(*)', 'count')
-      .from(`(${returningCountQb.select('user.id').groupBy('user.id').having('COUNT(visit.id) > 1').getQuery()})`, 'subquery')
+      .from(
+        `(${returningCountQb
+          .select('user.id')
+          .groupBy('user.id')
+          .having('COUNT(visit.id) > 1')
+          .getQuery()})`,
+        'subquery',
+      )
       .setParameters(returningCountQb.getParameters())
       .getRawOne();
     
@@ -754,7 +769,14 @@ export class VisitorsService {
 
     const vipCountRaw = await this.dataSource.createQueryBuilder()
       .select('COUNT(*)', 'count')
-      .from(`(${vipCountQb.select('user.id').groupBy('user.id').having('COUNT(visit.id) > 10').getQuery()})`, 'subquery')
+      .from(
+        `(${vipCountQb
+          .select('user.id')
+          .groupBy('user.id')
+          .having('COUNT(visit.id) > 10')
+          .getQuery()})`,
+        'subquery',
+      )
       .setParameters(vipCountQb.getParameters())
       .getRawOne();
 
@@ -901,6 +923,8 @@ export class VisitorsService {
 
     // Assuming visits are ordered DESC (latest first) from query or we sort here
     const lastVisit = visits.length > 0 ? visits[0].createdAt : user.createdAt;
+
+    // Any visit type counts — a customer with > 1 visit is returning.
     const visitCount = visits.length;
 
     let status = 'New';
@@ -1054,6 +1078,7 @@ export class VisitorsService {
     }
 
     // ── 5. Determine new/returning status ──
+    // Any prior visit (portal or patronage) makes this customer returning.
     const previousVisitCount = await this.visitRepository.count({
       where: { customerId, branchId },
     });
@@ -1111,6 +1136,7 @@ export class VisitorsService {
     }
 
     // ── Fallback: no matching session visit — create a fresh patronage visit ──
+    // Any prior visit makes this customer returning.
     const previousVisitCount = await this.visitRepository.count({
       where: { customerId, branchId },
     });
