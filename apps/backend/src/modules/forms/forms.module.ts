@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FormsService } from './forms.service';
 import { FormsController } from './forms.controller';
@@ -28,8 +28,8 @@ import { DevicesModule } from '../devices/devices.module';
       Branch,
     ]),
 
-    BranchesModule,
-    DevicesModule,
+    forwardRef(() => BranchesModule),
+    forwardRef(() => DevicesModule),
   ],
   controllers: [
     FormsController,

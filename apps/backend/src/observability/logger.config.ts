@@ -44,30 +44,54 @@ export class PinoLoggerService {
   }
 
   private formatMessage(message: any, optionalParams: any[]) {
+    let context = 'Global';
+    let params: any[] = [];
+
     if (optionalParams && optionalParams.length > 0) {
-      const context = optionalParams[optionalParams.length - 1];
-      const params = optionalParams.slice(0, -1);
+      // In NestJS, the last param is often the context string
+      context = optionalParams[optionalParams.length - 1];
+      params = optionalParams.slice(0, -1);
+    }
 
-      // If the first parameter is an object, merge it for structured logging
-      if (typeof message === 'object') {
-        return {
-          ...message,
-          context,
-          params: params.length > 0 ? params : undefined,
-        };
-      }
+    // Sanitize params to avoid [null] in logs
+    const sanitizedParams = params.map((p) =>
+      p === null ? 'null' : p === undefined ? 'undefined' : p,
+    );
 
+    const baseLog: any = {
+      context,
+      params: sanitizedParams.length > 0 ? sanitizedParams : undefined,
+    };
+
+    // Handle null/undefined message
+    if (message === null || message === undefined) {
       return {
-        msg: message,
-        context,
-        params: params.length > 0 ? params : undefined,
+        ...baseLog,
+        msg: String(message),
       };
     }
 
-    if (typeof message === 'object') {
-      return message;
+    // If the message is an Error, extract its enumerable properties and common Error fields
+    if (message instanceof Error) {
+      return {
+        ...baseLog,
+        msg: message.message,
+        stack: message.stack,
+        ...message, // Merge other enumerable properties
+      };
     }
 
-    return { msg: message };
+    // If the message is an object (but NOT null), merge it
+    if (typeof message === 'object') {
+      return {
+        ...message,
+        ...baseLog,
+      };
+    }
+
+    return {
+      ...baseLog,
+      msg: message,
+    };
   }
 }

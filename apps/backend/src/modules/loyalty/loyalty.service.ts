@@ -113,7 +113,7 @@ export class LoyaltyService {
       order: { createdAt: 'DESC' },
       take: limit,
       skip: (page - 1) * limit,
-      relations: ['user', 'givenBy', 'branch'],
+      relations: ['customer', 'givenBy', 'branch'],
     });
   }
 
@@ -137,6 +137,29 @@ export class LoyaltyService {
       givenById: staff.id,
       businessId: branch.businessId,
       branchId: branch.id,
+    });
+
+    return this.pointTransactionRepo.save(transaction);
+  }
+
+  async awardPoints(
+    customerId: string,
+    points: number,
+    businessId: string,
+    branchId: string,
+    reason: string,
+    givenById?: string,
+  ) {
+    if (points <= 0) return;
+
+    const transaction = this.pointTransactionRepo.create({
+      amount: points,
+      type: PointTransactionType.EARNED,
+      reason,
+      customerId,
+      businessId,
+      branchId,
+      givenById,
     });
 
     return this.pointTransactionRepo.save(transaction);

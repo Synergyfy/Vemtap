@@ -9,9 +9,18 @@ import { User, UserRole, UserStatus } from '../../modules/users/entities/user.en
 
 @Injectable()
 export class UserStatusGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(private reflector: Reflector) { }
 
   canActivate(context: ExecutionContext): boolean {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(
+      'excess_stock_audit_sector_13_community_non_profit_public_services',
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (isPublic) {
+      return true;
+    }
+
     const isAllowPending = this.reflector.getAllAndOverride<boolean>(
       'isAllowPending',
       [context.getHandler(), context.getClass()],
@@ -26,6 +35,8 @@ export class UserStatusGuard implements CanActivate {
       );
     }
 
+    // Customer password change requirement removed as per request
+    /*
     if (
       user &&
       user.role === UserRole.CUSTOMER &&
@@ -36,6 +47,7 @@ export class UserStatusGuard implements CanActivate {
         'Please change your default password to access your dashboard.',
       );
     }
+    */
 
     return true;
   }

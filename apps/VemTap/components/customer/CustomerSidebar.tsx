@@ -8,7 +8,7 @@ import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/no
 import { Notification } from '@/services/notifications/types';
 import {
     LayoutGrid, History, Gift, User, Nfc, Bell,
-    LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search
+    LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search, ShoppingBag
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { useQueryClient } from '@tanstack/react-query';
@@ -64,6 +64,12 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
             label: 'Dashboard',
             icon: LayoutGrid,
             href: '/customer/dashboard',
+        },
+        {
+            id: 'orders',
+            label: 'Orders & Bookings',
+            icon: ShoppingBag,
+            href: '/customer/dashboard/orders',
         },
         {
             id: 'analytics',

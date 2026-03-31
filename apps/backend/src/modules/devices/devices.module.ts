@@ -9,6 +9,8 @@ import { Branch } from '../branches/entities/branch.entity';
 import { BranchesModule } from '../branches/branches.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { VisitorsModule } from '../visitors/visitors.module';
+import { CatalogueModule } from '../catalogue/catalogue.module';
+import { FormsModule } from '../forms/forms.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { VisitorsModule } from '../visitors/visitors.module';
     forwardRef(() => BranchesModule),
     forwardRef(() => SubscriptionsModule),
     forwardRef(() => VisitorsModule),
+    CatalogueModule,
+    forwardRef(() => FormsModule),
   ],
   controllers: [DevicesController, DeviceTapController],
   providers: [DevicesService],

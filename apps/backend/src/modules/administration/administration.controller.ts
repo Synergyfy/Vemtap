@@ -66,7 +66,8 @@ export class AdministrationController {
     @Request() req,
     @Body() dto: GenerateImpersonationTokenDto,
   ) {
-    return this.adminService.generateToken(req.user.id, dto);
+    const actorId = dto.actorId || req.user.id;
+    return this.adminService.generateToken(actorId, dto);
   }
 
   @Post('impersonation/customer-token')

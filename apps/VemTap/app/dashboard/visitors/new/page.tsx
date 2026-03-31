@@ -14,9 +14,8 @@ import { UserPlus, Calendar, TrendingUp, Timer, Send, Hand, Tag } from 'lucide-r
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChannelSelectorModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
-import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
-import { useChatStore } from '@/lib/store/useChatStore';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
 function NewVisitorJoinedCell({ visitor }: { visitor: Visitor }) {
@@ -68,12 +67,12 @@ export default function NewVisitorsPage() {
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [showChannelSelector, setShowChannelSelector] = useState(false);
     const [isBulkChannelSelector, setIsBulkChannelSelector] = useState(false);
+    const [selectedChannelForMsg, setSelectedChannelForMsg] = useState<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>('In-App');
+    const [allowedChannelsForMsg, setAllowedChannelsForMsg] = useState<Array<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>>(['In-App', 'WhatsApp', 'SMS', 'Email']);
 
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const { data: paginatedData, isLoading } = useNewVisitors();
     const { data: statsData } = useNewVisitorStats();
-    const addPendingThread = useChatStore(s => s.addPendingThread);
-    const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const newVisitors = paginatedData?.data || [];
 
@@ -100,32 +99,19 @@ export default function NewVisitorsPage() {
     };
 
     const handleSelectInApp = () => {
+        setSelectedChannelForMsg('In-App');
+        setAllowedChannelsForMsg(['In-App']);
         if (isBulkChannelSelector) {
-            // Bulk in-app logic: redirect to chat and trigger the segment-based broadcast
-            router.push(`/dashboard/messaging/chat?segment=new-visitors`);
-        } else if (selectedVisitorForMsg) {
-            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
-            const chatContact = {
-                id: selectedVisitorForMsg.id,
-                name: visitorName,
-                phone: selectedVisitorForMsg.phone,
-                email: selectedVisitorForMsg.email,
-                isOnline: false,
-            };
-            
-            const threadId = addPendingThread(chatContact);
-            setActiveConversation(threadId);
-            
-            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
+            setIsBulkMsgOpen(true);
         }
         setShowChannelSelector(false);
     };
 
     const handleSelectExternal = () => {
+        setSelectedChannelForMsg('WhatsApp');
+        setAllowedChannelsForMsg(['WhatsApp', 'SMS', 'Email']);
         if (isBulkChannelSelector) {
             setIsBulkMsgOpen(true);
-        } else {
-            // Individual external logic handled by SendMessageModal
         }
         setShowChannelSelector(false);
     };
@@ -214,7 +200,9 @@ export default function NewVisitorsPage() {
                 isOpen={isBulkMsgOpen}
                 onClose={() => setIsBulkMsgOpen(false)}
                 recipientName={`${newVisitors.length} New Visitors`}
-                visitorIds={newVisitors.map(v => v.id)}
+                visitors={newVisitors}
+                initialChannel={selectedChannelForMsg}
+                allowedChannels={allowedChannelsForMsg}
                 type="welcome"
             />
 
@@ -235,7 +223,9 @@ export default function NewVisitorsPage() {
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
                 recipientEmail={selectedVisitorForMsg?.email}
-                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
+                visitors={selectedVisitorForMsg ? [selectedVisitorForMsg] : undefined}
+                initialChannel={selectedChannelForMsg}
+                allowedChannels={allowedChannelsForMsg}
                 type="welcome"
             />
 

@@ -96,7 +96,7 @@ export default function BusinessPublicPage() {
     return (
         <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
             {/* Minimal Header */}
-            <div className="h-[40vh] bg-linear-to-b from-primary/10 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
+            <div className="h-[25vh] md:h-[40vh] bg-linear-to-b from-primary/10 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
                 {/* Abstract background elements for a "premium" feel */}
                 <div className="absolute top-0 left-0 w-full h-full">
                     <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
@@ -124,7 +124,7 @@ export default function BusinessPublicPage() {
 
                 {/* Hero Content */}
                 <div className="flex flex-col items-center text-center z-10 px-4 md:px-6">
-                    <div className="size-28 md:size-32 rounded-3xl bg-white p-1.5 shadow-2xl shadow-slate-200/50 mb-6 border border-white">
+                    <div className="size-20 md:size-32 rounded-2xl md:rounded-3xl bg-white p-1 md:p-1.5 shadow-2xl shadow-slate-200/50 mb-4 md:mb-6 border border-white">
                         {logoUrl ? (
                             <img
                                 src={logoUrl}
@@ -137,18 +137,18 @@ export default function BusinessPublicPage() {
                             </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight capitalize">
+                    <div className="flex items-center gap-2 mb-1 md:mb-2">
+                        <h1 className="text-xl md:text-5xl font-black text-slate-900 tracking-tight capitalize">
                             {businessName}
                         </h1>
-                        <ShieldCheck size={24} className="text-emerald-500" />
+                        <ShieldCheck size={20} className="text-emerald-500 md:size-6" />
                     </div>
-                    <p className="text-slate-400 font-bold text-sm tracking-wide flex items-center gap-2">
+                    <p className="text-slate-400 font-bold text-xs md:text-sm tracking-wide flex items-center gap-2">
                         <span className="text-primary">{business.category || business.type || 'Business'}</span>
                         {business.address && (
                             <>
                                 <span className="text-slate-200">•</span>
-                                <span className="flex items-center gap-1"><MapPin size={14} /> {business.address}</span>
+                                <span className="flex items-center gap-1 leading-none"><MapPin size={12} /> {business.address}</span>
                             </>
                         )}
                     </p>
@@ -156,16 +156,16 @@ export default function BusinessPublicPage() {
             </div>
 
             {/* Main Content Area */}
-            <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-10 relative z-20 pb-24">
+            <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-6 md:-mt-10 relative z-20 pb-24">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
                     {/* Primary Info Card */}
                     <div className="md:col-span-8 space-y-6">
-                        <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-slate-200/40 border border-white/50">
+                        <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-5 md:p-12 shadow-xl shadow-slate-200/40 border border-white/50">
                             {business.about && (
-                                <section className="mb-12">
-                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6">About the Business</h2>
-                                    <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-bold">
+                                <section className="mb-8 md:mb-12">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-4 md:mb-6">About the Business</h2>
+                                    <p className="text-base md:text-xl text-slate-600 leading-relaxed font-bold">
                                         {business.about}
                                     </p>
                                 </section>
@@ -238,7 +238,7 @@ export default function BusinessPublicPage() {
 
                     {/* Contact Sidebar (Light) */}
                     <div className="md:col-span-4 space-y-6">
-                        <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 border border-white/50">
+                        <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-slate-200/40 border border-white/50">
                             <h3 className="text-sm font-black text-slate-900 mb-8 tracking-tight">Direct Connect</h3>
                             <div className="space-y-6">
                                 {business.whatsappNumber && (

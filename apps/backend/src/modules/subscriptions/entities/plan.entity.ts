@@ -65,6 +65,18 @@ export class Plan extends AbstractBaseEntity {
   @Column({ default: 'basic' })
   analyticsLevel: string;
 
+  @Column({ default: false })
+  catalogueEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  maxCatalogueItems: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  maxCatalogueCategories: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  maxCatalogueOffers: number | null;
+
   @Column({ default: true })
   isActive: boolean;
 

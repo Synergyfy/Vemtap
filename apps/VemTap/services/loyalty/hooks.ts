@@ -101,7 +101,7 @@ export const useUpdateLoyaltyRules = (branchId?: string) => {
     });
 };
 
-export const useRewards = (branchId?: string) => {
+export const useRewards = (branchId?: string, enabled: boolean = true) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
 
     return useQuery<Reward[], Error>({
@@ -117,7 +117,8 @@ export const useRewards = (branchId?: string) => {
                 return await api.get(`/loyalty/rewards/branch/${resolvedBranchId}`);
             }
             return await api.get(`/loyalty/rewards?${params.toString()}`);
-        }
+        },
+        enabled: enabled,
     });
 };
 
