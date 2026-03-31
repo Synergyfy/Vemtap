@@ -65,7 +65,7 @@ const PortalWelcome = ({
         { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
     ].filter(action => action.count && action.count > 0);
 
-    const isCompact = actions.length <= 4;
+    const useGrid = actions.length >= 4;
 
     return (
         <motion.div 
@@ -96,7 +96,10 @@ const PortalWelcome = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:gap-6">
+            <div className={cn(
+                "gap-3 md:gap-4",
+                useGrid ? "grid grid-cols-2" : "flex flex-col"
+            )}>
                 {actions.map((item, idx) => (
                     <motion.button
                         key={item.id}
@@ -106,34 +109,34 @@ const PortalWelcome = ({
                         onClick={() => onAction(item.id)}
                         className={cn(
                             "group relative flex border border-slate-50 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all text-left overflow-hidden bg-white asymmetric-leaf",
-                            isCompact 
-                                ? "flex-row items-center gap-2 md:gap-4 p-2.5 md:p-6" 
-                                : "flex-col gap-3 md:gap-5 p-5 md:p-8"
+                            useGrid
+                                ? "flex-col gap-3 md:gap-5 p-5 md:p-8"
+                                : "flex-row items-center gap-4 md:gap-5 p-4 md:p-5 w-full"
                         )}
                     >
                         <div className={cn(
                             "rounded-lg md:rounded-xl flex items-center justify-center shadow-inner shrink-0 transition-transform group-hover:scale-105",
-                            item.bg, 
+                            item.bg,
                             item.color,
-                            isCompact ? "size-10 md:size-14" : "size-12 md:size-16"
+                            useGrid ? "size-12 md:size-16" : "size-11 md:size-13"
                         )}>
-                            <item.icon size={isCompact ? 18 : 24} className={isCompact ? "md:size-7" : "md:size-8"} strokeWidth={2.5} />
+                            <item.icon size={useGrid ? 24 : 20} className={useGrid ? "md:size-8" : "md:size-6"} strokeWidth={2.5} />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <h3 className={cn(
                                 "font-headline font-bold text-slate-900 tracking-tight leading-tight truncate",
-                                isCompact ? "text-[11px] md:text-lg" : "text-lg md:text-xl"
+                                useGrid ? "text-lg md:text-xl" : "text-sm md:text-base"
                             )}>{item.label}</h3>
                             <p className={cn(
                                 "text-slate-400 font-bold uppercase tracking-widest mt-0.5",
-                                isCompact ? "text-[8px] hidden md:block" : "text-[10px]"
+                                useGrid ? "text-[10px]" : "text-[9px] md:text-[10px]"
                             )}>{item.desc}</p>
                         </div>
                         <div className={cn(
-                            "absolute p-1 opacity-10 group-hover:opacity-100 transition-opacity",
-                            isCompact ? "-right-1 bottom-0" : "top-5 right-5 md:top-8 md:right-8"
+                            "p-1 opacity-10 group-hover:opacity-100 transition-opacity",
+                            useGrid ? "absolute top-5 right-5 md:top-8 md:right-8" : "shrink-0"
                         )}>
-                            <ChevronRight className="text-primary" size={isCompact ? 12 : 16} />
+                            <ChevronRight className="text-primary" size={useGrid ? 16 : 14} />
                         </div>
                     </motion.button>
                 ))}
