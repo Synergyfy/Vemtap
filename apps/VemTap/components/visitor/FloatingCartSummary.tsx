@@ -39,13 +39,13 @@ export const FloatingCartSummary: React.FC<FloatingCartSummaryProps> = ({ branch
   if (cartItemCount === 0) return null;
 
   return (
-    <div className="fixed bottom-24 left-0 right-0 z-[60] px-4 pointer-events-none">
+    <div className="fixed bottom-24 left-0 right-0 z-[60] px-3 pointer-events-none mb-1">
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="max-w-md mx-auto pointer-events-auto"
+        className="max-w-sm mx-auto pointer-events-auto"
       >
-        <div className="bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_-8px_30px_rgb(0,0,0,0.12)] rounded-[2rem] overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_-4px_24px_rgb(0,0,0,0.08)] rounded-[1.5rem] overflow-hidden">
           {/* Collapsible Content */}
           <AnimatePresence>
             {isExpanded && (
@@ -55,8 +55,8 @@ export const FloatingCartSummary: React.FC<FloatingCartSummaryProps> = ({ branch
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <div className="p-5 space-y-3 max-h-[40vh] overflow-y-auto no-scrollbar border-b border-slate-100">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-outline mb-2">Cart Items</h4>
+                <div className="p-4 space-y-2 max-h-[35vh] overflow-y-auto no-scrollbar border-b border-slate-100">
+                  <h4 className="text-[9px] font-black uppercase tracking-widest text-outline mb-1 opacity-60">Cart Items</h4>
                   {cartItems.map((item) => {
                     const isServerItem = 'cartId' in item;
                     const name = isServerItem ? item.snapshotName : item.name;
@@ -64,14 +64,14 @@ export const FloatingCartSummary: React.FC<FloatingCartSummaryProps> = ({ branch
                     const quantity = item.quantity;
 
                     return (
-                      <div key={item.id} className="flex justify-between items-center gap-3">
+                      <div key={item.id} className="flex justify-between items-center gap-2 py-1">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="shrink-0 size-6 bg-primary/10 text-primary text-[10px] font-black rounded-lg flex items-center justify-center">
+                          <span className="shrink-0 size-5 bg-primary/10 text-primary text-[9px] font-black rounded-md flex items-center justify-center">
                             {quantity}x
                           </span>
-                          <span className="text-sm font-bold text-on-surface truncate">{name}</span>
+                          <span className="text-[13px] font-bold text-on-surface truncate">{name}</span>
                         </div>
-                        <span className="text-sm font-black text-primary shrink-0">
+                        <span className="text-[13px] font-black text-primary shrink-0">
                           {formatPrice(price * quantity)}
                         </span>
                       </div>
@@ -83,31 +83,31 @@ export const FloatingCartSummary: React.FC<FloatingCartSummaryProps> = ({ branch
           </AnimatePresence>
 
           {/* Bottom Bar Summary */}
-          <div className="p-4 flex items-center gap-4">
+          <div className="p-2.5 flex items-center gap-3">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex-grow flex items-center gap-3 text-left"
+              className="flex-grow flex items-center gap-2.5 text-left"
             >
-              <div className="size-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center relative shadow-lg">
-                <ShoppingCart size={20} />
-                <span className="absolute -top-1 -right-1 size-5 bg-primary text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">
+              <div className="size-10 bg-slate-900 text-white rounded-xl flex items-center justify-center relative shadow-md">
+                <ShoppingCart size={18} />
+                <span className="absolute -top-1 -right-1 size-4 bg-primary text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-white">
                   {cartItemCount}
                 </span>
               </div>
               <div className="flex-grow min-w-0">
                 <div className="flex items-center gap-1">
-                  <p className="text-xs font-black text-outline uppercase tracking-widest">Total Amount</p>
-                  {isExpanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                  <p className="text-[9px] font-black text-outline uppercase tracking-widest opacity-70">Total</p>
+                  {isExpanded ? <ChevronDown size={12} className="text-outline" /> : <ChevronUp size={12} className="text-outline" />}
                 </div>
-                <p className="text-xl font-black text-on-surface">{formatPrice(cartTotal)}</p>
+                <p className="text-base font-black text-on-surface leading-tight">{formatPrice(cartTotal)}</p>
               </div>
             </button>
 
             <button
               onClick={() => router.push(`/${params.slug}/${params.code}/cart`)}
-              className="h-12 px-6 bg-primary text-white font-black rounded-2xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-[10px]"
+              className="h-10 px-5 bg-primary text-white font-black rounded-xl flex items-center gap-1.5 shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-[9px]"
             >
-              Order Now
+              Order
               <ArrowRight size={14} />
             </button>
           </div>
