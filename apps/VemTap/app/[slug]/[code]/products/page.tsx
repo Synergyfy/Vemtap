@@ -29,11 +29,18 @@ import {
     useCatalogueCategoriesPublic 
 } from '@/services/catalogue/hooks';
 import { useAddToCart } from '@/services/catalogue-cart/hooks';
+import { 
+    useCart, 
+    useUpdateCartItem, 
+    useRemoveCartItem 
+} from '@/services/catalogue-cart/hooks';
 import { useGuestCartStore } from '@/store/useGuestCartStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useCartMergeOnLogin } from '@/hooks/useCartMergeOnLogin';
 import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
+import { FloatingCartSummary } from '@/components/visitor/FloatingCartSummary';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { api } from '@/lib/api';
 import { User } from '@/store/useAuthStore';
@@ -58,13 +65,62 @@ export default function ProductsPage() {
 
     // Cart
     const addToCartMutation = useAddToCart();
+    const updateItemMutation = useUpdateCartItem(branchId || '');
+    const removeItemMutation = useRemoveCartItem(branchId || '');
+    const { data: serverCart } = useCart(branchId);
+    
+    const guestItems = useGuestCartStore(
+        useShallow((s) => (branchId ? s.getItemsForBranch(branchId) : []))
+    );
     const guestCartStore = useGuestCartStore();
     useCartMergeOnLogin(branchId);
 
+    const getCartQuantity = (itemId: string) => {
+        if (isAuthenticated) {
+            return serverCart?.items.find(i => i.itemId === itemId)?.quantity || 0;
+        } else {
+            return guestItems.find(i => i.itemId === itemId)?.quantity || 0;
+        }
+    };
+
+    const handleUpdateQuantity = (item: CatalogueItem, delta: number) => {
+        const currentQty = getCartQuantity(item.id);
+        const newQty = currentQty + delta;
+        
+        if (isAuthenticated) {
+            const cartItem = serverCart?.items.find(i => i.itemId === item.id);
+            if (newQty <= 0 && cartItem) {
+                removeItemMutation.mutate(cartItem.id);
+            } else if (cartItem) {
+                updateItemMutation.mutate({ cartItemId: cartItem.id, quantity: newQty });
+            } else if (newQty > 0) {
+                addToCartMutation.mutate({ branchId: branchId!, itemId: item.id, quantity: newQty });
+            }
+        } else {
+            const guestItem = guestItems.find(i => i.itemId === item.id);
+            if (guestItem) {
+                guestCartStore.updateQuantity(guestItem.id, newQty);
+            } else if (newQty > 0) {
+                guestCartStore.addItem({
+                    branchId: branchId!,
+                    itemId: item.id,
+                    quantity: newQty,
+                    name: item.name,
+                    price: Number(item.price),
+                    image: item.mainImage ?? undefined,
+                    itemType: 'product',
+                });
+            }
+        }
+    };
+
     // Reset qty when product changes
     React.useEffect(() => {
-        if (selectedProduct) setQty(1);
-    }, [selectedProduct]);
+        if (selectedProduct) {
+            const currentQty = getCartQuantity(selectedProduct.id);
+            setQty(currentQty || 1);
+        }
+    }, [selectedProduct, serverCart, guestItems]);
 
     // Debounce search
     React.useEffect(() => {
@@ -279,25 +335,41 @@ export default function ProductsPage() {
                                 </div>
                                 
                                 {viewMode === 'grid' && (
-                                    <div className="grid grid-cols-2 gap-1 mt-2">
-                                        <button 
-                                            className="py-1.5 bg-slate-100 text-slate-800 text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-slate-200 transition-colors"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleAddToCart(product);
-                                            }}
-                                        >
-                                            Cart
-                                        </button>
-                                        <button 
-                                            className="py-1.5 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-colors"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedProduct(product);
-                                            }}
-                                        >
-                                            Buy
-                                        </button>
+                                    <div className="mt-2 h-8">
+                                        {getCartQuantity(product.id) === 0 ? (
+                                            <button 
+                                                className="w-full h-full bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-1.5"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUpdateQuantity(product, 1);
+                                                }}
+                                            >
+                                                <Plus size={10} strokeWidth={4} />
+                                                Add
+                                            </button>
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-between bg-slate-100 rounded-lg p-1 overflow-hidden">
+                                                <button 
+                                                    className="size-6 bg-white rounded-md flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleUpdateQuantity(product, -1);
+                                                    }}
+                                                >
+                                                    <Minus size={10} strokeWidth={4} />
+                                                </button>
+                                                <span className="text-[10px] font-black">{getCartQuantity(product.id)}</span>
+                                                <button 
+                                                    className="size-6 bg-white rounded-md flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleUpdateQuantity(product, 1);
+                                                    }}
+                                                >
+                                                    <Plus size={10} strokeWidth={4} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 
@@ -306,25 +378,41 @@ export default function ProductsPage() {
                                         {/* Category tag moved to image overlay */}
                                     </div>
                                     {viewMode === 'list' && (
-                                        <div className="flex gap-2">
-                                            <button 
-                                                className="px-4 py-2 bg-slate-100 text-slate-800 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleAddToCart(product);
-                                                }}
-                                            >
-                                                Add to Cart
-                                            </button>
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedProduct(product);
-                                                }}
-                                                className="px-4 py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-black transition-colors"
-                                            >
-                                                Buy Now
-                                            </button>
+                                        <div className="h-10">
+                                            {getCartQuantity(product.id) === 0 ? (
+                                                <button 
+                                                    className="px-6 h-full bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleUpdateQuantity(product, 1);
+                                                    }}
+                                                >
+                                                    <Plus size={12} strokeWidth={4} />
+                                                    Add to Cart
+                                                </button>
+                                            ) : (
+                                                <div className="h-full flex items-center bg-slate-100 rounded-xl p-1 gap-4 overflow-hidden">
+                                                    <button 
+                                                        className="size-8 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors text-red-500"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateQuantity(product, -1);
+                                                        }}
+                                                    >
+                                                        <Minus size={14} strokeWidth={4} />
+                                                    </button>
+                                                    <span className="text-sm font-black w-4 text-center">{getCartQuantity(product.id)}</span>
+                                                    <button 
+                                                        className="size-8 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateQuantity(product, 1);
+                                                        }}
+                                                    >
+                                                        <Plus size={14} strokeWidth={4} />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -341,6 +429,7 @@ export default function ProductsPage() {
                 )}
             </main>
 
+            {branchId && <FloatingCartSummary branchId={branchId} />}
             <PremiumBottomNav />
 
             {/* Product Detail Modal */}
@@ -435,23 +524,22 @@ export default function ProductsPage() {
 
                                     <div className="flex gap-4">
                                         <button
-                                            onClick={() => selectedProduct && handleAddToCart(selectedProduct, qty)}
-                                            className="flex-1 h-14 md:h-16 bg-slate-100 text-slate-800 text-sm md:text-base font-black rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                                            onClick={() => {
+                                                if (selectedProduct) {
+                                                    const currentQty = getCartQuantity(selectedProduct.id);
+                                                    if (currentQty === 0) {
+                                                        handleUpdateQuantity(selectedProduct, qty);
+                                                    } else {
+                                                        handleUpdateQuantity(selectedProduct, qty - currentQty);
+                                                    }
+                                                    setSelectedProduct(null);
+                                                    toast.success('Cart updated!');
+                                                }
+                                            }}
+                                            className="flex-1 h-16 bg-primary text-white text-sm md:text-base font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 uppercase tracking-widest"
                                         >
                                             <ShoppingCart size={20} />
-                                            Add to Cart
-                                        </button>
-                                        <button
-                                            onClick={() => handleOrder(selectedProduct, qty)}
-                                            disabled={isSubmitting}
-                                            className="flex-[1.5] h-14 md:h-16 bg-primary text-white text-sm md:text-base font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 uppercase tracking-widest"
-                                        >
-                                            {isSubmitting ? <Loader2 className="animate-spin" /> : (
-                                                <>
-                                                    <ShoppingBag size={20} />
-                                                    Buy Now
-                                                </>
-                                            )}
+                                            Update Cart
                                         </button>
                                     </div>
                                 </div>
