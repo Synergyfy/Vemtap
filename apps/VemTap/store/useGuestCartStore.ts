@@ -46,7 +46,12 @@ export const useGuestCartStore = create<GuestCartState>()(
           } else {
             // Add new
             return {
-              items: [...state.items, { ...item, id: crypto.randomUUID() }],
+              items: [...state.items, { 
+              ...item, 
+              id: (typeof crypto !== 'undefined' && crypto.randomUUID) 
+                ? crypto.randomUUID() 
+                : Math.random().toString(36).substring(2, 11) + Date.now().toString(36)
+            }],
             };
           }
         });
