@@ -8,6 +8,7 @@ import { Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useCatalogueOrders, Order } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import OrderDetailsModal from '@/components/dashboard/catalogue/OrderDetailsModal';
+import { formatOrderDate } from '@/lib/utils/date';
 
 export default function OrdersPage() {
     const { activeBranchId } = useActiveBranch();
@@ -80,11 +81,16 @@ export default function OrdersPage() {
             accessor: (item: Order) => getStatusBadge(item.status)
         },
         {
-            header: 'Time',
+            header: 'Date & Time',
             accessor: (item: Order) => (
-                <span className="text-xs text-text-secondary font-medium">
-                    {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                <div className="flex flex-col">
+                    <span className="text-xs text-text-main font-bold">
+                        {formatOrderDate(item.createdAt)}
+                    </span>
+                    <span className="text-[10px] text-text-secondary uppercase">
+                        {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                </div>
             )
         },
         {

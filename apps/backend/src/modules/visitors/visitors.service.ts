@@ -2,9 +2,12 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In, FindOptionsWhere } from 'typeorm';
+import { Repository, DataSource, In, FindOptionsWhere, MoreThan, LessThan } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
 import { Device, DeviceStatus } from '../devices/entities/device.entity';
@@ -977,5 +980,154 @@ export class VisitorsService {
       page,
       limit,
     };
+  }
+
+  // ─── Smart Visit Recording ────────────────────────────────────────────────
+
+  /**
+   * Records a portal visit when an authenticated customer lands on the tap page.
+   *
+   * Fraud controls:
+   *  1. Session idempotency  — same `sessionToken` always returns the same visit.
+   *  2. 4-hour cooldown      — at most 1 new visit per customer per branch per 4 hours.
+   *  3. IP rate limiting     — rejects if >20 portal-visit calls from one IP in 10 minutes.
+   */
+  async recordPortalVisit(params: {
+    customerId: string;
+    deviceCode: string;
+    sessionToken: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
+    const { customerId, deviceCode, sessionToken, ipAddress, userAgent } = params;
+
+    // ── 1. Idempotency: same token → return existing visit immediately ──
+    const existing = await this.visitRepository.findOne({
+      where: { sessionToken },
+    });
+    if (existing) {
+      return { visitId: existing.id, sessionToken, isNewVisit: false };
+    }
+
+    // ── 2. Resolve device → branch ──
+    const device = await this.deviceRepository.findOne({
+      where: { code: deviceCode },
+      relations: ['branch'],
+    });
+    if (!device || !device.branchId) {
+      throw new NotFoundException('Device not found or not linked to a branch');
+    }
+
+    const branchId = device.branchId;
+    const businessId = device.branch?.businessId;
+
+    // ── 3. IP rate limiting (>20 calls from same IP in 10 minutes) ──
+    if (ipAddress) {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const recentIpCount = await this.visitRepository.count({
+        where: {
+          ipAddress,
+          createdAt: MoreThan(tenMinutesAgo),
+        },
+      });
+      if (recentIpCount >= 20) {
+        throw new HttpException(
+          'Too many visit requests from this location. Please try again later.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    // ── 4. Cooldown: 1 new portal/patronage visit per customer+branch per 4 hours ──
+    const cooldownWindow = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const recentVisit = await this.visitRepository.findOne({
+      where: {
+        customerId,
+        branchId,
+        createdAt: MoreThan(cooldownWindow),
+      },
+      order: { createdAt: 'DESC' },
+    });
+    if (recentVisit) {
+      // Return the recent visit — don't create a duplicate.
+      return { visitId: recentVisit.id, sessionToken: recentVisit.sessionToken ?? sessionToken, isNewVisit: false };
+    }
+
+    // ── 5. Determine new/returning status ──
+    const previousVisitCount = await this.visitRepository.count({
+      where: { customerId, branchId },
+    });
+
+    const visit = this.visitRepository.create({
+      customerId,
+      branchId,
+      businessId,
+      deviceId: device.id,
+      status: previousVisitCount > 0 ? 'returning' : 'new',
+      visitType: 'portal',
+      sessionToken,
+      ipAddress: ipAddress ?? null,
+      userAgent: userAgent ?? null,
+    } as any) as unknown as Visit;
+
+    const saved = await this.visitRepository.save(visit);
+
+    return { visitId: saved.id, sessionToken, isNewVisit: true };
+  }
+
+  /**
+   * Upgrades a portal visit to a patronage visit when an order is completed.
+   * Safe to call multiple times — idempotent on already-upgraded visits.
+   *
+   * Fallback: if no visit with sessionToken exists (e.g. hard refresh before portal
+   * visit was recorded), creates a fresh patronage visit directly.
+   */
+  async upgradeVisitToPatronage(params: {
+    sessionToken: string | null | undefined;
+    orderId: string;
+    customerId: string;
+    branchId: string;
+    businessId: string;
+    deviceId?: string;
+  }): Promise<void> {
+    const { sessionToken, orderId, customerId, branchId, businessId, deviceId } = params;
+
+    if (sessionToken) {
+      const visit = await this.visitRepository.findOne({
+        where: { sessionToken },
+      });
+
+      if (visit) {
+        // Already upgraded — no-op (idempotent)
+        if (visit.visitType === 'patronage' && visit.upgradedAt) return;
+
+        // Upgrade portal → patronage
+        visit.visitType = 'patronage';
+        visit.orderId = orderId;
+        visit.upgradedAt = new Date();
+        await this.visitRepository.save(visit);
+        return;
+      }
+    }
+
+    // ── Fallback: no matching session visit — create a fresh patronage visit ──
+    const previousVisitCount = await this.visitRepository.count({
+      where: { customerId, branchId },
+    });
+
+    const newSessionToken = uuidv4();
+    const fallbackVisit = this.visitRepository.create({
+      customerId,
+      branchId,
+      businessId,
+      deviceId: deviceId ?? null,
+      orderId,
+      status: previousVisitCount > 0 ? 'returning' : 'new',
+      visitType: 'patronage',
+      sessionToken: newSessionToken,
+      upgradedAt: new Date(),
+    } as any) as unknown as Visit;
+
+    await this.visitRepository.save(fallbackVisit);
   }
 }

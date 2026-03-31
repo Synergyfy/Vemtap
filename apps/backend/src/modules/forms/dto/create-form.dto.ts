@@ -74,6 +74,22 @@ export class CreateFormDto {
   @IsString()
   branchId?: string;
 
+  @ApiPropertyOptional({
+    example: 'Thank you!',
+    description: 'Title shown after form submission',
+  })
+  @IsOptional()
+  @IsString()
+  successTitle?: string;
+
+  @ApiPropertyOptional({
+    example: 'Your response has been recorded.',
+    description: 'Message shown after form submission',
+  })
+  @IsOptional()
+  @IsString()
+  successMessage?: string;
+
   @ApiProperty({ type: [CreateFormFieldDto] })
   @IsArray()
   @ValidateNested({ each: true })

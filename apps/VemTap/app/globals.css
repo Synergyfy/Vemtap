@@ -15,10 +15,10 @@
     --color-secondary-container: #64a8fe;
     --color-tertiary-container: #4865d4;
 
-    --radius-xl: 1rem;
-    --radius-2xl: 2rem;
-    --radius-3xl: 3rem;
-    --radius-leaf: 4rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1.25rem;
+    --radius-3xl: 2rem;
+    --radius-leaf: 3rem;
 }
 
 @layer utilities {

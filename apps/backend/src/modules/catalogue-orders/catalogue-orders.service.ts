@@ -23,6 +23,7 @@ import {
   CatalogueOrderQueryDto,
 } from './dto/catalogue-order.dto';
 import * as bcrypt from 'bcrypt';
+import { VisitorsService } from '../visitors/visitors.service';
 
 @Injectable()
 export class CatalogueOrderService {
@@ -45,6 +46,7 @@ export class CatalogueOrderService {
     private readonly deviceRepository: Repository<Device>,
     private readonly loyaltyService: LoyaltyService,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly visitorsService: VisitorsService,
   ) {}
 
   async createOrder(dto: CreateCatalogueOrderDto) {
@@ -170,6 +172,7 @@ export class CatalogueOrderService {
       items: orderItems,
       stockDeducted: true,
       deviceId: dto.deviceId,
+      sessionToken: dto.sessionToken,
     });
 
     const savedOrder = await this.orderRepository.save(order);
@@ -260,33 +263,15 @@ export class CatalogueOrderService {
           );
         }
 
-        // --- RECORD VISIT ON ORDER COMPLETION ---
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const existingVisit = await this.visitRepository.findOne({
-          where: {
-            customerId: order.customerId,
-            branchId: order.branchId,
-            createdAt: MoreThanOrEqual(startOfDay),
-          },
+        // --- UPGRADE PORTAL VISIT TO PATRONAGE ---
+        await this.visitorsService.upgradeVisitToPatronage({
+          sessionToken: order.sessionToken,
+          orderId: order.id,
+          customerId: order.customerId,
+          branchId: order.branchId,
+          businessId: order.businessId,
+          deviceId: order.deviceId,
         });
-
-        if (!existingVisit) {
-          const hasPreviousVisits = await this.visitRepository.count({
-            where: { customerId: order.customerId, branchId: order.branchId },
-          });
-
-          const visit = this.visitRepository.create({
-            customerId: order.customerId,
-            branchId: order.branchId,
-            businessId: order.businessId,
-            deviceId: order.deviceId,
-            orderId: order.id,
-            status: hasPreviousVisits > 0 ? 'returning' : 'new',
-          });
-          await this.visitRepository.save(visit);
-        }
 
         order.loyaltyAwarded = true;
     }

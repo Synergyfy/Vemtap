@@ -10,6 +10,7 @@ import { BranchesModule } from '../branches/branches.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { VisitorsModule } from '../visitors/visitors.module';
 import { CatalogueModule } from '../catalogue/catalogue.module';
+import { FormsModule } from '../forms/forms.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CatalogueModule } from '../catalogue/catalogue.module';
     forwardRef(() => SubscriptionsModule),
     forwardRef(() => VisitorsModule),
     CatalogueModule,
+    forwardRef(() => FormsModule),
   ],
   controllers: [DevicesController, DeviceTapController],
   providers: [DevicesService],

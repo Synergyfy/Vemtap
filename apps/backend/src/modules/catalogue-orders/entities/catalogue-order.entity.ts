@@ -85,4 +85,13 @@ export class CatalogueOrder extends AbstractBaseEntity {
 
   @Column({ type: 'uuid', nullable: true })
   deviceId: string;
+
+  /**
+   * Session token passed from the frontend portal visit.
+   * Used to link this order to the corresponding portal Visit record
+   * so the visit can be upgraded to 'patronage' on order completion.
+   */
+  @ApiProperty({ example: 'uuid-v4-session-token', nullable: true, required: false })
+  @Column({ type: 'uuid', nullable: true })
+  sessionToken: string;
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CatalogueOrderService } from './catalogue-orders.service';
 import { CatalogueOrdersController } from './catalogue-orders.controller';
@@ -12,6 +12,7 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { Device } from '../devices/entities/device.entity';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { VisitorsModule } from '../visitors/visitors.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ]),
     LoyaltyModule,
     NotificationsModule,
+    forwardRef(() => VisitorsModule),
   ],
   controllers: [CatalogueOrdersController],
   providers: [CatalogueOrderService],

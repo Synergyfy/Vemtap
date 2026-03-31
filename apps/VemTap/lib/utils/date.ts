@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isYesterday, isValid, parseISO } from 'date-fns';
 
 /**
  * Formats a date string or Date object into a readable format.
@@ -34,4 +34,18 @@ export function formatRelative(date: string | Date | undefined | null): string {
  */
 export function formatDateTime(date: string | Date | undefined | null): string {
     return formatDate(date, 'MMM d, yyyy') + ' at ' + formatDate(date, 'h:mm a');
+}
+
+/**
+ * Custom format for orders: Today, Yesterday, or MMM d, yyyy
+ */
+export function formatOrderDate(date: string | Date | undefined | null): string {
+    if (!date) return 'N/A';
+    const d = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(d)) return 'Invalid Date';
+
+    if (isToday(d)) return 'Today';
+    if (isYesterday(d)) return 'Yesterday';
+    
+    return format(d, 'MMM d, yyyy');
 }

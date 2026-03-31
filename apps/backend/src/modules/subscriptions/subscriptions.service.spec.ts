@@ -13,6 +13,9 @@ import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { Device } from '../devices/entities/device.entity';
 import { CreditService } from '../messaging/services/credit.service';
 
@@ -111,6 +114,9 @@ describe('SubscriptionsService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        { provide: getRepositoryToken(CatalogueItem), useValue: {} },
+        { provide: getRepositoryToken(CatalogueOffer), useValue: {} },
+        { provide: getRepositoryToken(CatalogueCategory), useValue: {} },
         SubscriptionsService,
         {
           provide: getRepositoryToken(Subscription),
