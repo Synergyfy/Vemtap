@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Store, Users, Nfc } from 'lucide-react';
+import { Home, Store, Users, Nfc, ClipboardList } from 'lucide-react';
 
 export default function AdminMobileNav() {
     const pathname = usePathname();
@@ -28,6 +28,11 @@ export default function AdminMobileNav() {
             label: 'Devices',
             icon: Nfc,
             href: '/admin/devices'
+        },
+        {
+            label: 'Profiling',
+            icon: ClipboardList,
+            href: '/admin/business-profiling'
         }
     ];
 
