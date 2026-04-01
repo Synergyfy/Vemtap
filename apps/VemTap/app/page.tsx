@@ -30,11 +30,11 @@ export default function LandingPage() {
       <Process />
       <Features />
       <SolutionsPreview />
-      <Team />
+      {/* <Team /> */}
       <MarketplaceCTA />
       <Pricing />
       <MobileExperience />
-      <Testimonials />
+      {/* <Testimonials /> */}
       <ContactSection />
       <AutomationCTA />
       <FAQ />
