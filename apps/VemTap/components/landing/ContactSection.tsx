@@ -11,7 +11,7 @@ const MAP_LINK = 'https://maps.google.com/?q=B29+Awesome+Plaza,+Opp+Chicken+Repu
 
 export default function ContactSection({ isPage = false }: ContactSectionProps) {
     return (
-        <section id="contact" className={isPage ? 'pt-32 pb-24 bg-white' : 'py-24 bg-white'}>
+        <section id="contact" className={isPage ? 'pt-24 pb-16 bg-white' : 'py-12 md:py-16 bg-white'}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="rounded-[2rem] border border-primary/10 bg-linear-to-br from-[#eef3ff] to-[#f4f7ff] p-6 md:p-10 lg:p-12 shadow-[0_20px_80px_-40px_rgba(37,99,235,0.35)]">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
