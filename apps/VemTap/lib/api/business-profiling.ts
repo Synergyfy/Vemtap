@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { analyzeWithVemtapAI, AIAnalysisResult } from '@/lib/gemini-service';
 
 // =====================
 // BUSINESS PROFILING
@@ -6,40 +7,80 @@ import { api } from '@/lib/api';
 
 export interface BusinessProfile {
     id: string;
+    // Section 1: Basic Information
     businessName: string;
-    contactPerson: string;
-    phone: string;
-    email: string;
     location: string;
+    contactPerson?: string;
+    numberOfBranches: string;
     businessType: string;
-    estimatedFootTraffic: 'Low' | 'Medium' | 'High';
-    operatingHours: string;
-    hasWifi: boolean;
-    hasCounterSpace: boolean;
-    hasWindowDisplay: boolean;
-    hasTableSetup: boolean;
-    hasDigitalMenu: boolean;
-    qrPlacement: string[];
-    currentPaymentMethods: string[];
-    currentMarketingChannels: string[];
-    painPoints: string[];
-    competitorInfo: string;
-    notes: string;
+    niche: string;
+    customerTraffic: 'Low' | 'Medium' | 'High';
+    targetCustomers: string[];
+
+    // Section 2: Physical Setup
+    hasGlassDoor: boolean;
+    outsideFootTraffic: 'Low' | 'High';
+    hasWaitingArea: boolean;
+    hasTables: boolean;
+    hasCounterOrdering: boolean;
+    queueSystem: 'Organized' | 'Not organized';
+    serviceStyle: 'Dine-in' | 'Takeaway' | 'Both';
+    customerFlowNote: string;
+
+    // Section 3: QR Placement Plan
+    useWindowQR: boolean;
+    windowQRType: 'Sticker' | 'Banner' | 'None';
+    indoorPlacement: string[];
+    specialUse: string[];
+
+    // Section 4 & 5
+    suggestedPackage: 'Starter' | 'Growth' | 'Premium';
+    packageReason: string;
+    customPitch: string;
+
+    // Section 6
+    problemsNoticed: string[];
+
+    // Section 7: Approach Plan
+    bestTimeToApproach: 'Morning' | 'Afternoon' | 'Evening';
+    whoToSpeakTo: 'Owner' | 'Manager' | 'Supervisor';
+    approachStyle: 'Friendly' | 'Direct' | 'Demo first' | 'Talk first';
+
+    // Section 10: Scoring (Manual Rating 1-5)
+    rateFootTraffic: number;
+    rateNeed: number;
+    rateAbilityToPay: number;
+    rateEaseOfAdoption: number;
+
+    // Section 8 & 11
+    demoItems: string[];
+    isDeviceReady: boolean;
+    isInternetReady: boolean;
+    offers: string[];
+    closingPlan: string;
+    summaryNotes?: string;
+
+    // Summary fields
+    score: number; 
     priority: 'High' | 'Medium' | 'Low';
     status: 'Not Contacted' | 'Contacted' | 'Interested' | 'Closed';
-    score: number;
+    
+    // AI Insights (Gemini)
+    aiAnalysis?: string;
     recommendations: string[];
-    suggestedPackage: string;
     pitchSummary: string;
+    aiSource: string;
+
+    // Metadata
     createdBy: string;
     createdAt: string;
     updatedAt: string;
 }
 
-export type BusinessProfileFormData = Omit<BusinessProfile, 'id' | 'score' | 'recommendations' | 'suggestedPackage' | 'pitchSummary' | 'createdAt' | 'updatedAt'>;
+export type BusinessProfileFormData = Omit<BusinessProfile, 'id' | 'score' | 'priority' | 'recommendations' | 'pitchSummary' | 'aiAnalysis' | 'aiSource' | 'createdAt' | 'updatedAt'>;
 
 // Local storage helpers (until backend endpoints are ready)
-const STORAGE_KEY = 'vemtap_business_profiles';
+const STORAGE_KEY = 'vemtap_business_profiles_v2';
 
 const getProfiles = (): BusinessProfile[] => {
     if (typeof window === 'undefined') return [];
@@ -56,82 +97,70 @@ const saveProfiles = (profiles: BusinessProfile[]) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
 };
 
+// --- VEMTAP AI INTEGRATION ---
+const generateAIInsights = async (data: Partial<BusinessProfileFormData>): Promise<AIAnalysisResult> => {
+    try {
+        // Call the server-side API route which has access to GEMINI_API_KEY
+        const result = await analyzeWithVemtapAI(data);
+        if (result && result.aiAnalysis) return result;
+    } catch (error) {
+        console.warn('[Vemtap AI] AI service unavailable, using local analysis:', error instanceof Error ? error.message : error);
+    }
+
+    // LOCAL FALLBACK (only if server AI is unreachable)
+    const name = data.businessName || 'the business';
+    const problems = data.problemsNoticed?.join(', ') || 'operational inefficiencies';
+    
+    const recommendations = [
+        `Deploy ${data.useWindowQR ? (data.windowQRType || 'Sticker') : 'indoor QR placements'} to maximize customer capture at ${name}.`,
+        `Lead the demo with ${data.demoItems?.[0] || 'the ordering flow'} when speaking to the ${data.whoToSpeakTo || 'Manager'} during ${data.bestTimeToApproach || 'Afternoon'} hours.`,
+        `Close with the ${data.suggestedPackage || 'Growth'} package, using ${data.offers?.[0] || 'a free trial'} as the conversion lever.`
+    ];
+
+    const pitchSummary = `DYNAMIC POWER PITCH:\n\n1. THE HOOK: "I noticed your ${data.customerTraffic} foot traffic and the ${data.hasGlassDoor ? 'excellent display area' : 'entrance layout'}. Are you currently capturing data from every visitor that walks through?"\n\n2. THE AGITATION: "Without a digital bridge, you're losing the ability to retarget these customers once they leave. For a ${data.niche || 'business like yours'}, that's potentially 30% in lost repeat revenue."\n\n3. THE SOLUTION: "Vemtap automates this at the source. Let's set up the ${data.suggestedPackage} plan to start building your private customer database today with zero friction."`;
+
+    const aiAnalysis = `VEMTAP AI STRATEGIC ANALYSIS\n\nBased on the ${data.businessType} profile for ${name} in ${data.location || 'the target area'}, this business shows ${data.customerTraffic || 'moderate'} customer traffic with a ${data.niche || 'general'} focus. The ${data.serviceStyle || 'standard'} service style and ${data.queueSystem || 'current queue'} system present clear opportunities for Vemtap integration.\n\nThe primary pain points identified are: ${problems}. These directly align with Vemtap capabilities in customer data capture, automated engagement, and operational streamlining.\n\nTOP 3 RECOMMENDATIONS\n1. ${recommendations[0]}\n2. ${recommendations[1]}\n3. ${recommendations[2]}\n\nTHE STRATEGIC PITCH\n${pitchSummary}`;
+
+    return { recommendations, pitchSummary, aiAnalysis, source: 'fallback' };
+};
+
 // Scoring algorithm
-const calculateScore = (data: Partial<BusinessProfileFormData>): number => {
-    let score = 0;
-    if (data.estimatedFootTraffic === 'High') score += 5;
-    else if (data.estimatedFootTraffic === 'Medium') score += 3;
-    else score += 1;
-
-    if (data.hasWifi) score += 2;
-    if (data.hasCounterSpace) score += 2;
-    if (data.hasWindowDisplay) score += 2;
-    if (data.hasTableSetup) score += 2;
-    if (data.hasDigitalMenu) score += 1;
-    if ((data.qrPlacement?.length || 0) > 0) score += (data.qrPlacement?.length || 0);
-    if ((data.painPoints?.length || 0) > 0) score += (data.painPoints?.length || 0);
-    if ((data.currentMarketingChannels?.length || 0) < 2) score += 2;
-    return Math.min(score, 20);
-};
-
-const generateRecommendations = (data: Partial<BusinessProfileFormData>): string[] => {
-    const recs: string[] = [];
-    if (data.hasTableSetup) recs.push('Deploy Table QR codes for menu access and instant feedback');
-    if (data.hasWindowDisplay) recs.push('Use Window QR sticker for walk-in engagement');
-    if (data.hasCounterSpace) recs.push('Place Counter QR stand for checkout interactions');
-    if (data.estimatedFootTraffic === 'High') recs.push('High traffic location — maximize tap points');
-    if (!data.hasDigitalMenu) recs.push('Introduce digital menu via NFC/QR to modernize experience');
-    if ((data.currentMarketingChannels?.length || 0) < 2) recs.push('Expand marketing channels with WhatsApp & SMS campaigns');
-    if (data.hasWifi) recs.push('Leverage WiFi for customer data capture through splash page');
-    if (recs.length === 0) recs.push('Standard setup with counter QR and basic engagement');
-    return recs;
-};
-
-const generatePackage = (score: number): string => {
-    if (score >= 15) return 'Enterprise Package';
-    if (score >= 10) return 'Growth Package';
-    if (score >= 5) return 'Starter Package';
-    return 'Basic Package';
-};
-
-const generatePitch = (data: Partial<BusinessProfileFormData>, score: number): string => {
-    const name = data.businessName || 'Your business';
-    if (score >= 15) {
-        return `${name} has massive potential with high traffic and multiple touchpoints. Our Enterprise solution will help capture every customer interaction, automate marketing, and build a loyalty ecosystem that drives repeat visits.`;
-    }
-    if (score >= 10) {
-        return `${name} is well-positioned for growth. With our Growth package, you'll start capturing customer data, run targeted campaigns, and see a measurable increase in return visits within 30 days.`;
-    }
-    if (score >= 5) {
-        return `${name} can benefit from our Starter package to begin digitizing customer engagement. Start with QR-based interactions and build from there as you see results.`;
-    }
-    return `${name} is starting its digital journey. Our Basic package provides the essentials to begin engaging customers through modern touchpoints.`;
+const calculateScoreAndPriority = (data: Partial<BusinessProfileFormData>): { score: number; priority: BusinessProfile['priority'] } => {
+    const score = (data.rateFootTraffic || 0) + 
+                  (data.rateNeed || 0) + 
+                  (data.rateAbilityToPay || 0) + 
+                  (data.rateEaseOfAdoption || 0);
+    
+    let priority: BusinessProfile['priority'] = 'Low';
+    if (score >= 15) priority = 'High';
+    else if (score >= 10) priority = 'Medium';
+    
+    return { score, priority };
 };
 
 // Simulated API
 export const businessProfilingApi = {
-    getAll: async (params?: { search?: string; priority?: string; status?: string; type?: string; page?: number; limit?: number }): Promise<{ data: BusinessProfile[]; total: number }> => {
+    getAll: async (filters: { search?: string; priority?: string; status?: string } = {}): Promise<{ data: BusinessProfile[]; total: number }> => {
         let profiles = getProfiles();
-
-        if (params?.search) {
-            const s = params.search.toLowerCase();
-            profiles = profiles.filter(p =>
-                p.businessName.toLowerCase().includes(s) ||
+        
+        if (filters.search) {
+            const s = filters.search.toLowerCase();
+            profiles = profiles.filter(p => 
+                p.businessName.toLowerCase().includes(s) || 
                 p.location.toLowerCase().includes(s) ||
-                p.contactPerson.toLowerCase().includes(s)
+                p.businessType.toLowerCase().includes(s)
             );
         }
-        if (params?.priority) profiles = profiles.filter(p => p.priority === params.priority);
-        if (params?.status) profiles = profiles.filter(p => p.status === params.status);
-        if (params?.type) profiles = profiles.filter(p => p.businessType === params.type);
-
-        const total = profiles.length;
-        const page = params?.page || 1;
-        const limit = params?.limit || 10;
-        const start = (page - 1) * limit;
-        const paginated = profiles.slice(start, start + limit);
-
-        return { data: paginated, total };
+        
+        if (filters.priority) {
+            profiles = profiles.filter(p => p.priority === filters.priority);
+        }
+        
+        if (filters.status) {
+            profiles = profiles.filter(p => p.status === filters.status);
+        }
+        
+        return { data: profiles, total: profiles.length };
     },
 
     getById: async (id: string): Promise<BusinessProfile | null> => {
@@ -141,14 +170,18 @@ export const businessProfilingApi = {
 
     create: async (data: BusinessProfileFormData): Promise<BusinessProfile> => {
         const profiles = getProfiles();
-        const score = calculateScore(data);
+        const { score, priority } = calculateScoreAndPriority(data);
+        const { recommendations, pitchSummary, aiAnalysis, source } = await generateAIInsights(data);
+
         const newProfile: BusinessProfile = {
             ...data,
-            id: `bp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: `bp_${Date.now()}`,
             score,
-            recommendations: generateRecommendations(data),
-            suggestedPackage: generatePackage(score),
-            pitchSummary: generatePitch(data, score),
+            priority,
+            recommendations,
+            pitchSummary,
+            aiAnalysis,
+            aiSource: source,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -161,14 +194,19 @@ export const businessProfilingApi = {
         const profiles = getProfiles();
         const idx = profiles.findIndex(p => p.id === id);
         if (idx === -1) return null;
+        
         const merged = { ...profiles[idx], ...data };
-        const score = calculateScore(merged);
+        const { score, priority } = calculateScoreAndPriority(merged);
+        const { recommendations, pitchSummary, aiAnalysis, source } = await generateAIInsights(merged);
+
         profiles[idx] = {
             ...merged,
             score,
-            recommendations: generateRecommendations(merged),
-            suggestedPackage: generatePackage(score),
-            pitchSummary: generatePitch(merged, score),
+            priority,
+            recommendations,
+            pitchSummary,
+            aiAnalysis,
+            aiSource: source,
             updatedAt: new Date().toISOString(),
         };
         saveProfiles(profiles);
@@ -192,16 +230,7 @@ export const businessProfilingApi = {
         return true;
     },
 
-    getStats: async (): Promise<{
-        total: number;
-        high: number;
-        medium: number;
-        low: number;
-        notContacted: number;
-        contacted: number;
-        interested: number;
-        closed: number;
-    }> => {
+    getStats: async () => {
         const profiles = getProfiles();
         return {
             total: profiles.length,
