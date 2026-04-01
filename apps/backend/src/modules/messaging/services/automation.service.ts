@@ -253,9 +253,33 @@ export class AutomationService {
       },
     });
 
-    this.logger.log(`Found ${rules.length} matching rules`);
+    this.logger.log(`Found ${rules.length} matching rules for ${type}`);
 
     for (const rule of rules) {
+      // 1. Check for Keyword Matching (FAQ)
+      if (type === TriggerType.INBOUND_MESSAGE && dto.content) {
+        const keywords = rule.actionConfig?.keywords || [];
+        if (keywords.length > 0) {
+          const content = dto.content.toLowerCase();
+          const matches = keywords.some((kw: string) =>
+            content.includes(kw.toLowerCase()),
+          );
+          if (!matches) {
+            this.logger.log(`Rule ${rule.id} keywords do not match message content`);
+            continue;
+          }
+        }
+      }
+
+      // 2. Check for Off-Hours
+      if (type === TriggerType.OFF_HOURS) {
+        const branch = await this.branchesService.findById(dto.branchId);
+        if (!this.isCurrentlyOffHours(branch)) {
+          this.logger.log(`Branch ${dto.branchId} is currently OPEN; skipping off-hours automation.`);
+          continue;
+        }
+      }
+
       if (rule.delaySeconds && rule.delaySeconds > 0) {
         this.logger.log(
           `Queuing delayed execution for rule ${rule.id} (${rule.delaySeconds}s)`,
@@ -276,6 +300,32 @@ export class AutomationService {
     }
   }
 
+  private isCurrentlyOffHours(branch: any): boolean {
+    if (!branch.businessHours) return false;
+
+    const now = new Date();
+    const days = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
+    const currentDay = days[now.getDay()];
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    const todayConfig = branch.businessHours[currentDay];
+    if (!todayConfig || !todayConfig.isOpen) return true;
+
+    if (todayConfig.startTime && todayConfig.endTime) {
+      return currentTime < todayConfig.startTime || currentTime > todayConfig.endTime;
+    }
+
+    return false;
+  }
+
   async executeRule(
     ruleId: string,
     triggerDto: AutomationTriggerDto,
@@ -291,14 +341,15 @@ export class AutomationService {
       if (
         rule.actionType === ActionType.SEND_SMS ||
         rule.actionType === ActionType.SEND_WHATSAPP ||
-        rule.actionType === ActionType.SEND_EMAIL
+        rule.actionType === ActionType.SEND_EMAIL ||
+        rule.actionType === ActionType.SEND_IN_HOUSE
       ) {
         const channel = this.mapActionToChannel(rule.actionType);
         await this.messagingEngine.sendMessage({
           branchId: rule.branchId,
           channel,
           customerIds: [triggerDto.customerId],
-          content: rule.actionConfig?.content,
+          content: rule.actionConfig?.content || rule.actionConfig?.message,
           templateId: rule.actionConfig?.templateId,
         });
       } else if (rule.actionType === ActionType.PUSH_REVIEW) {
@@ -338,6 +389,7 @@ export class AutomationService {
     if (action === ActionType.SEND_SMS) return Channel.SMS;
     if (action === ActionType.SEND_WHATSAPP) return Channel.WHATSAPP;
     if (action === ActionType.SEND_EMAIL) return Channel.EMAIL;
+    if (action === ActionType.SEND_IN_HOUSE) return Channel.IN_HOUSE;
     return Channel.SMS;
   }
 }
