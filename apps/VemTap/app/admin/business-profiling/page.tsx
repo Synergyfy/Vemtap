@@ -300,6 +300,48 @@ const ListTab = ({ profiles, filters, setFilters, onView, onUpdateStatus, onDele
     );
 };
 
+
+const FormField = ({ label, tooltip, children, className = "" }: { label: string, tooltip: string, children: React.ReactNode, className?: string }) => (
+    <div className={`space-y-2 group/field ${className}`}>
+        <div className="flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest leading-none">{label}</label>
+            <div className="relative group/tip">
+                <HelpCircle size={10} className="text-gray-300 cursor-help transition-colors hover:text-primary" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-gray-900 text-white text-[9px] rounded-lg opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-50 font-bold leading-tight shadow-xl">
+                    {tooltip}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                </div>
+            </div>
+        </div>
+        {children}
+    </div>
+);
+
+const RatingInput = ({ label, tooltip, field, value, onRatingChange }: { 
+    label: string, 
+    tooltip: string, 
+    field: keyof BusinessProfileFormData, 
+    value: number,
+    onRatingChange: (field: keyof BusinessProfileFormData, value: number) => void
+}) => (
+    <FormField label={label} tooltip={tooltip}>
+        <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((num) => (
+                <button
+                    key={num}
+                    type="button"
+                    onClick={() => onRatingChange(field, num)}
+                    className={`w-10 h-10 rounded-xl font-bold transition-all border ${
+                        value === num ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-gray-50 text-gray-400 border-gray-100 hover:border-primary/20'
+                    }`}
+                >
+                    {num}
+                </button>
+            ))}
+        </div>
+    </FormField>
+);
+
 const NewProfileTab = ({ onSave, isSaving }: { onSave: (data: BusinessProfileFormData) => void, isSaving?: boolean }) => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<BusinessProfileFormData>({
@@ -360,40 +402,9 @@ const NewProfileTab = ({ onSave, isSaving }: { onSave: (data: BusinessProfileFor
         { id: 5, title: 'Final Review', icon: CheckCircle2 }
     ];
 
-    const FormField = ({ label, tooltip, children, className = "" }: { label: string, tooltip: string, children: React.ReactNode, className?: string }) => (
-        <div className={`space-y-2 group/field ${className}`}>
-            <div className="flex items-center gap-2">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest leading-none">{label}</label>
-                <div className="relative group/tip">
-                    <HelpCircle size={10} className="text-gray-300 cursor-help transition-colors hover:text-primary" />
-                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-gray-900 text-white text-[9px] rounded-lg opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-50 font-bold leading-tight shadow-xl">
-                        {tooltip}
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
-                    </div>
-                </div>
-            </div>
-            {children}
-        </div>
-    );
-
-    const RatingInput = ({ label, tooltip, field, value }: { label: string, tooltip: string, field: keyof BusinessProfileFormData, value: number }) => (
-        <FormField label={label} tooltip={tooltip}>
-            <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((num) => (
-                    <button
-                        key={num}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, [field]: num })}
-                        className={`w-10 h-10 rounded-xl font-bold transition-all border ${
-                            value === num ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-gray-50 text-gray-400 border-gray-100 hover:border-primary/20'
-                        }`}
-                    >
-                        {num}
-                    </button>
-                ))}
-            </div>
-        </FormField>
-    );
+    const handleRatingChange = (field: keyof BusinessProfileFormData, value: number) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
 
     return (
         <div className="max-w-4xl mx-auto animate-in slide-in-from-bottom duration-500 pb-32">
@@ -936,10 +947,10 @@ const NewProfileTab = ({ onSave, isSaving }: { onSave: (data: BusinessProfileFor
                                             Manual Scoring (Rate 1-5)
                                             <HelpCircle size={14} className="text-primary/40" />
                                         </h3>
-                                        <RatingInput label="Foot Traffic" tooltip="Frequency and volume of physical visitors." field="rateFootTraffic" value={formData.rateFootTraffic} />
-                                        <RatingInput label="Need for Vemtap" tooltip="How much would they benefit from loyalty/ordering?" field="rateNeed" value={formData.rateNeed} />
-                                        <RatingInput label="Ability to Pay" tooltip="Estimated financial ceiling based on niche/branches." field="rateAbilityToPay" value={formData.rateAbilityToPay} />
-                                        <RatingInput label="Ease of Adoption" tooltip="Tech-savviness of the setup and staff." field="rateEaseOfAdoption" value={formData.rateEaseOfAdoption} />
+                                        <RatingInput label="Foot Traffic" tooltip="Frequency and volume of physical visitors." field="rateFootTraffic" value={formData.rateFootTraffic} onRatingChange={handleRatingChange} />
+                                        <RatingInput label="Need for Vemtap" tooltip="How much would they benefit from loyalty/ordering?" field="rateNeed" value={formData.rateNeed} onRatingChange={handleRatingChange} />
+                                        <RatingInput label="Ability to Pay" tooltip="Estimated financial ceiling based on niche/branches." field="rateAbilityToPay" value={formData.rateAbilityToPay} onRatingChange={handleRatingChange} />
+                                        <RatingInput label="Ease of Adoption" tooltip="Tech-savviness of the setup and staff." field="rateEaseOfAdoption" value={formData.rateEaseOfAdoption} onRatingChange={handleRatingChange} />
                                         
                                         <div className="pt-4 border-t border-primary/20 flex items-center justify-between">
                                             <span className="font-black text-primary uppercase tracking-tighter text-lg">Total Score Estimate</span>
@@ -1045,6 +1056,32 @@ const NewProfileTab = ({ onSave, isSaving }: { onSave: (data: BusinessProfileFor
 };
 
 // --- Profile Detail / Insights Sub-page ---
+
+const SectionHeader = ({ icon: Icon, title }: any) => (
+    <h3 className="font-black text-text-main text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 mb-6 border-b border-gray-100 pb-2">
+        <Icon size={14} className="text-primary" strokeWidth={3} />
+        {title}
+    </h3>
+);
+
+const InfoRow = ({ label, value }: { label: string, value: any }) => (
+    <div className="space-y-1">
+        <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider font-mono">{label}</p>
+        <p className="text-sm font-black text-text-main">{value || 'N/A'}</p>
+    </div>
+);
+
+const Tag = ({ children, color = 'blue' }: any) => {
+    const colors: any = {
+        blue: 'bg-blue-50 text-blue-600 border-blue-100',
+        red: 'bg-red-50 text-red-600 border-red-100',
+        green: 'bg-green-50 text-green-600 border-green-100',
+        orange: 'bg-orange-50 text-orange-600 border-orange-100',
+        purple: 'bg-purple-50 text-purple-600 border-purple-100'
+    };
+    return <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border ${colors[color]}`}>{children}</span>;
+};
+
 const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () => void }) => {
     const [profile, setProfile] = useState<BusinessProfile | null>(null);
     const [activeTab, setActiveTab] = useState('insights');
@@ -1077,30 +1114,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
 
     if (!profile) return <div className="p-20 text-center animate-pulse font-black text-gray-300 uppercase tracking-widest text-xs">Loading Live Data Store...</div>;
 
-    const SectionHeader = ({ icon: Icon, title }: any) => (
-        <h3 className="font-black text-text-main text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 mb-6 border-b border-gray-100 pb-2">
-            <Icon size={14} className="text-primary" strokeWidth={3} />
-            {title}
-        </h3>
-    );
 
-    const InfoRow = ({ label, value }: { label: string, value: any }) => (
-        <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider font-mono">{label}</p>
-            <p className="text-sm font-black text-text-main">{value || 'N/A'}</p>
-        </div>
-    );
-
-    const Tag = ({ children, color = 'blue' }: any) => {
-        const colors: any = {
-            blue: 'bg-blue-50 text-blue-600 border-blue-100',
-            red: 'bg-red-50 text-red-600 border-red-100',
-            green: 'bg-green-50 text-green-600 border-green-100',
-            orange: 'bg-orange-50 text-orange-600 border-orange-100',
-            purple: 'bg-purple-50 text-purple-600 border-purple-100'
-        };
-        return <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border ${colors[color]}`}>{children}</span>;
-    };
 
     return (
         <div className="space-y-8 animate-in zoom-in-95 duration-500 pb-20">

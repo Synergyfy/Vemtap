@@ -123,31 +123,31 @@ export default function Pricing() {
     };
 
     return (
-        <section id="pricing" className="py-20 bg-white overflow-hidden relative border-t border-gray-100">
-            <div className="max-w-7xl mx-auto px-6 sm:px-10 py-16">
+        <section id="pricing" className="py-12 md:py-16 bg-white overflow-hidden relative border-t border-gray-100">
+            <div className="max-w-7xl mx-auto px-6 sm:px-10 py-10">
                 <div className="text-center max-w-2xl mx-auto mb-10">
                     <h2 className="text-3xl md:text-5xl font-display font-bold text-text-main mb-3">Enterprise-Grade <span className="text-primary">Licensing</span></h2>
                     <p className="text-base text-text-secondary font-medium">Clear pricing with no hidden fees.</p>
                 </div>
 
                 {/* Billing Toggle */}
-                <div className="flex justify-center mb-12">
-                    <div className="bg-gray-100 p-1 rounded-2xl flex items-center gap-1">
+                <div className="flex justify-center mb-12 px-2 max-w-sm mx-auto w-full">
+                    <div className="bg-gray-200/50 p-1.5 rounded-2xl flex items-center w-full shadow-inner">
                         {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                             <button
                                 key={cycle}
                                 onClick={() => setBillingPeriod(cycle)}
                                 className={`
-                                    px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all
+                                    flex-1 flex items-center justify-center py-3.5 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-tighter sm:tracking-widest transition-all
                                     ${billingPeriod === cycle
-                                        ? 'bg-white text-primary shadow-sm scale-105'
-                                        : 'text-text-secondary hover:text-text-main'
+                                        ? 'bg-white text-primary shadow-md scale-105'
+                                        : 'text-text-secondary hover:text-text-main hover:bg-white/50'
                                     }
                                 `}
                             >
                                 {cycle}
-                                {cycle === 'yearly' && <span className="ml-2 bg-green-500 text-white text-[8px] px-1.5 py-0.5 rounded-full">-20%</span>}
-                                {cycle === 'quarterly' && <span className="ml-2 bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-full">-10%</span>}
+                                {cycle === 'yearly' && <span className="ml-1 bg-green-500 text-white text-[7px] sm:text-[8px] px-1.5 py-0.5 rounded-full">-20%</span>}
+                                {cycle === 'quarterly' && <span className="ml-1 bg-blue-500 text-white text-[7px] sm:text-[8px] px-1.5 py-0.5 rounded-full">-10%</span>}
                             </button>
                         ))}
                     </div>
