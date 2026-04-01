@@ -305,15 +305,13 @@ const FormField = ({ label, tooltip, children, className = "" }: { label: string
     <div className={`space-y-2 group/field ${className}`}>
         <div className="flex items-center gap-2">
             <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest leading-none">{label}</label>
-            <div className="relative group/tip">
-                <HelpCircle size={10} className="text-gray-300 cursor-help transition-colors hover:text-primary" />
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-gray-900 text-white text-[9px] rounded-lg opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-50 font-bold leading-tight shadow-xl">
-                    {tooltip}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
-                </div>
-            </div>
         </div>
         {children}
+        {tooltip && (
+            <p className="text-[9px] text-gray-400 font-medium leading-relaxed italic">
+                {tooltip}
+            </p>
+        )}
     </div>
 );
 
