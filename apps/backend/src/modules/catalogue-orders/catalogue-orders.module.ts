@@ -13,6 +13,7 @@ import { Device } from '../devices/entities/device.entity';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { VisitorsModule } from '../visitors/visitors.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { VisitorsModule } from '../visitors/visitors.module';
     ]),
     LoyaltyModule,
     NotificationsModule,
+    MailModule,
     forwardRef(() => VisitorsModule),
   ],
   controllers: [CatalogueOrdersController],

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { Plus, Edit2, Trash2, Search, Filter, Image as ImageIcon, Box, Cog } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Filter, Image as ImageIcon, Box, Cog, Coins } from 'lucide-react';
 import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem, useCatalogueCategories, Category } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
@@ -159,6 +159,17 @@ export default function ProductsPage() {
                     ) : (
                         <span className="text-[10px] text-text-secondary font-black uppercase tracking-widest">N/A (Service)</span>
                     )}
+                </div>
+            )
+        },
+        {
+            header: 'Points',
+            accessor: (item: CatalogueItem) => (
+                <div className="flex items-center gap-1.5">
+                    <span className="p-1 bg-amber-50 text-amber-600 rounded-md">
+                        <Coins size={12} />
+                    </span>
+                    <span className="text-sm font-black text-text-main">{item.loyaltyPoints || 0}</span>
                 </div>
             )
         },

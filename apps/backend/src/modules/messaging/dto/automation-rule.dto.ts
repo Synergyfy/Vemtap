@@ -92,6 +92,7 @@ export class UpdateAutomationRuleDto {
 export class AutomationTriggerDto {
   branchId: string;
   customerId: string;
+  content?: string;
   metadata?: Record<string, any>;
 }
 

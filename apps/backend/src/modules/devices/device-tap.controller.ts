@@ -67,6 +67,7 @@ export class DeviceTapController {
         name: deviceWithRelations.branch.name,
         welcomeMessage: deviceWithRelations.branch.welcomeMessage,
         successMessage: deviceWithRelations.branch.successMessage,
+        whatsappNumber: deviceWithRelations.branch.whatsappNumber,
         logoUrl: deviceWithRelations.branch.logoUrl,
         engagement: deviceWithRelations.branch.engagement,
         productCount,
