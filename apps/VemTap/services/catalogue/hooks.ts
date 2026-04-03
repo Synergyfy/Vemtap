@@ -170,7 +170,16 @@ export interface CreateOrderDto {
     branchId: string;
     tableNumber?: string;
     notes?: string;
-    items: { itemId?: string, offerId?: string, quantity: number }[];
+    items: { 
+        itemId?: string, 
+        offerId?: string, 
+        newItem?: {
+            name: string,
+            price: number,
+            categoryId?: string
+        },
+        quantity: number 
+    }[];
     deviceId?: string;
 }
 

@@ -14,6 +14,24 @@ import {
 import { Type } from 'class-transformer';
 import { CatalogueOrderStatus } from '../entities/catalogue-order.entity';
 
+export class CreateQuickItemDto {
+  @ApiProperty({ example: 'New Item' })
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 1000 })
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @ApiPropertyOptional({ example: 'uuid-of-category' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+}
+
 export class OrderItemDto {
   @ApiPropertyOptional({ example: 'uuid-of-item' })
   @IsOptional()
@@ -24,6 +42,12 @@ export class OrderItemDto {
   @IsOptional()
   @IsUUID()
   offerId?: string;
+
+  @ApiPropertyOptional({ type: CreateQuickItemDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateQuickItemDto)
+  newItem?: CreateQuickItemDto;
 
   @ApiProperty({ example: 2 })
   @IsNotEmpty()
