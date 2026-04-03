@@ -8,7 +8,7 @@ import {
     Bolt, 
     SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText,
     UserCircle, Building2, Link as LinkIcon, Star, Coins, Clock, Copy,
-    Zap, Target, MessageSquare
+    Zap, Target, MessageSquare, Eye, EyeOff
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -387,7 +387,6 @@ export default function ChatSettingsPanel() {
         const content = editingRule ? editingRule.actionConfig?.message : tempMessage;
         
         const payload = {
-            businessId: user?.businessId || '',
             branchId: branchId || undefined,
             name,
             triggerType: TriggerType.FIRST_MESSAGE,
@@ -719,10 +718,8 @@ export default function ChatSettingsPanel() {
                     isLoading={createRule.isPending}
                     onSave={async (data) => {
                         const payload = {
-                            businessId: user?.businessId || '',
                             branchId: branchId || undefined,
-                            name: data.name,
-                            triggerType: data.triggerType,
+                            name: data.name,                            triggerType: data.triggerType,
                             targetType: data.targetType,
                             actionType: data.actionType,
                             isActive: true,
@@ -1040,43 +1037,93 @@ export default function ChatSettingsPanel() {
                                 </div>
                                 <div className="p-6 bg-slate-50/50 space-y-4">
                                     {(automation.faqKeywords || []).map((faq: any, i: number) => (
-                                        <div key={faq.id} className={`p-4 bg-white border border-slate-200 rounded-xl ${!faq.enabled ? 'opacity-60' : ''} transition-all`}>
-                                            <div className="flex flex-wrap gap-2 mb-3">
-                                                {faq.keywords.map((kw: string) => (
-                                                    <span key={kw} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium border border-slate-200 flex items-center gap-1">
-                                                        {kw}
-                                                    </span>
-                                                ))}
-                                                <button 
-                                                    onClick={() => deleteFaq.mutate(faq.id)} 
-                                                    disabled={deleteFaq.isPending}
-                                                    className="text-red-500 p-1 hover:bg-red-50 rounded ml-auto transition-colors disabled:opacity-30"
-                                                >
-                                                    {deleteFaq.isPending ? <div className="size-3 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" /> : <Trash2 size={14} />}
-                                                </button>
+                                        <div key={faq.id} className={`p-5 bg-white border border-slate-200 rounded-2xl shadow-sm ${!faq.enabled ? 'opacity-60 grayscale-[0.5]' : ''} transition-all space-y-4`}>
+                                            <div className="flex items-start gap-4">
+                                                <div className="flex-1 space-y-1.5">
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trigger Keywords (comma separated)</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <button 
+                                                                onClick={() => updateFaq.mutate({ id: faq.id, data: { enabled: !faq.enabled } })}
+                                                                className={`p-1.5 rounded-lg transition-all ${faq.enabled ? 'text-primary bg-primary/5 hover:bg-primary/10' : 'text-slate-400 bg-slate-100 hover:bg-slate-200'}`}
+                                                                title={faq.enabled ? "Disable Trigger" : "Enable Trigger"}
+                                                            >
+                                                                {faq.enabled ? <Eye size={14} /> : <EyeOff size={14} />}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => { if(confirm('Delete this trigger?')) deleteFaq.mutate(faq.id); }}
+                                                                disabled={deleteFaq.isPending}
+                                                                className="text-slate-300 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
+                                                                title="Delete Trigger"
+                                                            >
+                                                                {deleteFaq.isPending ? <div className="size-3.5 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" /> : <Trash2 size={14} />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <input 
+                                                        type="text"
+                                                        defaultValue={faq.keywords.join(', ')}
+                                                        placeholder="e.g. price, cost, how much"
+                                                        onBlur={e => {
+                                                            const val = e.target.value.trim();
+                                                            const newKeywords = val.split(',').map(k => k.trim()).filter(Boolean);
+                                                            if (newKeywords.length > 0) {
+                                                                updateFaq.mutate({ id: faq.id, data: { keywords: newKeywords } });
+                                                            } else {
+                                                                toast.error('Keywords cannot be empty');
+                                                                e.target.value = faq.keywords.join(', ');
+                                                            }
+                                                        }}
+                                                        disabled={updateFaq.isPending}
+                                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all"
+                                                    />
+                                                </div>
                                             </div>
-                                            <textarea 
-                                                defaultValue={faq.response}
-                                                onBlur={e => {
-                                                    if (e.target.value.trim()) {
-                                                        updateFaq.mutate({ id: faq.id, data: { response: e.target.value } });
-                                                    } else {
-                                                        toast.error('Response cannot be empty');
-                                                        e.target.value = faq.response;
-                                                    }
-                                                }}
-                                                disabled={updateFaq.isPending}
-                                                className="block w-full px-4 py-2 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
-                                                rows={2} 
-                                            />
+
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between items-center px-1">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Auto-Response Message</label>
+                                                </div>
+                                                <textarea 
+                                                    defaultValue={faq.response}
+                                                    placeholder="Type the automated reply here..."
+                                                    onBlur={e => {
+                                                        if (e.target.value.trim()) {
+                                                            updateFaq.mutate({ id: faq.id, data: { response: e.target.value } });
+                                                        } else {
+                                                            toast.error('Response cannot be empty');
+                                                            e.target.value = faq.response;
+                                                        }
+                                                    }}
+                                                    disabled={updateFaq.isPending}
+                                                    className="block w-full px-4 py-3 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all disabled:opacity-50 min-h-[80px] resize-none font-medium"
+                                                    rows={2} 
+                                                />
+                                            </div>
                                         </div>
                                     ))}
+                                    
                                     <button 
-                                        onClick={() => addFaq.mutate({ keywords: ['new-keyword'], response: 'New auto response' })}
+                                        onClick={() => {
+                                            const kws = prompt('Enter keywords for this trigger (comma separated):', 'new-keyword');
+                                            if (!kws) return;
+                                            const keywords = kws.split(',').map(k => k.trim()).filter(Boolean);
+                                            if (keywords.length === 0) return;
+                                            addFaq.mutate({ keywords, response: 'Hi! Thanks for asking. How can we help you with that?' });
+                                        }}
                                         disabled={addFaq.isPending}
-                                        className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-sm hover:border-primary/50 hover:text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-sm hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 group"
                                     >
-                                        {addFaq.isPending ? <div className="size-4 border-2 border-slate-200 border-t-primary rounded-full animate-spin" /> : '+ Add New Keyword Trigger'}
+                                        {addFaq.isPending ? (
+                                            <div className="size-5 border-2 border-slate-200 border-t-primary rounded-full animate-spin" />
+                                        ) : (
+                                            <>
+                                                <div className="size-6 rounded-full bg-slate-100 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                                                    <Plus size={14} />
+                                                </div>
+                                                Add New Keyword Trigger
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </section>
@@ -1242,7 +1289,8 @@ export default function ChatSettingsPanel() {
                                             </div>
                                         </div>
                                     ))}
-                                </div>
+                                    </div>
+                                )}
                             </section>
                         </div>
                     </div>

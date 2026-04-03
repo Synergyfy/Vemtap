@@ -393,6 +393,7 @@ export class MessagingEngineService {
         channel === Channel.EMAIL
           ? customer.email || ''
           : formatPhoneNumber(customer.phone || ''),
+      timestamp: new Date(),
     } as any) as unknown as Message;
 
     const savedMessageResult = await this.messageRepo.save(message);
@@ -718,6 +719,7 @@ export class MessagingEngineService {
       from: inbound.from,
       to: inbound.to,
       providerMessageId: (inbound as any).providerId || (inbound as any).id,
+      timestamp: new Date(),
     } as any) as unknown as Message;
     await this.messageRepo.save(message);
 

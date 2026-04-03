@@ -1,7 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
-import { TriggerType, ActionType } from '../enums/automation.enum';
+import { TriggerType, ActionType, TargetType } from '../enums/automation.enum';
 
 @Entity('automation_rules')
 export class AutomationRule extends AbstractBaseEntity {
@@ -23,6 +23,13 @@ export class AutomationRule extends AbstractBaseEntity {
     enum: TriggerType,
   })
   triggerType: TriggerType;
+
+  @Column({
+    type: 'enum',
+    enum: TargetType,
+    nullable: true,
+  })
+  targetType: TargetType;
 
   @Column({ nullable: true, default: 0 })
   delaySeconds: number; // 0 means immediate

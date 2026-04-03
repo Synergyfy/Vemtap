@@ -53,6 +53,7 @@ const toPlanPayload = (plan: Partial<PricingPlan>) => {
         'loyaltyEnabled', 'loyaltyLimit', 'branchesEnabled', 'branchLimit',
         'analyticsEnabled', 'analyticsLevel', 'catalogueEnabled',
         'maxCatalogueItems', 'maxCatalogueCategories', 'maxCatalogueOffers',
+        'automationsEnabled', 'maxAutomations',
         'isActive', 'description', 'isPopular'
     ];
 

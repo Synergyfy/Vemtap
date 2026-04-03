@@ -13,7 +13,7 @@ import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
-type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers'> & {
+type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers' | 'maxAutomations'> & {
     id?: string;
     monthlyPrice: string;
     trialDurationDays: string;
@@ -26,6 +26,7 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     maxCatalogueItems: string;
     maxCatalogueCategories: string;
     maxCatalogueOffers: string;
+    maxAutomations: string;
 };
 
 const defaultNewPlan: EditablePlanForm = {
@@ -51,6 +52,8 @@ const defaultNewPlan: EditablePlanForm = {
     maxCatalogueItems: '',
     maxCatalogueCategories: '',
     maxCatalogueOffers: '',
+    automationsEnabled: false,
+    maxAutomations: '',
     isActive: true,
     description: '',
     isPopular: false,
@@ -80,6 +83,8 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     maxCatalogueItems: (plan.maxCatalogueItems ?? 0).toString(),
     maxCatalogueCategories: (plan.maxCatalogueCategories ?? 0).toString(),
     maxCatalogueOffers: (plan.maxCatalogueOffers ?? 0).toString(),
+    automationsEnabled: !!plan.automationsEnabled,
+    maxAutomations: (plan.maxAutomations ?? 0).toString(),
     isActive: plan.isActive ?? true,
     description: plan.description || '',
     isPopular: !!plan.isPopular,
@@ -241,6 +246,8 @@ export default function AdminPricingPage() {
         maxCatalogueItems: toNumber(plan.maxCatalogueItems),
         maxCatalogueCategories: toNumber(plan.maxCatalogueCategories),
         maxCatalogueOffers: toNumber(plan.maxCatalogueOffers),
+        automationsEnabled: !!plan.automationsEnabled,
+        maxAutomations: toNumber(plan.maxAutomations),
         isActive: plan.isActive ?? true,
         description: plan.description || '',
         isPopular: !!plan.isPopular,
@@ -280,12 +287,23 @@ export default function AdminPricingPage() {
                 'branchesEnabled', 'branchLimit', 'analyticsEnabled',
                 'analyticsLevel', 'catalogueEnabled', 'maxCatalogueItems',
                 'maxCatalogueCategories', 'maxCatalogueOffers',
+                'automationsEnabled', 'maxAutomations',
                 'isActive', 'description', 'isPopular'
             ];
 
             editableFields.forEach((k) => {
-                const newVal = payload[k];
-                const oldVal = originalPlan[k];
+                let newVal = payload[k];
+                let oldVal = originalPlan[k];
+
+                // Normalize for comparison (handle undefined/null defaults)
+                if (k === 'automationsEnabled') {
+                    newVal = !!newVal;
+                    oldVal = !!oldVal;
+                }
+                if (k === 'maxAutomations') {
+                    newVal = Number(newVal) || 0;
+                    oldVal = Number(oldVal) || 0;
+                }
 
                 let changed = false;
                 if (Array.isArray(newVal)) {
@@ -295,7 +313,7 @@ export default function AdminPricingPage() {
                 }
 
                 if (changed) {
-                    deltas[k] = newVal;
+                    deltas[k] = payload[k]; // Use the original payload value
                     hasChanges = true;
                 }
             });

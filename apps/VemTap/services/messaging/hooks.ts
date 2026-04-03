@@ -410,7 +410,7 @@ export const useAutomations = (branchId?: string) => {
         queryKey: ['messaging', 'automations', businessId || 'no-biz', role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
-            return await api.get(`/automations?${params.toString()}`);
+            return await api.get(`/messaging/automations?${params.toString()}`);
         },
         enabled: isAuthenticated,
         staleTime: STALE_TIME,
@@ -422,7 +422,7 @@ export const useAutomations = (branchId?: string) => {
 export const useCreateAutomation = () => {
     const queryClient = useQueryClient();
     return useMutation<AutomationRule, Error, CreateAutomationRequest>({
-        mutationFn: async (dto) => await api.post('/automations', dto),
+        mutationFn: async (dto) => await api.post('/messaging/automations', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
@@ -432,7 +432,7 @@ export const useCreateAutomation = () => {
 export const useUpdateAutomation = () => {
     const queryClient = useQueryClient();
     return useMutation<AutomationRule, Error, { id: string; data: UpdateAutomationRequest }>({
-        mutationFn: async ({ id, data }) => await api.patch(`/automations/${id}`, data),
+        mutationFn: async ({ id, data }) => await api.patch(`/messaging/automations/${id}`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
@@ -442,7 +442,7 @@ export const useUpdateAutomation = () => {
 export const useDeleteAutomation = () => {
     const queryClient = useQueryClient();
     return useMutation<void, Error, string>({
-        mutationFn: async (id) => await api.delete(`/automations/${id}`),
+        mutationFn: async (id) => await api.delete(`/messaging/automations/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
@@ -466,7 +466,7 @@ export const useAutomationLogs = (branchId?: string, limit = 50, offset = 0) => 
             const params = new URLSearchParams(contextParams);
             params.append('limit', limit.toString());
             params.append('offset', offset.toString());
-            return await api.get(`/automations/logs?${params.toString()}`);
+            return await api.get(`/messaging/automations/logs?${params.toString()}`);
         },
         enabled: isAuthenticated,
         staleTime: STALE_TIME,
@@ -480,7 +480,7 @@ export const useAutomationLogDetails = (sessionId: string) => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery<AutomationLog, Error>({
         queryKey: ['messaging', 'automation-log-details', sessionId, businessId || 'no-biz'],
-        queryFn: async () => await api.get(`/automations/logs/${sessionId}`),
+        queryFn: async () => await api.get(`/messaging/automations/logs/${sessionId}`),
         enabled: isAuthenticated && !!sessionId,
         staleTime: STALE_TIME,
         gcTime: GC_TIME,
@@ -505,7 +505,7 @@ export const useAutomationPerformance = (branchId?: string, startDate?: string, 
             const params = new URLSearchParams(contextParams);
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
-            return await api.get(`/automations/performance?${params.toString()}`);
+            return await api.get(`/messaging/automations/performance?${params.toString()}`);
         },
         enabled: isAuthenticated,
         staleTime: STALE_TIME,
@@ -529,7 +529,7 @@ export const useWhatsAppConnectionStatus = (branchId?: string) => {
         queryKey: ['messaging', 'whatsapp-status', businessId || 'no-biz', role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
-            return await api.get(`/automations/connection-status?${params.toString()}`);
+            return await api.get(`/messaging/automations/connection-status?${params.toString()}`);
         },
         enabled: isAuthenticated,
         staleTime: STALE_TIME,

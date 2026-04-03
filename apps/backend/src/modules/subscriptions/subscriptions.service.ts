@@ -28,7 +28,7 @@ import { CreditService } from '../messaging/services/credit.service';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
-import { AutomationRule } from '../messaging-automations/entities/automation-rule.entity';
+import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 
 @Injectable()
 export class SubscriptionsService {

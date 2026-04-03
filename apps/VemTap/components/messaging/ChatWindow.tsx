@@ -298,11 +298,13 @@ export default function ChatWindow() {
             contactName = 'Customer'; // Final fallback
         }
     }
-    const threadMessages = [...messages].sort((a, b) => {
-        const timeA = new Date(a.timestamp || a.createdAt || a.sentAt || a.updatedAt).getTime();
-        const timeB = new Date(b.timestamp || b.createdAt || b.sentAt || b.updatedAt).getTime();
-        return timeA - timeB;
-    }) as any[];
+    const threadMessages = useMemo(() => {
+        return [...messages].sort((a, b) => {
+            const timeA = new Date(a.timestamp || a.createdAt || a.sentAt || a.updatedAt || 0).getTime();
+            const timeB = new Date(b.timestamp || b.createdAt || b.sentAt || b.updatedAt || 0).getTime();
+            return timeA - timeB;
+        });
+    }, [messages]) as any[];
     const contactIsOnline = contact?.isOnline;
     const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
     const isTyping = activeConversationId ? typingByThread[activeConversationId] : false;

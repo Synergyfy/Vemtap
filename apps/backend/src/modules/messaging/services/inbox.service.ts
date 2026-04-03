@@ -88,7 +88,7 @@ export class InboxService {
     return this.messageRepo.find({
       where: { threadId },
       relations: ['replyTo'],
-      order: { timestamp: 'DESC' }, // Newest to oldest as requested
+      order: { timestamp: 'ASC' }, // Oldest to newest for chat history
     });
   }
 
@@ -387,7 +387,7 @@ export class InboxService {
     return this.messageRepo.find({
       where: { threadId },
       relations: ['replyTo'],
-      order: { timestamp: 'DESC' }, // Newest to oldest
+      order: { timestamp: 'ASC' }, // Oldest to newest
     });
   }
 

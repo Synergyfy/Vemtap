@@ -38,7 +38,6 @@ import { CustomerImpersonationGuard } from './modules/administration/customer-im
 import { ScheduleModule } from '@nestjs/schedule';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
-import { MessagingAutomationsModule } from './modules/messaging-automations/messaging-automations.module';
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';

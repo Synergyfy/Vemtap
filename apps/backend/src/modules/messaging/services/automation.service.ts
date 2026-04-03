@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -16,6 +16,7 @@ import {
 import { TriggerType, ActionType } from '../enums/automation.enum';
 import { Channel } from '../enums/channel.enum';
 import { BranchesService } from '../../branches/branches.service';
+import { Subscription, SubscriptionStatus } from '../../subscriptions/entities/subscription.entity';
 
 @Injectable()
 export class AutomationService {
@@ -26,6 +27,8 @@ export class AutomationService {
     private readonly ruleRepo: Repository<AutomationRule>,
     @InjectRepository(AutomationLog)
     private readonly logRepo: Repository<AutomationLog>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepo: Repository<Subscription>,
     private readonly messagingEngine: MessagingEngineService,
     private readonly branchesService: BranchesService,
     @InjectQueue('messaging-automation')
@@ -36,6 +39,46 @@ export class AutomationService {
     return this.branchesService.checkBranchAccess(user, branchId);
   }
 
+  // --- Limits ---
+
+  /**
+   * Validates if the business can create a new automation rule based on their subscription plan.
+   */
+  async validateAutomationLimit(businessId: string): Promise<void> {
+    const subscription = await this.subscriptionRepo.findOne({
+      where: { businessId: businessId, status: SubscriptionStatus.ACTIVE },
+      relations: ['plan'],
+    });
+
+    if (!subscription) {
+      throw new ForbiddenException('No active subscription found for this business');
+    }
+
+    const plan = subscription.plan;
+
+    if (!plan) {
+      throw new ForbiddenException('No active subscription plan found');
+    }
+
+    if (!plan.automationsEnabled) {
+      throw new ForbiddenException('Automations are not enabled for your current plan');
+    }
+
+    // If maxAutomations is null or -1, it means unlimited
+    if (plan.maxAutomations !== null && plan.maxAutomations !== -1) {
+      // Count all automation rules for this business across all branches
+      const currentRuleCount = await this.ruleRepo.count({
+        where: { businessId: businessId },
+      });
+
+      if (currentRuleCount >= plan.maxAutomations) {
+        throw new ForbiddenException(
+          `You have reached the maximum allowed automations (${plan.maxAutomations}) for your plan. Please upgrade your plan to create more.`,
+        );
+      }
+    }
+  }
+
   // --- CRUD ---
 
   async create(dto: CreateAutomationRuleDto): Promise<AutomationRule> {
@@ -43,6 +86,9 @@ export class AutomationService {
       const branch = await this.branchesService.findById(dto.branchId);
       dto.businessId = branch.businessId;
     }
+
+    await this.validateAutomationLimit(dto.businessId);
+
     const rule = this.ruleRepo.create(dto as any) as unknown as AutomationRule;
     return this.ruleRepo.save(rule);
   }
@@ -245,12 +291,17 @@ export class AutomationService {
       `Triggering automation ${type} for customer ${dto.customerId}`,
     );
 
+    // Map legacy WELCOME_MESSAGE to FIRST_MESSAGE for unified rule searching
+    const effectiveType = type === TriggerType.WELCOME_MESSAGE ? TriggerType.FIRST_MESSAGE : type;
+
     const rules = await this.ruleRepo.find({
-      where: {
-        branchId: dto.branchId,
-        triggerType: type,
-        isActive: true,
-      },
+      where: [
+        { branchId: dto.branchId, triggerType: effectiveType, isActive: true },
+        // Also check for legacy WELCOME_MESSAGE if we are searching for FIRST_MESSAGE
+        ...(effectiveType === TriggerType.FIRST_MESSAGE 
+          ? [{ branchId: dto.branchId, triggerType: TriggerType.WELCOME_MESSAGE, isActive: true }]
+          : [])
+      ],
     });
 
     this.logger.log(`Found ${rules.length} matching rules for ${type}`);
@@ -268,14 +319,19 @@ export class AutomationService {
             this.logger.log(`Rule ${rule.id} keywords do not match message content`);
             continue;
           }
+        } else {
+          // If it's an FAQ trigger but has no keywords, it shouldn't fire on every message
+          continue; 
         }
       }
 
       // 2. Check for Off-Hours
       if (type === TriggerType.OFF_HOURS) {
         const branch = await this.branchesService.findById(dto.branchId);
-        if (!this.isCurrentlyOffHours(branch)) {
-          this.logger.log(`Branch ${dto.branchId} is currently OPEN; skipping off-hours automation.`);
+        if (!this.isCurrentlyOffHours(branch, rule)) {
+          this.logger.log(
+            `Branch ${dto.branchId} is currently OPEN according to the rule's schedule; skipping off-hours automation.`,
+          );
           continue;
         }
       }
@@ -300,8 +356,11 @@ export class AutomationService {
     }
   }
 
-  private isCurrentlyOffHours(branch: any): boolean {
-    if (!branch.businessHours) return false;
+  private isCurrentlyOffHours(branch: any, rule: AutomationRule): boolean {
+    const config = rule.actionConfig || {};
+    const schedule = config.schedule || 'Outside Business Hours';
+
+    if (schedule === 'Always On (Away Mode)') return true;
 
     const now = new Date();
     const days = [
@@ -316,11 +375,24 @@ export class AutomationService {
     const currentDay = days[now.getDay()];
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
+    if (schedule === 'Custom Schedule' && config.customSchedule?.days) {
+      const todayConfig = config.customSchedule.days[currentDay];
+      if (!todayConfig) return true; // If day not in custom schedule, assume off-hours
+      return (
+        currentTime < todayConfig.startTime || currentTime > todayConfig.endTime
+      );
+    }
+
+    // Default: Outside Business Hours
+    if (!branch.businessHours) return false;
+
     const todayConfig = branch.businessHours[currentDay];
     if (!todayConfig || !todayConfig.isOpen) return true;
 
     if (todayConfig.startTime && todayConfig.endTime) {
-      return currentTime < todayConfig.startTime || currentTime > todayConfig.endTime;
+      return (
+        currentTime < todayConfig.startTime || currentTime > todayConfig.endTime
+      );
     }
 
     return false;
@@ -342,7 +414,8 @@ export class AutomationService {
         rule.actionType === ActionType.SEND_SMS ||
         rule.actionType === ActionType.SEND_WHATSAPP ||
         rule.actionType === ActionType.SEND_EMAIL ||
-        rule.actionType === ActionType.SEND_IN_HOUSE
+        rule.actionType === ActionType.SEND_IN_HOUSE ||
+        rule.actionType === ActionType.SEND_IN_APP_CHAT
       ) {
         const channel = this.mapActionToChannel(rule.actionType);
         await this.messagingEngine.sendMessage({
@@ -389,7 +462,11 @@ export class AutomationService {
     if (action === ActionType.SEND_SMS) return Channel.SMS;
     if (action === ActionType.SEND_WHATSAPP) return Channel.WHATSAPP;
     if (action === ActionType.SEND_EMAIL) return Channel.EMAIL;
-    if (action === ActionType.SEND_IN_HOUSE) return Channel.IN_HOUSE;
+    if (
+      action === ActionType.SEND_IN_HOUSE ||
+      action === ActionType.SEND_IN_APP_CHAT
+    )
+      return Channel.IN_HOUSE;
     return Channel.SMS;
   }
 }
