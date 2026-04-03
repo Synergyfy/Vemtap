@@ -8,7 +8,9 @@ import { Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useCatalogueOrders, Order } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import OrderDetailsModal from '@/components/dashboard/catalogue/OrderDetailsModal';
+import ManualOrderModal from '@/components/dashboard/catalogue/ManualOrderModal';
 import { formatOrderDate } from '@/lib/utils/date';
+import { Plus } from 'lucide-react';
 
 export default function OrdersPage() {
     const { activeBranchId } = useActiveBranch();
@@ -21,6 +23,7 @@ export default function OrdersPage() {
     const orders = ((ordersData as any)?.data as Order[]) || [];
     
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
     const handleViewDetails = (order: Order) => {
@@ -112,6 +115,14 @@ export default function OrdersPage() {
             <PageHeader
                 title="Customer Orders"
                 description="Monitor and fulfill QR menu orders"
+                actions={
+                    <button
+                        onClick={() => setIsManualOrderModalOpen(true)}
+                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 cursor-pointer"
+                    >
+                        <Plus size={16} strokeWidth={3} /> Create Manual Order
+                    </button>
+                }
             />
 
             <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6 flex flex-col md:flex-row gap-4">
@@ -157,6 +168,14 @@ export default function OrdersPage() {
                 }}
                 orderId={selectedOrderId}
             />
+
+            {activeBranchId && (
+                <ManualOrderModal
+                    isOpen={isManualOrderModalOpen}
+                    onClose={() => setIsManualOrderModalOpen(false)}
+                    branchId={activeBranchId}
+                />
+            )}
         </div>
     );
 }

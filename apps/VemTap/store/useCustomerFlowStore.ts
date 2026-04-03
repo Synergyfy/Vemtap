@@ -137,6 +137,7 @@ interface CustomerFlowState {
     customPrivacyMessage: string | null;
     customRewardMessage: string | null;
     logoUrl: string | null;
+    whatsappNumber: string | null;
 
     productCount: number;
     serviceCount: number;
@@ -253,6 +254,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             customPrivacyMessage: null,
             customRewardMessage: null,
             logoUrl: null,
+            whatsappNumber: null,
 
             productCount: 0,
             serviceCount: 0,
@@ -365,7 +367,8 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     customPrivacyMessage: branch.privacyMessage || b.privacyMessage,
                     customRewardMessage: branch.rewardMessage || b.rewardMessage,
                     hasRewardSetup: branch.rewardEnabled ?? b.rewardEnabled,
-                    logoUrl: branch.logoUrl || b.logoUrl,
+                    rewardVisitThreshold: branch.rewardVisitThreshold ?? b.rewardVisitThreshold ?? 5,
+                    whatsappNumber: branch.whatsappNumber ?? null,
                     productCount: branch.productCount || 0,
                     serviceCount: branch.serviceCount || 0,
                     offerCount: branch.offerCount || 0,
