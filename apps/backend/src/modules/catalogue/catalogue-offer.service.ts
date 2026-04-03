@@ -112,7 +112,7 @@ export class CatalogueOfferService {
     if (branchId) where.branchId = branchId;
     return this.offerRepository.find({
       where,
-      relations: ['items', 'branch'],
+      relations: ['items', 'branch', 'reward'],
       order: { createdAt: 'DESC' },
     });
   }

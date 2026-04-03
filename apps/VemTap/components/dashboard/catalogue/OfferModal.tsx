@@ -258,11 +258,10 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                 toast.dismiss(toastId);
             }
 
-            const payload = {
+            const basePayload = {
                 ...formData,
                 mainImage: mainImageUrl,
                 galleryImages: finalGalleryUrls,
-                branchId: activeBranchId,
                 quantity: formData.quantity === null ? undefined : formData.quantity,
                 discountValue: formData.discountValue === null ? undefined : formData.discountValue,
                 fixedPrice: formData.fixedPrice === null ? undefined : formData.fixedPrice,
@@ -271,10 +270,14 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
             };
 
             if (offer) {
-                await updateMutation.mutateAsync({ id: offer.id, data: payload as any });
+                await updateMutation.mutateAsync({ id: offer.id, data: basePayload as any });
                 toast.success('Offer updated successfully');
             } else {
-                await createMutation.mutateAsync(payload as any);
+                const createPayload = {
+                    ...basePayload,
+                    branchId: activeBranchId,
+                };
+                await createMutation.mutateAsync(createPayload as any);
                 toast.success('Offer created successfully');
             }
             onClose();

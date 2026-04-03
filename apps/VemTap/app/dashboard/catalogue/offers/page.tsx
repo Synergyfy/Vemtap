@@ -142,13 +142,29 @@ export default function OffersPage() {
         },
         {
             header: 'Reward',
-            accessor: (offer: CatalogueOffer) => offer.rewardId ? (
-                <div className="flex items-center gap-1.5 text-emerald-600">
-                    <Gift size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-tight">Included</span>
+            accessor: (offer: CatalogueOffer) => offer.reward ? (
+                <div className="flex items-center gap-2.5">
+                    <div className="relative size-8 rounded-full overflow-hidden border border-emerald-100 bg-emerald-50 shrink-0">
+                        {offer.reward.imageUrl ? (
+                            <img src={offer.reward.imageUrl} alt={offer.reward.name} className="size-full object-cover" />
+                        ) : (
+                            <div className="size-full flex items-center justify-center text-emerald-600">
+                                <Gift size={14} />
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-[11px] font-black text-emerald-700 truncate max-w-[120px] uppercase tracking-tight leading-none mb-1">
+                            {offer.reward.name}
+                        </span>
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 uppercase">
+                            <Users size={8} />
+                            <span>{offer.reward.pointCost || 0} pts</span>
+                        </div>
+                    </div>
                 </div>
             ) : (
-                <span className="text-[10px] text-text-secondary font-medium">None</span>
+                <span className="text-[10px] text-text-secondary font-medium italic opacity-60">None</span>
             )
         },
         {

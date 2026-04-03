@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { Reward } from '../loyalty/types';
 
 // --- Types ---
 
@@ -62,6 +63,7 @@ export interface CatalogueOffer {
     branchId: string;
     status: CatalogueOfferStatus;
     items: CatalogueItem[];
+    reward?: Reward;
     createdAt: string;
     updatedAt: string;
 }
@@ -368,6 +370,7 @@ export const useCreateCatalogueItem = () => {
         mutationFn: createItem,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'items'] });
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'item'] });
         },
     });
 };
@@ -376,8 +379,9 @@ export const useUpdateCatalogueItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ id, data }: { id: string, data: UpdateItemDto }) => updateItem(id, data),
-        onSuccess: () => {
+        onSuccess: (_, { id }) => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'items'] });
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'item', id] });
         },
     });
 };

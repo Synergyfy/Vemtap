@@ -6,7 +6,7 @@ import { useCatalogueItem, useDeleteCatalogueItem, CatalogueItem } from '@/servi
 import PageHeader from '@/components/dashboard/PageHeader';
 import { 
     ChevronLeft, Edit2, Trash2, Package, Tag, 
-    Layers, ShoppingBag, Info, CheckCircle2, XCircle, Clock, Percent, Box, Cog
+    Layers, ShoppingBag, Info, CheckCircle2, XCircle, Clock, Percent, Box, Cog, Coins
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
@@ -202,10 +202,21 @@ export default function ProductDetailsPage() {
                                         <span className="text-sm font-bold text-text-main">Backorders</span>
                                     </div>
                                     <span className={cn(
-                                        "text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg",
-                                        item.itemType === 'service' ? "bg-gray-50 text-text-secondary" : (item.allowBackOrder ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-text-secondary")
-                                    )}>
-                                        {item.itemType === 'service' ? 'N/A' : (item.allowBackOrder ? 'ENABLED' : 'DISABLED')}
+                                         "text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg",
+                                         item.itemType === 'service' ? "bg-gray-50 text-text-secondary" : (item.allowBackOrder ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-text-secondary")
+                                     )}>
+                                         {item.itemType === 'service' ? 'N/A' : (item.allowBackOrder ? 'ENABLED' : 'DISABLED')}
+                                     </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-600">
+                                            <Coins size={16} />
+                                        </div>
+                                        <span className="text-sm font-bold text-text-main">Loyalty Points</span>
+                                    </div>
+                                    <span className="text-sm font-black text-text-main">
+                                        {item.loyaltyPoints || 0} Points
                                     </span>
                                 </div>
                             </div>
