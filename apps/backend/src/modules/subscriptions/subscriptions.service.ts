@@ -28,6 +28,7 @@ import { CreditService } from '../messaging/services/credit.service';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { AutomationRule } from '../messaging-automations/entities/automation-rule.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -50,6 +51,8 @@ export class SubscriptionsService {
     private readonly catalogueItemRepository: Repository<CatalogueItem>,
     @InjectRepository(CatalogueOffer)
     private readonly catalogueOfferRepository: Repository<CatalogueOffer>,
+    @InjectRepository(AutomationRule)
+    private readonly automationRuleRepository: Repository<AutomationRule>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
@@ -462,6 +465,10 @@ export class SubscriptionsService {
       where: { businessId },
     });
 
+    const usedAutomations = await this.automationRuleRepository.count({
+      where: { businessId },
+    });
+
     const usedLoyaltyPrograms = 0;
 
     return {
@@ -511,6 +518,19 @@ export class SubscriptionsService {
             : plan.branchLimit === -1
               ? 'unlimited'
               : Math.max(0, (plan.branchLimit ?? 0) - usedBranches),
+        },
+        automations: {
+          enabled: plan.automationsEnabled,
+          limit:
+            plan.maxAutomations === -1 || plan.maxAutomations === null
+              ? 'unlimited'
+              : plan.maxAutomations,
+          used: usedAutomations,
+          remaining: !plan.automationsEnabled
+            ? 0
+            : plan.maxAutomations === -1 || plan.maxAutomations === null
+              ? 'unlimited'
+              : Math.max(0, plan.maxAutomations - usedAutomations),
         },
         analytics: {
           enabled: plan.analyticsEnabled,

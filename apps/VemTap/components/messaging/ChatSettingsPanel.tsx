@@ -30,6 +30,7 @@ import {
     useUpdateAutomation, 
     useDeleteAutomation 
 } from '@/services/messaging/hooks';
+import { useCapabilities } from '@/services/subscriptions/hooks';
 import { TriggerType, TargetType, ActionType } from '@/services/messaging/types';
 
 const TEMPLATE_CATEGORIES = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
@@ -280,6 +281,11 @@ export default function ChatSettingsPanel() {
     
     const user = useAuthStore(s => s.user);
     const branchId = searchParams.get('branchId');
+
+    const { data: capabilities } = useCapabilities();
+    const autoLimit = capabilities?.capabilities?.automations;
+    const isAutomationsEnabled = autoLimit?.enabled ?? true;
+    const isLimitReached = autoLimit?.remaining !== 'unlimited' && (autoLimit?.remaining ?? 1) <= 0;
 
     // Queries
     const { data: automation = {} as any, isLoading: autoLoading } = useChatAutomation(branchId || undefined);
@@ -764,15 +770,45 @@ export default function ChatSettingsPanel() {
                                     </div>
                                     {!isComposing && (
                                         <button 
-                                            onClick={() => { setIsComposing(true); setEditingRule(null); setTempMessage(''); }}
-                                            className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-dark transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+                                            onClick={() => {
+                                                if (isLimitReached) {
+                                                    toast.error('Automation limit reached for your plan. Please upgrade to add more.');
+                                                    return;
+                                                }
+                                                setIsComposing(true); 
+                                                setEditingRule(null); 
+                                                setTempMessage(''); 
+                                            }}
+                                            disabled={isLimitReached}
+                                            className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 shadow-lg ${isLimitReached ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-primary hover:bg-primary-dark shadow-primary/20'}`}
                                         >
                                             <Plus size={14} /> Add Automation
                                         </button>
                                     )}
                                 </div>
 
-                                {!isComposing ? (
+                                {isLimitReached && (
+                                    <div className="bg-amber-50 border-b border-amber-100 p-3 px-6 flex items-center gap-3">
+                                        <AlertTriangle size={16} className="text-amber-600" />
+                                        <p className="text-[11px] font-bold text-amber-700">
+                                            You have reached the limit of {autoLimit?.limit} automations for your plan. 
+                                            <Link href="/dashboard/settings/billing" className="ml-2 underline hover:text-amber-900">Upgrade plan &rarr;</Link>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {!isAutomationsEnabled ? (
+                                    <div className="p-12 text-center bg-slate-50/50">
+                                        <div className="size-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Zap size={32} />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-slate-900 mb-2">Automations Disabled</h4>
+                                        <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">Automated messaging is not available on your current plan. Upgrade to unlock this feature.</p>
+                                        <Link href="/dashboard/settings/billing" className="inline-flex items-center px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
+                                            View Pricing Plans
+                                        </Link>
+                                    </div>
+                                ) : !isComposing ? (
                                     <div className="p-6 bg-slate-50/50 space-y-4">
                                         {welcomeRules.length === 0 ? (
                                             <div className="py-12 text-center text-slate-400 italic text-sm">No automations defined. Click the plus button to start.</div>
@@ -1066,13 +1102,43 @@ export default function ChatSettingsPanel() {
                                     </div>
                                     <button 
                                         type="button"
-                                        onClick={() => setIsRuleModalOpen(true)}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20"
+                                        onClick={() => {
+                                            if (isLimitReached) {
+                                                toast.error('Automation limit reached for your plan.');
+                                                return;
+                                            }
+                                            setIsRuleModalOpen(true);
+                                        }}
+                                        disabled={isLimitReached}
+                                        className={`inline-flex items-center gap-2 px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-md ${isLimitReached ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'}`}
                                     >
                                         <Plus size={14} /> New Rule
                                     </button>
                                 </div>
-                                <div className="p-6 bg-slate-50/50 space-y-4">
+
+                                {isLimitReached && (
+                                    <div className="bg-amber-50 border-b border-amber-100 p-3 px-6 flex items-center gap-3">
+                                        <AlertTriangle size={16} className="text-amber-600" />
+                                        <p className="text-[11px] font-bold text-amber-700">
+                                            You have reached the limit of {autoLimit?.limit} automations. 
+                                            <Link href="/dashboard/settings/billing" className="ml-2 underline hover:text-amber-900">Upgrade plan &rarr;</Link>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {!isAutomationsEnabled ? (
+                                    <div className="p-12 text-center bg-slate-50/50">
+                                        <div className="size-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Zap size={32} />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-slate-900 mb-2">Advanced Rules Disabled</h4>
+                                        <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">Custom automation workflows are not available on your current plan.</p>
+                                        <Link href="/dashboard/settings/billing" className="inline-flex items-center px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
+                                            Upgrade Plan
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <div className="p-6 bg-slate-50/50 space-y-4">
                                     {rulesLoading ? (
                                         <div className="py-12 flex justify-center"><div className="size-8 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin" /></div>
                                     ) : (advancedRules as any[]).length === 0 ? (

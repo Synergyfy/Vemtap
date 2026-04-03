@@ -14,6 +14,7 @@ export interface SubscriptionCapabilities {
     tags: CapabilityLimit;
     loyaltyPrograms: CapabilityLimit;
     branches: CapabilityLimit;
+    automations: CapabilityLimit;
     analytics: {
       enabled: boolean;
       level: 'basic' | 'advanced' | 'none';

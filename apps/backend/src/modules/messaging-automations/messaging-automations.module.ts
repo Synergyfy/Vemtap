@@ -6,6 +6,9 @@ import { FaqTrigger } from './entities/faq-trigger.entity';
 import { MessageTemplate } from './entities/message-template.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { MessagingAutomationsService } from './messaging-automations.service';
+import { AutomationRuleController } from './automation-rule.controller';
+import { MessagingChatSettingsController } from './messaging-chat-settings.controller';
+import { MessageTemplateController } from './message-template.controller';
 
 @Module({
   imports: [
@@ -17,7 +20,11 @@ import { MessagingAutomationsService } from './messaging-automations.service';
       Subscription,
     ]),
   ],
-  controllers: [],
+  controllers: [
+    AutomationRuleController,
+    MessagingChatSettingsController,
+    MessageTemplateController,
+  ],
   providers: [MessagingAutomationsService],
   exports: [MessagingAutomationsService],
 })
