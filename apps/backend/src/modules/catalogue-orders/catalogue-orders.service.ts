@@ -25,6 +25,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class CatalogueOrderService {
@@ -98,6 +99,16 @@ export class CatalogueOrderService {
         ).catch(err => console.error('Failed to send welcome email:', err));
       }
     }
+
+    // 2.1 Record Visit for Manual Order
+    const effectiveSessionToken = dto.sessionToken || uuidv4();
+    await this.visitorsService.recordDirectVisit({
+      user: customer,
+      branchId: branch.id,
+      businessId: branch.businessId,
+      deviceId: dto.deviceId,
+      sessionToken: effectiveSessionToken,
+    });
 
     // 3. Process items/offers and calculate total
     let totalAmount = 0;
@@ -189,7 +200,7 @@ export class CatalogueOrderService {
       items: orderItems,
       stockDeducted: true,
       deviceId: dto.deviceId,
-      sessionToken: dto.sessionToken,
+      sessionToken: effectiveSessionToken,
     });
 
     const savedOrder = await this.orderRepository.save(order);

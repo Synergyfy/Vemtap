@@ -1156,4 +1156,74 @@ export class VisitorsService {
 
     await this.visitRepository.save(fallbackVisit);
   }
+
+  /**
+   * Records a visit directly (e.g. from a manual order) for an already resolved user.
+   * Handles visit cooldown, contact creation, and automation triggers.
+   */
+  async recordDirectVisit(params: {
+    user: User;
+    branchId: string;
+    businessId: string;
+    deviceId?: string;
+    sessionToken?: string;
+  }): Promise<void> {
+    const { user, branchId, businessId, deviceId, sessionToken } = params;
+
+    // 1. Cooldown check (4 hours)
+    const cooldownWindow = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const recentVisit = await this.visitRepository.findOne({
+      where: {
+        customerId: user.id,
+        branchId,
+        createdAt: MoreThan(cooldownWindow),
+      },
+    });
+
+    if (!recentVisit) {
+      // 2. Create Visit
+      const previousVisitCount = await this.visitRepository.count({
+        where: { customerId: user.id, branchId },
+      });
+
+      const visit = this.visitRepository.create({
+        customerId: user.id,
+        branchId,
+        businessId,
+        deviceId: deviceId ?? null,
+        status: previousVisitCount > 0 ? 'returning' : 'new',
+        visitType: 'portal', // Initial visit is portal, upgraded to patronage on complete
+        sessionToken: sessionToken ?? uuidv4(),
+      } as any) as unknown as Visit;
+      await this.visitRepository.save(visit);
+
+      // 3. Automation triggers
+      const triggerType =
+        previousVisitCount === 0 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
+      await this.automationService.trigger(triggerType, {
+        branchId,
+        customerId: user.id,
+      });
+    }
+
+    // 4. Create/Update Contact
+    let contact = await this.contactRepository.findOne({
+      where: [
+        { branchId, email: user.email },
+        { branchId, phone: user.phone },
+      ],
+    });
+
+    if (!contact) {
+      contact = this.contactRepository.create({
+        branchId,
+        businessId,
+        email: user.email,
+        phone: user.phone,
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
+      } as any) as unknown as Contact;
+      await this.contactRepository.save(contact);
+    }
+  }
 }
