@@ -35,6 +35,8 @@ const normalizePlan = (raw: any): PricingPlan => ({
     maxCatalogueItems: toNumber(raw?.maxCatalogueItems),
     maxCatalogueCategories: toNumber(raw?.maxCatalogueCategories),
     maxCatalogueOffers: toNumber(raw?.maxCatalogueOffers),
+    automationsEnabled: Boolean(raw?.automationsEnabled),
+    maxAutomations: toNumber(raw?.maxAutomations),
     isActive: raw?.isActive ?? true,
     description: String(raw?.description ?? ''),
     isPopular: Boolean(raw?.isPopular),

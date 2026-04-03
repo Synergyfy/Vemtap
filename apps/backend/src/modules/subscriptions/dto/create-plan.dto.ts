@@ -157,6 +157,19 @@ export class CreatePlanDto {
   @IsOptional()
   maxCatalogueOffers?: number;
 
+  @ApiPropertyOptional({ description: 'Is automations enabled?', example: false })
+  @IsBoolean()
+  @IsOptional()
+  automationsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Maximum automations limit (null or -1 for unlimited)',
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  maxAutomations?: number;
+
   @ApiPropertyOptional({
     description: 'Is plan currently active?',
     example: true,
