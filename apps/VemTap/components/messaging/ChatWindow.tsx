@@ -15,7 +15,12 @@ import {
     MessageSquare, 
     CornerUpLeft, 
     ArrowLeft, 
-    Settings 
+    Settings,
+    Gift,
+    ShoppingBag,
+    Tag,
+    ExternalLink,
+    ShoppingCart
 } from 'lucide-react';
 import ChatInput from './ChatInput';
 import Link from 'next/link';
@@ -26,6 +31,8 @@ import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Spinner from '../ui/Spinner';
+import { useReward } from '@/services/loyalty/hooks';
+import { useCatalogueItem, useCatalogueOfferDetails } from '@/services/catalogue/hooks';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -74,7 +81,6 @@ export default function ChatWindow() {
     // Fetch all threads to find the active one
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
     const user = useAuthStore((state) => state.user);
-    const isOwner = user?.role === 'owner';
     const pendingThreads = useChatStore(s => s.pendingThreads);
     
     const allThreads: any[] = useMemo(() => {
@@ -82,7 +88,6 @@ export default function ChatWindow() {
         const realIds = new Set(real.map(t => t.id));
         const realContactIds = new Set(real.map(t => t.contact?.id).filter(Boolean));
         
-        // Filter pending: hide if its real counterpart is in the list
         const filteredPending = pendingThreads.filter(t => 
             !realIds.has(t.linkedThreadId || '') && 
             !realContactIds.has(t.contact?.id)
@@ -113,13 +118,9 @@ export default function ChatWindow() {
             setTargetResolveError(null);
             try {
                 if (isUuid(targetCode)) {
-                    if (!cancelled) {
-                        setTargetBranchId(targetCode);
-                        setTargetBranchName(null);
-                    }
+                    if (!cancelled) setTargetBranchId(targetCode);
                     return;
                 }
-
                 try {
                     const branch = await api.get(`/public/branches/code/${targetCode}`);
                     if (branch?.id) {
@@ -129,10 +130,7 @@ export default function ChatWindow() {
                         }
                         return;
                     }
-                } catch {
-                    // fall through to business lookup
-                }
-
+                } catch {}
                 const business = await api.get(`/public/businesses/code/${targetCode}`);
                 const branches = business?.branches || [];
                 const mainBranch = branches.find((b: any) => b.isMainBranch) || branches[0];
@@ -145,28 +143,29 @@ export default function ChatWindow() {
                     setTargetResolveError('Could not resolve a branch for this chat link.');
                 }
             } catch (error: any) {
-                if (!cancelled) {
-                    setTargetResolveError(error?.message || 'Failed to resolve chat target.');
-                }
+                if (!cancelled) setTargetResolveError(error?.message || 'Failed to resolve chat target.');
             } finally {
-                if (!cancelled) {
-                    setTargetResolving(false);
-                }
+                if (!cancelled) setTargetResolving(false);
             }
         };
-
         resolveTargetBranch();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [isCustomer, targetCode, targetBranchId, targetResolving]);
 
-    // Fetch messages for active thread (business or customer endpoint)
     const { data: messages = [], isLoading } = useThreadMessages(
         (!isPendingThread && activeConversationId) ? activeConversationId : '', 
         branchId || undefined, 
         isCustomer && !isPendingThread
     );
+
+    const threadMessages = useMemo(() => {
+        return [...messages].sort((a, b) => {
+            const timeA = new Date(a.timestamp || a.createdAt || a.sentAt || a.updatedAt || 0).getTime();
+            const timeB = new Date(b.timestamp || b.createdAt || b.sentAt || b.updatedAt || 0).getTime();
+            return timeA - timeB;
+        });
+    }, [messages]) as any[];
+
     const deleteMessageMutation = useDeleteMessage(isCustomer);
     const markThreadAsRead = useMarkThreadAsRead(isCustomer);
     const { emitTyping } = useMessagingRealtime({
@@ -194,19 +193,12 @@ export default function ChatWindow() {
 
     useEffect(() => {
         if (!activeConversationId || isCustomer || isPendingThread || !branchId || !activeConv) return;
-        // Only mark as read if there are actually unread messages
         if ((activeConv as any).unreadCount > 0) {
             markThreadAsRead.mutate({ threadId: activeConversationId, branchId });
         }
-    }, [activeConversationId, branchId, isCustomer, isPendingThread, (activeConv as any)?.unreadCount, markThreadAsRead]);
+    }, [activeConversationId, branchId, isCustomer, isPendingThread, (activeConv as any)?.unreadCount]);
 
-    const handleConversationStarted = useCallback(
-        (threadId: string) => {
-            setActiveConversation(threadId);
-        },
-        [setActiveConversation]
-    );
-
+    const handleConversationStarted = useCallback((threadId: string) => setActiveConversation(threadId), [setActiveConversation]);
 
     if (!activeConv) {
         if (isCustomer && (targetBranchId || targetResolving || targetResolveError)) {
@@ -214,9 +206,7 @@ export default function ChatWindow() {
                 <div className="flex-1 flex flex-col h-full min-h-0 bg-white">
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50 px-6 text-center">
                         <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
-                            <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
+                            <MessageSquare className="w-10 h-10 text-slate-300" />
                         </div>
                         {targetResolving ? (
                             <>
@@ -238,43 +228,16 @@ export default function ChatWindow() {
                         )}
                     </div>
                     {targetBranchId && !targetResolving && !targetResolveError && (
-                        <ChatInput
-                            startBranchId={targetBranchId}
-                            onConversationStarted={handleConversationStarted}
-                        />
+                        <ChatInput startBranchId={targetBranchId} onConversationStarted={handleConversationStarted} />
                     )}
                 </div>
             );
         }
-
         if (threadsLoading) {
-            return (
-                <div className="flex-1 flex flex-col h-full bg-slate-50 animate-pulse">
-                    <div className="h-16 border-b border-slate-200 bg-white flex items-center px-4 justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-slate-100 rounded-full" />
-                            <div className="space-y-1.5">
-                                <div className="h-2.5 w-24 bg-slate-100 rounded" />
-                                <div className="h-2 w-16 bg-slate-100 rounded" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex-1 p-6 space-y-4">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`h-12 w-2/3 rounded-2xl ${i % 2 === 0 ? 'bg-primary/10' : 'bg-slate-200/50'}`} />
-                            </div>
-                        ))}
-                    </div>
-                    <div className="h-16 bg-white border-t border-slate-200 p-2">
-                        <div className="h-full bg-slate-50 rounded-xl" />
-                    </div>
-                </div>
-            );
+            return <div className="flex-1 flex flex-col h-full bg-slate-50 animate-pulse" />;
         }
-
         return (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50 px-6 text-center">
                 <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
                     <MessageSquare className="w-10 h-10 text-slate-300" />
                 </div>
@@ -285,28 +248,11 @@ export default function ChatWindow() {
     }
 
     const { contact } = activeConv;
-    
-    // Name Fallback: If name is generic or missing, try to find it in pending threads (local cache)
     let contactName = contact?.name && contact.name !== 'Unknown' && contact.name !== 'Customer' ? contact.name : 'Unknown';
     if (contactName === 'Unknown') {
         const pending = pendingThreads.find(p => p.linkedThreadId === activeConv.id || p.contact?.id === contact?.id);
-        if (pending?.contact?.name) {
-            contactName = pending.contact.name;
-        } else if (contact?.name) {
-            contactName = contact.name; // Use whatever backend gave us if no pending match
-        } else {
-            contactName = 'Customer'; // Final fallback
-        }
+        contactName = pending?.contact?.name || contact?.name || 'Customer';
     }
-    const threadMessages = useMemo(() => {
-        return [...messages].sort((a, b) => {
-            const timeA = new Date(a.timestamp || a.createdAt || a.sentAt || a.updatedAt || 0).getTime();
-            const timeB = new Date(b.timestamp || b.createdAt || b.sentAt || b.updatedAt || 0).getTime();
-            return timeA - timeB;
-        });
-    }, [messages]) as any[];
-    const contactIsOnline = contact?.isOnline;
-    const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
     const isTyping = activeConversationId ? typingByThread[activeConversationId] : false;
 
     const lastActivityLabel = (() => {
@@ -316,28 +262,15 @@ export default function ChatWindow() {
         return Number.isNaN(date.getTime()) ? 'Not available' : date.toLocaleString();
     })();
 
-    // Group messages by date
-    let lastDate = '';
-
     return (
         <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative overflow-hidden ${isFullScreen ? 'fixed inset-0 z-100 m-0 rounded-none' : ''}`}>
             {/* Header */}
             <header className="h-16 flex items-center justify-between px-4 border-b border-slate-200 z-10 bg-white shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
-                    {/* Mobile Back Button */}
-                    <button
-                        onClick={() => setActiveConversation(null)}
-                        className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg"
-                    >
+                    <button onClick={() => setActiveConversation(null)} className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg">
                         <ArrowLeft size={20} />
                     </button>
-                    
-                    <button
-                        type="button"
-                        onClick={() => setShowProfile(prev => !prev)}
-                        className="relative"
-                        title="View profile"
-                    >
+                    <button type="button" onClick={() => setShowProfile(prev => !prev)} className="relative">
                         {contact?.avatar ? (
                             <img src={contact.avatar} alt={contactName} className="w-9 h-9 rounded-full object-cover" />
                         ) : (
@@ -347,33 +280,27 @@ export default function ChatWindow() {
                         )}
                     </button>
                     <div className="min-w-0">
-                        <h2 className="text-sm font-bold text-slate-800 leading-tight truncate" title={contactName}>
-                            {contactName}
-                        </h2>
+                        <h2 className="text-sm font-bold text-slate-800 leading-tight truncate">{contactName}</h2>
                         <p className="text-[10px] text-slate-400 truncate font-medium">
                             {isTyping ? 'Typing...' : (contact?.phone || contact?.email || 'Active now')}
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1 text-slate-400">
-                    <button
-                        onClick={() => setShowProfile(prev => !prev)}
-                        className={`p-2 rounded-lg transition-colors ${showProfile ? 'text-primary bg-primary/10' : 'hover:text-slate-600 hover:bg-slate-50'}`}
-                        title="Contact info"
-                    >
+                    {isCustomer && branchId && (
+                        <Link 
+                            href={`/tap?branchId=${branchId}`}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-full text-xs font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all mr-2"
+                        >
+                            <ShoppingCart size={14} />
+                            Order Now
+                        </Link>
+                    )}
+                    <button onClick={() => setShowProfile(prev => !prev)} className={`p-2 rounded-lg transition-colors ${showProfile ? 'text-primary bg-primary/10' : 'hover:text-slate-600 hover:bg-slate-50'}`}>
                         <Info size={18} />
                     </button>
-                    <button 
-                        onClick={() => setIsFullScreen(!isFullScreen)}
-                        className="hidden md:block p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
-                    >
-                        {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                    </button>
                     {!isCustomer && (
-                        <Link 
-                            href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
-                            className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all"
-                        >
+                        <Link href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`} className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all">
                             <Settings size={18} />
                         </Link>
                     )}
@@ -381,87 +308,58 @@ export default function ChatWindow() {
             </header>
 
             <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'md:pr-80' : ''}`}>
-                {/* Messages: Add dynamic padding to accommodate keyboard */}
-                <div 
-                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-24 md:pb-6"
-                >
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-24 md:pb-6">
                     {isLoading ? (
                         <div className="flex-1 space-y-4 animate-pulse">
-                            {[1, 2, 3, 4].map(i => (
-                                <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`h-10 w-2/3 rounded-xl ${i % 2 === 0 ? 'bg-primary/10' : 'bg-slate-100'}`} />
-                                </div>
-                            ))}
+                            {[1, 2, 3].map(i => <div key={i} className={`h-10 w-2/3 rounded-xl ${i % 2 === 0 ? 'ml-auto bg-primary/10' : 'bg-slate-100'}`} />)}
                         </div>
                     ) : threadMessages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm">
-                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                                <FileText size={18} />
-                            </div>
-                            <p className="font-semibold text-slate-500">No messages yet</p>
-                            <p className="text-xs text-slate-400 mt-1">Start the conversation to see messages here.</p>
+                            <MessageSquare className="mb-2 opacity-20" size={40} />
+                            <p className="font-semibold">No messages yet</p>
                         </div>
-                    ) : threadMessages.map((msg, i) => {
-                        const msgTimestamp = msg.timestamp || msg.createdAt || msg.sentAt || msg.updatedAt;
-                        const msgDate = formatDateSeparator(msgTimestamp);
-                        let showDate = false;
-                        if (msgDate !== lastDate) {
-                            showDate = true;
-                            lastDate = msgDate;
-                        }
-
-                        return (
-                            <React.Fragment key={msg.id}>
-                                {showDate && (
-                                    <div className="flex justify-center my-3">
-                                        <span className="px-3 py-1 bg-slate-200/70 text-[10px] font-semibold text-slate-500 rounded-full uppercase tracking-wider">
-                                            {msgDate}
-                                        </span>
-                                    </div>
-                                )}
-                                <MessageBubble
-                                    message={msg}
-                                    isCustomer={isCustomer}
-                                    showOwnerPill={!isCustomer && msg.direction === 'OUTBOUND' && user?.role === 'owner'}
-                                    onReply={() => setReplyToMessage(msg)}
-                                    onDelete={() => {
-                                        if (window.confirm('Delete this message?')) {
-                                            deleteMessageMutation.mutate({ 
-                                                messageId: msg.id, 
-                                                threadId: activeConversationId!, 
-                                                branchId: branchId || undefined 
-                                            });
-                                        }
-                                    }}
-                                />
-                            </React.Fragment>
-                        );
-                    })}
-                    {isTyping && (
-                        <div className="flex items-center gap-2 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px] ${getAvatarColor(activeConv.id)}`}>
-                                {getInitials(contactName)}
-                            </div>
-                            <div className="bg-slate-100 border border-slate-200 p-3 rounded-2xl rounded-bl-none flex items-center gap-1">
-                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" />
-                            </div>
-                        </div>
+                    ) : (
+                        (() => {
+                            let lastDate = '';
+                            return threadMessages.map((msg) => {
+                                const msgTimestamp = msg.timestamp || msg.createdAt || msg.sentAt || msg.updatedAt;
+                                const msgDate = formatDateSeparator(msgTimestamp);
+                                let showDate = false;
+                                if (msgDate !== lastDate) {
+                                    showDate = true;
+                                    lastDate = msgDate;
+                                }
+                                return (
+                                    <React.Fragment key={msg.id}>
+                                        {showDate && (
+                                            <div className="flex justify-center my-3">
+                                                <span className="px-3 py-1 bg-slate-200/70 text-[10px] font-semibold text-slate-500 rounded-full uppercase tracking-wider">{msgDate}</span>
+                                            </div>
+                                        )}
+                                        <MessageBubble
+                                            message={msg}
+                                            isCustomer={isCustomer}
+                                            onReply={() => setReplyToMessage(msg)}
+                                            onDelete={() => {
+                                                if (window.confirm('Delete this message?')) {
+                                                    deleteMessageMutation.mutate({ messageId: msg.id, threadId: activeConversationId!, branchId: branchId || undefined });
+                                                }
+                                            }}
+                                        />
+                                    </React.Fragment>
+                                );
+                            });
+                        })()
                     )}
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input: Use viewport-height-aware positioning to stay above keyboard */}
                 <div className="md:shrink-0 bg-white fixed md:relative bottom-0 left-0 right-0 w-full z-20 md:z-10 safe-area-bottom border-t border-slate-200">
                     <ChatInput
                         conversationId={activeConversationId || undefined}
                         replyTo={replyToMessage}
                         onCancelReply={() => setReplyToMessage(null)}
-                        onTypingChange={(next) => {
-                            if (!activeConversationId) return;
-                            emitTyping(activeConversationId, next);
-                        }}
+                        onTypingChange={(next) => activeConversationId && emitTyping(activeConversationId, next)}
                     />
                 </div>
             </div>
@@ -475,16 +373,12 @@ export default function ChatWindow() {
                         <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Contact Info</p>
                         <h3 className="text-lg font-bold text-slate-900">Profile</h3>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setShowProfile(false)}
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg"
-                    >
+                    <button type="button" onClick={() => setShowProfile(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg">
                         <Minimize2 size={18} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6 overflow-y-auto h-full">
+                <div className="p-6 space-y-6 overflow-y-auto h-full pb-20">
                     <div className="flex flex-col items-center text-center gap-3">
                         {contact?.avatar ? (
                             <img src={contact.avatar} alt={contactName} className="w-20 h-20 rounded-full object-cover" />
@@ -496,7 +390,7 @@ export default function ChatWindow() {
                         <div>
                             <p className="text-lg font-bold text-slate-900">{contactName}</p>
                             <p className="text-xs text-slate-400 font-semibold">
-                                {contactIsOnline ? 'Online' : contactLastSeen ? `Last seen ${contactLastSeen}` : 'Offline'}
+                                {activeConv.contact?.isOnline ? 'Online' : 'Offline'}
                             </p>
                         </div>
                     </div>
@@ -511,30 +405,6 @@ export default function ChatWindow() {
                             <p className="text-sm font-semibold text-slate-900">{contact?.email || 'Not provided'}</p>
                         </div>
                         <div className="rounded-xl border border-slate-100 p-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</p>
-                            <p className="text-sm font-semibold text-slate-900">{activeConv?.status || 'Active conversation'}</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-100 p-3 bg-slate-50/50">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Source Channel</p>
-                            <div className="flex items-center gap-2 mt-1">
-                                {contact?.source === 'whatsapp' ? (
-                                    <>
-                                        <div className="size-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
-                                            <Smartphone size={10} />
-                                        </div>
-                                        <p className="text-sm font-bold text-emerald-600">WhatsApp Bridge</p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="size-5 bg-primary rounded-full flex items-center justify-center text-white">
-                                            <MessageSquare size={10} />
-                                        </div>
-                                        <p className="text-sm font-bold text-primary">{contact?.source || 'Direct/NFC'}</p>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-slate-100 p-3">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Activity</p>
                             <p className="text-sm font-semibold text-slate-900">{lastActivityLabel}</p>
                         </div>
@@ -545,86 +415,109 @@ export default function ChatWindow() {
     );
 }
 
-function MessageBubble({
-    message,
-    isCustomer,
-    showOwnerPill,
-    onReply,
-    onDelete,
-}: {
-    message: any;
-    isCustomer: boolean;
-    showOwnerPill?: boolean;
-    onReply?: () => void;
-    onDelete?: () => void;
-}) {
-    const isMine = isCustomer 
-        ? message.direction === 'INBOUND'
-        : message.direction === 'OUTBOUND';
-    const replyContent = message?.replyTo?.content || '';
-    const [showActionsMobile, setShowActionsMobile] = useState(false);
+function MessageBubble({ message, isCustomer, onReply, onDelete }: { message: any; isCustomer: boolean; onReply?: () => void; onDelete?: () => void; }) {
+    const isMine = isCustomer ? message.direction === 'INBOUND' : message.direction === 'OUTBOUND';
+    const metadata = message.metadata || {};
+    const [showActions, setShowActions] = useState(false);
 
     return (
-        <div 
-            className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[80%] ${isMine ? 'ml-auto' : ''}`}
-            onClick={() => setShowActionsMobile(!showActionsMobile)}
-        >
-            <div className={`p-3 shadow-sm relative group ${
-                isMine
-                    ? 'bg-primary text-white bubble-right'
-                    : 'bg-white border border-slate-200 text-slate-700 bubble-left'
-            }`}>
-                {(onReply || onDelete) && (
-                    <div className={`absolute -top-3 ${isMine ? 'right-2' : 'left-2'} flex gap-1 transition-opacity ${showActionsMobile ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>
-                        {onReply && (
-                            <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); onReply(); }}
-                                className={`h-6 px-2 rounded-full text-[10px] font-bold flex items-center gap-1 border shadow-sm ${
-                                    isMine
-                                        ? 'bg-white text-primary border-white/40'
-                                        : 'bg-white text-slate-500 border-slate-200'
-                                }`}
-                                title="Reply to message"
-                            >
-                                <CornerUpLeft size={12} />
-                                Reply
-                            </button>
-                        )}
-                        {onDelete && isMine && (
-                            <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                                className="h-6 px-2 rounded-full text-[10px] font-bold flex items-center gap-1 border shadow-sm bg-white text-rose-500 border-rose-200 hover:bg-rose-50"
-                                title="Delete message"
-                            >
-                                <Trash2 size={12} />
-                                Delete
-                            </button>
-                        )}
-                    </div>
+        <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[85%] ${isMine ? 'ml-auto' : ''}`} onClick={() => setShowActions(!showActions)}>
+            <div className={`p-3 shadow-sm relative group ${isMine ? 'bg-primary text-white bubble-right' : 'bg-white border border-slate-200 text-slate-700 bubble-left'}`}>
+                {/* Meta Components */}
+                {metadata.rewardId && <RewardCard id={metadata.rewardId} isMine={isMine} />}
+                {metadata.itemId && <CatalogueItemCard id={metadata.itemId} isMine={isMine} />}
+                {metadata.offerId && <CatalogueOfferCard id={metadata.offerId} isMine={isMine} />}
+                
+                {!metadata.rewardId && !metadata.itemId && !metadata.offerId && (
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                 )}
-                {replyContent && (
-                    <div className={`mb-2 rounded-lg px-2 py-1 text-[11px] ${
-                        isMine ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-500 border border-slate-200'
-                    }`}>
-                        <p className="line-clamp-2">{replyContent}</p>
-                    </div>
-                )}
-                <p className="text-sm leading-relaxed">{message.content}</p>
+                
+                {/* Actions */}
+                <div className={`absolute -top-3 ${isMine ? 'right-2' : 'left-2'} flex gap-1 transition-opacity ${showActions ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>
+                    {onReply && (
+                        <button onClick={(e) => { e.stopPropagation(); onReply(); }} className="h-6 px-2 rounded-full text-[10px] font-bold bg-white text-slate-500 border border-slate-200 shadow-sm flex items-center gap-1">
+                            <CornerUpLeft size={12} /> Reply
+                        </button>
+                    )}
+                </div>
             </div>
-
-            {/* Timestamp & Status */}
             <div className={`flex items-center gap-1.5 mt-1 ${isMine ? 'mr-1' : 'ml-1'}`}>
-                {showOwnerPill && (
-                    <span className="px-1.5 py-0.5 bg-white/20 text-white text-[9px] font-bold rounded-full border border-white/30 mr-1 shadow-sm">
-                        OWNER
-                    </span>
-                )}
-                <span className="text-[10px] text-slate-400">
-                    {formatMessageTime(message.timestamp || message.createdAt || message.sentAt || message.updatedAt)}
-                </span>
+                <span className="text-[10px] text-slate-400">{formatMessageTime(message.timestamp || message.createdAt || message.sentAt || message.updatedAt)}</span>
                 {isMine && <StatusIcon status={message.status} />}
+            </div>
+        </div>
+    );
+}
+
+function RewardCard({ id, isMine }: { id: string; isMine: boolean }) {
+    const { data: reward, isLoading } = useReward(id);
+    if (isLoading) return <div className="w-48 h-20 animate-pulse bg-slate-100 rounded-lg" />;
+    if (!reward) return <p className="text-xs italic">Reward not found</p>;
+
+    return (
+        <div className={`w-56 max-w-full rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-100'} p-3`}>
+            <div className="flex items-center gap-3 mb-2">
+                <div className="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                    <Gift size={20} />
+                </div>
+                <div className="min-w-0">
+                    <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{reward.name}</h4>
+                    <p className={`text-[10px] font-bold ${isMine ? 'text-white/60' : 'text-slate-400'}`}>{reward.pointsRequired} Points</p>
+                </div>
+            </div>
+            <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-slate-600'}`}>{reward.description}</p>
+        </div>
+    );
+}
+
+function CatalogueItemCard({ id, isMine }: { id: string; isMine: boolean }) {
+    const { data: item, isLoading } = useCatalogueItem(id);
+    if (isLoading) return <div className="w-48 h-20 animate-pulse bg-slate-100 rounded-lg" />;
+    if (!item) return <p className="text-xs italic">Item not found</p>;
+
+    return (
+        <div className={`w-64 rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-white border-slate-200'} shadow-sm`}>
+            {item.mainImage && <img src={item.mainImage} alt={item.name} className="w-full h-32 object-cover" />}
+            <div className="p-3">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{item.name}</h4>
+                    <span className="text-sm font-black text-primary">₦{item.price.toLocaleString()}</span>
+                </div>
+                <p className={`text-xs line-clamp-2 mb-3 ${isMine ? 'text-white/80' : 'text-slate-500'}`}>{item.shortDescription}</p>
+                <Link 
+                    href={`/tap?branchId=${item.businessId}&itemId=${item.id}`}
+                    className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-bold transition-all ${isMine ? 'bg-white text-primary hover:bg-slate-50' : 'bg-primary text-white hover:bg-primary-dark'}`}
+                >
+                    Order Now
+                </Link>
+            </div>
+        </div>
+    );
+}
+
+function CatalogueOfferCard({ id, isMine }: { id: string; isMine: boolean }) {
+    const { data: offer, isLoading } = useCatalogueOfferDetails(id);
+    if (isLoading) return <div className="w-48 h-20 animate-pulse bg-slate-100 rounded-lg" />;
+    if (!offer) return <p className="text-xs italic">Offer not found</p>;
+
+    return (
+        <div className={`w-64 rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-white border-slate-200'} shadow-sm`}>
+            {offer.mainImage && <img src={offer.mainImage} alt={offer.name} className="w-full h-32 object-cover" />}
+            <div className="p-3">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <Tag size={12} className="text-primary shrink-0" />
+                        <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{offer.name}</h4>
+                    </div>
+                    <span className="text-sm font-black text-primary">₦{offer.calculatedPrice.toLocaleString()}</span>
+                </div>
+                <p className={`text-xs line-clamp-2 mb-3 ${isMine ? 'text-white/80' : 'text-slate-500'}`}>{offer.description}</p>
+                <Link 
+                    href={`/tap?branchId=${offer.branchId}&offerId=${offer.id}`}
+                    className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-bold transition-all ${isMine ? 'bg-white text-primary hover:bg-slate-50' : 'bg-primary text-white hover:bg-primary-dark'}`}
+                >
+                    Claim Offer
+                </Link>
             </div>
         </div>
     );

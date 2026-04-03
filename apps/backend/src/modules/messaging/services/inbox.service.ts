@@ -118,6 +118,7 @@ export class InboxService {
     content: string,
     branchId: string,
     replyToId?: string,
+    metadata?: any,
   ): Promise<Message | null> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId, branchId },
@@ -132,6 +133,7 @@ export class InboxService {
       thread,
       content,
       replyToId,
+      metadata,
     );
     if (!messageId) {
       throw new InternalServerErrorException('Failed to send reply');

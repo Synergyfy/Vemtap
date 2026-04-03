@@ -384,7 +384,7 @@ export const useThreadMessages = (threadId: string) => {
 
 export const useReplyToThread = (threadId: string) => {
     const queryClient = useQueryClient();
-    return useMutation<any, Error, { content: string }>({
+    return useMutation<any, Error, { content: string; metadata?: any }>({
         mutationFn: async (dto) =>
             await api.post(`/messaging/inbox/threads/${threadId}/reply`, dto),
         onSuccess: () => {

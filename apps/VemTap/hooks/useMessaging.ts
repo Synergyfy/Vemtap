@@ -66,11 +66,11 @@ export const useThreadMessages = (threadId: string, branchId?: string, isCustome
 export const useSendReply = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ threadId, content, branchId, replyToId }: { threadId: string; content: string; branchId?: string; replyToId?: string }) => {
+    mutationFn: ({ threadId, content, branchId, replyToId, metadata }: { threadId: string; content: string; branchId?: string; replyToId?: string; metadata?: any }) => {
       const endpoint = isCustomer
         ? `/customer/messaging/threads/${threadId}/reply`
         : `/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`;
-      return api.post(endpoint, { content, replyToId });
+      return api.post(endpoint, { content, replyToId, metadata });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.threadId] });

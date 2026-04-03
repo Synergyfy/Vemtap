@@ -122,6 +122,14 @@ export const useRewards = (branchId?: string, enabled: boolean = true) => {
     });
 };
 
+export const useReward = (id: string) => {
+    return useQuery<Reward, Error>({
+        queryKey: ['loyalty', 'reward', id],
+        queryFn: async () => await api.get(`/loyalty/rewards/${id}`),
+        enabled: !!id,
+    });
+};
+
 export const useRewardRedemptions = (rewardId: string, branchId?: string) => {
     const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 

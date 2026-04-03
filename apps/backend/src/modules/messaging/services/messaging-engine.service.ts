@@ -333,6 +333,7 @@ export class MessagingEngineService {
     channel: Channel,
     from: string,
     campaignId?: string,
+    metadata?: any,
   ): Promise<Message> {
     const customer = await this.userRepo.findOneBy({ id: customerId });
     if (!customer) throw new NotFoundException('Customer not found');
@@ -394,6 +395,7 @@ export class MessagingEngineService {
           ? customer.email || ''
           : formatPhoneNumber(customer.phone || ''),
       timestamp: new Date(),
+      metadata: metadata || {},
     } as any) as unknown as Message;
 
     const savedMessageResult = await this.messageRepo.save(message);
@@ -623,6 +625,7 @@ export class MessagingEngineService {
     thread: ConversationThread,
     content: string,
     replyToId?: string,
+    metadata?: any,
   ) {
     const branch = await this.branchRepo.findOne({
       where: { id: thread.branchId },
@@ -649,6 +652,8 @@ export class MessagingEngineService {
       content,
       thread.channel,
       from,
+      undefined,
+      metadata,
     );
 
     // Only save again if we need to update threadId or replyToId that wasn't
