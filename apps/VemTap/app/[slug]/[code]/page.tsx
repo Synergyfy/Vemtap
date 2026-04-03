@@ -26,7 +26,8 @@ import {
     ShieldCheck,
     Clock,
     ClipboardList,
-    Share2
+    Share2,
+    Phone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,7 +44,8 @@ const PortalWelcome = ({
     formCount,
     isFirstTimeVisit,
     isReturningUser,
-    engagement
+    engagement,
+    whatsappNumber
 }: { 
     branchName: string, 
     logoUrl?: string, 
@@ -55,12 +57,14 @@ const PortalWelcome = ({
     formCount?: number,
     isFirstTimeVisit?: boolean,
     isReturningUser?: boolean,
-    engagement?: any
+    engagement?: any,
+    whatsappNumber?: string | null
 }) => {
     const actions = [
         { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
         { id: 'service', label: 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Reservations & Slots', count: serviceCount },
         { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
+        { id: 'whatsapp', label: 'Chat WhatsApp', icon: Phone, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
         { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
         { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
     ].filter(action => action.count && action.count > 0);
@@ -169,7 +173,7 @@ const DynamicTapJourneyPage = () => {
         initializeFromBusiness, branchId, logoUrl, businessId,
         customWelcomeMessage, productCount, serviceCount, offerCount,
         formCount, engagementSettings, selectedFormCode, setSelectedFormCode,
-        sessionToken, setSessionToken
+        sessionToken, setSessionToken, whatsappNumber
     } = useCustomerFlowStore();
 
     const { isAuthenticated, login } = useAuthStore();
@@ -266,6 +270,11 @@ const DynamicTapJourneyPage = () => {
             setStep('FORMS_LIST');
         } else if (id === 'engagement') {
             setStep('SOCIAL_CONNECT');
+        } else if (id === 'whatsapp') {
+            if (whatsappNumber) {
+                const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
+                window.open(`https://wa.me/${cleanNumber}`, '_blank');
+            }
         } else {
             router.push(`/${slug}/${deviceCode}/${id}`);
         }
@@ -347,6 +356,7 @@ const DynamicTapJourneyPage = () => {
                             isFirstTimeVisit={deviceContext?.device?.isFirstTimeVisit ?? true}
                             isReturningUser={!!deviceContext?.device?.isReturningUser}
                             engagement={engagementSettings}
+                            whatsappNumber={whatsappNumber}
                         />
                     )}
 

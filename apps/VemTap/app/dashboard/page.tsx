@@ -18,6 +18,11 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
 import { useVisitorStats, useResetDashboard } from '@/services/visitors/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches, useUpdateBranch } from '@/services/branches/hooks';
+import Modal from '@/components/ui/Modal';
+import { Phone, Loader2 as LoaderIcon } from 'lucide-react';
+import { useEffect } from 'react';
 
 
 export default function DashboardPage() {
@@ -53,6 +58,49 @@ export default function DashboardPage() {
 
     const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
+
+    const { activeBranchId, isAllBranches } = useActiveBranch();
+    const { data: branches } = useBranches();
+    const activeBranch = useMemo(() => branches?.find(b => b.id === activeBranchId), [branches, activeBranchId]);
+    const updateBranchMutation = useUpdateBranch();
+
+    const [showWhatsAppPrompt, setShowWhatsAppPrompt] = useState(false);
+    const [promptNumber, setPromptNumber] = useState('');
+
+    useEffect(() => {
+        if (!activeBranch || isAllBranches) return;
+
+        const checkPrompt = () => {
+            const hasNumber = !!activeBranch.whatsappNumber;
+            if (hasNumber) return;
+
+            const lastPromptKey = `last_wa_prompt_${activeBranch.id}`;
+            const lastPromptDate = localStorage.getItem(lastPromptKey);
+            const today = new Date().toISOString().split('T')[0];
+
+            if (lastPromptDate !== today) {
+                setShowWhatsAppPrompt(true);
+                localStorage.setItem(lastPromptKey, today);
+            }
+        };
+
+        const timer = setTimeout(checkPrompt, 3000); // Delay slightly for better UX
+        return () => clearTimeout(timer);
+    }, [activeBranch, isAllBranches]);
+
+    const handleSaveWhatsApp = async () => {
+        if (!activeBranch || !promptNumber) return;
+        try {
+            await updateBranchMutation.mutateAsync({
+                id: activeBranch.id,
+                updates: { whatsappNumber: promptNumber }
+            });
+            toast.success('WhatsApp number updated!');
+            setShowWhatsAppPrompt(false);
+        } catch (err: any) {
+            toast.error('Failed to update WhatsApp number');
+        }
+    };
 
     const handleClearDashboard = () => {
         setShowClearModal(true);
@@ -492,12 +540,60 @@ export default function DashboardPage() {
                 visitor={selectedVisitorForDetails as any}
             />
 
-            <PreviewRewardModal
+                    <PreviewRewardModal
                 isOpen={!!rewardPreviewVisitor}
                 onClose={() => setRewardPreviewVisitor(null)}
                 rewardTitle="Free Coffee or Pastry"
                 businessName={user?.businessName || 'Your Business'}
             />
+
+            <Modal
+                isOpen={showWhatsAppPrompt}
+                onClose={() => setShowWhatsAppPrompt(false)}
+                title="Connect with your Customers"
+                description="Link your WhatsApp number to make it easier for customers to chat with you directly from your public page."
+                size="md"
+            >
+                <div className="space-y-6 pt-4">
+                    <div className="flex items-center gap-4 p-4 bg-green-50 rounded-2xl border border-green-100">
+                        <div className="size-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-green-600">
+                            <Phone size={24} />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-bold text-green-900 leading-tight">Instant Communication</p>
+                            <p className="text-xs text-green-800/70 mt-1">Branches with WhatsApp enabled see 40% higher engagement.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">WhatsApp Number</label>
+                        <input
+                            type="tel"
+                            value={promptNumber}
+                            onChange={(e) => setPromptNumber(e.target.value)}
+                            placeholder="+234 801 234 5678"
+                            className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                        />
+                        <p className="text-[10px] text-text-secondary italic px-1">Include country code (e.g., +234)</p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-2">
+                        <button
+                            onClick={handleSaveWhatsApp}
+                            disabled={!promptNumber || updateBranchMutation.isPending}
+                            className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                        >
+                            {updateBranchMutation.isPending ? <LoaderIcon size={14} className="animate-spin" /> : 'Save WhatsApp Number'}
+                        </button>
+                        <button
+                            onClick={() => setShowWhatsAppPrompt(false)}
+                            className="w-full h-12 bg-gray-50 text-text-secondary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-gray-100 transition-all"
+                        >
+                            Later
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div >
     );
 }
