@@ -24,6 +24,7 @@ import {
 } from './dto/catalogue-order.dto';
 import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class CatalogueOrderService {
@@ -47,6 +48,7 @@ export class CatalogueOrderService {
     private readonly loyaltyService: LoyaltyService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly visitorsService: VisitorsService,
+    private readonly mailService: MailService,
   ) {}
 
   async createOrder(dto: CreateCatalogueOrderDto) {
@@ -70,16 +72,31 @@ export class CatalogueOrderService {
     if (!customer) {
       const defaultPassword = '123456';
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      
+      // Use provided email or generate a dummy one
+      const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
+      const finalEmail = dto.email || dummyEmail;
+      const isDummy = !dto.email;
+
       customer = this.userRepository.create({
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        email: dto.email,
+        email: finalEmail,
         role: UserRole.CUSTOMER,
         password: hashedPassword,
         uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
       });
       await this.userRepository.save(customer);
+
+      // Send welcome email ONLY if it's not a dummy email
+      if (!isDummy) {
+        this.mailService.sendWelcomeEmail(
+          customer.email,
+          `${customer.firstName} ${customer.lastName}`,
+          defaultPassword
+        ).catch(err => console.error('Failed to send welcome email:', err));
+      }
     }
 
     // 3. Process items/offers and calculate total
