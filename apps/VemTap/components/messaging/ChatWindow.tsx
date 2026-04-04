@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
+import { useCartStore } from '@/store/useCartStore';
 import { 
     Search, 
     Maximize2, 
@@ -20,7 +21,10 @@ import {
     ShoppingBag,
     Tag,
     ExternalLink,
-    ShoppingCart
+    ShoppingCart,
+    Plus,
+    Minus,
+    Zap
 } from 'lucide-react';
 import ChatInput from './ChatInput';
 import Link from 'next/link';
@@ -289,8 +293,8 @@ export default function ChatWindow() {
                 <div className="flex items-center gap-1 text-slate-400">
                     {isCustomer && branchId && (
                         <Link 
-                            href={`/tap?branchId=${branchId}`}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-full text-xs font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all mr-2"
+                            href={`/customer/cart?branchId=${branchId}`}
+                            className="relative flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-full text-xs font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all mr-2"
                         >
                             <ShoppingCart size={14} />
                             Order Now
@@ -339,10 +343,11 @@ export default function ChatWindow() {
                                         <MessageBubble
                                             message={msg}
                                             isCustomer={isCustomer}
+                                            branchId={activeConv?.branchId || branchId || ''}
                                             onReply={() => setReplyToMessage(msg)}
                                             onDelete={() => {
                                                 if (window.confirm('Delete this message?')) {
-                                                    deleteMessageMutation.mutate({ messageId: msg.id, threadId: activeConversationId!, branchId: branchId || undefined });
+                                                    deleteMessageMutation.mutate({ messageId: msg.id, threadId: activeConversationId!, branchId: activeConv?.branchId || branchId || undefined });
                                                 }
                                             }}
                                         />
@@ -415,7 +420,7 @@ export default function ChatWindow() {
     );
 }
 
-function MessageBubble({ message, isCustomer, onReply, onDelete }: { message: any; isCustomer: boolean; onReply?: () => void; onDelete?: () => void; }) {
+function MessageBubble({ message, isCustomer, branchId, onReply, onDelete }: { message: any; isCustomer: boolean; branchId: string; onReply?: () => void; onDelete?: () => void; }) {
     const isMine = isCustomer ? message.direction === 'INBOUND' : message.direction === 'OUTBOUND';
     const metadata = message.metadata || {};
     const [showActions, setShowActions] = useState(false);
@@ -425,8 +430,8 @@ function MessageBubble({ message, isCustomer, onReply, onDelete }: { message: an
             <div className={`p-3 shadow-sm relative group ${isMine ? 'bg-primary text-white bubble-right' : 'bg-white border border-slate-200 text-slate-700 bubble-left'}`}>
                 {/* Meta Components */}
                 {metadata.rewardId && <RewardCard id={metadata.rewardId} isMine={isMine} />}
-                {metadata.itemId && <CatalogueItemCard id={metadata.itemId} isMine={isMine} />}
-                {metadata.offerId && <CatalogueOfferCard id={metadata.offerId} isMine={isMine} />}
+                {metadata.itemId && <CatalogueItemCard id={metadata.itemId} isMine={isMine} isCustomer={isCustomer} branchId={branchId} />}
+                {metadata.offerId && <CatalogueOfferCard id={metadata.offerId} isMine={isMine} isCustomer={isCustomer} branchId={branchId} />}
                 
                 {!metadata.rewardId && !metadata.itemId && !metadata.offerId && (
                     <p className="text-sm leading-relaxed">{message.content}</p>
@@ -455,53 +460,136 @@ function RewardCard({ id, isMine }: { id: string; isMine: boolean }) {
     if (!reward) return <p className="text-xs italic">Reward not found</p>;
 
     return (
-        <div className={`w-56 max-w-full rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-100'} p-3`}>
-            <div className="flex items-center gap-3 mb-2">
-                <div className="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-                    <Gift size={20} />
+        <div className={`w-64 max-w-full rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-100'}`}>
+            {reward.coverImage && <img src={reward.coverImage} alt={reward.name} className="w-full h-32 object-cover" />}
+            <div className="p-3">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+                        <Gift size={20} />
+                    </div>
+                    <div className="min-w-0">
+                        <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{reward.name}</h4>
+                        <p className={`text-[10px] font-black ${isMine ? 'text-white/60' : 'text-primary'}`}>
+                            {reward.pointsRequired} Points Required
+                        </p>
+                    </div>
                 </div>
-                <div className="min-w-0">
-                    <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{reward.name}</h4>
-                    <p className={`text-[10px] font-bold ${isMine ? 'text-white/60' : 'text-slate-400'}`}>{reward.pointsRequired} Points</p>
-                </div>
+                <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-slate-600'}`}>{reward.description}</p>
             </div>
-            <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-slate-600'}`}>{reward.description}</p>
         </div>
     );
 }
 
-function CatalogueItemCard({ id, isMine }: { id: string; isMine: boolean }) {
+function CatalogueItemCard({ id, isMine, isCustomer, branchId }: { id: string; isMine: boolean; isCustomer: boolean; branchId: string }) {
     const { data: item, isLoading } = useCatalogueItem(id);
+    const { carts, addItem, updateQuantity } = useCartStore();
+    
     if (isLoading) return <div className="w-48 h-20 animate-pulse bg-slate-100 rounded-lg" />;
     if (!item) return <p className="text-xs italic">Item not found</p>;
 
+    const currentBranchCart = carts[branchId] || { items: [] };
+    const cartItem = currentBranchCart.items.find(i => i.id === id);
+    const quantity = cartItem?.quantity || 0;
+
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        addItem({
+            id: item.id,
+            type: 'item',
+            name: item.name,
+            price: item.price,
+            image: item.mainImage,
+            branchId,
+            businessId: item.businessId,
+            loyaltyPoints: item.loyaltyPoints || 0
+        });
+    };
+
     return (
-        <div className={`w-64 rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-white border-slate-200'} shadow-sm`}>
+        <div className={`w-64 max-w-full rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-white border-slate-200'} shadow-sm`}>
             {item.mainImage && <img src={item.mainImage} alt={item.name} className="w-full h-32 object-cover" />}
             <div className="p-3">
                 <div className="flex items-center justify-between gap-2 mb-1">
                     <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{item.name}</h4>
                     <span className="text-sm font-black text-primary">₦{item.price.toLocaleString()}</span>
                 </div>
+                <div className="flex items-center gap-2 mb-2">
+                    {item.loyaltyPoints > 0 && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 uppercase tracking-tight flex items-center gap-0.5">
+                            <Gift size={8} /> +{item.loyaltyPoints} Points
+                        </span>
+                    )}
+                </div>
                 <p className={`text-xs line-clamp-2 mb-3 ${isMine ? 'text-white/80' : 'text-slate-500'}`}>{item.shortDescription}</p>
-                <Link 
-                    href={`/tap?branchId=${item.businessId}&itemId=${item.id}`}
-                    className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-bold transition-all ${isMine ? 'bg-white text-primary hover:bg-slate-50' : 'bg-primary text-white hover:bg-primary-dark'}`}
-                >
-                    Order Now
-                </Link>
+                
+                {isCustomer && (
+                    <div className="flex items-center gap-2 mt-auto" onClick={e => e.stopPropagation()}>
+                        {quantity === 0 ? (
+                            <button 
+                                onClick={handleAddToCart}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${isMine ? 'bg-white text-primary hover:bg-slate-50' : 'bg-primary text-white hover:bg-primary-dark'}`}
+                            >
+                                <ShoppingCart size={14} />
+                                Add to Cart
+                            </button>
+                        ) : (
+                            <div className={`flex-1 flex items-center justify-between p-1 rounded-lg border ${isMine ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
+                                <button 
+                                    onClick={() => updateQuantity(branchId, id, quantity - 1)}
+                                    className={`size-7 rounded-md flex items-center justify-center transition-colors ${isMine ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 text-slate-600'}`}
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <span className={`text-xs font-black ${isMine ? 'text-white' : 'text-slate-900'}`}>{quantity}</span>
+                                <button 
+                                    onClick={() => updateQuantity(branchId, id, quantity + 1)}
+                                    className={`size-7 rounded-md flex items-center justify-center transition-colors ${isMine ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 text-slate-600'}`}
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        )}
+                        <Link 
+                            href={`/customer/cart?branchId=${branchId}&buyNow=${id}`}
+                            className={`p-2 rounded-lg transition-all ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-slate-100 text-primary hover:bg-primary/10'}`}
+                            title="Buy Now"
+                        >
+                            <Zap size={16} fill="currentColor" />
+                        </Link>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
-function CatalogueOfferCard({ id, isMine }: { id: string; isMine: boolean }) {
+function CatalogueOfferCard({ id, isMine, isCustomer, branchId }: { id: string; isMine: boolean; isCustomer: boolean; branchId: string }) {
     const { data: offer, isLoading } = useCatalogueOfferDetails(id);
+    const { carts, addItem, updateQuantity } = useCartStore();
+
     if (isLoading) return <div className="w-48 h-20 animate-pulse bg-slate-100 rounded-lg" />;
     if (!offer) return <p className="text-xs italic">Offer not found</p>;
 
+    const currentBranchCart = carts[branchId] || { items: [] };
+    const cartItem = currentBranchCart.items.find(i => i.id === id);
+    const quantity = cartItem?.quantity || 0;
+
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        addItem({
+            id: offer.id,
+            type: 'offer',
+            name: offer.name,
+            price: offer.calculatedPrice,
+            image: offer.mainImage,
+            branchId,
+            businessId: offer.businessId,
+            loyaltyPoints: offer.loyaltyPoints || 0
+        });
+    };
+
     return (
-        <div className={`w-64 rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-white border-slate-200'} shadow-sm`}>
+        <div className={`w-64 max-w-full rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-white border-slate-200'} shadow-sm`}>
             {offer.mainImage && <img src={offer.mainImage} alt={offer.name} className="w-full h-32 object-cover" />}
             <div className="p-3">
                 <div className="flex items-center justify-between gap-2 mb-1">
@@ -511,13 +599,51 @@ function CatalogueOfferCard({ id, isMine }: { id: string; isMine: boolean }) {
                     </div>
                     <span className="text-sm font-black text-primary">₦{offer.calculatedPrice.toLocaleString()}</span>
                 </div>
+                <div className="flex items-center gap-2 mb-2">
+                    {offer.loyaltyPoints > 0 && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 uppercase tracking-tight flex items-center gap-0.5">
+                            <Gift size={8} /> +{offer.loyaltyPoints} Points
+                        </span>
+                    )}
+                </div>
                 <p className={`text-xs line-clamp-2 mb-3 ${isMine ? 'text-white/80' : 'text-slate-500'}`}>{offer.description}</p>
-                <Link 
-                    href={`/tap?branchId=${offer.branchId}&offerId=${offer.id}`}
-                    className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-bold transition-all ${isMine ? 'bg-white text-primary hover:bg-slate-50' : 'bg-primary text-white hover:bg-primary-dark'}`}
-                >
-                    Claim Offer
-                </Link>
+                
+                {isCustomer && (
+                    <div className="flex items-center gap-2 mt-auto" onClick={e => e.stopPropagation()}>
+                        {quantity === 0 ? (
+                            <button 
+                                onClick={handleAddToCart}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${isMine ? 'bg-white text-primary hover:bg-slate-50' : 'bg-primary text-white hover:bg-primary-dark'}`}
+                            >
+                                <ShoppingCart size={14} />
+                                Add to Cart
+                            </button>
+                        ) : (
+                            <div className={`flex-1 flex items-center justify-between p-1 rounded-lg border ${isMine ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
+                                <button 
+                                    onClick={() => updateQuantity(branchId, id, quantity - 1)}
+                                    className={`size-7 rounded-md flex items-center justify-center transition-colors ${isMine ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 text-slate-600'}`}
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <span className={`text-xs font-black ${isMine ? 'text-white' : 'text-slate-900'}`}>{quantity}</span>
+                                <button 
+                                    onClick={() => updateQuantity(branchId, id, quantity + 1)}
+                                    className={`size-7 rounded-md flex items-center justify-center transition-colors ${isMine ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 text-slate-600'}`}
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        )}
+                        <Link 
+                            href={`/customer/cart?branchId=${branchId}&buyNow=${id}`}
+                            className={`p-2 rounded-lg transition-all ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-slate-100 text-primary hover:bg-primary/10'}`}
+                            title="Buy Now"
+                        >
+                            <Zap size={16} fill="currentColor" />
+                        </Link>
+                    </div>
+                )}
             </div>
         </div>
     );

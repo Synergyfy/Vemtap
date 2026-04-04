@@ -52,6 +52,19 @@ import { Public } from '../../common/decorators/public.decorator';
 export class LoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
 
+  @Public()
+  @Get('item-details/:id')
+  @ApiOperation({
+    summary: 'Publicly fetch a single reward by ID',
+    description: 'Retrieves details of a specific reward. Public access.',
+  })
+  @ApiParam({ name: 'id', description: 'The ID of the reward' })
+  @ApiResponse({ status: 200, description: 'Returns reward details' })
+  async getReward(@Param('id') id: string) {
+    console.log('[LoyaltyController] Fetching item-details:', id);
+    return this.loyaltyService.findOne(id);
+  }
+
   // --- Point Logs ---
   @Get('points/balance')
   @Roles(UserRole.CUSTOMER)
@@ -312,6 +325,28 @@ export class LoyaltyController {
   }
 
   @Public()
+  @Get('rewards/branch/:branchId')
+  @ApiOperation({
+    summary: 'Publicly fetch rewards for a branch (Legacy)',
+    description:
+      'Retrieves available rewards for a specific branch. Public access. DEPRECATED.',
+  })
+  @ApiParam({ name: 'branchId', description: 'The ID of the branch' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Returns list of rewards' })
+  async getBranchRewards(
+    @Param() { branchId }: BranchIdParamDto,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.loyaltyService.getBranchRewards(
+      branchId,
+      query.page,
+      query.limit,
+    );
+  }
+
+  @Public()
   @Get('rewards')
   @ApiOperation({
     summary: 'Publicly fetch rewards for a branch',
@@ -351,28 +386,6 @@ export class LoyaltyController {
   })
   async getPublicRewards(@Query() query: RewardQueryDto) {
     return this.loyaltyService.getPublicRewards(query);
-  }
-
-  @Public()
-  @Get('rewards/branch/:branchId')
-  @ApiOperation({
-    summary: 'Publicly fetch rewards for a branch (Legacy)',
-    description:
-      'Retrieves available rewards for a specific branch. Public access. DEPRECATED.',
-  })
-  @ApiParam({ name: 'branchId', description: 'The ID of the branch' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Returns list of rewards' })
-  async getBranchRewards(
-    @Param() { branchId }: BranchIdParamDto,
-    @Query() query: PaginationQueryDto,
-  ) {
-    return this.loyaltyService.getBranchRewards(
-      branchId,
-      query.page,
-      query.limit,
-    );
   }
 
   @Patch('rewards/:id')

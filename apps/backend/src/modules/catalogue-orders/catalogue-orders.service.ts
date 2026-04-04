@@ -21,6 +21,7 @@ import { PushNotificationService } from '../notifications/push-notification.serv
 import {
   CreateCatalogueOrderDto,
   CatalogueOrderQueryDto,
+  BulkCheckoutDto,
 } from './dto/catalogue-order.dto';
 import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
@@ -54,7 +55,40 @@ export class CatalogueOrderService {
     private readonly catalogueService: CatalogueService,
   ) {}
 
-  async createOrder(dto: CreateCatalogueOrderDto) {
+  async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
+    const results: CatalogueOrder[] = [];
+    const customerInfo = {
+      firstName: user?.firstName || dto.firstName,
+      lastName: user?.lastName || dto.lastName,
+      phone: user?.phone || dto.phone,
+      email: user?.email || dto.email,
+    };
+
+    if (!customerInfo.firstName || !customerInfo.phone) {
+      throw new BadRequestException('Customer information (name and phone) is required');
+    }
+
+    // Process each branch order
+    for (const orderDto of dto.orders) {
+      const order = await this.createOrder({
+        ...customerInfo,
+        branchId: orderDto.branchId,
+        items: orderDto.items,
+        notes: orderDto.notes,
+        tableNumber: orderDto.tableNumber,
+        deviceId: dto.deviceId,
+      } as CreateCatalogueOrderDto, user);
+      results.push(order);
+    }
+
+    return {
+      success: true,
+      message: `${results.length} orders placed successfully`,
+      orders: results,
+    };
+  }
+
+  async createOrder(dto: CreateCatalogueOrderDto, existingUser?: User) {
     // 1. Resolve branch
     const branch = await this.branchRepository.findOne({
       where: { id: dto.branchId },
@@ -62,14 +96,18 @@ export class CatalogueOrderService {
     if (!branch) throw new NotFoundException('Branch not found');
 
     // 2. Resolve or Create customer (User)
-    let customer = await this.userRepository.findOne({
-      where: { phone: dto.phone },
-    });
-
-    if (!customer && dto.email) {
+    let customer: User | null = existingUser || null;
+    
+    if (!customer) {
       customer = await this.userRepository.findOne({
-        where: { email: dto.email },
+        where: { phone: dto.phone },
       });
+
+      if (!customer && dto.email) {
+        customer = await this.userRepository.findOne({
+          where: { email: dto.email },
+        });
+      }
     }
 
     if (!customer) {

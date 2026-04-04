@@ -125,7 +125,7 @@ export const useRewards = (branchId?: string, enabled: boolean = true) => {
 export const useReward = (id: string) => {
     return useQuery<Reward, Error>({
         queryKey: ['loyalty', 'reward', id],
-        queryFn: async () => await api.get(`/loyalty/rewards/${id}`),
+        queryFn: async () => await api.get(`/loyalty/item-details/${id}`),
         enabled: !!id,
     });
 };

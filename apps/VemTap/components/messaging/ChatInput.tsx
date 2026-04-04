@@ -59,8 +59,8 @@ export default function ChatInput({
     const effectiveBranchId = activeBranchId! || branches[0]?.id;
     const { data: templates = [] } = useChatTemplates(effectiveBranchId, !isCustomer && !!effectiveBranchId);
     const { data: rewards = [] } = useRewards(effectiveBranchId, !isCustomer && !!effectiveBranchId);
-    const { data: catalogueItems = [] } = useCatalogueItems({ branchId: effectiveBranchId });
-    const { data: catalogueOffers = [] } = useCatalogueOffersAdmin({ branchId: effectiveBranchId });
+    const { data: catalogueItems = [] } = useCatalogueItems({ branchId: effectiveBranchId }, { enabled: !isCustomer && !!effectiveBranchId });
+    const { data: catalogueOffers = [] } = useCatalogueOffersAdmin({ branchId: effectiveBranchId }, { enabled: !isCustomer && !!effectiveBranchId });
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -438,21 +438,37 @@ export default function ChatInput({
             )}
 
             {showCatalogue && filteredCatalogue.length > 0 && (
-                <div className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <div className="absolute bottom-full left-4 mb-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Send Item/Offer</p>
                         <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
                     </div>
-                    <div className="max-h-64 overflow-y-auto p-1 custom-scrollbar">
+                    <div className="max-h-80 overflow-y-auto p-1 custom-scrollbar">
                         {filteredCatalogue.map((c: any, i: number) => (
-                            <button key={c.id} onClick={() => sendCatalogueItem(c)} onMouseEnter={() => setSelectedIndex(i)} className={`w-full flex flex-col items-start px-4 py-3 rounded-xl transition-all ${i === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}>
-                                <div className="flex items-center gap-2">
-                                    <div className={`p-1 rounded-lg ${i === selectedIndex ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-400'}`}>{c.type === 'offer' ? <Tag size={12} /> : <ShoppingBag size={12} />}</div>
-                                    <span className={`text-sm font-bold ${i === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{c.name}</span>
+                            <button key={c.id} onClick={() => sendCatalogueItem(c)} onMouseEnter={() => setSelectedIndex(i)} className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all ${i === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}>
+                                <div className="size-12 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200">
+                                    {c.mainImage ? (
+                                        <img src={c.mainImage} alt="" className="size-full object-cover" />
+                                    ) : (
+                                        <div className="size-full flex items-center justify-center text-slate-400">
+                                            {c.type === 'offer' ? <Tag size={20} /> : <ShoppingBag size={20} />}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">{c.type}</span>
-                                    <span className="text-xs text-slate-400 truncate flex-1 italic">{c.description || 'No description'}</span>
+                                <div className="flex-1 min-w-0 text-left">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`text-sm font-bold truncate ${i === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{c.name}</span>
+                                        <span className="text-xs font-black text-primary whitespace-nowrap">₦{(c.price || c.calculatedPrice || 0).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-tight">{c.type}</span>
+                                        {c.loyaltyPoints > 0 && (
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 uppercase tracking-tight flex items-center gap-0.5">
+                                                <Gift size={8} /> +{c.loyaltyPoints} Points
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 truncate mt-1">{c.description || c.shortDescription || 'No description'}</p>
                                 </div>
                             </button>
                         ))}
@@ -471,7 +487,7 @@ export default function ChatInput({
                         rows={1}
                         value={text}
                         onChange={handleTextChange}
-                        placeholder="Type a message... (Use / for templates, # for rewards, ! for items)"
+                        placeholder={isCustomer ? "Type a message..." : "Type a message... (Use / for templates, # for rewards, ! for items)"}
                         disabled={isSending}
                         className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm max-h-32 resize-none py-1 outline-none"
                     />
