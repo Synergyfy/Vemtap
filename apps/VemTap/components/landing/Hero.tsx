@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import React from 'react';
+import { LayoutDashboard, Users, BarChart3, Settings, LifeBuoy, Circle, Zap, CheckCircle2 } from 'lucide-react';
 
 export default function Hero() {
     return (
-        <section className="relative pt-32 pb-24 overflow-hidden bg-white min-h-screen flex flex-col items-center">
+        <section className="relative pt-24 md:pt-32 pb-20 md:pb-32 overflow-hidden bg-white min-h-screen flex flex-col items-center">
             {/* Ambient Gradients */}
             <div className="absolute top-20 left-10 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
             <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500/5 rounded-full blur-[80px] pointer-events-none"></div>
@@ -16,135 +17,162 @@ export default function Hero() {
                 WebkitMaskImage: 'linear-gradient(to right, black 20%, transparent 80%)'
             }}></div>
 
-            <div className="container mx-auto px-8 md:px-16 lg:px-20 max-w-7xl z-10 relative">
+            <div className="container mx-auto px-6 md:px-16 lg:px-20 max-w-7xl z-10 relative">
                 {/* Top Section: Split Layout (Text & Video) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-24 overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24">
                     {/* Left Column: Content */}
                     <div className="text-left space-y-8 animate-in fade-in slide-in-from-left-32 duration-1000">
-                        <h1 className="font-display font-black text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-text-main tracking-tight">
-                            Collect Customer Details <br />
-                            <span className="text-gradient">Fast & Simple</span>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-2">
+                            <Zap size={14} className="text-primary fill-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+                                The Future of Customer Loyalty
+                            </span>
+                        </div>
+                        <h1 className="font-display font-black text-4xl md:text-5xl lg:text-7xl leading-[1.1] text-text-main tracking-tight">
+                            Collect Customer <br className="hidden sm:block" /> Details <span className="text-primary">Fast & Simple</span>
                         </h1>
 
-                        <p className="text-base md:text-lg text-text-secondary max-w-xl font-medium leading-relaxed">
-                            7 out of 10 customers don't buy on first visit. Instantly collect customer numbers and details with a simple tap, and see everything on your phone.
+                        <p className="text-base md:text-xl text-text-secondary max-w-xl font-medium leading-relaxed">
+                            7 out of 10 customers don't return after their first visit. Instantly collect data with a simple tap and engage them automatically.
                         </p>
 
-                        <div className="pt-4">
-                            <Link href="/get-started" className="inline-block bg-primary hover:bg-primary-hover text-white font-bold px-10 py-4 rounded-2xl transition-all transform hover:scale-105 shadow-xl shadow-primary/25 text-lg cursor-pointer">
-                                Get Started
+                        <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
+                            <Link href="/get-started" className="w-full sm:w-auto text-center bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-widest text-xs px-10 py-5 rounded-2xl transition-all transform hover:scale-105 shadow-2xl shadow-primary/30 cursor-pointer">
+                                Get Started Free
                             </Link>
+                            <div className="flex -space-x-3 items-center">
+                                {[1, 2, 3, 4].map((i) => (
+                                    <div key={i} className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
+                                        <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                                <p className="ml-6 text-[10px] font-black text-text-secondary uppercase tracking-widest">Joined by 2k+ owners</p>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Right Column: Video Showcase (Portrait Refined) */}
+                    {/* Right Column: Video Showcase */}
                     <div className="relative animate-in fade-in slide-in-from-right-32 duration-1000 delay-200 flex justify-center lg:justify-end">
-                        <div className="relative w-full max-w-[320px] p-3 bg-gray-50/50 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                            <div className="relative aspect-9/16 bg-gray-900 rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-gray-900">
+                        <div className="relative w-full max-w-[340px] p-3 bg-gray-50/50 rounded-[3.5rem] border border-gray-100 shadow-sm group">
+                            <div className="relative aspect-9/16 bg-gray-950 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-gray-900 group-hover:border-primary/20 transition-colors duration-500">
                                 <video
                                     autoPlay
                                     loop
                                     muted
                                     playsInline
-                                    className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity duration-700"
+                                    className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity duration-700"
                                 >
                                     <source src="/assets/videos/VemTap_Video.mp4" type="video/mp4" />
                                 </video>
-                                <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent pointer-events-none"></div>
+                                <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
                             </div>
-                        </div>
 
-                        {/* 5000+ Ratings Badge overlaying video */}
-                        <div className="absolute -bottom-5 -right-2 bg-white/95 backdrop-blur-md px-5 py-3 rounded-xl shadow-xl border border-gray-100 hidden sm:block z-20">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-[#1A2E1A]/40 mb-1">5000+ RATINGS</p>
-                            <p className="text-[11px] font-black text-[#1A2E1A]">Top Rated Solution</p>
+                            {/* Trust Badge - Small & Visible on all devices now */}
+                            <div className="absolute -bottom-6 -right-2 md:-right-6 bg-white/95 backdrop-blur-md px-5 py-4 rounded-2xl shadow-2xl border border-gray-100 z-20 transform rotate-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 shadow-inner">
+                                        <CheckCircle2 size={24} />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40 leading-none mb-1">Success Rate</p>
+                                        <p className="text-lg font-black text-text-main tracking-tight">99.9% Reliable</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Bottom Section: Dashboard Mockup (Moved below) */}
-                <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
+                {/* Bottom Section: Dashboard Mockup */}
+                <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500 overflow-hidden px-2 md:px-0">
                     <div className="relative group">
-                        <div className="absolute -inset-1 bg-linear-to-r from-primary/20 to-blue-400/20 rounded-[2.5rem] blur-2xl opacity-20 animate-pulse"></div>
-                        <div className="relative bg-white rounded-4xl shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden border border-gray-100">
+                        <div className="absolute -inset-1 bg-linear-to-r from-primary/20 to-blue-400/20 rounded-[3rem] blur-3xl opacity-20 animate-pulse"></div>
+                        <div className="relative bg-white rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden border border-gray-100">
                             {/* Browser Header */}
-                            <div className="bg-gray-50/80 border-b border-gray-100 px-6 py-4 flex items-center gap-4">
+                            <div className="bg-gray-50/80 border-b border-gray-100 px-8 py-5 flex items-center gap-4">
                                 <div className="flex gap-2">
-                                    <div className="size-2.5 rounded-full bg-red-400/60"></div>
-                                    <div className="size-2.5 rounded-full bg-yellow-400/60"></div>
-                                    <div className="size-2.5 rounded-full bg-green-400/60"></div>
+                                    <div className="size-2.5 rounded-full bg-red-400/60 shadow-sm"></div>
+                                    <div className="size-2.5 rounded-full bg-yellow-400/60 shadow-sm"></div>
+                                    <div className="size-2.5 rounded-full bg-green-400/60 shadow-sm"></div>
                                 </div>
-                                <div className="bg-white px-4 py-1 rounded-lg text-[10px] text-gray-400 font-bold flex-1 text-center max-w-[280px] mx-auto border border-gray-100 uppercase tracking-widest">
+                                <div className="bg-white px-6 py-1.5 rounded-full text-[9px] text-gray-400 font-black flex-1 text-center max-w-[320px] mx-auto border border-gray-100 uppercase tracking-widest shadow-sm">
                                     app.vemtap.io/dashboard
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-12 min-h-[500px]">
                                 {/* Sidebar Mockup */}
-                                <div className="col-span-3 bg-gray-50/50 border-r border-gray-100 p-8 hidden md:block">
-                                    <div className="flex items-center gap-3 mb-10">
-                                        <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white text-xs font-black shadow-lg shadow-primary/20">VT</div>
-                                        <div className="font-display font-black text-text-main text-sm">VemTap</div>
+                                <div className="col-span-3 bg-gray-50/30 border-r border-gray-100 p-8 hidden lg:block">
+                                    <div className="flex items-center gap-4 mb-12">
+                                        <div className="size-11 rounded-2xl bg-primary flex items-center justify-center text-white text-xs font-black shadow-xl shadow-primary/30">VT</div>
+                                        <div className="font-display font-black text-text-main text-base tracking-tight">VemTap AI</div>
                                     </div>
-                                    <div className="space-y-3 text-left">
-                                        <div className="flex items-center gap-3 px-4 py-2.5 text-primary bg-primary/5 rounded-xl text-xs font-bold uppercase tracking-wider">
-                                            <span className="material-icons-round text-lg">dashboard</span> Dashboard
+                                    <div className="space-y-4 text-left">
+                                        <div className="flex items-center gap-4 px-5 py-3 text-primary bg-primary/5 rounded-2xl text-xs font-black uppercase tracking-widest border border-primary/5">
+                                            <LayoutDashboard size={18} /> Dashboard
                                         </div>
-                                        {['Customers', 'Analytics', 'Settings', 'Support'].map((item, i) => (
-                                            <div key={i} className="flex items-center gap-3 px-4 py-2.5 text-text-secondary hover:bg-gray-50 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer opacity-60">
-                                                <span className="material-icons-round text-sm opacity-30">circle</span> {item}
+                                        {[
+                                            { l: 'Customers', i: <Users size={16} /> },
+                                            { l: 'Insights', i: <BarChart3 size={16} /> },
+                                            { l: 'Marketplace', i: <Zap size={16} /> },
+                                            { l: 'Settings', i: <Settings size={16} /> },
+                                            { l: 'Help Desk', i: <LifeBuoy size={16} /> }
+                                        ].map((item, i) => (
+                                            <div key={i} className="flex items-center gap-4 px-5 py-3 text-text-secondary hover:bg-gray-50 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer opacity-40 hover:opacity-100 group">
+                                                <div className="group-hover:text-primary transition-colors">{item.i}</div>
+                                                {item.l}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Main Content Mockup */}
-                                <div className="col-span-12 md:col-span-9 p-8 md:p-12 text-left">
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
+                                <div className="col-span-12 lg:col-span-9 p-6 md:p-14 text-left bg-linear-to-b from-white to-gray-50/30">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-6">
                                         <div>
-                                            <h3 className="text-2xl font-display font-black text-text-main">Visitor Insights</h3>
-                                            <p className="text-xs text-text-secondary mt-1 font-medium">Real-time engagement tracking</p>
+                                            <h3 className="text-3xl font-display font-black text-text-main tracking-tight leading-none">Visitor Insights</h3>
+                                            <p className="text-xs text-text-secondary mt-2 font-bold uppercase tracking-widest opacity-40">Real-time engagement activity</p>
                                         </div>
-                                        <div className="bg-primary/5 px-4 py-2 rounded-xl flex items-center gap-3 border border-primary/10">
-                                            <div className="size-2 rounded-full bg-green-500 animate-pulse"></div>
-                                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Live Updates</span>
+                                        <div className="bg-green-50 px-5 py-2.5 rounded-2xl flex items-center gap-3 border border-green-100 shadow-sm">
+                                            <div className="size-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                                            <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">Live Tracking</span>
                                         </div>
                                     </div>
 
                                     {/* Stats Interior */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-14">
                                         {[
-                                            { l: 'Total Scans', v: '2,845', c: '+12%', up: true },
-                                            { l: 'Conversion', v: '64.2%', c: '+5.4%', up: true },
-                                            { l: 'Returning', v: '18.5%', c: '+2.1%', up: true }
+                                            { l: 'Scans', v: '2,845', c: '+12%', up: true },
+                                            { l: 'Retention', v: '64.2%', c: '+5.4%', up: true },
+                                            { l: 'Revenue', v: '₦1.2M', c: '+2.1%', up: true }
                                         ].map((s, i) => (
-                                            <div key={i} className="p-6 rounded-2xl border border-gray-50 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">{s.l}</p>
+                                            <div key={i} className="p-8 rounded-3xl border border-gray-100 bg-white shadow-xl shadow-gray-200/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 group">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-4 opacity-40 group-hover:text-primary transition-colors">{s.l}</p>
                                                 <div className="flex items-end justify-between">
-                                                    <h4 className="text-2xl font-display font-black text-text-main">{s.v}</h4>
-                                                    <span className={`text-[10px] font-black ${s.up ? 'text-green-500' : 'text-primary'}`}>{s.c}</span>
+                                                    <h4 className="text-3xl font-display font-black text-text-main tracking-tight">{s.v}</h4>
+                                                    <span className={`text-[11px] font-black px-2 py-1 rounded-lg ${s.up ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{s.c}</span>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
 
                                     {/* Recent Activity Mini Table */}
-                                    <div className="rounded-2xl border border-gray-50 overflow-hidden bg-white">
+                                    <div className="rounded-[2rem] border border-gray-100 overflow-hidden bg-white shadow-2xl shadow-gray-200/30">
                                         <div className="divide-y divide-gray-50">
                                             {[
-                                                { n: 'Robert Fox', s: 'NFC Plate 01', t: 'Just now', i: 'RF', bg: 'bg-blue-50', text: 'text-blue-600' },
-                                                { n: 'Sarah Chen', s: 'QR Fallback', t: '5m ago', i: 'SC', bg: 'bg-primary/10', text: 'text-primary' },
+                                                { n: 'Robert Fox', s: 'NFC Plate 01', t: 'Just now', i: 'RF', bg: 'bg-primary/10', text: 'text-primary' },
+                                                { n: 'Sarah Chen', s: 'QR Fallback', t: '5m ago', i: 'SC', bg: 'bg-indigo-50', text: 'text-indigo-600' },
                                                 { n: 'Marcus Bell', s: 'NFC Plate 04', t: '12m ago', i: 'MB', bg: 'bg-green-50', text: 'text-green-600' }
                                             ].map((row, i) => (
-                                                <div key={i} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`size-10 rounded-full ${row.bg} ${row.text} flex items-center justify-center text-[10px] font-black shrink-0`}>{row.i}</div>
+                                                <div key={i} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors group cursor-default">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className={`size-12 rounded-2xl ${row.bg} ${row.text} flex items-center justify-center text-[11px] font-black shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-500`}>{row.i}</div>
                                                         <div className="flex flex-col text-left">
-                                                            <div className="text-xs font-bold text-text-main leading-none mb-1">{row.n}</div>
-                                                            <div className="text-[10px] text-text-secondary">{row.s}</div>
+                                                            <div className="text-sm font-black text-text-main leading-tight mb-1">{row.n}</div>
+                                                            <div className="text-[10px] text-text-secondary font-bold uppercase tracking-widest opacity-40">{row.s}</div>
                                                         </div>
                                                     </div>
-                                                    <div className="text-[10px] font-black text-gray-400 tracking-tighter">{row.t}</div>
+                                                    <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest group-hover:text-primary transition-colors">{row.t}</div>
                                                 </div>
                                             ))}
                                         </div>
