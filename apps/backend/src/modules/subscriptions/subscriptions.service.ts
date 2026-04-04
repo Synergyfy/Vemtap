@@ -4,6 +4,7 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Subscription,
@@ -27,6 +28,7 @@ import { CreditService } from '../messaging/services/credit.service';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -49,6 +51,8 @@ export class SubscriptionsService {
     private readonly catalogueItemRepository: Repository<CatalogueItem>,
     @InjectRepository(CatalogueOffer)
     private readonly catalogueOfferRepository: Repository<CatalogueOffer>,
+    @InjectRepository(AutomationRule)
+    private readonly automationRuleRepository: Repository<AutomationRule>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
@@ -68,9 +72,15 @@ export class SubscriptionsService {
     });
 
     if (sub && sub.endDate < new Date()) {
-      sub.status = SubscriptionStatus.EXPIRED;
-      await this.subscriptionRepository.save(sub);
-      return null;
+      const now = new Date();
+      const gracePeriod = new Date(sub.endDate);
+      gracePeriod.setHours(gracePeriod.getHours() + 24);
+
+      if (now > gracePeriod) {
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+        return null;
+      }
     }
 
     return sub;
@@ -237,6 +247,13 @@ export class SubscriptionsService {
     return null;
   }
 
+  @Cron(CronExpression.EVERY_HOUR)
+  async processDailySubscriptions() {
+    this.logger.log('Running automated subscription processing...');
+    await this.processExpiredTrials();
+    await this.processRenewals();
+  }
+
   async processExpiredTrials() {
     const now = new Date();
     const expiredTrials = await this.subscriptionRepository.find({
@@ -244,7 +261,7 @@ export class SubscriptionsService {
         status: SubscriptionStatus.TRIAL,
         endDate: LessThanOrEqual(now),
       },
-      relations: ['plan', 'business'],
+      relations: ['plan', 'business', 'business.owner'],
     });
 
     this.logger.log(`Found ${expiredTrials.length} expired trials to process.`);
@@ -271,7 +288,7 @@ export class SubscriptionsService {
         continue;
       }
 
-      const ownerEmail = 'unknown@latap.com';
+      const ownerEmail = sub.business?.officialEmail || sub.business?.owner?.email || 'billing@latap.com';
 
       const charge = await this.paymentsService.chargeAuthorization(
         amount,
@@ -311,6 +328,75 @@ export class SubscriptionsService {
         }
       } else {
         this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+      }
+    }
+  }
+
+  async processRenewals() {
+    const now = new Date();
+    const expiringSubscriptions = await this.subscriptionRepository.find({
+      where: {
+        status: SubscriptionStatus.ACTIVE,
+        endDate: LessThanOrEqual(now),
+      },
+      relations: ['plan', 'business', 'business.owner'],
+    });
+
+    this.logger.log(
+      `Found ${expiringSubscriptions.length} active subscriptions to renew.`,
+    );
+
+    for (const sub of expiringSubscriptions) {
+      if (!sub.paystackAuthorizationCode) {
+        this.logger.warn(
+          `Subscription ${sub.id} has no auth code for renewal. Expiring...`,
+        );
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+        continue;
+      }
+
+      let amount = sub.plan.monthlyPrice;
+      if (sub.billingPeriod === BillingPeriod.QUARTERLY)
+        amount = sub.plan.quarterlyPrice;
+      if (sub.billingPeriod === BillingPeriod.YEARLY)
+        amount = sub.plan.yearlyPrice;
+
+      if (amount <= 0) {
+        await this.activateSubscription(sub);
+        await this.subscriptionRepository.save(sub);
+        continue;
+      }
+
+      const ownerEmail = sub.business?.officialEmail || sub.business?.owner?.email || 'billing@latap.com';
+
+      const charge = await this.paymentsService.chargeAuthorization(
+        amount,
+        ownerEmail,
+        sub.paystackAuthorizationCode,
+      );
+
+      if (charge && charge.status === 'success') {
+        this.logger.log(
+          `Successfully renewed subscription ${sub.id}. Upgrading end date.`,
+        );
+
+        await this.paymentsService.recordPayment({
+          reference: charge.reference,
+          amount: amount,
+          purpose: PaymentPurpose.SUBSCRIPTION,
+          status: PaymentStatus.SUCCESS,
+          metadata: { subscriptionId: sub.id, planId: sub.planId, renewal: true },
+          businessId: sub.businessId,
+          userId: sub.business?.ownerId,
+        });
+
+        await this.activateSubscription(sub);
+        await this.subscriptionRepository.save(sub);
+      } else {
+        this.logger.error(`Failed to renew subscription ${sub.id}. Expiring.`);
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
       }
@@ -379,6 +465,10 @@ export class SubscriptionsService {
       where: { businessId },
     });
 
+    const usedAutomations = await this.automationRuleRepository.count({
+      where: { businessId },
+    });
+
     const usedLoyaltyPrograms = 0;
 
     return {
@@ -428,6 +518,19 @@ export class SubscriptionsService {
             : plan.branchLimit === -1
               ? 'unlimited'
               : Math.max(0, (plan.branchLimit ?? 0) - usedBranches),
+        },
+        automations: {
+          enabled: plan.automationsEnabled,
+          limit:
+            plan.maxAutomations === -1 || plan.maxAutomations === null
+              ? 'unlimited'
+              : plan.maxAutomations,
+          used: usedAutomations,
+          remaining: !plan.automationsEnabled
+            ? 0
+            : plan.maxAutomations === -1 || plan.maxAutomations === null
+              ? 'unlimited'
+              : Math.max(0, plan.maxAutomations - usedAutomations),
         },
         analytics: {
           enabled: plan.analyticsEnabled,

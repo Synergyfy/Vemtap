@@ -14,6 +14,24 @@ import {
 import { Type } from 'class-transformer';
 import { CatalogueOrderStatus } from '../entities/catalogue-order.entity';
 
+export class CreateQuickItemDto {
+  @ApiProperty({ example: 'New Item' })
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 1000 })
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @ApiPropertyOptional({ example: 'uuid-of-category' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+}
+
 export class OrderItemDto {
   @ApiPropertyOptional({ example: 'uuid-of-item' })
   @IsOptional()
@@ -24,6 +42,12 @@ export class OrderItemDto {
   @IsOptional()
   @IsUUID()
   offerId?: string;
+
+  @ApiPropertyOptional({ type: CreateQuickItemDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateQuickItemDto)
+  newItem?: CreateQuickItemDto;
 
   @ApiProperty({ example: 2 })
   @IsNotEmpty()
@@ -87,6 +111,62 @@ export class CreateCatalogueOrderDto {
   @IsOptional()
   @IsUUID()
   sessionToken?: string;
+}
+
+export class BulkOrderDto {
+  @ApiProperty({ example: 'uuid-of-branch' })
+  @IsNotEmpty()
+  @IsUUID()
+  branchId: string;
+
+  @ApiProperty({ type: [OrderItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemDto)
+  items: OrderItemDto[];
+
+  @ApiPropertyOptional({ example: 'No spicy' })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiPropertyOptional({ example: 'Table 5' })
+  @IsOptional()
+  @IsString()
+  tableNumber?: string;
+}
+
+export class BulkCheckoutDto {
+  @ApiPropertyOptional({ example: 'John' })
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional({ example: 'Doe' })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional({ example: '+2348012345678' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'john@example.com' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ type: [BulkOrderDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BulkOrderDto)
+  orders: BulkOrderDto[];
+
+  @ApiPropertyOptional({ example: 'uuid-of-device' })
+  @IsOptional()
+  @IsUUID()
+  deviceId?: string;
 }
 
 export class UpdateCatalogueOrderStatusDto {

@@ -47,10 +47,10 @@ export class CreateCatalogueItemDto {
   @IsString({ each: true })
   galleryImages?: string[];
 
-  @ApiProperty({ example: 'uuid-of-category' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'uuid-of-category' })
+  @IsOptional()
   @IsUUID()
-  categoryId: string;
+  categoryId?: string;
 
   @ApiPropertyOptional({ example: 'CB-001' })
   @IsOptional()

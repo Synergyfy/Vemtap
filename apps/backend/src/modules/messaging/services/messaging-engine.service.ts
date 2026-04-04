@@ -333,106 +333,129 @@ export class MessagingEngineService {
     channel: Channel,
     from: string,
     campaignId?: string,
+    metadata?: any,
+    messageId?: string,
   ): Promise<Message> {
     const customer = await this.userRepo.findOneBy({ id: customerId });
     if (!customer) throw new NotFoundException('Customer not found');
 
-    const resolvedContent = await this.resolvePlaceholders(
-      content,
-      customerId,
-      branch,
-    );
+    // If messageId is provided, we are in a background worker processing an existing message
+    let savedMessage: Message;
+    let resolvedContent: string;
 
-    // Credit Check
-    if (!campaignId && channel !== Channel.IN_HOUSE) {
-      const wallet = await this.creditService.getOrCreateWallet(
-        branch.businessId,
-      );
-      let balance = 0;
-      if (channel === Channel.SMS) balance = wallet.smsCredits;
-      else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
-      else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
-
-      if (balance < 1) {
-        throw new BadRequestException(`Insufficient ${channel} credits`);
-      }
-    }
-
-    // Find or create conversation thread
-    let thread = await this.threadRepo.findOne({
-      where: {
-        branchId: branch.id,
+    if (messageId) {
+      const existing = await this.messageRepo.findOneBy({ id: messageId });
+      if (!existing) throw new NotFoundException('Message not found');
+      savedMessage = existing;
+      resolvedContent = savedMessage.content;
+    } else {
+      resolvedContent = await this.resolvePlaceholders(
+        content,
         customerId,
-        channel,
-      },
-    });
+        branch,
+      );
 
-    if (!thread) {
-      thread = this.threadRepo.create({
+      // Credit Check (only for new messages)
+      if (!campaignId && channel !== Channel.IN_HOUSE) {
+        const wallet = await this.creditService.getOrCreateWallet(
+          branch.businessId,
+        );
+        let balance = 0;
+        if (channel === Channel.SMS) balance = wallet.smsCredits;
+        else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
+        else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
+
+        if (balance < 1) {
+          throw new BadRequestException(`Insufficient ${channel} credits`);
+        }
+      }
+
+      // Find or create conversation thread
+      let thread = await this.threadRepo.findOne({
+        where: {
+          branchId: branch.id,
+          customerId,
+          channel,
+        },
+      });
+
+      if (!thread) {
+        thread = this.threadRepo.create({
+          branchId: branch.id,
+          businessId: branch.businessId,
+          customerId,
+          channel,
+          status: ThreadStatus.OPEN,
+        } as any) as unknown as ConversationThread;
+        await this.threadRepo.save(thread);
+      }
+
+      const message = this.messageRepo.create({
         branchId: branch.id,
         businessId: branch.businessId,
         customerId,
+        threadId: thread.id,
+        campaignId,
+        content: resolvedContent,
         channel,
+        direction: MessageDirection.OUTBOUND,
+        status: channel === Channel.IN_HOUSE ? MessageStatus.DELIVERED : MessageStatus.PENDING,
+        from,
+        to:
+          channel === Channel.EMAIL
+            ? customer.email || ''
+            : formatPhoneNumber(customer.phone || ''),
+        timestamp: new Date(),
+        metadata: metadata || {},
+      } as any) as unknown as Message;
+
+      const savedResult = await this.messageRepo.save(message);
+      savedMessage = (Array.isArray(savedResult) ? savedResult[0] : savedResult) as Message;
+
+      // Update thread metadata (don't strictly await if it's not critical for the response)
+      this.threadRepo.update(thread.id, {
+        lastActivityAt: new Date(),
+        lastMessageContent: content,
         status: ThreadStatus.OPEN,
-      } as any) as unknown as ConversationThread;
-      await this.threadRepo.save(thread);
+      }).catch(e => this.logger.error(`Thread update failed: ${e.message}`));
     }
 
-    const message = this.messageRepo.create({
-      branchId: branch.id,
-      businessId: branch.businessId,
-      customerId,
-      threadId: thread.id,
-      campaignId,
-      content: resolvedContent,
-      channel,
-      direction: MessageDirection.OUTBOUND,
-      status: MessageStatus.PENDING,
-      from,
-      to:
-        channel === Channel.EMAIL
-          ? customer.email || ''
-          : formatPhoneNumber(customer.phone || ''),
-    } as any) as unknown as Message;
+    // --- Delivery Logic ---
+    if (channel === Channel.IN_HOUSE) {
+      // For chat, emit immediately (background)
+      this.messagingGateway.emitMessage(
+        savedMessage.threadId,
+        branch.id,
+        customerId,
+        savedMessage,
+      );
 
-    const savedMessageResult = await this.messageRepo.save(message);
-    const savedMessage = (
-      Array.isArray(savedMessageResult)
-        ? savedMessageResult[0]
-        : savedMessageResult
-    ) as Message;
-
-    // Update thread metadata
-    thread.lastActivityAt = new Date();
-    thread.lastMessageContent = content;
-    thread.status = ThreadStatus.OPEN;
-    // unread count is handled by InboxService for better consistency
-    await this.threadRepo.save(thread);
-
-    try {
-      if (channel === Channel.IN_HOUSE) {
-        savedMessage.status = MessageStatus.DELIVERED;
-        await this.messageRepo.save(savedMessage);
-
-        this.messagingGateway.emitMessage(
-          thread.id,
-          branch.id,
+      this.pushNotificationService
+        .sendNotification(
           customerId,
-          savedMessage,
+          `New Message from ${branch.business?.name || branch.name}`,
+          resolvedContent,
+          { threadId: savedMessage.threadId, channel: Channel.IN_HOUSE },
+          true,
+        )
+        .catch((e) =>
+          this.logger.error(`Push notification failed: ${e.message}`),
         );
-
-        this.pushNotificationService
-          .sendNotification(
-            customerId,
-            `New Message from ${branch.business?.name || branch.name}`,
-            resolvedContent,
-            { threadId: thread.id, channel: Channel.IN_HOUSE },
-            true,
-          )
-          .catch((e) =>
-            this.logger.error(`Push notification failed: ${e.message}`),
-          );
-      } else {
+    } else if (!messageId) {
+      // If NOT already in a background worker, queue it for the provider
+      this.individualQueue.add('send-provider-msg', {
+        branchId: branch.id,
+        customerId,
+        content,
+        channel,
+        from,
+        campaignId,
+        metadata,
+        messageId: savedMessage.id, // Pass ID to process this existing message
+      }).catch(e => this.logger.error(`Failed to queue message ${savedMessage.id}: ${e.message}`));
+    } else {
+      // We ARE in a background worker, actually call the provider
+      try {
         const providerResult = await this.providerRouter.sendMessage({
           channel,
           to: savedMessage.to,
@@ -448,45 +471,33 @@ export class MessagingEngineService {
         savedMessage.reference = providerResult.reference;
         await this.messageRepo.save(savedMessage);
 
-        const customerName =
-          `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
+        const customerName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
         if (
           savedMessage.status === MessageStatus.SENT ||
           savedMessage.status === MessageStatus.DELIVERED ||
           savedMessage.status === MessageStatus.PENDING
         ) {
-          this.logger.log(
-            `✅ SUCCESS: [${channel}] message to ${customerName} (${savedMessage.to}) status: ${savedMessage.status}. Provider Ref: ${savedMessage.reference || 'N/A'}. Response: ${JSON.stringify(providerResult.rawResponse)}`,
-          );
+          this.logger.log(`✅ SUCCESS: [${channel}] background delivery status: ${savedMessage.status}`);
 
           let units = providerResult.units || 1;
-          if (channel === Channel.SMS && savedMessage.content.length > 160) {
-            units = 2;
-          }
+          if (channel === Channel.SMS && savedMessage.content.length > 160) units = 2;
+          
           await this.creditService.deductCredits(
             branch.businessId,
             channel,
             units,
             `Message to ${savedMessage.to}`,
           );
-        } else {
-          this.logger.warn(
-            `⚠️ FAILED: [${channel}] message to ${customerName} (${savedMessage.to}). Provider Response: ${JSON.stringify(providerResult.rawResponse)}`,
-          );
         }
+      } catch (err: any) {
+        this.logger.error(`❌ ERROR: Background delivery failed: ${err.message}`);
+        savedMessage.status = MessageStatus.FAILED;
+        await this.messageRepo.save(savedMessage);
       }
+    }
 
-      await this.logMessage(savedMessage);
-    } catch (err: any) {
-      const customerName = (customer as any)?.firstName
-        ? `${customer.firstName} ${customer.lastName}`.trim()
-        : customerId;
-      this.logger.error(
-        `❌ ERROR: Failed to send [${channel}] message to ${customerName}: ${err.message}`,
-        err.stack,
-      );
-      savedMessage.status = MessageStatus.FAILED;
-      await this.messageRepo.save(savedMessage);
+    if (!messageId) {
+      this.logMessage(savedMessage).catch(e => this.logger.error(`Logging failed: ${e.message}`));
     }
 
     return savedMessage;
@@ -592,6 +603,8 @@ export class MessagingEngineService {
     channel: Channel,
     from: string,
     campaignId?: string,
+    metadata?: any,
+    messageId?: string,
   ) {
     const branch = await this.branchRepo.findOneBy({ id: branchId });
     if (!branch) return;
@@ -602,6 +615,8 @@ export class MessagingEngineService {
       channel,
       from,
       campaignId,
+      metadata,
+      messageId,
     );
   }
 
@@ -622,6 +637,7 @@ export class MessagingEngineService {
     thread: ConversationThread,
     content: string,
     replyToId?: string,
+    metadata?: any,
   ) {
     const branch = await this.branchRepo.findOne({
       where: { id: thread.branchId },
@@ -648,6 +664,8 @@ export class MessagingEngineService {
       content,
       thread.channel,
       from,
+      undefined,
+      metadata,
     );
 
     // Only save again if we need to update threadId or replyToId that wasn't
@@ -718,6 +736,7 @@ export class MessagingEngineService {
       from: inbound.from,
       to: inbound.to,
       providerMessageId: (inbound as any).providerId || (inbound as any).id,
+      timestamp: new Date(),
     } as any) as unknown as Message;
     await this.messageRepo.save(message);
 

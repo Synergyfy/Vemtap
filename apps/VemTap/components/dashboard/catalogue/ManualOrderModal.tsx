@@ -18,6 +18,7 @@ import {
     useCatalogueItems, 
     useCatalogueOffersAdmin, 
     useCreateCatalogueOrder,
+    useCatalogueCategories,
     CatalogueItem,
     CatalogueOffer
 } from '@/services/catalogue/hooks';
@@ -49,17 +50,29 @@ export default function ManualOrderModal({ isOpen, onClose, branchId }: ManualOr
     const [selectedItems, setSelectedItems] = useState<{
         itemId?: string;
         offerId?: string;
+        newItem?: {
+            name: string;
+            price: number;
+            categoryId?: string;
+        };
         name: string;
         price: number;
         quantity: number;
-        type: 'item' | 'offer';
+        type: 'item' | 'offer' | 'new';
     }[]>([]);
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+    const [quickAddItem, setQuickAddItem] = useState({
+        name: '',
+        price: '',
+        categoryId: ''
+    });
 
     // Queries
     const { data: items = [] } = useCatalogueItems({ branchId });
     const { data: offers = [] } = useCatalogueOffersAdmin({ branchId });
+    const { data: categories = [] } = useCatalogueCategories();
     const createOrderMutation = useCreateCatalogueOrder();
 
     // Filtered lists
@@ -99,6 +112,40 @@ export default function ManualOrderModal({ isOpen, onClose, branchId }: ManualOr
         toast.success(`Added ${offer.name}`);
     };
 
+    const handleQuickAdd = () => {
+        if (!quickAddItem.name || !quickAddItem.price) {
+            toast.error('Name and price are required');
+            return;
+        }
+
+        const price = parseFloat(quickAddItem.price);
+        if (isNaN(price)) {
+            toast.error('Invalid price');
+            return;
+        }
+
+        const newItem = {
+            name: quickAddItem.name,
+            price: price,
+            categoryId: quickAddItem.categoryId || undefined
+        };
+
+        setSelectedItems(prev => [
+            ...prev, 
+            { 
+                newItem, 
+                name: newItem.name, 
+                price: newItem.price, 
+                quantity: 1, 
+                type: 'new' 
+            }
+        ]);
+
+        toast.success(`Added new item: ${newItem.name}`);
+        setQuickAddItem({ name: '', price: '', categoryId: '' });
+        setIsQuickAddOpen(false);
+    };
+
     const updateQuantity = (index: number, delta: number) => {
         setSelectedItems(prev => {
             const newItems = [...prev];
@@ -131,6 +178,7 @@ export default function ManualOrderModal({ isOpen, onClose, branchId }: ManualOr
             items: selectedItems.map(si => ({
                 itemId: si.itemId,
                 offerId: si.offerId,
+                newItem: si.newItem,
                 quantity: si.quantity
             }))
         };
@@ -268,16 +316,79 @@ export default function ManualOrderModal({ isOpen, onClose, branchId }: ManualOr
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
                             {/* Selection Panel */}
                             <div className="lg:col-span-2 space-y-6">
-                                <div className="relative">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                    <input 
-                                        type="text"
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        placeholder="Search products or offers..."
-                                        className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all bg-white shadow-sm font-medium"
-                                    />
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                        <input 
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            placeholder="Search products or offers..."
+                                            className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all bg-white shadow-sm font-medium"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsQuickAddOpen(!isQuickAddOpen)}
+                                        className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-wider transition-all border shadow-sm cursor-pointer ${
+                                            isQuickAddOpen 
+                                            ? 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100' 
+                                            : 'bg-white text-primary border-gray-100 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {isQuickAddOpen ? <X size={16} strokeWidth={3} /> : <Plus size={16} strokeWidth={3} />}
+                                        {isQuickAddOpen ? 'Cancel' : 'Quick Add Item'}
+                                    </button>
                                 </div>
+
+                                {isQuickAddOpen && (
+                                    <div className="bg-white p-6 rounded-2xl border-2 border-primary/20 shadow-xl shadow-primary/5 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-sm font-black text-primary uppercase tracking-widest">Create New Item</h3>
+                                            <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg uppercase tracking-wider">On-the-fly</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-black text-text-secondary uppercase tracking-wider">Item Name *</label>
+                                                <input 
+                                                    type="text"
+                                                    value={quickAddItem.name}
+                                                    onChange={e => setQuickAddItem({...quickAddItem, name: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-sm font-medium bg-gray-50/50"
+                                                    placeholder="e.g. Special Coffee"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-black text-text-secondary uppercase tracking-wider">Price *</label>
+                                                <input 
+                                                    type="number"
+                                                    value={quickAddItem.price}
+                                                    onChange={e => setQuickAddItem({...quickAddItem, price: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-sm font-medium bg-gray-50/50"
+                                                    placeholder="2500"
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2 space-y-1.5">
+                                                <label className="text-xs font-black text-text-secondary uppercase tracking-wider">Category (Optional)</label>
+                                                <select 
+                                                    value={quickAddItem.categoryId}
+                                                    onChange={e => setQuickAddItem({...quickAddItem, categoryId: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-sm font-medium bg-gray-50/50"
+                                                >
+                                                    <option value="">Select Category</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={handleQuickAdd}
+                                            className="w-full py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+                                        >
+                                            <Plus size={16} strokeWidth={3} /> Add to Order
+                                        </button>
+                                    </div>
+                                )}
 
                                 <div className="space-y-6 overflow-y-auto max-h-[50vh] pr-2">
                                     {filteredOffers.length > 0 && (
@@ -352,7 +463,12 @@ export default function ManualOrderModal({ isOpen, onClose, branchId }: ManualOr
                                         selectedItems.map((item, idx) => (
                                             <div key={idx} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
                                                 <div className="flex justify-between items-start">
-                                                    <span className="text-sm font-bold text-text-main flex-1 pr-2 leading-tight">{item.name}</span>
+                                                    <div className="flex flex-col gap-1 flex-1 pr-2">
+                                                        <span className="text-sm font-bold text-text-main leading-tight">{item.name}</span>
+                                                        {item.type === 'new' && (
+                                                            <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded w-fit uppercase tracking-wider border border-amber-100">New Item</span>
+                                                        )}
+                                                    </div>
                                                     <button onClick={() => updateQuantity(idx, -item.quantity)} className="text-red-400 hover:text-red-500 cursor-pointer">
                                                         <Trash2 size={14} />
                                                     </button>

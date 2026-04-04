@@ -11,6 +11,9 @@ import { PushNotificationService } from '../notifications/push-notification.serv
 import { Device } from '../devices/entities/device.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { VisitorsService } from '../visitors/visitors.service';
+import { MailService } from '../mail/mail.service';
+import { CatalogueService } from '../catalogue/catalogue.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('CatalogueOrderService', () => {
@@ -89,6 +92,22 @@ describe('CatalogueOrderService', () => {
         {
           provide: LoyaltyService,
           useValue: mockLoyaltyService,
+        },
+        {
+          provide: VisitorsService,
+          useValue: {
+            trackVisit: jest.fn().mockResolvedValue({}),
+            recordDirectVisit: jest.fn().mockResolvedValue({}),
+            upgradeVisitToPatronage: jest.fn().mockResolvedValue({}),
+          },
+        },
+        {
+          provide: MailService,
+          useValue: { sendMail: jest.fn().mockResolvedValue({}) },
+        },
+        {
+          provide: CatalogueService,
+          useValue: { findItem: jest.fn(), findOffer: jest.fn() },
         },
       ],
     }).compile();

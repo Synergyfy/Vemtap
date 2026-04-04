@@ -744,9 +744,17 @@ function ConversationItem({
                 </button>
             </div>
 
-            <button
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={onClick}
-                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group"
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onClick();
+                    }
+                }}
+                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group cursor-pointer"
             >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
@@ -806,7 +814,7 @@ function ConversationItem({
                             <Trash2 size={16} />
                         </button>
                     </div>
-            </button>
+            </div>
         </div>
     );
 }

@@ -19,6 +19,7 @@ import { PushNotificationService } from '../../notifications/push-notification.s
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { MessageDirection } from '../enums/message.enum';
+import { AutomationService } from './automation.service';
 
 describe('InboxService', () => {
   let service: InboxService;
@@ -30,6 +31,7 @@ describe('InboxService', () => {
   let engineMock: any;
   let gatewayMock: any;
   let pushMock: any;
+  let automationMock: any;
 
   beforeEach(async () => {
     threadRepoMock = {
@@ -55,6 +57,7 @@ describe('InboxService', () => {
     messageRepoMock = {
       find: jest.fn(),
       findOne: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
       create: jest.fn().mockImplementation((m) => m),
       save: jest
         .fn()
@@ -85,6 +88,11 @@ describe('InboxService', () => {
     pushMock = {
       sendNotification: jest.fn().mockResolvedValue({ success: true }),
       sendToBranchStaff: jest.fn().mockResolvedValue({ success: true }),
+    };
+
+    automationMock = { 
+      handleEvent: jest.fn().mockResolvedValue({}),
+      trigger: jest.fn().mockResolvedValue({}),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -121,6 +129,10 @@ describe('InboxService', () => {
         {
           provide: PushNotificationService,
           useValue: pushMock,
+        },
+        {
+          provide: AutomationService,
+          useValue: automationMock,
         },
       ],
     }).compile();
@@ -294,6 +306,7 @@ describe('InboxService', () => {
         mockThread,
         'hello',
         undefined,
+        undefined,
       );
       expect(threadRepoMock.update).toHaveBeenCalledWith(
         't1',
@@ -323,7 +336,7 @@ describe('InboxService', () => {
 
       expect(messageRepoMock.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          order: { timestamp: 'DESC' },
+          order: { timestamp: 'ASC' },
         }),
       );
       expect(mockThread.branchUnreadCount).toBe(0);
@@ -365,8 +378,8 @@ describe('InboxService', () => {
         1,
       );
       expect(gatewayMock.emitMessage).toHaveBeenCalled();
-      expect(pushMock.sendToBranchStaff).toHaveBeenCalled();
-      expect(result.content).toBe('reply content');
+      // Push notification is now handled via Automation trigger
+      expect(automationMock.trigger).toHaveBeenCalled();
       expect(result.content).toBe('reply content');
     });
   });

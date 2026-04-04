@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -8,11 +8,12 @@ import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/no
 import { Notification } from '@/services/notifications/types';
 import {
     LayoutGrid, History, Gift, User, Nfc, Bell,
-    LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search, ShoppingBag
+    LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search, ShoppingBag, ShoppingCart
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUrlPersistence } from '@/hooks/useUrlPersistence';
+import { useCartStore } from '@/store/useCartStore';
 
 interface CustomerSidebarProps {
     children: React.ReactNode;
@@ -28,6 +29,13 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const queryClient = useQueryClient();
+    const { carts } = useCartStore();
+
+    const cartItemCount = useMemo(() => {
+        return Object.values(carts).reduce((acc, cart) => {
+            return acc + cart.items.reduce((sum, item) => sum + item.quantity, 0);
+        }, 0);
+    }, [carts]);
 
     // Close mobile sidebar on navigation
     useEffect(() => {
@@ -39,12 +47,6 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
 
     const readNotificationMutation = useMarkAsRead();
     const readAllMutation = useMarkAllAsRead();
-
-    const toggleMenu = (menu: string) => {
-        setExpandedMenus(prev =>
-            prev.includes(menu) ? prev.filter(m => m !== menu) : [...prev, menu]
-        );
-    };
 
     const handleLogout = () => {
         setIsMobileMenuOpen(false);
@@ -64,6 +66,12 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
             label: 'Dashboard',
             icon: LayoutGrid,
             href: '/customer/dashboard',
+        },
+        {
+            id: 'cart',
+            label: 'Shopping Cart',
+            icon: ShoppingCart,
+            href: '/customer/cart',
         },
         {
             id: 'orders',
@@ -160,7 +168,12 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                                         }`}
                                 >
                                     <IconComponent size={20} />
-                                    <span>{item.label}</span>
+                                    <span className="flex-1">{item.label}</span>
+                                    {item.id === 'cart' && cartItemCount > 0 && (
+                                        <span className="bg-primary-foreground/20 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                                            {cartItemCount}
+                                        </span>
+                                    )}
                                 </Link>
                             );
                         })}
@@ -206,6 +219,17 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                 </Link>
                 <div className="flex items-center gap-2">
                     <Link
+                        href="/customer/cart"
+                        className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary relative border border-gray-100 shadow-xs"
+                    >
+                        <ShoppingCart size={20} />
+                        {cartItemCount > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-primary text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1 border-2 border-white">
+                                {cartItemCount > 9 ? '9+' : cartItemCount}
+                            </span>
+                        )}
+                    </Link>
+                    <Link
                         href="/customer/settings"
                         className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 shadow-xs"
                     >
@@ -233,6 +257,19 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                         <p className="text-xs text-text-secondary font-medium">Here's what's happening with your rewards.</p>
                     </div>
                     <div className="flex items-center gap-4 relative">
+                        {/* Cart Button */}
+                        <Link
+                            href="/customer/cart"
+                            className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-gray-100 transition-colors relative border border-gray-100 shadow-xs"
+                        >
+                            <ShoppingCart size={20} />
+                            {cartItemCount > 0 && (
+                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-primary text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1 border-2 border-white">
+                                    {cartItemCount > 9 ? '9+' : cartItemCount}
+                                </span>
+                            )}
+                        </Link>
+
                         {/* Profile Button */}
                         <Link
                             href="/customer/settings"
