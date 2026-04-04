@@ -18,6 +18,7 @@ import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { Device } from '../devices/entities/device.entity';
 import { CreditService } from '../messaging/services/credit.service';
+import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -117,6 +118,7 @@ describe('SubscriptionsService', () => {
         { provide: getRepositoryToken(CatalogueItem), useValue: {} },
         { provide: getRepositoryToken(CatalogueOffer), useValue: {} },
         { provide: getRepositoryToken(CatalogueCategory), useValue: {} },
+        { provide: getRepositoryToken(AutomationRule), useValue: {} },
         SubscriptionsService,
         {
           provide: getRepositoryToken(Subscription),
@@ -202,7 +204,7 @@ describe('SubscriptionsService', () => {
 
       expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
         mockPlan.monthlyPrice,
-        'unknown@latap.com',
+        'billing@latap.com',
         'AUTH_123',
       );
       expect(mockSubRepository.save).toHaveBeenCalled();
@@ -242,7 +244,7 @@ describe('SubscriptionsService', () => {
 
       expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
         mockPlan.monthlyPrice,
-        'unknown@latap.com',
+        'billing@latap.com',
         'AUTH_TRIAL',
       );
       expect(trialWithAuth.status).toBe(SubscriptionStatus.ACTIVE);

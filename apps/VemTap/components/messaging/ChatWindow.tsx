@@ -459,9 +459,11 @@ function RewardCard({ id, isMine }: { id: string; isMine: boolean }) {
     if (isLoading) return <div className="w-48 h-20 animate-pulse bg-slate-100 rounded-lg" />;
     if (!reward) return <p className="text-xs italic">Reward not found</p>;
 
+    const cover = reward.imageUrl || (reward.imageUrls && reward.imageUrls.length > 0 ? reward.imageUrls[0] : undefined);
+
     return (
         <div className={`w-64 max-w-full rounded-xl overflow-hidden border ${isMine ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-100'}`}>
-            {reward.coverImage && <img src={reward.coverImage} alt={reward.name} className="w-full h-32 object-cover" />}
+            {cover && <img src={cover} alt={reward.name} className="w-full h-32 object-cover" />}
             <div className="p-3">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
@@ -470,7 +472,7 @@ function RewardCard({ id, isMine }: { id: string; isMine: boolean }) {
                     <div className="min-w-0">
                         <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{reward.name}</h4>
                         <p className={`text-[10px] font-black ${isMine ? 'text-white/60' : 'text-primary'}`}>
-                            {reward.pointsRequired} Points Required
+                            {reward.pointCost} Points Required
                         </p>
                     </div>
                 </div>
@@ -514,11 +516,11 @@ function CatalogueItemCard({ id, isMine, isCustomer, branchId }: { id: string; i
                     <span className="text-sm font-black text-primary">₦{item.price.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                    {item.loyaltyPoints > 0 && (
+                    {item.loyaltyPoints && item.loyaltyPoints > 0 ? (
                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 uppercase tracking-tight flex items-center gap-0.5">
                             <Gift size={8} /> +{item.loyaltyPoints} Points
                         </span>
-                    )}
+                    ) : null}
                 </div>
                 <p className={`text-xs line-clamp-2 mb-3 ${isMine ? 'text-white/80' : 'text-slate-500'}`}>{item.shortDescription}</p>
                 
@@ -600,11 +602,11 @@ function CatalogueOfferCard({ id, isMine, isCustomer, branchId }: { id: string; 
                     <span className="text-sm font-black text-primary">₦{offer.calculatedPrice.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                    {offer.loyaltyPoints > 0 && (
+                    {offer.loyaltyPoints && offer.loyaltyPoints > 0 ? (
                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 uppercase tracking-tight flex items-center gap-0.5">
                             <Gift size={8} /> +{offer.loyaltyPoints} Points
                         </span>
-                    )}
+                    ) : null}
                 </div>
                 <p className={`text-xs line-clamp-2 mb-3 ${isMine ? 'text-white/80' : 'text-slate-500'}`}>{offer.description}</p>
                 

@@ -37,8 +37,8 @@ describe('MessagingEngineService', () => {
   };
 
   const mockIndividualQueue = {
-    add: jest.fn(),
-    addBulk: jest.fn(),
+    add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+    addBulk: jest.fn().mockResolvedValue([{ id: 'job-1' }]),
   };
 
   const mockCreditService = {
@@ -105,7 +105,7 @@ describe('MessagingEngineService', () => {
             Array.isArray(e) ? [{ id: '1', ...e[0] }] : { id: '1', ...e },
           ),
         ),
-      update: jest.fn(),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOne: jest.fn(),
       findOneBy: jest.fn(),
     };
@@ -238,6 +238,12 @@ describe('MessagingEngineService', () => {
         firstName: 'Tobi',
         lastName: 'Adeyemi',
       });
+      messageRepoMock.findOneBy.mockResolvedValue({
+        id: 'msg-1',
+        content: 'Hello Tobi Adeyemi...',
+        branchId: 'br1',
+        customerId: 'u1',
+      });
 
       await service.processSingleSend(
         'br1',
@@ -253,7 +259,7 @@ describe('MessagingEngineService', () => {
             'Hello Tobi Adeyemi, welcome to VemTap Global. Your email is tobi@example.com. Link: https://vemtap.com. Points: 500',
         }),
       );
-      expect(mockProviderRouter.sendMessage).toHaveBeenCalled();
+      expect(mockIndividualQueue.add).toHaveBeenCalled();
     });
   });
 });
