@@ -278,6 +278,7 @@ export class MessagingController {
       dto.content,
       branchId,
       dto.replyToId,
+      dto.metadata,
     );
   }
 

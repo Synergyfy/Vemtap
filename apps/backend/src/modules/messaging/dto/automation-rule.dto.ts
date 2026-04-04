@@ -9,7 +9,7 @@ import {
   IsObject,
   IsUUID,
 } from 'class-validator';
-import { TriggerType, ActionType } from '../enums/automation.enum';
+import { TriggerType, ActionType, TargetType } from '../enums/automation.enum';
 
 export class CreateAutomationRuleDto {
   @ApiProperty({ example: 'uuid-of-branch' })
@@ -30,6 +30,11 @@ export class CreateAutomationRuleDto {
   @ApiProperty({ enum: TriggerType, example: TriggerType.FIRST_TAG })
   @IsEnum(TriggerType)
   triggerType: TriggerType;
+
+  @ApiPropertyOptional({ enum: TargetType, example: TargetType.NEW_VISITORS })
+  @IsOptional()
+  @IsEnum(TargetType)
+  targetType?: TargetType;
 
   @ApiPropertyOptional({
     example: 3600,
@@ -67,6 +72,11 @@ export class UpdateAutomationRuleDto {
   @IsOptional()
   @IsEnum(TriggerType)
   triggerType?: TriggerType;
+
+  @ApiPropertyOptional({ enum: TargetType, example: TargetType.NEW_VISITORS })
+  @IsOptional()
+  @IsEnum(TargetType)
+  targetType?: TargetType;
 
   @ApiPropertyOptional({ example: 7200 })
   @IsOptional()

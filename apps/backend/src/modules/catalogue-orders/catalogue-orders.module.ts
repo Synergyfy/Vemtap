@@ -14,6 +14,7 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { VisitorsModule } from '../visitors/visitors.module';
 import { MailModule } from '../mail/mail.module';
+import { CatalogueModule } from '../catalogue/catalogue.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { MailModule } from '../mail/mail.module';
     NotificationsModule,
     MailModule,
     forwardRef(() => VisitorsModule),
+    CatalogueModule,
   ],
   controllers: [CatalogueOrdersController],
   providers: [CatalogueOrderService],

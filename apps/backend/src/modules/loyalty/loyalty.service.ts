@@ -380,6 +380,12 @@ export class LoyaltyService {
     });
   }
 
+  async findOne(id: string) {
+    const reward = await this.rewardRepo.findOne({ where: { id } });
+    if (!reward) throw new NotFoundException('Reward not found');
+    return reward;
+  }
+
   async getRewardRedemptions(
     user: User,
     rewardId: string,

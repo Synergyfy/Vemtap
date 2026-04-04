@@ -170,7 +170,16 @@ export interface CreateOrderDto {
     branchId: string;
     tableNumber?: string;
     notes?: string;
-    items: { itemId?: string, offerId?: string, quantity: number }[];
+    items: { 
+        itemId?: string, 
+        offerId?: string, 
+        newItem?: {
+            name: string,
+            price: number,
+            categoryId?: string
+        },
+        quantity: number 
+    }[];
     deviceId?: string;
 }
 
@@ -325,10 +334,11 @@ export const useDeleteCatalogueCategory = () => {
     });
 };
 
-export const useCatalogueItems = (params: { branchId?: string, categoryId?: string, search?: string } = {}) => {
+export const useCatalogueItems = (params: { branchId?: string, categoryId?: string, search?: string } = {}, options: any = {}) => {
     return useQuery<CatalogueItem[]>({
         queryKey: ['catalogue', 'items', params],
         queryFn: () => getItems(params),
+        ...options,
     });
 };
 
@@ -438,10 +448,11 @@ export const useUpdateCatalogueOrderStatus = () => {
     });
 };
 
-export const useCatalogueOffersAdmin = (params: { branchId?: string } = {}) => {
+export const useCatalogueOffersAdmin = (params: { branchId?: string } = {}, options: any = {}) => {
     return useQuery<CatalogueOffer[]>({
         queryKey: ['catalogue', 'offers', 'admin', params],
         queryFn: () => getOffersAdmin(params),
+        ...options,
     });
 };
 

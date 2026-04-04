@@ -21,10 +21,12 @@ import { PushNotificationService } from '../notifications/push-notification.serv
 import {
   CreateCatalogueOrderDto,
   CatalogueOrderQueryDto,
+  BulkCheckoutDto,
 } from './dto/catalogue-order.dto';
 import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
+import { CatalogueService } from '../catalogue/catalogue.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -50,9 +52,43 @@ export class CatalogueOrderService {
     private readonly pushNotificationService: PushNotificationService,
     private readonly visitorsService: VisitorsService,
     private readonly mailService: MailService,
+    private readonly catalogueService: CatalogueService,
   ) {}
 
-  async createOrder(dto: CreateCatalogueOrderDto) {
+  async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
+    const results: CatalogueOrder[] = [];
+    const customerInfo = {
+      firstName: user?.firstName || dto.firstName,
+      lastName: user?.lastName || dto.lastName,
+      phone: user?.phone || dto.phone,
+      email: user?.email || dto.email,
+    };
+
+    if (!customerInfo.firstName || !customerInfo.phone) {
+      throw new BadRequestException('Customer information (name and phone) is required');
+    }
+
+    // Process each branch order
+    for (const orderDto of dto.orders) {
+      const order = await this.createOrder({
+        ...customerInfo,
+        branchId: orderDto.branchId,
+        items: orderDto.items,
+        notes: orderDto.notes,
+        tableNumber: orderDto.tableNumber,
+        deviceId: dto.deviceId,
+      } as CreateCatalogueOrderDto, user);
+      results.push(order);
+    }
+
+    return {
+      success: true,
+      message: `${results.length} orders placed successfully`,
+      orders: results,
+    };
+  }
+
+  async createOrder(dto: CreateCatalogueOrderDto, existingUser?: User) {
     // 1. Resolve branch
     const branch = await this.branchRepository.findOne({
       where: { id: dto.branchId },
@@ -60,14 +96,18 @@ export class CatalogueOrderService {
     if (!branch) throw new NotFoundException('Branch not found');
 
     // 2. Resolve or Create customer (User)
-    let customer = await this.userRepository.findOne({
-      where: { phone: dto.phone },
-    });
-
-    if (!customer && dto.email) {
+    let customer: User | null = existingUser || null;
+    
+    if (!customer) {
       customer = await this.userRepository.findOne({
-        where: { email: dto.email },
+        where: { phone: dto.phone },
       });
+
+      if (!customer && dto.email) {
+        customer = await this.userRepository.findOne({
+          where: { email: dto.email },
+        });
+      }
     }
 
     if (!customer) {
@@ -115,11 +155,31 @@ export class CatalogueOrderService {
     const orderItems: CatalogueOrderItem[] = [];
 
     for (const itemDto of dto.items) {
-      if (!itemDto.itemId && !itemDto.offerId) {
-        throw new BadRequestException('Each order item must have either itemId or offerId');
+      if (!itemDto.itemId && !itemDto.offerId && !itemDto.newItem) {
+        throw new BadRequestException('Each order item must have either itemId, offerId or newItem');
       }
 
-      if (itemDto.itemId) {
+      if (itemDto.newItem) {
+        // Create the new item on the fly
+        const newItem = await this.catalogueService.createItem({
+          name: itemDto.newItem.name,
+          price: itemDto.newItem.price,
+          categoryId: itemDto.newItem.categoryId,
+          branchId: dto.branchId,
+          shortDescription: 'Quick added item from manual order',
+          description: 'This item was created automatically during manual order entry.',
+          mainImage: 'https://res.cloudinary.com/dqr68m9p6/image/upload/v1711545600/vemtap/placeholder-item.png', // Default placeholder
+        }, branch.businessId);
+
+        const orderItem = this.orderItemRepository.create({
+          itemId: newItem.id,
+          quantity: itemDto.quantity,
+          priceAtOrder: newItem.price,
+          loyaltyPointsAtOrder: newItem.loyaltyPoints,
+        });
+        orderItems.push(orderItem);
+        totalAmount += Number(newItem.price) * itemDto.quantity;
+      } else if (itemDto.itemId) {
         const item = await this.itemRepository.findOne({
           where: { id: itemDto.itemId },
           relations: ['branches'],
