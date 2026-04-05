@@ -398,14 +398,7 @@ export class VisitorsService {
         await this.contactRepository.save(contact);
       }
 
-      const visitCount = await this.visitRepository.count({
-        where: { customer: { id: user.id }, branchId },
-      });
-
-      const triggerType =
-        visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
-
-      await this.automationService.trigger(triggerType, {
+      await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
         branchId,
         customerId: user.id,
       });
@@ -1198,9 +1191,7 @@ export class VisitorsService {
       await this.visitRepository.save(visit);
 
       // 3. Automation triggers
-      const triggerType =
-        previousVisitCount === 0 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
-      await this.automationService.trigger(triggerType, {
+      await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
         branchId,
         customerId: user.id,
       });
