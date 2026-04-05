@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProductsApi } from '@/lib/api/admin';
 import {
     Package, Search, Filter, Clock, CheckCircle,
-    AlertCircle, MoreVertical, Eye, Truck,
+    AlertCircle, MoreVertical, Eye, Truck, X,
     Calendar, Building2, User, ArrowUpRight, MessageSquare
 } from 'lucide-react';
 import { TbCurrencyNaira } from 'react-icons/tb';
@@ -25,11 +25,11 @@ export default function AdminOrdersPage() {
         queryFn: () => adminProductsApi.getAllOrders(),
     });
 
-    const markReadyMutation = useMutation({
-        mutationFn: (id: string) => adminProductsApi.markOrderReady(id),
+    const updateStatusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string, status: string }) => adminProductsApi.updateOrderStatus(id, status),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-            notify.success('Order marked as ready for pickup/delivery');
+            notify.success('Order status updated successfully');
             setIsDetailsModalOpen(false);
         },
         onError: () => {
@@ -265,21 +265,30 @@ export default function AdminOrdersPage() {
                             </div>
                         </div>
 
-                        <div className="pt-6 border-t border-gray-100 flex gap-3">
-                            {selectedOrder.status !== 'Ready' && selectedOrder.status !== 'Completed' && (
-                                <button
-                                    onClick={() => markReadyMutation.mutate(selectedOrder.id)}
-                                    disabled={markReadyMutation.isPending}
-                                    className="flex-1 h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                >
-                                    {markReadyMutation.isPending ? 'Updating...' : (
-                                        <>
-                                            <CheckCircle size={18} /> Mark as Ready
-                                        </>
-                                    )}
-                                </button>
-                            )}
-                            <button className="flex-1 h-12 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                        <div className="pt-6 border-t border-gray-100">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block mb-4">Update Order Status</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                    { id: 'Processing', label: 'Processing', icon: Clock, color: 'hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200' },
+                                    { id: 'Ready', label: 'Mark Ready', icon: Truck, color: 'hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200' },
+                                    { id: 'Completed', label: 'Complete & Paid', icon: CheckCircle, color: 'hover:bg-green-50 hover:text-green-600 hover:border-green-200' },
+                                    { id: 'Cancelled', label: 'Cancel Order', icon: X, color: 'hover:bg-red-50 hover:text-red-600 hover:border-red-200' },
+                                ].map((btn) => (
+                                    <button
+                                        key={btn.id}
+                                        disabled={selectedOrder.status === btn.id || updateStatusMutation.isPending}
+                                        onClick={() => updateStatusMutation.mutate({ id: selectedOrder.id, status: btn.id })}
+                                        className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-gray-100 bg-white transition-all font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed ${btn.color}`}
+                                    >
+                                        <btn.icon size={20} />
+                                        {btn.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="pt-6 mt-6 border-t border-gray-100 flex gap-3">
+                            <button className="flex-1 h-12 bg-gray-50 border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2">
                                 <MessageSquare size={18} /> Contact Business
                             </button>
                         </div>
