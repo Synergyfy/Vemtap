@@ -150,7 +150,7 @@ export class AuthService {
     return null;
   }
 
-  private async generateAuthResponse(user: Partial<User>) {
+  private async generateAuthResponse(user: Partial<User>, isNewUser = false) {
     let businessId: string | undefined;
 
     if (user.role === UserRole.OWNER) {
@@ -173,6 +173,7 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
       user,
+      isNewUser,
     };
   }
 
@@ -219,11 +220,17 @@ export class AuthService {
           user.googleId = googleId;
           user.authProvider = AuthProvider.GOOGLE;
         }
+        
+        // Ensure status is ACTIVE since Google serves as verification
+        user.status = UserStatus.ACTIVE;
+        user.isPasswordChanged = true;
+
         // Update avatar only if not already set
         if (!user.avatar && picture) {
           user.avatar = picture;
         }
         user = await this.usersService.create(user);
+        return this.generateAuthResponse(user, false);
       } else {
         // Create new user
         user = await this.usersService.create({
@@ -237,9 +244,8 @@ export class AuthService {
           status: UserStatus.ACTIVE,
           isPasswordChanged: true, // They don't have a password to change
         });
+        return this.generateAuthResponse(user, true);
       }
-
-      return this.generateAuthResponse(user);
     } catch (error) {
       console.error('Google Auth Error:', error);
       throw new UnauthorizedException('Google authentication failed');
@@ -283,7 +289,9 @@ export class AuthService {
     }
 
     // 1. Create or Update User
-    const hashedPassword = await bcrypt.hash(registrationData.password, 10);
+    const hashedPassword = registrationData.password
+      ? await bcrypt.hash(registrationData.password, 10)
+      : undefined;
     let user: User;
 
     if (existingUser && existingUser.status === UserStatus.INVITED) {
@@ -372,56 +380,84 @@ export class AuthService {
 
   // --- New Dedicated Owner Registration ---
   async registerOwner(dto: RegisterOwnerDto) {
-    // 1. Verify OTP and Retrieve Metadata
-    const otpRecord = await this.otpRepository.findOne({
-      where: { email: dto.email },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (!otpRecord) {
-      throw new BadRequestException('Verification session not found');
-    }
-
-    if (!otpRecord.isVerified) {
-      throw new BadRequestException(
-        'OTP must be verified before completing registration',
-      );
-    }
-
-    if (new Date() > otpRecord.expiresAt) {
-      throw new BadRequestException('Registration session expired');
-    }
-
-    const registrationData = otpRecord.metadata as RequestOtpDto;
-    if (!registrationData) {
-      throw new BadRequestException('Registration metadata missing');
-    }
-
+    // 1. Resolve verification (OTP or Social Auth)
     const existingUser = await this.usersService.findByEmail(dto.email);
-    if (existingUser && existingUser.status !== UserStatus.PENDING) {
+    const isGoogleUser = existingUser?.authProvider === AuthProvider.GOOGLE;
+
+    let registrationData: Partial<RequestOtpDto> = {};
+
+    if (!isGoogleUser) {
+      const otpRecord = await this.otpRepository.findOne({
+        where: { email: dto.email },
+        order: { createdAt: 'DESC' },
+      });
+
+      if (!otpRecord) {
+        throw new BadRequestException('Verification session not found');
+      }
+
+      if (!otpRecord.isVerified) {
+        throw new BadRequestException(
+          'OTP must be verified before completing registration',
+        );
+      }
+
+      if (new Date() > otpRecord.expiresAt) {
+        throw new BadRequestException('Registration session expired');
+      }
+
+      registrationData = (otpRecord.metadata as RequestOtpDto) || {};
+    } else {
+      // For Google users, if they exist, use their data
+      registrationData = {
+        firstName: existingUser?.firstName,
+        lastName: existingUser?.lastName,
+        phone: existingUser?.phone || dto.businessNumber,
+      };
+    }
+
+    if (
+      existingUser &&
+      !isGoogleUser &&
+      existingUser.status !== UserStatus.PENDING
+    ) {
       throw new ConflictException('Email already exists');
     }
 
     // 2. Create or Update User (Owner)
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
     let user: User;
+    const hashedPassword = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : undefined;
 
     if (existingUser) {
-      // Update existing pending user
-      existingUser.firstName = registrationData.firstName;
-      existingUser.lastName = registrationData.lastName;
-      existingUser.password = hashedPassword;
-      existingUser.phone = registrationData.phone;
+      // Update existing user (could be PENDING manual or ACTIVE google)
+      if (registrationData.firstName)
+        existingUser.firstName = registrationData.firstName;
+      if (registrationData.lastName)
+        existingUser.lastName = registrationData.lastName;
+      if (registrationData.phone) existingUser.phone = registrationData.phone;
+      if (hashedPassword) existingUser.password = hashedPassword;
+
+      existingUser.role = UserRole.OWNER;
+      // If manual signup finishes, make them active
+      if (!isGoogleUser && existingUser.status === UserStatus.PENDING) {
+        existingUser.status = UserStatus.ACTIVE;
+      }
       user = await this.usersService.create(existingUser);
     } else {
+      // This path is for people who verify OTP then register (Manual)
       user = await this.usersService.create({
         firstName: registrationData.firstName,
         lastName: registrationData.lastName,
         email: dto.email,
         password: hashedPassword,
         role: UserRole.OWNER,
-        status: UserStatus.PENDING,
+        status: isGoogleUser ? UserStatus.ACTIVE : UserStatus.PENDING,
         phone: registrationData.phone,
+        authProvider: isGoogleUser
+          ? AuthProvider.GOOGLE
+          : (AuthProvider.LOCAL as any),
       });
     }
 
@@ -495,8 +531,16 @@ export class AuthService {
       throw new NotFoundException('User not found after registration');
     }
 
-    // Consume OTP
-    await this.otpRepository.remove(otpRecord);
+    // Consume OTP if we used one (Manual Signup)
+    if (!isGoogleUser && registrationData) {
+      const otpRecord = await this.otpRepository.findOne({
+        where: { email: dto.email },
+        order: { createdAt: 'DESC' },
+      });
+      if (otpRecord) {
+        await this.otpRepository.remove(otpRecord);
+      }
+    }
 
     return this.generateAuthResponse(updatedUser);
   }

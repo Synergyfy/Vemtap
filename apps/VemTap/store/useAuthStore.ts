@@ -81,7 +81,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       activeBranchId: null,
 
-      login: (userData, access_token) => {
+      login: (userData: User, access_token: string) => {
         console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
         
         // Clear chat history on login to ensure fresh session
@@ -101,13 +101,19 @@ export const useAuthStore = create<AuthState>()(
           console.error('Error clearing chat history during login', e);
         }
 
+        if (userData?.role) {
+          userData.role = userData.role.toLowerCase() as UserRole;
+        }
         set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
         setAuthCookie(access_token);
         console.log('[AUTH] Login complete, isAuthenticated:', true);
       },
 
-      signup: (userData, access_token) => {
+      signup: (userData: User, access_token: string) => {
         console.log('[AUTH] signup() called', { email: userData?.email });
+        if (userData?.role) {
+          userData.role = userData.role.toLowerCase() as UserRole;
+        }
         set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
         setAuthCookie(access_token);
       },

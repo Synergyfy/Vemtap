@@ -136,7 +136,13 @@ export default function LoginPage() {
                 return;
             }
 
-            // Default fallback for owners/managers/other staff
+            // Standard redirect for owners/managers/other staff
+            if (userRole === 'owner' && !response.user.businessId) {
+                router.push('/get-started');
+                return;
+            }
+
+            // Default fallback
             router.push('/dashboard');
         } catch (err: any) {
             if (isMounted) {
@@ -191,7 +197,12 @@ export default function LoginPage() {
                                                 role="owner" 
                                                 label="Sign in with Google"
                                                 onSuccess={(res) => {
+                                                    if (res.isNewUser) {
+                                                        router.push('/get-started?from=google');
+                                                        return;
+                                                    }
                                                     const userRole = res.user.role?.toLowerCase();
+                                                    
                                                     if (userRole === 'admin') router.push('/admin/dashboard');
                                                     else if (userRole === 'customer') router.push('/customer/dashboard');
                                                     else if (userRole === 'staff' && (formData.identifier.includes('agent') || formData.identifier.includes('support'))) router.push('/agent/dashboard');

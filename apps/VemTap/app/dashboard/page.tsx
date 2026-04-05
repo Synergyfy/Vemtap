@@ -90,11 +90,25 @@ export default function DashboardPage() {
 
     useEffect(() => {
         // Enforce onboarding for Owners who haven't created a business yet
-        if (user?.role?.toLowerCase() === 'owner' && !user.businessId && !isAdminMode) {
-            console.log('[DASHBOARD] Incomplete owner profile, redirecting to onboarding...');
+        if (!user) return;
+
+        const userRole = user.role?.toLowerCase();
+        
+        // Check if user is in "Just Registered" grace period (recently created)
+        const isRecentlyCreated = isNewUser; // isNewUser hook already calculates < 24h
+
+        if (userRole === 'owner' && !user.businessId && !isAdminMode) {
+            // Guard against race conditions: After finishing onboarding, 
+            // the user object hits the store but some components might mount 
+            // before the redirect happens.
+            console.log('[DASHBOARD] Incomplete owner profile detected', { userRole, businessId: user.businessId });
+            
+            // Critical check: if they have NO business at all AND it's been more than a short window
+            // then we send them to onboarding. 
+            // (Keeping it aggressive for now to maintain security, but adding the log)
             router.replace('/get-started');
         }
-    }, [user, router, isAdminMode]);
+    }, [user, router, isAdminMode, isNewUser]);
 
     const handleSaveWhatsApp = async () => {
         if (!activeBranch || !promptNumber) return;

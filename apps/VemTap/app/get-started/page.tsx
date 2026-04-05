@@ -75,7 +75,7 @@ export default function GetStarted() {
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
-    const { signup } = useAuthStore();
+    const { signup, user } = useAuthStore();
     const [step, setStep] = useState(1);
     const [subStep, setSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
@@ -146,6 +146,34 @@ export default function GetStarted() {
         setIsSocialDropdownOpen(false);
     };
 
+    /**
+     * Google Auth Logic: 
+     * If the user came from the login page after a Google sign-in but hasn't 
+     * completed onboarding, we pre-fill their info and lock certain fields.
+     */
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const isFromGoogle = params.get('from') === 'google';
+
+            if (isFromGoogle && user) {
+                setFormData(prev => ({
+                    ...prev,
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    email: user.email || '',
+                    isGoogleUser: true,
+                    agreeToTerms: true,
+                }));
+                
+                // If they have a phone number, they've passed initial verification
+                if (user.phone) {
+                    setStep(3);
+                }
+            }
+        }
+    }, [user]);
+
     const removeSocial = (id: string) => {
         const updateData: any = { ...formData };
         if (id === 'instagram') updateData.instagramUrl = '';
@@ -194,6 +222,9 @@ export default function GetStarted() {
         } else if (step === 3 && subStep === maxSubStep) {
             setStep(5);
             setSubStep(1);
+        } else if (step === 1 && formData.isGoogleUser) {
+            setStep(3);
+            setSubStep(1);
         } else {
             setStep(prev => prev + 1);
             setSubStep(1);
@@ -205,6 +236,8 @@ export default function GetStarted() {
             setSubStep(maxSubStep);
         } else if (step === 3 && subStep > 1) {
             setSubStep(prev => prev - 1);
+        } else if (step === 3 && subStep === 1 && formData.isGoogleUser) {
+            setStep(1);
         } else {
             setStep(prev => prev - 1);
         }
@@ -324,7 +357,7 @@ export default function GetStarted() {
                     firstName: cleanData.firstName,
                     lastName: cleanData.lastName,
                     email: cleanData.email,
-                    password: formData.password,
+                    password: formData.password || undefined,
                     role: 'Manager',
                     businessId: cleanData.businessId || undefined,
                 };
@@ -335,7 +368,7 @@ export default function GetStarted() {
 
                 const payload = {
                     email: cleanData.email,
-                    password: formData.password,
+                    password: formData.password || undefined,
                     businessName: cleanData.businessName,
                     businessLogo: businessLogoUrl || undefined,
                     categoryId: formData.categoryId,
@@ -363,20 +396,26 @@ export default function GetStarted() {
                 response = await registerOwner(payload as any);
             }
 
-            const userData = {
-                email: cleanData.email,
-                name: `${cleanData.firstName} ${cleanData.lastName}`,
-                role: cleanData.selectedRole.toLowerCase() as any,
-                businessName: cleanData.businessName || response?.user?.businessName,
-                businessId: response?.user?.businessId || undefined,
-            };
+            // Use the full user object from the backend response
+            // This ensures businessId and other metadata are correctly synced
+            await signup(response.user as any, response.access_token);
+            
+            // If the backend returned a businessId, we might want to pre-set it as active 
+            // for immediate data fetching when they arrive at the dashboard
+            if (response.user.businessId && setActiveBranch) {
+                // If the response also contains a branchId, set it
+                if (response.user.branchId) {
+                    setActiveBranch(response.user.branchId);
+                }
+            }
 
-            await signup(userData as any, response.access_token);
             setStep(6);
 
+            // Give the user a moment to see the success state before redirecting
             setTimeout(() => {
-                router.push(isManager ? '/dashboard' : '/dashboard/settings/subscription');
-            }, 3000);
+                const target = isManager ? '/dashboard' : '/dashboard/settings/subscription';
+                router.push(target);
+            }, 2500);
         } catch (error: any) {
             toast.error(error.message || 'Failed to create account. Please try again.');
         } finally {
@@ -460,6 +499,7 @@ export default function GetStarted() {
                                                 required
                                                 tooltip="Your legal first name as it will appear on your account"
                                                 error={fieldErrors.firstName}
+                                                readOnly={formData.isGoogleUser}
                                             />
                                             <SanitizedInput
                                                 label="Last Name"
@@ -470,6 +510,7 @@ export default function GetStarted() {
                                                 required
                                                 tooltip="Your legal last name"
                                                 error={fieldErrors.lastName}
+                                                readOnly={formData.isGoogleUser}
                                             />
                                         </div>
                                         <SanitizedInput
@@ -482,6 +523,7 @@ export default function GetStarted() {
                                             required
                                             tooltip="We'll send verification codes and account updates to this email"
                                             error={fieldErrors.email}
+                                            readOnly={formData.isGoogleUser}
                                         />
                                         <SanitizedInput
                                             label="Phone Number"

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useGoogleLogin as useGoogleOAuth } from '@react-oauth/google';
 import { useGoogleLogin } from '@/services/auth/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import Spinner from '@/components/ui/Spinner';
@@ -16,9 +15,9 @@ interface GoogleAuthButtonProps {
     className?: string;
 }
 
-export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({ 
-    role = 'customer', 
-    onSuccess, 
+export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
+    role = 'customer',
+    onSuccess,
     label = 'Continue with Google',
     className = ""
 }) => {
@@ -28,14 +27,14 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     const handleGoogleSuccess = async (tokenResponse: any) => {
         try {
             // tokenResponse.credential contains the ID Token
-            const res = await googleLogin({ 
-                token: tokenResponse.credential, 
-                role 
+            const res = await googleLogin({
+                token: tokenResponse.credential,
+                role
             });
-            
+
             login(res.user, res.access_token);
             toast.success('Successfully authenticated with Google');
-            
+
             if (onSuccess) {
                 onSuccess(res);
             }
@@ -47,7 +46,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     // Note: We use the built-in Google Login button for better security and brand compliance
     // but we can also use a custom one with useGoogleLogin hook from @react-oauth/google
     // For this implementation, we'll use a custom styled button for better UI integration
-    
+
     return (
         <div className={`w-full ${className}`}>
             <button
@@ -62,8 +61,8 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
             {/* We'll use the official Google button script-based approach or the component */}
             {/* For now, let's use the standard component for simplicity and compliance */}
             <div className="flex justify-center w-full">
-                <GoogleLoginWrapper 
-                    onSuccess={handleGoogleSuccess} 
+                <GoogleLoginWrapper
+                    onSuccess={handleGoogleSuccess}
                     label={label}
                     isLoading={isLoading}
                 />

@@ -31,6 +31,7 @@ import { User } from '../../store/useAuthStore';
 export interface AuthResponse {
     user: User;
     access_token: string;
+    isNewUser?: boolean;
 }
 
 export interface LoginRequest {
