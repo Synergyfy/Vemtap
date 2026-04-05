@@ -53,6 +53,8 @@ export default function StepPricing() {
             // 3. Construct Payload
             const payload = {
                 name: formData.title,
+                sku: formData.sku,
+                nfcType: formData.nfcType,
                 description: formData.description,
                 productTypeId: formData.productTypeId,
                 category: formData.category,

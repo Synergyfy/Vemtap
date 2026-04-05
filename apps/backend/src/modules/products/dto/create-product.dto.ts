@@ -47,6 +47,29 @@ export class CreateProductDto {
   @Min(0)
   price: number;
 
+  @ApiProperty({ example: 1200, required: false })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  originalPrice?: number;
+
+  @ApiProperty({ example: 500, required: false })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  costPrice?: number;
+
+  @ApiProperty({ example: 50, required: false })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  customizationFee?: number;
+
+  @ApiProperty({ example: 'nfce', required: false })
+  @IsString()
+  @IsOptional()
+  nfcType?: string;
+
   @ApiProperty({ example: ['https://example.com/image.png'], type: [String] })
   @IsArray()
   @IsString({ each: true })
