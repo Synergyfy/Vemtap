@@ -6,6 +6,7 @@ import { Product } from '@/types/marketplace';
 const mockProducts: Product[] = [
     {
         id: 'acs-acr1552u',
+        sku: 'ACS-ACR1552U',
         name: 'ACS ACR1552U USB-C NFC Reader IV',
         brand: 'ACS',
         category: 'NFC Readers',
@@ -21,6 +22,7 @@ const mockProducts: Product[] = [
     },
     {
         id: 'omnikey-5422',
+        sku: 'HID-OK5422',
         name: 'OMNIKEY 5422 Dual Interface Reader',
         brand: 'HID Global',
         category: 'NFC Readers',
@@ -36,6 +38,7 @@ const mockProducts: Product[] = [
     },
     {
         id: 'sdk-bundle',
+        sku: 'VT-SDK-001',
         name: 'Universal NFC Developer SDK',
         brand: 'VemTap',
         category: 'Development Kits',

@@ -27,6 +27,22 @@ export class Product extends AbstractBaseEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
+  @ApiProperty({ example: 1200, required: false })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  originalPrice?: number;
+
+  @ApiProperty({ example: 500, required: false })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  costPrice?: number;
+
+  @ApiProperty({ example: 50, required: false })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  customizationFee?: number;
+
+  @ApiProperty({ example: 'nfce', required: false })
+  @Column({ nullable: true })
+  nfcType?: string;
+
   @ApiProperty({ example: ['https://example.com/image.png'], type: [String] })
   @Column('simple-array')
   images: string[];

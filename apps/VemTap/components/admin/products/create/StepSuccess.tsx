@@ -4,9 +4,19 @@ import React from 'react';
 import Link from 'next/link';
 import { useProductFormStore } from '@/store/useProductFormStore';
 import { CheckCircle, Check, Star, ArrowRight, PlusCircle, ExternalLink } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { adminProductsApi } from '@/lib/api/admin';
+import { ProductCategory } from '@/types/marketplace';
 
 export default function StepSuccess() {
     const { formData, resetForm } = useProductFormStore();
+
+    const { data: categories } = useQuery<ProductCategory[]>({
+        queryKey: ['admin-product-types'],
+        queryFn: () => adminProductsApi.getAllTypes(),
+    });
+
+    const categoryName = categories?.find((c) => c.id === formData.productTypeId)?.name || 'Uncategorized';
 
     return (
         <div className="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto text-center animate-in zoom-in-95 duration-500">
@@ -47,7 +57,7 @@ export default function StepSuccess() {
                         <span className={`inline-flex items-center gap-1.5 rounded-full ${formData.tagColor.replace('bg-', 'bg-')}/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${formData.tagColor.replace('bg-', 'text-')} border border-current/10`}>
                             {formData.tag}
                         </span>
-                        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{formData.category}</span>
+                        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{categoryName}</span>
                     </div>
                     <h3 className="font-bold text-text-main text-base truncate">{formData.title || 'Product Name'}</h3>
                     <p className="text-xs text-text-secondary mt-0.5 font-mono">{formData.sku || 'SKU-000'}</p>
