@@ -25,9 +25,15 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { CheckStatusDto, CheckStatusResponseDto } from './dto/check-status.dto';
 import { UpdateEmailDto } from './dto/update-email.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { OAuth2Client } from 'google-auth-library';
+import { ConfigService } from '@nestjs/config';
+import { AuthProvider } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
+  private googleClient: OAuth2Client;
+
   constructor(
     private usersService: UsersService,
     private businessesService: BusinessesService,
@@ -35,9 +41,14 @@ export class AuthService {
     private subscriptionsService: SubscriptionsService,
     private mailService: MailService,
     private jwtService: JwtService,
+    private configService: ConfigService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) {}
+  ) {
+    this.googleClient = new OAuth2Client(
+      this.configService.get<string>('GOOGLE_CLIENT_ID'),
+    );
+  }
 
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();
@@ -167,12 +178,72 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.usersService.findByIdentifier(dto.identifier);
-    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+    if (!user) {
+      throw new UnauthorizedException('Invalid email/phone or password');
+    }
+
+    if (!user.password && user.authProvider === AuthProvider.GOOGLE) {
+      throw new UnauthorizedException('Please log in using Google');
+    }
+
+    if (!user.password || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException('Invalid email/phone or password');
     }
 
     const { password: _password, ...result } = user;
     return this.generateAuthResponse(result as User);
+  }
+
+  async googleLogin(dto: GoogleLoginDto) {
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: dto.token,
+        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new UnauthorizedException('Invalid Google token');
+      }
+
+      const { email, sub: googleId, name, picture, given_name, family_name } = payload;
+      if (!email) {
+        throw new UnauthorizedException('Google account must have an associated email');
+      }
+
+      let user = await this.usersService.findByEmail(email);
+
+      if (user) {
+        // Account Linking: Link Google ID if not already linked
+        if (!user.googleId) {
+          user.googleId = googleId;
+          user.authProvider = AuthProvider.GOOGLE;
+        }
+        // Update avatar only if not already set
+        if (!user.avatar && picture) {
+          user.avatar = picture;
+        }
+        user = await this.usersService.create(user);
+      } else {
+        // Create new user
+        user = await this.usersService.create({
+          email,
+          firstName: given_name || name || 'Google',
+          lastName: family_name || 'User',
+          googleId,
+          avatar: picture,
+          authProvider: AuthProvider.GOOGLE,
+          role: dto.role || UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+          isPasswordChanged: true, // They don't have a password to change
+        });
+      }
+
+      return this.generateAuthResponse(user);
+    } catch (error) {
+      console.error('Google Auth Error:', error);
+      throw new UnauthorizedException('Google authentication failed');
+    }
   }
 
   // --- Original Generic Register (Kept for compatibility) ---

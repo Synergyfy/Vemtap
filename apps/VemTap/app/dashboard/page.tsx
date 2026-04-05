@@ -88,6 +88,14 @@ export default function DashboardPage() {
         return () => clearTimeout(timer);
     }, [activeBranch, isAllBranches]);
 
+    useEffect(() => {
+        // Enforce onboarding for Owners who haven't created a business yet
+        if (user?.role?.toLowerCase() === 'owner' && !user.businessId && !isAdminMode) {
+            console.log('[DASHBOARD] Incomplete owner profile, redirecting to onboarding...');
+            router.replace('/get-started');
+        }
+    }, [user, router, isAdminMode]);
+
     const handleSaveWhatsApp = async () => {
         if (!activeBranch || !promptNumber) return;
         try {

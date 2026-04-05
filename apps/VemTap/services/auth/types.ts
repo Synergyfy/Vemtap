@@ -26,8 +26,10 @@ export interface RegisterOwnerRequest {
     isRegistered?: boolean;
 }
 
+import { User } from '../../store/useAuthStore';
+
 export interface AuthResponse {
-    user: any; // We can type this better later
+    user: User;
     access_token: string;
 }
 

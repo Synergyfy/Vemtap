@@ -7,6 +7,8 @@ import { presets } from './presets';
 import { VisitorHeader } from './VisitorHeader';
 
 import Spinner from '@/components/ui/Spinner';
+import { GoogleAuthButton } from '../auth/GoogleAuthButton';
+import { toast } from 'react-hot-toast';
 
 const visitorSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -53,6 +55,8 @@ export const StepForm: React.FC<StepFormProps> = ({
     const {
         register,
         handleSubmit,
+        setValue,
+        setFocus,
         formState: { errors, isValid },
     } = useForm<StepFormData>({
         resolver: zodResolver(visitorSchema),
@@ -116,6 +120,32 @@ export const StepForm: React.FC<StepFormProps> = ({
                     <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>
                 </div>
             )}
+
+            <div className="mb-8">
+                <GoogleAuthButton 
+                    role="customer" 
+                    onSuccess={(res) => {
+                        if (res.user.phone) {
+                            onSubmit({
+                                name: `${res.user.firstName} ${res.user.lastName}`,
+                                email: res.user.email || '',
+                                phone: res.user.phone
+                            });
+                        } else {
+                            setValue('name', `${res.user.firstName} ${res.user.lastName}`, { shouldValidate: true });
+                            setValue('email', res.user.email || '', { shouldValidate: true });
+                            toast.success('Google profile synced! Please provide your phone number.');
+                            setTimeout(() => setFocus('phone'), 100);
+                        }
+                    }}
+                />
+                
+                <div className="relative my-8 border-t border-slate-100">
+                    <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
+                        OR CONTINUE MANUALLY
+                    </div>
+                </div>
+            </div>
 
             <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
                 <div className="space-y-1">

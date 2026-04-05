@@ -10,7 +10,8 @@ import toast from 'react-hot-toast';
 import Logo from '@/components/brand/Logo';
 import { SanitizedInput } from '@/components/ui/SanitizedInput';
 import { sanitizeFormData } from '@/lib/utils/sanitize';
-import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
+import { useRegisterOwner, useOtp, useRegister, useGoogleLogin } from '@/services/auth/hooks';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { CheckCircle2, Loader2, ChevronDown, Sparkles, Key, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X } from 'lucide-react';
@@ -115,7 +116,8 @@ export default function GetStarted() {
         linkedinUrl: '',
         reviewUrl: '',
         trustpilotUrl: '',
-        agreeToTerms: false
+        agreeToTerms: false,
+        isGoogleUser: false,
     });
 
     // Social Media Selection State
@@ -423,6 +425,31 @@ export default function GetStarted() {
                                     </div>
 
                                     <div className="space-y-5">
+                                        <GoogleAuthButton 
+                                            role="owner" 
+                                            onSuccess={(res) => {
+                                                setFormData({
+                                                    ...formData,
+                                                    firstName: res.user.firstName,
+                                                    lastName: res.user.lastName,
+                                                    email: res.user.email,
+                                                    isGoogleUser: true,
+                                                    agreeToTerms: true // They already implicitly agreed by choosing social login usually, but we can also check
+                                                });
+                                                if (res.user.phone) {
+                                                    setStep(3); // Skip OTP if already authenticated and has phone
+                                                } else {
+                                                    // Stay on step 1 to collect phone
+                                                    toast.success("Google linked! Please provide your phone number to complete account setup.");
+                                                }
+                                            }}
+                                        />
+
+                                        <div className="relative my-6 border-t border-slate-100">
+                                            <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
+                                                OR SIGN UP MANUALLY
+                                            </div>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <SanitizedInput
                                                 label="First Name"
@@ -468,49 +495,51 @@ export default function GetStarted() {
                                             error={fieldErrors.phone}
                                         />
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
+                                        {!formData.isGoogleUser && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <SanitizedInput
+                                                        label="Password"
+                                                        type="password"
+                                                        value={formData.password}
+                                                        onChange={(v) => { 
+                                                            setFormData({ ...formData, password: v }); 
+                                                            setFieldErrors(prev => ({ ...prev, password: '' })); 
+                                                        }}
+                                                        onFocus={() => setShowPasswordRequirements(true)}
+                                                        icon="lock"
+                                                        placeholder="••••••••"
+                                                        required
+                                                        tooltip="Min 8 characters, with uppercase, lowercase, number and symbol"
+                                                        error={fieldErrors.password}
+                                                        showPasswordToggle
+                                                        showPassword={showPassword}
+                                                        onTogglePassword={() => setShowPassword(!showPassword)}
+                                                    />
+                                                    
+                                                    <PasswordValidation 
+                                                        password={formData.password}
+                                                        onSuggest={(p) => setFormData({ ...formData, password: p })}
+                                                        showAlways={showPasswordRequirements}
+                                                    />
+                                                </div>
+
                                                 <SanitizedInput
-                                                    label="Password"
+                                                    label="Confirm Password"
                                                     type="password"
-                                                    value={formData.password}
-                                                    onChange={(v) => { 
-                                                        setFormData({ ...formData, password: v }); 
-                                                        setFieldErrors(prev => ({ ...prev, password: '' })); 
-                                                    }}
-                                                    onFocus={() => setShowPasswordRequirements(true)}
-                                                    icon="lock"
+                                                    value={formData.confirmPassword}
+                                                    onChange={(v) => { setFormData({ ...formData, confirmPassword: v }); setFieldErrors(prev => ({ ...prev, confirmPassword: '' })); }}
+                                                    icon="lock_reset"
                                                     placeholder="••••••••"
                                                     required
-                                                    tooltip="Min 8 characters, with uppercase, lowercase, number and symbol"
-                                                    error={fieldErrors.password}
+                                                    tooltip="Re-enter your password to confirm"
+                                                    error={fieldErrors.confirmPassword}
                                                     showPasswordToggle
-                                                    showPassword={showPassword}
-                                                    onTogglePassword={() => setShowPassword(!showPassword)}
-                                                />
-                                                
-                                                <PasswordValidation 
-                                                    password={formData.password}
-                                                    onSuggest={(p) => setFormData({ ...formData, password: p })}
-                                                    showAlways={showPasswordRequirements}
+                                                    showPassword={showConfirmPassword}
+                                                    onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
                                                 />
                                             </div>
-
-                                            <SanitizedInput
-                                                label="Confirm Password"
-                                                type="password"
-                                                value={formData.confirmPassword}
-                                                onChange={(v) => { setFormData({ ...formData, confirmPassword: v }); setFieldErrors(prev => ({ ...prev, confirmPassword: '' })); }}
-                                                icon="lock_reset"
-                                                placeholder="••••••••"
-                                                required
-                                                tooltip="Re-enter your password to confirm"
-                                                error={fieldErrors.confirmPassword}
-                                                showPasswordToggle
-                                                showPassword={showConfirmPassword}
-                                                onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            />
-                                        </div>
+                                        )}
 
                                         <div className="flex items-start gap-3 mt-4">
                                             <input
@@ -526,15 +555,15 @@ export default function GetStarted() {
                                         </div>
 
                                         <button
-                                            onClick={handleCreateAccount}
-                                            disabled={!formData.agreeToTerms || isOtpLoading || isRegistering || !formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.phone}
+                                            onClick={formData.isGoogleUser ? nextStep : handleCreateAccount}
+                                            disabled={!formData.agreeToTerms || isOtpLoading || isRegistering || !formData.email || (!formData.isGoogleUser && !formData.password) || !formData.firstName || !formData.lastName || !formData.phone}
                                             className="w-full h-14 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 text-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                                         >
                                             {isOtpLoading || isRegistering ? (
                                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                             ) : (
                                                 <>
-                                                    Create Account
+                                                    {formData.isGoogleUser ? 'Continue Setup' : 'Create Account'}
                                                     <span className="material-icons-round text-lg">arrow_forward</span>
                                                 </>
                                             )}

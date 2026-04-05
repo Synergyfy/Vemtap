@@ -116,7 +116,21 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         console.log('[AUTH] 🚪 logout() called');
         
-        // 1. Clear chat history to prevent leakage between accounts
+        // 1. Clear Google Session if it exists
+        if (typeof window !== 'undefined') {
+          try {
+            import('@react-oauth/google').then((module) => {
+              if (module.googleLogout) {
+                module.googleLogout();
+                console.log('[AUTH] Google logout successful');
+              }
+            });
+          } catch (e) {
+            console.error('Failed to logout of Google:', e);
+          }
+        }
+
+        // 2. Clear chat history to prevent leakage between accounts
         try {
           // Main chatStore
           import('./chatStore').then((module) => {
@@ -135,7 +149,7 @@ export const useAuthStore = create<AuthState>()(
           console.error('Error clearing chat history during logout', e);
         }
 
-        // 2. Explicitly purge local storage keys
+        // 3. Explicitly purge local storage keys
         if (typeof window !== 'undefined') {
           localStorage.removeItem('chat-history');
           localStorage.removeItem('vemtap-chat-storage');
