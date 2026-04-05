@@ -168,6 +168,7 @@ export class ProductsService {
 
   async findAllAdmin(): Promise<Product[]> {
     return this.productRepository.find({
+      relations: ['productType'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -360,15 +361,27 @@ export class ProductsService {
     return this.orderRepository.save(order);
   }
 
-  async markOrderCompleted(orderId: string): Promise<Order> {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-    });
-
-    if (!order) throw new NotFoundException('Order not found');
+  async markOrderCompleted(id: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
 
     order.status = OrderStatus.COMPLETED;
     order.paymentStatus = OrderPaymentStatus.PAID;
+    return this.orderRepository.save(order);
+  }
+
+  async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    order.status = status;
+    if (status === OrderStatus.COMPLETED) {
+      order.paymentStatus = OrderPaymentStatus.PAID;
+    }
     return this.orderRepository.save(order);
   }
 

@@ -18,11 +18,11 @@ import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { StepSocialConnect } from '@/components/visitor/StepSocialConnect';
 import { StepFormList } from '@/components/visitor/StepFormList';
 import { StepDynamicForm } from '@/components/visitor/StepDynamicForm';
-import { 
-    ShoppingBag, 
-    Calendar, 
-    Gift, 
-    ChevronRight, 
+import {
+    ShoppingBag,
+    Calendar,
+    Gift,
+    ChevronRight,
     ShieldCheck,
     Clock,
     ClipboardList,
@@ -33,23 +33,23 @@ import { cn } from '@/lib/utils';
 
 // --- Sub-components for the Portal ---
 
-const PortalWelcome = ({ 
-    branchName, 
-    logoUrl, 
-    welcomeMessage, 
-    onAction, 
-    productCount, 
-    serviceCount, 
+const PortalWelcome = ({
+    branchName,
+    logoUrl,
+    welcomeMessage,
+    onAction,
+    productCount,
+    serviceCount,
     offerCount,
     formCount,
     isFirstTimeVisit,
     isReturningUser,
     engagement,
     whatsappNumber
-}: { 
-    branchName: string, 
-    logoUrl?: string, 
-    welcomeMessage?: string, 
+}: {
+    branchName: string,
+    logoUrl?: string,
+    welcomeMessage?: string,
     onAction: (id: string) => void,
     productCount?: number,
     serviceCount?: number,
@@ -64,7 +64,7 @@ const PortalWelcome = ({
         { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
         { id: 'service', label: 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Reservations & Slots', count: serviceCount },
         { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
-        { id: 'whatsapp', label: 'Chat WhatsApp', icon: Phone, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
+        { id: 'whatsapp', label: 'WhatsApp', icon: Phone, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
         { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
         { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
     ].filter(action => action.count && action.count > 0);
@@ -72,7 +72,7 @@ const PortalWelcome = ({
     const useGrid = actions.length >= 4;
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -92,7 +92,7 @@ const PortalWelcome = ({
                 )}
                 <div className="space-y-0.5 flex-grow">
                     <h1 className="text-lg md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight">
-                       Welcome to {branchName}
+                        Welcome to {branchName}
                     </h1>
                     <p className="text-on-surface-variant text-[9px] md:text-[10px] max-w-xs font-medium opacity-70 italic line-clamp-1">
                         {welcomeMessage || "Select an option below to get started"}
@@ -177,7 +177,7 @@ const DynamicTapJourneyPage = () => {
     } = useCustomerFlowStore();
 
     const { isAuthenticated, login } = useAuthStore();
-    
+
     const { data: deviceContext, isLoading: isQueryLoading, isError } = useDeviceTapContext(deviceCode);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showInitialAuth, setShowInitialAuth] = useState(false);
@@ -195,13 +195,13 @@ const DynamicTapJourneyPage = () => {
         if (!isMounted || !deviceContext) return;
 
         const state = useCustomerFlowStore.getState();
-        
+
         const isAlreadyOnThisDevice = state.deviceCode === deviceCode && !!state.businessId;
         const isPortalStep = ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM', 'FORMS_LIST', 'DYNAMIC_FORM', 'SOCIAL_CONNECT'].includes(state.currentStep);
         const isReturningVisitor = deviceContext.device?.isFirstTimeVisit === false;
-        
+
         const shouldSkipAnimation = isAlreadyOnThisDevice || isPortalStep || isReturningVisitor;
-        
+
         initializeFromBusiness(deviceContext, shouldSkipAnimation);
 
         if (shouldSkipAnimation) {
@@ -304,7 +304,7 @@ const DynamicTapJourneyPage = () => {
                 login(authResponse.user, authResponse.access_token);
                 setUserData(data);
                 setShowInitialAuth(false);
-                
+
                 if (pendingAction) {
                     await pendingAction();
                     setPendingAction(null);
@@ -339,11 +339,11 @@ const DynamicTapJourneyPage = () => {
             )}>
                 <AnimatePresence mode="wait">
                     {currentStep === 'SCANNING' && <StepScanning key="scanning" storeName={storeName} />}
-                    
+
                     {currentStep === 'IDENTIFYING' && <StepIdentifying key="identifying" />}
 
                     {currentStep === 'PORTAL_MENU' && (
-                        <PortalWelcome 
+                        <PortalWelcome
                             key="portal-menu"
                             branchName={storeName}
                             welcomeMessage={customWelcomeMessage || undefined}
@@ -378,7 +378,7 @@ const DynamicTapJourneyPage = () => {
                     )}
 
                     {currentStep === 'SOCIAL_CONNECT' && (
-                        <StepSocialConnect 
+                        <StepSocialConnect
                             key="social"
                             storeName={storeName}
                             logoUrl={logoUrl}
@@ -388,7 +388,7 @@ const DynamicTapJourneyPage = () => {
                     )}
 
                     {currentStep === 'FORMS_LIST' && (
-                        <StepFormList 
+                        <StepFormList
                             key="forms-list"
                             branchId={branchId || ''}
                             storeName={storeName}
@@ -402,7 +402,7 @@ const DynamicTapJourneyPage = () => {
                     )}
 
                     {currentStep === 'DYNAMIC_FORM' && selectedFormCode && (
-                        <StepDynamicForm 
+                        <StepDynamicForm
                             key={`dynamic-form-${selectedFormCode}`}
                             formCode={selectedFormCode}
                             storeName={storeName}
@@ -424,13 +424,13 @@ const DynamicTapJourneyPage = () => {
             <AnimatePresence>
                 {showInitialAuth && (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="absolute inset-0 bg-black/5 backdrop-blur-sm"
                         />
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}

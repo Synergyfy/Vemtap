@@ -23,13 +23,11 @@ interface VolumeDiscount {
 interface ProductFormData {
   // Step 1
   title: string;
-  category: string;
   tag: string;
   tagColor: string;
-  nfcType: string;
   sku: string;
   description: string;
-  productTypeId: string;
+  productTypeId: string; // This corresponds to "Category" in UI
 
   // Step 2
   images: {
@@ -73,10 +71,8 @@ interface ProductFormState {
 
 const initialFormData: ProductFormData = {
   title: '',
-  category: 'NFC Hardware',
   tag: 'New Arrival',
   tagColor: 'bg-primary',
-  nfcType: 'nfc',
   sku: '',
   description: '',
   productTypeId: '',
@@ -123,25 +119,32 @@ export const useProductFormStore = create<ProductFormState>((set) => ({
     formData: {
       ...initialFormData,
       title: product.name,
-      category: product.category || 'NFC Hardware',
       tag: product.tag || 'New Arrival',
       tagColor: product.tagColor || 'bg-primary',
-      nfcType: product.nfcType || 'nfc',
       sku: product.sku || '',
       description: product.description || '',
       productTypeId: product.productTypeId || '',
       msrp: Number(product.price) || 450,
+      originalPrice: Number(product.originalPrice) || 0,
+      costPrice: Number(product.costPrice) || 0,
+      customizationFee: Number(product.customizationFee) || 1500,
+      customBrandingEnabled: !!product.customBrandedCards,
       images: {
-        primary: { file: null, url: product.image || (product.images && product.images[0]) || null },
+        primary: { file: null, url: (product.images && product.images[0]) || null },
         side: { file: null, url: (product.images && product.images[1]) || null },
         detail: { file: null, url: (product.images && product.images[2]) || null },
         packaging: { file: null, url: (product.images && product.images[3]) || null }
       },
-      howToSteps: Array.isArray(product.howToSteps) ? product.howToSteps.map((s: any, i: number) => ({
-        id: s.id || String(i + 1),
+      howToSteps: Array.isArray(product.howToUse) ? product.howToUse.map((s: any, i: number) => ({
+        id: String(i + 1),
         title: s.title || '',
         description: s.description || ''
-      })) : initialFormData.howToSteps
+      })) : initialFormData.howToSteps,
+      specs: product.technicalSpecifications ? Object.entries(product.technicalSpecifications).map(([label, value], i) => ({
+        id: String(i + 1),
+        label,
+        value: String(value)
+      })) : initialFormData.specs
     }
   }),
   nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 4) })),
