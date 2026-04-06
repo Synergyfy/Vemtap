@@ -104,9 +104,19 @@ export const useAuthStore = create<AuthState>()(
         if (userData?.role) {
           userData.role = userData.role.toLowerCase() as UserRole;
         }
-        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
+
+        // Sync activeBranchId with the user's branchId to prevent stale dashboard views
+        const branchIdToSet = userData.branchId || null;
+        
+        set({ 
+          user: userData, 
+          access_token, 
+          isAuthenticated: true, 
+          activeBranchId: branchIdToSet 
+        });
+        
         setAuthCookie(access_token);
-        console.log('[AUTH] Login complete, isAuthenticated:', true);
+        console.log('[AUTH] Login complete, isAuthenticated:', true, 'Active Branch:', branchIdToSet);
       },
 
       signup: (userData: User, access_token: string) => {
@@ -114,7 +124,17 @@ export const useAuthStore = create<AuthState>()(
         if (userData?.role) {
           userData.role = userData.role.toLowerCase() as UserRole;
         }
-        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
+        
+        // Sync activeBranchId on signup as well
+        const branchIdToSet = userData.branchId || null;
+        
+        set({ 
+          user: userData, 
+          access_token, 
+          isAuthenticated: true, 
+          activeBranchId: branchIdToSet 
+        });
+        
         setAuthCookie(access_token);
       },
 

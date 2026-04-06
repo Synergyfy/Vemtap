@@ -152,6 +152,7 @@ export class AuthService {
 
   private async generateAuthResponse(user: Partial<User>, isNewUser = false) {
     let businessId: string | undefined;
+    let branchId: string | undefined = user.branchId;
 
     if (user.role === UserRole.OWNER) {
       const business = await this.businessesService.findByOwner(
@@ -159,6 +160,14 @@ export class AuthService {
       );
       if (business) {
         businessId = business.id;
+        
+        // If user doesn't have a branchId assigned yet, find the main branch for this business
+        if (!branchId) {
+          const mainBranch = await this.businessesService.findMainBranch(business.id);
+          if (mainBranch) {
+            branchId = mainBranch.id;
+          }
+        }
       }
     }
 
@@ -166,7 +175,7 @@ export class AuthService {
       email: user.email,
       sub: user.id,
       role: user.role,
-      branchId: user.branchId,
+      branchId: branchId,
       businessId: businessId || (user as any).businessId,
     };
     delete user.password;
@@ -512,9 +521,8 @@ export class AuthService {
         } as any);
       }
 
-      // 4. Finalize User Status if business is created
-      user.status = UserStatus.ACTIVE;
-      await this.usersService.create(user);
+      // 4. User Status is finalized to ACTIVE inside businessesService.create
+
 
       // 5. Auto-Subscribe to Free Plan if available
       try {
