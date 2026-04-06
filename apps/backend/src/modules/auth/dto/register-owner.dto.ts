@@ -9,6 +9,7 @@ import {
   IsArray,
   IsStrongPassword,
   IsUUID,
+  ValidateIf,
 } from 'class-validator';
 
 export class RegisterOwnerDto {
@@ -19,10 +20,12 @@ export class RegisterOwnerDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'SecurePass123!',
-    description: 'Password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol)',
+    description: 'Password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol). Required for manual signup, optional for social logins.',
   })
+  @IsOptional()
+  @ValidateIf((o) => !!o.password)
   @IsString()
   @IsStrongPassword({
     minLength: 8,
@@ -31,7 +34,7 @@ export class RegisterOwnerDto {
     minNumbers: 1,
     minSymbols: 1,
   })
-  password: string;
+  password?: string;
 
   // --- Business Details ---
   @ApiPropertyOptional({

@@ -37,15 +37,36 @@ export enum UserStatus {
   SUSPENDED = 'Suspended',
 }
 
+export enum AuthProvider {
+  LOCAL = 'LOCAL',
+  GOOGLE = 'GOOGLE',
+}
+
 @Entity('users')
 export class User extends AbstractBaseEntity {
   @ApiProperty({ example: 'user@example.com' })
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ nullable: true })
   @Exclude()
   password: string;
+
+  @ApiProperty({ enum: AuthProvider, example: AuthProvider.LOCAL })
+  @Column({
+    type: 'simple-enum',
+    enum: AuthProvider,
+    default: AuthProvider.LOCAL,
+  })
+  authProvider: AuthProvider;
+
+  @ApiProperty({ example: '1234567890', nullable: true })
+  @Column({ unique: true, nullable: true })
+  googleId: string;
+
+  @ApiProperty({ example: 'https://example.com/photo.jpg', nullable: true })
+  @Column({ nullable: true })
+  avatar: string;
 
   @ApiProperty({ example: 'John' })
   @Column()

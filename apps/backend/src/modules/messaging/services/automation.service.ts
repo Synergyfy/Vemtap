@@ -13,10 +13,12 @@ import {
   UpdateAutomationToggleDto,
   UpdateAutomationConfigDto,
 } from '../dto/automation-rule.dto';
-import { TriggerType, ActionType } from '../enums/automation.enum';
+import { TriggerType, ActionType, TargetType } from '../enums/automation.enum';
 import { Channel } from '../enums/channel.enum';
 import { BranchesService } from '../../branches/branches.service';
 import { Subscription, SubscriptionStatus } from '../../subscriptions/entities/subscription.entity';
+import { Visit } from '../../visitors/entities/visit.entity';
+import { Segment } from '../../contacts/entities/segment.entity';
 
 @Injectable()
 export class AutomationService {
@@ -29,6 +31,10 @@ export class AutomationService {
     private readonly logRepo: Repository<AutomationLog>,
     @InjectRepository(Subscription)
     private readonly subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Visit)
+    private readonly visitRepo: Repository<Visit>,
+    @InjectRepository(Segment)
+    private readonly segmentRepo: Repository<Segment>,
     private readonly messagingEngine: MessagingEngineService,
     private readonly branchesService: BranchesService,
     @InjectQueue('messaging-automation')
@@ -410,6 +416,53 @@ export class AutomationService {
     );
 
     try {
+      // 1. Audience Filtering
+      if (rule.targetType && rule.targetType !== TargetType.ALL) {
+        const visitCount = await this.visitRepo.count({
+          where: {
+            customerId: triggerDto.customerId,
+            branchId: rule.branchId,
+          },
+        });
+
+        if (rule.targetType === TargetType.NEW_VISITORS && visitCount > 1) {
+          this.logger.log(
+            `Rule ${rule.id} skipped for customer ${triggerDto.customerId}: target is NEW_VISITORS but visit count is ${visitCount}`,
+          );
+          return;
+        }
+
+        if (
+          rule.targetType === TargetType.RETURNING_CUSTOMERS &&
+          visitCount <= 1
+        ) {
+          this.logger.log(
+            `Rule ${rule.id} skipped for customer ${triggerDto.customerId}: target is RETURNING_CUSTOMERS but visit count is ${visitCount}`,
+          );
+          return;
+        }
+
+        if (rule.targetType === TargetType.SEGMENT) {
+          const segmentId = rule.actionConfig?.segmentId;
+          if (segmentId) {
+            const isMember = await this.segmentRepo
+              .createQueryBuilder('segment')
+              .innerJoin('segment.users', 'user')
+              .where('segment.id = :segmentId', { segmentId })
+              .andWhere('user.id = :userId', { userId: triggerDto.customerId })
+              .getCount();
+
+            if (isMember === 0) {
+              this.logger.log(
+                `Rule ${rule.id} skipped for customer ${triggerDto.customerId}: customer is not a member of segment ${segmentId}`,
+              );
+              return;
+            }
+          }
+        }
+      }
+
+      // 2. Action Execution
       if (
         rule.actionType === ActionType.SEND_SMS ||
         rule.actionType === ActionType.SEND_WHATSAPP ||

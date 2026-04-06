@@ -2,8 +2,6 @@ export enum TriggerType {
   FIRST_MESSAGE = 'first_message',
   AFTER_FORM_SUBMIT = 'after_form_submit',
   AFTER_X_DAYS_INACTIVE = 'after_x_days_inactive',
-  FIRST_TAG = 'first_tag',
-  REPEAT_TAG = 'repeat_tag',
   REWARD_EARNED = 'reward_earned',
   SURVEY_COMPLETED = 'survey_completed',
   INACTIVE_CUSTOMER = 'inactive_customer',
@@ -13,9 +11,10 @@ export enum TriggerType {
 }
 
 export enum TargetType {
+  ALL = 'all',
   NEW_VISITORS = 'new_visitors',
   RETURNING_CUSTOMERS = 'returning_customers',
-  SPECIFIC_CATEGORY = 'specific_category',
+  SEGMENT = 'segment',
 }
 
 export enum ActionType {
