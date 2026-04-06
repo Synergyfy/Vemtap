@@ -33,7 +33,7 @@ export default function Hero() {
                         </h1>
 
                         <p className="text-base md:text-xl text-text-secondary max-w-xl font-medium leading-relaxed">
-                            7 out of 10 customers don't return after their first visit. Instantly collect data with a simple tap and engage them automatically.
+                            We help businesses bring customers back. Instantly collect data with a simple tap and engage them automatically.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
