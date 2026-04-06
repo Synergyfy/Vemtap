@@ -305,7 +305,7 @@ export class MailService {
     `;
 
     const mailOptions = {
-      from: `"\${business.name} via VemTap" <\${this.configService.get<string>('EMAIL_USER')}>`,
+      from: `"${business.name} via VemTap" <${this.configService.get<string>('EMAIL_USER')}>`,
       to: email,
       subject,
       html: htmlContent,

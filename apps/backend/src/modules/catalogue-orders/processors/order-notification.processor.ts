@@ -26,7 +26,7 @@ export class OrderNotificationProcessor extends WorkerHost {
 
   async process(job: Job<any, any, string>): Promise<any> {
     const { orderId, status } = job.data;
-    this.logger.log(`Processing \${status} email for order \${orderId}`);
+    this.logger.log(`Processing ${status} email for order ${orderId}`);
 
     try {
       const order = await this.orderRepository.findOne({
@@ -35,12 +35,12 @@ export class OrderNotificationProcessor extends WorkerHost {
       });
 
       if (!order) {
-        this.logger.error(`Order \${orderId} not found`);
+        this.logger.error(`Order ${orderId} not found`);
         return;
       }
 
       if (!order.customer || !order.customer.email || order.customer.email.includes('@vemtap.dummy')) {
-        this.logger.warn(`Order \${orderId} has no valid customer email, skipping email.`);
+        this.logger.warn(`Order ${orderId} has no valid customer email, skipping email.`);
         return;
       }
 
@@ -50,13 +50,13 @@ export class OrderNotificationProcessor extends WorkerHost {
       });
 
       if (!branch) {
-        this.logger.error(`Branch \${order.branchId} not found for order \${orderId}`);
+        this.logger.error(`Branch ${order.branchId} not found for order ${orderId}`);
         return;
       }
 
       const business = branch.business;
       if (!business) {
-        this.logger.error(`Business for branch \${branch.id} not found`);
+        this.logger.error(`Business for branch ${branch.id} not found`);
         return;
       }
 
@@ -72,9 +72,9 @@ export class OrderNotificationProcessor extends WorkerHost {
         },
       );
 
-      this.logger.log(`Successfully sent \${status} email for order \${orderId}`);
+      this.logger.log(`Successfully sent ${status} email for order ${orderId}`);
     } catch (error) {
-      this.logger.error(`Failed to process order email job: \${error.message}`, error.stack);
+      this.logger.error(`Failed to process order email job: ${error.message}`, error.stack);
       throw error;
     }
   }
