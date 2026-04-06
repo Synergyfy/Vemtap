@@ -416,6 +416,16 @@ export class CatalogueOrderService {
         orderId: order.id,
         status: 'completed',
       }).catch(err => console.error('Failed to queue order completed email:', err));
+    } else if (status === CatalogueOrderStatus.CANCELLED) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'cancelled',
+      }).catch(err => console.error('Failed to queue order cancelled email:', err));
+    } else if (status === CatalogueOrderStatus.REJECTED) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'rejected',
+      }).catch(err => console.error('Failed to queue order rejected email:', err));
     }
 
     return updatedOrder;

@@ -119,16 +119,25 @@ export default function PublicProfilingForm() {
 
   const handleSubmit = async () => {
     setErrors({});
-    if (!formData.businessName.trim()) {
-        setErrors(prev => ({ ...prev, businessName: 'Business Name is required.' }));
-        return;
+    const businessName = formData.businessName.trim();
+    const contactEmail = formData.contactEmail.trim();
+    const contactPhone = formData.contactPhone.trim();
+
+    const newErrors: Record<string, string> = {};
+
+    if (!businessName) {
+        newErrors.businessName = 'Business Name is required.';
     }
-    if (!formData.contactEmail.trim() || !isValidEmail(formData.contactEmail)) {
-        setErrors(prev => ({ ...prev, contactEmail: 'A valid Professional Email is required.' }));
-        return;
+    if (!contactEmail || !isValidEmail(contactEmail)) {
+        newErrors.contactEmail = 'A valid Professional Email is required.';
     }
-    if (formData.contactPhone && !isValidPhone(formData.contactPhone)) {
-        setErrors(prev => ({ ...prev, contactPhone: 'Please enter a valid phone number format.' }));
+    if (contactPhone && !isValidPhone(contactPhone)) {
+        newErrors.contactPhone = 'Please enter a valid phone number format.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        notify.error('Please fix the errors in the form before submitting.');
         return;
     }
 
@@ -152,12 +161,19 @@ export default function PublicProfilingForm() {
         return;
     }
     if (step === 2) {
-        if (!formData.contactEmail.trim()) {
+        const email = formData.contactEmail.trim();
+        const phone = formData.contactPhone.trim();
+        
+        if (!email) {
             setErrors({ contactEmail: 'Email is required to proceed.' });
             return;
         }
-        if (!isValidEmail(formData.contactEmail)) {
+        if (!isValidEmail(email)) {
             setErrors({ contactEmail: 'Please enter a valid Professional Email.' });
+            return;
+        }
+        if (phone && !isValidPhone(phone)) {
+            setErrors({ contactPhone: 'Please enter a valid phone number format.' });
             return;
         }
     }
