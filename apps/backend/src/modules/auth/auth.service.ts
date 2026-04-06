@@ -225,15 +225,22 @@ export class AuthService {
         throw new UnauthorizedException('Google account must have an associated email');
       }
 
-      let user = await this.usersService.findByEmail(email);
+      // 1. Try finding by Google ID first (stable identifier)
+      let user = await this.usersService.findByGoogleId(googleId);
+
+      // 2. If not found, try finding by email (for account linking)
+      if (!user) {
+        user = await this.usersService.findByEmail(email);
+        if (user) {
+          // Link Google ID if not already linked
+          if (!user.googleId) {
+            user.googleId = googleId;
+            user.authProvider = AuthProvider.GOOGLE;
+          }
+        }
+      }
 
       if (user) {
-        // Account Linking: Link Google ID if not already linked
-        if (!user.googleId) {
-          user.googleId = googleId;
-          user.authProvider = AuthProvider.GOOGLE;
-        }
-        
         // Ensure status is ACTIVE since Google serves as verification
         user.status = UserStatus.ACTIVE;
         user.isPasswordChanged = true;
@@ -242,10 +249,11 @@ export class AuthService {
         if (!user.avatar && picture) {
           user.avatar = picture;
         }
+        
         user = await this.usersService.create(user);
-        return this.generateAuthResponse(user, false);
+        return this.generateAuthResponse(user as User, false);
       } else {
-        // Create new user
+        // 3. Create new user
         user = await this.usersService.create({
           email,
           firstName: given_name || name || 'Google',
@@ -255,9 +263,9 @@ export class AuthService {
           authProvider: AuthProvider.GOOGLE,
           role: dto.role || UserRole.CUSTOMER,
           status: UserStatus.ACTIVE,
-          isPasswordChanged: true, // They don't have a password to change
+          isPasswordChanged: true,
         });
-        return this.generateAuthResponse(user, true);
+        return this.generateAuthResponse(user as User, true);
       }
     } catch (error) {
       console.error('Google Auth Error:', error);

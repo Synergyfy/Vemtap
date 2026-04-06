@@ -359,6 +359,26 @@ export class VisitorsService {
         `${user.firstName} ${user.lastName}`.trim() || 'Visitor',
         defaultPassword,
       );
+    } else if (user.role === UserRole.CUSTOMER) {
+      // Update existing customer details if they are provided and currently empty
+      // This is especially important for Google signups completing their profile
+      let modified = false;
+      if (dto.firstName && (!user.firstName || user.firstName === 'Google')) {
+        user.firstName = dto.firstName;
+        modified = true;
+      }
+      if (dto.lastName && (!user.lastName || user.lastName === 'User')) {
+        user.lastName = dto.lastName;
+        modified = true;
+      }
+      if (dto.phone && (!user.phone || user.phone !== dto.phone)) {
+        user.phone = dto.phone;
+        modified = true;
+      }
+      
+      if (modified) {
+        await this.userRepository.save(user);
+      }
     }
 
     // If branchId is provided, record visit and contact

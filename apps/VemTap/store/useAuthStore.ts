@@ -42,6 +42,8 @@ export interface User {
   businessName?: string;
   businessLogo?: string;
   avatar?: string;
+  googleId?: string;
+  authProvider?: 'LOCAL' | 'GOOGLE' | string;
 
   // Subscription fields
   planId?: SubscriptionPlan;
