@@ -18,6 +18,7 @@ import { CheckCircle2, Loader2, ChevronDown, Sparkles, Key, Instagram, Linkedin,
 import PasswordValidation from '@/components/shared/PasswordValidation';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useCategories } from '@/services/categories/hooks';
+import { AuthResponse } from '@/services/auth/types';
 
 // Comprehensive Nigerian States and Cities Data
 const statesData: Record<string, string[]> = {
@@ -466,19 +467,40 @@ export default function GetStarted() {
                                     <div className="space-y-5">
                                         <GoogleAuthButton 
                                             role="owner" 
-                                            onSuccess={(res) => {
+                                            onSuccess={(res: AuthResponse) => {
+                                                // Handle existing users
+                                                if (!res.isNewUser) {
+                                                    const role = res.user.role?.toLowerCase();
+                                                    
+                                                    // If existing Owner with business, redirect to dashboard
+                                                    if (role === 'owner' && res.user.businessId) {
+                                                        toast.success('Welcome back! Redirecting to your dashboard...');
+                                                        router.push('/dashboard');
+                                                        return;
+                                                    }
+                                                    
+                                                    // If existing Manager/Admin/Staff, redirect to their dashboard
+                                                    if (['admin', 'manager', 'staff'].includes(role || '')) {
+                                                        const target = role === 'admin' ? '/admin' : '/dashboard';
+                                                        toast.success('Welcome back! Redirecting to your dashboard...');
+                                                        router.push(target);
+                                                        return;
+                                                    }
+                                                }
+
+                                                // Otherwise proceed with onboarding flow
                                                 setFormData({
                                                     ...formData,
                                                     firstName: res.user.firstName,
                                                     lastName: res.user.lastName,
                                                     email: res.user.email,
                                                     isGoogleUser: true,
-                                                    agreeToTerms: true // They already implicitly agreed by choosing social login usually, but we can also check
+                                                    agreeToTerms: true 
                                                 });
+
                                                 if (res.user.phone) {
-                                                    setStep(3); // Skip OTP if already authenticated and has phone
+                                                    setStep(3); 
                                                 } else {
-                                                    // Stay on step 1 to collect phone
                                                     toast.success("Google linked! Please provide your phone number to complete account setup.");
                                                 }
                                             }}

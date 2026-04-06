@@ -181,7 +181,11 @@ export class AuthService {
     delete user.password;
     return {
       access_token: this.jwtService.sign(payload),
-      user,
+      user: {
+        ...user,
+        businessId: businessId || (user as any).businessId,
+        branchId: branchId,
+      },
       isNewUser,
     };
   }
