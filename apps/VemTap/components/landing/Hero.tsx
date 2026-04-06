@@ -62,7 +62,7 @@ export default function Hero() {
                                     playsInline
                                     className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity duration-700"
                                 >
-                                    <source src="/assets/videos/VemTap_Video.mp4" type="video/mp4" />
+                                    <source src="/assets/videos/hero.webm" type="video/webm" />
                                 </video>
                                 <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
                             </div>
