@@ -359,6 +359,26 @@ export class VisitorsService {
         `${user.firstName} ${user.lastName}`.trim() || 'Visitor',
         defaultPassword,
       );
+    } else if (user.role === UserRole.CUSTOMER) {
+      // Update existing customer details if they are provided and currently empty
+      // This is especially important for Google signups completing their profile
+      let modified = false;
+      if (dto.firstName && (!user.firstName || user.firstName === 'Google')) {
+        user.firstName = dto.firstName;
+        modified = true;
+      }
+      if (dto.lastName && (!user.lastName || user.lastName === 'User')) {
+        user.lastName = dto.lastName;
+        modified = true;
+      }
+      if (dto.phone && (!user.phone || user.phone !== dto.phone)) {
+        user.phone = dto.phone;
+        modified = true;
+      }
+      
+      if (modified) {
+        await this.userRepository.save(user);
+      }
     }
 
     // If branchId is provided, record visit and contact
@@ -398,14 +418,7 @@ export class VisitorsService {
         await this.contactRepository.save(contact);
       }
 
-      const visitCount = await this.visitRepository.count({
-        where: { customer: { id: user.id }, branchId },
-      });
-
-      const triggerType =
-        visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
-
-      await this.automationService.trigger(triggerType, {
+      await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
         branchId,
         customerId: user.id,
       });
@@ -1198,9 +1211,7 @@ export class VisitorsService {
       await this.visitRepository.save(visit);
 
       // 3. Automation triggers
-      const triggerType =
-        previousVisitCount === 0 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
-      await this.automationService.trigger(triggerType, {
+      await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
         branchId,
         customerId: user.id,
       });

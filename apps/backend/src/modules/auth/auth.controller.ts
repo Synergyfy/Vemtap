@@ -25,6 +25,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { SwitchRoleDto } from './dto/switch-role.dto';
 import { CheckStatusDto } from './dto/check-status.dto';
 import { UpdateEmailDto } from './dto/update-email.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import {
   AuthResponseDto,
   MessageResponseDto,
@@ -77,6 +78,20 @@ export class AuthController {
   })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Public()
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login or Register with Google' })
+  @ApiBody({ type: GoogleLoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Google Authentication successful',
+    type: AuthResponseDto,
+  })
+  async googleAuth(@Body() googleLoginDto: GoogleLoginDto) {
+    return this.authService.googleLogin(googleLoginDto);
   }
 
   @Public()

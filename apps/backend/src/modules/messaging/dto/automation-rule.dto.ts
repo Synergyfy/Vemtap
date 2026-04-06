@@ -27,7 +27,7 @@ export class CreateAutomationRuleDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ enum: TriggerType, example: TriggerType.FIRST_TAG })
+  @ApiProperty({ enum: TriggerType, example: TriggerType.FIRST_MESSAGE })
   @IsEnum(TriggerType)
   triggerType: TriggerType;
 
@@ -68,7 +68,7 @@ export class UpdateAutomationRuleDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ enum: TriggerType, example: TriggerType.FIRST_TAG })
+  @ApiPropertyOptional({ enum: TriggerType, example: TriggerType.FIRST_MESSAGE })
   @IsOptional()
   @IsEnum(TriggerType)
   triggerType?: TriggerType;
@@ -140,6 +140,11 @@ export class UpdateAutomationConfigDto {
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-segment' })
+  @IsOptional()
+  @IsUUID()
+  segmentId?: string;
 }
 
 export class AutomationLogResponseDto {

@@ -7,6 +7,7 @@ import {
   IsEnum,
   MinLength,
   IsStrongPassword,
+  ValidateIf,
 } from 'class-validator';
 import { UserRole } from '../../users/entities/user.entity';
 
@@ -29,6 +30,8 @@ export class RegisterDto {
     example: 'SecurePass123!',
     description: 'Password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol)',
   })
+  @IsOptional()
+  @ValidateIf((o) => !!o.password)
   @IsString()
   @IsStrongPassword({
     minLength: 8,
@@ -37,7 +40,7 @@ export class RegisterDto {
     minNumbers: 1,
     minSymbols: 1,
   })
-  password: string;
+  password?: string;
 
   @ApiPropertyOptional({
     enum: UserRole,

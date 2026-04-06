@@ -10,13 +10,15 @@ import toast from 'react-hot-toast';
 import Logo from '@/components/brand/Logo';
 import { SanitizedInput } from '@/components/ui/SanitizedInput';
 import { sanitizeFormData } from '@/lib/utils/sanitize';
-import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
+import { useRegisterOwner, useOtp, useRegister, useGoogleLogin } from '@/services/auth/hooks';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { CheckCircle2, Loader2, ChevronDown, Sparkles, Key, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X } from 'lucide-react';
 import PasswordValidation from '@/components/shared/PasswordValidation';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useCategories } from '@/services/categories/hooks';
+import { AuthResponse } from '@/services/auth/types';
 
 // Comprehensive Nigerian States and Cities Data
 const statesData: Record<string, string[]> = {
@@ -74,7 +76,7 @@ export default function GetStarted() {
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
-    const { signup } = useAuthStore();
+    const { signup, user, setActiveBranch } = useAuthStore();
     const [step, setStep] = useState(1);
     const [subStep, setSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
@@ -115,7 +117,8 @@ export default function GetStarted() {
         linkedinUrl: '',
         reviewUrl: '',
         trustpilotUrl: '',
-        agreeToTerms: false
+        agreeToTerms: false,
+        isGoogleUser: false,
     });
 
     // Social Media Selection State
@@ -143,6 +146,34 @@ export default function GetStarted() {
         setSelectedSocial(null);
         setIsSocialDropdownOpen(false);
     };
+
+    /**
+     * Google Auth Logic: 
+     * If the user came from the login page after a Google sign-in but hasn't 
+     * completed onboarding, we pre-fill their info and lock certain fields.
+     */
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const isFromGoogle = params.get('from') === 'google';
+
+            if (isFromGoogle && user) {
+                setFormData(prev => ({
+                    ...prev,
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    email: user.email || '',
+                    isGoogleUser: true,
+                    agreeToTerms: true,
+                }));
+                
+                // If they have a phone number, they've passed initial verification
+                if (user.phone) {
+                    setStep(3);
+                }
+            }
+        }
+    }, [user]);
 
     const removeSocial = (id: string) => {
         const updateData: any = { ...formData };
@@ -192,6 +223,9 @@ export default function GetStarted() {
         } else if (step === 3 && subStep === maxSubStep) {
             setStep(5);
             setSubStep(1);
+        } else if (step === 1 && formData.isGoogleUser) {
+            setStep(3);
+            setSubStep(1);
         } else {
             setStep(prev => prev + 1);
             setSubStep(1);
@@ -203,6 +237,8 @@ export default function GetStarted() {
             setSubStep(maxSubStep);
         } else if (step === 3 && subStep > 1) {
             setSubStep(prev => prev - 1);
+        } else if (step === 3 && subStep === 1 && formData.isGoogleUser) {
+            setStep(1);
         } else {
             setStep(prev => prev - 1);
         }
@@ -322,7 +358,7 @@ export default function GetStarted() {
                     firstName: cleanData.firstName,
                     lastName: cleanData.lastName,
                     email: cleanData.email,
-                    password: formData.password,
+                    password: formData.password || undefined,
                     role: 'Manager',
                     businessId: cleanData.businessId || undefined,
                 };
@@ -333,7 +369,7 @@ export default function GetStarted() {
 
                 const payload = {
                     email: cleanData.email,
-                    password: formData.password,
+                    password: formData.password || undefined,
                     businessName: cleanData.businessName,
                     businessLogo: businessLogoUrl || undefined,
                     categoryId: formData.categoryId,
@@ -361,20 +397,26 @@ export default function GetStarted() {
                 response = await registerOwner(payload as any);
             }
 
-            const userData = {
-                email: cleanData.email,
-                name: `${cleanData.firstName} ${cleanData.lastName}`,
-                role: cleanData.selectedRole.toLowerCase() as any,
-                businessName: cleanData.businessName || response?.user?.businessName,
-                businessId: response?.user?.businessId || undefined,
-            };
+            // Use the full user object from the backend response
+            // This ensures businessId and other metadata are correctly synced
+            await signup(response.user as any, response.access_token);
+            
+            // If the backend returned a businessId, we might want to pre-set it as active 
+            // for immediate data fetching when they arrive at the dashboard
+            if (response.user.businessId && setActiveBranch) {
+                // If the response also contains a branchId, set it
+                if (response.user.branchId) {
+                    setActiveBranch(response.user.branchId);
+                }
+            }
 
-            await signup(userData as any, response.access_token);
             setStep(6);
 
+            // Give the user a moment to see the success state before redirecting
             setTimeout(() => {
-                router.push(isManager ? '/dashboard' : '/dashboard/settings/subscription');
-            }, 3000);
+                const target = isManager ? '/dashboard' : '/dashboard/settings/subscription';
+                router.push(target);
+            }, 2500);
         } catch (error: any) {
             toast.error(error.message || 'Failed to create account. Please try again.');
         } finally {
@@ -423,6 +465,52 @@ export default function GetStarted() {
                                     </div>
 
                                     <div className="space-y-5">
+                                        <GoogleAuthButton 
+                                            role="owner" 
+                                            onSuccess={(res: AuthResponse) => {
+                                                // Handle existing users
+                                                if (!res.isNewUser) {
+                                                    const role = res.user.role?.toLowerCase();
+                                                    
+                                                    // If existing Owner with business, redirect to dashboard
+                                                    if (role === 'owner' && res.user.businessId) {
+                                                        toast.success('Welcome back! Redirecting to your dashboard...');
+                                                        router.push('/dashboard');
+                                                        return;
+                                                    }
+                                                    
+                                                    // If existing Manager/Admin/Staff, redirect to their dashboard
+                                                    if (['admin', 'manager', 'staff'].includes(role || '')) {
+                                                        const target = role === 'admin' ? '/admin' : '/dashboard';
+                                                        toast.success('Welcome back! Redirecting to your dashboard...');
+                                                        router.push(target);
+                                                        return;
+                                                    }
+                                                }
+
+                                                // Otherwise proceed with onboarding flow
+                                                setFormData({
+                                                    ...formData,
+                                                    firstName: res.user.firstName,
+                                                    lastName: res.user.lastName,
+                                                    email: res.user.email,
+                                                    isGoogleUser: true,
+                                                    agreeToTerms: true 
+                                                });
+
+                                                if (res.user.phone) {
+                                                    setStep(3); 
+                                                } else {
+                                                    toast.success("Google linked! Please provide your phone number to complete account setup.");
+                                                }
+                                            }}
+                                        />
+
+                                        <div className="relative my-6 border-t border-slate-100">
+                                            <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
+                                                OR SIGN UP MANUALLY
+                                            </div>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <SanitizedInput
                                                 label="First Name"
@@ -433,6 +521,7 @@ export default function GetStarted() {
                                                 required
                                                 tooltip="Your legal first name as it will appear on your account"
                                                 error={fieldErrors.firstName}
+                                                readOnly={formData.isGoogleUser}
                                             />
                                             <SanitizedInput
                                                 label="Last Name"
@@ -443,6 +532,7 @@ export default function GetStarted() {
                                                 required
                                                 tooltip="Your legal last name"
                                                 error={fieldErrors.lastName}
+                                                readOnly={formData.isGoogleUser}
                                             />
                                         </div>
                                         <SanitizedInput
@@ -455,6 +545,7 @@ export default function GetStarted() {
                                             required
                                             tooltip="We'll send verification codes and account updates to this email"
                                             error={fieldErrors.email}
+                                            readOnly={formData.isGoogleUser}
                                         />
                                         <SanitizedInput
                                             label="Phone Number"
@@ -468,49 +559,51 @@ export default function GetStarted() {
                                             error={fieldErrors.phone}
                                         />
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
+                                        {!formData.isGoogleUser && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <SanitizedInput
+                                                        label="Password"
+                                                        type="password"
+                                                        value={formData.password}
+                                                        onChange={(v) => { 
+                                                            setFormData({ ...formData, password: v }); 
+                                                            setFieldErrors(prev => ({ ...prev, password: '' })); 
+                                                        }}
+                                                        onFocus={() => setShowPasswordRequirements(true)}
+                                                        icon="lock"
+                                                        placeholder="••••••••"
+                                                        required
+                                                        tooltip="Min 8 characters, with uppercase, lowercase, number and symbol"
+                                                        error={fieldErrors.password}
+                                                        showPasswordToggle
+                                                        showPassword={showPassword}
+                                                        onTogglePassword={() => setShowPassword(!showPassword)}
+                                                    />
+                                                    
+                                                    <PasswordValidation 
+                                                        password={formData.password}
+                                                        onSuggest={(p) => setFormData({ ...formData, password: p })}
+                                                        showAlways={showPasswordRequirements}
+                                                    />
+                                                </div>
+
                                                 <SanitizedInput
-                                                    label="Password"
+                                                    label="Confirm Password"
                                                     type="password"
-                                                    value={formData.password}
-                                                    onChange={(v) => { 
-                                                        setFormData({ ...formData, password: v }); 
-                                                        setFieldErrors(prev => ({ ...prev, password: '' })); 
-                                                    }}
-                                                    onFocus={() => setShowPasswordRequirements(true)}
-                                                    icon="lock"
+                                                    value={formData.confirmPassword}
+                                                    onChange={(v) => { setFormData({ ...formData, confirmPassword: v }); setFieldErrors(prev => ({ ...prev, confirmPassword: '' })); }}
+                                                    icon="lock_reset"
                                                     placeholder="••••••••"
                                                     required
-                                                    tooltip="Min 8 characters, with uppercase, lowercase, number and symbol"
-                                                    error={fieldErrors.password}
+                                                    tooltip="Re-enter your password to confirm"
+                                                    error={fieldErrors.confirmPassword}
                                                     showPasswordToggle
-                                                    showPassword={showPassword}
-                                                    onTogglePassword={() => setShowPassword(!showPassword)}
-                                                />
-                                                
-                                                <PasswordValidation 
-                                                    password={formData.password}
-                                                    onSuggest={(p) => setFormData({ ...formData, password: p })}
-                                                    showAlways={showPasswordRequirements}
+                                                    showPassword={showConfirmPassword}
+                                                    onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
                                                 />
                                             </div>
-
-                                            <SanitizedInput
-                                                label="Confirm Password"
-                                                type="password"
-                                                value={formData.confirmPassword}
-                                                onChange={(v) => { setFormData({ ...formData, confirmPassword: v }); setFieldErrors(prev => ({ ...prev, confirmPassword: '' })); }}
-                                                icon="lock_reset"
-                                                placeholder="••••••••"
-                                                required
-                                                tooltip="Re-enter your password to confirm"
-                                                error={fieldErrors.confirmPassword}
-                                                showPasswordToggle
-                                                showPassword={showConfirmPassword}
-                                                onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            />
-                                        </div>
+                                        )}
 
                                         <div className="flex items-start gap-3 mt-4">
                                             <input
@@ -526,15 +619,15 @@ export default function GetStarted() {
                                         </div>
 
                                         <button
-                                            onClick={handleCreateAccount}
-                                            disabled={!formData.agreeToTerms || isOtpLoading || isRegistering || !formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.phone}
+                                            onClick={formData.isGoogleUser ? nextStep : handleCreateAccount}
+                                            disabled={!formData.agreeToTerms || isOtpLoading || isRegistering || !formData.email || (!formData.isGoogleUser && !formData.password) || !formData.firstName || !formData.lastName || !formData.phone}
                                             className="w-full h-14 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 text-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                                         >
                                             {isOtpLoading || isRegistering ? (
                                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                             ) : (
                                                 <>
-                                                    Create Account
+                                                    {formData.isGoogleUser ? 'Continue Setup' : 'Create Account'}
                                                     <span className="material-icons-round text-lg">arrow_forward</span>
                                                 </>
                                             )}
