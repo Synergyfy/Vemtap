@@ -30,7 +30,7 @@ export default function MarketplaceCTA() {
                         </p>
 
                         {/* Features Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-12">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8 mb-12">
                             {[
                                 { icon: <Package className="text-primary" size={24} />, title: 'Premium Quality', desc: 'Industrial built' },
                                 { icon: <Shield className="text-primary" size={24} />, title: 'Certified', desc: 'Global standards' },
