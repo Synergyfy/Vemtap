@@ -44,16 +44,37 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   adminDisabled: boolean;
 
+  @ApiProperty({
+    example: 'Violated terms of service',
+    description: 'Reason for disabling the form by an admin',
+    required: false,
+  })
+  @Column({ type: 'text', nullable: true })
+  adminDisabledNote: string;
+
   @ApiProperty({ example: false, description: 'Show form after lead capture' })
   @Column({ default: false })
   showAfterLeadCapture: boolean;
 
-  @ApiProperty({
-    example: 0,
-    description: 'Total number of responses received',
-  })
+  @ApiProperty({ example: 0, description: 'Total number of responses received' })
   @Column({ default: 0 })
   responseCount: number;
+
+  @ApiProperty({
+    example: 'Thank you!',
+    description: 'Title shown after form submission',
+    required: false,
+  })
+  @Column({ type: 'text', nullable: true })
+  successTitle: string;
+
+  @ApiProperty({
+    example: 'Your response has been recorded.',
+    description: 'Message shown after form submission',
+    required: false,
+  })
+  @Column({ type: 'text', nullable: true })
+  successMessage: string;
 
   @ManyToOne(() => FormTemplate, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'templateId' })

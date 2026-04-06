@@ -1,501 +1,328 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
-import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-hot-toast';
-import { fetchDeviceByCode } from '@/lib/api/devices';
+import { useDeviceTapContext } from '@/services/devices/hooks';
+import { useRecordPortalVisit } from '@/services/visits/hooks';
+import { api } from '@/lib/api';
 
-// Modular Components
+// Components
 import { VisitorLayout } from '@/components/visitor/VisitorLayout';
-import { StepSelectType } from '@/components/visitor/StepSelectType';
 import { StepScanning } from '@/components/visitor/StepScanning';
 import { StepIdentifying } from '@/components/visitor/StepIdentifying';
-import { StepForm } from '@/components/visitor/StepForm';
-import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
-import { StepOutcome } from '@/components/visitor/StepOutcome';
-import { StepSurvey } from '@/components/visitor/StepSurvey';
-import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
-import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
-import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
-import { loyaltyApi } from '@/lib/api/loyalty';
-import { api } from '@/lib/api';
-import { useBusinessForms, useSubmitBusinessFormResponse, useFormsByDevice } from '@/services/business-forms/hooks';
-import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
+import { StepForm, StepFormData } from '@/components/visitor/StepForm';
+import { StepSocialConnect } from '@/components/visitor/StepSocialConnect';
+import { StepFormList } from '@/components/visitor/StepFormList';
+import { StepDynamicForm } from '@/components/visitor/StepDynamicForm';
+import {
+    ShoppingBag,
+    Calendar,
+    Gift,
+    ChevronRight,
+    ShieldCheck,
+    Clock,
+    ClipboardList,
+    Share2,
+    Phone
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export default function DynamicTapJourneyPage() {
+// --- Sub-components for the Portal ---
+
+const PortalWelcome = ({
+    branchName,
+    logoUrl,
+    welcomeMessage,
+    onAction,
+    productCount,
+    serviceCount,
+    offerCount,
+    formCount,
+    isFirstTimeVisit,
+    isReturningUser,
+    engagement,
+    whatsappNumber
+}: {
+    branchName: string,
+    logoUrl?: string,
+    welcomeMessage?: string,
+    onAction: (id: string) => void,
+    productCount?: number,
+    serviceCount?: number,
+    offerCount?: number,
+    formCount?: number,
+    isFirstTimeVisit?: boolean,
+    isReturningUser?: boolean,
+    engagement?: any,
+    whatsappNumber?: string | null
+}) => {
+    const actions = [
+        { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
+        { id: 'service', label: 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Reservations & Slots', count: serviceCount },
+        { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
+        { id: 'whatsapp', label: 'WhatsApp', icon: Phone, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
+        { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
+        { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
+    ].filter(action => action.count && action.count > 0);
+
+    const useGrid = actions.length >= 4;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="w-full space-y-4 md:space-y-6 pt-0 pb-6"
+        >
+            <div className="flex items-center gap-4 mb-4 border-b border-slate-100/50 pb-4">
+                {logoUrl ? (
+                    <div className="size-12 md:size-16 rounded-full border-2 border-white shadow-lg overflow-hidden bg-white shrink-0 transition-transform group-hover:scale-105">
+                        <img src={logoUrl} alt={branchName} className="size-full object-cover" />
+                    </div>
+                ) : (
+                    <div className="size-12 md:size-16 rounded-full bg-primary flex items-center justify-center text-white shadow-lg shrink-0">
+                        <span className="font-headline font-black text-lg md:text-xl uppercase tracking-tighter">
+                            {branchName.charAt(0)}
+                        </span>
+                    </div>
+                )}
+                <div className="space-y-0.5 flex-grow">
+                    <h1 className="text-lg md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight">
+                        Welcome to {branchName}
+                    </h1>
+                    <p className="text-on-surface-variant text-[9px] md:text-[10px] max-w-xs font-medium opacity-70 italic line-clamp-1">
+                        {welcomeMessage || "Select an option below to get started"}
+                    </p>
+                </div>
+            </div>
+
+            <div className={cn(
+                "gap-3 md:gap-4",
+                useGrid ? "grid grid-cols-2" : "flex flex-col"
+            )}>
+                {actions.map((item, idx) => (
+                    <motion.button
+                        key={item.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + (idx * 0.1) }}
+                        onClick={() => onAction(item.id)}
+                        className={cn(
+                            "group relative flex border border-slate-50 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all text-left overflow-hidden bg-white asymmetric-leaf",
+                            useGrid
+                                ? "flex-col gap-3 md:gap-5 p-5 md:p-8"
+                                : "flex-row items-center gap-4 md:gap-5 p-4 md:p-5 w-full"
+                        )}
+                    >
+                        <div className={cn(
+                            "rounded-lg md:rounded-xl flex items-center justify-center shadow-inner shrink-0 transition-transform group-hover:scale-105",
+                            item.bg,
+                            item.color,
+                            useGrid ? "size-12 md:size-16" : "size-11 md:size-13"
+                        )}>
+                            <item.icon size={useGrid ? 24 : 20} className={useGrid ? "md:size-8" : "md:size-6"} strokeWidth={2.5} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h3 className={cn(
+                                "font-headline font-bold text-slate-900 tracking-tight leading-tight truncate",
+                                useGrid ? "text-lg md:text-xl" : "text-sm md:text-base"
+                            )}>{item.label}</h3>
+                            <p className={cn(
+                                "text-slate-400 font-bold uppercase tracking-widest mt-0.5",
+                                useGrid ? "text-[10px]" : "text-[9px] md:text-[10px]"
+                            )}>{item.desc}</p>
+                        </div>
+                        <div className={cn(
+                            "p-1 opacity-10 group-hover:opacity-100 transition-opacity",
+                            useGrid ? "absolute top-5 right-5 md:top-8 md:right-8" : "shrink-0"
+                        )}>
+                            <ChevronRight className="text-primary" size={useGrid ? 16 : 14} />
+                        </div>
+                    </motion.button>
+                ))}
+            </div>
+
+            <div className="flex justify-center gap-6 py-4 opacity-40 border-t border-slate-100/50">
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    <ShieldCheck size={12} />
+                    Verified
+                </div>
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    <Clock size={12} />
+                    Instant Service
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+// --- Main Page Component ---
+
+const DynamicTapJourneyPage = () => {
     const params = useParams();
     const router = useRouter();
     const deviceCode = params.code as string;
-    const businessSlug = params.slug as string;
+    const slug = params.slug as string;
+
     const {
         currentStep, setStep, storeName, setUserData, resetFlow,
-        getBusinessConfig, customWelcomeMessage, customWelcomeTitle, customWelcomeButton, customWelcomeTag, customSuccessMessage,
-        customPrivacyMessage, customRewardMessage, hasRewardSetup,
-        setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
-        redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
-        engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
-        businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit,
-        customSuccessTitle, customSuccessTag, customSuccessButton, activeForm, setActiveForm, setVisitSource, visitSource
+        initializeFromBusiness, branchId, logoUrl, businessId,
+        customWelcomeMessage, productCount, serviceCount, offerCount,
+        formCount, engagementSettings, selectedFormCode, setSelectedFormCode,
+        sessionToken, setSessionToken, whatsappNumber
     } = useCustomerFlowStore();
 
-    const searchParams = useSearchParams();
+    const { isAuthenticated, login } = useAuthStore();
 
-    const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
-    const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
-
-    const { user, isAuthenticated, login, access_token, logout } = useAuthStore();
-    const { lastEarnedResponse, setLastEarnedResponse } = useLoyaltyStore();
-    const config = getBusinessConfig();
-
-    const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
-
-    // Fetch forms ONLY when user reaches the outcome/success stage
-    // Relying strictly on /api/v1/visitor-forms/device/{code}
-    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS' || currentStep === 'SURVEY';
-    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
-        shouldFetchForms ? (deviceCode || '') : ''
-    );
-
-    const submitBusinessFormResponse = useSubmitBusinessFormResponse();
-
-    const selectedBusinessForm = useMemo(
-        () => deviceForms.find((f) => f.id === selectedBusinessFormId) || null,
-        [deviceForms, selectedBusinessFormId]
-    );
-
-    const isCustomer = isAuthenticated && user?.role?.toLowerCase() === 'customer';
-
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: deviceContext, isLoading: isQueryLoading, isError } = useDeviceTapContext(deviceCode);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isDownloading, setIsDownloading] = useState(false);
-    const [isSyncingReal, setIsSyncingReal] = useState(false);
-    const [isDeviceSynced, setIsDeviceSynced] = useState(false);
-    const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
-    const [attachedForms, setAttachedForms] = useState<any[]>([]);
-    const [completedFormIds, setCompletedFormIds] = useState<string[]>([]);
+    const [showInitialAuth, setShowInitialAuth] = useState(false);
+    const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
+    const portalVisitFired = useRef(false);
 
-    // 0. Early Token Expiration Check
+    const { mutate: recordPortalVisit } = useRecordPortalVisit();
+
     useEffect(() => {
-        if (isAuthenticated && access_token) {
-            try {
-                const decoded = jwtDecode<{ exp: number }>(access_token);
-                const currentTime = Date.now() / 1000;
-                if (decoded.exp < currentTime) {
-                    console.warn('[TAP JOURNEY] Session expired, logging out...');
-                    logout();
-                }
-            } catch (err) {
-                console.error('[TAP JOURNEY] Failed to decode token:', err);
-                logout();
-            }
-        }
-    }, [isAuthenticated, access_token, logout]);
-
-    // 0.1 Handle Bridge Link Initialization (WhatsApp etc.)
-    useEffect(() => {
-        const source = searchParams.get('source');
-        const v = searchParams.get('v');
-        const n = searchParams.get('n');
-
-        if (source && source !== visitSource) {
-            setVisitSource(source);
-        }
-
-        // If we have visitor ID and name from a bridge link, auto-populate user data
-        if (v && n && !userData) {
-            setUserData({ name: n, uniqueId: v });
-            
-            // If coming from WhatsApp bridge, skip straight to the welcome back screen
-            // and show the personalized greeting
-            if (source === 'whatsapp' && currentStep !== 'WELCOME_BACK') {
-                setStep('WELCOME_BACK');
-            }
-        }
-    }, [searchParams, userData, visitSource, setVisitSource, setUserData, setStep, currentStep]);
-
-    // Fetch full user details if authenticated
-    useEffect(() => {
-        const fetchProfile = async () => {
-            if (isAuthenticated && !user?.firstName) {
-                try {
-                    const { usersApi } = await import('@/lib/api/users');
-                    const fullUser = await usersApi.getMe();
-                    if (fullUser && useAuthStore.getState().access_token) {
-                        login(fullUser, useAuthStore.getState().access_token!);
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch full profile:', err);
-                }
-            }
-        };
-        fetchProfile();
-    }, [isAuthenticated, user?.firstName, login]);
-
-    // Sync visit status from the initial device fetch
-    useEffect(() => {
-        if (businessId && isCustomer) {
-            // isFirstTimeVisit comes from useCustomerFlowStore which is populated in initJourney 
-            // via fetchDeviceByCode (backend's getDeviceInfo which checks visit history if authenticated)
-            setHasVisitedBefore(!isFirstTimeVisit);
-        }
-    }, [businessId, isCustomer, isFirstTimeVisit]);
-
-    // 1. Session Initialization and Data Fetching
-    useEffect(() => {
-        const initJourney = async () => {
-            if (!deviceCode) return;
-
-            try {
-                // If we don't have business info yet, or it's a fresh page load
-                if (!businessId || deviceCode !== useCustomerFlowStore.getState().deviceCode) {
-                    let device: any = null;
-                    try {
-                        device = await fetchDeviceByCode(deviceCode);
-                    } catch (e) {
-                        console.warn('Device not found, trying business/branch lookup...');
-                    }
-
-                    if (device) {
-                        initializeFromBusiness(device);
-                        // If it's a returning visitor according to backend, record visit immediately for analytics
-                        if (device.isFirstTimeVisit === false) {
-                            recordVisit();
-                        }
-                    } else {
-                        // TRY BUSINESS LOOKUP
-                        try {
-                            const businessData = await api.get(`/public/businesses/code/${deviceCode}`);
-                            if (businessData) {
-                                // Mock a device object for initialization
-                                initializeFromBusiness({
-                                    business: businessData,
-                                    businessId: businessData.id,
-                                    code: deviceCode,
-                                } as any);
-                            } else {
-                                throw new Error('Business not found');
-                            }
-                        } catch (e3) {
-                             // TRY BRANCH LOOKUP
-                             try {
-                                const branchData = await api.get(`/public/branches/code/${deviceCode}`);
-                                if (branchData) {
-                                    initializeFromBusiness({
-                                        business: branchData.business,
-                                        businessId: branchData.businessId,
-                                        branchId: branchData.id,
-                                        branch: branchData,
-                                        code: deviceCode,
-                                    } as any);
-                                } else {
-                                    throw new Error('Branch not found');
-                                }
-                             } catch (e4) {
-                                throw new Error('Device, Business or Branch not found');
-                             }
-                        }
-                    }
-                }
-
-                // Once initialized, move to SCANNING if we are at SELECT_TYPE
-                if (useCustomerFlowStore.getState().currentStep === 'SELECT_TYPE' || useCustomerFlowStore.getState().currentStep === 'SCANNING') {
-                    setStep('SCANNING');
-                }
-            } catch (err) {
-                console.error('Journey Init Failed:', err);
-                router.push('/tap/invalid');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        initJourney();
-    }, [deviceCode, businessId, initializeFromBusiness, recordVisit, router, setStep]);
-
-    // Fetch attached forms if needed
-    useEffect(() => {
-        const fetchAttachedForms = async () => {
-            const formIds = engagementSettings?.postSubmitFormIds;
-            if (engagementSettings?.showPostSubmitForms && Array.isArray(formIds) && formIds.length > 0) {
-                try {
-                    const fetched = await Promise.all(
-                        formIds.map(async (id) => {
-                            try {
-                                const response = await api.get(`/business-forms/${id}`);
-                                return response;
-                            } catch (err) {
-                                console.error(`Failed to fetch form ${id}:`, err);
-                                return null;
-                            }
-                        })
-                    );
-                    setAttachedForms(fetched.filter(Boolean));
-                } catch (err) {
-                    console.error('Failed to fetch attached forms:', err);
-                }
-            } else {
-                setAttachedForms([]);
-            }
-        };
-
-        if (businessId) {
-            fetchAttachedForms();
-        }
-    }, [engagementSettings, businessId]);
-
-    // Live Sync for Staff Approvals
-    useEffect(() => {
-        if (redemptionStatus === 'pending' && lastRedemptionId) {
-            const request = redemptionRequests.find(r => r.id === lastRedemptionId);
-            if (request && request.status !== 'pending') {
-                if (request.status === 'approved') {
-                    setRedemptionStatus('approved');
-                    resetVisitCountAfterRedemption(rewardVisitThreshold);
-                    toast.success('Your reward has been approved! Claim it now.', { duration: 5000 });
-                } else if (request.status === 'declined') {
-                    setRedemptionStatus('declined');
-                    toast.error('Redemption declined by staff.');
-                }
-            }
-        }
-    }, [redemptionRequests, redemptionStatus, lastRedemptionId, setRedemptionStatus, resetVisitCountAfterRedemption, rewardVisitThreshold]);
-
-    const storedIdentity = useMemo(() => {
-        if (typeof window === 'undefined') return null;
-        const saved = localStorage.getItem('google_identity');
-        return saved ? JSON.parse(saved) : null;
+        setIsMounted(true);
     }, []);
 
     useEffect(() => {
-        if (storedIdentity || user || userData) {
-            setIsDeviceSynced(!!storedIdentity || !!userData || !!user);
+        if (!isMounted || !deviceContext) return;
+
+        const state = useCustomerFlowStore.getState();
+
+        const isAlreadyOnThisDevice = state.deviceCode === deviceCode && !!state.businessId;
+        const isPortalStep = ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM', 'FORMS_LIST', 'DYNAMIC_FORM', 'SOCIAL_CONNECT'].includes(state.currentStep);
+        const isReturningVisitor = deviceContext.device?.isFirstTimeVisit === false;
+
+        const shouldSkipAnimation = isAlreadyOnThisDevice || isPortalStep || isReturningVisitor;
+
+        initializeFromBusiness(deviceContext, shouldSkipAnimation);
+
+        if (shouldSkipAnimation) {
+            if (!isAuthenticated) {
+                setShowInitialAuth(true);
+            }
         }
-    }, [storedIdentity, user, userData]);
+    }, [deviceCode, deviceContext, initializeFromBusiness, isAuthenticated, isMounted]);
 
-    const handleCredentialResponse = (response: any) => {
-        try {
-            setIsSyncingReal(true);
-            const decoded = jwtDecode<{ name: string; email: string }>(response.credential);
-
-            const identity = {
-                name: decoded.name,
-                email: decoded.email,
-                phone: ''
-            };
-            localStorage.setItem('google_identity', JSON.stringify(identity));
-            setIsDeviceSynced(true);
-            setUserData(identity);
-
-            setTimeout(() => {
-                setIsSyncingReal(false);
-                setStep('FORM');
-            }, 800);
-        } catch (error) {
-            console.error("Google Sync Error:", error);
-            setStep('FORM');
+    useEffect(() => {
+        if (isMounted && isError) {
+            router.push('/tap/invalid');
         }
-    };
+    }, [isError, router, isMounted]);
 
-    // Main Stepper Logic: SCANNING -> IDENTIFYING -> (WELCOME_BACK or FORM)
     useEffect(() => {
         if (currentStep === 'SCANNING') {
-            const timer = setTimeout(() => setStep('IDENTIFYING'), 1500);
+            const timer = setTimeout(() => setStep('IDENTIFYING'), 1200);
             return () => clearTimeout(timer);
         }
-
         if (currentStep === 'IDENTIFYING') {
-            // Simulated delay for "Check Profile Cache" effect
-            const syncTimeout = setTimeout(() => {
-                // Determine if we recognize them (localStorage) OR if the backend says they are returning
-                // Actually, if backend says they are returning (!isFirstTimeVisit), we should try to show Welcome Back 
-                // even if we don't have local data (maybe they used another device, but for now we follow the "First Time" flag)
-
-                if (storedIdentity || userData || !isFirstTimeVisit || isCustomer) {
-                    setStep('WELCOME_BACK');
-                } else {
-                    setStep('FORM');
+            const timer = setTimeout(() => {
+                setStep('PORTAL_MENU');
+                if (!isAuthenticated) {
+                    setShowInitialAuth(true);
                 }
-            }, 1200);
-
-            return () => clearTimeout(syncTimeout);
+            }, 1000);
+            return () => clearTimeout(timer);
         }
-    }, [currentStep, setStep, storedIdentity, userData, isFirstTimeVisit, deviceCode, isCustomer]);
+    }, [currentStep, setStep, isAuthenticated]);
 
-    const recordLoyaltyTap = async (identity: any) => {
-        try {
-            // This monitors the "stay" and triggers rule-based point earnings
-            // Authentication is now required as backend was reverted
-            const response = await api.post(`/loyalty/tap/${deviceCode}`, {});
-            if (response && response.profile) {
-                // Refresh local profile state
-                const { fetchLoyaltyProfile } = useLoyaltyStore.getState();
-                const identifier = identity.email || identity.phone || identity.uniqueId || identity.id;
-                fetchLoyaltyProfile(identifier, branchId || '');
+    // Auto-record portal visit once when authenticated customer reaches PORTAL_MENU
+    useEffect(() => {
+        if (
+            currentStep === 'PORTAL_MENU' &&
+            isAuthenticated &&
+            deviceCode &&
+            !portalVisitFired.current
+        ) {
+            portalVisitFired.current = true;
+            const existingToken = sessionToken ?? undefined;
+            recordPortalVisit(
+                { deviceCode, sessionToken: existingToken },
+                {
+                    onSuccess: (data) => {
+                        // Store the server-confirmed token for use at checkout
+                        setSessionToken(data.sessionToken);
+                    },
+                    onError: () => {
+                        // Silently fail — visit recording is non-blocking
+                        portalVisitFired.current = false;
+                    },
+                },
+            );
+        }
+    }, [currentStep, isAuthenticated, deviceCode, sessionToken, setSessionToken, recordPortalVisit]);
 
-                console.log('Loyalty tap processed:', response);
+    const handleAction = (id: string) => {
+        if (id === 'order') {
+            router.push(`/${slug}/${deviceCode}/products`);
+        } else if (id === 'service') {
+            router.push(`/${slug}/${deviceCode}/services`);
+        } else if (id === 'offers') {
+            router.push(`/${slug}/${deviceCode}/offers`);
+        } else if (id === 'forms') {
+            setStep('FORMS_LIST');
+        } else if (id === 'engagement') {
+            setStep('SOCIAL_CONNECT');
+        } else if (id === 'whatsapp') {
+            if (whatsappNumber) {
+                const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
+                window.open(`https://wa.me/${cleanNumber}`, '_blank');
             }
-        } catch (err) {
-            console.error('Failed to record loyalty tap:', err);
+        } else {
+            router.push(`/${slug}/${deviceCode}/${id}`);
         }
     };
 
-    const onFormSubmit = async (data: any) => {
+    const onRegistrationComplete = async (data: StepFormData) => {
         setIsSubmitting(true);
         try {
-            if (!isCustomer) {
-                // Split name into firstName/lastName for backend DTO
-                const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-                const firstName = nameParts[0];
-                const lastName = nameParts.slice(1).join(' ') || ' ';
-                const defaultPassword = '123456';
+            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ') || ' ';
+            const defaultPassword = '123456';
 
-                // 1. Register user via public signup endpoint
-                await api.post(`/visitors/signup?branchId=${branchId}`, {
-                    firstName,
-                    lastName,
-                    email: data.email,
-                    phone: data.phone
-                });
+            await api.post(`/visitors/signup`, {
+                firstName,
+                lastName,
+                email: data.email,
+                phone: data.phone
+            });
 
-                // 2. Performance Silent Login to get a token (Backend uses '123456' for default signup)
-                const authResponse = await api.post('/auth/login', {
-                    identifier: data.email,
-                    password: defaultPassword
-                });
+            const authResponse = await api.post('/auth/login', {
+                identifier: data.email,
+                password: defaultPassword
+            });
 
-                if (authResponse?.access_token) {
-                    // Set the session so subsequent 'api' calls include the Bearer token
-                    useAuthStore.getState().login(authResponse.user, authResponse.access_token);
-                }
-
-                localStorage.setItem('google_identity', JSON.stringify(data));
+            if (authResponse?.access_token) {
+                login(authResponse.user, authResponse.access_token);
                 setUserData(data);
-            }
+                setShowInitialAuth(false);
 
-            const currentBusinessId = useCustomerFlowStore.getState().businessId;
-            if (currentBusinessId) {
-                // 3. Trigger the rule monitoring stay (loyalty/tap/:code)
-                // This is now authenticated via the token we just received
-                await recordLoyaltyTap(isCustomer ? user : data);
-            }
-
-            if (isCustomer) {
-                const targetRedirect = searchParams.get('redirect');
-                if (targetRedirect) {
-                    toast.success('Identify successful! Continuing to chat...');
-                    router.push(targetRedirect);
-                } else {
-                    toast.success('Visit recorded! Opening your settings...');
-                    router.push('/customer/settings?tab=security');
+                if (pendingAction) {
+                    await pendingAction();
+                    setPendingAction(null);
                 }
-            } else {
-                setStep('OUTCOME');
             }
         } catch (err: any) {
-            console.error('Registration/Login failed:', err);
-            toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
+            toast.error(err.response?.data?.message || 'Authentication failed');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleDownloadReward = () => {
-        setIsDownloading(true);
-        setTimeout(() => {
-            setIsDownloading(false);
-            setStep('FINAL_SUCCESS');
-            const link = document.createElement('a');
-            link.href = '#';
-            link.download = `VemTap_Reward_${storeName.replace(/\s+/g, '_')}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }, 2000);
-    };
-
-    const handleRedeem = () => {
-        if (!userData && !storedIdentity) {
-            toast.error('Identity not found. Please re-identify.');
-            return;
-        }
-
-        const name = userData?.name || storedIdentity?.name || 'Guest';
-        addRedemptionRequest({
-            visitorId: userData?.uniqueId || `V-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-            visitorName: name,
-            rewardTitle: customRewardMessage || "Free Reward",
-            branchId: branchId || businessId || ''
-        });
-
-        requestRedemption(customRewardMessage || "Free Reward");
-        toast.success('Redemption request sent to staff!');
-    };
-
-    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
-        if (type === 'review') {
-            window.open(engagementSettings.googleReviewUrl || engagementSettings.reviewUrl, '_blank');
-        } else if (type === 'social') {
-            // Social modal is handled inside StepOutcome
-        } else if (type === 'feedback') {
-            if (formId) {
-                const targetForm = attachedForms.find(f => f.id === formId);
-                if (targetForm) {
-                    setActiveForm(targetForm);
-                    setStep('BUSINESS_FORM');
-                } else {
-                    toast.error('Form not found');
-                }
-            } else {
-                setStep('SURVEY');
-            }
-        } else if (type === 'rewards') {
-            toast.success('Reward points added to your account!');
-        }
-    };
-
-    const handleSurveyComplete = async (answers: Record<string, any>) => {
-        if (selectedBusinessForm && businessId) {
-            try {
-                await submitBusinessFormResponse.mutateAsync({
-                    id: selectedBusinessForm.uniqueCode || selectedBusinessForm.id,
-                    payload: {
-                        answers: Object.entries(answers).map(([fieldId, value]) => ({
-                            fieldId,
-                            // Ensure value is a string for backend compatibility
-                            value: Array.isArray(value) ? value.join(', ') : String(value || ''),
-                        })),
-                    },
-                });
-            } catch (error) {
-                console.warn('Form response submission failed:', error);
-            }
-        }
-
-        console.log('Survey completed:', answers);
-        toast.success('Thank you for your feedback!');
-
-        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
-            window.location.assign(selectedBusinessForm.redirectUrl);
-            return;
-        }
-
-        setSelectedBusinessFormId(null);
-        setStep('FINAL_SUCCESS');
-    };
-
-    if (isLoading) {
+    if (isQueryLoading && !deviceContext) {
         return (
             <div className="min-h-screen bg-[#fafbfc] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="size-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">Initializing Tap</p>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">Setting up portal...</p>
                 </div>
             </div>
         );
@@ -504,182 +331,130 @@ export default function DynamicTapJourneyPage() {
     return (
         <VisitorLayout
             onReset={resetFlow}
-            onCredentialResponse={handleCredentialResponse}
-            brandColor={engagementSettings?.brandColor}
+            brandColor={useCustomerFlowStore.getState().engagementSettings?.brandColor}
         >
-            <AnimatePresence mode="wait">
-                {currentStep === 'SCANNING' && (
-                    <StepScanning storeName={storeName} />
-                )}
+            <div className={cn(
+                "relative w-full transition-all duration-700",
+                showInitialAuth ? "blur-2xl scale-[0.98] pointer-events-none opacity-60" : "blur-0 scale-100"
+            )}>
+                <AnimatePresence mode="wait">
+                    {currentStep === 'SCANNING' && <StepScanning key="scanning" storeName={storeName} />}
 
-                {currentStep === 'IDENTIFYING' && (
-                    <StepIdentifying />
-                )}
+                    {currentStep === 'IDENTIFYING' && <StepIdentifying key="identifying" />}
 
-                {currentStep === 'FORM' && (
-                    <StepForm
-                        storeName={storeName}
-                        logoUrl={logoUrl}
-                        customWelcomeMessage={customNewUserWelcomeMessage}
-                        customWelcomeTitle={customWelcomeTitle}
-                        customWelcomeTag={customNewUserWelcomeTag}
-                        customPrivacyMessage={customPrivacyMessage}
-                        submitLabel={customNewUserWelcomeButton || 'Submit'}
-                        initialData={userData || storedIdentity || user}
-                        isSyncingReal={isSyncingReal}
-                        isDeviceSynced={isDeviceSynced}
-                        isSubmitting={isSubmitting}
-                        onBack={() => setStep('SELECT_TYPE')}
-                        onSubmit={onFormSubmit}
-                    />
-                )}
+                    {currentStep === 'PORTAL_MENU' && (
+                        <PortalWelcome
+                            key="portal-menu"
+                            branchName={storeName}
+                            welcomeMessage={customWelcomeMessage || undefined}
+                            logoUrl={logoUrl || undefined}
+                            onAction={handleAction}
+                            productCount={productCount}
+                            serviceCount={serviceCount}
+                            offerCount={offerCount}
+                            formCount={formCount}
+                            isFirstTimeVisit={deviceContext?.device?.isFirstTimeVisit ?? true}
+                            isReturningUser={!!deviceContext?.device?.isReturningUser}
+                            engagement={engagementSettings}
+                            whatsappNumber={whatsappNumber}
+                        />
+                    )}
 
-                {currentStep === 'WELCOME_BACK' && (
-                    <StepWelcomeBack
-                        storeName={storeName}
-                        logoUrl={logoUrl}
-                        customWelcomeMessage={customWelcomeMessage}
-                        customWelcomeTitle={customWelcomeTitle}
-                        customWelcomeButton={customWelcomeButton}
-                        customWelcomeTag={customWelcomeTag}
-                        customPrivacyMessage={customPrivacyMessage}
-                        userData={user || userData || storedIdentity || { name: 'Visitor' }}
-                        visitCount={visitCount}
-                        rewardVisitThreshold={rewardVisitThreshold}
-                        hasRewardSetup={hasRewardSetup}
-                        redemptionStatus={redemptionStatus}
-                        showConsent={isCustomer && !hasVisitedBefore}
-                        isCustomer={isCustomer}
-                        visitSource={visitSource}
-                        onRedeem={handleRedeem}
-                        onContinue={() => {
-                            if (isCustomer) {
-                                onFormSubmit({});
-                            } else {
-                                const identity = userData || storedIdentity;
-                                if (identity) {
-                                    // If we recognize them, run them through the signup/login flow 
-                                    // to ensure they earn points and are authenticated.
-                                    onFormSubmit(identity);
-                                } else {
-                                    // Fallback if no identity found (shouldn't happen in StepWelcomeBack)
-                                    setStep('FORM');
-                                }
-                            }
-                        }}
-                        onClear={() => {
-                            localStorage.removeItem('google_identity');
-                            resetFlow();
-                            setStep('FORM');
-                        }}
-                    />
-                )}
+                    {currentStep === 'FORM' && (
+                        <StepForm
+                            key="form-step"
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            customWelcomeTitle="Join to Continue"
+                            customWelcomeMessage="Quickly share your details to proceed with your request."
+                            submitLabel="Complete Registration"
+                            isSubmitting={isSubmitting}
+                            onBack={() => {
+                                setPendingAction(null);
+                                setStep('PORTAL_MENU');
+                            }}
+                            onSubmit={onRegistrationComplete}
+                        />
+                    )}
 
-                {currentStep === 'OUTCOME' && (
-                    <StepOutcome
-                        config={config}
-                        customSuccessMessage={customSuccessMessage}
-                        customRewardMessage={customRewardMessage}
-                        hasRewardSetup={hasRewardSetup}
-                        isDownloading={isDownloading}
-                        isFormsLoading={formsLoading}
-                        onDownload={handleDownloadReward}
-                        onFinish={() => setStep('FINAL_SUCCESS')}
-                        onRestart={resetFlow}
-                        onEngagement={handleEngagement}
-                        engagementSettings={engagementSettings}
-                        attachedForms={deviceForms.map((form) => ({
-                            id: form.id,
-                            title: form.title,
-                            description: form.description,
-                        }))}
-                        socialLinks={{
-                            instagram: engagementSettings.socialUrl,
-                        }}
-                        completedFormIds={completedFormIds}
-                        customSuccessTitle={customSuccessTitle}
-                        customSuccessDescription={customSuccessMessage}
-                    />
-                )}
+                    {currentStep === 'SOCIAL_CONNECT' && (
+                        <StepSocialConnect
+                            key="social"
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            engagement={engagementSettings}
+                            onBack={() => setStep('PORTAL_MENU')}
+                        />
+                    )}
 
-                {currentStep === 'BUSINESS_FORM' && activeForm && (
-                    <StepBusinessForm
-                        form={activeForm}
-                        brandColor={engagementSettings?.brandColor}
-                        onSkip={() => setStep('OUTCOME')}
-                        onComplete={(answers: any) => {
-                            console.log('Additional Form submitted:', answers);
-                            const formId = activeForm.id;
-                            if (formId && !completedFormIds.includes(formId)) {
-                                const newCompleted = [...completedFormIds, formId];
-                                setCompletedFormIds(newCompleted);
-                                
-                                // If all attached forms are now completed, we can potentially auto-finish later
-                                // But the user wants a "Close" button first.
-                                // In onSkip (Close), we can check if all are done.
-                            }
-                        }}
-                    />
-                )}
+                    {currentStep === 'FORMS_LIST' && (
+                        <StepFormList
+                            key="forms-list"
+                            branchId={branchId || ''}
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            onSelect={(form) => {
+                                setSelectedFormCode(form.uniqueCode);
+                                setStep('DYNAMIC_FORM');
+                            }}
+                            onBack={() => setStep('PORTAL_MENU')}
+                        />
+                    )}
 
-                {currentStep === 'SURVEY' && (
-                    selectedBusinessForm ? (
-                        <StepBusinessForm
-                            form={selectedBusinessForm}
-                            brandColor={engagementSettings?.brandColor}
-                            onComplete={handleSurveyComplete}
-                            onSkip={() => {
-                                setSelectedBusinessFormId(null);
-                                setStep('FINAL_SUCCESS');
+                    {currentStep === 'DYNAMIC_FORM' && selectedFormCode && (
+                        <StepDynamicForm
+                            key={`dynamic-form-${selectedFormCode}`}
+                            formCode={selectedFormCode}
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            isAuthenticated={isAuthenticated}
+                            onRequireAuth={(action) => {
+                                setPendingAction(() => action);
+                                setShowInitialAuth(true);
+                            }}
+                            onBack={() => setStep('FORMS_LIST')}
+                            onSuccess={() => {
+                                setStep('FORMS_LIST');
                             }}
                         />
-                    ) : (
-                        <StepSurvey
-                            questions={surveyQuestions}
-                            onComplete={handleSurveyComplete}
-                            onSkip={() => setStep('FINAL_SUCCESS')}
-                        />
-                    )
-                )}
+                    )}
+                </AnimatePresence>
+            </div>
 
-                {currentStep === 'FINAL_SUCCESS' && (
-                    <StepFinalSuccess
-                        customSuccessTag={customSuccessTag}
-                        customSuccessTitle={customSuccessTitle}
-                        finalSuccessMessage={customSuccessMessage?.trim() || config.finalSuccessMessage}
-                        customSuccessButton={customSuccessButton}
-                        isFormsLoading={formsLoading}
-                        onFinish={() => {
-                            resetFlow();
-                            const targetRedirect = searchParams.get('redirect');
-                            if (targetRedirect) {
-                                router.push(targetRedirect);
-                            } else {
-                                router.push('/customer/settings?tab=security');
-                            }
-                        }}
-                        onEngagement={handleEngagement}
-                        engagementSettings={engagementSettings}
-                        attachedForms={deviceForms.map((form) => ({
-                            id: form.id,
-                            title: form.title,
-                            description: form.description,
-                        }))}
-                        socialLinks={{
-                            instagram: engagementSettings.socialUrl,
-                        }}
-                    />
+            <AnimatePresence>
+                {showInitialAuth && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/5 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-lg"
+                        >
+                            <StepForm
+                                storeName={storeName}
+                                logoUrl={logoUrl}
+                                customWelcomeTitle={pendingAction ? "Identification Required" : "One Last Step"}
+                                customWelcomeMessage={pendingAction ? "Please share your details to proceed with your submission." : "Please share your details to unlock our premium services and exclusive rewards."}
+                                submitLabel={pendingAction ? "Identify & Submit" : "Start My Experience"}
+                                isSubmitting={isSubmitting}
+                                onBack={() => {
+                                    setShowInitialAuth(false);
+                                    setPendingAction(null);
+                                }}
+                                onSubmit={onRegistrationComplete}
+                            />
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
-
-            <EarnPointsModal
-                isOpen={!!lastEarnedResponse}
-                onClose={() => setLastEarnedResponse(null)}
-                pointsEarned={lastEarnedResponse?.pointsEarned || 0}
-                newBalance={lastEarnedResponse?.newBalance || 0}
-                message={lastEarnedResponse?.message || ''}
-                breakdown={lastEarnedResponse?.breakdown}
-            />
         </VisitorLayout>
     );
-}
+};
+
+export default DynamicTapJourneyPage;

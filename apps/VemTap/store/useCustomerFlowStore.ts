@@ -11,6 +11,12 @@ export type CustomerStep =
     | 'WELCOME_BACK'
     | 'PRIVACY'
     | 'FORM'
+    | 'PORTAL_MENU'
+    | 'PORTAL_LIST'
+    | 'PORTAL_DETAIL'
+    | 'SOCIAL_CONNECT'
+    | 'FORMS_LIST'
+    | 'DYNAMIC_FORM'
     | 'OUTCOME'
     | 'SURVEY'
     | 'BUSINESS_FORM'
@@ -104,6 +110,7 @@ interface CustomerFlowState {
     } | null;
     isReturningUser: boolean;
     isFirstTimeVisit: boolean;
+    completedScanning: boolean;
     visitSource: string | null;
 
     // Dynamic Customization
@@ -130,6 +137,14 @@ interface CustomerFlowState {
     customPrivacyMessage: string | null;
     customRewardMessage: string | null;
     logoUrl: string | null;
+    whatsappNumber: string | null;
+
+    productCount: number;
+    serviceCount: number;
+    offerCount: number;
+    formCount: number;
+    selectedFormCode: string | null;
+
     redemptionStatus: 'none' | 'pending' | 'approved' | 'declined';
     lastRedemptionId: string | null;
 
@@ -157,6 +172,7 @@ interface CustomerFlowState {
     }>;
 
     redirects: Record<string, string>;
+    setSelectedFormCode: (code: string | null) => void;
 
     // Actions
     setStep: (step: CustomerStep) => void;
@@ -166,7 +182,7 @@ interface CustomerFlowState {
     setRewardSetup: (has: boolean) => void;
     setBusinessType: (type: BusinessType) => void;
     getBusinessConfig: () => BusinessConfig;
-    initializeFromBusiness: (business: any) => void;
+    initializeFromBusiness: (business: any, skipAnimation?: boolean) => void;
     updateCustomSettings: (settings: {
         welcomeMessage?: string;
         welcomeTitle?: string;
@@ -194,6 +210,10 @@ interface CustomerFlowState {
     resetVisitCountAfterRedemption: (threshold: number) => void;
     setRedirect: (id: string, url: string) => void;
     setVisitSource: (source: string | null) => void;
+
+    // Visit session tracking
+    sessionToken: string | null;
+    setSessionToken: (token: string | null) => void;
 }
 
 export const useCustomerFlowStore = create<CustomerFlowState>()(
@@ -210,6 +230,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             userData: null,
             isReturningUser: false,
             isFirstTimeVisit: true,
+            completedScanning: false,
             visitSource: null,
 
             businessId: null,
@@ -233,6 +254,14 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             customPrivacyMessage: null,
             customRewardMessage: null,
             logoUrl: null,
+            whatsappNumber: null,
+
+            productCount: 0,
+            serviceCount: 0,
+            offerCount: 0,
+            formCount: 0,
+            selectedFormCode: null,
+
             redemptionStatus: 'none',
             lastRedemptionId: null,
 
@@ -256,7 +285,10 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             ],
             redirects: {},
 
+            sessionToken: null,
+
             setActiveForm: (form) => set({ activeForm: form }),
+            setSelectedFormCode: (code: string | null) => set({ selectedFormCode: code }),
 
             setStep: (step) => set((state) => ({
             currentStep: step,
@@ -272,8 +304,10 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 isReturningUser: false,
                 visitCount: 1,
                 showFeedback: false,
-                businessId: null,
-                branchId: null,
+                // Preserving context to avoid redundant fetches
+                // businessId: null,
+                // branchId: null,
+                // deviceCode: null,
                 customWelcomeMessage: null,
                 customWelcomeTitle: null,
                 customWelcomeButton: null,
@@ -295,7 +329,18 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 logoUrl: businessConfigs[type].logoUrl || null
             }),
             getBusinessConfig: () => businessConfigs[get().businessType],
-            initializeFromBusiness: (device) => {
+            initializeFromBusiness: (device, skipAnimation) => {
+                const state = get();
+                // Calculate if we should skip animation
+                // 1. Explicitly requested via skipAnimation
+                // 2. Returning visitor according to backend
+                // 3. User is already on this device and at a portal step
+                const isReturning = !(device.isFirstTimeVisit ?? true);
+                const isAlreadyActiveOnThisDevice = state.deviceCode === device.code && 
+                    ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM'].includes(state.currentStep);
+                
+                const finalSkipAnimation = skipAnimation || isReturning || isAlreadyActiveOnThisDevice;
+
                 const b = device.business || {};
                 const branch = device.branch || {};
                 const hasEngagement = !!device.owner?.engagement;
@@ -322,9 +367,14 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     customPrivacyMessage: branch.privacyMessage || b.privacyMessage,
                     customRewardMessage: branch.rewardMessage || b.rewardMessage,
                     hasRewardSetup: branch.rewardEnabled ?? b.rewardEnabled,
-                    logoUrl: branch.logoUrl || b.logoUrl,
+                    rewardVisitThreshold: branch.rewardVisitThreshold ?? b.rewardVisitThreshold ?? 5,
+                    whatsappNumber: branch.whatsappNumber ?? null,
+                    productCount: branch.productCount || 0,
+                    serviceCount: branch.serviceCount || 0,
+                    offerCount: branch.offerCount || 0,
+                    formCount: branch.formCount || 0,
                     isFirstTimeVisit: device.isFirstTimeVisit ?? true,
-                    isReturningUser: !(device.isFirstTimeVisit ?? true),
+                    isReturningUser: isReturning,
                     engagementSettings: {
                         showReview: hasEngagement
                             ? (branch.showReview ?? b.showReview ?? ownerEngagement.showReview ?? true)
@@ -336,17 +386,17 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                             ? (branch.showFeedback ?? b.showFeedback ?? ownerEngagement.showFeedback ?? true)
                             : (branch.showFeedback ?? b.showFeedback ?? true),
                         showPostSubmitForms: ownerEngagement.showPostSubmitForms ?? true,
-                        reviewUrl: branch.reviewUrl || b.reviewUrl || ownerEngagement.reviewUrl || '',
-                        socialUrl: branch.instagramUrl || b.instagramUrl || b.socialUrl || ownerEngagement.socialUrl || '',
-                        instagram: branch.instagramUrl || b.instagramUrl || ownerEngagement.instagram || '',
-                        twitter: branch.twitterUrl || b.twitterUrl || ownerEngagement.twitter || '',
-                        facebook: branch.facebookUrl || b.facebookUrl || ownerEngagement.facebook || '',
-                        linkedin: branch.linkedinUrl || b.linkedinUrl || ownerEngagement.linkedin || '',
+                        reviewUrl: ((v: any) => typeof v === 'string' ? v : (v?.url || v?.link || ''))(branch.reviewUrl || b.reviewUrl || ownerEngagement.reviewUrl || branch.engagement?.reviewUrl || ''),
+                        socialUrl: ((v: any) => typeof v === 'string' ? v : (v?.url || v?.link || ''))(branch.instagramUrl || b.instagramUrl || b.socialUrl || ownerEngagement.socialUrl || branch.engagement?.instagram || ''),
+                        instagram: ((v: any) => typeof v === 'string' ? v : (v?.url || v?.link || ''))(branch.instagramUrl || b.instagramUrl || ownerEngagement.instagram || branch.engagement?.instagram || ''),
+                        twitter: ((v: any) => typeof v === 'string' ? v : (v?.url || v?.link || ''))(branch.twitterUrl || b.twitterUrl || ownerEngagement.twitter || branch.engagement?.twitter || ''),
+                        facebook: ((v: any) => typeof v === 'string' ? v : (v?.url || v?.link || ''))(branch.facebookUrl || b.facebookUrl || ownerEngagement.facebook || branch.engagement?.facebook || ''),
+                        linkedin: ((v: any) => typeof v === 'string' ? v : (v?.url || v?.link || ''))(branch.linkedinUrl || b.linkedinUrl || ownerEngagement.linkedin || branch.engagement?.linkedin || ''),
                         postSubmitFormIds: Array.isArray(ownerEngagement.postSubmitFormIds)
                             ? ownerEngagement.postSubmitFormIds
-                            : [],
+                            : (Array.isArray(branch.engagement?.postSubmitFormIds) ? branch.engagement.postSubmitFormIds : []),
                     },
-                    currentStep: 'SCANNING'
+                    currentStep: finalSkipAnimation ? (['SELECT_TYPE', 'SCANNING', 'IDENTIFYING'].includes(state.currentStep) ? 'PORTAL_MENU' : state.currentStep) : 'SCANNING'
                 });
             },
             updateCustomSettings: (settings) => set((state) => ({
@@ -394,4 +444,5 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 redirects: { ...state.redirects, [id]: url }
             })),
             setVisitSource: (source) => set({ visitSource: source }),
+            setSessionToken: (token) => set({ sessionToken: token }),
         }), { name: 'customer-flow-storage' }));

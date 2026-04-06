@@ -9,7 +9,12 @@ import {
 } from '@nestjs/common';
 import { DevicesService } from './devices.service';
 import { VisitorsService } from '../visitors/visitors.service';
+import { CatalogueService } from '../catalogue/catalogue.service';
+import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
+import { CatalogueItemType } from '../catalogue/entities/catalogue-item.entity';
+import { FormsService } from '../forms/forms.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Device Taps')
@@ -18,9 +23,13 @@ export class DeviceTapController {
   constructor(
     private readonly devicesService: DevicesService,
     private readonly visitorsService: VisitorsService,
+    private readonly catalogueService: CatalogueService,
+    private readonly catalogueOfferService: CatalogueOfferService,
+    private readonly formsService: FormsService,
   ) {}
 
   @Public()
+  @AllowPending()
   @Get('context/:code')
   @ApiOperation({ summary: 'Get device and business context for a tap' })
   @ApiResponse({
@@ -38,6 +47,14 @@ export class DeviceTapController {
       throw new BadRequestException('Device is not linked to any branch');
     }
 
+    const branchId = deviceWithRelations.branch.id;
+    const [productCount, serviceCount, offerCount, forms] = await Promise.all([
+      this.catalogueService.countItemsByType(branchId, CatalogueItemType.PRODUCT),
+      this.catalogueService.countItemsByType(branchId, CatalogueItemType.SERVICE),
+      this.catalogueOfferService.countOffers(branchId),
+      this.formsService.getFormsForVisitor(branchId),
+    ]);
+
     return {
       device: {
         id: deviceWithRelations.id,
@@ -50,7 +67,13 @@ export class DeviceTapController {
         name: deviceWithRelations.branch.name,
         welcomeMessage: deviceWithRelations.branch.welcomeMessage,
         successMessage: deviceWithRelations.branch.successMessage,
+        whatsappNumber: deviceWithRelations.branch.whatsappNumber,
         logoUrl: deviceWithRelations.branch.logoUrl,
+        engagement: deviceWithRelations.branch.engagement,
+        productCount,
+        serviceCount,
+        offerCount,
+        formCount: forms.length,
       },
       business: {
         id: deviceWithRelations.branch.business.id,
@@ -58,32 +81,5 @@ export class DeviceTapController {
         logoUrl: deviceWithRelations.branch.business.logoUrl,
       },
     };
-  }
-
-  @Public()
-  @Post('record/:code')
-  @ApiOperation({
-    summary: 'Record a visit for an anonymous or identified user',
-  })
-  async recordVisit(
-    @Param('code') code: string,
-    @Body()
-    dto: { visitorId?: string; name?: string; email?: string; phone?: string },
-  ) {
-    const device = await this.devicesService.findByCode(code);
-    if (!device) {
-      throw new NotFoundException('Device not found');
-    }
-
-    // If visitorId is provided, we use recordVisit
-    if (dto.visitorId) {
-      return this.visitorsService.recordVisit(dto.visitorId, code);
-    }
-
-    // Otherwise we might want to create a temporary visit or wait for signup
-    // For now, let's just return success if it's an anonymous tap context
-    // The actual visit record usually happens after identity is established in user-step
-
-    return { message: 'Tap recognized', deviceCode: code };
   }
 }

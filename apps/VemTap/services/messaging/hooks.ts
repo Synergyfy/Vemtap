@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useMemo } from 'react';
 import {
     Campaign,
     Channel,
@@ -22,6 +23,10 @@ import {
 
 import { BusinessCredit } from '@/lib/api/credit-plans';
 
+// --- Constants ---
+const STALE_TIME = 30 * 1000; // 30 seconds
+const GC_TIME = 5 * 60 * 1000; // 5 minutes
+
 // ─── Credits ─────────────────────────────────────────────────────────────
 
 export const useMyCredits = () => {
@@ -41,6 +46,9 @@ export const useMyCredits = () => {
         },
         refetchInterval: 60000,
         enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -105,10 +113,12 @@ function useResolvedBranchParams(branchId?: string): { branchId?: string; allBra
     const { activeBranchId: urlBranchId } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
     
-    if (resolvedBranchId === 'all' || !resolvedBranchId) {
-        return { allBranches: true };
-    }
-    return { branchId: resolvedBranchId };
+    return useMemo(() => {
+        if (resolvedBranchId === 'all' || !resolvedBranchId) {
+            return { allBranches: true, branchId: undefined };
+        }
+        return { branchId: resolvedBranchId, allBranches: false };
+    }, [resolvedBranchId]);
 }
 
 const getWriteBranchId = ({
@@ -142,7 +152,11 @@ export const useMessagingAnalytics = (channel?: Channel) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+        [role, businessId, resolvedBranchId, allBranches]
+    );
 
     return useQuery<MessagingAnalytics, Error>({
         queryKey: ['messaging', 'analytics', businessId || 'no-biz', role, resolvedBranchId, allBranches, channel, contextParams.toString()],
@@ -172,6 +186,9 @@ export const useMessagingAnalytics = (channel?: Channel) => {
             } as MessagingAnalytics;
         },
         enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -182,7 +199,11 @@ export const useMessagingCampaigns = () => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+        [role, businessId, resolvedBranchId, allBranches]
+    );
 
     return useQuery<Campaign[], Error>({
         queryKey: ['messaging', 'campaigns', businessId || 'no-biz', role, resolvedBranchId, allBranches, contextParams.toString()],
@@ -203,6 +224,9 @@ export const useMessagingCampaigns = () => {
             }));
         },
         enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -246,7 +270,11 @@ export const useMessagingTemplates = (channel?: Channel) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
     const isAdmin = String(role || '').toLowerCase() === 'admin';
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+        [role, businessId, resolvedBranchId, allBranches]
+    );
 
     return useQuery<Template[], Error>({
         queryKey: ['messaging', 'templates', businessId, role, resolvedBranchId, allBranches, channel, contextParams.toString()],
@@ -271,6 +299,9 @@ export const useMessagingTemplates = (channel?: Channel) => {
         },
         enabled: isAdmin || !!businessId,
         placeholderData: [] as Template[],
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -291,7 +322,11 @@ export const useInboxThreads = (channel: Channel) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+        [role, businessId, resolvedBranchId, allBranches]
+    );
 
     return useQuery<InboxThread[], Error>({
         queryKey: ['messaging', 'inbox', channel, businessId || 'no-biz', role, resolvedBranchId, allBranches, contextParams.toString()],
@@ -310,6 +345,9 @@ export const useInboxThreads = (channel: Channel) => {
             }));
         },
         enabled: isAuthenticated && !!channel,
+        staleTime: 5000, // Faster refresh for inbox
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -318,7 +356,11 @@ export const useThreadMessages = (threadId: string) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+        [role, businessId, resolvedBranchId, allBranches]
+    );
 
     return useQuery<ThreadMessage[], Error>({
         queryKey: ['messaging', 'thread', threadId, businessId || 'no-biz', role, resolvedBranchId, allBranches, contextParams.toString()],
@@ -334,12 +376,15 @@ export const useThreadMessages = (threadId: string) => {
             }));
         },
         enabled: isAuthenticated && !!threadId,
+        staleTime: 2000, // Very fast for active chat
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
 export const useReplyToThread = (threadId: string) => {
     const queryClient = useQueryClient();
-    return useMutation<any, Error, { content: string }>({
+    return useMutation<any, Error, { content: string; metadata?: any }>({
         mutationFn: async (dto) =>
             await api.post(`/messaging/inbox/threads/${threadId}/reply`, dto),
         onSuccess: () => {
@@ -355,22 +400,29 @@ export const useAutomations = (branchId?: string) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches }),
+        [role, businessId, targetBranchId, allBranches]
+    );
 
     return useQuery<AutomationRule[], Error>({
         queryKey: ['messaging', 'automations', businessId || 'no-biz', role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
-            return await api.get(`/automations?${params.toString()}`);
+            return await api.get(`/messaging/automations?${params.toString()}`);
         },
         enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
 export const useCreateAutomation = () => {
     const queryClient = useQueryClient();
     return useMutation<AutomationRule, Error, CreateAutomationRequest>({
-        mutationFn: async (dto) => await api.post('/automations', dto),
+        mutationFn: async (dto) => await api.post('/messaging/automations', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
@@ -380,7 +432,7 @@ export const useCreateAutomation = () => {
 export const useUpdateAutomation = () => {
     const queryClient = useQueryClient();
     return useMutation<AutomationRule, Error, { id: string; data: UpdateAutomationRequest }>({
-        mutationFn: async ({ id, data }) => await api.patch(`/automations/${id}`, data),
+        mutationFn: async ({ id, data }) => await api.patch(`/messaging/automations/${id}`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
@@ -390,7 +442,7 @@ export const useUpdateAutomation = () => {
 export const useDeleteAutomation = () => {
     const queryClient = useQueryClient();
     return useMutation<void, Error, string>({
-        mutationFn: async (id) => await api.delete(`/automations/${id}`),
+        mutationFn: async (id) => await api.delete(`/messaging/automations/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
@@ -402,7 +454,11 @@ export const useAutomationLogs = (branchId?: string, limit = 50, offset = 0) => 
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches }),
+        [role, businessId, targetBranchId, allBranches]
+    );
 
     return useQuery<{ data: AutomationLog[]; total: number }, Error>({
         queryKey: ['messaging', 'automation-logs', businessId || 'no-biz', role, targetBranchId, allBranches, limit, offset, contextParams.toString()],
@@ -410,9 +466,12 @@ export const useAutomationLogs = (branchId?: string, limit = 50, offset = 0) => 
             const params = new URLSearchParams(contextParams);
             params.append('limit', limit.toString());
             params.append('offset', offset.toString());
-            return await api.get(`/automations/logs?${params.toString()}`);
+            return await api.get(`/messaging/automations/logs?${params.toString()}`);
         },
         enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -421,8 +480,11 @@ export const useAutomationLogDetails = (sessionId: string) => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery<AutomationLog, Error>({
         queryKey: ['messaging', 'automation-log-details', sessionId, businessId || 'no-biz'],
-        queryFn: async () => await api.get(`/automations/logs/${sessionId}`),
+        queryFn: async () => await api.get(`/messaging/automations/logs/${sessionId}`),
         enabled: isAuthenticated && !!sessionId,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -431,7 +493,11 @@ export const useAutomationPerformance = (branchId?: string, startDate?: string, 
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches }),
+        [role, businessId, targetBranchId, allBranches]
+    );
 
     return useQuery<AutomationPerformance, Error>({
         queryKey: ['messaging', 'automation-performance', businessId || 'no-biz', role, targetBranchId, allBranches, startDate, endDate, contextParams.toString()],
@@ -439,9 +505,12 @@ export const useAutomationPerformance = (branchId?: string, startDate?: string, 
             const params = new URLSearchParams(contextParams);
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
-            return await api.get(`/automations/performance?${params.toString()}`);
+            return await api.get(`/messaging/automations/performance?${params.toString()}`);
         },
         enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -450,22 +519,29 @@ export const useWhatsAppConnectionStatus = (branchId?: string) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches }),
+        [role, businessId, targetBranchId, allBranches]
+    );
 
     return useQuery<{ status: string; provider: string; updatedAt: string }, Error>({
         queryKey: ['messaging', 'whatsapp-status', businessId || 'no-biz', role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
-            return await api.get(`/automations/connection-status?${params.toString()}`);
+            return await api.get(`/messaging/automations/connection-status?${params.toString()}`);
         },
         enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
 // ─── Segmentation ────────────────────────────────────────────────────────────
 import { Segment } from './types';
 
-export const useSegments = (branchId?: string) => {
+export const useSegments = (branchId?: string, enabled: boolean = true) => {
     const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     return useQuery<Segment[], Error>({
         queryKey: ['messaging', 'segments', targetBranchId, allBranches],
@@ -474,6 +550,10 @@ export const useSegments = (branchId?: string) => {
             if (targetBranchId && targetBranchId !== 'all') params.append('branchId', targetBranchId);
             return await api.get(`/segments?${params.toString()}`);
         },
+        enabled,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -482,6 +562,9 @@ export const useSegmentDetails = (segmentId: string) => {
         queryKey: ['messaging', 'segments', segmentId],
         queryFn: async () => await api.get(`/segments/${segmentId}`),
         enabled: !!segmentId,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
 };
 

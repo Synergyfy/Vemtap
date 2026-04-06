@@ -7,7 +7,7 @@ export const useMessagingBranch = () => {
     const user = useAuthStore((state) => state.user);
     const isCustomer = user?.role?.toLowerCase() === 'customer';
     const { activeBranchId, setActiveBranch } = useActiveBranch();
-    const { data: branches = [] } = useBranches();
+    const { data: branches = [] } = useBranches(!isCustomer);
 
     useEffect(() => {
         if (isCustomer) return;

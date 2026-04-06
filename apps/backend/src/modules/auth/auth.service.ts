@@ -23,6 +23,8 @@ import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { CheckStatusDto, CheckStatusResponseDto } from './dto/check-status.dto';
+import { UpdateEmailDto } from './dto/update-email.dto';
 
 @Injectable()
 export class AuthService {
@@ -339,7 +341,6 @@ export class AuthService {
       existingUser.lastName = registrationData.lastName;
       existingUser.password = hashedPassword;
       existingUser.phone = registrationData.phone;
-      existingUser.engagement = dto.engagement;
       user = await this.usersService.create(existingUser);
     } else {
       user = await this.usersService.create({
@@ -350,7 +351,6 @@ export class AuthService {
         role: UserRole.OWNER,
         status: UserStatus.PENDING,
         phone: registrationData.phone,
-        engagement: dto.engagement,
       });
     }
 
@@ -381,6 +381,7 @@ export class AuthService {
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
           isRegistered: dto.isRegistered,
+          engagement: dto.engagement,
         });
       } else {
         // Update existing business if needed
@@ -400,6 +401,7 @@ export class AuthService {
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
           isRegistered: dto.isRegistered,
+          engagement: dto.engagement,
         } as any);
       }
 
@@ -577,5 +579,74 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async checkUserStatus(dto: CheckStatusDto): Promise<CheckStatusResponseDto> {
+    const user = await this.usersService.findByIdentifier(dto.identifier);
+    
+    if (!user) {
+      return { exists: false };
+    }
+
+    const hasRealEmail = !!(user.email && !user.email.endsWith('@vemtap.dummy'));
+
+    return {
+      exists: true,
+      role: user.role,
+      isPasswordChanged: user.isPasswordChanged,
+      hasRealEmail,
+      email: hasRealEmail ? user.email : undefined,
+    };
+  }
+
+  async completeCustomerSetup(dto: UpdateEmailDto) {
+    const user = await this.usersService.findByIdentifier(dto.identifier);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.role !== UserRole.CUSTOMER) {
+      throw new BadRequestException('Action only allowed for customers');
+    }
+
+    // Check if email is already taken
+    const existingEmail = await this.usersService.findByEmail(dto.email);
+    if (existingEmail && existingEmail.id !== user.id) {
+      throw new ConflictException('Email already exists');
+    }
+
+    // Update email
+    user.email = dto.email.toLowerCase();
+    await this.usersService.create(user);
+
+    // Send welcome email with default password
+    const defaultPassword = '123456';
+    await this.mailService.sendWelcomeEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      defaultPassword
+    ).catch(err => console.error('Failed to send welcome email:', err));
+
+    return { message: 'Setup completed and welcome email sent' };
+  }
+
+  async resendDefaultPassword(identifier: string) {
+    const user = await this.usersService.findByIdentifier(identifier);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.isPasswordChanged) {
+      throw new BadRequestException('Password has already been changed. Please use the reset password feature.');
+    }
+
+    if (!user.email || user.email.endsWith('@vemtap.dummy')) {
+      throw new BadRequestException('No real email associated with this account. Please complete setup first.');
+    }
+
+    const defaultPassword = '123456';
+    await this.mailService.sendWelcomeEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      defaultPassword
+    );
+
+    return { message: 'Default password resent successfully' };
   }
 }

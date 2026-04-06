@@ -199,7 +199,7 @@ export interface AutomationRule {
 }
 
 export interface CreateAutomationRequest {
-    businessId: string;
+    businessId?: string;
     branchId?: string;
     name: string;
     triggerType: TriggerType;

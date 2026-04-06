@@ -27,6 +27,7 @@ export interface PointTransaction {
   loyaltyProfileId: string;
   transactionType: PointTransactionType;
   pointsAmount: number;
+  amount?: number;
   reason: string;
   referenceId?: string;
   metadata?: Record<string, any>;

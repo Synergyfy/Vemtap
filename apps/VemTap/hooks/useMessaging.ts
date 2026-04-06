@@ -34,10 +34,16 @@ export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string, 
   return useQuery({
     queryKey: ['chat-threads', channel, branchId, isCustomer],
     queryFn: async () => {
-      const endpoint = isCustomer 
+      let endpoint = isCustomer 
         ? `/customer/messaging/threads`
-        : `/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`;
-      const data = await api.get(endpoint);
+        : `/messaging/inbox/${channel}`;
+      
+      const params = new URLSearchParams();
+      if (!isCustomer && branchId) params.append('branchId', branchId);
+      if (isCustomer && branchId) params.append('branchId', branchId);
+      
+      const qs = params.toString();
+      const data = await api.get(`${endpoint}${qs ? `?${qs}` : ''}`);
       return (data as any[]).map(t => normalizeThread(t, isCustomer));
     },
     enabled: isCustomer || !!branchId || channel === 'IN_HOUSE',
@@ -60,11 +66,11 @@ export const useThreadMessages = (threadId: string, branchId?: string, isCustome
 export const useSendReply = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ threadId, content, branchId, replyToId }: { threadId: string; content: string; branchId?: string; replyToId?: string }) => {
+    mutationFn: ({ threadId, content, branchId, replyToId, metadata }: { threadId: string; content: string; branchId?: string; replyToId?: string; metadata?: any }) => {
       const endpoint = isCustomer
         ? `/customer/messaging/threads/${threadId}/reply`
         : `/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`;
-      return api.post(endpoint, { content, replyToId });
+      return api.post(endpoint, { content, replyToId, metadata });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.threadId] });
@@ -164,11 +170,11 @@ export const useDeleteMessage = (isCustomer: boolean = false) => {
 
 // --- Template Hooks ---
 
-export const useChatTemplates = (branchId?: string) => {
+export const useChatTemplates = (branchId?: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: ['chat-templates', branchId],
     queryFn: () => api.get(`/messaging/templates${branchId ? `?branchId=${branchId}` : ''}`),
-    enabled: !!branchId,
+    enabled: !!branchId && enabled,
   });
 };
 

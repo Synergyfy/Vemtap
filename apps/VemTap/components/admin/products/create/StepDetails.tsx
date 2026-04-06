@@ -9,11 +9,11 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { notify } from '@/lib/notify';
+import { ProductCategory } from '@/types/marketplace';
 
 const stepDetailsSchema = z.object({
     title: z.string().min(3, 'Product title must be at least 3 characters.'),
     productTypeId: z.string().min(1, 'Please select a category.'),
-    nfcType: z.string().min(1, 'Please select an NFC type.'),
     sku: z.string().min(2, 'SKU is required.'),
     tag: z.string().min(2, 'Promo tag is required.'),
     tagColor: z.string().min(1, 'Please choose a tag color.'),
@@ -31,7 +31,6 @@ export default function StepDetails() {
         defaultValues: {
             title: formData.title,
             productTypeId: formData.productTypeId,
-            nfcType: formData.nfcType,
             sku: formData.sku,
             tag: formData.tag,
             tagColor: formData.tagColor,
@@ -42,19 +41,17 @@ export default function StepDetails() {
     React.useEffect(() => {
         setValue('title', formData.title);
         setValue('productTypeId', formData.productTypeId);
-        setValue('nfcType', formData.nfcType);
         setValue('sku', formData.sku);
         setValue('tag', formData.tag);
         setValue('tagColor', formData.tagColor);
         setValue('description', formData.description);
-    }, [formData.title, formData.productTypeId, formData.nfcType, formData.sku, formData.tag, formData.tagColor, formData.description, setValue]);
+    }, [formData.title, formData.productTypeId, formData.sku, formData.tag, formData.tagColor, formData.description, setValue]);
 
     React.useEffect(() => {
         const subscription = watch((values) => {
             updateFormData({
                 title: values.title ?? '',
                 productTypeId: values.productTypeId ?? '',
-                nfcType: values.nfcType ?? 'nfc',
                 sku: values.sku ?? '',
                 tag: values.tag ?? '',
                 tagColor: values.tagColor ?? '',
@@ -90,12 +87,12 @@ export default function StepDetails() {
     });
 
     React.useEffect(() => {
-        if (!formData.productTypeId || !formData.nfcType) return;
+        if (!formData.productTypeId) return;
 
-        const selectedType = types?.find((t: any) => t.id === formData.productTypeId);
+        const selectedType = (types as ProductCategory[])?.find((t) => t.id === formData.productTypeId);
         if (!selectedType) return;
 
-        const currentDeps = `${formData.productTypeId}-${formData.nfcType}-${categoryProductCount}`;
+        const currentDeps = `${formData.productTypeId}-${categoryProductCount}`;
 
         if (currentDeps !== lastAutoSkuDeps) {
             const categorySlug = selectedType.name.trim().toLowerCase().replace(/\s+/g, '-');
@@ -107,9 +104,14 @@ export default function StepDetails() {
             setValue('sku', generatedSku, { shouldValidate: true });
             setLastAutoSkuDeps(currentDeps);
         }
-    }, [formData.productTypeId, formData.nfcType, types, categoryProductCount, updateFormData, setValue, lastAutoSkuDeps]);
+    }, [formData.productTypeId, types, categoryProductCount, updateFormData, setValue, lastAutoSkuDeps]);
 
     const onSubmit = () => {
+        const invalidStep = formData.howToSteps.find(step => !step.title.trim() || !step.description.trim());
+        if (invalidStep) {
+            notify.warning('Please complete all "How to Use" steps with a title and description, or remove empty steps.');
+            return;
+        }
         nextStep();
     };
 
@@ -138,31 +140,28 @@ export default function StepDetails() {
                             </div>
 
                             <div className="col-span-1">
-                                <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="category">Category</label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-bold text-text-secondary" htmlFor="category">Category</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open('/admin/products/types', '_blank')}
+                                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline flex items-center gap-1"
+                                    >
+                                        <Plus size={12} /> New
+                                    </button>
+                                </div>
                                 <select
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
                                     id="productTypeId"
                                     {...register('productTypeId')}
                                 >
                                     <option value="" disabled>Select Category</option>
-                                    {types?.map((type: any) => (
+                                    {(types as ProductCategory[])?.map((type) => (
                                         <option key={type.id} value={type.id}>{type.name}</option>
                                     ))}
                                     {(!types || types.length === 0) && (
                                         <option value="">No Categories Available</option>
                                     )}
-                                </select>
-                            </div>
-
-                            <div className="col-span-1">
-                                <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="nfcType">NFC Type</label>
-                                <select
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
-                                    id="nfcType"
-                                    {...register('nfcType')}
-                                >
-                                    <option value="nfc">Standard NFC (nfc)</option>
-                                    <option value="nfce">NFC Elite (nfce)</option>
                                 </select>
                             </div>
 

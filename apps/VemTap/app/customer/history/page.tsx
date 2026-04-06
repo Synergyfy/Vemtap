@@ -53,19 +53,19 @@ export default function CustomerHistoryPage() {
             {/* Visits Timeline */}
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full flex flex-row md:table">
-                        <thead className="bg-gray-50/50 border-r border-gray-100 md:border-r-0 md:border-b flex flex-col md:table-header-group min-w-[140px] shrink-0">
-                            <tr className="flex flex-col md:table-row h-full">
-                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center border-b border-gray-200 md:border-none">Venue & Identity</th>
-                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center border-b border-gray-200 md:border-none">Date & Time</th>
-                                <th className="text-left md:text-right py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center border-b border-gray-200 md:border-none">Points</th>
-                                <th className="text-left md:text-center py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center">Actions</th>
+                    <table className="w-full">
+                        <thead className="bg-gray-50/50 border-b">
+                            <tr>
+                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Venue & Identity</th>
+                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Date & Time</th>
+                                <th className="text-left md:text-right py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Points</th>
+                                <th className="text-center py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-x md:divide-x-0 md:divide-y divide-gray-50 flex flex-row overflow-x-auto md:table-row-group flex-1">
+                        <tbody className="divide-y divide-gray-50">
                             {isLoading && filteredTransactions.length === 0 ? (
-                                <tr className="flex flex-col md:table-row w-full flex-1">
-                                    <td colSpan={4} className="py-20 text-center flex-1 flex flex-col justify-center">
+                                <tr>
+                                    <td colSpan={4} className="py-20 text-center">
                                         <Loader2 className="animate-spin mx-auto text-primary" size={32} />
                                         <p className="text-sm text-text-secondary mt-4 font-bold">Retrieving your activity log...</p>
                                     </td>
@@ -77,10 +77,10 @@ export default function CustomerHistoryPage() {
                                     return (
                                         <tr
                                             key={tx.id}
-                                            className="hover:bg-gray-50/50 transition-all group cursor-pointer flex flex-col md:table-row min-w-[260px] md:min-w-0"
+                                            className="hover:bg-gray-50/50 transition-all group cursor-pointer"
                                             onClick={() => setSelectedVisit(tx)}
                                         >
-                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell border-b border-gray-100 md:border-none">
+                                            <td className="py-4 md:py-6 px-4 md:px-8">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-gray-50 flex items-center justify-center text-text-secondary group-hover:bg-primary group-hover:text-white transition-all duration-300">
                                                         <Icon size={20} />
@@ -91,7 +91,7 @@ export default function CustomerHistoryPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell border-b border-gray-100 md:border-none">
+                                            <td className="py-4 md:py-6 px-4 md:px-8">
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-1.5 text-xs text-text-main font-bold">
                                                         <Calendar size={12} className="text-primary" />
@@ -103,15 +103,15 @@ export default function CustomerHistoryPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell md:text-right border-b border-gray-100 md:border-none">
+                                            <td className="py-4 md:py-6 px-4 md:px-8 text-right">
                                                 <p className={cn(
                                                     "font-display font-bold text-sm",
-                                                    tx.pointsAmount > 0 ? "text-green-600" : "text-orange-600"
+                                                    (tx.amount ?? tx.pointsAmount ?? 0) > 0 ? "text-green-600" : "text-orange-600"
                                                 )}>
-                                                    {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount.toLocaleString()} pts
+                                                    {(tx.amount ?? tx.pointsAmount ?? 0) > 0 ? '+' : ''}{(tx.amount ?? tx.pointsAmount ?? 0).toLocaleString()} pts
                                                 </p>
                                             </td>
-                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell">
+                                            <td className="py-4 md:py-6 px-4 md:px-8 text-center">
                                                 <button className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all">
                                                     <MoreVertical size={18} />
                                                 </button>
@@ -120,9 +120,9 @@ export default function CustomerHistoryPage() {
                                     );
                                 })
                             ) : (
-                                <tr className="flex flex-col md:table-row w-full flex-1">
-                                    <td colSpan={4} className="py-20 text-center flex flex-1 flex-col justify-center items-center text-text-secondary">
-                                        <p className="text-sm font-medium">No recent activity found.</p>
+                                <tr>
+                                    <td colSpan={4} className="py-20 text-center">
+                                        <p className="text-sm font-medium text-text-secondary">No recent activity found.</p>
                                     </td>
                                 </tr>
                             )}
@@ -169,9 +169,9 @@ export default function CustomerHistoryPage() {
                                     <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Points Change</p>
                                     <p className={cn(
                                         "text-xl font-display font-bold",
-                                        selectedVisit.pointsAmount > 0 ? "text-green-600" : "text-orange-600"
+                                        (selectedVisit.amount ?? selectedVisit.pointsAmount ?? 0) > 0 ? "text-green-600" : "text-orange-600"
                                     )}>
-                                        {selectedVisit.pointsAmount > 0 ? '+' : ''}{selectedVisit.pointsAmount} pts
+                                        {(selectedVisit.amount ?? selectedVisit.pointsAmount ?? 0) > 0 ? '+' : ''}{(selectedVisit.amount ?? selectedVisit.pointsAmount ?? 0).toLocaleString()} pts
                                     </p>
                                 </div>
                                 <div className="space-y-1 text-right">

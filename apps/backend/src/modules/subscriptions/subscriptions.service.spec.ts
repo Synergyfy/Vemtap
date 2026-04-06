@@ -13,8 +13,12 @@ import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { Device } from '../devices/entities/device.entity';
 import { CreditService } from '../messaging/services/credit.service';
+import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -111,6 +115,10 @@ describe('SubscriptionsService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        { provide: getRepositoryToken(CatalogueItem), useValue: {} },
+        { provide: getRepositoryToken(CatalogueOffer), useValue: {} },
+        { provide: getRepositoryToken(CatalogueCategory), useValue: {} },
+        { provide: getRepositoryToken(AutomationRule), useValue: {} },
         SubscriptionsService,
         {
           provide: getRepositoryToken(Subscription),
@@ -177,6 +185,69 @@ describe('SubscriptionsService', () => {
       mockSubRepository.findOne.mockResolvedValueOnce(mockSubscription);
       const status = await service.getSubscriptionStatus('b1');
       expect(status).toBe(SubscriptionStatus.ACTIVE);
+    });
+  });
+
+  describe('automated processes', () => {
+    it('should renew active subscriptions that have reached end date', async () => {
+      const expiringSub = {
+        ...mockSubscription,
+        endDate: new Date(new Date().getTime() - 1000), // Past
+        paystackAuthorizationCode: 'AUTH_123',
+        billingPeriod: BillingPeriod.MONTHLY,
+      };
+
+      mockSubRepository.find.mockResolvedValueOnce([expiringSub]);
+      mockPaymentsService.chargeAuthorization.mockResolvedValue({ status: 'success', reference: 'REF_123' });
+
+      await service.processRenewals();
+
+      expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
+        mockPlan.monthlyPrice,
+        'billing@latap.com',
+        'AUTH_123',
+      );
+      expect(mockSubRepository.save).toHaveBeenCalled();
+      expect(mockCreditService.allocateSubscriptionCredits).toHaveBeenCalled();
+    });
+
+    it('should expire trial subscriptions that have reached end date', async () => {
+      const expiredTrial = {
+        ...mockSubscription,
+        status: SubscriptionStatus.TRIAL,
+        endDate: new Date(new Date().getTime() - 1000), // Past
+        paystackAuthorizationCode: null,
+      };
+
+      mockSubRepository.find.mockResolvedValueOnce([expiredTrial]);
+
+      await service.processExpiredTrials();
+
+      expect(expiredTrial.status).toBe(SubscriptionStatus.EXPIRED);
+      expect(mockSubRepository.save).toHaveBeenCalledWith(expiredTrial);
+    });
+
+    it('should charge and activate trial subscriptions that have auth code', async () => {
+      const trialWithAuth = {
+        ...mockSubscription,
+        status: SubscriptionStatus.TRIAL,
+        endDate: new Date(new Date().getTime() - 1000),
+        paystackAuthorizationCode: 'AUTH_TRIAL',
+        billingPeriod: BillingPeriod.MONTHLY,
+      };
+
+      mockSubRepository.find.mockResolvedValueOnce([trialWithAuth]);
+      mockPaymentsService.chargeAuthorization.mockResolvedValue({ status: 'success', reference: 'REF_TRIAL' });
+      mockBranchRepo.find.mockResolvedValue([]);
+
+      await service.processExpiredTrials();
+
+      expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
+        mockPlan.monthlyPrice,
+        'billing@latap.com',
+        'AUTH_TRIAL',
+      );
+      expect(trialWithAuth.status).toBe(SubscriptionStatus.ACTIVE);
     });
   });
 });

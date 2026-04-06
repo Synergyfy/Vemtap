@@ -2,11 +2,13 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Smile, Paperclip, Camera, Send, X, CornerUpLeft, MoreHorizontal, Gift } from 'lucide-react';
-import { useSendReply, useChatTemplates, useStartConversation, useStartBranchConversation, useInitBranchConversation } from '@/hooks/useMessaging';
+import { Smile, Paperclip, Camera, Send, X, CornerUpLeft, MoreHorizontal, Gift, ShoppingBag, Tag } from 'lucide-react';
+import { useSendReply, useChatTemplates, useStartConversation, useInitBranchConversation } from '@/hooks/useMessaging';
 import { useRewards } from '@/services/loyalty/hooks';
+import { useCatalogueItems, useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
 import Spinner from '../ui/Spinner';
@@ -35,9 +37,10 @@ export default function ChatInput({
     const [showMediaOptions, setShowMediaOptions] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const user = useAuthStore(s => s.user);
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const { activeBranchId, setActiveBranch } = useActiveBranch();
-    const { data: branches = [] } = useBranches();
-    const addPendingMessage = useChatStore(s => s.addPendingMessage);
+    const searchParams = useSearchParams();
+    const { data: branches = [] } = useBranches(!isCustomer);
     const linkPendingThread = useChatStore(s => s.linkPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
     const drafts = useChatStore(s => s.drafts);
@@ -47,15 +50,17 @@ export default function ChatInput({
     // Command selection states
     const [showTemplates, setShowTemplates] = useState(false);
     const [showRewards, setShowRewards] = useState(false);
-    const [triggerChar, setTriggerChar] = useState(''); // / or @ or #
+    const [showCatalogue, setShowCatalogue] = useState(false);
+    const [triggerChar, setTriggerChar] = useState(''); // / or @ or # or !
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [commandSearch, setCommandSearch] = useState('');
-    const [triggerPosition, setTriggerPosition] = useState<{ top: number; left: number } | null>(null);
 
-    // Fetch templates and rewards for the current branch
+    // Fetch data
     const effectiveBranchId = activeBranchId! || branches[0]?.id;
-    const { data: templates = [] } = useChatTemplates(effectiveBranchId);
-    const { data: rewards = [] } = useRewards(effectiveBranchId);
+    const { data: templates = [] } = useChatTemplates(effectiveBranchId, !isCustomer && !!effectiveBranchId);
+    const { data: rewards = [] } = useRewards(effectiveBranchId, !isCustomer && !!effectiveBranchId);
+    const { data: catalogueItems = [] } = useCatalogueItems({ branchId: effectiveBranchId }, { enabled: !isCustomer && !!effectiveBranchId });
+    const { data: catalogueOffers = [] } = useCatalogueOffersAdmin({ branchId: effectiveBranchId }, { enabled: !isCustomer && !!effectiveBranchId });
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +68,6 @@ export default function ChatInput({
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isTypingRef = useRef(false);
     const emojiRef = useRef<HTMLDivElement>(null);
-    const templateRef = useRef<HTMLDivElement>(null);
     const mediaOptionsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -87,9 +91,13 @@ export default function ChatInput({
         if (conversationId && drafts[conversationId]) {
             setText(drafts[conversationId]);
         } else {
-            setText('');
+            const orderId = searchParams.get('orderId');
+            if (orderId && !conversationId) {
+                setText(`Inquiry regarding order #${orderId.slice(0, 8)}`);
+            } else {
+                setText('');
+            }
         }
-        // Small delay to allow value to mount
         setTimeout(() => {
             if (textareaRef.current) {
                 textareaRef.current.style.height = '';
@@ -98,17 +106,14 @@ export default function ChatInput({
         }, 10);
     }, [conversationId]);
 
-    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
-    // Unified reply mutation (handles both business and customer endpoints)
     const replyMutation = useSendReply(isCustomer);
     const startConversationMutation = useStartConversation();
     const initBranchConvMutation = useInitBranchConversation();
     const canStartConversation = isCustomer && !!startBranchId && !conversationId;
     const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('pending-');
 
-    // Filter templates based on command search
     const filteredTemplates = useMemo(() => {
         if (!commandSearch) return templates;
         return templates.filter((t: any) => 
@@ -117,21 +122,24 @@ export default function ChatInput({
         );
     }, [templates, commandSearch]);
 
-    // Filter rewards based on search
     const filteredRewards = useMemo(() => {
         if (!commandSearch) return rewards;
         return rewards.filter((r: any) => 
             r.name.toLowerCase().includes(commandSearch.toLowerCase()) || 
-            r.description.toLowerCase().includes(commandSearch.toLowerCase())
+            (r.description && r.description.toLowerCase().includes(commandSearch.toLowerCase()))
         );
     }, [rewards, commandSearch]);
 
-    const handleInput = useCallback(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = '';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-        }
-    }, []);
+    const filteredCatalogue = useMemo(() => {
+        const items = (catalogueItems || []).map(i => ({ ...i, type: 'item' }));
+        const offers = (catalogueOffers || []).map(o => ({ ...o, type: 'offer' }));
+        const combined = [...items, ...offers];
+        if (!commandSearch) return combined;
+        return combined.filter((c: any) => 
+            c.name.toLowerCase().includes(commandSearch.toLowerCase()) || 
+            (c.description && c.description.toLowerCase().includes(commandSearch.toLowerCase()))
+        );
+    }, [catalogueItems, catalogueOffers, commandSearch]);
 
     const emitTyping = useCallback((next: boolean) => {
         if (!onTypingChange) return;
@@ -168,55 +176,67 @@ export default function ChatInput({
             
             // Replace placeholders in template content if possible
             let content = template.content;
-            if (user?.name) content = content.replace(/{BusinessName}/g, (user as any).businessName || 'Vemtap');
             
+            // Try to resolve common placeholders
+            const contactName = (useChatStore.getState().pendingThreads.find(p => p.id === conversationId)?.contact?.name) || 'Customer';
+            const businessName = (user as any)?.businessName || (branches[0]?.name) || 'Vemtap';
+            
+            content = content
+                .replace(/{CustomerName}/g, contactName)
+                .replace(/{BusinessName}/g, businessName)
+                .replace(/{BranchName}/g, (branches.find(b => b.id === effectiveBranchId)?.name) || businessName);
+
             const newValue = text.slice(0, startPos) + content + text.slice(cursorPosition);
             setText(newValue);
             if (conversationId) setDraft(conversationId, newValue);
             setShowTemplates(false);
-            
-            // Focus and adjust height
             setTimeout(() => {
                 if (textareaRef.current) {
                     textareaRef.current.focus();
                     textareaRef.current.style.height = '';
                     textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-                    
-                    // Set cursor position after the inserted content
                     const newPos = startPos + content.length;
                     textareaRef.current.setSelectionRange(newPos, newPos);
                 }
             }, 0);
         }
-    }, [text, user, conversationId, setDraft]);
+    }, [text, conversationId, setDraft, user, branches, effectiveBranchId]);
 
-    const insertReward = useCallback((reward: any) => {
-        const cursorPosition = textareaRef.current?.selectionStart || text.length;
-        const textBeforeCursor = text.slice(0, cursorPosition);
-        const match = textBeforeCursor.match(/(?:^|\s)#\w*$/);
-
-        if (match) {
-            const startPos = match.index! + (match[0].startsWith(' ') ? 1 : 0);
-            
-            const content = `${reward.name}: ${reward.description || ''}`;
-            const newValue = text.slice(0, startPos) + content + text.slice(cursorPosition);
-            setText(newValue);
-            if (conversationId) setDraft(conversationId, newValue);
+    const sendReward = useCallback(async (reward: any) => {
+        if (!conversationId) return;
+        try {
+            await replyMutation.mutateAsync({ 
+                threadId: conversationId, 
+                content: `🎁 Reward: ${reward.name}`, 
+                branchId,
+                metadata: { rewardId: reward.id }
+            });
+            setText('');
+            if (conversationId) clearDraft(conversationId);
             setShowRewards(false);
-            
-            setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.focus();
-                    textareaRef.current.style.height = '';
-                    textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-                    const newPos = startPos + content.length;
-                    textareaRef.current.setSelectionRange(newPos, newPos);
-                }
-            }, 0);
+        } catch (error: any) {
+            toast.error('Failed to send reward');
         }
-    }, [text, conversationId, setDraft]);
+    }, [conversationId, branchId, replyMutation, clearDraft]);
 
-    // Handle slash commands and mentions
+    const sendCatalogueItem = useCallback(async (item: any) => {
+        if (!conversationId) return;
+        try {
+            const isOffer = item.type === 'offer';
+            await replyMutation.mutateAsync({ 
+                threadId: conversationId, 
+                content: isOffer ? `🏷️ Offer: ${item.name}` : `🛍️ Item: ${item.name}`, 
+                branchId,
+                metadata: isOffer ? { offerId: item.id } : { itemId: item.id }
+            });
+            setText('');
+            if (conversationId) clearDraft(conversationId);
+            setShowCatalogue(false);
+        } catch (error: any) {
+            toast.error('Failed to send catalogue item');
+        }
+    }, [conversationId, branchId, replyMutation, clearDraft]);
+
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const value = e.target.value;
         const cursorPosition = e.target.selectionStart;
@@ -224,9 +244,8 @@ export default function ChatInput({
         if (conversationId) setDraft(conversationId, value);
         handleTypingActivity(value);
 
-        // Check if cursor is after / or @ or #
         const textBeforeCursor = value.slice(0, cursorPosition);
-        const match = textBeforeCursor.match(/(?:^|\s)([@\/#])(\w*)$/);
+        const match = textBeforeCursor.match(/(?:^|\s)([@\/#!])(\w*)$/);
         
         if (match) {
             const char = match[1];
@@ -235,17 +254,26 @@ export default function ChatInput({
             if (char === '#') {
                 setShowRewards(true);
                 setShowTemplates(false);
+                setShowCatalogue(false);
+            } else if (char === '!') {
+                setShowCatalogue(true);
+                setShowRewards(false);
+                setShowTemplates(false);
             } else {
                 setShowTemplates(true);
                 setShowRewards(false);
+                setShowCatalogue(false);
             }
             setSelectedIndex(0);
         } else {
             setShowTemplates(false);
             setShowRewards(false);
+            setShowCatalogue(false);
             setTriggerChar('');
         }
     };
+
+    const isSending = replyMutation.isPending || startConversationMutation.isPending || initBranchConvMutation.isPending || isStarting;
 
     const handleSend = useCallback(async () => {
         if (!text.trim() || isSending || isStarting) return;
@@ -258,15 +286,12 @@ export default function ChatInput({
                     content: text.trim(),
                 });
                 const threadId = response?.threadId || response?.thread?.id || response?.id;
-                if (threadId) {
-                    onConversationStarted?.(threadId);
-                }
+                if (threadId) onConversationStarted?.(threadId);
                 if (conversationId) clearDraft(conversationId);
                 setText('');
                 setShowEmojiPicker(false);
                 emitTyping(false);
                 onCancelReply?.();
-                if (textareaRef.current) textareaRef.current.style.height = '';
             } catch (error: any) {
                 toast.error(error.message || 'Failed to start conversation');
             } finally {
@@ -275,47 +300,25 @@ export default function ChatInput({
             return;
         }
 
-        // Staff sending first message on a pending (local) thread → create real thread
         if (canBranchStartConversation && conversationId) {
             if (!branchId) {
                 toast.error('Please select a branch first');
                 return;
             }
             setIsStarting(true);
-            // Extract the visitor ID from the pending thread ID format: pending-{visitorId}
             const customerId = conversationId.replace('pending-', '');
             try {
-                // 1. Initialize the thread first to get a 1-on-1 Inbox thread ID
-                const initResponse: any = await initBranchConvMutation.mutateAsync({
-                    branchId,
-                    customerId,
-                });
-                
-                // Get the real thread ID from the response
+                const initResponse: any = await initBranchConvMutation.mutateAsync({ branchId, customerId });
                 const realThreadId = initResponse?.threadId || initResponse?.thread?.id || initResponse?.id;
-                
                 if (realThreadId) {
-                    // 2. Send the message as a regular reply to this new real thread
-                    await replyMutation.mutateAsync({
-                        threadId: realThreadId,
-                        content: text.trim(),
-                        branchId,
-                    });
-
-                    // 3. Switch to the real thread ID.
+                    await replyMutation.mutateAsync({ threadId: realThreadId, content: text.trim(), branchId });
                     setActiveConversation(realThreadId);
-                    linkPendingThread(conversationId, realThreadId); // Link it instead of removing
+                    linkPendingThread(conversationId, realThreadId);
                     onConversationStarted?.(realThreadId);
-                } else {
-                    throw new Error('Could not obtain a thread ID');
                 }
-                
                 setText('');
                 if (conversationId) clearDraft(conversationId);
-                setShowEmojiPicker(false);
-                emitTyping(false);
                 onCancelReply?.();
-                if (textareaRef.current) textareaRef.current.style.height = '';
             } catch (error: any) {
                 toast.error(error.message || 'Failed to start conversation');
             } finally {
@@ -329,11 +332,6 @@ export default function ChatInput({
             return;
         }
 
-        if (!isCustomer && !branchId) {
-            toast.error('Please select a branch first');
-            return;
-        }
-
         try {
             await replyMutation.mutateAsync({ 
                 threadId: conversationId, 
@@ -343,37 +341,16 @@ export default function ChatInput({
             });
             setText('');
             if (conversationId) clearDraft(conversationId);
-            setShowEmojiPicker(false);
-            emitTyping(false);
             onCancelReply?.();
             if (textareaRef.current) textareaRef.current.style.height = '';
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');
         }
-    }, [
-        text,
-        isStarting,
-        canStartConversation,
-        startConversationMutation,
-        startBranchId,
-        onConversationStarted,
-        conversationId,
-        clearDraft,
-        emitTyping,
-        onCancelReply,
-        canBranchStartConversation,
-        branchId,
-        initBranchConvMutation,
-        replyMutation,
-        setActiveConversation,
-        linkPendingThread,
-        isCustomer,
-        replyTo?.id
-    ]);
+    }, [text, isSending, isStarting, canStartConversation, startConversationMutation, startBranchId, onConversationStarted, conversationId, clearDraft, emitTyping, onCancelReply, canBranchStartConversation, branchId, initBranchConvMutation, replyMutation, setActiveConversation, linkPendingThread, replyTo?.id]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        const isPopperOpen = (showTemplates && filteredTemplates.length > 0) || (showRewards && filteredRewards.length > 0);
-        const currentList = showRewards ? filteredRewards : filteredTemplates;
+        const isPopperOpen = (showTemplates && filteredTemplates.length > 0) || (showRewards && filteredRewards.length > 0) || (showCatalogue && filteredCatalogue.length > 0);
+        const currentList = showRewards ? filteredRewards : showCatalogue ? filteredCatalogue : filteredTemplates;
 
         if (isPopperOpen && currentList.length > 0) {
             if (e.key === 'ArrowDown') {
@@ -384,48 +361,29 @@ export default function ChatInput({
                 setSelectedIndex(prev => (prev - 1 + currentList.length) % currentList.length);
             } else if (e.key === 'Enter' || e.key === 'Tab') {
                 e.preventDefault();
-                if (showRewards) insertReward(currentList[selectedIndex]);
+                if (showRewards) sendReward(currentList[selectedIndex]);
+                else if (showCatalogue) sendCatalogueItem(currentList[selectedIndex]);
                 else insertTemplate(currentList[selectedIndex]);
             } else if (e.key === 'Escape') {
                 setShowTemplates(false);
                 setShowRewards(false);
+                setShowCatalogue(false);
             }
             return;
         }
 
         if (e.key === 'Enter' && !e.shiftKey) {
+            const isMobileOrTablet = typeof window !== 'undefined' && window.innerWidth < 1024;
+            if (isMobileOrTablet) return;
             e.preventDefault();
             if (!isSending) handleSend();
         }
     };
 
-
     const addEmoji = (emoji: string) => {
-        setText(prev => {
-            const next = prev + emoji;
-            handleTypingActivity(next);
-            return next;
-        });
+        setText(prev => prev + emoji);
         textareaRef.current?.focus();
     };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image') => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        toast.error('File uploads are coming soon!');
-        if (e.target) e.target.value = '';
-    };
-
-    const isSending = replyMutation.isPending || startConversationMutation.isPending || initBranchConvMutation.isPending || isStarting;
-
-    useEffect(() => {
-        return () => {
-            if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current);
-            }
-            emitTyping(false);
-        };
-    }, []);
 
     return (
         <footer className="p-4 bg-white md:border-t md:border-slate-200 shrink-0 relative">
@@ -435,137 +393,93 @@ export default function ChatInput({
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Replying to</p>
                         <p className="truncate">{replyTo.content}</p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onCancelReply}
-                        className="size-7 rounded-lg border border-slate-200 text-slate-400 hover:bg-white flex items-center justify-center"
-                        title="Cancel reply"
-                    >
+                    <button type="button" onClick={onCancelReply} className="size-7 rounded-lg border border-slate-200 text-slate-400 hover:bg-white flex items-center justify-center">
                         <X size={14} />
                     </button>
                 </div>
             )}
 
-            {/* Reward Selection Popper */}
-            {showRewards && filteredRewards.length > 0 && (
-                <div 
-                    className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
-                >
+            {/* Selection Poppers */}
+            {showTemplates && filteredTemplates.length > 0 && (
+                <div className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Reward</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Template</p>
                         <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
                     </div>
                     <div className="max-h-64 overflow-y-auto p-1 custom-scrollbar">
-                        {filteredRewards.map((reward: any, index: number) => (
-                            <button
-                                key={reward.id}
-                                onClick={() => insertReward(reward)}
-                                onMouseEnter={() => setSelectedIndex(index)}
-                                className={`w-full flex flex-col items-start px-4 py-3 rounded-xl transition-all ${index === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}
-                            >
-                                <div className="flex items-center justify-between w-full">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`p-1 rounded-lg ${index === selectedIndex ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-400'}`}>
-                                            <Gift size={12} />
-                                        </div>
-                                        <span className={`text-sm font-bold ${index === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{reward.name}</span>
-                                    </div>
-                                    {index === selectedIndex && <CornerUpLeft size={10} className="text-primary opacity-40" />}
+                        {filteredTemplates.map((t: any, i: number) => (
+                            <button key={t.id} onClick={() => insertTemplate(t)} onMouseEnter={() => setSelectedIndex(i)} className={`w-full flex flex-col items-start px-4 py-3 rounded-xl transition-all ${i === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}>
+                                <span className={`text-sm font-bold ${i === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{t.name}</span>
+                                <span className="text-xs text-slate-500 truncate w-full mt-1">{t.content}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {showRewards && filteredRewards.length > 0 && (
+                <div className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Send Reward</p>
+                        <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto p-1 custom-scrollbar">
+                        {filteredRewards.map((r: any, i: number) => (
+                            <button key={r.id} onClick={() => sendReward(r)} onMouseEnter={() => setSelectedIndex(i)} className={`w-full flex flex-col items-start px-4 py-3 rounded-xl transition-all ${i === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}>
+                                <div className="flex items-center gap-2">
+                                    <div className={`p-1 rounded-lg ${i === selectedIndex ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-400'}`}><Gift size={12} /></div>
+                                    <span className={`text-sm font-bold ${i === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{r.name}</span>
                                 </div>
-                                <span className="text-xs text-slate-400 truncate w-full italic mt-1">{reward.description || 'No description'}</span>
+                                <span className="text-xs text-slate-400 truncate w-full italic mt-1">{r.description || 'No description'}</span>
                             </button>
                         ))}
                     </div>
                 </div>
             )}
 
-            {/* Media Options Popover */}
-            {showMediaOptions && (
-                <div 
-                    ref={mediaOptionsRef}
-                    className="absolute bottom-full left-4 mb-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 overflow-hidden"
-                >
-                    <button 
-                        type="button"
-                        onClick={() => { setShowMediaOptions(false); setShowEmojiPicker(true); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-slate-600 text-left"
-                    >
-                        <Smile size={18} className="text-primary" />
-                        <span className="text-sm font-bold">Emoji</span>
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={() => { setShowMediaOptions(false); imageInputRef.current?.click(); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-slate-600 text-left"
-                    >
-                        <Camera size={18} className="text-primary" />
-                        <span className="text-sm font-bold">Camera</span>
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={() => { setShowMediaOptions(false); fileInputRef.current?.click(); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-slate-600 text-left"
-                    >
-                        <Paperclip size={18} className="text-primary" />
-                        <span className="text-sm font-bold">Other Media</span>
-                    </button>
-                </div>
-            )}
-            
-            {/* Emoji Picker Popover */}
-            {showEmojiPicker && (
-                <div 
-                    ref={emojiRef}
-                    className="absolute bottom-full left-4 mb-2 p-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
-                >
-                    <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Emojis</span>
-                        <button onClick={() => setShowEmojiPicker(false)} className="text-slate-400 hover:text-slate-600">
-                            <X size={14} />
-                        </button>
+            {showCatalogue && filteredCatalogue.length > 0 && (
+                <div className="absolute bottom-full left-4 mb-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Send Item/Offer</p>
+                        <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-2">
-                        {COMMON_EMOJIS.map(emoji => (
-                            <button
-                                key={emoji}
-                                onClick={() => addEmoji(emoji)}
-                                className="text-xl p-2 hover:bg-slate-50 rounded-lg transition-colors"
-                            >
-                                {emoji}
+                    <div className="max-h-80 overflow-y-auto p-1 custom-scrollbar">
+                        {filteredCatalogue.map((c: any, i: number) => (
+                            <button key={c.id} onClick={() => sendCatalogueItem(c)} onMouseEnter={() => setSelectedIndex(i)} className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all ${i === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}>
+                                <div className="size-12 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200">
+                                    {c.mainImage ? (
+                                        <img src={c.mainImage} alt="" className="size-full object-cover" />
+                                    ) : (
+                                        <div className="size-full flex items-center justify-center text-slate-400">
+                                            {c.type === 'offer' ? <Tag size={20} /> : <ShoppingBag size={20} />}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0 text-left">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`text-sm font-bold truncate ${i === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{c.name}</span>
+                                        <span className="text-xs font-black text-primary whitespace-nowrap">₦{(c.price || c.calculatedPrice || 0).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-tight">{c.type}</span>
+                                        {c.loyaltyPoints > 0 && (
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 uppercase tracking-tight flex items-center gap-0.5">
+                                                <Gift size={8} /> +{c.loyaltyPoints} Points
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 truncate mt-1">{c.description || c.shortDescription || 'No description'}</p>
+                                </div>
                             </button>
                         ))}
                     </div>
                 </div>
             )}
-
-            {/* Hidden Inputs */}
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                onChange={e => handleFileChange(e, 'file')}
-                accept=".pdf,.doc,.docx,.txt"
-            />
-            <input 
-                type="file" 
-                ref={imageInputRef} 
-                className="hidden" 
-                onChange={e => handleFileChange(e, 'image')}
-                accept="image/*"
-                capture="environment"
-            />
 
             <div className="flex items-end gap-2">
-                <div className="flex items-center gap-0.5 text-slate-400 mb-1">
-                    <button 
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowMediaOptions(!showMediaOptions); }}
-                        className={`p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all ${showMediaOptions ? 'text-primary bg-primary/10' : ''}`} 
-                        title="More options"
-                    >
-                        <MoreHorizontal size={26} />
-                    </button>
-                </div>
+                <button type="button" onClick={() => setShowMediaOptions(!showMediaOptions)} className={`p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all ${showMediaOptions ? 'text-primary bg-primary/10' : 'text-slate-400'} mb-1`}>
+                    <MoreHorizontal size={26} />
+                </button>
 
                 <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2 border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all flex items-end">
                     <textarea
@@ -573,25 +487,14 @@ export default function ChatInput({
                         rows={1}
                         value={text}
                         onChange={handleTextChange}
-                        onInput={handleInput}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type a message... (Use / or @ for templates)"
+                        placeholder={isCustomer ? "Type a message..." : "Type a message... (Use / for templates, # for rewards, ! for items)"}
                         disabled={isSending}
                         className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm max-h-32 resize-none py-1 outline-none"
                     />
                 </div>
 
-                <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSend(); }}
-                    disabled={!text.trim() || isSending}
-                    className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mb-1"
-                >
-                    {isSending ? (
-                        <Spinner size="sm" color="white" />
-                    ) : (
-                        <Send size={18} />
-                    )}
+                <button type="button" onClick={handleSend} disabled={!text.trim() || isSending} className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 mb-1">
+                    {isSending ? <Spinner size="sm" color="white" /> : <Send size={18} />}
                 </button>
             </div>
         </footer>

@@ -79,6 +79,7 @@ describe('BranchesService', () => {
         isMainBranch: true,
         businessHours: { monday: { open: '08:00' } },
         welcomeMessage: 'Welcome!',
+        engagement: { twitter: '@test' },
       };
       const dto = { name: 'New Branch' };
 
@@ -104,6 +105,7 @@ describe('BranchesService', () => {
           ...dto,
           businessId: business.id,
           businessHours: mainBranch.businessHours,
+          engagement: mainBranch.engagement,
         }),
       );
     });

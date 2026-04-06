@@ -163,6 +163,18 @@ export default function DashboardPricingPage() {
         const branch = formatLimit(plan.branchLimit, 'Business Locations');
         if (branch) derivedFeatures.push(branch);
 
+        const catalogueItems = formatLimit(plan.maxCatalogueItems, 'Catalogue Items');
+        if (catalogueItems) derivedFeatures.push(catalogueItems);
+
+        const catalogueCategories = formatLimit(plan.maxCatalogueCategories, 'Catalogue Categories');
+        if (catalogueCategories) derivedFeatures.push(catalogueCategories);
+
+        const catalogueOffers = formatLimit(plan.maxCatalogueOffers, 'Catalogue Offers');
+        if (catalogueOffers) derivedFeatures.push(catalogueOffers);
+
+        const automations = formatLimit(plan.maxAutomations, 'Automations');
+        if (automations) derivedFeatures.push(automations);
+
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
             const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);
             derivedFeatures.push(`${level} Analytics`);

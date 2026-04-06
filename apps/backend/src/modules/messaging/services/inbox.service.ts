@@ -22,6 +22,8 @@ import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { AutomationService } from './automation.service';
+import { TriggerType } from '../enums/automation.enum';
 
 @Injectable()
 export class InboxService {
@@ -40,6 +42,7 @@ export class InboxService {
     private readonly messagingEngine: MessagingEngineService,
     private readonly messagingGateway: MessagingGateway,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly automationService: AutomationService,
   ) {}
 
   async getThreads(
@@ -85,7 +88,7 @@ export class InboxService {
     return this.messageRepo.find({
       where: { threadId },
       relations: ['replyTo'],
-      order: { timestamp: 'DESC' }, // Newest to oldest as requested
+      order: { timestamp: 'ASC' }, // Oldest to newest for chat history
     });
   }
 
@@ -115,6 +118,7 @@ export class InboxService {
     content: string,
     branchId: string,
     replyToId?: string,
+    metadata?: any,
   ): Promise<Message | null> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId, branchId },
@@ -129,6 +133,7 @@ export class InboxService {
       thread,
       content,
       replyToId,
+      metadata,
     );
     if (!messageId) {
       throw new InternalServerErrorException('Failed to send reply');
@@ -325,6 +330,45 @@ export class InboxService {
     });
   }
 
+  async findOrCreateCustomerThread(
+    customerId: string,
+    branchId: string,
+  ): Promise<ConversationThread> {
+    let thread = await this.threadRepo.findOne({
+      where: { customerId, branchId, channel: Channel.IN_HOUSE },
+      relations: ['branch', 'branch.business', 'customer'],
+    });
+
+    if (!thread) {
+      const branch = await this.branchRepo.findOne({
+        where: { id: branchId },
+        relations: ['business'],
+      });
+      if (!branch) throw new NotFoundException('Branch not found');
+
+      const customer = await this.userRepo.findOne({
+        where: { id: customerId },
+      });
+      if (!customer) throw new NotFoundException('Customer not found');
+
+      thread = this.threadRepo.create({
+        branchId,
+        businessId: branch.businessId,
+        customerId,
+        channel: Channel.IN_HOUSE,
+        status: ThreadStatus.OPEN,
+        lastActivityAt: new Date(),
+        branchUnreadCount: 0,
+        customerUnreadCount: 0,
+      });
+      thread = await this.threadRepo.save(thread);
+      thread.branch = branch;
+      thread.customer = customer;
+    }
+
+    return thread;
+  }
+
   async getCustomerThreadMessages(
     threadId: string,
     customerId: string,
@@ -345,7 +389,7 @@ export class InboxService {
     return this.messageRepo.find({
       where: { threadId },
       relations: ['replyTo'],
-      order: { timestamp: 'DESC' }, // Newest to oldest
+      order: { timestamp: 'ASC' }, // Oldest to newest
     });
   }
 
@@ -401,15 +445,30 @@ export class InboxService {
       savedMessage,
     );
 
-    // Send push notification to branch staff
-    this.pushNotificationService
-      .sendToBranchStaff(
-        thread.branchId,
-        `New Message from ${thread.customer.firstName || 'Visitor'}`,
+    // --- Automation Triggers ---
+    // 1. Check if first message for Welcome Message
+    const msgCount = await this.messageRepo.count({ where: { threadId: thread.id } });
+    if (msgCount === 1) {
+      await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
+        branchId: thread.branchId,
+        customerId: thread.customerId,
         content,
-        { threadId: thread.id, channel: thread.channel },
-      )
-      .catch((e) => console.error('Push error:', e.message));
+      });
+    }
+
+    // 2. Inbound Message (FAQ)
+    await this.automationService.trigger(TriggerType.INBOUND_MESSAGE, {
+      branchId: thread.branchId,
+      customerId: thread.customerId,
+      content,
+    });
+
+    // 3. Off Hours Check
+    await this.automationService.trigger(TriggerType.OFF_HOURS, {
+      branchId: thread.branchId,
+      customerId: thread.customerId,
+      content,
+    });
 
     return savedMessage;
   }
@@ -509,6 +568,26 @@ export class InboxService {
         { threadId: thread.id, channel: thread.channel },
       )
       .catch((e) => console.error('Push error:', e.message));
+
+    // --- Automation Triggers ---
+    // Since startCustomerConversation always creates the first message
+    await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
+      branchId,
+      customerId,
+      content,
+    });
+
+    await this.automationService.trigger(TriggerType.INBOUND_MESSAGE, {
+      branchId,
+      customerId,
+      content,
+    });
+
+    await this.automationService.trigger(TriggerType.OFF_HOURS, {
+      branchId,
+      customerId,
+      content,
+    });
 
     return savedMessage;
   }

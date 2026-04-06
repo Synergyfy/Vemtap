@@ -113,6 +113,7 @@ export class UsersService {
   }
 
   async findByIdentifier(identifier: string): Promise<User | null> {
+    if (!identifier) return null;
     return this.usersRepository.findOne({
       where: [{ email: identifier.toLowerCase() }, { phone: identifier }],
     });
@@ -198,18 +199,6 @@ export class UsersService {
       throw new BadRequestException('Cannot remove business owner');
     }
     await this.usersRepository.remove(user);
-  }
-
-  async updateEngagement(
-    id: string,
-    engagement: Record<string, any>,
-  ): Promise<User> {
-    const user = await this.findOne(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    user.engagement = engagement;
-    return this.usersRepository.save(user);
   }
 
   async findByBranch(branchId: string): Promise<User[]> {

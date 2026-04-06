@@ -26,7 +26,6 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
@@ -69,16 +68,6 @@ export class UsersController {
   @ApiResponse({ status: 200, type: User })
   async updateProfile(@Request() req, @Body() updates: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.id, updates);
-  }
-
-  @Patch('engagement')
-  @Roles(UserRole.CUSTOMER)
-  @ApiOperation({
-    summary: 'Update customer engagement links (Instagram, etc.)',
-  })
-  @ApiResponse({ status: 200, type: User })
-  async updateEngagement(@Request() req, @Body() updates: UpdateEngagementDto) {
-    return this.usersService.updateEngagement(req.user.id, updates.engagement);
   }
 
   // --- Team Management ---

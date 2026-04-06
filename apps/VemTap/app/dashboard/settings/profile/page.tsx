@@ -134,6 +134,7 @@ export default function BusinessProfilePage() {
 
     const [rewardEnabled, setRewardEnabled] = useState(false);
     const [rewardVisitThreshold, setRewardVisitThreshold] = useState(5);
+    const [whatsappNumber, setWhatsappNumber] = useState('');
 
     const [isRegistered, setIsRegistered] = useState(false);
     const [cacType, setCacType] = useState('RC');
@@ -429,6 +430,7 @@ export default function BusinessProfilePage() {
             setSuccessMessage(source.successMessage || '');
             setPrivacyMessage(source.privacyMessage || '');
             setRewardMessage(source.rewardMessage || '');
+            setWhatsappNumber(source.whatsappNumber || '');
 
             if (source.businessHours) {
                 setBusinessHours(source.businessHours);
@@ -479,6 +481,7 @@ export default function BusinessProfilePage() {
             setSuccessMessage(branch.successMessage || '');
             setPrivacyMessage(branch.privacyMessage || '');
             setRewardMessage(branch.rewardMessage || '');
+            setWhatsappNumber(branch.whatsappNumber || '');
 
             if (branch.businessHours) {
                 setBusinessHours(branch.businessHours);
@@ -688,6 +691,7 @@ export default function BusinessProfilePage() {
                 if (hasChanged(successMessage, branch.successMessage)) branchUpdates.successMessage = successMessage;
                 if (hasChanged(privacyMessage, branch.privacyMessage)) branchUpdates.privacyMessage = privacyMessage;
                 if (hasChanged(rewardMessage, branch.rewardMessage)) branchUpdates.rewardMessage = rewardMessage;
+                if (hasChanged(whatsappNumber, branch.whatsappNumber)) branchUpdates.whatsappNumber = whatsappNumber;
 
                 const originalHours = branch.businessHours || {};
                 if (JSON.stringify(businessHours) !== JSON.stringify(originalHours)) {
@@ -705,36 +709,35 @@ export default function BusinessProfilePage() {
 
                 // Handle socials via engagement field in branch
                 const currentEngagement = branch.engagement || {};
-                const engagementUpdates: any = {};
-
-                const mapSocial = (platform: string, currentUrl: string) => {
-                    const originalLink = currentEngagement[platform]?.link || '';
-                    if (hasChanged(currentUrl, originalLink)) {
-                        let profileHandle = currentUrl;
-                        const platformConfig = SOCIAL_PLATFORMS.find(p => p.id === platform);
-                        if (platformConfig?.prefix && currentUrl.startsWith(platformConfig.prefix)) {
-                            profileHandle = currentUrl.replace(platformConfig.prefix, '');
-                        }
-                        
-                        engagementUpdates[platform] = {
-                            profile: profileHandle,
-                            link: currentUrl
-                        };
+                const platforms = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'youtube', 'google', 'trustpilot', 'custom'];
+                const urls = [instagramUrl, facebookUrl, xUrl, linkedinUrl, tiktokUrl, youtubeUrl, reviewUrl, trustpilotUrl, customLink];
+                
+                let socialsChanged = false;
+                platforms.forEach((p, i) => {
+                    const originalLink = currentEngagement[p]?.link || '';
+                    if (hasChanged(urls[i], originalLink)) {
+                        socialsChanged = true;
                     }
-                };
+                });
 
-                mapSocial('instagram', instagramUrl);
-                mapSocial('facebook', facebookUrl);
-                mapSocial('x', xUrl);
-                mapSocial('linkedin', linkedinUrl);
-                mapSocial('tiktok', tiktokUrl);
-                mapSocial('youtube', youtubeUrl);
-                mapSocial('google', reviewUrl);
-                mapSocial('trustpilot', trustpilotUrl);
-                mapSocial('custom', customLink);
-
-                if (Object.keys(engagementUpdates).length > 0) {
-                    branchUpdates.engagement = engagementUpdates;
+                if (socialsChanged) {
+                    const fullEngagement: any = {};
+                    platforms.forEach((platform, i) => {
+                        const currentUrl = urls[i];
+                        if (currentUrl) {
+                            let profileHandle = currentUrl;
+                            const platformConfig = SOCIAL_PLATFORMS.find(p => p.id === platform);
+                            if (platformConfig?.prefix && currentUrl.startsWith(platformConfig.prefix)) {
+                                profileHandle = currentUrl.replace(platformConfig.prefix, '');
+                            }
+                            
+                            fullEngagement[platform] = {
+                                profile: profileHandle,
+                                link: currentUrl
+                            };
+                        }
+                    });
+                    branchUpdates.engagement = fullEngagement;
                 }
 
                 if (Object.keys(branchUpdates).length > 0) {
@@ -768,6 +771,7 @@ export default function BusinessProfilePage() {
 
     const availableTabs = [
         { id: 'general', label: 'General', icon: 'business' },
+        { id: 'whatsapp', label: 'WhatsApp', icon: 'phone', branchOnly: true },
         { id: 'push', label: 'Push', icon: 'notifications_active' },
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
@@ -796,6 +800,7 @@ export default function BusinessProfilePage() {
         { id: 'general', label: 'Business Reg.', completed: isRegistered ? !!registrationNumber : true, icon: 'fact_check' },
         { id: 'documents', label: 'CAC Document', completed: isRegistered ? !!cacDocument : true, icon: 'description' },
         { id: 'general', label: 'Owner Identity', completed: !!idDocument && !!identityNumber, icon: 'person_pin' },
+        { id: 'whatsapp', label: 'WhatsApp Contact', completed: !!whatsappNumber, icon: 'phone' },
         { id: 'general', label: 'Utility Bill', completed: !!utilityBill, icon: 'receipt_long' },
     ];
     const completedCount = healthTasks.filter(t => t.completed).length;
@@ -1742,6 +1747,66 @@ export default function BusinessProfilePage() {
                         </div>
                     </div>
                 </Modal>
+
+                {activeTab === 'whatsapp' && !isAllBranches && (
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                                    <span className="material-icons-round">message</span>
+                                </div>
+                                <div>
+                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">WhatsApp Contact</h3>
+                                    <p className="text-xs text-text-secondary mt-1 font-medium">Link your WhatsApp number to your business profile.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="max-w-md space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">WhatsApp Number</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors">
+                                            <span className="material-icons-round text-lg">phone</span>
+                                        </div>
+                                        <input
+                                            type="tel"
+                                            value={whatsappNumber}
+                                            onChange={(e) => setWhatsappNumber(e.target.value)}
+                                            placeholder="+234 WhatsApp Number"
+                                            className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-green-500/10 focus:border-green-500/30 transition-all outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary mt-2 px-1 leading-relaxed">
+                                        Customers will be able to chat with you directly via WhatsApp from your public page. 
+                                        Include your <strong>country code</strong> (e.g., +234).
+                                    </p>
+                                </div>
+
+                                {whatsappNumber && (
+                                    <div className="p-4 rounded-2xl bg-green-50 border border-green-100 flex items-center gap-4">
+                                        <div className="size-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-green-600 shrink-0">
+                                            <span className="material-icons-round">qr_code_2</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-green-700 leading-tight">Live Preview</p>
+                                            <p className="text-xs text-green-800 font-bold mt-0.5 truncate italic opacity-80 underline underline-offset-4 decoration-green-300">
+                                                wa.me/{whatsappNumber.replace(/[^0-9]/g, '')}
+                                            </p>
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            onClick={() => window.open(`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`, '_blank')}
+                                            className="px-4 py-2 bg-green-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-700 transition-all shadow-sm"
+                                        >
+                                            Test
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             
                 {activeTab === 'qr' && (

@@ -34,8 +34,13 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { AdministrationModule } from './modules/administration/administration.module';
 import { ImpersonationGuard } from './modules/administration/impersonation.guard';
+import { CustomerImpersonationGuard } from './modules/administration/customer-impersonation.guard';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CatalogueModule } from './modules/catalogue/catalogue.module';
+import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
 
 import { dataSourceOptions } from './database/data-source';
+import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
 
 @Module({
   imports: [
@@ -123,6 +128,10 @@ import { dataSourceOptions } from './database/data-source';
     CategoriesModule,
     ObservabilityModule,
     AdministrationModule,
+    CatalogueModule,
+    CatalogueOrderModule,
+    CatalogueCartModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
@@ -138,6 +147,10 @@ import { dataSourceOptions } from './database/data-source';
     {
       provide: APP_GUARD,
       useClass: ImpersonationGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CustomerImpersonationGuard,
     },
     {
       provide: APP_GUARD,

@@ -93,6 +93,7 @@ export const adminProductsApi = {
     getAllOrders: () => api.get('/products/orders/all'),
     getAllQuotes: () => api.get('/products/quotes/all'),
     markOrderReady: (id: string) => api.patch(`/products/orders/${id}/ready`, {}),
+    updateOrderStatus: (id: string, status: string) => api.patch(`/products/orders/${id}/status`, { status }),
     negotiateQuote: (id: string, data: any) => api.post(`/products/quotes/${id}/negotiate`, data),
 
     // Product Types

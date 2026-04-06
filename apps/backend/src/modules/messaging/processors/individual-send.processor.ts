@@ -11,6 +11,8 @@ interface IndividualMessageJobData {
   channel: Channel;
   from: string;
   campaignId?: string;
+  metadata?: any;
+  messageId?: string;
 }
 
 @Processor('messaging-individual-send', {
@@ -24,11 +26,11 @@ export class IndividualSendProcessor extends WorkerHost {
   }
 
   async process(job: Job<IndividualMessageJobData, any, string>): Promise<any> {
-    const { branchId, customerId, content, channel, from, campaignId } =
+    const { branchId, customerId, content, channel, from, campaignId, metadata, messageId } =
       job.data;
 
     this.logger.log(
-      `📥 Job started for individual message to Customer ID: ${customerId}`,
+      `📥 Job started for individual message to Customer ID: ${customerId} (Message ID: ${messageId || 'new'})`,
     );
 
     try {
@@ -39,6 +41,8 @@ export class IndividualSendProcessor extends WorkerHost {
         channel,
         from,
         campaignId,
+        metadata,
+        messageId,
       );
       return { success: true };
     } catch (error) {

@@ -1,11 +1,25 @@
-export interface Product {
+export interface ProductCategory {
     id: string;
     name: string;
+    description?: string;
+    slug: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface Product {
+    id: string;
+    sku: string;
+    name: string;
     brand?: string;
-    category?: string;
+    category?: string; // (optional legacy field)
+    productType?: ProductCategory; // The full relation object
+    productTypeId?: string;
     rating: number;
     price: number;
     originalPrice?: number | null;
+    costPrice?: number | null;
+    customizationFee?: number | null;
     images?: string[];
     image: string;
     description: string;
@@ -19,7 +33,6 @@ export interface Product {
     howToUse?: HowToStep[];
     priceTiers?: { min: number; max: number | null; price: number }[];
     requestQuoteThreshold?: number;
-    productTypeId?: string;
     status: 'Published' | 'Unpublished';
 }
 

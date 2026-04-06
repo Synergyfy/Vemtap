@@ -53,6 +53,8 @@ describe('IndividualSendProcessor', () => {
         Channel.SMS,
         'VEMTAP',
         'camp-1',
+        undefined,
+        undefined,
       );
     });
 

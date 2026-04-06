@@ -14,6 +14,7 @@ export interface SubscriptionCapabilities {
     tags: CapabilityLimit;
     loyaltyPrograms: CapabilityLimit;
     branches: CapabilityLimit;
+    automations: CapabilityLimit;
     analytics: {
       enabled: boolean;
       level: 'basic' | 'advanced' | 'none';
@@ -21,6 +22,9 @@ export interface SubscriptionCapabilities {
     messaging: {
       enabled: boolean;
     };
+    catalogueItems: CapabilityLimit;
+    catalogueCategories: CapabilityLimit;
+    catalogueOffers: CapabilityLimit;
     features: string[];
     credits: {
       sms: number;
@@ -49,6 +53,12 @@ export interface SubscriptionPlan {
     tagsLimit: number;
     branchLimit: number;
     analyticsLevel: string;
+    catalogueEnabled: boolean;
+    maxCatalogueItems: number;
+    maxCatalogueCategories: number;
+    maxCatalogueOffers: number;
+    automationsEnabled: boolean;
+    maxAutomations: number;
     isActive: boolean;
     description: string;
     isPopular: boolean;

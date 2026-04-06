@@ -19,6 +19,7 @@ export const fetchProducts = async (
     // Map backend product to frontend Product interface
     const mappedProducts: Product[] = allProducts.map(p => ({
         id: p.id,
+        sku: p.sku || '',
         name: p.name,
         brand: p.productType?.name || 'VemTap',
         category: p.productType?.name || 'NFC Hardware',

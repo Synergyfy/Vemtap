@@ -128,6 +128,48 @@ export class CreatePlanDto {
   @IsOptional()
   analyticsLevel?: string;
 
+  @ApiPropertyOptional({ description: 'Is catalogue enabled?', example: false })
+  @IsBoolean()
+  @IsOptional()
+  catalogueEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Maximum catalogue items limit (null for unlimited)',
+    example: 50,
+  })
+  @IsNumber()
+  @IsOptional()
+  maxCatalogueItems?: number;
+
+  @ApiPropertyOptional({
+    description: 'Maximum catalogue categories limit (null for unlimited)',
+    example: 10,
+  })
+  @IsNumber()
+  @IsOptional()
+  maxCatalogueCategories?: number;
+
+  @ApiPropertyOptional({
+    description: 'Maximum catalogue offers limit (null for unlimited)',
+    example: 10,
+  })
+  @IsNumber()
+  @IsOptional()
+  maxCatalogueOffers?: number;
+
+  @ApiPropertyOptional({ description: 'Is automations enabled?', example: false })
+  @IsBoolean()
+  @IsOptional()
+  automationsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Maximum automations limit (null or -1 for unlimited)',
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  maxAutomations?: number;
+
   @ApiPropertyOptional({
     description: 'Is plan currently active?',
     example: true,

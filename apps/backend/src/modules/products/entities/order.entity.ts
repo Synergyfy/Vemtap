@@ -12,11 +12,14 @@ import { Quote } from './quote.entity';
 import { Product } from './product.entity';
 import { User } from '../../users/entities/user.entity';
 import { Device } from '../../devices/entities/device.entity';
+import { Business } from '../../businesses/entities/business.entity';
 
 export enum OrderStatus {
   PENDING = 'Pending',
+  PROCESSING = 'Processing',
   READY = 'Ready',
   COMPLETED = 'Completed', // Optional mapping
+  CANCELLED = 'Cancelled',
 }
 
 export enum PaymentStatus {
@@ -86,6 +89,13 @@ export class Order extends AbstractBaseEntity {
 
   @Column({ nullable: true })
   userId: string;
+
+  @ManyToOne(() => Business, { onDelete: 'SET NULL', nullable: true })
+  business: Business;
+
+  @ApiProperty({ example: 'business-uuid' })
+  @Column({ nullable: true })
+  businessId: string;
 
   @OneToMany(() => Device, (device) => device.order)
   devices: Device[];

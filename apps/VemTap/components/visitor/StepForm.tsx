@@ -14,7 +14,7 @@ const visitorSchema = z.object({
     email: z.string().email("Invalid email format").optional().or(z.literal('')),
 });
 
-type VisitorFormData = z.infer<typeof visitorSchema>;
+export type StepFormData = z.infer<typeof visitorSchema>;
 
 interface StepFormProps {
     storeName: string;
@@ -30,7 +30,7 @@ interface StepFormProps {
     isDeviceSynced?: boolean;
     isSubmitting?: boolean;
     onBack: () => void;
-    onSubmit: (data: VisitorFormData) => void;
+    onSubmit: (data: StepFormData) => void;
 }
 
 export const StepForm: React.FC<StepFormProps> = ({
@@ -54,7 +54,7 @@ export const StepForm: React.FC<StepFormProps> = ({
         register,
         handleSubmit,
         formState: { errors, isValid },
-    } = useForm<VisitorFormData>({
+    } = useForm<StepFormData>({
         resolver: zodResolver(visitorSchema),
         defaultValues: {
             name: initialData?.name || '',

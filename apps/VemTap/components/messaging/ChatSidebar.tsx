@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useCustomerGlobalHistory } from '@/services/customer/hooks';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
+import CreateSegmentModal from '@/components/dashboard/CreateSegmentModal';
 import { useSegments, useCreateSegment, useAddSegmentMembers } from '@/services/messaging/hooks';
 
 
@@ -87,13 +88,19 @@ export default function ChatSidebar() {
          search: customerQuery || searchQuery,
      });
      
-     const { data: newVisitorsData } = useNewVisitors(branchId || undefined, { limit: 1 });
-     const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 });
-     const { data: segments = [] } = useSegments(branchId || undefined);
+     const { data: newVisitorsData } = useNewVisitors(branchId || undefined, { limit: 1 }, !isCustomer);
+     const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 }, !isCustomer);
+     const { data: segments = [] } = useSegments(branchId || undefined, !isCustomer);
      const createSegment = useCreateSegment();
      const addSegmentMembers = useAddSegmentMembers();
      const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
      const [showSendMessageModal, setShowSendMessageModal] = useState(false);
+     const [showCreateSegment, setShowCreateSegment] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const allThreads = useMemo(() => {
         const real = threads as any[];
@@ -170,7 +177,8 @@ export default function ChatSidebar() {
     }, [allThreads, searchQuery]);
 
     const availableVisitors = useMemo(() => {
-        return (visitors as any[]).filter(v => v.name.toLowerCase().includes(customerQuery.toLowerCase()));
+        const q = customerQuery?.toLowerCase() || '';
+        return (visitors as any[]).filter(v => v.name?.toLowerCase().includes(q));
     }, [visitors, customerQuery]);
 
     useEffect(() => {
@@ -184,15 +192,35 @@ export default function ChatSidebar() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showNewChat]);
 
-    // Auto-select thread if businessId is in URL (for Customers)
+    // Auto-select thread if businessId or branchId is in URL (for Customers)
     useEffect(() => {
-        if (isCustomer && businessIdFromUrl && allThreads.length > 0 && !activeConversationId) {
-            const thread = allThreads.find(t => t.business?.uniqueCode === businessIdFromUrl || t.business?.id === businessIdFromUrl);
-            if (thread && thread.id !== activeConversationId) {
-                setActiveConversation(thread.id);
+        const targetBranchId = searchParams.get('branchId') || searchParams.get('businessId');
+        if (isCustomer && targetBranchId && allThreads.length > 0 && !activeConversationId) {
+            const thread = allThreads.find(t => 
+                t.branchId === targetBranchId || 
+                t.contact?.id === targetBranchId ||
+                t.branch?.id === targetBranchId
+            );
+            
+            if (thread) {
+                if (thread.id !== activeConversationId) {
+                    setActiveConversation(thread.id);
+                }
+            } else if (customerAvailableBranches.length > 0) {
+                // If no existing thread, but we found the branch in history, start a pending one
+                const branch = customerAvailableBranches.find(b => b.id === targetBranchId);
+                if (branch) {
+                    const threadId = addPendingThread({
+                        id: branch.id,
+                        name: branch.name,
+                        avatar: branch.avatar,
+                        isOnline: false,
+                    });
+                    setActiveConversation(threadId);
+                }
             }
         }
-    }, [isCustomer, businessIdFromUrl, allThreads, activeConversationId, setActiveConversation]);
+    }, [isCustomer, searchParams, allThreads, activeConversationId, setActiveConversation, customerAvailableBranches, addPendingThread]);
 
     // Auto-select thread if visitorId is in URL (for Businesses)
     useEffect(() => {
@@ -338,7 +366,7 @@ export default function ChatSidebar() {
                 {/* Header */}
                 <header className="p-4 flex justify-between items-center bg-white/95 backdrop-blur-sm z-40 sticky top-0 border-b border-slate-100">
                     <div className="flex items-center gap-2 min-w-0">
-                        {headerLogo ? (
+                        {mounted && headerLogo ? (
                             <img src={headerLogo} alt={headerName} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                         ) : (
                             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">
@@ -458,140 +486,133 @@ export default function ChatSidebar() {
                                     </div>
                                 )}
                             </div>
-                            <div className="relative" ref={campaignsRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCampaigns(prev => !prev)}
-                                    className={`p-1.5 rounded-lg transition-colors ${showCampaigns ? 'text-primary bg-primary/10' : 'hover:text-primary hover:bg-slate-100'}`}
-                                    title="Campaigns & Broadcast"
-                                >
-                                    <Megaphone size={18} />
-                                </button>
+                            {!isCustomer && (
+                                <div className="relative" ref={campaignsRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCampaigns(prev => !prev)}
+                                        className={`p-1.5 rounded-lg transition-colors ${showCampaigns ? 'text-primary bg-primary/10' : 'hover:text-primary hover:bg-slate-100'}`}
+                                        title="Campaigns & Broadcast"
+                                    >
+                                        <Megaphone size={18} />
+                                    </button>
 
-                                {showCampaigns && (
-                                    <div className="absolute right-[-1rem] sm:right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="px-4 pb-2 border-b border-slate-100">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Audience Segments</p>
-                                        </div>
-                                        <div className="p-2 space-y-1">
-                                            <button 
-                                                onClick={() => handleBroadcastClick('new')}
-                                                className="w-full flex items-center justify-between p-3 hover:bg-blue-50 rounded-xl transition-colors group text-left"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                                                        <Plus size={16} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-700">New Visitors</p>
-                                                        <p className="text-[10px] text-slate-400">Recently joined</p>
-                                                    </div>
-                                                </div>
-                                                <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                    {newVisitorsData?.total || 0}
-                                                </span>
-                                            </button>
-
-                                            <button 
-                                                onClick={() => handleBroadcastClick('returning')}
-                                                className="w-full flex items-center justify-between p-3 hover:bg-purple-50 rounded-xl transition-colors group text-left"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-8 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center">
-                                                        <Users size={16} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-700">Returning Visitors</p>
-                                                        <p className="text-[10px] text-slate-400">Visited &gt; 1 time</p>
-                                                    </div>
-                                                </div>
-                                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                    {returningVisitorsData?.total || 0}
-                                                </span>
-                                            </button>
-
-                                            {/* Backend Segments */}
-                                            {segments.map((segment: any) => (
+                                    {showCampaigns && (
+                                        <div className="absolute right-[-1rem] sm:right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="px-4 pb-2 border-b border-slate-100">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Audience Segments</p>
+                                            </div>
+                                            <div className="p-2 space-y-1">
                                                 <button 
-                                                    key={segment.id}
-                                                    onClick={() => handleBroadcastToSegment(segment.id)}
-                                                    className="w-full flex items-center justify-between p-3 hover:bg-emerald-50 rounded-xl transition-colors group text-left"
+                                                    onClick={() => handleBroadcastClick('new')}
+                                                    className="w-full flex items-center justify-between p-3 hover:bg-blue-50 rounded-xl transition-colors group text-left"
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className="size-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                                        <div className="size-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                                                            <Plus size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-700">New Visitors</p>
+                                                            <p className="text-[10px] text-slate-400">Recently joined</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                        {newVisitorsData?.total || 0}
+                                                    </span>
+                                                </button>
+
+                                                <button 
+                                                    onClick={() => handleBroadcastClick('returning')}
+                                                    className="w-full flex items-center justify-between p-3 hover:bg-purple-50 rounded-xl transition-colors group text-left"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-8 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center">
                                                             <Users size={16} />
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-bold text-slate-700">{segment.name}</p>
-                                                            <p className="text-[10px] text-slate-400">{segment.description || 'Customer Segment'}</p>
+                                                            <p className="text-sm font-bold text-slate-700">Returning Visitors</p>
+                                                            <p className="text-[10px] text-slate-400">Visited &gt; 1 time</p>
                                                         </div>
                                                     </div>
-                                                </button>
-                                            ))}
-
-                                            {/* Legacy Custom Tags (Keep for transition) */}
-                                            {customTagsWithCounts.map(({ name, count }) => (
-                                                <button 
-                                                    key={name}
-                                                    onClick={() => handleBroadcastToTag(name)}
-                                                    className="w-full flex items-center justify-between p-3 hover:bg-emerald-50 rounded-xl transition-colors group text-left"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="size-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
-                                                            <Tag size={16} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-slate-700">{name}</p>
-                                                            <p className="text-[10px] text-slate-400">Visitor Tag</p>
-                                                        </div>
-                                                    </div>
-                                                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                        {count}
+                                                    <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                        {returningVisitorsData?.total || 0}
                                                     </span>
                                                 </button>
-                                            ))}
-                                        </div>
 
-                                        {/* Create Tag Flow */}
-                                        <div className="mx-2 mt-2 pt-3 border-t border-slate-50">
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-2">Create New Segment</p>
-                                            <div className="flex items-center gap-2 px-2">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Tag Name (e.g. VIP)"
-                                                    value={newTagName}
-                                                    onChange={e => setNewTagName(e.target.value)}
-                                                    className="flex-1 h-9 rounded-xl bg-slate-50 border border-slate-100 px-3 text-[11px] font-semibold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
-                                                />
-                                                <button 
-                                                    onClick={handleCreateTag}
-                                                    disabled={!newTagName.trim() || selectedContacts.size === 0}
-                                                    className="size-9 bg-primary text-white rounded-xl flex items-center justify-center shadow-md shadow-primary/20 hover:bg-primary/90 disabled:opacity-30 disabled:shadow-none transition-all"
-                                                    title={selectedContacts.size === 0 ? "Select customers first" : "Create tag"}
-                                                >
-                                                    <Plus size={18} />
-                                                </button>
+                                                {/* Backend Segments */}
+                                                {segments.map((segment: any) => (
+                                                    <button 
+                                                        key={segment.id}
+                                                        onClick={() => handleBroadcastToSegment(segment.id)}
+                                                        className="w-full flex items-center justify-between p-3 hover:bg-emerald-50 rounded-xl transition-colors group text-left"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="size-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                                                <Users size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-slate-700">{segment.name}</p>
+                                                                <p className="text-[10px] text-slate-400">{segment.description || 'Customer Segment'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+
+                                                {/* Legacy Custom Tags (Keep for transition) */}
+                                                {customTagsWithCounts.map(({ name, count }) => (
+                                                    <button 
+                                                        key={name}
+                                                        onClick={() => handleBroadcastToTag(name)}
+                                                        className="w-full flex items-center justify-between p-3 hover:bg-emerald-50 rounded-xl transition-colors group text-left"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="size-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                                                <Tag size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-slate-700">{name}</p>
+                                                                <p className="text-[10px] text-slate-400">Visitor Tag</p>
+                                                            </div>
+                                                        </div>
+                                                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                            {count}
+                                                        </span>
+                                                    </button>
+                                                ))}
                                             </div>
-                                            <div className="mt-2 px-2">
-                                                <p className="text-[9px] text-center text-slate-400 italic font-medium leading-relaxed">
-                                                    {selectedContacts.size > 0 
-                                                        ? `Apply tag "${newTagName || '...'}" to ${selectedContacts.size} selected`
-                                                        : "Select customers below to create a tag"}
+
+                                            {/* Create Segment Button */}
+                                            <div className="mx-2 mt-2 pt-3 border-t border-slate-50">
+                                                <button 
+                                                    onClick={() => {
+                                                        setShowCampaigns(false);
+                                                        setShowCreateSegment(true);
+                                                    }}
+                                                    className="w-full flex items-center justify-center gap-2 p-3 bg-primary/5 hover:bg-primary/10 text-primary rounded-xl transition-all group"
+                                                >
+                                                    <div className="size-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-110 transition-transform">
+                                                        <Plus size={18} />
+                                                    </div>
+                                                    <span className="text-sm font-bold">Create New Segment</span>
+                                                </button>
+                                                <p className="mt-2 text-[10px] text-center text-slate-400 font-medium px-4 italic leading-tight">
+                                                    Group customers from your entire database into targeted segments
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
 
-                            <Link 
-                                href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
-                                className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Chat Settings"
-                            >
-                                <Settings size={18} />
-
-                    </Link>
+                            {!isCustomer && (
+                                <Link 
+                                    href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
+                                    className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
+                                    title="Chat Settings"
+                                >
+                                    <Settings size={18} />
+                                </Link>
+                            )}
                 </div>
             </header>
 
@@ -662,6 +683,12 @@ export default function ChatSidebar() {
                     type="general"
                 />
             )}
+            {showCreateSegment && (
+                <CreateSegmentModal
+                    isOpen={showCreateSegment}
+                    onClose={() => setShowCreateSegment(false)}
+                />
+            )}
         </aside>
     );
 }
@@ -717,9 +744,17 @@ function ConversationItem({
                 </button>
             </div>
 
-            <button
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={onClick}
-                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group"
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onClick();
+                    }
+                }}
+                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group cursor-pointer"
             >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
@@ -779,7 +814,7 @@ function ConversationItem({
                             <Trash2 size={16} />
                         </button>
                     </div>
-            </button>
+            </div>
         </div>
     );
 }

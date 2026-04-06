@@ -5,12 +5,14 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 import { FormsService } from './forms.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { AdminFormQueryDto } from './dto/admin-form.dto';
-import { ParseUUIDPipe } from '@nestjs/common';
+import { DisableFormDto } from './dto/disable-form.dto';
+import { ParseUUIDPipe, Body } from '@nestjs/common';
 
 @ApiTags('Admin Forms')
 @ApiBearerAuth()
@@ -45,6 +47,7 @@ export class AdminFormsController {
 
   @Patch(':id/disable')
   @ApiOperation({ summary: 'Disable a specific form as an admin' })
+  @ApiBody({ type: DisableFormDto })
   @ApiResponse({
     status: 200,
     description: 'The form has been successfully disabled.',
@@ -53,11 +56,15 @@ export class AdminFormsController {
         id: 'uuid-form-1',
         title: 'Customer Feedback',
         adminDisabled: true,
+        adminDisabledNote: 'Violated terms of service'
       },
     },
   })
-  disableForm(@Param('id', ParseUUIDPipe) id: string) {
-    return this.formsService.setAdminDisabledStatus(id, true);
+  disableForm(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DisableFormDto,
+  ) {
+    return this.formsService.setAdminDisabledStatus(id, true, dto.adminDisabledNote);
   }
 
   @Patch(':id/enable')
@@ -70,6 +77,7 @@ export class AdminFormsController {
         id: 'uuid-form-1',
         title: 'Customer Feedback',
         adminDisabled: false,
+        adminDisabledNote: null,
       },
     },
   })

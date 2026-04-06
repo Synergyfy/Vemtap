@@ -16,62 +16,73 @@ import { LoyaltyService } from '../loyalty/loyalty.service';
 
 describe('VisitorsService', () => {
   let service: VisitorsService;
-
-  const mockQueryBuilder = {
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    innerJoinAndSelect: jest.fn().mockReturnThis(),
-    innerJoin: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    groupBy: jest.fn().mockReturnThis(),
-    having: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    take: jest.fn().mockReturnThis(),
-    offset: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
-    getMany: jest.fn().mockResolvedValue([]),
-    getCount: jest.fn().mockResolvedValue(0),
-    getRawMany: jest.fn().mockResolvedValue([]),
-    getRawOne: jest.fn().mockResolvedValue({ count: 0 }),
-    clone: jest.fn().mockReturnThis(),
-  };
-
-  const mockUserRepo = {
-    createQueryBuilder: jest.fn(() => mockQueryBuilder),
-    findOne: jest.fn(),
-    findOneBy: jest.fn(),
-    create: jest.fn().mockImplementation((d) => d),
-    save: jest
-      .fn()
-      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
-    softDelete: jest.fn(),
-    update: jest.fn(),
-  };
-
-  const mockVisitRepo = {
-    createQueryBuilder: jest.fn(() => mockQueryBuilder),
-    create: jest.fn().mockImplementation((d) => d),
-    save: jest
-      .fn()
-      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
-    count: jest.fn().mockResolvedValue(0),
-    find: jest.fn(),
-  };
-
-  const mockDeviceRepo = { findOne: jest.fn(), save: jest.fn() };
-  const mockBranchRepo = { findOne: jest.fn() };
-  const mockContactRepo = {
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((d) => d),
-    save: jest
-      .fn()
-      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
-  };
+  let mockQueryBuilder: any;
+  let mockUserRepo: any;
+  let mockVisitRepo: any;
+  let mockDeviceRepo: any;
+  let mockBranchRepo: any;
+  let mockContactRepo: any;
 
   beforeEach(async () => {
+    mockQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      having: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      getMany: jest.fn().mockResolvedValue([]),
+      getCount: jest.fn().mockResolvedValue(0),
+      getRawMany: jest.fn().mockResolvedValue([]),
+      getRawOne: jest.fn().mockResolvedValue({ count: 0 }),
+      clone: jest.fn().mockReturnThis(),
+      getQuery: jest.fn().mockReturnValue('SELECT 1'),
+      getParameters: jest.fn().mockReturnValue({}),
+      from: jest.fn().mockReturnThis(),
+      setParameters: jest.fn().mockReturnThis(),
+    };
+
+    mockUserRepo = {
+      createQueryBuilder: jest.fn(() => mockQueryBuilder),
+      findOne: jest.fn(),
+      findOneBy: jest.fn(),
+      find: jest.fn(),
+      create: jest.fn().mockImplementation((d) => d),
+      save: jest
+        .fn()
+        .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
+      softDelete: jest.fn(),
+      update: jest.fn(),
+    };
+
+    mockVisitRepo = {
+      createQueryBuilder: jest.fn(() => mockQueryBuilder),
+      create: jest.fn().mockImplementation((d) => d),
+      save: jest
+        .fn()
+        .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
+      count: jest.fn().mockResolvedValue(0),
+      find: jest.fn(),
+    };
+
+    mockDeviceRepo = { findOne: jest.fn(), save: jest.fn() };
+    mockBranchRepo = { findOne: jest.fn() };
+    mockContactRepo = {
+      findOne: jest.fn(),
+      create: jest.fn().mockImplementation((d) => d),
+      save: jest
+        .fn()
+        .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VisitorsService,
@@ -82,7 +93,10 @@ describe('VisitorsService', () => {
         { provide: getRepositoryToken(Contact), useValue: mockContactRepo },
         {
           provide: DataSource,
-          useValue: { transaction: jest.fn() },
+          useValue: {
+            transaction: jest.fn(),
+            createQueryBuilder: jest.fn(() => mockQueryBuilder),
+          },
         },
         {
           provide: MessagingEngineService,
@@ -183,11 +197,9 @@ describe('VisitorsService', () => {
         },
       ];
 
-      mockQueryBuilder.getManyAndCount.mockResolvedValueOnce([
-        [{ id: '1' }],
-        1,
-      ]);
-      mockQueryBuilder.getMany.mockResolvedValueOnce(mockUsers);
+      mockQueryBuilder.getRawMany.mockResolvedValueOnce([{ user_id: '1' }]);
+      mockUserRepo.find.mockResolvedValueOnce(mockUsers);
+      mockQueryBuilder.getRawOne.mockResolvedValueOnce({ count: '1' });
 
       const result = await service.findAll({ page: 1, limit: 10 }, 'branch-1');
 

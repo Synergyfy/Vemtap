@@ -7,18 +7,31 @@ import { motion } from 'framer-motion';
 import AuthSidePanel from '@/components/auth/AuthSidePanel';
 import { useAuthStore } from '../../store/useAuthStore';
 import Logo from '@/components/brand/Logo';
-import { useLogin } from '@/services/auth/hooks';
+import { useLogin, useCheckUserStatus, useCompleteCustomerSetup, useResendDefaultPassword } from '@/services/auth/hooks';
 import { toast } from 'react-hot-toast';
+
+type LoginStep = 'identifier' | 'setup-email' | 'info' | 'password';
+type LoginTab = 'email' | 'phone';
 
 export default function LoginPage() {
     const { loginUser, isLoading: isLoginLoading } = useLogin();
+    const { checkStatus, isLoading: isCheckLoading } = useCheckUserStatus();
+    const { completeSetup, isLoading: isSetupLoading } = useCompleteCustomerSetup();
+    const { resendPassword, isLoading: isResendLoading } = useResendDefaultPassword();
+
     const router = useRouter();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const login = useAuthStore((state) => state.login);
+
+    const [step, setStep] = useState<LoginStep>('identifier');
+    const [activeTab, setActiveTab] = useState<LoginTab>('email');
+    const [userStatus, setUserStatus] = useState<any>(null);
+
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         identifier: '',
+        email: '',
         password: '',
         rememberMe: false,
     });
@@ -30,6 +43,57 @@ export default function LoginPage() {
 
      
     console.log('[LOGIN PAGE] 🔍 isAuthenticated:', isAuthenticated);
+
+    const handleContinue = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        try {
+            const identifier = formData.identifier.trim();
+            if (!identifier) throw new Error('Input is required.');
+
+            const res = await checkStatus(identifier);
+            if (!res.exists) {
+                throw new Error('No account found with this ' + activeTab + '.');
+            }
+
+            setUserStatus(res);
+
+            // Flow Logic
+            if (res.role?.toLowerCase() === 'customer') {
+                if (!res.isPasswordChanged && !res.hasRealEmail) {
+                    setStep('setup-email');
+                } else {
+                    setStep('password');
+                }
+            } else {
+                // Owner/Staff flow
+                setStep('password');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to verify account');
+        }
+    };
+
+    const handleSetupEmail = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        try {
+            if (!formData.email) throw new Error('Email is required.');
+            await completeSetup({ identifier: formData.identifier, email: formData.email });
+            setStep('info');
+        } catch (err: any) {
+            setError(err.message || 'Failed to setup email');
+        }
+    };
+
+    const handleResendPassword = async () => {
+        try {
+            await resendPassword(formData.identifier);
+            toast.success('Default password resent to your email');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to resend password');
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         if (!isMounted) return;
@@ -98,38 +162,174 @@ export default function LoginPage() {
                                 className="space-y-10"
                             >
                                 <div>
-                                    <h1 className="text-4xl font-display font-bold text-text-main mb-4 leading-tight tracking-tight">Welcome back</h1>
-                                    <p className="text-base text-text-secondary font-medium leading-relaxed max-w-lg">Login to manage your business and check your customer data in real-time.</p>
+                                    <h1 className="text-4xl font-display font-bold text-text-main mb-4 leading-tight tracking-tight">
+                                        {step === 'identifier' && "Welcome back"}
+                                        {step === 'setup-email' && "One last step"}
+                                        {step === 'info' && "Check your inbox"}
+                                        {step === 'password' && "Securing your entry"}
+                                    </h1>
+                                    <p className="text-base text-text-secondary font-medium leading-relaxed max-w-lg">
+                                        {step === 'identifier' && "Login to manage your business and check your customer data in real-time."}
+                                        {step === 'setup-email' && "Please provide your email address to receive your temporary password and complete your account setup."}
+                                        {step === 'info' && "We've sent a welcome email with your default password to your provided email address."}
+                                        {step === 'password' && "Enter your password to access your dashboard."}
+                                    </p>
                                 </div>
 
-                                <form onSubmit={handleLogin} className="space-y-8">
-                                    {error && (
-                                        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3 animate-shake">
-                                            <span className="material-icons-round text-red-600">error</span>
-                                            <p className="text-sm font-semibold text-red-900">{error}</p>
-                                        </div>
-                                    )}
+                                {error && (
+                                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3 animate-shake">
+                                        <span className="material-icons-round text-red-600">error</span>
+                                        <p className="text-sm font-semibold text-red-900">{error}</p>
+                                    </div>
+                                )}
 
-                                    <div className="grid grid-cols-1 gap-6">
+                                {step === 'identifier' && (
+                                    <form onSubmit={handleContinue} className="space-y-8">
+                                        <div className="space-y-6">
+                                            <div className="w-full bg-gray-50 p-1.5 h-14 rounded-2xl border border-gray-100 flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveTab('email')}
+                                                    className={`flex-1 h-full rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'email' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-text-secondary hover:text-text-main'}`}
+                                                >
+                                                    <span className="material-icons-round text-lg">alternate_email</span>
+                                                    Email Address
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveTab('phone')}
+                                                    className={`flex-1 h-full rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'phone' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-text-secondary hover:text-text-main'}`}
+                                                >
+                                                    <span className="material-icons-round text-lg">phone</span>
+                                                    Phone Number
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">
+                                                    {activeTab === 'email' ? 'Email Address' : 'Phone Number'}
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="material-icons-round absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">
+                                                        {activeTab === 'email' ? 'email' : 'phone'}
+                                                    </span>
+                                                    <input
+                                                        type={activeTab === 'email' ? 'email' : 'text'}
+                                                        placeholder={activeTab === 'email' ? 'email@company.com' : '+234...'}
+                                                        className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl pl-12 pr-5 font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all text-sm"
+                                                        value={formData.identifier}
+                                                        onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={isCheckLoading}
+                                            className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isCheckLoading ? (
+                                                <span className="material-icons-round animate-spin">refresh</span>
+                                            ) : (
+                                                <>
+                                                    Continue
+                                                    <span className="material-icons-round text-xl">arrow_forward_ios</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+                                )}
+
+                                {step === 'setup-email' && (
+                                    <form onSubmit={handleSetupEmail} className="space-y-8">
                                         <div className="space-y-3">
-                                            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Email or Phone Number</label>
+                                            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Enter Your Email</label>
                                             <div className="relative">
-                                                <span className="material-icons-round absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">low_priority</span>
+                                                <span className="material-icons-round absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">alternate_email</span>
                                                 <input
-                                                    type="text"
-                                                    placeholder="email@company.com or +234..."
+                                                    type="email"
+                                                    placeholder="your@email.com"
                                                     className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl pl-12 pr-5 font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all text-sm"
-                                                    value={formData.identifier}
-                                                    onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                                                    value={formData.email}
+                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                                     required
                                                 />
                                             </div>
                                         </div>
 
+                                        <button
+                                            type="submit"
+                                            disabled={isSetupLoading}
+                                            className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isSetupLoading ? (
+                                                <span className="material-icons-round animate-spin">refresh</span>
+                                            ) : (
+                                                <>
+                                                    Save & Send Password
+                                                    <span className="material-icons-round text-xl">send</span>
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setStep('identifier')}
+                                            className="w-full text-center text-xs font-bold text-text-secondary hover:text-primary transition-colors"
+                                        >
+                                            Back to Identifier
+                                        </button>
+                                    </form>
+                                )}
+
+                                {step === 'info' && (
+                                    <div className="space-y-8">
+                                        <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 flex flex-col items-center text-center gap-4">
+                                            <span className="material-icons-round text-primary text-5xl">mark_email_read</span>
+                                            <div className="space-y-2">
+                                                <h3 className="font-bold text-text-main text-lg underline decoration-primary decoration-2 underline-offset-4">Success!</h3>
+                                                <p className="text-sm font-medium text-text-secondary leading-relaxed">
+                                                    We've sent your temporary password to <b>{formData.email}</b>. Please check your inbox (and spam folder) and use it to sign in below.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <button
+                                                onClick={() => setStep('password')}
+                                                className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-3"
+                                            >
+                                                Proceed to Password
+                                                <span className="material-icons-round text-xl">login</span>
+                                            </button>
+                                            <div className="flex flex-col items-center gap-3 pt-4">
+                                                <p className="text-xs font-semibold text-text-secondary italic">Didn't receive the email?</p>
+                                                <button
+                                                    onClick={handleResendPassword}
+                                                    disabled={isResendLoading}
+                                                    className="text-xs font-black uppercase tracking-widest text-primary hover:underline flex items-center gap-2"
+                                                >
+                                                    {isResendLoading ? 'Resending...' : 'Resend Welcome Email'}
+                                                    {!isResendLoading && <span className="material-icons-round text-sm">replay</span>}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {step === 'password' && (
+                                    <form onSubmit={handleLogin} className="space-y-8">
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center px-1">
                                                 <label className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary">Security Password</label>
-                                                <Link href="/forgot-password" hidden className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">Forgot?</Link>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setStep('identifier')}
+                                                    className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                                                >
+                                                    Change Identifier ({formData.identifier})
+                                                </button>
                                             </div>
                                             <div className="relative">
                                                 <span className="material-icons-round absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">shield</span>
@@ -140,6 +340,7 @@ export default function LoginPage() {
                                                     value={formData.password}
                                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                                     required
+                                                    autoFocus
                                                 />
                                                 <button
                                                     type="button"
@@ -150,45 +351,44 @@ export default function LoginPage() {
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="flex items-center justify-between">
-                                        <label className="flex items-center gap-3 cursor-pointer group">
-                                            <div className="relative flex items-center">
-                                                <input
-                                                    type="checkbox"
-                                                    id="remember"
-                                                    className="peer sr-only"
-                                                    checked={formData.rememberMe}
-                                                    onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-                                                />
-                                                <div className="size-5 border-2 border-gray-200 rounded-lg peer-checked:bg-primary peer-checked:border-primary transition-all"></div>
-                                                <span className="material-icons-round absolute text-white text-xs scale-0 peer-checked:scale-100 transition-transform left-[4px]">check</span>
-                                            </div>
-                                            <span className="text-xs font-semibold text-text-secondary group-hover:text-text-main transition-colors">Keep me signed in for 30 days</span>
-                                        </label>
-                                        <Link href="/forgot-password" id="forgot-password" className="text-xs font-bold text-primary hover:underline underline-offset-4">Forgot password?</Link>
-                                    </div>
+                                        <div className="flex items-center justify-between">
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <div className="relative flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="remember"
+                                                        className="peer sr-only"
+                                                        checked={formData.rememberMe}
+                                                        onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
+                                                    />
+                                                    <div className="size-5 border-2 border-gray-200 rounded-lg peer-checked:bg-primary peer-checked:border-primary transition-all"></div>
+                                                    <span className="material-icons-round absolute text-white text-xs scale-0 peer-checked:scale-100 transition-transform left-[4px]">check</span>
+                                                </div>
+                                                <span className="text-xs font-semibold text-text-secondary group-hover:text-text-main transition-colors">Keep me signed in for 30 days</span>
+                                            </label>
+                                            <Link href="/forgot-password" id="forgot-password" className="text-xs font-bold text-primary hover:underline underline-offset-4">Forgot password?</Link>
+                                        </div>
 
-                                    <button
-                                        type="submit"
-                                        disabled={isLoginLoading}
-                                        className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                                    >
-                                        {isLoginLoading ? (
-                                            <>
-                                                <span className="material-icons-round animate-spin">refresh</span>
-                                                Proccessing Secure Login...
-                                            </>
-                                        ) : (
-                                            <>
-                                                Sign In to Dashboard
-                                                <span className="material-icons-round text-xl">arrow_forward</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </form>
-
+                                        <button
+                                            type="submit"
+                                            disabled={isLoginLoading}
+                                            className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isLoginLoading ? (
+                                                <>
+                                                    <span className="material-icons-round animate-spin">refresh</span>
+                                                    Proccessing Secure Login...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Sign In to Dashboard
+                                                    <span className="material-icons-round text-xl">arrow_forward</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+                                )}
                             </motion.div>
 
                             <p className="text-xs text-center lg:text-left text-text-secondary font-bold uppercase tracking-[0.2em] mt-8">

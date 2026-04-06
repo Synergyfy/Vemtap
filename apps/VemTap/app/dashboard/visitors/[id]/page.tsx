@@ -141,7 +141,7 @@ export default function VisitorProfilePage() {
                             <div className="mt-6 pt-6 border-t border-gray-100">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-3">Tags</p>
                                 <div className="flex flex-wrap gap-2">
-                                    {(visitor.tags || []).length > 0 ? visitor.tags.map((tag: string, i: number) => (
+                                    {visitor.tags && visitor.tags.length > 0 ? visitor.tags.map((tag: string, i: number) => (
                                         <span key={i} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold">
                                             {tag}
                                         </span>
@@ -225,7 +225,7 @@ export default function VisitorProfilePage() {
                 recipientName={displayName}
                 recipientPhone={visitor.phone}
                 recipientEmail={visitor.email}
-                visitorIds={[visitorId]}
+                visitors={[visitor]}
                 type="welcome"
             />
 
