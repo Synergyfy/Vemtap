@@ -17,7 +17,7 @@ const steps = [
         heading: 'Capture customer info',
         desc: 'Getting customer details is easy. VemTap captures info in under 2 seconds without them needing to download any app.',
         img: 'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&q=80&w=800',
-        color: 'bg-primary-dark'
+        color: 'bg-gray-900'
     },
     {
         step: '3. The Growth',
