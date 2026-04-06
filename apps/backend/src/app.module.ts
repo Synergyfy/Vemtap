@@ -38,6 +38,8 @@ import { CustomerImpersonationGuard } from './modules/administration/customer-im
 import { ScheduleModule } from '@nestjs/schedule';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
+import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
+
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
@@ -131,6 +133,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     CatalogueModule,
     CatalogueOrderModule,
     CatalogueCartModule,
+    BusinessProfilingModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

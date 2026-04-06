@@ -15,7 +15,6 @@ import {
     MapPin,
     ArrowLeft,
     Download,
-    Trash2,
     User,
     LayoutGrid,
     X,
@@ -208,11 +207,11 @@ const ListTab = ({ profiles, filters, setFilters, onView, onUpdateStatus, onDele
                                 <th className="px-6 py-4 hidden md:table-cell">ID</th>
                                 <th className="px-6 py-4">Business</th>
                                 <th className="px-6 py-4 hidden lg:table-cell">Location</th>
-                                <th className="px-6 py-4 hidden md:table-cell">Source</th>
+                                <th className="px-6 py-4 hidden md:table-cell">Type</th>
                                 <th className="px-6 py-4">Priority</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 hidden sm:table-cell">Score</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
+                                <th className="px-6 py-4 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -243,14 +242,7 @@ const ListTab = ({ profiles, filters, setFilters, onView, onUpdateStatus, onDele
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 hidden md:table-cell">
-                                            {p.createdBy ? (
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-gray-700">{p.createdBy.firstName} {p.createdBy.lastName}</span>
-                                                    <span className="text-[10px] text-gray-400">Agent</span>
-                                                </div>
-                                            ) : (
-                                                <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest border border-blue-100 italic">Public Lead</span>
-                                            )}
+                                            <div className="text-xs text-gray-600 capitalize">{p.businessType}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${
@@ -290,13 +282,6 @@ const ListTab = ({ profiles, filters, setFilters, onView, onUpdateStatus, onDele
                                                     className="px-3 md:px-4 py-1.5 bg-gray-50 text-text-main text-xs font-black uppercase tracking-wider rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors"
                                                 >
                                                     View
-                                                </button>
-                                                <button 
-                                                    onClick={() => onDelete(p.id, p.businessName)}
-                                                    className="p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors border border-transparent hover:border-red-100 hidden sm:block"
-                                                    title="Delete profile"
-                                                >
-                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </td>
@@ -391,11 +376,8 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-3 print:hidden">
-                    <button 
-                        onClick={() => window.print()}
-                        className="flex items-center gap-2 px-8 py-3 bg-white border border-gray-100 text-text-main text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-gray-50 transition-all shadow-sm"
-                    >
+                <div className="flex gap-3">
+                    <button className="flex items-center gap-2 px-8 py-3 bg-white border border-gray-100 text-text-main text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-gray-50 transition-all shadow-sm">
                         <Download size={16} /> DOWNLOAD PDF
                     </button>
                     <button 
@@ -443,21 +425,16 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                 
                 <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
                     <div className="space-y-4 border-b md:border-b-0 md:border-r border-white/5 pb-8 md:pb-0">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Quest Mastery</p>
-                        <div className="flex flex-col gap-1">
-                             <div className="flex items-baseline gap-2">
-                                <h2 className="text-3xl font-black text-primary tracking-tighter">{profile.xpEarned || 0}</h2>
-                                <span className="text-white/20 font-black text-xs uppercase">XP</span>
-                             </div>
-                             <div className="flex flex-wrap gap-1 mt-1">
-                                {(profile.achievements || []).map((a, i) => (
-                                    <div key={i} title={a} className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px]" role="img" aria-label={a}>
-                                        {a.includes('Complete') ? '✅' : a.includes('High') ? '🔥' : '⭐'}
-                                    </div>
-                                ))}
-                                {(!profile.achievements || profile.achievements.length === 0) && <span className="text-[8px] text-white/20 font-black uppercase">No Badges Yet</span>}
-                             </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Opport. Index</p>
+                        <div className="flex items-baseline gap-2">
+                             <h2 className="text-5xl md:text-6xl font-black text-primary tracking-tighter drop-shadow-sm">{profile.score}</h2>
+                             <span className="text-white/20 font-black text-xl">/ 20</span>
                         </div>
+                        <Tag color={profile.priority === 'High' ? 'red' : profile.priority === 'Medium' ? 'orange' : 'green'}>{profile.priority} PRIORITY</Tag>
+                    </div>
+
+                    <div className="lg:col-span-2 hidden md:flex items-center">
+                         <div className="w-full h-px bg-white/10"></div>
                     </div>
 
                     <div className="flex flex-col justify-center items-center md:items-end">
@@ -479,7 +456,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                     <button 
                         key={t.id}
                         onClick={() => setActiveTab(t.id)}
-                        className={`flex items-center gap-3 px-6 md:px-8 py-3 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 whitespace-nowrap print:hidden ${
+                        className={`flex items-center gap-3 px-6 md:px-8 py-3 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 whitespace-nowrap ${
                             activeTab === t.id ? 'bg-white text-primary shadow-xl shadow-gray-200' : 'text-gray-500 hover:text-gray-900'
                         }`}
                     >
@@ -527,16 +504,16 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-black text-text-main text-lg tracking-tight">Vemtap Strategic Analysis</h3>
+                                            <h3 className="font-black text-text-main text-lg tracking-tight">Vemtap AI Analysis</h3>
                                             <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${
                                                 profile.aiSource === 'ai' 
                                                 ? 'bg-green-50 text-green-600 border-green-100' 
-                                                : 'bg-primary/5 text-primary border-primary/20'
+                                                : 'bg-orange-50 text-orange-600 border-orange-100'
                                             }`}>
-                                                {profile.aiSource === 'ai' ? 'LIVE INTELLIGENCE' : 'EXPERT SYSTEM'}
+                                                {profile.aiSource === 'ai' ? 'LIVE INTELLIGENCE' : 'SIMULATION MODE'}
                                             </span>
                                         </div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Logic-Based Strategic Engine</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Powered by AI Intelligence</p>
                                     </div>
                                 </div>
                                 <div className="space-y-6">
@@ -612,15 +589,13 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                 <div className="space-y-6">
                                     <InfoRow label="Total Locations" value={profile.numberOfBranches} />
                                     <InfoRow label="Contact Person" value={profile.contactPerson || 'Not Specified'} />
-                                    <InfoRow label="Contact Email" value={profile.contactEmail} />
-                                    <InfoRow label="Contact Phone" value={profile.contactPhone} />
                                     <InfoRow label="Store Concept" value={profile.businessType} />
                                     <InfoRow label="Market Niche" value={profile.niche} />
                                     <InfoRow label="Traffic Reality" value={profile.customerTraffic} />
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Primary Demographics</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.targetCustomers?.map((t, i) => (
+                                            {profile.targetCustomers.map((t, i) => (
                                                 <Tag key={i} color="blue">{t}</Tag>
                                             ))}
                                         </div>
@@ -655,7 +630,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Internal Anchor Points</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.indoorPlacement?.map((p, i) => (
+                                            {profile.indoorPlacement.map((p, i) => (
                                                 <Tag key={i} color="purple">{p}</Tag>
                                             ))}
                                         </div>
@@ -663,7 +638,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Usage Contexts</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.specialUse?.map((s, i) => (
+                                            {profile.specialUse.map((s, i) => (
                                                 <Tag key={i} color="orange">{s}</Tag>
                                             ))}
                                         </div>
@@ -681,7 +656,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                          <p className="text-[10px] font-black uppercase text-gray-400">Interaction Focus</p>
                                          <div className="space-y-2">
-                                            {profile.demoItems?.map((item, i) => (
+                                            {profile.demoItems.map((item, i) => (
                                                 <div key={i} className="flex items-center gap-3 text-sm font-black text-text-main">
                                                     <div className="w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/40"></div>
                                                     {item}
@@ -708,7 +683,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Active Incentives</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.offers?.map((o, i) => (
+                                            {profile.offers.map((o, i) => (
                                                 <Tag key={i} color="green">{o}</Tag>
                                             ))}
                                         </div>
@@ -780,7 +755,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
     );
 };
 
-// --- Main Admin Dashboard Component ---
+// --- Main Agent Dashboard Component ---
 export default function BusinessProfilingPage() {
     const [activeTab, setActiveTab] = useState('overview');
     const [profiles, setProfiles] = useState<BusinessProfile[]>([]);
@@ -789,7 +764,6 @@ export default function BusinessProfilingPage() {
     const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -818,7 +792,7 @@ export default function BusinessProfilingPage() {
             setActiveTab('detail');
         } catch (error) {
             console.error('Save error:', error);
-            notify.error('Failed to create profile. Please check your connection or system logs.');
+            notify.error('Failed to create profile. Ensure AI key is correct.');
         } finally {
             setIsSaving(false);
         }
@@ -828,22 +802,6 @@ export default function BusinessProfilingPage() {
         await businessProfilingApi.updateStatus(id, status);
         fetchData();
         notify.success(`Status updated to ${status}`);
-    };
-
-    const handleDeleteRequest = (id: string, name: string) => {
-        setDeleteConfirm({ id, name });
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (!deleteConfirm) return;
-        try {
-            await businessProfilingApi.delete(deleteConfirm.id);
-            notify.success(`"${deleteConfirm.name}" deleted successfully`);
-            setDeleteConfirm(null);
-            fetchData();
-        } catch {
-            notify.error('Failed to delete profile');
-        }
     };
 
     const handleView = (id: string) => {
@@ -861,41 +819,22 @@ export default function BusinessProfilingPage() {
 
     return (
         <div className="p-4 md:p-10 bg-gray-50/50 min-h-screen space-y-8 pb-32">
-            {/* Delete Confirmation Modal */}
-            {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm p-10 space-y-8 animate-in zoom-in-95">
-                        <div className="w-16 h-16 rounded-[1.5rem] bg-red-50 flex items-center justify-center mx-auto shadow-sm">
-                            <Trash2 size={32} className="text-red-500" />
-                        </div>
-                        <div className="text-center space-y-3">
-                            <h3 className="font-black text-text-main text-2xl tracking-tight">Delete Profile?</h3>
-                            <p className="text-sm text-gray-400 font-bold leading-relaxed">This will permanently delete <span className="font-black text-text-main">&ldquo;{deleteConfirm.name}&rdquo;</span>. This action cannot be undone.</p>
-                        </div>
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="flex-1 py-4 bg-gray-100 text-text-main font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-gray-200 transition-all font-bold"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleDeleteConfirm}
-                                className="flex-1 py-4 bg-red-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-red-600/20 hover:bg-red-700 transition-all font-bold"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="text-center md:text-left">
-                    <h1 className="text-2xl md:text-3xl font-black text-text-main tracking-tight">Business Profiling</h1>
-                    <p className="text-[10px] md:text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Strategic Merchant Acquisitions Dashboard</p>
+                    <div className="flex-1">
+                        <h1 className="text-3xl font-black text-text-main tracking-tight uppercase">Agent Profiling Desk</h1>
+                        <p className="text-xs text-text-secondary font-bold uppercase tracking-widest mt-1 opacity-50">Profile potential businesses in the field</p>
+                    </div>
                 </div>
                 <div className="flex overflow-x-auto no-scrollbar pb-2 md:pb-0 gap-2 w-full md:w-auto">
+                    <button 
+                        onClick={() => setActiveTab('overview')}
+                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
+                            activeTab === 'overview' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-white text-gray-500 border border-gray-100'
+                        }`}
+                    >
+                        <LayoutDashboard size={14} /> Overview
+                    </button>
                     <button 
                         onClick={() => setActiveTab('all')}
                         className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
@@ -922,7 +861,6 @@ export default function BusinessProfilingPage() {
                     filters={filters} 
                     setFilters={setFilters} 
                     onView={handleView}
-                    onDelete={handleDeleteRequest}
                     onUpdateStatus={handleUpdateStatus}
                     isLoading={isLoading}
                 />

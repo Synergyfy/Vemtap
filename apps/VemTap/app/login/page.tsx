@@ -131,7 +131,7 @@ export default function LoginPage() {
                 router.push('/customer/dashboard');
                 return;
             }
-            if (userRole === 'staff' && (identifier.includes('agent') || identifier.includes('support'))) {
+            if (userRole === 'agent' || (userRole === 'staff' && (identifier.includes('agent') || identifier.includes('support')))) {
                 router.push('/agent/dashboard');
                 return;
             }
@@ -205,7 +205,7 @@ export default function LoginPage() {
                                                     
                                                     if (userRole === 'admin') router.push('/admin/dashboard');
                                                     else if (userRole === 'customer') router.push('/customer/dashboard');
-                                                    else if (userRole === 'staff' && (formData.identifier.includes('agent') || formData.identifier.includes('support'))) router.push('/agent/dashboard');
+                                                    else if (userRole === 'agent' || userRole === 'staff') router.push('/agent/dashboard');
                                                     else router.push('/dashboard');
                                                 }}
                                             />

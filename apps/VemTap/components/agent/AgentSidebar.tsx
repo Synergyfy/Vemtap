@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import Logo from '@/components/brand/Logo';
-import { Home, MessageCircle, Ticket, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Home, MessageCircle, Ticket, Settings, LogOut, Menu, X, ClipboardList } from 'lucide-react';
 
 export default function AgentSidebar({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -16,6 +16,7 @@ export default function AgentSidebar({ children }: { children: React.ReactNode }
 
     const menuItems = [
         { label: 'Overview', href: '/agent/dashboard', icon: Home },
+        { label: 'Business Profiling', href: '/agent/business-profiling', icon: ClipboardList },
         { label: 'Support', href: '/agent/support', icon: MessageCircle },
         { label: 'Tickets', href: '/agent/tickets', icon: Ticket },
         { label: 'Profile', href: '/agent/settings/profile', icon: Settings },

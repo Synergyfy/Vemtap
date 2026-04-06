@@ -470,22 +470,17 @@ export default function GetStarted() {
                                             onSuccess={(res: AuthResponse) => {
                                                 // Handle existing users
                                                 if (!res.isNewUser) {
-                                                    const role = res.user.role?.toLowerCase();
+                                                    const userRole = res.user.role?.toLowerCase();
                                                     
-                                                    // If existing Owner with business, redirect to dashboard
-                                                    if (role === 'owner' && res.user.businessId) {
-                                                        toast.success('Welcome back! Redirecting to your dashboard...');
-                                                        router.push('/dashboard');
-                                                        return;
-                                                    }
-                                                    
-                                                    // If existing Manager/Admin/Staff, redirect to their dashboard
-                                                    if (['admin', 'manager', 'staff'].includes(role || '')) {
-                                                        const target = role === 'admin' ? '/admin' : '/dashboard';
-                                                        toast.success('Welcome back! Redirecting to your dashboard...');
-                                                        router.push(target);
-                                                        return;
-                                                    }
+                                                    // Define target based on role
+                                                    let target = '/dashboard';
+                                                    if (userRole === 'admin') target = '/admin/dashboard';
+                                                    else if (userRole === 'agent') target = '/agent/dashboard';
+                                                    else if (userRole === 'owner' && !res.user.businessId) target = '/get-started';
+
+                                                    toast.success('Welcome back! Redirecting to your dashboard...');
+                                                    router.push(target);
+                                                    return;
                                                 }
 
                                                 // Otherwise proceed with onboarding flow

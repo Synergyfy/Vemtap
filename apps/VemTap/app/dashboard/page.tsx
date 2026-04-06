@@ -89,10 +89,16 @@ export default function DashboardPage() {
     }, [activeBranch, isAllBranches]);
 
     useEffect(() => {
-        // Enforce onboarding for Owners who haven't created a business yet
+        // Redirect logic based on roles
         if (!user) return;
 
         const userRole = user.role?.toLowerCase();
+
+        // Redirect Agents to their specific dashboard
+        if (userRole === 'agent') {
+            router.replace('/agent/dashboard');
+            return;
+        }
         
         // Check if user is in "Just Registered" grace period (recently created)
         const isRecentlyCreated = isNewUser; // isNewUser hook already calculates < 24h

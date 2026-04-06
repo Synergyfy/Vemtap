@@ -7,9 +7,23 @@ export const normalizeBaseUrl = (raw?: string) => {
 
 export const BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
-export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+export interface ExtendedRequestInit extends RequestInit {
+    params?: Record<string, any>;
+}
+
+export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {}) => {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${BASE_URL}${normalizedEndpoint}`;
+    let url = `${BASE_URL}${normalizedEndpoint}`;
+
+    if (options.params) {
+        const query = Object.entries(options.params)
+            .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+            .join('&');
+        if (query) {
+            url += `?${query}`;
+        }
+    }
 
     const headers = new Headers({
         'Content-Type': 'application/json',
@@ -81,14 +95,14 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 };
 
 export const api = {
-    post: (endpoint: string, data: any, options: RequestInit = {}) =>
+    post: (endpoint: string, data: any, options: ExtendedRequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
-    get: (endpoint: string, options: RequestInit = {}) =>
+    get: (endpoint: string, options: ExtendedRequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'GET' }),
-    put: (endpoint: string, data: any, options: RequestInit = {}) =>
+    put: (endpoint: string, data: any, options: ExtendedRequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
-    patch: (endpoint: string, data: any, options: RequestInit = {}) =>
+    patch: (endpoint: string, data: any, options: ExtendedRequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (endpoint: string, data?: any, options: RequestInit = {}) =>
+    delete: (endpoint: string, data?: any, options: ExtendedRequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 };

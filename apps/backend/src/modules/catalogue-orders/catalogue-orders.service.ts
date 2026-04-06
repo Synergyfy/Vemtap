@@ -27,6 +27,8 @@ import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -53,6 +55,8 @@ export class CatalogueOrderService {
     private readonly visitorsService: VisitorsService,
     private readonly mailService: MailService,
     private readonly catalogueService: CatalogueService,
+    @InjectQueue('order-notifications')
+    private readonly orderNotificationQueue: Queue,
   ) {}
 
   async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
@@ -289,6 +293,12 @@ export class CatalogueOrderService {
         }
     }
 
+    // Queue "Order Placed" email
+    this.orderNotificationQueue.add('send-order-email', {
+      orderId: savedOrder.id,
+      status: 'placed',
+    }).catch(err => console.error('Failed to queue order placed email:', err));
+
     return savedOrder;
   }
 
@@ -393,6 +403,19 @@ export class CatalogueOrderService {
         { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
         true,
       ).catch(err => console.error('Failed to send customer notification:', err));
+    }
+
+    // Queue order status email
+    if (status === CatalogueOrderStatus.PROCESSING) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'processing',
+      }).catch(err => console.error('Failed to queue order processing email:', err));
+    } else if (status === CatalogueOrderStatus.COMPLETED) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'completed',
+      }).catch(err => console.error('Failed to queue order completed email:', err));
     }
 
     return updatedOrder;
