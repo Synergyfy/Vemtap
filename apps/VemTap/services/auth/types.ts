@@ -8,7 +8,7 @@ export interface RequestOwnerOtpRequest {
 
 export interface RegisterOwnerRequest {
     email: string;
-    password: string;
+    password?: string;
     businessName: string;
     businessLogo?: string;
     categoryId: string;
@@ -43,7 +43,7 @@ export interface RegisterRequest {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
+    password?: string;
     role?: string; // 'Owner' | 'Manager' | 'Staff' | 'Customer'
     phone?: string;
     businessName?: string;

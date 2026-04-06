@@ -76,7 +76,7 @@ export default function GetStarted() {
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
-    const { signup, user } = useAuthStore();
+    const { signup, user, setActiveBranch } = useAuthStore();
     const [step, setStep] = useState(1);
     const [subStep, setSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
