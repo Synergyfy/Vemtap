@@ -98,8 +98,8 @@ function fallbackResponse(messages: ChatMessage[]): string {
   // Try to find in KB directly
   const content = searchKnowledgeBase(lastMessage);
   if (content) {
-     return `I found this information that might help:\n\n${content}`; 
+     return `I found this information in our knowledge base that might help:\n\n${content}\n\n*Note: I am currently operating in basic mode.*`; 
   }
 
-  return "I am currently in maintenance mode (missing API Key). Please contact support at support@vemtap.io for assistance.";
+  return "I'm currently in maintenance mode (offline) and can only answer basic questions. For detailed assistance, please reach out to our support team at support@vemtap.io or visit our help center. We're here to help!";
 }

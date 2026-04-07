@@ -16,23 +16,16 @@ import PasswordValidation from '@/components/shared/PasswordValidation';
 
 
 const ADMIN_PERMISSIONS = [
-    { id: 'admin:dashboard', label: 'Dashboard', icon: Home },
-    { id: 'admin:businesses', label: 'Businesses', icon: Store },
-    { id: 'admin:customers', label: 'Customers', icon: Users },
-    { id: 'admin:agents', label: 'Agents Management', icon: ShieldCheck },
-    { id: 'admin:devices', label: 'Devices', icon: Nfc },
-    { id: 'admin:subscriptions', label: 'Subscriptions', icon: CreditCard },
-    { id: 'admin:products', label: 'Products & Orders', icon: Package },
-    { id: 'admin:analytics', label: 'Analytics', icon: BarChart },
-    { id: 'admin:loyalty', label: 'Loyalty Control', icon: Gift },
-    { id: 'admin:support', label: 'Support Tickets', icon: MessageSquare },
-    { id: 'admin:forms', label: 'Form Approvals', icon: FileText },
-    { id: 'admin:messaging', label: 'WhatsApp', icon: MessageSquare },
-    { id: 'admin:flow-engine', label: 'Flow Engine', icon: Workflow },
-    { id: 'admin:control-tower', label: 'Control Tower', icon: Eye },
-    { id: 'admin:pricing', label: 'Pricing Plans', icon: Tag },
-    { id: 'admin:health', label: 'System Health', icon: Activity },
-    { id: 'admin:settings', label: 'Settings', icon: Settings },
+    { id: 'ALL', label: 'All Access', icon: ShieldCheck },
+    { id: 'BUSINESSES', label: 'Businesses', icon: Store },
+    { id: 'BRANCHES', label: 'Branches', icon: Link2 },
+    { id: 'VISITORS', label: 'Visitors', icon: Users },
+    { id: 'LOYALTY', label: 'Loyalty Control', icon: Gift },
+    { id: 'PAYMENTS', label: 'Payments', icon: CreditCard },
+    { id: 'MESSAGING', label: 'Messaging (WA)', icon: MessageSquare },
+    { id: 'TICKETS', label: 'Support Tickets', icon: AlertCircle },
+    { id: 'REPORTS', label: 'Analytics & Reports', icon: BarChart },
+    { id: 'SETTINGS', label: 'System Settings', icon: Settings },
 ];
 
 export default function AdminAgentsPage() {
@@ -46,7 +39,7 @@ export default function AdminAgentsPage() {
         email: '', 
         phone: '', 
         password: suggestPassword(),
-        permissions: ['admin:dashboard', 'admin:support'] as string[] 
+        permissions: ['VISITORS', 'TICKETS'] as string[] 
     });
     const [invites, setInvites] = useState<Array<{ id: string; name: string; email: string; phone: string; status: 'Pending' | 'Sent' | 'Accepted'; createdAt: string }>>([]);
     const [editingAgent, setEditingAgent] = useState<{
@@ -91,7 +84,7 @@ export default function AdminAgentsPage() {
             );
         } else {
             // Open permissions modal to assign initial permissions
-            setEditingAgent({ id, name, permissions: ['admin:dashboard', 'admin:support'] });
+            setEditingAgent({ id, name, permissions: ['VISITORS', 'TICKETS'] });
         }
     };
 
@@ -136,7 +129,7 @@ export default function AdminAgentsPage() {
                 email: '', 
                 phone: '', 
                 password: suggestPassword(),
-                permissions: ['admin:dashboard', 'admin:support'] 
+                permissions: ['VISITORS', 'TICKETS'] 
             });
             setIsInviteOpen(false);
             notify.success(`Agent ${inviteForm.name} created and activated!`);

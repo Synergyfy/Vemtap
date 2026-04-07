@@ -29,6 +29,9 @@ export default function Navbar() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const userRole = user?.role?.toLowerCase();
+    const dashboardHref = userRole === 'admin' ? '/admin/dashboard' : userRole === 'agent' ? '/agent/dashboard' : '/dashboard';
+
     return (
         <>
             <div className="fixed left-0 right-0 z-50 flex justify-center px-4" style={{ top: 'calc(1.5rem + var(--pwa-banner-offset, 0px))' }}>
@@ -104,27 +107,29 @@ export default function Navbar() {
                     </div>
 
                     <div className="hidden md:flex items-center gap-3">
-                        {isAuthenticated && business ? (
+                        {isAuthenticated && (business || userRole === 'admin' || userRole === 'agent') ? (
                             <div className="relative group">
-                                <Link href="/dashboard" className="flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full border border-gray-200 transition-all">
+                                <Link href={dashboardHref} className="flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full border border-gray-200 transition-all">
                                     <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-2 ring-white overflow-hidden">
-                                        {business.logoUrl ? (
+                                        {business?.logoUrl ? (
                                             <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            getInitials(business.name)
+                                            getInitials(business?.name || user?.firstName || 'User')
                                         )}
                                     </div>
                                     <div className="flex flex-col text-left">
                                         <span className="text-xs font-bold text-text-main leading-tight group-hover:text-primary transition-colors">
-                                            {business.name}
+                                            {business?.name || 'My Dashboard'}
                                         </span>
-                                        <span className="text-[10px] text-text-secondary font-medium leading-tight">Dashboard</span>
+                                        <span className="text-[10px] text-text-secondary font-medium leading-tight">
+                                            {userRole === 'admin' ? 'Control Tower' : userRole === 'agent' ? 'Agent Desk' : 'Dashboard'}
+                                        </span>
                                     </div>
                                 </Link>
 
                                 {/* Dropdown */}
                                 <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                    <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors">
+                                    <Link href={dashboardHref} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors">
                                         <span className="material-icons-round text-lg">dashboard</span>
                                         Go to Dashboard
                                     </Link>
