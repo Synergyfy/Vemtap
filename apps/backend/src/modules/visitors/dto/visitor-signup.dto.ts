@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class VisitorSignupDto {
   @ApiProperty({ example: 'John' })
@@ -17,8 +17,8 @@ export class VisitorSignupDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '+234 801 234 5678' })
+  @ApiPropertyOptional({ example: '+234 801 234 5678' })
   @IsString()
-  @IsNotEmpty()
-  phone: string;
+  @IsOptional()
+  phone?: string;
 }

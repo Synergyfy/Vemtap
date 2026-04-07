@@ -292,7 +292,7 @@ const DynamicTapJourneyPage = () => {
                 firstName,
                 lastName,
                 email: data.email,
-                phone: data.phone
+                phone: data.phone || undefined
             });
 
             // If already authenticated (e.g. via Google), we just needed to sync profile/record visit

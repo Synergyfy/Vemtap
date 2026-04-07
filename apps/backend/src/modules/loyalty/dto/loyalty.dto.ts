@@ -8,6 +8,7 @@ import {
   IsDateString,
   IsUUID,
   Min,
+  NotEquals,
 } from 'class-validator';
 import { RewardCategory } from '../entities/reward-template.entity';
 import { RewardAudienceType } from '../entities/reward.entity';
@@ -47,9 +48,10 @@ export class CreateRewardDto extends CreateRewardTemplateDto {
   @IsUUID()
   branchId: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Total quantity available. Use -1 for infinity.' })
   @IsNumber()
-  @Min(1)
+  @Min(-1)
+  @NotEquals(0)
   totalQuantity: number;
 
   @ApiProperty()

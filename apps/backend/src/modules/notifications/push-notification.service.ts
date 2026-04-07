@@ -26,9 +26,15 @@ export class PushNotificationService {
     );
 
     if (publicKey && privateKey) {
-      webpush.setVapidDetails(email, publicKey, privateKey);
-      this.isConfigured = true;
-      this.logger.log('Web Push (VAPID) configured successfully');
+      try {
+        webpush.setVapidDetails(email, publicKey, privateKey);
+        this.isConfigured = true;
+        this.logger.log('Web Push (VAPID) configured successfully');
+      } catch (error) {
+        this.logger.error(
+          `Failed to configure Web Push (VAPID): ${error.message}. Push notifications will be mocked.`,
+        );
+      }
     } else {
       this.logger.warn(
         'Web Push (VAPID) keys missing. Push notifications will be mocked.',
