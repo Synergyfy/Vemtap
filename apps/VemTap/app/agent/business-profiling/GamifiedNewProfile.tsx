@@ -230,6 +230,8 @@ export default function GamifiedNewProfile({ onSave, isSaving }: { onSave: (data
         closingPlan: '', rateFootTraffic: 3, rateNeed: 3,
         rateAbilityToPay: 3, rateEaseOfAdoption: 3,
         status: 'Not Contacted',
+        xpEarned: 0,
+        achievements: [],
     });
 
     const currentXP = STEP_XP.slice(0, Math.min(highestStep, 9)).reduce((a, b) => a + b, 0);
@@ -662,7 +664,14 @@ export default function GamifiedNewProfile({ onSave, isSaving }: { onSave: (data
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.97 }}
                                 disabled={isSaving}
-                                onClick={() => { fireConfetti(); onSave(formData); }}
+                                onClick={() => { 
+                                    fireConfetti(); 
+                                    onSave({
+                                        ...formData,
+                                        xpEarned: currentXP,
+                                        achievements: unlockedAchievements
+                                    }); 
+                                }}
                                 className={`flex-1 md:w-72 py-4 font-extrabold uppercase tracking-wider text-[11px] rounded-2xl transition-all flex items-center justify-center gap-2 ${
                                     isSaving ? 'bg-gray-400 text-white cursor-not-allowed animate-pulse' : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-xl shadow-green-500/25 hover:shadow-2xl'
                                 }`}

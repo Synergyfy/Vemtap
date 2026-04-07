@@ -6,7 +6,7 @@ import {
     Plus, Trash2, Gift, Ticket, Save, X, 
     Image as ImageIcon2, HelpCircle, 
     Wallet, Package, Percent, ChevronDown, CheckCircle2, 
-    LucideIcon, Loader2, ChevronLeft, ChevronRight, Users
+    LucideIcon, Loader2, ChevronLeft, ChevronRight, Users, Zap
 } from 'lucide-react';
 import Cropper, { Point, Area } from 'react-easy-crop';
 import useEmblaCarousel from 'embla-carousel-react';

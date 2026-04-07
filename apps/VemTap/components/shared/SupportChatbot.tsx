@@ -178,7 +178,7 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                         <Draggable 
                             nodeRef={nodeRef}
                             onDrag={() => setIsDragging(true)}
-                            onStop={() => setTimeout(() => setIsDragging(false), 50)}
+                            onStop={() => { setTimeout(() => setIsDragging(false), 50); }}
                         >
                             <div ref={nodeRef} className="group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing">
                                 <button 
