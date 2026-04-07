@@ -646,6 +646,54 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
                                         />
                                     </div>
                                 </div>
+
+                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-xs font-medium text-slate-700">Total Quantity Available</label>
+                                            <Tooltip content="Maximum number of times this reward can be redeemed. Use -1 for unlimited.">
+                                                <HelpCircle size={14} className="text-slate-400" />
+                                            </Tooltip>
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, totalAvailable: formData.totalAvailable === -1 ? 100 : -1 })}
+                                            className={cn(
+                                                "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                                formData.totalAvailable === -1 
+                                                    ? "bg-primary text-white" 
+                                                    : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+                                            )}
+                                        >
+                                            {formData.totalAvailable === -1 ? 'Unlimited (Active)' : 'Set Unlimited'}
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        {formData.totalAvailable === -1 ? (
+                                            <div className="flex items-center gap-2 text-primary">
+                                                <Zap className="w-8 h-8" />
+                                                <span className="text-3xl font-display font-black uppercase">Infinity</span>
+                                            </div>
+                                        ) : (
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={formData.totalAvailable}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    setFormData({ ...formData, totalAvailable: isNaN(val) ? 1 : Math.max(1, val) });
+                                                }}
+                                                className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
+                                                placeholder="e.g. 100"
+                                            />
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-medium mt-3">
+                                        {formData.totalAvailable === -1 
+                                            ? "This reward will never run out of stock unless disabled manually." 
+                                            : `Customers can redeem this a total of ${formData.totalAvailable} times.`}
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="space-y-4 pb-4">

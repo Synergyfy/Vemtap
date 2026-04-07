@@ -138,7 +138,9 @@ describe('LoyaltyService', () => {
 
       expect(mockRewardRepo.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ branchId: 'branch-123' }),
+          where: expect.arrayContaining([
+            expect.objectContaining({ branchId: 'branch-123' }),
+          ]),
           order: { createdAt: 'DESC' },
           take: 10,
           skip: 0,
@@ -160,15 +162,71 @@ describe('LoyaltyService', () => {
 
       expect(mockRewardRepo.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            branchId: 'branch-123',
-            name: expect.anything(),
-          }),
+          where: expect.arrayContaining([
+            expect.objectContaining({
+              branchId: 'branch-123',
+              name: expect.anything(),
+            }),
+          ]),
           order: { pointsRequired: 'ASC' },
           take: 5,
           skip: 5,
         }),
       );
+    });
+
+    it('should handle infinity quantity in where clause', async () => {
+      const mockRewardRepo = module.get(getRepositoryToken(Reward));
+      jest.spyOn(mockRewardRepo, 'findAndCount').mockResolvedValueOnce([[], 0]);
+
+      await service.getPublicRewards({ branchId: 'branch-123' });
+
+      expect(mockRewardRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: [
+            expect.objectContaining({ remainingQuantity: expect.anything() }),
+            expect.objectContaining({ totalQuantity: -1 }),
+          ],
+        }),
+      );
+    });
+  });
+
+  describe('generateRedemptionCode', () => {
+    it('should allow generating code for infinity rewards even if remaining is 0', async () => {
+      const mockUser = { id: 'u1', role: 'admin' } as any;
+      const mockReward = { 
+        id: 'r1', 
+        branchId: 'b1', 
+        totalQuantity: -1, 
+        remainingQuantity: 0,
+        expiryDate: new Date(Date.now() + 86400000)
+      } as any;
+
+      mockBranchesService.checkBranchAccess.mockResolvedValue(true);
+      const mockRewardRepo = module.get(getRepositoryToken(Reward));
+      jest.spyOn(mockRewardRepo, 'findOne').mockResolvedValue(mockReward);
+
+      const result = await service.generateRedemptionCode(mockUser, { rewardId: 'r1', branchId: 'b1' });
+      expect(result).toBeDefined();
+    });
+
+    it('should throw error for out of stock rewards if totalQuantity is not -1', async () => {
+      const mockUser = { id: 'u1', role: 'admin' } as any;
+      const mockReward = { 
+        id: 'r1', 
+        branchId: 'b1', 
+        totalQuantity: 10, 
+        remainingQuantity: 0,
+        expiryDate: new Date(Date.now() + 86400000)
+      } as any;
+
+      mockBranchesService.checkBranchAccess.mockResolvedValue(true);
+      const mockRewardRepo = module.get(getRepositoryToken(Reward));
+      jest.spyOn(mockRewardRepo, 'findOne').mockResolvedValue(mockReward);
+
+      await expect(service.generateRedemptionCode(mockUser, { rewardId: 'r1', branchId: 'b1' }))
+        .rejects.toThrow('Reward out of stock');
     });
   });
 });

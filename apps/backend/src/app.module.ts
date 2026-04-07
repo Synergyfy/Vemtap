@@ -48,10 +48,10 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath:
-        process.env.NODE_ENV === 'test'
-          ? join(process.cwd(), '.env.test')
-          : join(process.cwd(), '.env'),
+      envFilePath: [
+        join(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
+        join(process.cwd(), '.env'),
+      ],
     }),
     CacheModule.registerAsync({
       isGlobal: true,

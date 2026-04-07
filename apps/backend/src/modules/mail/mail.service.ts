@@ -149,7 +149,7 @@ export class MailService {
     let subject = '';
     let statusText = '';
     let statusColor = '#4A90E2';
-    
+
     switch (status) {
       case 'placed':
         subject = `Order Confirmation #${order.id.slice(0, 8)}`;
@@ -248,11 +248,11 @@ export class MailService {
               </div>
               <h2 style="margin: 0 0 12px 0; color: #0f172a; font-size: 24px; font-weight: 700;">Hi ${order.customer?.firstName || 'Valued Customer'},</h2>
               <p style="color: #64748b; font-size: 16px; margin: 0; max-width: 400px; margin: 0 auto;">
-                ${status === 'placed' ? `We've received your order and our team is already on it. Thank you for choosing us!` : 
-                  status === 'processing' ? `Exciting news! Your order is currently being prepared with care.` : 
-                  status === 'completed' ? `Your order is ready and waiting! We can't wait for you to experience it.` :
-                  status === 'cancelled' ? `We're sorry, but your order has been cancelled. If this was a mistake, please reach out.` :
-                  `Your order could not be fulfilled at this time and has been rejected.`}
+                ${status === 'placed' ? `We've received your order and our team is already on it. Thank you for choosing us!` :
+        status === 'processing' ? `Exciting news! Your order is currently being prepared with care.` :
+          status === 'completed' ? `Your order is ready and waiting! We can't wait for you to experience it.` :
+            status === 'cancelled' ? `We're sorry, but your order has been cancelled. If this was a mistake, please reach out.` :
+              `Your order could not be fulfilled at this time and has been rejected.`}
               </p>
             </div>
 
@@ -305,7 +305,7 @@ export class MailService {
     `;
 
     const mailOptions = {
-      from: `"${business.name} via VemTap" <${this.configService.get<string>('EMAIL_USER')}>`,
+      from: `"\${business.name} via VemTap" <\${this.configService.get<string>('EMAIL_USER')}>`,
       to: email,
       subject,
       html: htmlContent,

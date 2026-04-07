@@ -7,9 +7,12 @@ import {
   UseGuards,
   Request,
   Query,
+  Patch,
 } from '@nestjs/common';
 import { SupportService } from './support.service';
+import { SupportBotService } from './support-bot.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
+import { BotQueryDto } from './dto/support-bot.dto';
 import { FindTicketsAdminDto } from './dto/find-tickets-admin.dto';
 import { TicketStatus, TicketType } from './entities/support-ticket.entity';
 import {
@@ -38,7 +41,30 @@ type AuthRequest = { user: { id: string; role: UserRole } };
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('support')
 export class SupportController {
-  constructor(private readonly supportService: SupportService) {}
+  constructor(
+    private readonly supportService: SupportService,
+    private readonly botService: SupportBotService,
+  ) {}
+
+  @Post('bot/query')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Query the automated support bot' })
+  async queryBot(
+    @Request() req: AuthRequest,
+    @Body() dto: BotQueryDto,
+  ) {
+    return this.botService.handleQuery(req.user.id, dto);
+  }
+
+  @Patch('bot/interaction/:id')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Submit feedback for a bot interaction' })
+  async updateInteraction(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('wasHelpful') wasHelpful: boolean,
+  ) {
+    return this.botService.updateInteraction(id, wasHelpful);
+  }
 
   @Post('tickets')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)

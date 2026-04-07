@@ -57,7 +57,7 @@ export class CatalogueOrderService {
     private readonly catalogueService: CatalogueService,
     @InjectQueue('order-notifications')
     private readonly orderNotificationQueue: Queue,
-  ) {}
+  ) { }
 
   async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
     const results: CatalogueOrder[] = [];
@@ -101,7 +101,7 @@ export class CatalogueOrderService {
 
     // 2. Resolve or Create customer (User)
     let customer: User | null = existingUser || null;
-    
+
     if (!customer) {
       customer = await this.userRepository.findOne({
         where: { phone: dto.phone },
@@ -117,7 +117,7 @@ export class CatalogueOrderService {
     if (!customer) {
       const defaultPassword = '123456';
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-      
+
       // Use provided email or generate a dummy one
       const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
       const finalEmail = dto.email || dummyEmail;
@@ -230,16 +230,16 @@ export class CatalogueOrderService {
 
         // Offer stock check
         if (offer.quantity !== null && offer.quantity < itemDto.quantity) {
-            throw new BadRequestException(`Insufficient stock for offer ${offer.name}`);
+          throw new BadRequestException(`Insufficient stock for offer ${offer.name}`);
         }
 
         // Check stock for ALL items in offer
         for (const offerItem of offer.items) {
-            if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {
-                if (offerItem.stockQuantity < itemDto.quantity) {
-                    throw new BadRequestException(`Insufficient stock for item ${offerItem.name} in offer ${offer.name}`);
-                }
+          if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {
+            if (offerItem.stockQuantity < itemDto.quantity) {
+              throw new BadRequestException(`Insufficient stock for item ${offerItem.name} in offer ${offer.name}`);
             }
+          }
         }
 
         const orderItem = this.orderItemRepository.create({
@@ -279,18 +279,18 @@ export class CatalogueOrderService {
 
     // 5. Deduct stock IMMEDIATELY (locking the spot)
     for (const orderItem of order.items) {
-        if (orderItem.itemId) {
-            const item = await this.itemRepository.findOne({ where: { id: orderItem.itemId } });
-            if (item) await this.deductStock(item, orderItem.quantity);
-        } else if (orderItem.offerId) {
-            const offer = await this.offerRepository.findOne({ where: { id: orderItem.offerId }, relations: ['items'] });
-            if (offer) {
-                await this.deductOfferStock(offer, orderItem.quantity);
-                for (const offerItem of offer.items) {
-                    await this.deductStock(offerItem, orderItem.quantity);
-                }
-            }
+      if (orderItem.itemId) {
+        const item = await this.itemRepository.findOne({ where: { id: orderItem.itemId } });
+        if (item) await this.deductStock(item, orderItem.quantity);
+      } else if (orderItem.offerId) {
+        const offer = await this.offerRepository.findOne({ where: { id: orderItem.offerId }, relations: ['items'] });
+        if (offer) {
+          await this.deductOfferStock(offer, orderItem.quantity);
+          for (const offerItem of offer.items) {
+            await this.deductStock(offerItem, orderItem.quantity);
+          }
         }
+      }
     }
 
     // Queue "Order Placed" email
@@ -316,62 +316,62 @@ export class CatalogueOrderService {
 
     // If order is cancelled/rejected and stock was deducted, return it
     if (
-        (status === CatalogueOrderStatus.CANCELLED || status === CatalogueOrderStatus.REJECTED) && 
-        order.stockDeducted
+      (status === CatalogueOrderStatus.CANCELLED || status === CatalogueOrderStatus.REJECTED) &&
+      order.stockDeducted
     ) {
-        for (const orderItem of order.items) {
-            if (orderItem.itemId && orderItem.item) {
-                await this.restoreStock(orderItem.item, orderItem.quantity);
-            } else if (orderItem.offerId && orderItem.offer) {
-                await this.restoreOfferStock(orderItem.offer, orderItem.quantity);
-                for (const offerItem of orderItem.offer.items) {
-                    await this.restoreStock(offerItem, orderItem.quantity);
-                }
-            }
+      for (const orderItem of order.items) {
+        if (orderItem.itemId && orderItem.item) {
+          await this.restoreStock(orderItem.item, orderItem.quantity);
+        } else if (orderItem.offerId && orderItem.offer) {
+          await this.restoreOfferStock(orderItem.offer, orderItem.quantity);
+          for (const offerItem of orderItem.offer.items) {
+            await this.restoreStock(offerItem, orderItem.quantity);
+          }
         }
-        order.stockDeducted = false;
+      }
+      order.stockDeducted = false;
     }
 
     // Award loyalty points and rewards if moving to COMPLETED
     if (status === CatalogueOrderStatus.COMPLETED && !order.loyaltyAwarded) {
-        let totalPoints = 0;
-        for (const orderItem of order.items) {
-          if (orderItem.loyaltyPointsAtOrder) {
-            totalPoints += orderItem.loyaltyPointsAtOrder * orderItem.quantity;
-          }
-
-          if (orderItem.offerId && orderItem.offer && orderItem.offer.rewardId) {
-            for (let i = 0; i < orderItem.quantity; i++) {
-              await this.loyaltyService.generateRedemptionCode(staff, {
-                rewardId: orderItem.offer.rewardId,
-                branchId: order.branchId,
-              });
-            }
-          }
+      let totalPoints = 0;
+      for (const orderItem of order.items) {
+        if (orderItem.loyaltyPointsAtOrder) {
+          totalPoints += orderItem.loyaltyPointsAtOrder * orderItem.quantity;
         }
 
-        if (totalPoints > 0) {
-          await this.loyaltyService.awardPoints(
-            order.customerId,
-            totalPoints,
-            order.businessId,
-            order.branchId,
-            `Points earned from order #${order.id.slice(0, 8)}`,
-            staff.id,
-          );
+        if (orderItem.offerId && orderItem.offer && orderItem.offer.rewardId) {
+          for (let i = 0; i < orderItem.quantity; i++) {
+            await this.loyaltyService.generateRedemptionCode(staff, {
+              rewardId: orderItem.offer.rewardId,
+              branchId: order.branchId,
+            });
+          }
         }
+      }
 
-        // --- UPGRADE PORTAL VISIT TO PATRONAGE ---
-        await this.visitorsService.upgradeVisitToPatronage({
-          sessionToken: order.sessionToken,
-          orderId: order.id,
-          customerId: order.customerId,
-          branchId: order.branchId,
-          businessId: order.businessId,
-          deviceId: order.deviceId,
-        });
+      if (totalPoints > 0) {
+        await this.loyaltyService.awardPoints(
+          order.customerId,
+          totalPoints,
+          order.businessId,
+          order.branchId,
+          `Points earned from order #${order.id.slice(0, 8)}`,
+          staff.id,
+        );
+      }
 
-        order.loyaltyAwarded = true;
+      // --- UPGRADE PORTAL VISIT TO PATRONAGE ---
+      await this.visitorsService.upgradeVisitToPatronage({
+        sessionToken: order.sessionToken,
+        orderId: order.id,
+        customerId: order.customerId,
+        branchId: order.branchId,
+        businessId: order.businessId,
+        deviceId: order.deviceId,
+      });
+
+      order.loyaltyAwarded = true;
     }
 
     order.status = status;
@@ -444,32 +444,32 @@ export class CatalogueOrderService {
 
   private async restoreStock(item: CatalogueItem, quantity: number) {
     if (item.stockQuantity !== null) {
-        item.stockQuantity += quantity;
-        if (item.stockQuantity > 0 && item.status === CatalogueItemStatus.OUT_OF_STOCK) {
-            item.status = CatalogueItemStatus.ACTIVE;
-        }
-        await this.itemRepository.save(item);
+      item.stockQuantity += quantity;
+      if (item.stockQuantity > 0 && item.status === CatalogueItemStatus.OUT_OF_STOCK) {
+        item.status = CatalogueItemStatus.ACTIVE;
+      }
+      await this.itemRepository.save(item);
     }
   }
 
   private async deductOfferStock(offer: CatalogueOffer, quantity: number) {
     if (offer.quantity !== null) {
-        offer.quantity -= quantity;
-        if (offer.quantity <= 0) {
-            offer.quantity = 0;
-            offer.status = CatalogueOfferStatus.INACTIVE;
-        }
-        await this.offerRepository.save(offer);
+      offer.quantity -= quantity;
+      if (offer.quantity <= 0) {
+        offer.quantity = 0;
+        offer.status = CatalogueOfferStatus.INACTIVE;
+      }
+      await this.offerRepository.save(offer);
     }
   }
 
   private async restoreOfferStock(offer: CatalogueOffer, quantity: number) {
     if (offer.quantity !== null) {
-        offer.quantity += quantity;
-        if (offer.quantity > 0 && offer.status === CatalogueOfferStatus.INACTIVE) {
-            offer.status = CatalogueOfferStatus.ACTIVE;
-        }
-        await this.offerRepository.save(offer);
+      offer.quantity += quantity;
+      if (offer.quantity > 0 && offer.status === CatalogueOfferStatus.INACTIVE) {
+        offer.status = CatalogueOfferStatus.ACTIVE;
+      }
+      await this.offerRepository.save(offer);
     }
   }
 
