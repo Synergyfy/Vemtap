@@ -22,9 +22,9 @@ describe('ProfilingLogicHelper', () => {
 
       const result = ProfilingLogicHelper.calculateRetail(data);
 
-      expect(result.insights.problems).toContain('Customers struggle to find or understand products easily.');
-      expect(result.insights.problems).toContain('High service delay noticed during customer interactions.');
-      expect(result.insights.problems).toContain('No structured customer database for re-marketing.');
+      expect(result.insights.problems!).toContain('Customers struggle to find or understand products easily.');
+      expect(result.insights.problems!).toContain('High service delay noticed during customer interactions.');
+      expect(result.insights.problems!).toContain('No structured customer database for re-marketing.');
       expect(result.insights.suggestedPackage).toBe('Platinum');
       expect(result.priority).toBe(ProfilePriority.HIGH);
     });
@@ -42,7 +42,7 @@ describe('ProfilingLogicHelper', () => {
 
       const result = ProfilingLogicHelper.calculateRetail(data);
 
-      expect(result.insights.problems.length).toBe(0);
+      expect(result.insights.problems!.length).toBe(0);
       expect(result.insights.suggestedPackage).toBe('Silver');
       expect(result.priority).toBe(ProfilePriority.LOW);
     });
@@ -61,9 +61,9 @@ describe('ProfilingLogicHelper', () => {
 
       const result = ProfilingLogicHelper.calculateFood(data);
 
-      expect(result.insights.problems).toContain('Service delays and customer wait-time friction.');
-      expect(result.insights.problems).toContain('Menu confusion and low offering visibility.');
-      expect(result.insights.recommendations).toContain('Implement a Digital QR Ordering system to speed up the process and reduce staff load.');
+      expect(result.insights.problems!).toContain('Service delays and customer wait-time friction.');
+      expect(result.insights.problems!).toContain('Menu confusion and low offering visibility.');
+      expect(result.insights.recommendations!).toContain('Implement a Digital QR Ordering system to speed up the process and reduce staff load.');
       expect(result.insights.suggestedPackage).toBe('Platinum');
     });
   });
@@ -80,8 +80,8 @@ describe('ProfilingLogicHelper', () => {
 
       const result = ProfilingLogicHelper.calculateRealEstate(data);
 
-      expect(result.insights.problems).toContain('Property information gap and low listing visibility.');
-      expect(result.insights.recommendations).toContain('Deploy a Digital Property Listing system via QR to provide instant access to high-quality photos and specs.');
+      expect(result.insights.problems!).toContain('Property information gap and low listing visibility.');
+      expect(result.insights.recommendations!).toContain('Deploy a Digital Property Listing system via QR to provide instant access to high-quality photos and specs.');
     });
   });
 

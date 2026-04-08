@@ -1125,8 +1125,6 @@ export class ProfilingLogicHelper {
     // Mapping 20 Questions
     const q1 = data.financeType;
     const q2 = data.customerVolume;
-    const q3 = data.acquisitionChannel;
-    const q4 = data.serviceChannel;
     const q5 = data.waitTime;
     const q6 = data.delayComplaints;
     const q7 = data.serviceClarity;
@@ -1138,33 +1136,31 @@ export class ProfilingLogicHelper {
     const q13 = data.engagementLevel;
     const q14 = data.valuePerception;
     const q15 = data.customerEducation;
-    const q16 = data.branchBranding;
-    const q17 = data.digitalInteraction;
     const q18 = data.digitalPlatform;
     const q20 = data.improvementNeed;
 
     // WAITING PROBLEM
-    if (q5 === 'Medium' || q5 === 'High' || q6 === 'High' || q6 === 'Medium') {
+    if (q5?.startsWith('Medium') || q5?.startsWith('High') || q6 === 'High' || q6 === 'Medium') {
       problems.push("Extended customer wait times and service delivery bottlenecks.");
       recommendations.push("Implement a Digital Queue and Structured Onboarding system to manage branch traffic.");
       qrStrategy.push("Onboarding QR: Place at the entrance or agent desks for instant, self-service onboarding.");
     }
 
     // TRUST / CONFUSION PROBLEM
-    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High' || q8 === 'Medium') {
+    if (q7 === 'No' || q7 === 'Partially' || q8?.startsWith('High') || q8?.startsWith('Medium')) {
       problems.push("Low service clarity - customers are confused about products or requirements.");
       recommendations.push("Deploy a detailed Digital Product Catalog and FAQ system to build transparency.");
       qrStrategy.push("Service Explanation QR: Use on brochures and branch posters to explain complex services instantly.");
     }
 
     // TRANSACTION DROP-OFF
-    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
+    if (q9?.startsWith('Medium') || q9?.startsWith('High') || q10?.startsWith('Medium') || q10?.startsWith('High')) {
       problems.push("High transaction hesitation and premature drop-off during onboarding.");
       recommendations.push("Implement automated client engagement and follow-up tools to guide users through the process.");
     }
 
     // LOW RETENTION
-    if (q11 === 'Medium' || q11 === 'High') {
+    if (q11?.startsWith('Medium') || q11?.startsWith('High')) {
       problems.push("Weak customer retention - many clients fail to return after the first transaction.");
       recommendations.push("Enable automated follow-up and loyalty incentives to stabilize your client base.");
     }
@@ -1194,22 +1190,26 @@ export class ProfilingLogicHelper {
       recommendations.push("Set up a comprehensive Digital Profile and Intake system to modernize your service delivery.");
     }
 
-    // Scoring & Priority mapping
     const scoreMap: Record<string, number> = { 
       'Low': 1, 'Medium': 2, 'High': 3, 
       'Slow': 3, 'Fast': 1,
-      'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Limited': 2, 'None': 3
+      'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Limited': 2, 'None': 3,
+      'Yes (very clear)': 1, 'Yes (always)': 1, 'Yes (regularly)': 1
     };
     
     let totalScore = 0;
     Object.values(data).forEach(val => {
-      if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val];
+      if (typeof val === 'string') {
+        const key = val.split(' (')[0];
+        if (scoreMap[key]) totalScore += scoreMap[key];
+        else if (scoreMap[val]) totalScore += scoreMap[val];
+      }
     });
 
+    const priority = totalScore >= 35 ? ProfilePriority.HIGH : totalScore >= 20 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
     const volume = q2 || 'moderate';
-    const suggestedPackage = q2 === 'High (100+ per day/week)' ? 'Platinum' : q2 === 'Medium (31 – 100 per day/week)' ? 'Gold' : 'Silver';
-    const priority = totalScore >= 40 ? ProfilePriority.HIGH : totalScore >= 20 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
-    
+    const suggestedPackage = q2?.startsWith('High') ? 'Platinum' : q2?.startsWith('Medium') ? 'Gold' : 'Silver';
+
     return {
       score: totalScore,
       priority,
@@ -1218,9 +1218,9 @@ export class ProfilingLogicHelper {
         problems,
         recommendations,
         suggestedPackage,
-        packageReason: `The ${volume.toLowerCase()} requirement in finance demands high-security data intake and automated education to scale safely.`,
+        packageReason: `Financial operations require high-security automated data intake and clear service documentation to maintain client trust.`,
         qrStrategy,
-        salesPitch: `In finance, data is speed and trust is currency. Vemtap helps you clear queues with smart onboarding QRs while providing your clients with instant digital product guides that convert 'just asking' into 'fully signed up' with zero friction.`,
+        salesPitch: `Trust is built through transparency. Vemtap allows your clients to access service requirements instantly via QR, reducing their wait times and your staff's manual workload.`,
         aiAnalysis: "Finance Analysis: The primary barrier is information friction and the trust gap. Modernizing the entry point with digital intake reduces overhead and significantly improves client conversion rates.",
         aiSource: 'expert-system'
       }
@@ -1233,10 +1233,8 @@ export class ProfilingLogicHelper {
     const recommendations: string[] = [];
     const qrStrategy: string[] = [];
     
-    // Mapping 20 Questions
     const q1 = data.agricType;
     const q2 = data.salesVolume;
-    const q3 = data.acquisitionChannel;
     const q4 = data.orderMethod;
     const q5 = data.orderFriction;
     const q6 = data.commComplaints;
@@ -1246,60 +1244,48 @@ export class ProfilingLogicHelper {
     const q10 = data.inquiryLoss;
     const q11 = data.retentionProblem;
     const q12 = data.collectsData;
-    const q13 = data.followUpLevel;
     const q14 = data.valuePerception;
     const q15 = data.marketingEffort;
-    const q16 = data.salesChannel;
-    const q17 = data.digitalInteraction;
     const q18 = data.digitalPlatform;
-    const q20 = data.improvementNeed;
 
-    // ORDERING PROBLEM
-    if (q4 === 'WhatsApp' || q4 === 'Phone call' || q5 === 'Medium' || q5 === 'High') {
+    if (q4 === 'WhatsApp' || q4 === 'Phone call' || q5?.startsWith('Medium') || q5?.startsWith('High')) {
       problems.push("Friction in ordering process and manual coordination load.");
       recommendations.push("Implement a Digital Order Management system to automate buyer requests.");
       qrStrategy.push("Order QR: Place in catalogs or at the farm gate for instant order placement.");
     }
 
-    // PRODUCT VISIBILITY PROBLEM
-    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
+    if (q7 === 'No' || q7 === 'Partially' || q8?.startsWith('High')) {
       problems.push("Low produce visibility leading to excessive pricing/availability inquiries.");
       recommendations.push("Deploy a Digital Product Catalog to showcase live stock and seasonal produce.");
       qrStrategy.push("Product QR: Allow buyers to scan and see current available harvest/stock instantly.");
     }
 
-    // SALES / CONVERSION PROBLEM
-    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
+    if (q9?.startsWith('Medium') || q9?.startsWith('High') || q10?.startsWith('Medium') || q10?.startsWith('High')) {
       problems.push("Significant buyer hesitation and drop-off after initial inquiry.");
       recommendations.push("Use automated lead nurturing and engagement tools to close sales faster.");
     }
 
-    // RETENTION PROBLEM
-    if (q11 === 'Medium' || q11 === 'High') {
+    if (q11?.startsWith('Medium') || q11?.startsWith('High')) {
       problems.push("Low recurring buyer rate and potential market access instability.");
       recommendations.push("Implement a structured loyalty and re-order reminder system for bulk buyers.");
     }
 
-    // NO CUSTOMER DATA
     if (q12 === 'No' || q12 === 'Sometimes') {
       problems.push("Lack of a buyer database for seasonal updates and repeat sales.");
       recommendations.push("Capture buyer data digitally at every touchpoint for direct re-marketing.");
       qrStrategy.push("Contact QR: Use at point of sale or shipment to capture verified buyer details.");
     }
 
-    // POOR COMMUNICATION
-    if (q6 === 'Medium' || q6 === 'High') {
+    if (q6?.startsWith('Medium') || q6?.startsWith('High')) {
       problems.push("High dissatisfaction with response times and information flow.");
       recommendations.push("Automate routine buyer communications and status updates.");
     }
 
-    // WEAK MARKET ACCESS
     if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No' || q15 === 'Sometimes') {
       problems.push("Limited brand visibility and weak market value perception.");
       recommendations.push("Use digital promotion tools and WhatsApp broadcasting to expand your buyer network.");
     }
 
-    // WEAK DIGITAL PLATFORM
     if (q18 === 'No' || q18 === 'Limited') {
       problems.push("Insufficient digital presence to compete in modern agribusiness markets.");
       recommendations.push("Establish a high-quality Digital Profile to build trust with large-scale off-takers.");
@@ -1310,7 +1296,7 @@ export class ProfilingLogicHelper {
     Object.values(data).forEach(val => { if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val]; });
 
     const volume = q2 || 'moderate';
-    const suggestedPackage = q2 === 'High (Large-scale production/sales)' ? 'Platinum' : q2 === 'Medium (Moderate production/sales)' ? 'Gold' : 'Silver';
+    const suggestedPackage = q2?.startsWith('High') ? 'Platinum' : q2?.startsWith('Medium') ? 'Gold' : 'Silver';
     const priority = totalScore >= 28 ? ProfilePriority.HIGH : totalScore >= 18 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
     
     return {
@@ -1330,68 +1316,85 @@ export class ProfilingLogicHelper {
     };
   }
 
-
   static calculateGov(data: Record<string, any>): { score: number; priority: ProfilePriority; insights: BusinessInsights } {
     if (!data) data = {};
     const problems: string[] = [];
     const recommendations: string[] = [];
     const qrStrategy: string[] = [];
     
+    const q1 = data.govType;
     const q2 = data.citizenVolume;
     const q5 = data.queueTime;
     const q6 = data.delayComplaints;
     const q7 = data.procedureClarity;
+    const q8 = data.repetitiveQuestions;
     const q9 = data.unpreparedCitizens;
+    const q10 = data.citizenDropoff;
     const q11 = data.multipleReturns;
     const q12 = data.collectsData;
+    const q13 = data.followUpLevel;
+    const q14 = data.impactAwareness;
+    const q15 = data.promotionEffort;
     const q18 = data.digitalPlatform;
 
-    if (q5 === 'Medium' || q5 === 'High' || q6 === 'Medium' || q6 === 'High') {
+    if (q5?.startsWith('Medium') || q5?.startsWith('High') || q6?.startsWith('Medium') || q6?.startsWith('High')) {
       problems.push("Severe wait times and citizen dissatisfaction with queue management.");
       recommendations.push("Implement a Digital Queue & Appointment system to stabilize citizen flow.");
       qrStrategy.push("Appointment QR: Allow citizens to book slots before arrival to avoid long lines.");
     }
 
-    if (q7 === 'No' || q7 === 'Partially' || q9 === 'Medium' || q9 === 'High') {
-      problems.push("Information gap - citizens arrive unprepared or with wrong documentation.");
+    if (q7 === 'No' || q7 === 'Partially' || q8?.startsWith('Medium') || q8?.startsWith('High') || q9?.startsWith('Medium') || q9?.startsWith('High')) {
+      problems.push("Information gap - citizens arrive unprepared or with wrong documentation due to lack of clarity.");
       recommendations.push("Deploy a 'Citizen Service Guide' QR system to provide clear procedure checklists.");
       qrStrategy.push("Procedure QR: Place on entrance signage to list all required documents for specific services.");
     }
 
-    if (q11 === 'Medium' || q11 === 'High') {
-      problems.push("Low operational efficiency leading to multiple return visits for single tasks.");
+    if (q11?.startsWith('Medium') || q11?.startsWith('High') || q10?.startsWith('Medium') || q10?.startsWith('High')) {
+      problems.push("Operational bottleneck leading to multiple return visits and high citizen drop-off.");
       recommendations.push("Use process tracking and automated reminders to ensure task completion in fewer visits.");
     }
 
     if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Lack of a structured database for citizen communication.");
-      recommendations.push("Capture citizen details digitally to send automated status updates and notifications.");
+      problems.push("Lack of a structured database for citizen communication and service updates.");
+      recommendations.push("Capture citizen details digitally to send automated status updates and public notifications.");
+      qrStrategy.push("Contact QR: Use at inquiry desks to build a digital registry for public notices.");
     }
 
-    if (q18 === 'No' || q18 === 'Limited') {
-      problems.push("Weak digital access to public services.");
-      recommendations.push("Set up a high-accessibility Digital Service Portal to move physical traffic to online channels.");
+    if (q18 === 'No' || q18 === 'Limited' || q15 === 'No' || q15 === 'Sometimes') {
+      problems.push("Weak digital access and limited public awareness of government programs.");
+      recommendations.push("Set up a high-accessibility Digital Service Portal and use WhatsApp broadcasting for public notices.");
     }
 
-    const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Limited': 2 };
+    const scoreMap: Record<string, number> = { 
+      'Low': 1, 'Medium': 2, 'High': 3, 
+      'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 
+      'Limited': 2, 'Strong': 1, 'None': 3,
+      'Yes (very clear)': 1, 'Yes (always)': 1, 'Yes (regularly)': 1
+    };
     let totalScore = 0;
-    Object.values(data).forEach(val => { if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val]; });
+    Object.values(data).forEach(val => { 
+      if (typeof val === 'string') {
+        const key = val.split(' (')[0]; // Handle cases like 'Low (0-100...)'
+        if (scoreMap[key]) totalScore += scoreMap[key];
+        else if (scoreMap[val]) totalScore += scoreMap[val];
+      }
+    });
 
     const traffic = q2 || 'moderate';
-    const priority = totalScore >= 30 ? ProfilePriority.HIGH : totalScore >= 20 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
+    const finalPriority = totalScore >= 35 ? ProfilePriority.HIGH : totalScore >= 22 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
     
     return {
       score: totalScore,
-      priority,
+      priority: finalPriority,
       insights: {
-        summary: `A ${data.govType || 'Public Service'} agency serving ${traffic} citizens. Main focus is queue reduction and information dissemination.`,
+        summary: `A ${q1 || 'Public Service'} agency serving ${traffic} citizens. Main focus is queue reduction, procedure transparency, and digital service migration.`,
         problems,
         recommendations,
-        suggestedPackage: 'Platinum', // Gov almost always needs high volume/reliability
-        packageReason: `Scale of public operations and data security requirements necessitate the Platinum ecosystem.`,
+        suggestedPackage: 'Platinum',
+        packageReason: `Scale of public operations, high citizen volume, and data security requirements mandate the Platinum ecosystem.`,
         qrStrategy,
-        salesPitch: `Public service is about efficiency. We can help you eliminate 'chaos' in the waiting room by giving citizens clear requirements via QR and a digital way to book their appointments, making your office run like clockwork.`,
-        aiAnalysis: "Government Analysis: Information asymmetry is the root of the long queues. Providing document checklists via QR at the gate will cut processing time by at least 40%.",
+        salesPitch: `Public service is about efficiency and trust. We can help you eliminate 'chaos' in the waiting room by giving citizens clear requirements via QR and a digital way to book appointments, making your office run like clockwork.`,
+        aiAnalysis: "Government Analysis: Information asymmetry is the root of long public queues. Providing document checklists via Procedure QR and slot booking via Appointment QR will cut physical processing time by at least 50%.",
         aiSource: 'expert-system'
       }
     };
@@ -1403,10 +1406,8 @@ export class ProfilingLogicHelper {
     const recommendations: string[] = [];
     const qrStrategy: string[] = [];
     
-    // Mapping from 20-question deep-dive
     const q1 = data.orgType;
     const q2 = data.memberCount;
-    const q4 = data.infoMethod;
     const q5 = data.missedUpdates;
     const q6 = data.infoComplaints;
     const q7 = data.programAwareness;
@@ -1420,52 +1421,44 @@ export class ProfilingLogicHelper {
     const q15 = data.promotionEffort;
     const q18 = data.digitalPlatform;
 
-    // COMMUNICATION PROBLEM
-    if (q5 === 'Medium' || q5 === 'High' || q6 === 'Medium' || q6 === 'High') {
+    if (q5?.startsWith('Medium') || q5?.startsWith('High') || q6?.startsWith('Medium') || q6?.startsWith('High')) {
       problems.push("Member communication gap - important updates are being missed.");
       recommendations.push("Implement a dedicated Communication System to ensure all members receive real-time updates.");
     }
 
-    // LOW AWARENESS
-    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
+    if (q7 === 'No' || q7 === 'Partially' || q8?.startsWith('High')) {
       problems.push("Low program/event awareness among the community.");
       recommendations.push("Deploy a Program/Event Information System using QR codes for instant updates.");
       qrStrategy.push("Event QR: Place on bulletins and at the entrance for instant program details and news.");
     }
 
-    // LOW PARTICIPATION
-    if (q9 === 'Medium' || q9 === 'High') {
+    if (q9?.startsWith('Medium') || q9?.startsWith('High')) {
       problems.push("Attendance drop-off during scheduled programs and activities.");
       recommendations.push("Use an automated Engagement & Reminder System to keep members active and committed.");
     }
 
-    // DONATION PROBLEM
-    if (q10 === 'Medium' || q10 === 'High' || q11 === 'Medium' || q11 === 'High') {
+    if (q10?.startsWith('Medium') || q10?.startsWith('High') || q11?.startsWith('Medium') || q11?.startsWith('High')) {
       problems.push("Fragile donation pipeline and struggle with consistent financial support.");
       recommendations.push("Set up a Digital Donation & Follow-up System to simplify the giving process for donors.");
       qrStrategy.push("Donation QR: Include in service programs or display on screens for seamless giving.");
     }
 
-    // NO MEMBER DATA
     if (q12 === 'No' || q12 === 'Sometimes') {
       problems.push("Lack of a structured member/donor database.");
       recommendations.push("Implement a Digital Member Capture system to securely store and manage community data.");
       qrStrategy.push("Registration QR: Position at welcome desks for instant first-timer onboarding.");
     }
 
-    // LOW RETENTION
     if (q13 === 'No' || q13 === 'Sometimes') {
       problems.push("Weak member care and follow-up processes.");
       recommendations.push("Deploy a Care Follow-up System to automate member outreach and support.");
     }
 
-    // WEAK AWARENESS (OUTREACH)
     if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No') {
       problems.push("Limited mission visibility and outreach effectiveness.");
       recommendations.push("Use Outreach & Promotion tools to better broadcast the organization's impact.");
     }
 
-    // WEAK DIGITAL PLATFORM
     if (q18 === 'No' || q18 === 'Limited') {
       problems.push("Underdeveloped digital presence for member engagement.");
       recommendations.push("Establish a robust Digital Platform/Profile to host sermons, news, and resources.");
@@ -1476,9 +1469,7 @@ export class ProfilingLogicHelper {
     Object.values(data).forEach(val => { if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val]; });
 
     const priority = totalScore >= 31 ? ProfilePriority.HIGH : totalScore >= 16 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
-    
-    // Package Logic
-    const suggestedPackage = q2 === 'High' ? 'Platinum' : q2 === 'Medium' ? 'Gold' : 'Silver';
+    const suggestedPackage = q2?.startsWith('High') ? 'Platinum' : q2?.startsWith('Medium') ? 'Gold' : 'Silver';
 
     return {
       score: totalScore,
@@ -1497,189 +1488,106 @@ export class ProfilingLogicHelper {
     };
   }
 
-  static calculateTechnology(data: Record<string, any>): { score: number; priority: ProfilePriority; insights: BusinessInsights } {
-    if (!data) data = {};
-    const problems: string[] = [];
-    const recommendations: string[] = [];
-    const qrStrategy: string[] = [];
-    
-    // Mapping 20 Questions
-    const q1 = data.techType; // Type of tech business
-    const q2 = data.monthlyProjects; // Number of projects monthly
-    const q3 = data.acquisitionChannel; // How clients find you
-    const q4 = data.contactMethod; // How clients contact you
-    const q5 = data.responseSpeed; // Response speed
-    const q6 = data.responseComplaints; // Do clients complain about speed
-    const q7 = data.serviceClarity; // Clarity of offerings
-    const q8 = data.preprojectQuestions; // Questions before project
-    const q9 = data.projectDelay; // Delay starting projects
-    const q10 = data.lostToDiscussion; // Lose clients after initial talk
-    const q11 = data.projectAbandonment; // Abandon projects after starting
-    const q12 = data.collectsData; // Proper data collection
-    const q13 = data.followUpEffort; // Leads/Inactive follow-up
-    const q14 = data.perceivedValue; // Value understanding
-    const q15 = data.activePromotion; // Promotion effort
-    const q16 = data.onlinePresence; // Website/Portfolio strength
-    const q17 = data.onboardingProcess; // Structured onboarding
-    const q18 = data.digitalEngagement; // Digital brand interaction
-    const q19 = data.biggestChallenges; // Key pain points
-    const q20 = data.improvementNeed; // Improvement urgency
-
-    // Logic Engine (Deterministic Rules)
-    
-    // SLOW RESPONSE PROBLEM
-    if (q5 === 'Medium' || q5 === 'Slow' || q6 === 'High' || q6 === 'Medium') {
-      problems.push("Slow response times are causing client dissatisfaction and potential lead loss.");
-      recommendations.push("Implement a 'Digital Client Intake' system via WhatsApp/QR to capture and respond to inquiries instantly.");
-      qrStrategy.push("Contact/Intake QR: Place on your website and social media to capture leads with zero delay.");
-    }
-
-    // SERVICE CONFUSION
-    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High' || q8 === 'Medium') {
-      problems.push("Clients struggle to understand your tech services or project packages.");
-      recommendations.push("Deploy a 'Tech Service Catalog' with clear breakdowns and case studies accessible via QR/Link.");
-      qrStrategy.push("Service/Portfolio QR: Share your specific tech solutions and pricing instantly with a professional digital profile.");
-    }
-
-    // LOW CONVERSION
-    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
-      problems.push("High lead drop-off after initial discussions due to hesitation or lack of structured engagement.");
-      recommendations.push("Use an automated follow-up sequence and digital project-proposal flow to keep leads warm.");
-    }
-
-    // PROJECT DROP-OFF
-    if (q11 === 'Medium' || q11 === 'High') {
-      problems.push("Significant project abandonment rates after initial commitment.");
-      recommendations.push("Implement a structured digital onboarding and milestone engagement system to keep projects moving.");
-    }
-
-    // NO CLIENT DATA
-    if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Lack of a secure, centralized client/lead database (CRM).");
-      recommendations.push("Deploy a 'Lead Capture' flow for all inbound tech inquiries to build your firm's database.");
-    }
-
-    // WEAK MARKETING
-    if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No') {
-      problems.push("Poor market awareness or perceived value of your technical digital solutions.");
-      recommendations.push("Implement digital promotion tools to broadcast your latest successful projects and tech expertise.");
-    }
-
-    // WEAK DIGITAL PRESENCE
-    if (q16 === 'No' || q16 === 'Limited' || q18 === 'Low') {
-      problems.push("Insufficient digital infrastructure and brand visibility for a tech/digital firm.");
-      recommendations.push("Upgrade to a 'Professional Digital Dashboard' that showcases your portfolio and tech tools.");
-      qrStrategy.push("Portfolio QR: A dedicated digital space to showcase your tech projects and client testimonials.");
-    }
-
-    // NO ONBOARDING PROCESS
-    if (q17 === 'No' || q17 === 'Partially') {
-      problems.push("Lacking a professional and structured onboarding experience for new tech clients.");
-      recommendations.push("Setup a 'Structured Digital Onboarding' flow to automate the initial client setup and requirements gathering.");
-    }
-
-    // Scoring & Priority mapping: 0-20 Low, 21-40 Medium, 41+ High
-    const scoreMap: Record<string, number> = { 
-      'Low': 1, 'Medium': 2, 'High': 3, 
-      'Slow': 3, 'Fast': 1,
-      'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Limited': 2 
-    };
-    
-    let totalScore = 0;
-    Object.values(data).forEach(val => {
-      if (typeof val === 'string' && scoreMap[val]) {
-        totalScore += scoreMap[val];
-      }
-    });
-
-    const priority = totalScore >= 41 ? ProfilePriority.HIGH : totalScore >= 21 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
-
-    // Package Logic
-    const traffic = q2 || 'moderate';
-    const suggestedPackage = q2 === 'High (40+ per month)' ? 'Platinum' : q2 === 'Medium (11 – 40 per month)' ? 'Gold' : 'Silver';
-    const packageReason = `${suggestedPackage} Plan recommended to automate client ingestion and management for ${traffic.toLowerCase()} volumes.`;
-
-    return {
-      score: totalScore,
-      priority,
-      insights: {
-        summary: `A ${q1 || 'Tech/Digital Service'} firm handling ${traffic} projects. Focus needs to be on response speed, clarity of packages, and automated client onboarding.`,
-        problems,
-        recommendations,
-        suggestedPackage,
-        packageReason,
-        qrStrategy,
-        salesPitch: `As a tech leader, your client experience should be modern, fast, and automated. Vemtap helps your digital agency professionalize every touchpoint—from lead capture and onboarding to follow-up automation—ensuring your tech delivery is as sharp as your tech expertise.`,
-        aiAnalysis: "Expert Tech Analysis: Technology clients expect speed. Moving from 'manual emails' to 'automated digital intake' will significantly reduce your project start time and improve your conversion rate.",
-        aiSource: 'expert-system'
-      }
-    };
-  }
-
   static calculateOther(data: Record<string, any>): { score: number; priority: ProfilePriority; insights: BusinessInsights } {
     if (!data) data = {};
     const problems: string[] = [];
     const recommendations: string[] = [];
     const qrStrategy: string[] = [];
     
-    const q3 = data.customerVolume;
-    const q5 = data.communicationDelays;
-    const q7 = data.offeringClarity;
-    const q10 = data.contactDropoff;
-    const q11 = data.retentionLevel;
-    const q12 = data.collectsData;
-    const q18 = data.digitalPresence;
+    // Mapping 20 Questions for "Others"
+    const q1 = data.businessDescription; // Open text
+    const q2 = data.closestCategory; // Retail, Service-based...
+    const q3 = data.customerVolume; // Low, Medium, High
+    const q4 = data.reachMethod; // Phone, WhatsApp...
+    const q5 = data.responseTime; 
+    const q6 = data.responseLoss;
+    const q7 = data.discoveryMethod; // Menu/Service visibility
+    const q8 = data.routineQuestions;
+    const q9 = data.buyingHesitation;
+    const q10 = data.visibilityLoss;
+    const q11 = data.bookingMethod; // Appointments
+    const q12 = data.noShows;
+    const q13 = data.collectsData;
+    const q14 = data.followUpMethod;
+    const q15 = data.retentionDrop;
+    const q16 = data.promotionMethod;
+    const q17 = data.hasPhysicalPresence;
+    const q18 = data.digitalSystem;
+    const q19 = data.biggestChallenge;
+    const q20 = data.urgency;
 
-    if (q5 === 'Medium' || q5 === 'High') {
-      problems.push("Customer communication delays and coordination friction.");
-      recommendations.push("Implement a Structured Communication & Inquiry system.");
+    // Logic Engine
+    if (q5?.startsWith('Medium') || q5?.startsWith('High') || q6?.startsWith('Medium') || q6?.startsWith('High')) {
+      problems.push("Inquiry response bottlenecks causing customer drop-off.");
+      recommendations.push("Implement a structured digital response system to handle inquiries instantly.");
+      qrStrategy.push("Contact/Inquiry QR: Capture lead details and requirements automatically via scan.");
     }
 
-    if (q7 === 'No' || q7 === 'Partially') {
-      problems.push("Service/Product clarity gap - offerings are not well understood.");
-      recommendations.push("Deploy a Digital QR Catalog/Profile to showcase your full value proposition.");
-      qrStrategy.push("Service QR: Share your unique offerings instantly via a professional digital landing page.");
+    if (q7 === 'No' || q7 === 'Partially' || q8?.startsWith('High') || q10?.startsWith('High')) {
+      problems.push("Low service visibility leading to confusion and lost sales.");
+      recommendations.push("Deploy a rich Digital QR Catalog/Menu to showcase your unique offerings clearly.");
+      qrStrategy.push("Service QR: Place prominently to explain your business model and pricing instantly.");
     }
 
-    if (q10 === 'Medium' || q10 === 'High') {
-      problems.push("High lead drop-off rate after initial contact.");
-      recommendations.push("Use automated follow-up and engagement tools to nurture potential clients.");
+    if (q9?.startsWith('Medium') || q9?.startsWith('High')) {
+      problems.push("High customer hesitation before conversion.");
+      recommendations.push("Use automated engagement tools to build trust and close sales faster.");
     }
 
-    if (q11 === 'Low') {
-      problems.push("Weak customer retention and repeat business.");
-      recommendations.push("Deploy a loyalty and retention system to keep customers coming back.");
+    if (q11 === 'Manual' || q12?.startsWith('Medium') || q12?.startsWith('High')) {
+      problems.push("Inefficient appointment management and high no-show risk.");
+      recommendations.push("Implement a Digital Booking & Reminder system to stabilize your schedule.");
+      qrStrategy.push("Booking QR: Allow customers to schedule appointments directly from their phones.");
     }
 
-    if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Missing a structured customer/lead database.");
-      recommendations.push("Capture lead data digitally to build a verified database for growth.");
+    if (q13 === 'No' || q13 === 'Sometimes' || q15?.startsWith('High')) {
+      problems.push("Weak customer data capture and retention efforts.");
+      recommendations.push("Implement a Digital Customer Capture and automated loyalty system.");
+      qrStrategy.push("Customer Capture QR: Build your private database for seasonal re-marketing.");
+    }
+
+    if (q16 === 'No' || q16 === 'Rarely' || q14 === 'No') {
+      problems.push("Limited active promotion and post-service follow-up.");
+      recommendations.push("Use digital promotion tools and automated follow-ups to drive repeat business.");
     }
 
     if (q18 === 'No' || q18 === 'Limited') {
-      problems.push("Weak digital platform and readiness.");
-      recommendations.push("Set up a professional Digital Profile to boost your brand's credibility.");
+      problems.push("Underdeveloped digital infrastructure for specialized operations.");
+      recommendations.push("Establish a centralized Digital Business Profile to manage communications and data.");
     }
 
-    const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Limited': 2 };
-    let totalScore = 0;
-    Object.values(data).forEach(val => { if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val]; });
+    const scoreMap: Record<string, number> = { 
+      'Low': 1, 'Medium': 2, 'High': 3, 
+      'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 
+      'Limited': 2, 'None': 3, 'Manual': 3, 'Digital': 1,
+      'Yes (always)': 1, 'Yes (regularly)': 1, 'Yes (very clear)': 1
+    };
 
-    const priority = totalScore >= 25 ? ProfilePriority.HIGH : totalScore >= 15 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
-    const vol = q3 || 'moderate';
-    
+    let totalScore = 0;
+    Object.values(data).forEach(val => { 
+      if (typeof val === 'string') {
+        const key = val.split(' (')[0];
+        if (scoreMap[key]) totalScore += scoreMap[key];
+        else if (scoreMap[val]) totalScore += scoreMap[val];
+      }
+    });
+
+    const priority = totalScore >= 35 ? ProfilePriority.HIGH : totalScore >= 20 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
+    const traffic = q3 || 'moderate';
+    const suggestedPackage = q3?.startsWith('High') ? 'Platinum' : q3?.startsWith('Medium') ? 'Gold' : 'Silver';
+
     return {
       score: totalScore,
       priority,
       insights: {
-        summary: `A specialized business handling ${vol} customers. Priorities are lead conversion and digital professionalization.`,
+        summary: `A unique ${q2 || 'custom'} business. Main focus: ${problems[0] || 'digitizing customer interactions'}.`,
         problems,
         recommendations,
-        suggestedPackage: vol === 'High' ? 'Platinum' : 'Gold',
-        packageReason: `Growth-oriented tools needed to stabilize ${vol.toLowerCase()} volume and capture lead data.`,
+        suggestedPackage,
+        packageReason: `The ${suggestedPackage} plan is designed to bring structured automation to ${traffic.toLowerCase()} volume operations.`,
         qrStrategy,
-        salesPitch: `Every unique business needs a unique approach. Vemtap helps you professionalize your customer interactions, capture data automatically, and ensure you never lose a lead to slow response times.`,
-        aiAnalysis: "General Sector Analysis: The core operational gap is almost always lack of data. Building a digital pipeline will allow this business to scale regardless of its specific model.",
+        salesPitch: `Your business is unique, and your technology should be too. Vemtap helps you automate the "boring stuff" like answering routine questions and capturing data, so you can focus on your craft.`,
+        aiAnalysis: "Unique Sector Analysis: Specialized businesses often leak revenue in the communication gaps. Closing these gaps with digital touchpoints will professionalize the brand and increase conversion.",
         aiSource: 'expert-system'
       }
     };
