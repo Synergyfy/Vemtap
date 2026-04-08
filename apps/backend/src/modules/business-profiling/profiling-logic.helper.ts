@@ -269,41 +269,45 @@ export class ProfilingLogicHelper {
     const recommendations: string[] = [];
     const qrStrategy: string[] = [];
     
-    const q2 = data.patientVolume;
+    const q2 = data.customerTraffic || data.patientVolume;
     const q5 = data.waitingTime;
     const q7 = data.procedureClarity;
     const q8 = data.questionsBefore;
+    const q10 = data.lostToWait;
     const q11 = data.forgetFollowups;
     const q12 = data.collectsData;
     const q13 = data.followUpVisits;
+    const q14 = data.awarenessLevel;
     const q15 = data.waitingArea;
+    const q16 = data.dwellTime;
 
-    if (q5 === 'Medium' || q5 === 'High') {
-      problems.push("Patient flow bottlenecks and waiting room congestion.");
-      recommendations.push("Implement a Digital Appointment & Check-in system to streamline the patient arrival flow.");
+    if (q5 === 'Medium' || q5 === 'High' || q10 === 'Medium' || q10 === 'High') {
+      problems.push("Patient flow bottlenecks and loss due to waiting times.");
+      recommendations.push("Implement a Digital Appointment & Check-in system to streamline arrival and reduce dropout at the door.");
     }
 
-    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
-      problems.push("Patient information gap regarding procedures or services.");
-      recommendations.push("Use QR codes in the waiting area to provide detailed digital info about medical procedures and health tips.");
+    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High' || q14 === 'No' || q14 === 'Sometimes') {
+      problems.push("High procedure discovery friction and low service awareness.");
+      recommendations.push("Deploy 'Health Knowledge QR' in the waiting area to educate patients on your services and procedures.");
     }
 
     if (q11 === 'Medium' || q11 === 'High') {
-      problems.push("Patients frequently miss follow-up appointments.");
-      recommendations.push("Deploy an automated medical reminder system to reduce missed consultations.");
+      problems.push("Revenue loss due to missed follow-up appointments.");
+      recommendations.push("Use Vemtap's Automated Medical Reminders to reduce no-shows and ensure treatment continuity.");
     }
 
     if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Manual patient data management.");
-      recommendations.push("Use 'QR Patient Capture' to allow patients to register their details digitally upon arrival.");
+      problems.push("Manual patient registration slowing down front-desk operations.");
+      recommendations.push("Implement 'Quick Patient Capture' via QR to digitize registration before they reach the counter.");
     }
 
     if (q13 === 'No' || q13 === 'Sometimes') {
-      problems.push("Weak post-visit patient care and follow-up.");
-      recommendations.push("Automate post-appointment feedback and follow-up care instructions via WhatsApp.");
+      problems.push("Gaps in post-visit care and patient engagement.");
+      recommendations.push("Automate post-appointment care instructions and feedback collection via WhatsApp.");
     }
 
     if (q15 === 'Yes') qrStrategy.push("Waiting Area QR: Provide educational health content and digital registration.");
+    if (q16 === 'High') qrStrategy.push("Engagement QR: Use high-dwell time in the waiting room to show educational videos or service updates.");
 
     const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3 };
     let totalScore = 0;
@@ -338,41 +342,50 @@ export class ProfilingLogicHelper {
     const q2 = data.weeklyClients;
     const q5 = data.responseTime;
     const q7 = data.serviceClarity;
-    const q8 = data.serviceQuestions;
+    const q8 = data.preEngageQuestions || data.serviceQuestions;
+    const q9 = data.decisionDelay;
     const q10 = data.conversionLoss;
     const q11 = data.noShows;
     const q12 = data.collectsData;
+    const q13 = data.followUpPotential;
+    const q14 = data.valueUnderstanding;
+    const q15 = data.activePromotion;
+    const q17 = data.dwellEngagement;
     const q18 = data.digitalPresence;
 
     if (q5 === 'Medium' || q5 === 'High') {
-      problems.push("Communication response delays and client inquiry friction.");
-      recommendations.push("Implement a Structured Booking & Response system to ensure no lead goes ignored.");
+      problems.push("Slow response speed causing inquiry friction.");
+      recommendations.push("Implement a Structured Booking & Inquiry system to capture and respond to leads faster.");
     }
 
     if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
-      problems.push("Client confusion regarding complex services and pricing.");
-      recommendations.push("Use a Digital QR Profile to provide clear service breakdowns and transparent pricing.");
-      qrStrategy.push("Profile QR: Share your full expertise and pricing instantly via a single scan.");
+      problems.push("Client confusion regarding service expertise or pricing.");
+      recommendations.push("Use a Digital Business Profile to clearly articulate your value proposition and service packages.");
+      qrStrategy.push("Profile QR: Present your full expertise and pricing transparently at the first point of contact.");
     }
 
-    if (q10 === 'Medium' || q10 === 'High') {
-      problems.push("Low post-consultation conversion rate.");
-      recommendations.push("Deploy an automated follow-up and client engagement system to nurture leads.");
+    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
+      problems.push("High lead stalling and post-consultation drop-off.");
+      recommendations.push("Deploy an automated post-consultation follow-up system to nurture hesitant clients.");
     }
 
     if (q11 === 'Medium' || q11 === 'High') {
-      problems.push("Missed consultations and scheduling instability.");
-      recommendations.push("Enable automated meeting reminders to minimize no-shows.");
+      problems.push("Revenue loss due to missed meetings and no-shows.");
+      recommendations.push("Enable automated appointment reminders to stabilize your consultation calendar.");
     }
 
-    if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Lack of structured client database (CRM).");
-      recommendations.push("Implement a 'Digital Client Intake' flow to capture data from the very first interaction.");
+    if (q12 === 'No' || q12 === 'Sometimes' || q13 === 'No') {
+      problems.push("Inconsistent client data collection and follow-up efforts.");
+      recommendations.push("Use 'Digital Client Intake' to build a structured CRM and automate catch-up reminders.");
     }
 
-    if (q18 === 'No' || q18 === 'Limited') {
-      problems.push("Weak digital readiness and professional positioning.");
-      recommendations.push("Set up a high-converting Digital Business Profile to boost credibility.");
+    if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No' || q18 === 'No' || q18 === 'Limited') {
+      problems.push("Weak digital positioning and market visibility.");
+      recommendations.push("Set up a premium Digital Business Profile to boost your firm's authority and credibility.");
+    }
+
+    if (q17 === 'High') {
+      qrStrategy.push("Consultation QR: Share case studies and digital business cards while clients wait in your lounge.");
     }
 
     const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Limited': 2 };
@@ -408,11 +421,15 @@ export class ProfilingLogicHelper {
     const q2 = data.studentVolume;
     const q5 = data.registrationFriction;
     const q7 = data.courseClarity;
+    const q8 = data.pricingInquiry;
     const q9 = data.dropOffInterest;
     const q10 = data.lostToEnroll;
     const q11 = data.retentionIssue;
     const q12 = data.collectsData;
     const q13 = data.updatesLevel;
+    const q14 = data.valueUnderstanding;
+    const q15 = data.activePromotion;
+    const q18 = data.digitalReadiness;
 
     if (q5 === 'Medium' || q5 === 'High') {
       problems.push("Friction in the student registration and enrollment flow.");
@@ -420,8 +437,8 @@ export class ProfilingLogicHelper {
       qrStrategy.push("Registration QR: Place at the entrance for instant on-the-spot student signups.");
     }
 
-    if (q7 === 'No' || q7 === 'Partially') {
-      problems.push("Information gap regarding course content and duration.");
+    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
+      problems.push("Information gap regarding course content, pricing, or duration.");
       recommendations.push("Use a Digital Course Catalog to provide detailed breakdowns of all learning programs.");
       qrStrategy.push("Course QR: Link directly to detailed syllabuses and program benefits.");
     }
@@ -444,6 +461,11 @@ export class ProfilingLogicHelper {
     if (q13 === 'No' || q13 === 'Sometimes') {
       problems.push("Poor communication regarding class updates and schedules.");
       recommendations.push("Automate student communication via WhatsApp for schedules, results, and offers.");
+    }
+
+    if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No' || q18 === 'No' || q18 === 'Limited') {
+      problems.push("Weak digital readiness and program value positioning.");
+      recommendations.push("Set up a premium Digital Learning Profile to boost your institution's authority and reach.");
     }
 
     const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3 };
