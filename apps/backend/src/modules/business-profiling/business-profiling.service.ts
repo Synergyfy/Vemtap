@@ -196,7 +196,7 @@ export class BusinessProfilingService {
       return ProfilingLogicHelper.calculateLogistics(data);
     }
 
-    if (type === 'Construction & Home Service' || data.businessType === 'Construction & Home Service') {
+    if (type === 'Construction & Home Service' || type === 'Construction & Home Services' || data.businessType === 'Construction & Home Service' || data.businessType === 'Construction & Home Services') {
       return ProfilingLogicHelper.calculateConstruction(data);
     }
 
@@ -216,7 +216,7 @@ export class BusinessProfilingService {
       return ProfilingLogicHelper.calculateGov(data);
     }
 
-    if (type === 'Religion & NGO' || data.businessType === 'Religion & NGO') {
+    if (type === 'Religious & Non-Profit Organizations' || data.businessType === 'Religious & Non-Profit Organizations' || type === 'Religion & NGO' || data.businessType === 'Religion & NGO') {
       return ProfilingLogicHelper.calculateReligion(data);
     }
 

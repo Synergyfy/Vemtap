@@ -463,6 +463,81 @@ const INITIAL_KNOWLEDGE = [
       { label: 'Get Started', action: 'url', value: '/auth/signup' },
     ],
   },
+  // Identity & Meta Questions
+  {
+    question: "Who are you?",
+    answer: "I am VemTap's virtual assistant 🤖 I'm here to help you understand how VemTap works and assist you with anything you need.",
+    keywords: ["who", "name", "identity", "bot", "assistant"],
+    category: "general",
+    buttons: [
+      { label: 'Learn About VemTap', action: 'url', value: '/features' },
+      { label: 'Talk to Human', action: 'action', value: 'human_agent' },
+    ],
+  },
+  {
+    question: "Are you a human?",
+    answer: "I'm an AI assistant created to help you quickly 🤖 But if you need a human, I can connect you right away!",
+    keywords: ["human", "real", "robot", "bot", "ai", "artificial"],
+    category: "general",
+    buttons: [
+      { label: 'Talk to Human Agent', action: 'action', value: 'human_agent' },
+      { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+    ],
+  },
+  {
+    question: "Can I speak to a human?",
+    answer: "Yes, I can connect you to a human support agent. Please hold on while I arrange that for you.",
+    keywords: ["speak", "human", "agent", "real person", "live support", "connect"],
+    category: "support",
+    buttons: [
+      { label: 'Talk to Human Agent', action: 'action', value: 'human_agent' },
+      { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+    ],
+  },
+  // High-Intent Detection
+  {
+    question: "How do I pay?",
+    answer: "That's great! Let's get you started immediately. You can sign up and choose a plan from our pricing page 🚀",
+    keywords: ["pay", "payment", "how to pay", "start", "ready", "begin"],
+    category: "sales",
+    buttons: [
+      { label: 'Get Started Now', action: 'url', value: '/auth/signup' },
+      { label: 'View Pricing', action: 'url', value: '/pricing' },
+    ],
+  },
+  {
+    question: "I want to start now",
+    answer: "That's great! 🚀 Let's get you started immediately. Creating your account takes just a few minutes!",
+    keywords: ["start now", "ready", "begin", "lets go", "sign me up", "i want this"],
+    category: "sales",
+    buttons: [
+      { label: 'Get Started Now', action: 'url', value: '/auth/signup' },
+      { label: 'Talk to Human', action: 'action', value: 'human_agent' },
+    ],
+  },
+  // Objection Handling (Nigerian Market)
+  {
+    question: "It's too expensive",
+    answer: "No worries 😊 You can start for free and upgrade only when you see results. VemTap pays for itself by helping you capture more customers!",
+    keywords: ["expensive", "too much", "costly", "overpriced", "price high"],
+    category: "sales",
+    buttons: [
+      { label: 'Start Free', action: 'url', value: '/auth/signup' },
+      { label: 'View Pricing', action: 'url', value: '/pricing' },
+    ],
+  },
+  {
+    question: "I want to grow my business",
+    answer: "That's great! 🚀 What type of business do you run? VemTap helps businesses capture customers, increase engagement, and grow sales.",
+    keywords: ["grow", "business growth", "more customers", "increase sales", "expand"],
+    category: "sales",
+    buttons: [
+      { label: 'Fashion', action: 'action', value: 'fashion' },
+      { label: 'Restaurant', action: 'action', value: 'restaurant' },
+      { label: 'Service', action: 'action', value: 'service' },
+      { label: 'Other', action: 'action', value: 'other' },
+    ],
+  },
 ];
 
 async function seed() {

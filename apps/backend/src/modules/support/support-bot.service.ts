@@ -19,7 +19,7 @@ export class SupportBotService {
   private readonly logger = new Logger(SupportBotService.name);
   private genAI: GoogleGenerativeAI;
   private readonly CONFIDENCE_THRESHOLD = 70;
-  private readonly GEMINI_MODEL = 'gemini-1.5-flash';
+  private readonly GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
   constructor(
     @InjectRepository(SupportKnowledge)
@@ -49,6 +49,36 @@ export class SupportBotService {
 
     await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'user', query);
 
+    // Handle casual acknowledgments (hmm, okay, yes, no)
+    const casualResponse = this.handleCasualMessage(normalizedQuery);
+    if (casualResponse) {
+      const interaction = await this.logInteraction(userId, query, casualResponse.content, 'knowledge_base', 100, casualResponse.buttons, convContext.currentPath || undefined);
+      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', casualResponse.content, interaction.id);
+      return {
+        id: interaction.id,
+        content: casualResponse.content,
+        source: 'knowledge_base',
+        confidence: 100,
+        buttons: casualResponse.buttons,
+        conversationPath: convContext.currentPath || undefined,
+      };
+    }
+
+    // Handle identity/meta questions (who are you, are you human)
+    const identityResponse = this.handleIdentityQuestion(normalizedQuery);
+    if (identityResponse) {
+      const interaction = await this.logInteraction(userId, query, identityResponse.content, 'knowledge_base', 100, identityResponse.buttons, convContext.currentPath || undefined);
+      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', identityResponse.content, interaction.id);
+      return {
+        id: interaction.id,
+        content: identityResponse.content,
+        source: 'knowledge_base',
+        confidence: 100,
+        buttons: identityResponse.buttons,
+        conversationPath: convContext.currentPath || undefined,
+      };
+    }
+
     if (this.isGreeting(normalizedQuery)) {
       const greeting = this.generateGreetingResponse(userContext, convContext.currentPath || undefined);
       const buttons = this.getGreetingButtons();
@@ -66,7 +96,7 @@ export class SupportBotService {
       };
     }
 
-    const pathResponse = this.handleConversationPath(normalizedQuery, query, convContext, userId, sessionId || convContext.sessionId);
+    const pathResponse = await this.handleConversationPath(normalizedQuery, query, convContext, userId, sessionId || convContext.sessionId);
     if (pathResponse) {
       return pathResponse;
     }
@@ -132,35 +162,51 @@ export class SupportBotService {
     };
   }
 
-  private handleConversationPath(
+  private async handleConversationPath(
     normalizedQuery: string,
     originalQuery: string,
     convContext: any,
     userId: string,
     sessionId: string,
-  ): BotResponseDto | null {
+  ): Promise<BotResponseDto | null> {
     const path = convContext.currentPath;
 
     if (!path) {
       const pathTrigger = this.detectPathTrigger(normalizedQuery);
       if (pathTrigger) {
-        this.conversationContext.setPath(userId, sessionId, pathTrigger);
+        await this.conversationContext.setPath(userId, sessionId, pathTrigger);
         convContext.currentPath = pathTrigger;
-        return this.getPathResponse(pathTrigger, originalQuery, userId, sessionId);
+        return this.logPathResponse(await this.getPathResponse(pathTrigger, originalQuery, userId, sessionId), userId, originalQuery, sessionId);
       }
       return null;
     }
 
+    let result: BotResponseDto | null = null;
     switch (path) {
       case 'grow_business':
-        return this.handleGrowBusinessPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        result = this.handleGrowBusinessPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        break;
       case 'exploring':
-        return this.handleExploringPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        result = this.handleExploringPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        break;
       case 'need_help':
-        return this.handleNeedHelpPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
-      default:
-        return null;
+        result = this.handleNeedHelpPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        break;
     }
+
+    if (result) {
+      return this.logPathResponse(result, userId, originalQuery, sessionId);
+    }
+    return null;
+  }
+
+  private async logPathResponse(response: BotResponseDto, userId: string, query: string, sessionId: string): Promise<BotResponseDto> {
+    const interaction = await this.logInteraction(userId, query, response.content, 'knowledge_base', response.confidence, response.buttons, response.conversationPath);
+    await this.conversationContext.addMessage(userId, sessionId, 'bot', response.content, interaction.id);
+    return {
+      ...response,
+      id: interaction.id,
+    };
   }
 
   private detectPathTrigger(query: string): string | null {
@@ -606,8 +652,29 @@ export class SupportBotService {
       ? `Recent Conversation:\n${history.map(m => `${m.role}: ${m.content}`).join('\n')}`
       : 'No previous messages in this conversation.';
 
-    const prompt = `You are the VemTap AI Assistant, a helpful and professional support bot for the VemTap visitor engagement platform.
-    
+    const prompt = `You are the VemTap AI Assistant — a warm, professional, sales-savvy chatbot for VemTap, a business growth platform that helps businesses capture customer data, engage visitors, and increase sales using QR codes, NFC, and smart links.
+
+IMPORTANT PERSONALITY & BRAND VOICE:
+- Be warm, friendly, and use emojis naturally (👋 😊 🚀 ✅ 💡)
+- Keep responses concise (under 150 words)
+- Always guide users toward getting started or learning more
+- When you don't know something, offer to connect with a human agent — never make up features
+- For the Nigerian market: be empathetic about budget concerns, tech worries, and WhatsApp-first mindset
+
+OBJECTION HANDLING:
+- "I don't have money" → Highlight the free plan, zero risk
+- "My customers don't use QR codes" → Mention NFC (just tap, no app needed) and links
+- "I already use WhatsApp" → VemTap works alongside WhatsApp for data capture
+- "I don't understand technology" → Emphasize simplicity, offer step-by-step guidance
+- "Is it worth it?" → Share value proposition: turn visitors into paying customers
+
+ABOUT VEMTAP:
+- Business growth platform for capturing customer data via NFC, QR codes, and links
+- Features: visitor tracking, messaging (SMS/WhatsApp/Email), loyalty programs, analytics, digital catalogue, surveys, multi-branch support
+- Free plan available, paid plans for more features
+- Built for Nigeria, works globally
+- No app download needed — works from browser
+
 USER CONTEXT:
 - Name: ${userContext?.name || 'there'}
 - Business: ${userContext?.businessName || 'VemTap User'}
@@ -619,16 +686,17 @@ ${conversationHistory}
 
 ${knowledgeContext}
 
-TASK:
+RESPONSE RULES:
 1. Answer the user's question based on the knowledge base and context provided.
-2. If the question is about VemTap features, pricing, or getting started, suggest appropriate action buttons.
-3. Keep responses concise (under 200 words), helpful, and conversational.
-4. If unsure, provide a helpful general response and suggest connecting with a human agent.
+2. ALWAYS include 1-3 relevant action buttons in your response.
+3. Common button actions: Get Started (/auth/signup), View Pricing (/pricing), Talk to Human (action:human_agent), Chat on WhatsApp (url:https://wa.me/234XXXXXXXXXX), View Dashboard (/dashboard)
+4. If the user shows high intent ("I'm ready", "how do I start?"), push for signup.
+5. If the user seems confused after 2+ messages, offer human escalation.
 
-Respond in this JSON format:
+Respond ONLY in this JSON format (no other text):
 {
   "answer": "Your response text here...",
-  "buttons": [{"label": "Button Label", "action": "navigate|url|action", "value": "/path or https://... or action_name"}],
+  "buttons": [{"label": "Button Label", "action": "url", "value": "/path or https://..."}],
   "followUp": ["Optional follow-up question 1", "Optional follow-up question 2"]
 }
 
@@ -743,9 +811,118 @@ User's question: ${query}`;
     const greetings = [
       'hi', 'hello', 'good morning', 'good day', 'good afternoon', 'good evening',
       'hola', 'hey', 'yo', 'sup', 'howdy', 'greetings', 'what\'s up', 'hi there',
+      'are you there',
     ];
     const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '').trim();
     return greetings.includes(cleanQuery) || greetings.some(g => cleanQuery.startsWith(g + ' ') || cleanQuery === g);
+  }
+
+  private handleCasualMessage(query: string): { content: string; buttons?: ChatButton[] } | null {
+    const casualMap: Record<string, { content: string; buttons?: ChatButton[] }> = {
+      'hmm': {
+        content: "I'm here whenever you're ready 😊",
+        buttons: [
+          { label: 'Grow My Business', action: 'action', value: 'I want to grow my business' },
+          { label: 'I Need Help', action: 'action', value: 'I need help' },
+        ],
+      },
+      'okay': {
+        content: "Great! What would you like to do next?",
+        buttons: this.getGreetingButtons(),
+      },
+      'ok': {
+        content: "Great! What would you like to do next?",
+        buttons: this.getGreetingButtons(),
+      },
+      'yes': {
+        content: "Awesome 👍 How can I help further?",
+        buttons: this.getGreetingButtons(),
+      },
+      'no': {
+        content: "No problem. Let me know if you need anything later! 😊",
+        buttons: [
+          { label: 'Get Started', action: 'url', value: '/auth/signup' },
+          { label: 'Talk to Human', action: 'action', value: 'human_agent' },
+        ],
+      },
+      'thank you': {
+        content: "You're welcome! 😊 If you need anything else, feel free to ask.",
+        buttons: [
+          { label: 'Get Started', action: 'url', value: '/auth/signup' },
+        ],
+      },
+      'thanks': {
+        content: "You're welcome! 😊 If you need anything else, feel free to ask.",
+        buttons: [
+          { label: 'Get Started', action: 'url', value: '/auth/signup' },
+        ],
+      },
+      'bye': {
+        content: "Goodbye! 👋 Have a great day! Feel free to come back if you need any help.",
+        buttons: [],
+      },
+      'goodbye': {
+        content: "Goodbye! 👋 Have a great day! Feel free to come back if you need any help.",
+        buttons: [],
+      },
+    };
+
+    const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    return casualMap[cleanQuery] || null;
+  }
+
+  private handleIdentityQuestion(query: string): { content: string; buttons?: ChatButton[] } | null {
+    const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '').trim();
+
+    const identityTriggers: { patterns: string[]; response: { content: string; buttons?: ChatButton[] } }[] = [
+      {
+        patterns: ['who are you', 'what are you', 'whats your name'],
+        response: {
+          content: "I am VemTap's virtual assistant 🤖 I'm here to help you understand how VemTap works and assist you with anything you need.",
+          buttons: [
+            { label: 'Learn About VemTap', action: 'action', value: 'What is Vemtap?' },
+            { label: 'Talk to Human', action: 'action', value: 'human_agent' },
+          ],
+        },
+      },
+      {
+        patterns: ['are you human', 'are you a human', 'are you real', 'are you a robot', 'are you a bot', 'are you ai'],
+        response: {
+          content: "I'm an AI assistant created to help you quickly 🤖 But if you need a human, I can connect you right away!",
+          buttons: [
+            { label: 'Talk to Human Agent', action: 'action', value: 'human_agent' },
+            { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+          ],
+        },
+      },
+      {
+        patterns: ['can i speak to a human', 'speak to human', 'talk to someone', 'real person', 'human agent', 'live agent', 'connect me'],
+        response: {
+          content: "Yes, I can connect you to a human support agent. Please hold on while I arrange that for you.",
+          buttons: [
+            { label: 'Talk to Human Agent', action: 'action', value: 'open_ticket' },
+            { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+          ],
+        },
+      },
+      {
+        patterns: ['i dont understand', 'i don understand', 'confused', 'what do you mean'],
+        response: {
+          content: "No problem! Could you please rephrase your question? Or I can connect you with a human for better assistance.",
+          buttons: [
+            { label: 'Talk to Human', action: 'action', value: 'human_agent' },
+            { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+          ],
+        },
+      },
+    ];
+
+    for (const trigger of identityTriggers) {
+      if (trigger.patterns.some(p => cleanQuery.includes(p) || cleanQuery === p)) {
+        return trigger.response;
+      }
+    }
+    return null;
   }
 
   private generateGreetingResponse(context: any, currentPath?: string): string {

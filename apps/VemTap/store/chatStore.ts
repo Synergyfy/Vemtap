@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 
+export interface ChatButton {
+  label: string;
+  action: 'navigate' | 'url' | 'action';
+  value: string;
+}
+
 export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -7,6 +13,8 @@ export interface Message {
   source?: 'rule' | 'ai' | 'fallback';
   interactionId?: string;
   wasHelpful?: boolean;
+  buttons?: ChatButton[];
+  followUp?: string[];
 }
 
 interface ChatState {
