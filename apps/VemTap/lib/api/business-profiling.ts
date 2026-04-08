@@ -71,10 +71,21 @@ export interface BusinessProfile {
     status: 'Not Contacted' | 'Contacted' | 'Interested' | 'Closed';
     
     // Insights (Calculated by backend Expert System)
-    aiAnalysis?: string;
-    recommendations: string[];
-    pitchSummary: string;
-    aiSource: string;
+    insights?: {
+        summary?: string;
+        problems?: string[];
+        recommendations: string[];
+        suggestedPackage: string;
+        packageReason?: string;
+        qrStrategy?: string[];
+        salesPitch: string;
+        aiAnalysis?: string;
+        pitchSummary?: string;
+        aiSource?: string;
+    };
+
+    // Responses for dynamic questions
+    responses: Record<string, any>;
 
     // Metadata
     createdById?: string;
@@ -83,7 +94,7 @@ export interface BusinessProfile {
     updatedAt: string;
 }
 
-export type BusinessProfileFormData = Omit<BusinessProfile, 'id' | 'score' | 'priority' | 'recommendations' | 'pitchSummary' | 'aiAnalysis' | 'aiSource' | 'createdAt' | 'updatedAt' | 'createdBy' | 'createdById'>;
+export type BusinessProfileFormData = Omit<BusinessProfile, 'id' | 'score' | 'priority' | 'insights' | 'createdAt' | 'updatedAt' | 'createdBy' | 'createdById'>;
 
 
 // Helper: Map Large Form Object to Backend Payload
@@ -98,6 +109,7 @@ const mapToBackend = (data: BusinessProfileFormData) => {
         status: data.status,
         xpEarned: data.xpEarned,
         achievements: data.achievements,
+        responses: data.responses,
         physicalSetup: {
             contactPerson: data.contactPerson,
             numberOfBranches: data.numberOfBranches,
@@ -140,17 +152,13 @@ const mapToBackend = (data: BusinessProfileFormData) => {
 
 // Helper: Map Backend Entity to Large Form Object
 const mapFromBackend = (entity: any): BusinessProfile => {
-    const insights = entity.insights || {};
     return {
         ...entity,
         ...entity.physicalSetup,
         ...entity.qrPlacement,
         summaryNotes: entity.notes,
         // Map expanded insights from backend
-        aiAnalysis: insights.aiAnalysis,
-        recommendations: insights.recommendations || [],
-        pitchSummary: insights.pitchSummary,
-        aiSource: insights.aiSource || 'system',
+        insights: entity.insights || {},
     };
 };
 

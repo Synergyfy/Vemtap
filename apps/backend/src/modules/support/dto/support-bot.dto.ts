@@ -1,5 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsBoolean, IsNumber } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export interface ChatButton {
+  label: string;
+  action: 'navigate' | 'url' | 'action';
+  value: string;
+}
 
 export class BotQueryDto {
   @ApiProperty({ example: 'How do I top up credits?' })
@@ -7,15 +13,58 @@ export class BotQueryDto {
   @IsNotEmpty()
   query: string;
 
-  @ApiProperty({ example: 'General Dashboard' })
+  @ApiPropertyOptional({ example: 'General Dashboard' })
   @IsString()
   @IsOptional()
   context?: string;
 
-  @ApiProperty({ example: [] })
+  @ApiPropertyOptional({ example: 'session_123456' })
+  @IsString()
+  @IsOptional()
+  sessionId?: string;
+
+  @ApiPropertyOptional({ example: [] })
   @IsArray()
   @IsOptional()
-  history?: any[];
+  history?: { role: string; content: string }[];
+}
+
+export class BotResponseDto {
+  @ApiProperty()
+  @IsString()
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  content: string;
+
+  @ApiProperty({ enum: ['knowledge_base', 'ai', 'fallback'] })
+  @IsString()
+  source: string;
+
+  @ApiProperty()
+  @IsNumber()
+  confidence: number;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  buttons?: ChatButton[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  followUp?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  conversationPath?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  suggestedAction?: string;
 }
 
 export class CreateKnowledgeDto {
@@ -29,9 +78,46 @@ export class CreateKnowledgeDto {
 
   @IsArray()
   @IsOptional()
-  keywords: string[];
+  keywords?: string[];
 
   @IsString()
   @IsOptional()
   category?: string;
+
+  @IsOptional()
+  @IsArray()
+  buttons?: ChatButton[];
+}
+
+export class InteractionFeedbackDto {
+  @ApiProperty()
+  @IsBoolean()
+  wasHelpful: boolean;
+}
+
+export class ConversationContextDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  currentPath?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  businessType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  customerVolume?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  challenge?: string;
 }
