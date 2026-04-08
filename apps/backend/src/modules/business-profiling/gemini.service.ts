@@ -31,7 +31,7 @@ export class GeminiService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
       const prompt = `
         You are an expert Business Consultant for Vemtap, an NFC/QR-powered visitor engagement and loyalty platform.

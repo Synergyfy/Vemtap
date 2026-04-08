@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { X, Send, Minimize2, Maximize2, MessageCircle, User, Bot, Loader2, Headset, Trash2, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Draggable from 'react-draggable';
-import { useChatStore } from '@/store/chatStore';
+import { useChatStore, ChatButton } from '@/store/chatStore';
 import { api } from '@/lib/api';
 
 interface SupportChatbotProps {
@@ -27,7 +27,12 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
         if (history.length === 0) {
             addMessage({
                 role: 'assistant',
-                content: 'Hi! 👋 I\'m your VemTap AI assistant. How can I help you today?'
+                content: 'Hi! 👋 I\'m your VemTap AI assistant. What would you like to do today?',
+                buttons: [
+                    { label: '🚀 Grow My Business', action: 'action', value: 'I want to grow my business' },
+                    { label: '🔍 Just Exploring', action: 'action', value: 'I\'m just exploring' },
+                    { label: '🆘 I Need Help', action: 'action', value: 'I need help' },
+                ],
             });
         }
     }, [history.length, addMessage]);
@@ -40,64 +45,86 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
         scrollToBottom();
     }, [history, isLoading]);
 
-    const handleSendMessage = async () => {
-        if (!inputValue.trim() || isLoading) return;
+    const getContext = () => {
+        let context = "General Dashboard";
+        if (pathname?.includes('messaging')) context = "Message Management";
+        if (pathname?.includes('contacts')) context = "Contact Management";
+        if (pathname?.includes('settings')) context = "Account Settings";
+        if (pathname?.includes('devices')) context = "Device Management";
+        if (pathname?.includes('analytics')) context = "Analytics";
+        if (pathname?.includes('loyalty')) context = "Loyalty Management";
+        if (pathname?.includes('catalogue')) context = "Product Catalogue";
+        return context;
+    };
 
-        const userText = inputValue;
-        setInputValue('');
-
-        addMessage({ role: 'user', content: userText });
+    const sendQuery = async (userText: string) => {
+        if (isLoading) return;
         setIsLoading(true);
 
         try {
-            let context = "General Dashboard";
-            if (pathname?.includes('messaging')) context = "Message Management";
-            if (pathname?.includes('contacts')) context = "Contact Management";
-            if (pathname?.includes('settings')) context = "Account Settings";
-            if (pathname?.includes('devices')) context = "Device Management";
-
-            let data;
-            try {
-                data = await api.post('/support/bot/query', {
-                    query: userText,
-                    context,
-                    history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
-                });
-            } catch (e) {
-                // Legacy Fallback
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        messages: history.concat({ role: 'user', content: userText, timestamp: Date.now() } as any).map(m => ({
-                            role: m.role,
-                            content: m.content
-                        })),
-                        context
-                    })
-                });
-                data = await response.json();
-            }
+            const data = await api.post('/support/bot/query', {
+                query: userText,
+                context: getContext(),
+                history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
+            });
 
             addMessage({
                 role: 'assistant',
                 content: data.content,
                 source: data.source,
-                interactionId: data.id // Interaction ID from backend
+                interactionId: data.id,
+                buttons: data.buttons,
+                followUp: data.followUp,
             });
 
             if (data.content.toLowerCase().includes('connect you with a human') ||
-                data.content.toLowerCase().includes('agent')) {
+                data.content.toLowerCase().includes('human agent') ||
+                data.suggestedAction === 'escalate') {
                 setHandedToAgent(true);
             }
         } catch (error) {
             addMessage({
                 role: 'assistant',
-                content: "I'm having trouble connecting right now. Please try again later."
+                content: "I'm having trouble connecting right now. Please try again later.",
+                buttons: [
+                    { label: 'Try Again', action: 'action', value: userText },
+                    { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+                ],
             });
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSendMessage = async () => {
+        if (!inputValue.trim() || isLoading) return;
+
+        const userText = inputValue;
+        setInputValue('');
+        addMessage({ role: 'user', content: userText });
+        await sendQuery(userText);
+    };
+
+    const handleButtonClick = (button: ChatButton) => {
+        if (button.action === 'url') {
+            const isExternal = button.value.startsWith('http');
+            if (isExternal) {
+                window.open(button.value, '_blank');
+            } else {
+                router.push(button.value);
+            }
+        } else if (button.action === 'navigate') {
+            router.push(button.value);
+        } else if (button.action === 'action') {
+            // Send the button value as a chat message
+            addMessage({ role: 'user', content: button.label.replace(/^[^\w]*/, '') }); // strip leading emoji
+            sendQuery(button.value);
+        }
+    };
+
+    const handleFollowUpClick = (question: string) => {
+        addMessage({ role: 'user', content: question });
+        sendQuery(question);
     };
 
     const handleFeedback = async (idx: number, interactionId: string, wasHelpful: boolean) => {
@@ -133,31 +160,45 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
         });
     };
 
-    const handleQuickAction = (action: string) => {
-        setInputValue(action);
-        handleQuickActionSend(action);
+    const renderButtons = (buttons: ChatButton[]) => {
+        if (!buttons || buttons.length === 0) return null;
+        return (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+                {buttons.map((button, i) => (
+                    <button
+                        key={i}
+                        onClick={() => handleButtonClick(button)}
+                        disabled={isLoading}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+                            bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300 active:scale-95"
+                    >
+                        {button.action === 'url' && <ExternalLink size={10} />}
+                        {button.label}
+                    </button>
+                ))}
+            </div>
+        );
     };
 
-    const handleQuickActionSend = async (text: string) => {
-        if (isLoading) return;
-        addMessage({ role: 'user', content: text });
-        setIsLoading(true);
-        try {
-            const data = await api.post('/support/bot/query', {
-                query: text,
-                history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
-            });
-            addMessage({
-                role: 'assistant',
-                content: data.content,
-                source: data.source,
-                interactionId: data.id
-            });
-        } catch (e) {
-            addMessage({ role: 'assistant', content: "Network error. Please try again." });
-        } finally {
-            setIsLoading(false);
-        }
+    const renderFollowUps = (followUps: string[]) => {
+        if (!followUps || followUps.length === 0) return null;
+        return (
+            <div className="mt-2 space-y-1">
+                <p className="text-[10px] text-gray-400 font-medium">You might also ask:</p>
+                <div className="flex flex-col gap-1">
+                    {followUps.map((q, i) => (
+                        <button
+                            key={i}
+                            onClick={() => handleFollowUpClick(q)}
+                            disabled={isLoading}
+                            className="text-left text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors disabled:opacity-50 truncate"
+                        >
+                            → {q}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     const nodeRef = useRef<HTMLDivElement>(null);
@@ -247,6 +288,16 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                                                             {message.source === 'rule' && <span className="ml-2 opacity-50">• Rule Engine</span>}
                                                         </div>
                                                     </div>
+
+                                                    {/* Action Buttons */}
+                                                    {message.role === 'assistant' && message.buttons && message.buttons.length > 0 && (
+                                                        renderButtons(message.buttons)
+                                                    )}
+
+                                                    {/* Follow-up Suggestions */}
+                                                    {message.role === 'assistant' && message.followUp && message.followUp.length > 0 && (
+                                                        renderFollowUps(message.followUp)
+                                                    )}
                                                     
                                                     {/* Assistant Feedback & Actions */}
                                                     {message.role === 'assistant' && idx !== 0 && (
