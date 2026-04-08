@@ -19,25 +19,26 @@ interface UserResponses {
 @Entity('bot_conversation_context')
 @Index(['userId', 'sessionId'])
 export class BotConversationContext extends AbstractBaseEntity {
-  @Column()
+  @Column({ name: 'user_id' })
   @Index()
   userId: string;
 
-  @Column()
+  @Column({ name: 'session_id' })
+  @Index()
   sessionId: string;
 
   @Column('jsonb', { default: [] })
   messages: ChatMessage[];
 
-  @Column({ nullable: true, type: 'varchar' })
+  @Column({ name: 'current_path', nullable: true, type: 'varchar' })
   currentPath: string | null;
 
-  @Column('jsonb', { nullable: true })
+  @Column({ name: 'user_responses', type: 'jsonb', nullable: true })
   userResponses: UserResponses | null;
 
-  @Column({ nullable: true })
+  @Column({ name: 'last_activity', nullable: true })
   lastActivity: Date;
 
-  @Column({ default: true })
+  @Column({ name: 'is_active', default: true })
   isActive: boolean;
 }

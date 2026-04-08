@@ -79,7 +79,7 @@ export class BotInteraction extends AbstractBaseEntity {
   @Column({ enum: ['knowledge_base', 'ai', 'fallback'], default: 'knowledge_base' })
   source: string;
 
-  @Column({ type: 'float', default: 0 })
+  @Column({ name: 'confidence', type: 'float', default: 0 })
   confidence: number;
 
   @Column({ nullable: true, type: 'varchar' })
@@ -92,6 +92,6 @@ export class BotInteraction extends AbstractBaseEntity {
   @Column('jsonb', { nullable: true })
   buttons: ChatButton[] | null;
 
-  @Column({ nullable: true, type: 'varchar' })
+  @Column({ name: 'conversation_path', nullable: true, type: 'varchar' })
   conversationPath: string | null;
 }
