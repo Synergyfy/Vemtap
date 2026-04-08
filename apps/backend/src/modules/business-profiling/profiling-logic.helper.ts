@@ -501,40 +501,62 @@ export class ProfilingLogicHelper {
     const q2 = data.projectVolume;
     const q5 = data.responseTime;
     const q7 = data.serviceClarity;
-    const q11 = data.projectDropoff;
+    const q8 = data.preProjectQuestions;
+    const q9 = data.startDelay;
+    const q10 = data.discussionLoss;
+    const q11 = data.projectAbandonment;
     const q12 = data.collectsData;
-    const q16 = data.portfolioPresence;
+    const q13 = data.followUpLeads;
+    const q14 = data.valueUnderstanding;
+    const q15 = data.activePromotion;
+    const q16 = data.onlinePresence;
     const q17 = data.onboardingProcess;
+    const q18 = data.digitalInteraction;
 
     if (q5 === 'Medium' || q5 === 'Slow') {
-      problems.push("Inefficient response time to project inquiries.");
-      recommendations.push("Implement a Structured Intake & Response system to qualify leads instantly.");
+      problems.push("Inefficient response time to project inquiries causing potential lead friction.");
+      recommendations.push("Implement a Structured Response & Intake system to qualify and engage leads instantly.");
     }
 
-    if (q7 === 'No' || q7 === 'Partially') {
-      problems.push("Service/Package confusion - clients don't see the full value.");
-      recommendations.push("Use a Digital QR Portfolio to showcase previous work and clear service tiers.");
-      qrStrategy.push("Portfolio QR: Link directly to your live demo, GitHub, or case studies.");
+    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
+      problems.push("Service/Package confusion - clients aren't fully grasping your tech value proposition.");
+      recommendations.push("Use a Digital QR Portfolio and Clear Service Breakdown to articulate value and pricing tiers.");
+      qrStrategy.push("Portfolio QR: Link directly to live demos, case studies, or GitHub repositories.");
+    }
+
+    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
+      problems.push("Low conversion from discussion to project start.");
+      recommendations.push("Deploy an automated follow-up and engagement system to nurture hesitant tech clients.");
     }
 
     if (q11 === 'Medium' || q11 === 'High') {
-      problems.push("High project abandonment or client drop-off rate.");
-      recommendations.push("Implement a better onboarding and continuous engagement flow.");
+      problems.push("High project abandonment or client drop-off after starting.");
+      recommendations.push("Implement a more robust digital onboarding and continuous project engagement flow.");
     }
 
-    if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Missing structured lead and client database.");
-      recommendations.push("Capture lead data directly through digital inquiry forms.");
+    if (q12 === 'No' || q12 === 'Sometimes' || q13 === 'No') {
+      problems.push("Missing a structured system for lead capture and follow-up.");
+      recommendations.push("Use a 'Digital Intake' system to build a structured CRM and automate follow-ups for inactive clients.");
+      qrStrategy.push("Contact QR: Use digital business cards to instantly capture lead data into your CRM.");
+    }
+
+    if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No') {
+      problems.push("Weak marketing awareness and promotion of tech services.");
+      recommendations.push("Leverage digital marketing tools and automated promotions to boost service visibility.");
     }
 
     if (q16 === 'No' || q16 === 'Limited') {
-      problems.push("Weak digital presence and portfolio visibility.");
-      recommendations.push("Set up a professional Digital Profile and Portfolio system.");
+      problems.push("Weak digital infrastructure (Website/Portfolio) affecting credibility.");
+      recommendations.push("Deploy a premium Digital Profile and Portfolio system to showcase your technical authority.");
     }
 
     if (q17 === 'No' || q17 === 'Partially') {
-      problems.push("Lack of a structured client onboarding process.");
-      recommendations.push("Deploy a step-by-step digital onboarding flow for new projects.");
+      problems.push("Lack of a structured client onboarding process creates friction for new projects.");
+      recommendations.push("Deploy a step-by-step digital onboarding flow to collect requirements and set expectations.");
+    }
+
+    if (q18 === 'Low') {
+      qrStrategy.push("Digital Touchpoint QR: Implement dash-links or client tools to increase digital brand interaction.");
     }
 
     const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Fast': 1, 'Slow': 3, 'Limited': 2 };
@@ -542,20 +564,20 @@ export class ProfilingLogicHelper {
     Object.values(data).forEach(val => { if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val]; });
 
     const traffic = q2 || 'moderate';
-    const priority = totalScore >= 25 ? ProfilePriority.HIGH : totalScore >= 15 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
+    const priority = totalScore >= 28 ? ProfilePriority.HIGH : totalScore >= 18 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
     
     return {
       score: totalScore,
       priority,
       insights: {
-        summary: `A Tech/Digital service handling ${traffic} projects. Focus on intake qualification and onboarding structure.`,
+        summary: `A ${data.techType || data.techServiceType || 'Technology'} firm handling ${traffic} projects monthly. Focus on intake automation and onboarding maturity.`,
         problems,
         recommendations,
-        suggestedPackage: q2 === 'High' ? 'Platinum' : 'Gold',
-        packageReason: `Advanced onboarding and portfolio management tools needed for ${traffic.toLowerCase()} project demand.`,
+        suggestedPackage: q2 === 'High' ? 'Platinum' : q2 === 'Medium' ? 'Gold' : 'Silver',
+        packageReason: `The ${traffic.toLowerCase()} project volume requires ${q2 === 'High' ? 'executive' : 'professional'} level automation and CRM tools.`,
         qrStrategy,
-        salesPitch: `In tech, your brand is your portfolio. We can help you capture leads more effectively and provide a world-class onboarding experience that makes your agency stand out from the competition.`,
-        aiAnalysis: "Tech Sector Analysis: Onboarding sets the tone for the entire project. Automating the intake and documentation collection will save hours of manual coordination.",
+        salesPitch: `In the tech industry, your onboarding and project clarity set the tone. Vemtap helps you qualify leads faster, showcase your portfolio via QR, and provide a premium digital onboarding experience that makes your agency stand out.`,
+        aiAnalysis: "Tech Sector Analysis: The biggest revenue leak is usually in the lag between inquiry and project start. Automating the intake and documentation phase will significantly improve your conversion rates and operational speed.",
         aiSource: 'expert-system'
       }
     };
@@ -567,66 +589,92 @@ export class ProfilingLogicHelper {
     const recommendations: string[] = [];
     const qrStrategy: string[] = [];
     
+    // Mapping 20 Questions
+    const q1 = data.propertyType;
     const q2 = data.monthlyLeads;
+    const q3 = data.clientSource;
+    const q4 = data.inquiryMethod;
     const q5 = data.responseTime;
+    const q6 = data.delayedResponseComplaints;
     const q7 = data.propertyVisibility;
     const q8 = data.propertyQuestions;
+    const q9 = data.viewingDecisionDelay;
     const q10 = data.conversionLoss;
     const q11 = data.noShowInspections;
     const q12 = data.collectsData;
+    const q13 = data.followUpEffort;
+    const q14 = data.valueUnderstanding;
+    const q15 = data.activePromotion;
+    const q16 = data.physicalBranding;
+    const q17 = data.digitalEngagement;
     const q18 = data.digitalPlatform;
+    const q19 = data.biggestChallenges;
+    const q20 = data.improvementNeed;
 
+    // SLOW RESPONSE PROBLEM
     if (q5 === 'Medium' || q5 === 'Slow') {
-      problems.push("Slow response time to property inquiries.");
-      recommendations.push("Implement a Structured Lead Inquiry system to capture and route leads instantly.");
+      problems.push("Slow response time to property inquiries creates a bottleneck in lead conversion.");
+      recommendations.push("Implement a structured inquiry system to automate initial responses and lead routing.");
     }
 
+    // PROPERTY VISIBILITY PROBLEM
     if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
-      problems.push("Property information gap and low listing visibility.");
-      recommendations.push("Deploy a Digital Property Listing system via QR to provide instant access to high-quality photos and specs.");
+      problems.push("Poor property visibility or information gap leads to repetitive inquiries.");
+      recommendations.push("Deploy a digital property listing system via QR codes on signage to provide instant access to high-quality photos and specs.");
       qrStrategy.push("Property QR: Place on 'For Sale/Lease' signs to allow passersby to view full details instantly.");
     }
 
-    if (q10 === 'Medium' || q10 === 'High') {
-      problems.push("Low lead-to-inspection conversion rate.");
-      recommendations.push("Implement an automated follow-up and lead engagement system.");
+    // LOW CONVERSION
+    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
+      problems.push("Low lead-to-inspection conversion rate indicates a lack of engagement or clarity.");
+      recommendations.push("Implement an automated follow-up and engagement system to nurture leads after viewing.");
     }
 
+    // NO-SHOW PROBLEM
     if (q11 === 'Medium' || q11 === 'High') {
-      problems.push("High no-show rate for property inspections.");
-      recommendations.push("Enable automated inspection reminders via WhatsApp to confirm attendance.");
+      problems.push("High no-show rate for property inspections or meetings.");
+      recommendations.push("Enable an automated inspection reminder system via WhatsApp to confirm attendance.");
       qrStrategy.push("Inspection Booking QR: Allow leads to book viewing slots directly from your digital profile.");
     }
 
+    // NO CLIENT DATA
     if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Missing structured lead database.");
-      recommendations.push("Use Vemtap's Lead Capture flow to build a high-intent property buyer database.");
+      problems.push("Inconsistent or missing structured lead data collection.");
+      recommendations.push("Deploy a lead capture system to build a high-intent property buyer and renter database.");
+      qrStrategy.push("Contact QR: Use as a fast-entry point for potential buyers to leave their details.");
     }
 
+    // WEAK MARKETING
+    if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No') {
+      problems.push("Low perceived property value or limited outreach.");
+      recommendations.push("Use property promotion tools to broadcast listings to your existing lead database.");
+    }
+
+    // WEAK DIGITAL PLATFORM
     if (q18 === 'No' || q18 === 'Limited') {
-      problems.push("Weak digital platform for property listings.");
-      recommendations.push("Set up a high-converting Digital Property Portfolio to manage your listings effectively.");
+      problems.push("Struggling with digital readiness and structured listings.");
+      recommendations.push("Set up a high-converting digital listing/profile system to showcase your portfolio.");
     }
 
-    const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Fast': 1, 'Slow': 3, 'Limited': 2 };
+    const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Fast': 1, 'Slow': 3, 'Limited': 2, 'None': 3 };
     let totalScore = 0;
     Object.values(data).forEach(val => { if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val]; });
 
     const traffic = q2 || 'moderate';
-    const priority = totalScore >= 25 ? ProfilePriority.HIGH : totalScore >= 15 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
+    const priority = totalScore >= 28 ? ProfilePriority.HIGH : totalScore >= 18 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
     
     return {
       score: totalScore,
       priority,
       insights: {
-        summary: `A ${data.propertyType || 'Real Estate'} business managing ${traffic} leads monthly. Focus on response speed and listing accessibility.`,
+        summary: `A ${q1 || 'Real Estate'} business managing ${traffic} leads monthly. Focus on response speed and listing accessibility.`,
         problems,
         recommendations,
-        suggestedPackage: q2 === 'High' ? 'Platinum' : 'Gold',
-        packageReason: `Scalable lead management and digital listings are essential for ${traffic.toLowerCase()} volume.`,
+        suggestedPackage: q2 === 'High' ? 'Platinum' : q2 === 'Medium' ? 'Gold' : 'Silver',
+        packageReason: `The ${traffic.toLowerCase()} lead volume requires ${q2 === 'High' ? 'enterprise' : 'professional'} level automation and listing management.`,
         qrStrategy,
-        salesPitch: `Real estate is about speed and information. With Vemtap, potential buyers can scan your signage to see full property details and book an inspection instantly, making your agency more efficient and modern.`,
-        aiAnalysis: "Real Estate Analysis: The barrier to inspection is usually lack of instant information. Solving this via QR on site signage will significantly increase high-intent leads.",
+        salesPitch: `Real estate is about speed and trust. Vemtap helps you turn signage into instant lead capture, automate inspection bookings, and provide 24/7 property discovery via QR, making your agency the most tech-forward in the area.`,
+        aiAnalysis: "Real Estate Sector Analysis: The gap between inquiry and physical inspection is where most leads are lost. By providing instant digital details via QR, you qualify leads faster and reduce the cost per site visit.",
         aiSource: 'expert-system'
       }
     };
@@ -638,49 +686,76 @@ export class ProfilingLogicHelper {
     const recommendations: string[] = [];
     const qrStrategy: string[] = [];
     
+    // Mapping 20 Questions
+    const q1 = data.autoType;
     const q2 = data.dailyCustomers;
+    const q3 = data.customerSource;
+    const q4 = data.inquiryMethod;
     const q5 = data.waitingTime;
+    const q6 = data.waitingComplaints;
     const q7 = data.serviceClarity;
-    const q8 = data.serviceQuestions;
+    const q8 = data.preserviceQuestions || data.serviceQuestions;
+    const q9 = data.serviceHesitation;
     const q10 = data.lostToDelay;
     const q11 = data.retentionRate;
     const q12 = data.collectsData;
+    const q13 = data.followUpEffort;
+    const q14 = data.serviceAwareness;
+    const q15 = data.activePromotion;
     const q16 = data.hasSignage;
     const q17 = data.waitingOnsite;
+    const q18 = data.qrFeasibility;
+    const q19 = data.biggestChallenges;
+    const q20 = data.improvementNeed;
 
-    if (q5 === 'Medium' || q5 === 'High') {
-      problems.push("Service start delays and customer wait-time friction.");
-      recommendations.push("Implement a Digital Booking & Queue system to manage service flow.");
+    // WAITING PROBLEM
+    if (q5 === 'Medium' || q5 === 'High' || q5 === '30+ minutes') {
+      problems.push("High customer wait times before service starts causing friction.");
+      recommendations.push("Implement a Digital Booking & Queue system to manage service flow and reduce onsite congestion.");
     }
 
+    // SERVICE CONFUSION
     if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
-      problems.push("Service/Price confusion and lack of process clarity.");
-      recommendations.push("Deploy a QR Service Menu so customers can see exact pricing and service packages.");
-      qrStrategy.push("Service QR: Place at the reception or entrance for instant service breakdown.");
+      problems.push("Service/Price confusion indicates a need for clearer process articulation.");
+      recommendations.push("Deploy a QR Service Menu so customers can see exact pricing and service packages instantly.");
+      qrStrategy.push("Service QR: Place at the reception or entrance for instant service/package breakdown.");
     }
 
-    if (q10 === 'Medium' || q10 === 'High') {
-      problems.push("Lost revenue due to operational bottlenecks.");
-      recommendations.push("Streamline the intake process with a digital-first approach to reduce drop-offs.");
+    // LOW CONVERSION
+    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
+      problems.push("High revenue leak due to service hesitation or operational delays.");
+      recommendations.push("Streamline the intake process with faster digital check-ins and better engagement tools.");
     }
 
-    if (q11 === 'Low' || q11 === 'Medium') {
-      problems.push("Low customer return rate after the first service.");
-      recommendations.push("Deploy an automated follow-up system for oil changes, inspections, and maintenance reminders.");
+    // LOW RETENTION
+    if (q11 === 'Medium' || q11 === 'High' || q11 === 'Low') {
+      problems.push("Low customer return rate after the first service indicates a retention gap.");
+      recommendations.push("Deploy an automated follow-up system for oil changes, maintenance, and seasonal reminders.");
     }
 
+    // NO CUSTOMER DATA
     if (q12 === 'No' || q12 === 'Sometimes') {
-      problems.push("Missing a structured customer database for repeat business.");
-      recommendations.push("Capture customer contact details digitally to automate service lifecycle marketing.");
+      problems.push("Missing a structured customer database for re-marketing and retention.");
+      recommendations.push("Capture customer contact details digitally to automate the full service lifecycle marketing.");
+      qrStrategy.push("Contact QR: Use as a fast-entry point for customers to leave their contact and car details.");
     }
 
+    // WEAK MARKETING
+    if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No') {
+      problems.push("Weak marketing effort or low customer awareness of full service range.");
+      recommendations.push("Use digital promotion tools to broadcast specials and maintenance packages to your database.");
+    }
+
+    // QR PLACEMENT
     if (q17 === 'Medium' || q17 === 'High') {
-      qrStrategy.push("Waiting Area QR: Engage customers with maintenance tips and exclusive offers while they wait.");
+      qrStrategy.push("Waiting Area QR: Engage customers with car care tips and exclusive offers while they wait.");
     }
 
-    if (q16 === 'Yes') qrStrategy.push("Entrance QR: Allow customers to check in or view services before even speaking to staff.");
+    if (q16 === 'Yes' || q16 === 'clear') {
+      qrStrategy.push("Entrance QR: Allow customers to check in or view services before even speaking to staff.");
+    }
 
-    const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'No': 3 };
+    const scoreMap: Record<string, number> = { 'Low': 1, 'Medium': 2, 'High': 3, 'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'clear': 1, 'Limited': 2, 'None': 3 };
     let totalScore = 0;
     Object.values(data).forEach(val => { if (typeof val === 'string' && scoreMap[val]) totalScore += scoreMap[val]; });
 
@@ -691,14 +766,14 @@ export class ProfilingLogicHelper {
       score: totalScore,
       priority,
       insights: {
-        summary: `An Automotive ${data.autoType || 'Service'} business handling ${traffic} customers. Needs focus on retention and service flow.`,
+        summary: `An Automotive ${q1 || 'Service'} business handling ${traffic} customers. Focus on retention automation and service check-in efficiency.`,
         problems,
         recommendations,
-        suggestedPackage: q2 === 'High' ? 'Platinum' : 'Gold',
-        packageReason: `Retention automation is the highest ROI for ${traffic.toLowerCase()} volume automotive businesses.`,
+        suggestedPackage: q2 === 'High' ? 'Platinum' : q2 === 'Medium' ? 'Gold' : 'Silver',
+        packageReason: `The ${traffic.toLowerCase()} traffic volume requires ${q2 === 'High' ? 'executive' : 'professional'} level lifecycle automation.`,
         qrStrategy,
-        salesPitch: `Your customers value their cars and their time. Vemtap helps you give them both—by reducing wait times with digital check-ins and keeping them coming back with automated service reminders.`,
-        aiAnalysis: "Automotive Analysis: Trust is built on transparency. A clear digital service menu reduces price haggling and improves the professional perception of the workshop.",
+        salesPitch: `Your customers value their cars and their time. Vemtap helps you provide a premium experience by reducing wait times with digital check-ins and ensuring they come back with automated service reminders.`,
+        aiAnalysis: "Automotive Sector Analysis: Trust is built through transparency and consistency. A digital-first approach to service menus and follow-ups improves professional perception and builds long-term loyalty.",
         aiSource: 'expert-system'
       }
     };
@@ -1188,6 +1263,125 @@ export class ProfilingLogicHelper {
         qrStrategy,
         salesPitch: `Your mission is community. Vemtap helps you keep that community connected by ensuring every member gets updates instantly and making it incredibly easy for them to support your cause digitally.`,
         aiAnalysis: "NGO/Religion Analysis: Engagement is the driver of support. Moving from 'announcements from the pulpit' to 'digital reminders in the pocket' will significantly increase participation.",
+        aiSource: 'expert-system'
+      }
+    };
+  }
+
+  static calculateTechnology(data: Record<string, any>): { score: number; priority: ProfilePriority; insights: BusinessInsights } {
+    if (!data) data = {};
+    const problems: string[] = [];
+    const recommendations: string[] = [];
+    const qrStrategy: string[] = [];
+    
+    // Mapping 20 Questions
+    const q1 = data.techType; // Type of tech business
+    const q2 = data.monthlyProjects; // Number of projects monthly
+    const q3 = data.acquisitionChannel; // How clients find you
+    const q4 = data.contactMethod; // How clients contact you
+    const q5 = data.responseSpeed; // Response speed
+    const q6 = data.responseComplaints; // Do clients complain about speed
+    const q7 = data.serviceClarity; // Clarity of offerings
+    const q8 = data.preprojectQuestions; // Questions before project
+    const q9 = data.projectDelay; // Delay starting projects
+    const q10 = data.lostToDiscussion; // Lose clients after initial talk
+    const q11 = data.projectAbandonment; // Abandon projects after starting
+    const q12 = data.collectsData; // Proper data collection
+    const q13 = data.followUpEffort; // Leads/Inactive follow-up
+    const q14 = data.perceivedValue; // Value understanding
+    const q15 = data.activePromotion; // Promotion effort
+    const q16 = data.onlinePresence; // Website/Portfolio strength
+    const q17 = data.onboardingProcess; // Structured onboarding
+    const q18 = data.digitalEngagement; // Digital brand interaction
+    const q19 = data.biggestChallenges; // Key pain points
+    const q20 = data.improvementNeed; // Improvement urgency
+
+    // Logic Engine (Deterministic Rules)
+    
+    // SLOW RESPONSE PROBLEM
+    if (q5 === 'Medium' || q5 === 'Slow' || q6 === 'High' || q6 === 'Medium') {
+      problems.push("Slow response times are causing client dissatisfaction and potential lead loss.");
+      recommendations.push("Implement a 'Digital Client Intake' system via WhatsApp/QR to capture and respond to inquiries instantly.");
+      qrStrategy.push("Contact/Intake QR: Place on your website and social media to capture leads with zero delay.");
+    }
+
+    // SERVICE CONFUSION
+    if (q7 === 'No' || q7 === 'Partially' || q8 === 'High' || q8 === 'Medium') {
+      problems.push("Clients struggle to understand your tech services or project packages.");
+      recommendations.push("Deploy a 'Tech Service Catalog' with clear breakdowns and case studies accessible via QR/Link.");
+      qrStrategy.push("Service/Portfolio QR: Share your specific tech solutions and pricing instantly with a professional digital profile.");
+    }
+
+    // LOW CONVERSION
+    if (q9 === 'Medium' || q9 === 'High' || q10 === 'Medium' || q10 === 'High') {
+      problems.push("High lead drop-off after initial discussions due to hesitation or lack of structured engagement.");
+      recommendations.push("Use an automated follow-up sequence and digital project-proposal flow to keep leads warm.");
+    }
+
+    // PROJECT DROP-OFF
+    if (q11 === 'Medium' || q11 === 'High') {
+      problems.push("Significant project abandonment rates after initial commitment.");
+      recommendations.push("Implement a structured digital onboarding and milestone engagement system to keep projects moving.");
+    }
+
+    // NO CLIENT DATA
+    if (q12 === 'No' || q12 === 'Sometimes') {
+      problems.push("Lack of a secure, centralized client/lead database (CRM).");
+      recommendations.push("Deploy a 'Lead Capture' flow for all inbound tech inquiries to build your firm's database.");
+    }
+
+    // WEAK MARKETING
+    if (q14 === 'No' || q14 === 'Sometimes' || q15 === 'No') {
+      problems.push("Poor market awareness or perceived value of your technical digital solutions.");
+      recommendations.push("Implement digital promotion tools to broadcast your latest successful projects and tech expertise.");
+    }
+
+    // WEAK DIGITAL PRESENCE
+    if (q16 === 'No' || q16 === 'Limited' || q18 === 'Low') {
+      problems.push("Insufficient digital infrastructure and brand visibility for a tech/digital firm.");
+      recommendations.push("Upgrade to a 'Professional Digital Dashboard' that showcases your portfolio and tech tools.");
+      qrStrategy.push("Portfolio QR: A dedicated digital space to showcase your tech projects and client testimonials.");
+    }
+
+    // NO ONBOARDING PROCESS
+    if (q17 === 'No' || q17 === 'Partially') {
+      problems.push("Lacking a professional and structured onboarding experience for new tech clients.");
+      recommendations.push("Setup a 'Structured Digital Onboarding' flow to automate the initial client setup and requirements gathering.");
+    }
+
+    // Scoring & Priority mapping: 0-20 Low, 21-40 Medium, 41+ High
+    const scoreMap: Record<string, number> = { 
+      'Low': 1, 'Medium': 2, 'High': 3, 
+      'Slow': 3, 'Fast': 1,
+      'Yes': 1, 'Partially': 2, 'Sometimes': 2, 'No': 3, 'Limited': 2 
+    };
+    
+    let totalScore = 0;
+    Object.values(data).forEach(val => {
+      if (typeof val === 'string' && scoreMap[val]) {
+        totalScore += scoreMap[val];
+      }
+    });
+
+    const priority = totalScore >= 41 ? ProfilePriority.HIGH : totalScore >= 21 ? ProfilePriority.MEDIUM : ProfilePriority.LOW;
+
+    // Package Logic
+    const traffic = q2 || 'moderate';
+    const suggestedPackage = q2 === 'High (40+ per month)' ? 'Platinum' : q2 === 'Medium (11 – 40 per month)' ? 'Gold' : 'Silver';
+    const packageReason = `${suggestedPackage} Plan recommended to automate client ingestion and management for ${traffic.toLowerCase()} volumes.`;
+
+    return {
+      score: totalScore,
+      priority,
+      insights: {
+        summary: `A ${q1 || 'Tech/Digital Service'} firm handling ${traffic} projects. Focus needs to be on response speed, clarity of packages, and automated client onboarding.`,
+        problems,
+        recommendations,
+        suggestedPackage,
+        packageReason,
+        qrStrategy,
+        salesPitch: `As a tech leader, your client experience should be modern, fast, and automated. Vemtap helps your digital agency professionalize every touchpoint—from lead capture and onboarding to follow-up automation—ensuring your tech delivery is as sharp as your tech expertise.`,
+        aiAnalysis: "Expert Tech Analysis: Technology clients expect speed. Moving from 'manual emails' to 'automated digital intake' will significantly reduce your project start time and improve your conversion rate.",
         aiSource: 'expert-system'
       }
     };
