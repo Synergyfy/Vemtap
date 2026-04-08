@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
     ClipboardList, 
     Plus, 
@@ -529,11 +530,11 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-black text-text-main text-lg tracking-tight">Vemtap Strategic Analysis</h3>
                                             <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${
-                                                profile.aiSource === 'ai' 
+                                                profile.insights?.aiSource === 'ai' 
                                                 ? 'bg-green-50 text-green-600 border-green-100' 
                                                 : 'bg-primary/5 text-primary border-primary/20'
                                             }`}>
-                                                {profile.aiSource === 'ai' ? 'LIVE INTELLIGENCE' : 'EXPERT SYSTEM'}
+                                                {profile.insights?.aiSource === 'ai' ? 'LIVE INTELLIGENCE' : 'EXPERT SYSTEM'}
                                             </span>
                                         </div>
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Logic-Based Strategic Engine</p>
@@ -542,8 +543,8 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                 <div className="space-y-6">
                                     <div className="p-8 bg-gradient-to-br from-blue-50/40 to-purple-50/20 rounded-[2rem] border border-blue-100/50">
                                         <div className="max-w-none text-gray-700 leading-relaxed font-medium space-y-4">
-                                            {profile.aiAnalysis ? (
-                                                profile.aiAnalysis.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
+                                            {profile.insights?.aiAnalysis ? (
+                                                profile.insights?.aiAnalysis.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
                                                     const trimmed = line.trim();
                                                     const isHeader = trimmed.startsWith('###') || 
                                                                      trimmed.startsWith('VEMTAP AI') || 
@@ -570,7 +571,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
 
                                     <div className="space-y-4">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] px-2">Top Action Items</p>
-                                        {(profile.recommendations || []).map((rec: string, i: number) => (
+                                        {(profile.insights?.recommendations || []).map((rec: string, i: number) => (
                                             <div key={i} className="flex gap-4 p-5 bg-white border border-gray-100 rounded-2xl hover:border-primary/20 transition-all group">
                                                 <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-xs font-black text-gray-400 group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                                                     {i + 1}
@@ -592,7 +593,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                                     <Megaphone size={18} className="text-white" />
                                                 </div>
                                                 <p className="text-lg md:text-xl font-black text-white leading-relaxed whitespace-pre-wrap">
-                                                    {profile.pitchSummary || 'Analysis in progress...'}
+                                                    {profile.insights?.pitchSummary || 'Analysis in progress...'}
                                                 </p>
                                              </div>
                                         </div>
@@ -790,6 +791,7 @@ export default function BusinessProfilingPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+    const router = useRouter();
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -814,8 +816,7 @@ export default function BusinessProfilingPage() {
         try {
             const newProfile = await businessProfilingApi.create(data);
             notify.success('Business Profile created & scored!');
-            setSelectedProfileId(newProfile.id);
-            setActiveTab('detail');
+            router.push(`/admin/business-profiling/${newProfile.id}/result`);
         } catch (error) {
             console.error('Save error:', error);
             notify.error('Failed to create profile. Please check your connection or system logs.');
@@ -847,8 +848,7 @@ export default function BusinessProfilingPage() {
     };
 
     const handleView = (id: string) => {
-        setSelectedProfileId(id);
-        setActiveTab('detail');
+        router.push(`/admin/business-profiling/${id}/result`);
     };
 
     if (activeTab === 'detail' && selectedProfileId) {
