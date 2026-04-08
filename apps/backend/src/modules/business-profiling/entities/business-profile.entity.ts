@@ -17,12 +17,16 @@ export enum ProfileStatus {
 }
 
 export interface BusinessInsights {
+  summary?: string;
+  problems?: string[];
   recommendations: string[];
   suggestedPackage: string;
+  packageReason?: string;
+  qrStrategy?: string[];
   salesPitch: string;
-  aiAnalysis: string;
-  pitchSummary: string;
-  aiSource: string;
+  aiAnalysis?: string;
+  pitchSummary?: string;
+  aiSource?: string;
 }
 
 @Entity('business_profiles')
@@ -46,6 +50,10 @@ export class BusinessProfile extends AbstractBaseEntity {
   @ApiProperty({ example: 'Restaurant' })
   @Column()
   businessType: string;
+
+  @ApiProperty({ example: { doYouHaveMenu: true, footTraffic: 'high' } })
+  @Column({ type: 'jsonb', default: {} })
+  responses: Record<string, any>;
 
   @ApiProperty({ example: { hasTableService: true, highFootTraffic: true } })
   @Column({ type: 'jsonb', default: {} })
