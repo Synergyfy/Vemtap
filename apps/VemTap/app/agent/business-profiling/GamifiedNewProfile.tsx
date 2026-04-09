@@ -3251,6 +3251,7 @@ export default function GamifiedNewProfile({ onSave, isSaving }: { onSave: (data
 
     const [formData, setFormData] = useState<BusinessProfileFormData>({
         businessName: '', location: '', contactPerson: '', contactEmail: '', contactPhone: '', numberOfBranches: '1',
+        niche: '', 
         businessType: 'Retail & Shops', customerTraffic: 'Medium',
         targetCustomers: [], hasGlassDoor: false, outsideFootTraffic: 'Low',
         hasWaitingArea: false, hasTables: false, hasCounterOrdering: false,
