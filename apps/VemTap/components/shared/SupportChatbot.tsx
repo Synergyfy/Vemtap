@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { api } from '@/lib/api';
 
 export default function SupportChatbot() {
     const pathname = usePathname();
@@ -24,6 +25,7 @@ export default function SupportChatbot() {
         subject: '',
         message: ''
     });
+    const [handedToAgent, setHandedToAgent] = useState(false);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -102,27 +104,31 @@ export default function SupportChatbot() {
         const userText = inputValue;
         setInputValue('');
         addMessage({ role: 'user', content: userText });
-        await sendQuery(userText);
+        
+        if (handedToAgent) {
+            // Mock agent interaction if already handed to agent
+            setIsLoading(true);
+            setTimeout(() => {
+                setIsLoading(false);
+                setIsTyping(true);
+                setTimeout(() => {
+                    setIsTyping(false);
+                    addMessage({
+                        role: 'assistant',
+                        content: "Thanks for reaching out! I've received your message. One of our agents is reviewing it now and will get back to you shortly."
+                    });
+                }, 2000);
+            }, 800);
+        } else {
+            await sendQuery(userText);
+        }
     };
 
-        addMessage({
-            role: 'user',
-            content: userText
-        });
-        
-        // Mock agent interaction for prototype
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            setIsTyping(true);
-            setTimeout(() => {
-                setIsTyping(false);
-                addMessage({
-                    role: 'assistant',
-                    content: "Thanks for reaching out! I've received your message. One of our agents is reviewing it now and will get back to you shortly."
-                });
-            }, 2000);
-        }, 800);
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+        }
     };
 
     const handleContactSubmit = (e: React.FormEvent) => {
@@ -140,7 +146,6 @@ export default function SupportChatbot() {
     };
 
     const nodeRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
     const windowRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
