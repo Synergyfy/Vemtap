@@ -148,6 +148,7 @@ export default function SupportChatbot() {
     const nodeRef = useRef<HTMLDivElement>(null);
     const windowRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
 
     return (
         <div className="font-sans">
@@ -157,12 +158,23 @@ export default function SupportChatbot() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        className="fixed bottom-24 lg:bottom-6 right-6 z-50"
+                        className="fixed bottom-24 lg:bottom-6 right-6 z-60"
                     >
                         <Draggable 
                             nodeRef={nodeRef}
-                            onDrag={() => setIsDragging(true)}
-                            onStop={() => { setTimeout(() => setIsDragging(false), 50); }}
+                            onStart={(e, data) => {
+                                setDragStartPos({ x: data.x, y: data.y });
+                            }}
+                            onDrag={(e, data) => {
+                                const dx = Math.abs(data.x - dragStartPos.x);
+                                const dy = Math.abs(data.y - dragStartPos.y);
+                                if (dx > 5 || dy > 5) {
+                                    setIsDragging(true);
+                                }
+                            }}
+                            onStop={() => { 
+                                setTimeout(() => setIsDragging(false), 100); 
+                            }}
                         >
                             <div ref={nodeRef} className="group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing">
                                 <button 
@@ -197,10 +209,10 @@ export default function SupportChatbot() {
                         initial={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(10px)' }}
                         animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
                         exit={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(10px)' }}
-                        className={`fixed z-50 pointer-events-none ${isFullScreen ? 'inset-0' : 'bottom-24 lg:bottom-6 right-6 flex items-end justify-end'}`}
+                        className={`fixed z-60 pointer-events-none ${isFullScreen ? 'inset-0' : 'inset-x-4 bottom-24 sm:inset-auto sm:bottom-6 sm:right-6 flex items-end justify-end transition-all duration-500'}`}
                     >
                         <Draggable nodeRef={windowRef} handle=".chat-header" disabled={isFullScreen}>
-                            <div ref={windowRef} className={`bg-white shadow-3xl overflow-hidden flex flex-col pointer-events-auto border border-gray-100 transition-all duration-300 ${isFullScreen ? 'w-full h-full rounded-none' : 'w-[420px] h-[650px] rounded-[2rem]'}`}
+                            <div ref={windowRef} className={`bg-white shadow-3xl overflow-hidden flex flex-col pointer-events-auto border border-gray-100 transition-all duration-300 ${isFullScreen ? 'w-full h-full rounded-none' : 'w-full sm:w-[420px] h-[min(650px,calc(100dvh-140px))] rounded-[2rem]'}`}
                                 style={{
                                     maxWidth: isFullScreen ? '100%' : '100vw',
                                     maxHeight: isFullScreen ? '100%' : 'calc(100vh - 40px)'
