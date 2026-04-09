@@ -1,5 +1,4 @@
 import { api } from '@/lib/api';
-import { analyzeWithVemtapAI, AIAnalysisResult } from '@/lib/gemini-service';
 
 // =====================
 // BUSINESS PROFILING
@@ -9,6 +8,8 @@ export interface BusinessProfile {
     id: string;
     // Section 1: Basic Information
     businessName: string;
+    contactEmail?: string;
+    contactPhone?: string;
     location: string;
     contactPerson?: string;
     numberOfBranches: string;
@@ -60,187 +61,153 @@ export interface BusinessProfile {
     closingPlan: string;
     summaryNotes?: string;
 
-    // Summary fields
+    // Gamification
+    xpEarned: number;
+    achievements: string[];
+
+    // Summary fields (Calculated by backend)
     score: number; 
     priority: 'High' | 'Medium' | 'Low';
     status: 'Not Contacted' | 'Contacted' | 'Interested' | 'Closed';
     
-    // AI Insights (Gemini)
-    aiAnalysis?: string;
-    recommendations: string[];
-    pitchSummary: string;
-    aiSource: string;
+    // Insights (Calculated by backend Expert System)
+    insights?: {
+        summary?: string;
+        problems?: string[];
+        recommendations: string[];
+        suggestedPackage: string;
+        packageReason?: string;
+        qrStrategy?: string[];
+        salesPitch: string;
+        aiAnalysis?: string;
+        pitchSummary?: string;
+        aiSource?: string;
+    };
+
+    // Responses for dynamic questions
+    responses: Record<string, any>;
 
     // Metadata
-    createdBy: string;
+    createdById?: string;
+    createdBy?: { firstName: string; lastName: string; email: string };
     createdAt: string;
     updatedAt: string;
 }
 
-export type BusinessProfileFormData = Omit<BusinessProfile, 'id' | 'score' | 'priority' | 'recommendations' | 'pitchSummary' | 'aiAnalysis' | 'aiSource' | 'createdAt' | 'updatedAt'>;
+export type BusinessProfileFormData = Omit<BusinessProfile, 'id' | 'score' | 'priority' | 'insights' | 'createdAt' | 'updatedAt' | 'createdBy' | 'createdById'>;
 
-// Local storage helpers (until backend endpoints are ready)
-const STORAGE_KEY = 'vemtap_business_profiles_v2';
 
-const getProfiles = (): BusinessProfile[] => {
-    if (typeof window === 'undefined') return [];
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch {
-        return [];
-    }
+// Helper: Map Large Form Object to Backend Payload
+const mapToBackend = (data: BusinessProfileFormData) => {
+    return {
+        businessName: data.businessName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        location: data.location,
+        businessType: data.businessType,
+        notes: data.summaryNotes,
+        status: data.status,
+        xpEarned: data.xpEarned,
+        achievements: data.achievements,
+        responses: data.responses,
+        physicalSetup: {
+            contactPerson: data.contactPerson,
+            numberOfBranches: data.numberOfBranches,
+            niche: data.niche,
+            customerTraffic: data.customerTraffic,
+            targetCustomers: data.targetCustomers,
+            hasGlassDoor: data.hasGlassDoor,
+            outsideFootTraffic: data.outsideFootTraffic,
+            hasWaitingArea: data.hasWaitingArea,
+            hasTables: data.hasTables,
+            hasCounterOrdering: data.hasCounterOrdering,
+            queueSystem: data.queueSystem,
+            serviceStyle: data.serviceStyle,
+            customerFlowNote: data.customerFlowNote,
+            suggestedPackage: data.suggestedPackage,
+            packageReason: data.packageReason,
+            customPitch: data.customPitch,
+            problemsNoticed: data.problemsNoticed,
+            bestTimeToApproach: data.bestTimeToApproach,
+            whoToSpeakTo: data.whoToSpeakTo,
+            approachStyle: data.approachStyle,
+            rateFootTraffic: data.rateFootTraffic,
+            rateNeed: data.rateNeed,
+            rateAbilityToPay: data.rateAbilityToPay,
+            rateEaseOfAdoption: data.rateEaseOfAdoption,
+            demoItems: data.demoItems,
+            isDeviceReady: data.isDeviceReady,
+            isInternetReady: data.isInternetReady,
+            offers: data.offers,
+            closingPlan: data.closingPlan,
+        },
+        qrPlacement: {
+            useWindowQR: data.useWindowQR,
+            windowQRType: data.windowQRType,
+            indoorPlacement: data.indoorPlacement,
+            specialUse: data.specialUse,
+        }
+    };
 };
 
-const saveProfiles = (profiles: BusinessProfile[]) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+// Helper: Map Backend Entity to Large Form Object
+const mapFromBackend = (entity: any): BusinessProfile => {
+    return {
+        ...entity,
+        ...entity.physicalSetup,
+        ...entity.qrPlacement,
+        summaryNotes: entity.notes,
+        // Map expanded insights from backend
+        insights: entity.insights || {},
+    };
 };
 
-// --- VEMTAP AI INTEGRATION ---
-const generateAIInsights = async (data: Partial<BusinessProfileFormData>): Promise<AIAnalysisResult> => {
-    try {
-        // Call the server-side API route which has access to GEMINI_API_KEY
-        const result = await analyzeWithVemtapAI(data);
-        if (result && result.aiAnalysis) return result;
-    } catch (error) {
-        console.warn('[Vemtap AI] AI service unavailable, using local analysis:', error instanceof Error ? error.message : error);
-    }
-
-    // LOCAL FALLBACK (only if server AI is unreachable)
-    const name = data.businessName || 'the business';
-    const problems = data.problemsNoticed?.join(', ') || 'operational inefficiencies';
-    
-    const recommendations = [
-        `Deploy ${data.useWindowQR ? (data.windowQRType || 'Sticker') : 'indoor QR placements'} to maximize customer capture at ${name}.`,
-        `Lead the demo with ${data.demoItems?.[0] || 'the ordering flow'} when speaking to the ${data.whoToSpeakTo || 'Manager'} during ${data.bestTimeToApproach || 'Afternoon'} hours.`,
-        `Close with the ${data.suggestedPackage || 'Growth'} package, using ${data.offers?.[0] || 'a free trial'} as the conversion lever.`
-    ];
-
-    const pitchSummary = `DYNAMIC POWER PITCH:\n\n1. THE HOOK: "I noticed your ${data.customerTraffic} foot traffic and the ${data.hasGlassDoor ? 'excellent display area' : 'entrance layout'}. Are you currently capturing data from every visitor that walks through?"\n\n2. THE AGITATION: "Without a digital bridge, you're losing the ability to retarget these customers once they leave. For a ${data.niche || 'business like yours'}, that's potentially 30% in lost repeat revenue."\n\n3. THE SOLUTION: "Vemtap automates this at the source. Let's set up the ${data.suggestedPackage} plan to start building your private customer database today with zero friction."`;
-
-    const aiAnalysis = `VEMTAP AI STRATEGIC ANALYSIS\n\nBased on the ${data.businessType} profile for ${name} in ${data.location || 'the target area'}, this business shows ${data.customerTraffic || 'moderate'} customer traffic with a ${data.niche || 'general'} focus. The ${data.serviceStyle || 'standard'} service style and ${data.queueSystem || 'current queue'} system present clear opportunities for Vemtap integration.\n\nThe primary pain points identified are: ${problems}. These directly align with Vemtap capabilities in customer data capture, automated engagement, and operational streamlining.\n\nTOP 3 RECOMMENDATIONS\n1. ${recommendations[0]}\n2. ${recommendations[1]}\n3. ${recommendations[2]}\n\nTHE STRATEGIC PITCH\n${pitchSummary}`;
-
-    return { recommendations, pitchSummary, aiAnalysis, source: 'fallback' };
-};
-
-// Scoring algorithm
-const calculateScoreAndPriority = (data: Partial<BusinessProfileFormData>): { score: number; priority: BusinessProfile['priority'] } => {
-    const score = (data.rateFootTraffic || 0) + 
-                  (data.rateNeed || 0) + 
-                  (data.rateAbilityToPay || 0) + 
-                  (data.rateEaseOfAdoption || 0);
-    
-    let priority: BusinessProfile['priority'] = 'Low';
-    if (score >= 15) priority = 'High';
-    else if (score >= 10) priority = 'Medium';
-    
-    return { score, priority };
-};
-
-// Simulated API
+// --- REAL BACKEND API ---
 export const businessProfilingApi = {
     getAll: async (filters: { search?: string; priority?: string; status?: string } = {}): Promise<{ data: BusinessProfile[]; total: number }> => {
-        let profiles = getProfiles();
-        
-        if (filters.search) {
-            const s = filters.search.toLowerCase();
-            profiles = profiles.filter(p => 
-                p.businessName.toLowerCase().includes(s) || 
-                p.location.toLowerCase().includes(s) ||
-                p.businessType.toLowerCase().includes(s)
-            );
-        }
-        
-        if (filters.priority) {
-            profiles = profiles.filter(p => p.priority === filters.priority);
-        }
-        
-        if (filters.status) {
-            profiles = profiles.filter(p => p.status === filters.status);
-        }
-        
+        const response = await api.get('/business-profiling', { params: filters });
+        const profiles = response.map(mapFromBackend);
         return { data: profiles, total: profiles.length };
     },
 
     getById: async (id: string): Promise<BusinessProfile | null> => {
-        const profiles = getProfiles();
-        return profiles.find(p => p.id === id) || null;
+        const response = await api.get(`/business-profiling/${id}`);
+        return mapFromBackend(response);
     },
 
     create: async (data: BusinessProfileFormData): Promise<BusinessProfile> => {
-        const profiles = getProfiles();
-        const { score, priority } = calculateScoreAndPriority(data);
-        const { recommendations, pitchSummary, aiAnalysis, source } = await generateAIInsights(data);
+        const payload = mapToBackend(data);
+        const response = await api.post('/business-profiling', payload);
+        return mapFromBackend(response);
+    },
 
-        const newProfile: BusinessProfile = {
-            ...data,
-            id: `bp_${Date.now()}`,
-            score,
-            priority,
-            recommendations,
-            pitchSummary,
-            aiAnalysis,
-            aiSource: source,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-        profiles.unshift(newProfile);
-        saveProfiles(profiles);
-        return newProfile;
+    publicCreate: async (data: Partial<BusinessProfileFormData>): Promise<BusinessProfile> => {
+        const payload = mapToBackend(data as any);
+        const response = await api.post('/business-profiling/public', payload);
+        return mapFromBackend(response);
     },
 
     update: async (id: string, data: Partial<BusinessProfileFormData>): Promise<BusinessProfile | null> => {
-        const profiles = getProfiles();
-        const idx = profiles.findIndex(p => p.id === id);
-        if (idx === -1) return null;
-        
-        const merged = { ...profiles[idx], ...data };
-        const { score, priority } = calculateScoreAndPriority(merged);
-        const { recommendations, pitchSummary, aiAnalysis, source } = await generateAIInsights(merged);
-
-        profiles[idx] = {
-            ...merged,
-            score,
-            priority,
-            recommendations,
-            pitchSummary,
-            aiAnalysis,
-            aiSource: source,
-            updatedAt: new Date().toISOString(),
-        };
-        saveProfiles(profiles);
-        return profiles[idx];
+        const payload = mapToBackend(data as any); 
+        const response = await api.patch(`/business-profiling/${id}`, payload);
+        return mapFromBackend(response);
     },
 
     updateStatus: async (id: string, status: BusinessProfile['status']): Promise<BusinessProfile | null> => {
-        const profiles = getProfiles();
-        const idx = profiles.findIndex(p => p.id === id);
-        if (idx === -1) return null;
-        profiles[idx] = { ...profiles[idx], status, updatedAt: new Date().toISOString() };
-        saveProfiles(profiles);
-        return profiles[idx];
+        const response = await api.patch(`/business-profiling/${id}`, { status });
+        return mapFromBackend(response);
     },
 
     delete: async (id: string): Promise<boolean> => {
-        const profiles = getProfiles();
-        const filtered = profiles.filter(p => p.id !== id);
-        if (filtered.length === profiles.length) return false;
-        saveProfiles(filtered);
-        return true;
+        try {
+            await api.delete(`/business-profiling/${id}`);
+            return true;
+        } catch {
+            return false;
+        }
     },
 
     getStats: async () => {
-        const profiles = getProfiles();
-        return {
-            total: profiles.length,
-            high: profiles.filter(p => p.priority === 'High').length,
-            medium: profiles.filter(p => p.priority === 'Medium').length,
-            low: profiles.filter(p => p.priority === 'Low').length,
-            notContacted: profiles.filter(p => p.status === 'Not Contacted').length,
-            contacted: profiles.filter(p => p.status === 'Contacted').length,
-            interested: profiles.filter(p => p.status === 'Interested').length,
-            closed: profiles.filter(p => p.status === 'Closed').length,
-        };
+        return api.get('/business-profiling/stats');
     },
 };

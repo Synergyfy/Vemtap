@@ -39,16 +39,13 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 function TargetModal({ 
     isOpen, 
     onClose, 
-    onConfirm, 
-    availableTags 
+    onConfirm
 }: { 
     isOpen: boolean; 
     onClose: () => void; 
-    onConfirm: (target: 'all' | string) => void; 
-    availableTags: string[];
+    onConfirm: (target: TargetType) => void; 
 }) {
-    const [selection, setSelection] = useState<'all' | 'tag'>('all');
-    const [selectedTag, setSelectedTag] = useState('');
+    const [selection, setSelection] = useState<TargetType>(TargetType.ALL);
 
     if (!isOpen) return null;
 
@@ -64,54 +61,50 @@ function TargetModal({
                 <div className="p-6 space-y-6">
                     <div className="space-y-3">
                         <button 
-                            onClick={() => setSelection('all')}
-                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === 'all' ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                            onClick={() => setSelection(TargetType.ALL)}
+                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === TargetType.ALL ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                         >
-                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === 'all' ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
-                                {selection === 'all' && <div className="size-2 bg-white rounded-full" />}
+                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === TargetType.ALL ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
+                                {selection === TargetType.ALL && <div className="size-2 bg-white rounded-full" />}
                             </div>
                             <div>
-                                <p className="font-bold text-slate-900 text-sm">Send to All</p>
+                                <p className="font-bold text-slate-900 text-sm">All Visitors</p>
                                 <p className="text-xs text-slate-500">Every visitor who sends a message will receive this.</p>
                             </div>
                         </button>
 
                         <button 
-                            onClick={() => setSelection('tag')}
-                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === 'tag' ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                            onClick={() => setSelection(TargetType.NEW_VISITORS)}
+                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === TargetType.NEW_VISITORS ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                         >
-                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === 'tag' ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
-                                {selection === 'tag' && <div className="size-2 bg-white rounded-full" />}
+                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === TargetType.NEW_VISITORS ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
+                                {selection === TargetType.NEW_VISITORS && <div className="size-2 bg-white rounded-full" />}
                             </div>
                             <div>
-                                <p className="font-bold text-slate-900 text-sm">Target Specific Tag</p>
-                                <p className="text-xs text-slate-500">Only visitors with the selected tag will receive this.</p>
+                                <p className="font-bold text-slate-900 text-sm">New Visitors</p>
+                                <p className="text-xs text-slate-500">Only first-time visitors will receive this message.</p>
+                            </div>
+                        </button>
+
+                        <button 
+                            onClick={() => setSelection(TargetType.RETURNING_CUSTOMERS)}
+                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === TargetType.RETURNING_CUSTOMERS ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                        >
+                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === TargetType.RETURNING_CUSTOMERS ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
+                                {selection === TargetType.RETURNING_CUSTOMERS && <div className="size-2 bg-white rounded-full" />}
+                            </div>
+                            <div>
+                                <p className="font-bold text-slate-900 text-sm">Returning Customers</p>
+                                <p className="text-xs text-slate-500">Only visitors who have visited before will receive this.</p>
                             </div>
                         </button>
                     </div>
-
-                    {selection === 'tag' && (
-                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Select Tag</label>
-                            <select 
-                                value={selectedTag}
-                                onChange={e => setSelectedTag(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-sm"
-                            >
-                                <option value="">Choose a tag...</option>
-                                {availableTags.map(tag => (
-                                    <option key={tag} value={tag}>{tag}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
                 </div>
                 <div className="p-6 bg-slate-50 flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl">Cancel</button>
                     <button 
-                        disabled={selection === 'tag' && !selectedTag}
-                        onClick={() => onConfirm(selection === 'all' ? 'all' : selectedTag)}
-                        className="flex-1 py-3 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-dark shadow-lg shadow-primary/20 disabled:opacity-50"
+                        onClick={() => onConfirm(selection)}
+                        className="flex-1 py-3 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all"
                     >
                         Confirm & Save
                     </button>
@@ -381,21 +374,21 @@ export default function ChatSettingsPanel() {
         }
     };
 
-    const handleConfirmTarget = async (target: 'all' | string) => {
+    const handleConfirmTarget = async (target: TargetType) => {
         setIsTargetModalOpen(false);
-        const name = editingRule ? editingRule.name : `Welcome Message (${target})`;
+        const targetLabel = target === TargetType.ALL ? 'All' : target === TargetType.NEW_VISITORS ? 'New' : 'Returning';
+        const name = editingRule ? editingRule.name : `Welcome Message (${targetLabel})`;
         const content = editingRule ? editingRule.actionConfig?.message : tempMessage;
         
         const payload = {
             branchId: branchId || undefined,
             name,
             triggerType: TriggerType.FIRST_MESSAGE,
-            targetType: target === 'all' ? TargetType.NEW_VISITORS : TargetType.SPECIFIC_CATEGORY,
+            targetType: target,
             actionType: ActionType.SEND_IN_APP_CHAT,
             isActive: true,
             actionConfig: { 
-                message: content,
-                targetTag: target !== 'all' ? target : undefined
+                message: content
             }
         };
 
@@ -740,7 +733,6 @@ export default function ChatSettingsPanel() {
                     isOpen={isTargetModalOpen}
                     onClose={() => setIsTargetModalOpen(false)}
                     onConfirm={handleConfirmTarget}
-                    availableTags={['New Visitors', 'Returning', 'VIP', 'High Intent', 'Potential Sales']}
                 />
 
                 {(autoLoading || templatesLoading || rulesLoading) && (
@@ -814,8 +806,14 @@ export default function ChatSettingsPanel() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-bold text-slate-900 text-sm">{rule.name}</span>
-                                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${rule.targetType === TargetType.SPECIFIC_CATEGORY ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                            {rule.targetType === TargetType.SPECIFIC_CATEGORY ? `Tag: ${rule.actionConfig?.targetTag || 'Selected'}` : 'All Visitors'}
+                                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
+                                                            rule.targetType === TargetType.NEW_VISITORS ? 'bg-emerald-100 text-emerald-600' : 
+                                                            rule.targetType === TargetType.RETURNING_CUSTOMERS ? 'bg-amber-100 text-amber-600' : 
+                                                            'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                            {rule.targetType === TargetType.NEW_VISITORS ? 'New Visitors' : 
+                                                             rule.targetType === TargetType.RETURNING_CUSTOMERS ? 'Returning' : 
+                                                             'All Visitors'}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-3">

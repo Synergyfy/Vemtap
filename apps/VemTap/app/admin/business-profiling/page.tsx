@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
     ClipboardList, 
     Plus, 
@@ -208,7 +209,7 @@ const ListTab = ({ profiles, filters, setFilters, onView, onUpdateStatus, onDele
                                 <th className="px-6 py-4 hidden md:table-cell">ID</th>
                                 <th className="px-6 py-4">Business</th>
                                 <th className="px-6 py-4 hidden lg:table-cell">Location</th>
-                                <th className="px-6 py-4 hidden md:table-cell">Type</th>
+                                <th className="px-6 py-4 hidden md:table-cell">Source</th>
                                 <th className="px-6 py-4">Priority</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 hidden sm:table-cell">Score</th>
@@ -243,7 +244,14 @@ const ListTab = ({ profiles, filters, setFilters, onView, onUpdateStatus, onDele
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 hidden md:table-cell">
-                                            <div className="text-xs text-gray-600 capitalize">{p.businessType}</div>
+                                            {p.createdBy ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-gray-700">{p.createdBy.firstName} {p.createdBy.lastName}</span>
+                                                    <span className="text-[10px] text-gray-400">Agent</span>
+                                                </div>
+                                            ) : (
+                                                <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest border border-blue-100 italic">Public Lead</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${
@@ -384,8 +392,11 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <button className="flex items-center gap-2 px-8 py-3 bg-white border border-gray-100 text-text-main text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-gray-50 transition-all shadow-sm">
+                <div className="flex gap-3 print:hidden">
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-8 py-3 bg-white border border-gray-100 text-text-main text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-gray-50 transition-all shadow-sm"
+                    >
                         <Download size={16} /> DOWNLOAD PDF
                     </button>
                     <button 
@@ -433,16 +444,21 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                 
                 <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
                     <div className="space-y-4 border-b md:border-b-0 md:border-r border-white/5 pb-8 md:pb-0">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Opport. Index</p>
-                        <div className="flex items-baseline gap-2">
-                             <h2 className="text-5xl md:text-6xl font-black text-primary tracking-tighter drop-shadow-sm">{profile.score}</h2>
-                             <span className="text-white/20 font-black text-xl">/ 20</span>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Quest Mastery</p>
+                        <div className="flex flex-col gap-1">
+                             <div className="flex items-baseline gap-2">
+                                <h2 className="text-3xl font-black text-primary tracking-tighter">{profile.xpEarned || 0}</h2>
+                                <span className="text-white/20 font-black text-xs uppercase">XP</span>
+                             </div>
+                             <div className="flex flex-wrap gap-1 mt-1">
+                                {(profile.achievements || []).map((a, i) => (
+                                    <div key={i} title={a} className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px]" role="img" aria-label={a}>
+                                        {a.includes('Complete') ? '✅' : a.includes('High') ? '🔥' : '⭐'}
+                                    </div>
+                                ))}
+                                {(!profile.achievements || profile.achievements.length === 0) && <span className="text-[8px] text-white/20 font-black uppercase">No Badges Yet</span>}
+                             </div>
                         </div>
-                        <Tag color={profile.priority === 'High' ? 'red' : profile.priority === 'Medium' ? 'orange' : 'green'}>{profile.priority} PRIORITY</Tag>
-                    </div>
-
-                    <div className="lg:col-span-2 hidden md:flex items-center">
-                         <div className="w-full h-px bg-white/10"></div>
                     </div>
 
                     <div className="flex flex-col justify-center items-center md:items-end">
@@ -464,7 +480,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                     <button 
                         key={t.id}
                         onClick={() => setActiveTab(t.id)}
-                        className={`flex items-center gap-3 px-6 md:px-8 py-3 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 whitespace-nowrap ${
+                        className={`flex items-center gap-3 px-6 md:px-8 py-3 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 whitespace-nowrap print:hidden ${
                             activeTab === t.id ? 'bg-white text-primary shadow-xl shadow-gray-200' : 'text-gray-500 hover:text-gray-900'
                         }`}
                     >
@@ -512,23 +528,23 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-black text-text-main text-lg tracking-tight">Vemtap AI Analysis</h3>
+                                            <h3 className="font-black text-text-main text-lg tracking-tight">Vemtap Strategic Analysis</h3>
                                             <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${
-                                                profile.aiSource === 'ai' 
+                                                profile.insights?.aiSource === 'ai' 
                                                 ? 'bg-green-50 text-green-600 border-green-100' 
-                                                : 'bg-orange-50 text-orange-600 border-orange-100'
+                                                : 'bg-primary/5 text-primary border-primary/20'
                                             }`}>
-                                                {profile.aiSource === 'ai' ? 'LIVE INTELLIGENCE' : 'SIMULATION MODE'}
+                                                {profile.insights?.aiSource === 'ai' ? 'LIVE INTELLIGENCE' : 'EXPERT SYSTEM'}
                                             </span>
                                         </div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Powered by AI Intelligence</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Logic-Based Strategic Engine</p>
                                     </div>
                                 </div>
                                 <div className="space-y-6">
                                     <div className="p-8 bg-gradient-to-br from-blue-50/40 to-purple-50/20 rounded-[2rem] border border-blue-100/50">
                                         <div className="max-w-none text-gray-700 leading-relaxed font-medium space-y-4">
-                                            {profile.aiAnalysis ? (
-                                                profile.aiAnalysis.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
+                                            {profile.insights?.aiAnalysis ? (
+                                                profile.insights?.aiAnalysis.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
                                                     const trimmed = line.trim();
                                                     const isHeader = trimmed.startsWith('###') || 
                                                                      trimmed.startsWith('VEMTAP AI') || 
@@ -555,7 +571,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
 
                                     <div className="space-y-4">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] px-2">Top Action Items</p>
-                                        {(profile.recommendations || []).map((rec: string, i: number) => (
+                                        {(profile.insights?.recommendations || []).map((rec: string, i: number) => (
                                             <div key={i} className="flex gap-4 p-5 bg-white border border-gray-100 rounded-2xl hover:border-primary/20 transition-all group">
                                                 <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-xs font-black text-gray-400 group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                                                     {i + 1}
@@ -577,7 +593,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                                     <Megaphone size={18} className="text-white" />
                                                 </div>
                                                 <p className="text-lg md:text-xl font-black text-white leading-relaxed whitespace-pre-wrap">
-                                                    {profile.pitchSummary || 'Analysis in progress...'}
+                                                    {profile.insights?.pitchSummary || 'Analysis in progress...'}
                                                 </p>
                                              </div>
                                         </div>
@@ -597,13 +613,15 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                 <div className="space-y-6">
                                     <InfoRow label="Total Locations" value={profile.numberOfBranches} />
                                     <InfoRow label="Contact Person" value={profile.contactPerson || 'Not Specified'} />
+                                    <InfoRow label="Contact Email" value={profile.contactEmail} />
+                                    <InfoRow label="Contact Phone" value={profile.contactPhone} />
                                     <InfoRow label="Store Concept" value={profile.businessType} />
                                     <InfoRow label="Market Niche" value={profile.niche} />
                                     <InfoRow label="Traffic Reality" value={profile.customerTraffic} />
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Primary Demographics</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.targetCustomers.map((t, i) => (
+                                            {profile.targetCustomers?.map((t, i) => (
                                                 <Tag key={i} color="blue">{t}</Tag>
                                             ))}
                                         </div>
@@ -638,7 +656,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Internal Anchor Points</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.indoorPlacement.map((p, i) => (
+                                            {profile.indoorPlacement?.map((p, i) => (
                                                 <Tag key={i} color="purple">{p}</Tag>
                                             ))}
                                         </div>
@@ -646,7 +664,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Usage Contexts</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.specialUse.map((s, i) => (
+                                            {profile.specialUse?.map((s, i) => (
                                                 <Tag key={i} color="orange">{s}</Tag>
                                             ))}
                                         </div>
@@ -664,7 +682,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                          <p className="text-[10px] font-black uppercase text-gray-400">Interaction Focus</p>
                                          <div className="space-y-2">
-                                            {profile.demoItems.map((item, i) => (
+                                            {profile.demoItems?.map((item, i) => (
                                                 <div key={i} className="flex items-center gap-3 text-sm font-black text-text-main">
                                                     <div className="w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/40"></div>
                                                     {item}
@@ -691,7 +709,7 @@ const ProfileDetail = ({ profileId, onBack }: { profileId: string, onBack: () =>
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Active Incentives</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.offers.map((o, i) => (
+                                            {profile.offers?.map((o, i) => (
                                                 <Tag key={i} color="green">{o}</Tag>
                                             ))}
                                         </div>
@@ -773,6 +791,7 @@ export default function BusinessProfilingPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+    const router = useRouter();
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -797,11 +816,10 @@ export default function BusinessProfilingPage() {
         try {
             const newProfile = await businessProfilingApi.create(data);
             notify.success('Business Profile created & scored!');
-            setSelectedProfileId(newProfile.id);
-            setActiveTab('detail');
+            router.push(`/admin/business-profiling/${newProfile.id}/result`);
         } catch (error) {
             console.error('Save error:', error);
-            notify.error('Failed to create profile. Ensure AI key is correct.');
+            notify.error('Failed to create profile. Please check your connection or system logs.');
         } finally {
             setIsSaving(false);
         }
@@ -830,8 +848,7 @@ export default function BusinessProfilingPage() {
     };
 
     const handleView = (id: string) => {
-        setSelectedProfileId(id);
-        setActiveTab('detail');
+        router.push(`/admin/business-profiling/${id}/result`);
     };
 
     if (activeTab === 'detail' && selectedProfileId) {

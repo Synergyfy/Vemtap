@@ -45,11 +45,65 @@ export default function SupportChatbot() {
         scrollToBottom();
     }, [history, isLoading, isTyping]);
 
+    const getContext = () => {
+        let context = "General Dashboard";
+        if (pathname?.includes('messaging')) context = "Message Management";
+        if (pathname?.includes('contacts')) context = "Contact Management";
+        if (pathname?.includes('settings')) context = "Account Settings";
+        if (pathname?.includes('devices')) context = "Device Management";
+        if (pathname?.includes('analytics')) context = "Analytics";
+        if (pathname?.includes('loyalty')) context = "Loyalty Management";
+        if (pathname?.includes('catalogue')) context = "Product Catalogue";
+        return context;
+    };
+
+    const sendQuery = async (userText: string) => {
+        if (isLoading) return;
+        setIsLoading(true);
+
+        try {
+            const data = await api.post('/support/bot/query', {
+                query: userText,
+                context: getContext(),
+                history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
+            });
+
+            addMessage({
+                role: 'assistant',
+                content: data.content,
+                source: data.source,
+                interactionId: data.id,
+                buttons: data.buttons,
+                followUp: data.followUp,
+            });
+
+            if (data.content.toLowerCase().includes('connect you with a human') ||
+                data.content.toLowerCase().includes('human agent') ||
+                data.suggestedAction === 'escalate') {
+                setHandedToAgent(true);
+            }
+        } catch (error) {
+            addMessage({
+                role: 'assistant',
+                content: "I'm having trouble connecting right now. Please try again later.",
+                buttons: [
+                    { label: 'Try Again', action: 'action', value: userText },
+                    { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+                ],
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isLoading) return;
 
         const userText = inputValue;
         setInputValue('');
+        addMessage({ role: 'user', content: userText });
+        await sendQuery(userText);
+    };
 
         addMessage({
             role: 'user',
@@ -80,16 +134,15 @@ export default function SupportChatbot() {
         }, 1500);
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendMessage();
-        }
+    const handleFollowUpClick = (question: string) => {
+        addMessage({ role: 'user', content: question });
+        sendQuery(question);
     };
 
     const nodeRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const windowRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     return (
         <div className="font-sans">
@@ -104,16 +157,11 @@ export default function SupportChatbot() {
                         <Draggable 
                             nodeRef={nodeRef}
                             onDrag={() => setIsDragging(true)}
-                            onStop={() => {
-                                setTimeout(() => setIsDragging(false), 50);
-                            }}
+                            onStop={() => { setTimeout(() => setIsDragging(false), 50); }}
                         >
                             <div ref={nodeRef} className="group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing">
                                 <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!isDragging) setIsVisible(false);
-                                    }}
+                                    onClick={(e) => { e.stopPropagation(); if (!isDragging) setIsVisible(false); }}
                                     className="bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                     <X size={14} />
@@ -268,12 +316,6 @@ export default function SupportChatbot() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            <style jsx global>{`
-                .scrollbar-hide::-webkit-scrollbar {
-                    display: none;
-                }
-            `}</style>
         </div>
     );
 }

@@ -114,11 +114,14 @@ export class BusinessesService {
       mainBranch,
     )) as unknown as Branch;
 
-    // Link owner to the main branch
+    // Link owner to the business and its main branch
     if (businessData.ownerId) {
       await this.usersRepository.update(businessData.ownerId, {
+        businessId: savedBusiness.id,
         branchId: savedBranch.id,
+        status: UserStatus.ACTIVE,
       });
+      console.log(`[BUSINESS] Linked owner ${businessData.ownerId} to business ${savedBusiness.id} and branch ${savedBranch.id}`);
     }
 
     // Automatically generate a device for the Main Branch
@@ -652,5 +655,11 @@ export class BusinessesService {
         timestamp: visit.createdAt,
       })),
     };
+  }
+
+  async findMainBranch(businessId: string): Promise<Branch | null> {
+    return this.branchRepository.findOne({
+      where: { businessId, isMainBranch: true },
+    });
   }
 }

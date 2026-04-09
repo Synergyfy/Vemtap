@@ -4,13 +4,78 @@ import { UsersService } from './modules/users/users.service';
 import { BusinessesService } from './modules/businesses/businesses.service';
 import { UserRole } from './modules/users/entities/user.entity';
 import { BranchesService } from './modules/branches/branches.service';
+import { CategoriesService } from './modules/categories/categories.service';
+import { PlansService } from './modules/subscriptions/plans.service';
+import { SupportBotService } from './modules/support/support-bot.service';
 import * as bcrypt from 'bcrypt';
+
+const INITIAL_KNOWLEDGE = [
+  {
+    question: "What is VemTap?",
+    answer: "Hi {{name}}! VemTap is a visitor engagement platform that uses NFC technology to bridge the offline-to-online gap for {{businessName}}. It allows you to capture visitor data, manage contacts, and run automated communication broadcasts.",
+    keywords: ["what", "vemtap", "platform", "about"],
+    category: "General",
+    link: "/dashboard"
+  },
+  {
+    question: "How do I top up credits?",
+    answer: "You currently have {{smsCredits}} SMS credits. You can top up by navigating to Settings > Billing. Credits are used for SMS, WhatsApp, and Email broadcasts.",
+    keywords: ["topup", "credits", "balance", "billing", "buy", "sms", "whatsapp"],
+    category: "Billing",
+    link: "/dashboard/settings/billing"
+  },
+  {
+    question: "My NFC device is not working",
+    answer: "If your device isn't responding: 1. Ensure NFC is enabled on the phone. 2. Tap the top-center (iPhone) or back-center (Android) against the device. 3. Verify the device is linked in your dashboard.",
+    keywords: ["nfc", "working", "tap", "device", "fail", "broken"],
+    category: "Troubleshooting",
+    link: "/dashboard/devices"
+  },
+  {
+    question: "How do I create a loyalty program?",
+    answer: "You can create rewards and loyalty rules in the 'Loyalty' section. Define how many points customers earn per visit or purchase, and what rewards they can redeem.",
+    keywords: ["loyalty", "rewards", "points", "redeem", "program"],
+    category: "Loyalty",
+    link: "/dashboard/loyalty"
+  },
+  {
+    question: "How do I create a survey?",
+    answer: "Navigate to 'Forms & Surveys' to create custom feedback forms. You can link these to your NFC devices to collect data instantly when someone taps.",
+    keywords: ["survey", "form", "feedback", "questions", "collect"],
+    category: "Surveys",
+    link: "/dashboard/forms"
+  },
+  {
+    question: "Where can I see my analytics?",
+    answer: "Your business analytics are available in the 'Analytics' tab. You can track taps, visitor growth, and messaging performance for {{businessName}}.",
+    keywords: ["analytics", "stats", "data", "performance", "track", "reports"],
+    category: "Analytics",
+    link: "/dashboard/analytics"
+  },
+  {
+    question: "How do I manage my contacts?",
+    answer: "Go to the 'Contacts' page to view all visitors. You can segment them by behavior, tags, or the device they used to check in.",
+    keywords: ["contacts", "visitors", "segment", "manage", "database", "leads"],
+    category: "Contacts",
+    link: "/dashboard/contacts"
+  },
+  {
+    question: "How do I set up my digital catalogue?",
+    answer: "You can add products and categories in the 'Catalogue' section. This allows visitors to browse your offerings directly on their phones after a tap.",
+    keywords: ["catalogue", "products", "menu", "store", "items", "shop"],
+    category: "Catalogue",
+    link: "/dashboard/catalogue"
+  }
+];
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const usersService = app.get(UsersService);
   const businessesService = app.get(BusinessesService);
   const branchesService = app.get(BranchesService);
+  const categoriesService = app.get(CategoriesService);
+  const plansService = app.get(PlansService);
+  const botService = app.get(SupportBotService);
 
   console.log('Seeding data...');
 
@@ -111,6 +176,138 @@ async function bootstrap() {
       role: UserRole.CUSTOMER,
     });
     console.log('Created Customer: customer@latap.com');
+  }
+
+  // 6. Seed Categories & Subcategories
+  const existingCategories = await categoriesService.findAllCategories({
+    page: 1,
+    limit: 1,
+  });
+
+  if (existingCategories.meta.total === 0) {
+    const seedData = [
+      {
+        name: 'Food & Beverage',
+        description: 'Restaurants, cafes, bars, and other food services',
+        subcategories: ['Restaurant', 'Cafe', 'Bar', 'Night Club'],
+      },
+      {
+        name: 'Retail',
+        description: 'Physical stores selling consumer goods',
+        subcategories: ['Grocery Store', 'Clothing Store', 'Electronics'],
+      },
+      {
+        name: 'Services',
+        description: 'Professional and personal service providers',
+        subcategories: ['Salon', 'Spa', 'Professional Services'],
+      },
+      {
+        name: 'Hospitality',
+        description: 'Accommodation and travel services',
+        subcategories: ['Hotel', 'Guest House'],
+      },
+    ];
+
+    for (const catData of seedData) {
+      const category = await categoriesService.createCategory({
+        name: catData.name,
+        description: catData.description,
+      });
+      console.log(`Created Category: ${category.name}`);
+
+      for (const subName of catData.subcategories) {
+        await categoriesService.createSubcategory({
+          name: subName,
+          description: `${subName} under ${catData.name}`,
+          categoryId: category.id,
+        });
+        console.log(`  Created Subcategory: ${subName}`);
+      }
+    }
+  }
+
+  // 7. Seed Subscription Plans
+  const existingPlans = await plansService.findAll();
+  if (existingPlans.length === 0) {
+    const plansToSeed = [
+      {
+        name: 'Starter (Free)',
+        monthlyPrice: 0,
+        currency: 'NGN',
+        isFree: true,
+        features: [
+          'Basic QR Scanning',
+          '1 Branch',
+          '50 Customers',
+          'Basic Analytics',
+        ],
+        branchLimit: 1,
+        maxCatalogueItems: 30,
+        maxAutomations: 1,
+        description: 'Perfect for small businesses just starting out.',
+      },
+      {
+        name: 'Professional',
+        monthlyPrice: 15000,
+        currency: 'NGN',
+        isFree: false,
+        isPopular: true,
+        features: [
+          'Unlimited Customers',
+          '3 Branches',
+          'Advanced Analytics',
+          'Email/SMS Marketing',
+          'Loyalty Program',
+        ],
+        branchLimit: 3,
+        messagingEnabled: true,
+        smsCredits: 100,
+        emailCredits: 1000,
+        loyaltyEnabled: true,
+        maxCatalogueItems: 100,
+        maxAutomations: 5,
+        description: 'For growing businesses moving to the next level.',
+      },
+      {
+        name: 'Ultimate',
+        monthlyPrice: 45000,
+        currency: 'NGN',
+        isFree: false,
+        features: [
+          'Unlimited Everything',
+          '10 Branches',
+          'WhatsApp Marketing',
+          'API Access',
+          'Dedicated Support',
+        ],
+        branchLimit: 10,
+        messagingEnabled: true,
+        smsCredits: 500,
+        emailCredits: 5000,
+        whatsappCredits: 200,
+        loyaltyEnabled: true,
+        catalogueEnabled: true,
+        maxCatalogueItems: 1000,
+        maxAutomations: 20,
+        description: 'The complete solution for multi-branch organizations.',
+      },
+    ];
+
+    for (const planData of plansToSeed) {
+      await plansService.create(planData as any);
+      console.log(`Created Subscription Plan: ${planData.name}`);
+    }
+  }
+
+  // 8. Seed Support Bot Knowledge Base
+  console.log('Seeding support bot knowledge base...');
+  for (const item of INITIAL_KNOWLEDGE) {
+    try {
+      await botService.addKnowledge(item);
+      console.log(`  Added Knowledge: ${item.question}`);
+    } catch (e) {
+      console.error(`  Failed to add Knowledge: ${item.question}`, e.message);
+    }
   }
 
   console.log('Seeding complete!');

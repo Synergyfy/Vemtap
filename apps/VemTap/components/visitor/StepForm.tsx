@@ -7,6 +7,8 @@ import { presets } from './presets';
 import { VisitorHeader } from './VisitorHeader';
 
 import Spinner from '@/components/ui/Spinner';
+import { GoogleAuthButton } from '../auth/GoogleAuthButton';
+import { toast } from 'react-hot-toast';
 
 const visitorSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -49,10 +51,13 @@ export const StepForm: React.FC<StepFormProps> = ({
     onSubmit
 }) => {
     const [hasConsented, setHasConsented] = React.useState(false);
+    const [view, setView] = React.useState<'initial' | 'success-phone'>('initial');
+    const [googleUser, setGoogleUser] = React.useState<any>(null);
 
     const {
         register,
         handleSubmit,
+        setValue,
         formState: { errors, isValid },
     } = useForm<StepFormData>({
         resolver: zodResolver(visitorSchema),
@@ -64,7 +69,7 @@ export const StepForm: React.FC<StepFormProps> = ({
         mode: 'onChange'
     });
 
-    return (
+    const identificationView = (
         <motion.div key="form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={presets.card}>
             <button
                 onClick={onBack}
@@ -116,6 +121,33 @@ export const StepForm: React.FC<StepFormProps> = ({
                     <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>
                 </div>
             )}
+
+            <div className="mb-8">
+                <GoogleAuthButton 
+                    role="customer" 
+                    onSuccess={(res) => {
+                        if (res.user.phone) {
+                            onSubmit({
+                                name: `${res.user.firstName} ${res.user.lastName}`,
+                                email: res.user.email || '',
+                                phone: res.user.phone
+                            });
+                        } else {
+                            setValue('name', `${res.user.firstName} ${res.user.lastName}`, { shouldValidate: true });
+                            setValue('email', res.user.email || '', { shouldValidate: true });
+                            setGoogleUser(res.user);
+                            setView('success-phone');
+                            toast.success('Signed up successfully!');
+                        }
+                    }}
+                />
+                
+                <div className="relative my-8 border-t border-slate-100">
+                    <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
+                        OR CONTINUE MANUALLY
+                    </div>
+                </div>
+            </div>
 
             <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
                 <div className="space-y-1">
@@ -202,7 +234,81 @@ export const StepForm: React.FC<StepFormProps> = ({
                     )}
                 </button>
             </form>
-
         </motion.div>
     );
+
+    if (view === 'success-phone') {
+        return (
+            <motion.div key="success" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={presets.card}>
+                <button
+                    onClick={onBack}
+                    disabled={isSubmitting}
+                    className="absolute top-8 right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50"
+                >
+                    <span className="material-symbols-outlined text-gray-400 text-[18px] group-hover:text-primary transition-colors">close</span>
+                </button>
+
+                <div className="flex flex-col items-center text-center pt-8 mb-10">
+                    <div className="size-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+                        <span className="material-symbols-outlined text-green-500 text-4xl">check_circle</span>
+                    </div>
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-2 text-center">
+                        Signed up successfully!
+                    </h1>
+                    <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-sm text-center mx-auto">
+                        Welcome, {googleUser?.firstName || 'there'}! Add your phone number to stay in touch and earn rewards.
+                    </p>
+                </div>
+
+                <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+                    <div className="space-y-1 text-left">
+                        <label htmlFor="phone-success" className={presets.label}>Phone Number (Optional)</label>
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
+                                <span className="material-symbols-outlined text-[20px]">smartphone</span>
+                            </div>
+                            <input
+                                id="phone-success"
+                                type="tel"
+                                {...register('phone')}
+                                autoComplete="tel"
+                                disabled={isSubmitting}
+                                placeholder="Your phone number"
+                                className={presets.input}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-4">
+                        <button type="submit" disabled={isSubmitting} className={presets.button}>
+                            {isSubmitting ? <Spinner size="sm" /> : (
+                                <>
+                                    <span>Save & Continue</span>
+                                    <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                </>
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onSubmit({
+                                name: `${googleUser?.firstName} ${googleUser?.lastName}`,
+                                email: googleUser?.email || '',
+                                phone: ''
+                            })}
+                            disabled={isSubmitting}
+                            className="w-full h-14 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
+                        >
+                            Skip & Finish
+                        </button>
+                    </div>
+                </form>
+
+                <div className="mt-8 pt-8 border-t border-slate-50 text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                    Logged in as {googleUser?.email}
+                </div>
+            </motion.div>
+        );
+    }
+
+    return identificationView;
 };

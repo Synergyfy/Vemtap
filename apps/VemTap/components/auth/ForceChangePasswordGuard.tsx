@@ -17,8 +17,9 @@ export const ForceChangePasswordGuard = ({ children }: { children: React.ReactNo
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
-    // Only apply to Customer role who hasn't changed their password
-    const mustChangePassword = user?.role?.toLowerCase() === 'customer' && !user?.isPasswordChanged;
+    // Only apply to Customer role who hasn't changed their password and isn't a Google user
+    const isGoogleUser = !!user?.googleId || user?.authProvider === 'GOOGLE';
+    const mustChangePassword = user?.role?.toLowerCase() === 'customer' && !user?.isPasswordChanged && !isGoogleUser;
 
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();

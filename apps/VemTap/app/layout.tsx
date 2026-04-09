@@ -80,6 +80,7 @@ import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
 import SupportChatbot from "@/components/shared/SupportChatbot";
 import InstallPWA from "@/components/shared/InstallPWA";
+import GoogleAuthProvider from "./providers/GoogleAuthProvider";
 
 export default function RootLayout({
     children,
@@ -111,11 +112,13 @@ export default function RootLayout({
                 suppressHydrationWarning
             >                <QueryProvider>
                     <AuthProvider>
-                        <ToastProvider />
-                        {children}
-                        <CookieBanner />
-                        <SupportChatbot />
-                        <InstallPWA />
+                        <GoogleAuthProvider>
+                            <ToastProvider />
+                            {children}
+                            <CookieBanner />
+                            <SupportChatbot />
+                            <InstallPWA />
+                        </GoogleAuthProvider>
                     </AuthProvider>
                 </QueryProvider>
             </body>

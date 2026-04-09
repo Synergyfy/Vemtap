@@ -8,6 +8,7 @@ import AuthSidePanel from '@/components/auth/AuthSidePanel';
 import { useAuthStore } from '../../store/useAuthStore';
 import Logo from '@/components/brand/Logo';
 import { useLogin, useCheckUserStatus, useCompleteCustomerSetup, useResendDefaultPassword } from '@/services/auth/hooks';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { toast } from 'react-hot-toast';
 
 type LoginStep = 'identifier' | 'setup-email' | 'info' | 'password';
@@ -130,12 +131,18 @@ export default function LoginPage() {
                 router.push('/customer/dashboard');
                 return;
             }
-            if (userRole === 'staff' && (identifier.includes('agent') || identifier.includes('support'))) {
+            if (userRole === 'agent' || (userRole === 'staff' && (identifier.includes('agent') || identifier.includes('support')))) {
                 router.push('/agent/dashboard');
                 return;
             }
 
-            // Default fallback for owners/managers/other staff
+            // Standard redirect for owners/managers/other staff
+            if (userRole === 'owner' && !response.user.businessId) {
+                router.push('/get-started');
+                return;
+            }
+
+            // Default fallback
             router.push('/dashboard');
         } catch (err: any) {
             if (isMounted) {
@@ -184,7 +191,36 @@ export default function LoginPage() {
                                 )}
 
                                 {step === 'identifier' && (
-                                    <form onSubmit={handleContinue} className="space-y-8">
+                                    <div className="space-y-8">
+                                        <div className="space-y-4">
+                                            <GoogleAuthButton 
+                                                role="owner" 
+                                                label="Sign in with Google"
+                                                onSuccess={(res) => {
+                                                    if (res.isNewUser) {
+                                                        router.push('/get-started?from=google');
+                                                        return;
+                                                    }
+                                                    const userRole = res.user.role?.toLowerCase();
+                                                    
+                                                    if (userRole === 'admin') router.push('/admin/dashboard');
+                                                    else if (userRole === 'customer') router.push('/customer/dashboard');
+                                                    else if (userRole === 'agent' || userRole === 'staff') router.push('/agent/dashboard');
+                                                    else router.push('/dashboard');
+                                                }}
+                                            />
+                                            
+                                            <div className="relative my-8 pt-4">
+                                                <div className="absolute inset-0 flex items-center">
+                                                    <div className="w-full border-t border-slate-100"></div>
+                                                </div>
+                                                <div className="relative flex justify-center text-[10px] font-black uppercase tracking-[0.2em] bg-white px-4 text-slate-300">
+                                                    OR CONTINUE MANUALLY
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <form onSubmit={handleContinue} className="space-y-8">
                                         <div className="space-y-6">
                                             <div className="w-full bg-gray-50 p-1.5 h-14 rounded-2xl border border-gray-100 flex items-center gap-1">
                                                 <button
@@ -240,6 +276,7 @@ export default function LoginPage() {
                                             )}
                                         </button>
                                     </form>
+                                    </div>
                                 )}
 
                                 {step === 'setup-email' && (

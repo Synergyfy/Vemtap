@@ -113,7 +113,7 @@ export default function CartPage() {
             const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
             const firstName = nameParts[0];
             const lastName = nameParts.slice(1).join(' ') || ' ';
-            await api.post('/visitors/signup', { firstName, lastName, email: data.email, phone: data.phone });
+            await api.post('/visitors/signup', { firstName, lastName, email: data.email, phone: data.phone || undefined });
             const authResponse = await api.post('/auth/login', { identifier: data.email, password: '123456' });
             if (authResponse?.access_token) {
                 login(authResponse.user, authResponse.access_token);

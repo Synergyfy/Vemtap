@@ -26,10 +26,10 @@ import {
     ShieldCheck,
     Clock,
     ClipboardList,
-    Share2,
-    Phone
+    Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FaWhatsapp } from 'react-icons/fa';
 
 // --- Sub-components for the Portal ---
 
@@ -64,7 +64,7 @@ const PortalWelcome = ({
         { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
         { id: 'service', label: 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Reservations & Slots', count: serviceCount },
         { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
-        { id: 'whatsapp', label: 'WhatsApp', icon: Phone, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
+        { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
         { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
         { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
     ].filter(action => action.count && action.count > 0);
@@ -176,7 +176,7 @@ const DynamicTapJourneyPage = () => {
         sessionToken, setSessionToken, whatsappNumber
     } = useCustomerFlowStore();
 
-    const { isAuthenticated, login } = useAuthStore();
+    const { user, isAuthenticated, login, logout } = useAuthStore();
 
     const { data: deviceContext, isLoading: isQueryLoading, isError } = useDeviceTapContext(deviceCode);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -288,12 +288,34 @@ const DynamicTapJourneyPage = () => {
             const lastName = nameParts.slice(1).join(' ') || ' ';
             const defaultPassword = '123456';
 
-            await api.post(`/visitors/signup`, {
+            const signupResponse = await api.post(`/visitors/signup`, {
                 firstName,
                 lastName,
                 email: data.email,
-                phone: data.phone
+                phone: data.phone || undefined
             });
+
+            // If already authenticated (e.g. via Google), we just needed to sync profile/record visit
+            if (isAuthenticated) {
+                // Update local user state with the data from signup response if possible, 
+                // or just use the form data we have.
+                const updatedUser = signupResponse?.user || signupResponse;
+                
+                // We use login here to essentially "re-sync" the user object while keeping the current token
+                const currentToken = useAuthStore.getState().access_token;
+                if (currentToken) {
+                    login(updatedUser, currentToken);
+                }
+
+                setUserData(data);
+                setShowInitialAuth(false);
+
+                if (pendingAction) {
+                    await pendingAction();
+                    setPendingAction(null);
+                }
+                return;
+            }
 
             const authResponse = await api.post('/auth/login', {
                 identifier: data.email,
@@ -333,6 +355,29 @@ const DynamicTapJourneyPage = () => {
             onReset={resetFlow}
             brandColor={useCustomerFlowStore.getState().engagementSettings?.brandColor}
         >
+            {isAuthenticated && user && (
+                <div className="w-full flex justify-end mb-4 relative z-[210]">
+                    <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-2 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-all hover:bg-white hover:shadow-md"
+                    >
+                        <div className="size-1.5 bg-green-500 rounded-full" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                            {user.email}
+                        </span>
+                        <button
+                            onClick={() => {
+                                logout();
+                                toast.success('Logged out');
+                            }}
+                            className="text-[9px] font-black uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-l border-slate-200 pl-2.5 ml-0.5"
+                        >
+                            Log out
+                        </button>
+                    </motion.div>
+                </div>
+            )}
             <div className={cn(
                 "relative w-full transition-all duration-700",
                 showInitialAuth ? "blur-2xl scale-[0.98] pointer-events-none opacity-60" : "blur-0 scale-100"

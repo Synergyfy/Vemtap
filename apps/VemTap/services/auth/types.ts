@@ -8,7 +8,7 @@ export interface RequestOwnerOtpRequest {
 
 export interface RegisterOwnerRequest {
     email: string;
-    password: string;
+    password?: string;
     businessName: string;
     businessLogo?: string;
     categoryId: string;
@@ -26,9 +26,12 @@ export interface RegisterOwnerRequest {
     isRegistered?: boolean;
 }
 
+import { User } from '../../store/useAuthStore';
+
 export interface AuthResponse {
-    user: any; // We can type this better later
+    user: User;
     access_token: string;
+    isNewUser?: boolean;
 }
 
 export interface LoginRequest {
@@ -40,7 +43,7 @@ export interface RegisterRequest {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
+    password?: string;
     role?: string; // 'Owner' | 'Manager' | 'Staff' | 'Customer'
     phone?: string;
     businessName?: string;
