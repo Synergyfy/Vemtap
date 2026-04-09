@@ -1,41 +1,43 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { X, Send, Minimize2, Maximize2, MessageCircle, User, Bot, Loader2, Headset, Trash2, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Draggable from 'react-draggable';
-import { useChatStore, ChatButton } from '@/store/chatStore';
+import { useChatStore } from '@/store/chatStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 
-interface SupportChatbotProps {
-    onRequestConsultation?: () => void;
-}
-
-export default function SupportChatbot({ onRequestConsultation }: SupportChatbotProps) {
+export default function SupportChatbot() {
     const pathname = usePathname();
-    const router = useRouter();
-    const { history, addMessage, updateMessage, clearHistory, isOpen, setIsOpen, isVisible, setIsVisible } = useChatStore();
+    const { history, addMessage, clearHistory, isOpen, setIsOpen, isVisible, setIsVisible } = useChatStore();
+    const { isAuthenticated, user } = useAuthStore();
+    
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [contactForm, setContactForm] = useState({
+        name: user?.name || '',
+        email: user?.email || '',
+        subject: '',
+        message: ''
+    });
     const [handedToAgent, setHandedToAgent] = useState(false);
+    
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Initial greeting if history is empty
+    // Initial greeting if history is empty and logged in
     useEffect(() => {
-        if (history.length === 0) {
+        if (history.length === 0 && isAuthenticated) {
             addMessage({
                 role: 'assistant',
-                content: 'Hi! 👋 I\'m your VemTap AI assistant. What would you like to do today?',
-                buttons: [
-                    { label: '🚀 Grow My Business', action: 'action', value: 'I want to grow my business' },
-                    { label: '🔍 Just Exploring', action: 'action', value: 'I\'m just exploring' },
-                    { label: '🆘 I Need Help', action: 'action', value: 'I need help' },
-                ],
+                content: `Hi ${user?.firstName || 'there'}! 👋 Welcome to VemTap Support. A member of our team is ready to help you.`
             });
         }
-    }, [history.length, addMessage]);
+    }, [history.length, addMessage, isAuthenticated, user]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,7 +45,7 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
 
     useEffect(() => {
         scrollToBottom();
-    }, [history, isLoading]);
+    }, [history, isLoading, isTyping]);
 
     const getContext = () => {
         let context = "General Dashboard";
@@ -102,103 +104,45 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
         const userText = inputValue;
         setInputValue('');
         addMessage({ role: 'user', content: userText });
-        await sendQuery(userText);
+        
+        if (handedToAgent) {
+            // Mock agent interaction if already handed to agent
+            setIsLoading(true);
+            setTimeout(() => {
+                setIsLoading(false);
+                setIsTyping(true);
+                setTimeout(() => {
+                    setIsTyping(false);
+                    addMessage({
+                        role: 'assistant',
+                        content: "Thanks for reaching out! I've received your message. One of our agents is reviewing it now and will get back to you shortly."
+                    });
+                }, 2000);
+            }, 800);
+        } else {
+            await sendQuery(userText);
+        }
     };
 
-    const handleButtonClick = (button: ChatButton) => {
-        if (button.action === 'url') {
-            const isExternal = button.value.startsWith('http');
-            if (isExternal) {
-                window.open(button.value, '_blank');
-            } else {
-                router.push(button.value);
-            }
-        } else if (button.action === 'navigate') {
-            router.push(button.value);
-        } else if (button.action === 'action') {
-            // Send the button value as a chat message
-            addMessage({ role: 'user', content: button.label.replace(/^[^\w]*/, '') }); // strip leading emoji
-            sendQuery(button.value);
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
         }
+    };
+
+    const handleContactSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setTimeout(() => {
+            setIsLoading(false);
+            setIsSubmitted(true);
+        }, 1500);
     };
 
     const handleFollowUpClick = (question: string) => {
         addMessage({ role: 'user', content: question });
         sendQuery(question);
-    };
-
-    const handleFeedback = async (idx: number, interactionId: string, wasHelpful: boolean) => {
-        try {
-            updateMessage(idx, { wasHelpful });
-            if (interactionId) {
-                await api.patch(`/support/bot/interaction/${interactionId}`, { wasHelpful });
-            }
-        } catch (e) {
-            console.error('Feedback failed', e);
-        }
-    };
-
-    const renderMessageContent = (content: string) => {
-        // Simple Markdown-to-HTML for links: [Text](URL)
-        const parts = content.split(/(\[.*?\]\(.*?\))/g);
-        return parts.map((part, i) => {
-            const match = part.match(/\[(.*?)\]\((.*?)\)/);
-            if (match) {
-                const [_, text, url] = match;
-                const isExternal = url.startsWith('http');
-                return (
-                    <button
-                        key={i}
-                        onClick={() => isExternal ? window.open(url, '_blank') : router.push(url)}
-                        className="text-blue-200 underline hover:text-white font-bold inline-flex items-center gap-1"
-                    >
-                        {text} <ExternalLink size={12} />
-                    </button>
-                );
-            }
-            return part;
-        });
-    };
-
-    const renderButtons = (buttons: ChatButton[]) => {
-        if (!buttons || buttons.length === 0) return null;
-        return (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-                {buttons.map((button, i) => (
-                    <button
-                        key={i}
-                        onClick={() => handleButtonClick(button)}
-                        disabled={isLoading}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-                            bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300 active:scale-95"
-                    >
-                        {button.action === 'url' && <ExternalLink size={10} />}
-                        {button.label}
-                    </button>
-                ))}
-            </div>
-        );
-    };
-
-    const renderFollowUps = (followUps: string[]) => {
-        if (!followUps || followUps.length === 0) return null;
-        return (
-            <div className="mt-2 space-y-1">
-                <p className="text-[10px] text-gray-400 font-medium">You might also ask:</p>
-                <div className="flex flex-col gap-1">
-                    {followUps.map((q, i) => (
-                        <button
-                            key={i}
-                            onClick={() => handleFollowUpClick(q)}
-                            disabled={isLoading}
-                            className="text-left text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors disabled:opacity-50 truncate"
-                        >
-                            → {q}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
     };
 
     const nodeRef = useRef<HTMLDivElement>(null);
@@ -207,7 +151,6 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
 
     return (
         <div className="font-sans">
-            {/* Floating Chat Button */}
             <AnimatePresence>
                 {!isOpen && isVisible && (
                     <motion.div
@@ -228,11 +171,17 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                                 >
                                     <X size={14} />
                                 </button>
-                                <button onClick={() => { if (!isDragging) setIsOpen(true); }} aria-label="Open support chat">
-                                    <div className="relative">
-                                        <div className="absolute inset-0 rounded-full bg-blue-400 opacity-75 animate-pulse blur-md pointer-events-none"></div>
-                                        <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-blue-500 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-active:scale-95">
-                                            <MessageCircle className="text-white pointer-events-none" size={28} />
+                                <button
+                                    onClick={() => {
+                                        if (!isDragging) setIsOpen(true);
+                                    }}
+                                    className="relative transition-transform active:scale-90"
+                                >
+                                    <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
+                                    <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-hover:shadow-blue-500/50">
+                                        <MessageCircle className="text-white" size={28} />
+                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                            <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                                         </div>
                                     </div>
                                 </button>
@@ -242,101 +191,130 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                 )}
             </AnimatePresence>
 
-            {/* Chat Window */}
             <AnimatePresence>
                 {isOpen && isVisible && (
                     <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(10px)' }}
+                        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(10px)' }}
                         className={`fixed z-50 pointer-events-none ${isFullScreen ? 'inset-0' : 'bottom-24 lg:bottom-6 right-6 flex items-end justify-end'}`}
                     >
                         <Draggable nodeRef={windowRef} handle=".chat-header" disabled={isFullScreen}>
-                            <div ref={windowRef} className={`bg-white shadow-2xl overflow-hidden flex flex-col pointer-events-auto ${isFullScreen ? 'w-full h-full rounded-none' : 'w-[400px] h-[600px] rounded-2xl'}`}>
-                                {/* Header */}
-                                <div className="chat-header cursor-grab active:cursor-grabbing relative h-16 bg-linear-to-r from-blue-600 to-blue-500 flex items-center justify-between px-4 shrink-0">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center relative">
-                                            {handedToAgent ? <Headset className="text-white" size={20} /> : <Bot className="text-white" size={20} />}
-                                            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-blue-600"></div>
+                            <div ref={windowRef} className={`bg-white shadow-3xl overflow-hidden flex flex-col pointer-events-auto border border-gray-100 transition-all duration-300 ${isFullScreen ? 'w-full h-full rounded-none' : 'w-[420px] h-[650px] rounded-[2rem]'}`}
+                                style={{
+                                    maxWidth: isFullScreen ? '100%' : '100vw',
+                                    maxHeight: isFullScreen ? '100%' : 'calc(100vh - 40px)'
+                                }}
+                            >
+                                <div className="chat-header cursor-grab active:cursor-grabbing h-20 bg-linear-to-r from-blue-700 via-blue-600 to-indigo-600 flex items-center justify-between px-6 shrink-0 shadow-lg relative z-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center relative border border-white/20 shadow-inner">
+                                            <Headset className="text-white" size={24} />
+                                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-blue-600 shadow-sm"></div>
                                         </div>
                                         <div className="text-white">
-                                            <h3 className="font-bold text-base leading-tight">{handedToAgent ? 'Support' : 'VemTap Assistant'}</h3>
-                                            <p className="text-xs opacity-80">{handedToAgent ? 'Human Support' : 'AI Assistant'}</p>
+                                            <h3 className="font-bold text-lg leading-tight tracking-tight">VemTap Support</h3>
+                                            <div className="flex items-center gap-1.5 overflow-hidden">
+                                                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full flex-shrink-0 animate-pulse"></span>
+                                                <p className="text-[10px] font-black uppercase tracking-widest opacity-90 truncate">Human Agent • Online</p>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <button onClick={() => clearHistory()} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white"><Trash2 size={18} /></button>
-                                        <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white">{isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
-                                        <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white"><X size={18} /></button>
+                                        <button onClick={() => { clearHistory(); setIsSubmitted(false); }} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><Trash2 size={18} /></button>
+                                        <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white">{isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
+                                        <button onClick={() => setIsOpen(false)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><X size={20} /></button>
                                     </div>
                                 </div>
 
-                                {/* Messages Area */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                                    {history.map((message, idx) => (
-                                        <div key={idx} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`flex max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-2`}>
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${message.role === 'user' ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                                                    {message.role === 'user' ? <User size={14} className="text-white" /> : <Bot size={14} className="text-gray-600" />}
-                                                </div>
-                                                <div className="flex flex-col gap-1">
-                                                    <div className={`rounded-2xl px-4 py-3 shadow-sm ${message.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
-                                                        <div className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessageContent(message.content)}</div>
-                                                        <div className={`text-[10px] mt-1 text-right ${message.role === 'user' ? 'text-blue-100' : 'text-gray-400'}`}>
-                                                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            {message.source === 'rule' && <span className="ml-2 opacity-50">• Rule Engine</span>}
+                                <div className="flex-1 overflow-hidden flex flex-col bg-gray-50/50">
+                                    {!isAuthenticated ? (
+                                        <div className="flex-1 overflow-y-auto p-8 flex flex-col">
+                                            {isSubmitted ? (
+                                                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center text-center py-10">
+                                                    <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-500 mb-6 shadow-inner"><CheckCircle2 size={40} /></div>
+                                                    <h4 className="text-2xl font-bold text-gray-900 mb-3">Message Sent!</h4>
+                                                    <p className="text-gray-500 text-sm leading-relaxed max-w-[280px]">Thanks for reaching out. An agent will review your request and get back to you via email within 24 hours.</p>
+                                                    <button onClick={() => setIsSubmitted(false)} className="mt-8 px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95">Send Another</button>
+                                                </motion.div>
+                                            ) : (
+                                                <div className="space-y-8">
+                                                    <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 flex gap-4">
+                                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm shrink-0"><Info size={20} /></div>
+                                                        <div>
+                                                            <h4 className="font-bold text-sm text-blue-900 mb-1">Quick Assistance</h4>
+                                                            <p className="text-blue-700 text-xs leading-relaxed">Drop us a message and our team will get back to you. Log in for live real-time chat.</p>
                                                         </div>
                                                     </div>
-
-                                                    {/* Action Buttons */}
-                                                    {message.role === 'assistant' && message.buttons && message.buttons.length > 0 && (
-                                                        renderButtons(message.buttons)
-                                                    )}
-
-                                                    {/* Follow-up Suggestions */}
-                                                    {message.role === 'assistant' && message.followUp && message.followUp.length > 0 && (
-                                                        renderFollowUps(message.followUp)
-                                                    )}
-                                                    
-                                                    {/* Assistant Feedback & Actions */}
-                                                    {message.role === 'assistant' && idx !== 0 && (
-                                                        <div className="flex items-center gap-2 px-1">
-                                                            {message.wasHelpful === undefined ? (
-                                                                <>
-                                                                    <button onClick={() => handleFeedback(idx, message.interactionId!, true)} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-green-500 transition-colors"><ThumbsUp size={12} /></button>
-                                                                    <button onClick={() => handleFeedback(idx, message.interactionId!, false)} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-500 transition-colors"><ThumbsDown size={12} /></button>
-                                                                </>
-                                                            ) : (
-                                                                <span className="text-[10px] text-gray-400 font-medium">{message.wasHelpful ? '✅ Helpful' : '❌ Not helpful'}</span>
-                                                            )}
-                                                            
-                                                            {(message.content.toLowerCase().includes('human') || message.content.toLowerCase().includes('agent')) && (
-                                                                <button onClick={() => router.push('/dashboard/support')} className="text-[10px] font-bold text-blue-600 hover:underline">Open Ticket</button>
-                                                            )}
+                                                    <form onSubmit={handleContactSubmit} className="space-y-4">
+                                                        <div>
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 mb-1.5 block">Full Name</label>
+                                                            <input type="text" required value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})} className="w-full h-14 px-5 bg-white border border-gray-100 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm" placeholder="Enter your name" />
                                                         </div>
-                                                    )}
+                                                        <div>
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 mb-1.5 block">Email Address</label>
+                                                            <input type="email" required value={contactForm.email} onChange={e => setContactForm({...contactForm, email: e.target.value})} className="w-full h-14 px-5 bg-white border border-gray-100 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm" placeholder="hello@example.com" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 mb-1.5 block">Message</label>
+                                                            <textarea required rows={4} value={contactForm.message} onChange={e => setContactForm({...contactForm, message: e.target.value})} className="w-full p-5 bg-white border border-gray-100 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm resize-none" placeholder="How can we help today?" />
+                                                        </div>
+                                                        <button type="submit" disabled={isLoading} className="w-full h-14 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-2xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">
+                                                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <><Send size={18} /> Send Message</>}
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
+                                                {history.map((message, idx) => (
+                                                    <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} key={idx} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                        <div className={`flex max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-3 items-end`}>
+                                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm ${message.role === 'user' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-gray-100 text-indigo-600'}`}>
+                                                                {message.role === 'user' ? <User size={14} /> : <Headset size={14} />}
+                                                            </div>
+                                                            <div className={`rounded-2xl px-5 py-3.5 shadow-sm relative ${message.role === 'user' ? 'bg-linear-to-br from-indigo-600 to-indigo-500 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
+                                                                <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                                                                <p className={`text-[9px] font-bold mt-1.5 flex items-center gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
+                                                                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ))}
+                                                {(isLoading || isTyping) && (
+                                                    <div className="flex justify-start">
+                                                        <div className="flex gap-3 items-end">
+                                                            <div className="w-8 h-8 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm text-indigo-600">
+                                                                <Headset size={14} />
+                                                            </div>
+                                                            <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-none px-5 py-3.5 shadow-sm">
+                                                                <div className="flex gap-1.5">
+                                                                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
+                                                                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                                                                    <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div ref={messagesEndRef} />
+                                            </div>
+                                            <div className="px-6 py-6 bg-white border-t border-gray-100 shrink-0 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+                                                <div className="flex items-end gap-3 bg-gray-50 border border-gray-100 rounded-[2rem] p-2 pr-3 focus-within:bg-white focus-within:border-indigo-200 focus-within:ring-4 focus-within:ring-indigo-50 transition-all duration-300">
+                                                    <textarea value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message the team..." rows={1} disabled={isLoading} className="flex-1 px-4 py-3 bg-transparent border-none outline-none resize-none text-[13px] font-medium placeholder:text-gray-400 min-h-[48px] max-h-[120px]" />
+                                                    <button onClick={handleSendMessage} disabled={!inputValue.trim() || isLoading} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 active:scale-90 flex items-center justify-center shrink-0 disabled:opacity-30">
+                                                        <Send size={20} />
+                                                    </button>
+                                                </div>
+                                                <div className="flex items-center justify-center gap-2 mt-4 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                                    <Info size={10} className="text-blue-500" /> Typically replies within 5 minutes
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                    {isLoading && <div className="flex justify-start items-center gap-2"><Loader2 size={14} className="animate-spin text-gray-400" /><span className="text-xs text-gray-400">Assistant is thinking...</span></div>}
-                                    <div ref={messagesEndRef} />
-                                </div>
-
-                                {/* Input Area */}
-                                <div className="p-4 bg-white border-t border-gray-100">
-                                    <div className="flex gap-2">
-                                        <textarea
-                                            value={inputValue}
-                                            onChange={(e) => setInputValue(e.target.value)}
-                                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                                            placeholder="Ask me anything..."
-                                            rows={1}
-                                            className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all text-sm"
-                                        />
-                                        <button onClick={handleSendMessage} disabled={!inputValue.trim() || isLoading} className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"><Send size={18} /></button>
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </Draggable>

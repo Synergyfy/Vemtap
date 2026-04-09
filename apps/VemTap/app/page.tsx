@@ -18,7 +18,7 @@ import ProfileMyBusinessCTA from '@/components/landing/ProfileMyBusinessCTA';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Visitor Engagement Management',
+  title: 'VemTap',
   description: 'The all-in-one NFC platform for modern businesses. Capture data, engage customers, and drive loyalty with a single tap.',
 };
 
