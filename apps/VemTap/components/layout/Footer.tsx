@@ -32,7 +32,7 @@ export default function Footer() {
                         <ul className="space-y-4 text-text-secondary font-bold text-sm">
                             <li><Link href="/faq" className="hover:text-primary transition-colors">Documentation</Link></li>
                             <li><Link href="/bussinesss" className="hover:text-primary transition-colors">Tutorial Dashboard</Link></li>
-                            <li><Link href="/support" className="hover:text-primary transition-colors">API Reference</Link></li>
+                            <li><Link href="/profile-my-business" className="hover:text-primary transition-colors">Profile my business</Link></li>
                             <li><Link href="/status" className="hover:text-primary transition-colors">Security Center</Link></li>
                             <li><Link href="/contact" className="hover:text-primary transition-colors">Contact Us</Link></li>
                             <li><Link href="/support" className="hover:text-primary transition-colors">Contact Support</Link></li>
