@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
     Building2, MapPin, ClipboardList, TrendingUp, CheckCircle2,
     ChevronRight, ChevronLeft, Zap, HelpCircle, User, Sparkles,
     Trophy, Star, Rocket, Target, Crown, PartyPopper, Heart,
@@ -228,7 +228,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Product Discovery Ease" tooltip="How do customers find products?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Easy', 'Medium', 'Hard'].map(opt => (
+                            {['Easy (Clear UI)', 'Medium (Training Needed)', 'Hard (Complex)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.productDiscovery === opt} onClick={() => onChange('productDiscovery', opt)} />
                             ))}
                         </div>
@@ -236,7 +236,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Sale Questions" tooltip="Do customers ask many questions before buying?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.customerQuestions === opt} onClick={() => onChange('customerQuestions', opt)} />
                             ))}
                         </div>
@@ -244,7 +244,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Wait Time" tooltip="Do customers wait before being attended?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.waitingTime === opt} onClick={() => onChange('waitingTime', opt)} />
                             ))}
                         </div>
@@ -262,7 +262,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Out of Stock Loss" tooltip="Do you lose sales because items are not available?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.outOfStockLoss === opt} onClick={() => onChange('outOfStockLoss', opt)} />
                             ))}
                         </div>
@@ -270,7 +270,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Purchase Abandonment" tooltip="Do customers abandon purchase before paying?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.purchaseAbandonment === opt} onClick={() => onChange('purchaseAbandonment', opt)} />
                             ))}
                         </div>
@@ -280,7 +280,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Product Knowledge" tooltip="Do customers know all your products?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.productKnowledge === opt} onClick={() => onChange('productKnowledge', opt)} />
                             ))}
                         </div>
@@ -306,7 +306,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Offer Awareness" tooltip="Do customers know about new products or offers?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.marketingAwareness === opt} onClick={() => onChange('marketingAwareness', opt)} />
                             ))}
                         </div>
@@ -316,7 +316,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Entrance Visibility" tooltip="Visible entrance or window?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.entranceVisibility === opt} onClick={() => onChange('entranceVisibility', opt)} />
                             ))}
                         </div>
@@ -324,7 +324,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Time Spent Inside" tooltip="Do customers spend time inside?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.timeInside === opt} onClick={() => onChange('timeInside', opt)} />
                             ))}
                         </div>
@@ -332,7 +332,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="QR Placement Spots" tooltip="Areas to place QR codes?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.qrSpots === opt} onClick={() => onChange('qrSpots', opt)} />
                             ))}
                         </div>
@@ -402,7 +402,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Slow Service Complaints" tooltip="Do customers complain about slow service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.complaints === opt} onClick={() => onChange('complaints', opt)} />
                             ))}
                         </div>
@@ -412,7 +412,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Menu Visibility" tooltip="Do customers easily see the menu?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.menuVisibility === opt} onClick={() => onChange('menuVisibility', opt)} />
                             ))}
                         </div>
@@ -420,7 +420,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Menu Questions" tooltip="Do customers ask many questions about menu items?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.menuQuestions === opt} onClick={() => onChange('menuQuestions', opt)} />
                             ))}
                         </div>
@@ -428,7 +428,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Ordering Indecision" tooltip="Do customers change their mind while ordering?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.changeMind === opt} onClick={() => onChange('changeMind', opt)} />
                             ))}
                         </div>
@@ -438,7 +438,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Lost to Queues" tooltip="Do you lose customers due to long queues?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.lostCustomers === opt} onClick={() => onChange('lostCustomers', opt)} />
                             ))}
                         </div>
@@ -446,7 +446,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Order Cancellations" tooltip="Do customers cancel orders after placing them?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.orderCancellations === opt} onClick={() => onChange('orderCancellations', opt)} />
                             ))}
                         </div>
@@ -456,7 +456,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Promotional Notifications" tooltip="Do you notify customers about offers?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.notifyOffers === opt} onClick={() => onChange('notifyOffers', opt)} />
                             ))}
                         </div>
@@ -466,7 +466,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Entrance Signage" tooltip="Visible entrance or signage?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.entranceVisibility === opt} onClick={() => onChange('entranceVisibility', opt)} />
                             ))}
                         </div>
@@ -474,7 +474,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Time Spent (Dwell)" tooltip="Do customers sit and spend time in your space?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.timeInside === opt} onClick={() => onChange('timeInside', opt)} />
                             ))}
                         </div>
@@ -547,7 +547,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Waiting Time Complaints" tooltip="Do customers complain about waiting time?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.waitComplaints === opt} onClick={() => onChange('waitComplaints', opt)} />
                             ))}
                         </div>
@@ -557,7 +557,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Visibility" tooltip="Do customers know all the services you offer?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceKnowledge === opt} onClick={() => onChange('serviceKnowledge', opt)} />
                             ))}
                         </div>
@@ -565,7 +565,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service/Price Questions" tooltip="Do customers ask many questions about services or prices?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceQuestions === opt} onClick={() => onChange('serviceQuestions', opt)} />
                             ))}
                         </div>
@@ -573,7 +573,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Indecision" tooltip="Do customers change their choice after discussion?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.choiceChange === opt} onClick={() => onChange('choiceChange', opt)} />
                             ))}
                         </div>
@@ -583,7 +583,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Lost to Wait" tooltip="Do you lose customers because they don't want to wait?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.lostToWait === opt} onClick={() => onChange('lostToWait', opt)} />
                             ))}
                         </div>
@@ -591,7 +591,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Booking No-Shows" tooltip="Do customers fail to show up after booking?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.noShow === opt} onClick={() => onChange('noShow', opt)} />
                             ))}
                         </div>
@@ -601,7 +601,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Repeat Reminders" tooltip="Do you remind customers for repeat services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.repeatReminders === opt} onClick={() => onChange('repeatReminders', opt)} />
                             ))}
                         </div>
@@ -619,7 +619,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Latest Offers Awareness" tooltip="Do customers know your latest services or offers?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.offersAwareness === opt} onClick={() => onChange('offersAwareness', opt)} />
                             ))}
                         </div>
@@ -629,7 +629,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Waiting Area Status" tooltip="Do you have a waiting area or seating space?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'None'].map(opt => (
+                            {['Yes (Full Access)', 'Limited (Basic)', 'None (Zero)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.waitingArea === opt} onClick={() => onChange('waitingArea', opt)} />
                             ))}
                         </div>
@@ -637,7 +637,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Time Spent Waiting" tooltip="Do customers spend time waiting or relaxing?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.timeWaiting === opt} onClick={() => onChange('timeWaiting', opt)} />
                             ))}
                         </div>
@@ -710,7 +710,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Wait Time Complaints" tooltip="Do patients complain about waiting time?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.waitComplaints === opt} onClick={() => onChange('waitComplaints', opt)} />
                             ))}
                         </div>
@@ -720,7 +720,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Procedure Clarity" tooltip="Do patients clearly understand your services or procedures?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.procedureClarity === opt} onClick={() => onChange('procedureClarity', opt)} />
                             ))}
                         </div>
@@ -728,7 +728,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Inquiry Level" tooltip="Do patients ask many questions before treatment?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.questionsBefore === opt} onClick={() => onChange('questionsBefore', opt)} />
                             ))}
                         </div>
@@ -736,7 +736,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Appointment Retention" tooltip="Do patients miss appointments or fail to return?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.missedAppointments === opt} onClick={() => onChange('missedAppointments', opt)} />
                             ))}
                         </div>
@@ -746,7 +746,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Loss to Wait" tooltip="Do you lose patients due to long waiting time?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.lostToWait === opt} onClick={() => onChange('lostToWait', opt)} />
                             ))}
                         </div>
@@ -754,7 +754,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Missed Follow-ups" tooltip="Do patients forget appointments or follow-ups?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.forgetFollowups === opt} onClick={() => onChange('forgetFollowups', opt)} />
                             ))}
                         </div>
@@ -764,7 +764,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Care Follow-up" tooltip="Do you follow up after visits?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpVisits === opt} onClick={() => onChange('followUpVisits', opt)} />
                             ))}
                         </div>
@@ -774,7 +774,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Awareness" tooltip="Do patients know about your latest updates or services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.awarenessLevel === opt} onClick={() => onChange('awarenessLevel', opt)} />
                             ))}
                         </div>
@@ -784,7 +784,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Waiting Area Status" tooltip="Do you have a waiting area?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'None'].map(opt => (
+                            {['Yes (Full Access)', 'Limited (Basic)', 'None (Zero)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.waitingArea === opt} onClick={() => onChange('waitingArea', opt)} />
                             ))}
                         </div>
@@ -792,7 +792,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Patient Dwell Time" tooltip="Do patients spend much time waiting?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.dwellTime === opt} onClick={() => onChange('dwellTime', opt)} />
                             ))}
                         </div>
@@ -865,7 +865,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Response Complaints" tooltip="Do clients complain about slow response?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.slowResponseComplaints === opt} onClick={() => onChange('slowResponseComplaints', opt)} />
                             ))}
                         </div>
@@ -875,7 +875,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Clarity" tooltip="Do clients clearly understand your services and pricing?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceClarity === opt} onClick={() => onChange('serviceClarity', opt)} />
                             ))}
                         </div>
@@ -883,7 +883,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Engagement Inquiry" tooltip="Do clients ask many questions before engaging your service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.preEngageQuestions === opt} onClick={() => onChange('preEngageQuestions', opt)} />
                             ))}
                         </div>
@@ -891,7 +891,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Decision Hesitation" tooltip="Do clients delay decision after consultation?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.decisionDelay === opt} onClick={() => onChange('decisionDelay', opt)} />
                             ))}
                         </div>
@@ -901,7 +901,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Consultation Drop-off" tooltip="Do you lose clients after initial consultation?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.conversionLoss === opt} onClick={() => onChange('conversionLoss', opt)} />
                             ))}
                         </div>
@@ -909,7 +909,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Meeting No-Shows" tooltip="Do clients fail to show up for meetings?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.noShows === opt} onClick={() => onChange('noShows', opt)} />
                             ))}
                         </div>
@@ -919,7 +919,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Lead Nurturing" tooltip="Do you follow up with potential or past clients?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpPotential === opt} onClick={() => onChange('followUpPotential', opt)} />
                             ))}
                         </div>
@@ -929,7 +929,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Perceived Value" tooltip="Do clients understand the value of your service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valueUnderstanding === opt} onClick={() => onChange('valueUnderstanding', opt)} />
                             ))}
                         </div>
@@ -937,7 +937,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Promotion Intensity" tooltip="Do you actively promote your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -947,7 +947,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Office Presence" tooltip="Do you have a physical office or meeting space?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Shared', 'No (Remote)'].map(opt => (
+                            {['Yes (Dedicated)', 'Shared (Co-working)', 'No (Remote)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.officeType === opt} onClick={() => onChange('officeType', opt)} />
                             ))}
                         </div>
@@ -955,7 +955,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Team Engagement" tooltip="Do clients spend time waiting or interacting with your team?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.dwellEngagement === opt} onClick={() => onChange('dwellEngagement', opt)} />
                             ))}
                         </div>
@@ -963,7 +963,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness" tooltip="Website, social links, or strong portfolio?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPresence === opt} onClick={() => onChange('digitalPresence', opt)} />
                             ))}
                         </div>
@@ -1030,7 +1030,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Enrollment Inquiries" tooltip="Do students or parents ask many questions before enrolling?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.inquiryLevel === opt} onClick={() => onChange('inquiryLevel', opt)} />
                             ))}
                         </div>
@@ -1040,7 +1040,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Course Clarity" tooltip="Do students clearly understand your courses/programs?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.courseClarity === opt} onClick={() => onChange('courseClarity', opt)} />
                             ))}
                         </div>
@@ -1048,7 +1048,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Detail Inquiries" tooltip="Do students ask about pricing, duration, or details frequently?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.pricingInquiry === opt} onClick={() => onChange('pricingInquiry', opt)} />
                             ))}
                         </div>
@@ -1056,7 +1056,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Interest Drop-off" tooltip="Do students drop off after showing interest?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.dropOffInterest === opt} onClick={() => onChange('dropOffInterest', opt)} />
                             ))}
                         </div>
@@ -1066,7 +1066,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Enrollment Loss" tooltip="Do you lose students before they enroll?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.lostToEnroll === opt} onClick={() => onChange('lostToEnroll', opt)} />
                             ))}
                         </div>
@@ -1074,7 +1074,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Program Completion" tooltip="Do students fail to continue or complete programs?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.retentionIssue === opt} onClick={() => onChange('retentionIssue', opt)} />
                             ))}
                         </div>
@@ -1084,7 +1084,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Update Regularity" tooltip="Do you communicate updates (classes, schedules, offers)?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.updatesLevel === opt} onClick={() => onChange('updatesLevel', opt)} />
                             ))}
                         </div>
@@ -1094,7 +1094,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Perceived Value" tooltip="Do students understand the value of your program?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valueUnderstanding === opt} onClick={() => onChange('valueUnderstanding', opt)} />
                             ))}
                         </div>
@@ -1102,7 +1102,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Promotion Intensity" tooltip="Do you actively promote your programs?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -1112,7 +1112,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Learning Space" tooltip="Do you have a physical learning space?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Hybrid', 'Online only'].map(opt => (
+                            {['Yes (Physical)', 'Hybrid (Both)', 'Online (Digital)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.learningSpace === opt} onClick={() => onChange('learningSpace', opt)} />
                             ))}
                         </div>
@@ -1120,7 +1120,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Class Engagement" tooltip="Do students spend time waiting or interacting before classes?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.preClassDwell === opt} onClick={() => onChange('preClassDwell', opt)} />
                             ))}
                         </div>
@@ -1128,7 +1128,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Platforms" tooltip="Digital platforms for learning or communication?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalReadiness === opt} onClick={() => onChange('digitalReadiness', opt)} />
                             ))}
                         </div>
@@ -1191,7 +1191,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Response Speed" tooltip="How fast do you respond to inquiries?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Fast', 'Medium', 'Slow'].map(opt => (
+                            {['Fast (<10m)', 'Medium (10-30m)', 'Slow (30m+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.responseSpeed === opt} onClick={() => onChange('responseSpeed', opt)} />
                             ))}
                         </div>
@@ -1199,7 +1199,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Response Complaints" tooltip="Do clients complain about slow responses?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.responseComplaints === opt} onClick={() => onChange('responseComplaints', opt)} />
                             ))}
                         </div>
@@ -1209,7 +1209,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Clarity" tooltip="Do clients clearly understand your services/packages?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceClarity === opt} onClick={() => onChange('serviceClarity', opt)} />
                             ))}
                         </div>
@@ -1217,7 +1217,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Project Questions" tooltip="Do clients ask many questions before starting?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.preprojectQuestions === opt} onClick={() => onChange('preprojectQuestions', opt)} />
                             ))}
                         </div>
@@ -1225,7 +1225,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Project Delay" tooltip="Do clients delay starting after discussion?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.projectDelay === opt} onClick={() => onChange('projectDelay', opt)} />
                             ))}
                         </div>
@@ -1235,7 +1235,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Discussion Loss" tooltip="Do you lose clients after initial discussion?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.lostToDiscussion === opt} onClick={() => onChange('lostToDiscussion', opt)} />
                             ))}
                         </div>
@@ -1243,7 +1243,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Project Abandonment" tooltip="Do clients abandon projects after starting?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.projectAbandonment === opt} onClick={() => onChange('projectAbandonment', opt)} />
                             ))}
                         </div>
@@ -1253,7 +1253,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Data Collection" tooltip="Do you collect client contact details properly?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -1261,7 +1261,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-up Effort" tooltip="Do you follow up with leads or inactive clients?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpEffort === opt} onClick={() => onChange('followUpEffort', opt)} />
                             ))}
                         </div>
@@ -1271,7 +1271,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Perceived Value" tooltip="Do clients understand the value of your service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.perceivedValue === opt} onClick={() => onChange('perceivedValue', opt)} />
                             ))}
                         </div>
@@ -1279,7 +1279,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Active Promotion" tooltip="Do you actively promote your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -1289,7 +1289,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Online Presence" tooltip="Website/Portfolio strength?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.onlinePresence === opt} onClick={() => onChange('onlinePresence', opt)} />
                             ))}
                         </div>
@@ -1297,7 +1297,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Onboarding Process" tooltip="Do you have a structured onboarding process?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.onboardingProcess === opt} onClick={() => onChange('onboardingProcess', opt)} />
                             ))}
                         </div>
@@ -1305,7 +1305,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Engagement" tooltip="Do clients interact with your brand digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -1323,7 +1323,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Need" tooltip="Rate business need for improvement" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -1387,7 +1387,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Response Complaints" tooltip="Do clients complain about late responses?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.delayedResponseComplaints === opt} onClick={() => onChange('delayedResponseComplaints', opt)} />
                             ))}
                         </div>
@@ -1397,7 +1397,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Property Visibility" tooltip="Can clients easily find all available listings?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.propertyVisibility === opt} onClick={() => onChange('propertyVisibility', opt)} />
                             ))}
                         </div>
@@ -1405,7 +1405,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Info Gap" tooltip="Do you get many repetitive questions about listings?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.propertyQuestions === opt} onClick={() => onChange('propertyQuestions', opt)} />
                             ))}
                         </div>
@@ -1413,7 +1413,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Viewing Delay" tooltip="Do clients delay decisions after site visits?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.viewingDecisionDelay === opt} onClick={() => onChange('viewingDecisionDelay', opt)} />
                             ))}
                         </div>
@@ -1423,7 +1423,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Conversion Loss" tooltip="Do you lose clients after inspection?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.conversionLoss === opt} onClick={() => onChange('conversionLoss', opt)} />
                             ))}
                         </div>
@@ -1431,7 +1431,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Inspection No-Shows" tooltip="Rate of people missing scheduled inspections" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.noShowInspections === opt} onClick={() => onChange('noShowInspections', opt)} />
                             ))}
                         </div>
@@ -1441,7 +1441,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Data Collection" tooltip="Are you collecting lead data properly?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -1449,7 +1449,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-up Effort" tooltip="Are you following up with interested leads?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpEffort === opt} onClick={() => onChange('followUpEffort', opt)} />
                             ))}
                         </div>
@@ -1459,7 +1459,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Perceived Value" tooltip="Do clients understand your property value?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valueUnderstanding === opt} onClick={() => onChange('valueUnderstanding', opt)} />
                             ))}
                         </div>
@@ -1467,7 +1467,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Active Promotion" tooltip="Do you actively promote your listings?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -1477,7 +1477,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Signage Visibility" tooltip="Do you use physical site signage?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'None'].map(opt => (
+                            {['Yes (Full Access)', 'Limited (Basic)', 'None (Zero)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.physicalBranding === opt} onClick={() => onChange('physicalBranding', opt)} />
                             ))}
                         </div>
@@ -1485,7 +1485,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Engagement" tooltip="Do clients interact with your portfolio digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalEngagement === opt} onClick={() => onChange('digitalEngagement', opt)} />
                             ))}
                         </div>
@@ -1493,7 +1493,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Listing System" tooltip="Do you have a structured listing system?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPlatform === opt} onClick={() => onChange('digitalPlatform', opt)} />
                             ))}
                         </div>
@@ -1511,7 +1511,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Need" tooltip="Rate business need for improvement" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -1570,7 +1570,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Waiting Complaints" tooltip="Do customers complain about waiting time?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.waitingComplaints === opt} onClick={() => onChange('waitingComplaints', opt)} />
                             ))}
                         </div>
@@ -1580,7 +1580,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Clarity" tooltip="Do customers clearly understand your services/prices?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Partially', 'No'].map(opt => (
+                            {['Yes (Clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceClarity === opt} onClick={() => onChange('serviceClarity', opt)} />
                             ))}
                         </div>
@@ -1588,7 +1588,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Service Questions" tooltip="Do customers ask many questions before service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.preserviceQuestions === opt} onClick={() => onChange('preserviceQuestions', opt)} />
                             ))}
                         </div>
@@ -1596,7 +1596,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Hesitation" tooltip="Do customers delay or hesitate before agreeing to service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceHesitation === opt} onClick={() => onChange('serviceHesitation', opt)} />
                             ))}
                         </div>
@@ -1606,7 +1606,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Lost to Delay" tooltip="Do you lose customers due to waiting or delays?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.lostToDelay === opt} onClick={() => onChange('lostToDelay', opt)} />
                             ))}
                         </div>
@@ -1614,7 +1614,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Retention Issues" tooltip="Do customers fail to return after first service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.retentionRate === opt} onClick={() => onChange('retentionRate', opt)} />
                             ))}
                         </div>
@@ -1624,7 +1624,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Data Collection" tooltip="Do you collect customer contact details?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -1632,7 +1632,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-Up Effort" tooltip="Do you follow up with customers after service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpEffort === opt} onClick={() => onChange('followUpEffort', opt)} />
                             ))}
                         </div>
@@ -1642,7 +1642,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Awareness" tooltip="Do customers know about all your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceAwareness === opt} onClick={() => onChange('serviceAwareness', opt)} />
                             ))}
                         </div>
@@ -1650,7 +1650,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Active Promotion" tooltip="Do you promote your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -1660,7 +1660,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Location Signage" tooltip="Do you have visible location or signage?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.hasSignage === opt} onClick={() => onChange('hasSignage', opt)} />
                             ))}
                         </div>
@@ -1668,7 +1668,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="On-Site Waiting" tooltip="Do customers spend time waiting on-site?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.waitingOnsite === opt} onClick={() => onChange('waitingOnsite', opt)} />
                             ))}
                         </div>
@@ -1694,7 +1694,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Need" tooltip="Rate business need for improvement" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -1752,7 +1752,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Response Speed" tooltip="How fast do you respond to requests?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Fast', 'Medium', 'Slow'].map(opt => (
+                            {['Fast (<10m)', 'Medium (10-30m)', 'Slow (30m+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.responseTime === opt} onClick={() => onChange('responseTime', opt)} />
                             ))}
                         </div>
@@ -1760,7 +1760,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Delay Complaints" tooltip="Do customers complain about delays?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.delayComplaints === opt} onClick={() => onChange('delayComplaints', opt)} />
                             ))}
                         </div>
@@ -1778,7 +1778,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Update Inquiries" tooltip="Do customers ask for updates frequently?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.updateRequests === opt} onClick={() => onChange('updateRequests', opt)} />
                             ))}
                         </div>
@@ -1786,7 +1786,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Operational Delays" tooltip="Do deliveries or trips get delayed often?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.deliveryDelays === opt} onClick={() => onChange('deliveryDelays', opt)} />
                             ))}
                         </div>
@@ -1796,7 +1796,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Loss to Delays" tooltip="Do you lose customers due to delays or poor coordination?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.lostToDelays === opt} onClick={() => onChange('lostToDelays', opt)} />
                             ))}
                         </div>
@@ -1804,7 +1804,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Cancellation Rate" tooltip="Do customers fail to complete bookings or cancel frequently?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.cancellationRate === opt} onClick={() => onChange('cancellationRate', opt)} />
                             ))}
                         </div>
@@ -1814,7 +1814,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Data Collection" tooltip="Do you collect customer contact details?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -1822,7 +1822,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Post-Service Follow-up" tooltip="Do you follow up with customers after service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpEffort === opt} onClick={() => onChange('followUpEffort', opt)} />
                             ))}
                         </div>
@@ -1832,7 +1832,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Awareness" tooltip="Do customers understand all your services/routes?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceAwareness === opt} onClick={() => onChange('serviceAwareness', opt)} />
                             ))}
                         </div>
@@ -1840,7 +1840,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Active Promotion" tooltip="Do you promote your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -1858,7 +1858,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do customers interact with your service digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalEngagement === opt} onClick={() => onChange('digitalEngagement', opt)} />
                             ))}
                         </div>
@@ -1866,7 +1866,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness" tooltip="Do you have a digital platform or system for operations?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalOperations === opt} onClick={() => onChange('digitalOperations', opt)} />
                             ))}
                         </div>
@@ -1886,7 +1886,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" tooltip="Rate business need for improvement" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -1955,7 +1955,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Slow Response Complaints" tooltip="Do customers complain about slow response?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.slowResponseComplaints === opt} onClick={() => onChange('slowResponseComplaints', opt)} />
                             ))}
                         </div>
@@ -1965,7 +1965,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Clarity" tooltip="Do customers clearly understand your services and pricing?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (very clear)', 'Partially', 'No'].map(opt => (
+                            {['Yes (Very clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceClarity === opt} onClick={() => onChange('serviceClarity', opt)} />
                             ))}
                         </div>
@@ -1973,7 +1973,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-job Inquiries" tooltip="Do customers ask many questions before agreeing to a job?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.preJobInquiries === opt} onClick={() => onChange('preJobInquiries', opt)} />
                             ))}
                         </div>
@@ -1981,7 +1981,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Quote Delay" tooltip="Do customers delay approval after receiving a quote?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.quoteDelay === opt} onClick={() => onChange('quoteDelay', opt)} />
                             ))}
                         </div>
@@ -1991,7 +1991,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Conversion Loss" tooltip="Do you lose jobs after giving a quote?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.conversionLoss === opt} onClick={() => onChange('conversionLoss', opt)} />
                             ))}
                         </div>
@@ -1999,7 +1999,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Job Cancellations" tooltip="Do customers cancel jobs after booking?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.jobCancellations === opt} onClick={() => onChange('jobCancellations', opt)} />
                             ))}
                         </div>
@@ -2009,7 +2009,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Data Collection" tooltip="Do you collect customer contact details properly?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -2017,7 +2017,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Post-Service Follow-up" tooltip="Do you follow up with customers after service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpEffort === opt} onClick={() => onChange('followUpEffort', opt)} />
                             ))}
                         </div>
@@ -2027,7 +2027,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Value Perception" tooltip="Do customers understand the value of your service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valuePerception === opt} onClick={() => onChange('valuePerception', opt)} />
                             ))}
                         </div>
@@ -2035,7 +2035,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Active Promotion" tooltip="Do you actively promote your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -2045,7 +2045,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Branding Visibility" tooltip="Do you have visible branding or signage?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'None'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'None (Zero)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.brandingVisibility === opt} onClick={() => onChange('brandingVisibility', opt)} />
                             ))}
                         </div>
@@ -2053,7 +2053,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do customers interact with your services digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -2061,7 +2061,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness (Portfolio)" tooltip="Do you have a digital platform or portfolio?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPresence === opt} onClick={() => onChange('digitalPresence', opt)} />
                             ))}
                         </div>
@@ -2081,7 +2081,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" tooltip="Rate business need for improvement" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -2148,7 +2148,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Slow Response Complaints" tooltip="Do clients complain about slow responses?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.slowResponseComplaints === opt} onClick={() => onChange('slowResponseComplaints', opt)} />
                             ))}
                         </div>
@@ -2158,7 +2158,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Portfolio Visibility" tooltip="Do clients clearly see your past work or services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (very clear)', 'Partially', 'No'].map(opt => (
+                            {['Yes (Very clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.portfolioVisibility === opt} onClick={() => onChange('portfolioVisibility', opt)} />
                             ))}
                         </div>
@@ -2166,7 +2166,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Inquiries" tooltip="Do clients ask many questions about your services or pricing?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceInquiries === opt} onClick={() => onChange('serviceInquiries', opt)} />
                             ))}
                         </div>
@@ -2174,7 +2174,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Decision Delay" tooltip="Do clients delay decision after initial discussion?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.decisionDelay === opt} onClick={() => onChange('decisionDelay', opt)} />
                             ))}
                         </div>
@@ -2184,7 +2184,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Conversion Loss" tooltip="Do you lose clients after inquiry or quotation?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.conversionLoss === opt} onClick={() => onChange('conversionLoss', opt)} />
                             ))}
                         </div>
@@ -2192,7 +2192,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Booking Cancellations" tooltip="Do clients cancel bookings after confirming?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.bookingCancellations === opt} onClick={() => onChange('bookingCancellations', opt)} />
                             ))}
                         </div>
@@ -2202,7 +2202,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Client Data Collection" tooltip="Do you collect client contact details properly?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -2210,7 +2210,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-up Effort" tooltip="Do you follow up with clients after events or inquiries?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpEffort === opt} onClick={() => onChange('followUpEffort', opt)} />
                             ))}
                         </div>
@@ -2220,7 +2220,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Value Perception" tooltip="Do clients understand the value of your service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valuePerception === opt} onClick={() => onChange('valuePerception', opt)} />
                             ))}
                         </div>
@@ -2228,7 +2228,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Active Promotion" tooltip="Do you actively promote your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -2238,7 +2238,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Physical Setup" tooltip="Do you have a showroom, office, or display setup?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.physicalSetup === opt} onClick={() => onChange('physicalSetup', opt)} />
                             ))}
                         </div>
@@ -2246,7 +2246,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do clients interact with your work digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -2254,7 +2254,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness (Portfolio)" tooltip="Do you have a strong portfolio or digital presence?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPresence === opt} onClick={() => onChange('digitalPresence', opt)} />
                             ))}
                         </div>
@@ -2274,7 +2274,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" tooltip="Rate business need for improvement" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -2323,7 +2323,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Ordering Friction" tooltip="Do buyers struggle to place orders?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.orderFriction === opt} onClick={() => onChange('orderFriction', opt)} />
                             ))}
                         </div>
@@ -2331,7 +2331,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Communication Complaints" tooltip="Do buyers complain about response?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.commComplaints === opt} onClick={() => onChange('commComplaints', opt)} />
                             ))}
                         </div>
@@ -2341,7 +2341,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Product Visibility" tooltip="Can buyers clearly see available produce?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (very clear)', 'Partially', 'No'].map(opt => (
+                            {['Yes (Very clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.productVisibility === opt} onClick={() => onChange('productVisibility', opt)} />
                             ))}
                         </div>
@@ -2349,7 +2349,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Availability Inquiries" tooltip="Do buyers ask many pricing/availability questions?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.availabilityQuestions === opt} onClick={() => onChange('availabilityQuestions', opt)} />
                             ))}
                         </div>
@@ -2357,7 +2357,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Purchase Delay" tooltip="Do buyers delay purchase after inquiry?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.purchaseDelay === opt} onClick={() => onChange('purchaseDelay', opt)} />
                             ))}
                         </div>
@@ -2367,7 +2367,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Inquiry Loss" tooltip="Do you lose buyers after inquiry?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.inquiryLoss === opt} onClick={() => onChange('inquiryLoss', opt)} />
                             ))}
                         </div>
@@ -2375,7 +2375,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Retention Issues" tooltip="Do buyers fail to return?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.retentionProblem === opt} onClick={() => onChange('retentionProblem', opt)} />
                             ))}
                         </div>
@@ -2385,7 +2385,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Collects Data" tooltip="Do you collect buyer contact details?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -2393,7 +2393,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-up Level" tooltip="Do you follow up after sales?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpLevel === opt} onClick={() => onChange('followUpLevel', opt)} />
                             ))}
                         </div>
@@ -2403,7 +2403,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Value Perception" tooltip="Do buyers understand your product value?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valuePerception === opt} onClick={() => onChange('valuePerception', opt)} />
                             ))}
                         </div>
@@ -2411,7 +2411,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Marketing Effort" tooltip="Do you actively promote products?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.marketingEffort === opt} onClick={() => onChange('marketingEffort', opt)} />
                             ))}
                         </div>
@@ -2429,7 +2429,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do buyers interact digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -2437,7 +2437,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness" tooltip="Do you have a digital platform/catalog?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPlatform === opt} onClick={() => onChange('digitalPlatform', opt)} />
                             ))}
                         </div>
@@ -2454,7 +2454,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -2521,7 +2521,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Wait/Delay Complaints" tooltip="Do customers complain about waiting or service delays?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.delayComplaints === opt} onClick={() => onChange('delayComplaints', opt)} />
                             ))}
                         </div>
@@ -2531,7 +2531,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Service Clarity" tooltip="Do customers clearly understand your services/products?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (very clear)', 'Partially', 'No'].map(opt => (
+                            {['Yes (Very clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.serviceClarity === opt} onClick={() => onChange('serviceClarity', opt)} />
                             ))}
                         </div>
@@ -2539,7 +2539,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-Service Questions" tooltip="Do customers ask many questions before using your service?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.preServiceQuestions === opt} onClick={() => onChange('preServiceQuestions', opt)} />
                             ))}
                         </div>
@@ -2547,7 +2547,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Transaction Hesitation" tooltip="Do customers hesitate before completing transactions?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.transactionHesitation === opt} onClick={() => onChange('transactionHesitation', opt)} />
                             ))}
                         </div>
@@ -2557,7 +2557,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Transaction Drop-off" tooltip="Do you lose customers before completing transactions?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.transactionDropoff === opt} onClick={() => onChange('transactionDropoff', opt)} />
                             ))}
                         </div>
@@ -2565,7 +2565,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Retention Issues" tooltip="Do customers fail to return after first transaction?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.retentionIssue === opt} onClick={() => onChange('retentionIssue', opt)} />
                             ))}
                         </div>
@@ -2575,7 +2575,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Data Collection" tooltip="Do you collect customer contact details?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -2583,7 +2583,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Engagement Effort" tooltip="Do you communicate updates, offers, or reminders?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.engagementLevel === opt} onClick={() => onChange('engagementLevel', opt)} />
                             ))}
                         </div>
@@ -2593,7 +2593,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Value Perception" tooltip="Do customers understand the value of your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valuePerception === opt} onClick={() => onChange('valuePerception', opt)} />
                             ))}
                         </div>
@@ -2601,7 +2601,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Customer Education" tooltip="Do you educate customers about your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.customerEducation === opt} onClick={() => onChange('customerEducation', opt)} />
                             ))}
                         </div>
@@ -2611,7 +2611,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Branch Branding" tooltip="Do you have visible branding or branch presence?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'None'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'None (Zero)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.branchBranding === opt} onClick={() => onChange('branchBranding', opt)} />
                             ))}
                         </div>
@@ -2619,7 +2619,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do customers interact with your services digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -2627,7 +2627,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness" tooltip="Do you have a digital platform (app, website, dashboard)?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPlatform === opt} onClick={() => onChange('digitalPlatform', opt)} />
                             ))}
                         </div>
@@ -2647,7 +2647,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -2704,7 +2704,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Delay Complaints" tooltip="Do citizens complain about waiting or delays?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.delayComplaints === opt} onClick={() => onChange('delayComplaints', opt)} />
                             ))}
                         </div>
@@ -2714,7 +2714,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Procedure Clarity" tooltip="Do citizens clearly understand requirements?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (very clear)', 'Partially', 'No'].map(opt => (
+                            {['Yes (Very clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.procedureClarity === opt} onClick={() => onChange('procedureClarity', opt)} />
                             ))}
                         </div>
@@ -2722,7 +2722,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Repetitive Questions" tooltip="Do citizens ask many repetitive questions about requirements?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.repetitiveQuestions === opt} onClick={() => onChange('repetitiveQuestions', opt)} />
                             ))}
                         </div>
@@ -2730,7 +2730,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Unprepared Citizens" tooltip="Do citizens arrive with wrong/missing documents?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.unpreparedCitizens === opt} onClick={() => onChange('unpreparedCitizens', opt)} />
                             ))}
                         </div>
@@ -2740,7 +2740,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Citizen Drop-off" tooltip="Do citizens leave because of long wait times?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.citizenDropoff === opt} onClick={() => onChange('citizenDropoff', opt)} />
                             ))}
                         </div>
@@ -2748,7 +2748,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Multiple Returns" tooltip="Do citizens return multiple times for a single task?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.multipleReturns === opt} onClick={() => onChange('multipleReturns', opt)} />
                             ))}
                         </div>
@@ -2758,7 +2758,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Data Collection" tooltip="Do you collect citizen contact details for updates?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -2766,7 +2766,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-up Level" tooltip="Do you follow up or send status notifications?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpLevel === opt} onClick={() => onChange('followUpLevel', opt)} />
                             ))}
                         </div>
@@ -2776,7 +2776,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Impact Awareness" tooltip="Do citizens understand the impact of your services?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.impactAwareness === opt} onClick={() => onChange('impactAwareness', opt)} />
                             ))}
                         </div>
@@ -2784,7 +2784,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Promotion Effort" tooltip="Do you actively promote new programs or notices?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.promotionEffort === opt} onClick={() => onChange('promotionEffort', opt)} />
                             ))}
                         </div>
@@ -2794,7 +2794,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Physical Setup" tooltip="Do you have a physical reception or inquiry desk?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.physicalSetup === opt} onClick={() => onChange('physicalSetup', opt)} />
                             ))}
                         </div>
@@ -2802,7 +2802,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do citizens interact with your work digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -2810,7 +2810,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness" tooltip="Do you have a digital platform/system?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPlatform === opt} onClick={() => onChange('digitalPlatform', opt)} />
                             ))}
                         </div>
@@ -2830,7 +2830,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -2878,7 +2878,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Missed Updates" tooltip="Do members miss important info?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.missedUpdates === opt} onClick={() => onChange('missedUpdates', opt)} />
                             ))}
                         </div>
@@ -2886,7 +2886,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Information Complaints" tooltip="Do members complain about lack of info?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.infoComplaints === opt} onClick={() => onChange('infoComplaints', opt)} />
                             ))}
                         </div>
@@ -2895,7 +2895,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Program Awareness" tooltip="Do members clearly know your programs?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (very clear)', 'Partially', 'No'].map(opt => (
+                            {['Yes (Very clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.programAwareness === opt} onClick={() => onChange('programAwareness', opt)} />
                             ))}
                         </div>
@@ -2903,7 +2903,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Program Inquiries" tooltip="Do members ask many questions about events?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.programInquiries === opt} onClick={() => onChange('programInquiries', opt)} />
                             ))}
                         </div>
@@ -2911,7 +2911,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Attendance Drop-off" tooltip="Do members fail to attend after showing interest?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.attendanceDropoff === opt} onClick={() => onChange('attendanceDropoff', opt)} />
                             ))}
                         </div>
@@ -2920,7 +2920,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Donation Struggle" tooltip="Do you struggle with collecting donations?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.donationStruggle === opt} onClick={() => onChange('donationStruggle', opt)} />
                             ))}
                         </div>
@@ -2928,7 +2928,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Donation Regularity" tooltip="Do donors fail to contribute regularly?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.donationRegularity === opt} onClick={() => onChange('donationRegularity', opt)} />
                             ))}
                         </div>
@@ -2937,7 +2937,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Member Data Collection" tooltip="Do you collect member/donor details properly?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.memberData === opt} onClick={() => onChange('memberData', opt)} />
                             ))}
                         </div>
@@ -2945,7 +2945,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-up Level" tooltip="Do you follow up with members/donors?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpLevel === opt} onClick={() => onChange('followUpLevel', opt)} />
                             ))}
                         </div>
@@ -2954,7 +2954,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Mission Understanding" tooltip="Do people understand your mission/impact?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.missionUnderstanding === opt} onClick={() => onChange('missionUnderstanding', opt)} />
                             ))}
                         </div>
@@ -2962,7 +2962,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Promotion Effort" tooltip="Do you actively promote your programs?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.promotionEffort === opt} onClick={() => onChange('promotionEffort', opt)} />
                             ))}
                         </div>
@@ -2971,7 +2971,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Physical Facility" tooltip="Do you have a physical place for gatherings?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Limited', 'No'].map(opt => (
+                            {['Yes (Active)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.gatheringPlace === opt} onClick={() => onChange('gatheringPlace', opt)} />
                             ))}
                         </div>
@@ -2979,7 +2979,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do members interact digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -2987,7 +2987,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness" tooltip="Do you have a digital platform/system?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalPlatform === opt} onClick={() => onChange('digitalPlatform', opt)} />
                             ))}
                         </div>
@@ -3004,7 +3004,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -3049,7 +3049,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Interaction Delays" tooltip="Do customers experience issues when reaching you?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.interactionDelays === opt} onClick={() => onChange('interactionDelays', opt)} />
                             ))}
                         </div>
@@ -3057,7 +3057,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Response Complaints" tooltip="Do customers complain about your response time?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.responseComplaints === opt} onClick={() => onChange('responseComplaints', opt)} />
                             ))}
                         </div>
@@ -3067,7 +3067,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Offering Clarity" tooltip="Do customers clearly understand your offerings?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (very clear)', 'Partially', 'No'].map(opt => (
+                            {['Yes (Very clear)', 'Partially (Vague)', 'No (Hidden)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.offeringClarity === opt} onClick={() => onChange('offeringClarity', opt)} />
                             ))}
                         </div>
@@ -3075,7 +3075,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Pre-buying Questions" tooltip="Do customers ask many questions before buying?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.preBuyingQuestions === opt} onClick={() => onChange('preBuyingQuestions', opt)} />
                             ))}
                         </div>
@@ -3083,7 +3083,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Interest Delay" tooltip="Do customers delay after showing interest?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.interestDelay === opt} onClick={() => onChange('interestDelay', opt)} />
                             ))}
                         </div>
@@ -3093,7 +3093,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Contact Drop-off" tooltip="Do you lose customers after initial contact?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.contactDropoff === opt} onClick={() => onChange('contactDropoff', opt)} />
                             ))}
                         </div>
@@ -3101,7 +3101,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Customer Retention" tooltip="Do customers come back again?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.customerRetention === opt} onClick={() => onChange('customerRetention', opt)} />
                             ))}
                         </div>
@@ -3111,7 +3111,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Collects Data" tooltip="Do you collect customer details?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (always)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Always)', 'Sometimes (Manual)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.collectsData === opt} onClick={() => onChange('collectsData', opt)} />
                             ))}
                         </div>
@@ -3119,7 +3119,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Follow-up Level" tooltip="Do you regularly follow up with customers?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.followUpLevel === opt} onClick={() => onChange('followUpLevel', opt)} />
                             ))}
                         </div>
@@ -3129,7 +3129,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Value Understanding" tooltip="Do people understand the value of your business?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.valueUnderstanding === opt} onClick={() => onChange('valueUnderstanding', opt)} />
                             ))}
                         </div>
@@ -3137,7 +3137,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Active Promotion" tooltip="Do you actively promote your business?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (regularly)', 'Sometimes', 'No'].map(opt => (
+                            {['Yes (Regularly)', 'Sometimes (Rarely)', 'No (Never)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.activePromotion === opt} onClick={() => onChange('activePromotion', opt)} />
                             ))}
                         </div>
@@ -3155,7 +3155,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Interaction" tooltip="Do customers interact with you digitally?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['High', 'Medium', 'Low'].map(opt => (
+                            {['High (30%+)', 'Medium (10-30%)', 'Low (<10%)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalInteraction === opt} onClick={() => onChange('digitalInteraction', opt)} />
                             ))}
                         </div>
@@ -3163,7 +3163,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Digital Readiness" tooltip="Do you have any digital tools or platform?" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Yes (strong)', 'Limited', 'No'].map(opt => (
+                            {['Yes (Strong)', 'Limited (Basic)', 'No (None)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.digitalReadiness === opt} onClick={() => onChange('digitalReadiness', opt)} />
                             ))}
                         </div>
@@ -3180,7 +3180,7 @@ const PublicCategoryQuestions = ({ type, responses, onChange }: { type: string, 
                     <GameCard>
                         <FieldLabel label="Improvement Urgency" />
                         <div className="grid grid-cols-3 gap-2">
-                            {['Low', 'Medium', 'High'].map(opt => (
+                            {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(opt => (
                                 <ChoicePill key={opt} label={opt} selected={responses.improvementNeed === opt} onClick={() => onChange('improvementNeed', opt)} />
                             ))}
                         </div>
@@ -3417,7 +3417,7 @@ export default function PublicProfilingForm() {
                             <GameCard>
                                 <FieldLabel label="Daily Customer Traffic" emoji="🚶" />
                                 <div className="grid grid-cols-3 gap-3">
-                                    {['Low', 'Medium', 'High'].map(lvl => (
+                                    {['Low (<5%)', 'Medium (5-15%)', 'High (15%+)'].map(lvl => (
                                         <ChoicePill key={lvl} label={lvl} selected={formData.customerTraffic === lvl} onClick={() => setFormData({...formData, customerTraffic: lvl as any})} />
                                     ))}
                                 </div>
@@ -3434,7 +3434,7 @@ export default function PublicProfilingForm() {
                             <GameCard>
                                 <FieldLabel label="Do you collect customer data?" tooltip="Emails or phone numbers for marketing?" />
                                 <div className="grid grid-cols-3 gap-3">
-                                    {['Yes', 'Sometimes', 'No'].map(opt => (
+                                    {['Yes (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                         <ChoicePill key={opt} label={opt} selected={formData.responses.collectsData === opt} onClick={() => handleResponseChange('collectsData', opt)} />
                                     ))}
                                 </div>
@@ -3442,7 +3442,7 @@ export default function PublicProfilingForm() {
                             <GameCard>
                                 <FieldLabel label="Do you follow up with customers?" />
                                 <div className="grid grid-cols-3 gap-3">
-                                    {['Regularly', 'Sometimes', 'No'].map(opt => (
+                                    {['Regularly (Active)', 'Sometimes (Rarely)', 'No (None)'].map(opt => (
                                         <ChoicePill key={opt} label={opt} selected={formData.responses.followUp === opt} onClick={() => handleResponseChange('followUp', opt)} />
                                     ))}
                                 </div>
@@ -3455,7 +3455,7 @@ export default function PublicProfilingForm() {
                             <GameCard>
                                 <FieldLabel label="Digital Presence" tooltip="Do you have a website or strong social media presence?" />
                                 <div className="grid grid-cols-3 gap-3">
-                                    {['Strong', 'Limited', 'None'].map(opt => (
+                                    {['Strong (Active)', 'Limited (Basic)', 'None (Zero)'].map(opt => (
                                         <ChoicePill key={opt} label={opt} selected={formData.responses.digitalPresence === opt} onClick={() => handleResponseChange('digitalPresence', opt)} />
                                     ))}
                                 </div>
