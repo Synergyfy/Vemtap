@@ -18,8 +18,8 @@ import ProfileMyBusinessCTA from '@/components/landing/ProfileMyBusinessCTA';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'VemTap',
-  description: 'The all-in-one NFC platform for modern businesses. Capture data, engage customers, and drive loyalty with a single tap.',
+  title: 'Vemtap',
+  description: 'VemTap is a digital engagement platform designed for businesses to instantly capture customer information through a simple "tap" using NFC (Near Field Communication) or QR codes. It is primarily used to replace manual data entry and paper forms, allowing businesses to collect visitor details in under two seconds',
 };
 
 export default function LandingPage() {
