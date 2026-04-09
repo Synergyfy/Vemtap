@@ -16,7 +16,7 @@ export default function Logo({
         <div className={className}>
             <Image
                 src="/VEMTAP_PNG.png"
-                alt="VemTap Title"
+                alt="Vemtap"
                 width={iconSize}
                 height={iconSize}
                 className="object-contain"

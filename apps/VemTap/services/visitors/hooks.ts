@@ -11,15 +11,15 @@ const GC_TIME = 5 * 60 * 1000; // 5 minutes
 
 // --- Helpers ---
 
-const normalizeRole = (role?: string | null) => role?.toLowerCase().trim() || '';
+export const normalizeRole = (role?: string | null) => role?.toLowerCase().trim() || '';
 
-const isUuidV4 = (id?: string | null) => {
+export const isUuidV4 = (id?: string | null) => {
     if (!id) return false;
     const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return regex.test(id);
 };
 
-const getReadContextParams = ({
+export const getReadContextParams = ({
     role,
     businessId,
     branchId,
@@ -59,7 +59,7 @@ const getReadContextParams = ({
     return params;
 };
 
-const useResolvedBranchParams = (branchId?: string) => {
+export const useResolvedBranchParams = (branchId?: string) => {
     const { activeBranchId } = useActiveBranch();
     const resolvedBranchId = branchId || activeBranchId;
 
@@ -250,26 +250,32 @@ export const useReturningVisitorStats = (branchId?: string, enabled: boolean = t
     });
 };
 
-export const useMessagingVisitorsByBranch = (branchId?: string, query?: { search?: string }) => {
+export const useMessagingVisitorsByBranch = (branchId?: string, query?: Record<string, any>) => {
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isStaff = ['owner', 'admin', 'manager', 'staff'].includes(normalizeRole(role));
     
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+        [role, businessId, resolvedBranchId, allBranches]
+    );
+
     const stableQuery = useMemo(() => JSON.stringify(query || {}), [query]);
 
     return useQuery<Visitor[]>({
-        queryKey: ['messaging-visitors', branchId, stableQuery],
+        queryKey: ['messaging-visitors', businessId, role, resolvedBranchId, allBranches, stableQuery, contextParams.toString()],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (branchId) params.append('branchId', branchId);
-            if (query?.search) params.append('search', query.search);
-            // Use high limit to get "all" visitors for the branch context
-            params.append('limit', '1000'); 
-            const response = await api.get(`/visitors?${params.toString()}`);
-            // The paginated endpoint returns { data: Visitor[], total: number, ... }
+            const searchParams = new URLSearchParams(contextParams);
+            if (query?.search) searchParams.append('search', query.search);
+            // Use high limit to get more visitors for the selection dropdown
+            searchParams.append('limit', '500'); 
+            const response = await api.get(`/visitors?${searchParams.toString()}`);
+            // High-end apps often return just the array or a wrapped object
             return response.data || [];
         },
-        enabled: isAuthenticated && !!branchId,
+        enabled: isAuthenticated && isStaff,
         staleTime: STALE_TIME,
         gcTime: GC_TIME,
         refetchOnWindowFocus: false,
