@@ -6,9 +6,13 @@ import { usePathname } from 'next/navigation';
 import { Users, Nfc, Users2, User } from 'lucide-react';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
+import { useSudoStore } from '@/store/useSudoStore';
+
 export default function DashboardMobileNav() {
     const pathname = usePathname();
     const { getLinkWithBranch } = useActiveBranch();
+    const { activeSession } = useSudoStore();
+    const isAdminMode = activeSession !== null;
 
     const navItems = [
         {
@@ -24,14 +28,15 @@ export default function DashboardMobileNav() {
         {
             label: 'Team',
             icon: Users2,
-            href: '/dashboard/staff'
+            href: '/dashboard/staff',
+            hidden: isAdminMode
         },
         {
             label: 'Profile',
             icon: User,
             href: '/dashboard/settings/profile'
         }
-    ];
+    ].filter(item => !item.hidden);
 
     return (
         <div

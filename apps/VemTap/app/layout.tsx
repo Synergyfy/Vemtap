@@ -81,6 +81,7 @@ import ToastProvider from "@/components/providers/ToastProvider";
 import SupportChatbot from "@/components/shared/SupportChatbot";
 import InstallPWA from "@/components/shared/InstallPWA";
 import GoogleAuthProvider from "./providers/GoogleAuthProvider";
+import AdminViewerBanner from "@/components/admin/control-tower/AdminViewerBanner";
 
 export default function RootLayout({
     children,
@@ -110,10 +111,12 @@ export default function RootLayout({
                 className={`antialiased font-sans`}
                 style={{ fontFamily: "var(--font-body)" }}
                 suppressHydrationWarning
-            >                <QueryProvider>
+            >
+                <QueryProvider>
                     <AuthProvider>
                         <GoogleAuthProvider>
                             <ToastProvider />
+                            <AdminViewerBanner />
                             {children}
                             <CookieBanner />
                             <SupportChatbot />

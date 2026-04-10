@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
 import {
@@ -9,8 +9,7 @@ import {
 } from 'lucide-react';
 import Tooltip from '@/components/ui/Tooltip';
 import LogoIcon from '@/components/brand/LogoIcon';
-import { useRouter, useSearchParams } from 'next/navigation';
-import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
+import { useRouter } from 'next/navigation';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
@@ -22,8 +21,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches, useUpdateBranch } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
 import { Phone, Loader2 as LoaderIcon } from 'lucide-react';
-import { useEffect } from 'react';
-
+import { useSudoStore } from '@/store/useSudoStore';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -31,9 +29,10 @@ export default function DashboardPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
-    const searchParams = useSearchParams();
-    const isAdminMode = searchParams.get('admin_mode') === '1';
-    const businessUid = searchParams.get('business_uid');
+    
+    // We use the store now instead of URL params for sudo state
+    const { activeSession } = useSudoStore();
+    const isAdminMode = activeSession !== null;
 
     const user = useAuthStore((state) => state.user);
 
@@ -48,8 +47,6 @@ export default function DashboardPage() {
 
         return diffInHours < 24;
     }, [user]);
-
-
 
     // Fetch Dashboard Data
     const { data, isLoading } = useDashboardAnalytics();
@@ -192,20 +189,6 @@ export default function DashboardPage() {
     ? Object.values(data.peakTimes)
     : [];
 
-/**
- * const maxVisits = peakTimes.length
-  ? Math.max(...peakTimes.map((d: any) => d.value))
-  : 100;
- */
- /**
-  * 
-  *    const peakTimes = Array.isArray(data?.peakTimes)
-        ? data.peakTimes
-        : data?.peakTimes && typeof data.peakTimes === 'object'
-            ? Object.values(data.peakTimes)
-            : [];
-  */
-
     const maxVisits = peakTimes.length
         ? Math.max(...peakTimes.map((d: any) => d.value))
         : 100;
@@ -239,7 +222,6 @@ export default function DashboardPage() {
 
     return (
         <div className="p-4 md:p-8 space-y-6">
-            {isAdminMode && <AdminViewerBanner subjectId={businessUid} type="business" />}
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
