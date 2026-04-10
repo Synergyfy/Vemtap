@@ -171,7 +171,7 @@ export default function SupportChatbot() {
                         <Draggable 
                             nodeRef={nodeRef}
                             disabled={isMobile}
-                            cancel="button"
+                            cancel=".cancel-drag"
                             onStart={(e, data) => {
                                 setDragStartPos({ x: data.x, y: data.y });
                             }}
@@ -189,7 +189,7 @@ export default function SupportChatbot() {
                             <div ref={nodeRef} className="group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); if (!isDragging) setIsVisible(false); }}
-                                    className="bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="cancel-drag bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                     <X size={14} />
                                 </button>

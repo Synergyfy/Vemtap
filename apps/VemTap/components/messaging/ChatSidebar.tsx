@@ -105,16 +105,42 @@ export default function ChatSidebar() {
     const allThreads = useMemo(() => {
         const real = threads as any[];
         
-        // Filter out real threads that are "Unknown" and not matched by a pending thread (local cache)
-        const visibleReal = real.filter(t => {
-            const hasName = t.contact?.name && t.contact.name !== 'Unknown' && t.contact.name !== 'Customer';
-            if (hasName) return true;
-            // If no name, check if it's linked to a pending thread which might have a name
-            return pendingThreads.some(p => (p.linkedThreadId === t.id || (p.contact?.id === t.contact?.id && !!t.contact?.id)) && p.contact?.name);
+        // Build a lookup of visitors by ID so we can enrich thread contact names
+        const visitorMap = new Map<string, any>();
+        (visitors as any[]).forEach(v => { if (v.id) visitorMap.set(v.id, v); });
+        
+        // Enrich threads: if a thread's contact has a generic name ('Unknown', 'Customer'),
+        // try to resolve their real name from the visitors list or pending threads
+        const enrichedReal = real.map(t => {
+            const hasGenericName = !t.contact?.name || t.contact.name === 'Unknown' || t.contact.name === 'Customer';
+            if (!hasGenericName) return t;
+            
+            // Try to find a better name from the visitors list
+            const visitor = t.contact?.id ? visitorMap.get(t.contact.id) : null;
+            if (visitor) {
+                const resolvedName = visitor.name || 
+                    (visitor.firstName || visitor.lastName 
+                        ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim() 
+                        : null);
+                if (resolvedName) {
+                    return { ...t, contact: { ...t.contact, name: resolvedName, phone: visitor.phone || t.contact?.phone, email: visitor.email || t.contact?.email } };
+                }
+            }
+            
+            // Try to find a better name from pending threads
+            const pending = pendingThreads.find(p => 
+                (p.linkedThreadId === t.id || (p.contact?.id === t.contact?.id && !!t.contact?.id)) && p.contact?.name
+            );
+            if (pending?.contact?.name) {
+                return { ...t, contact: { ...t.contact, name: pending.contact.name } };
+            }
+            
+            // Keep the thread even with a generic name — never hide real conversations
+            return t;
         });
 
-        const realIds = new Set(visibleReal.map(t => t.id));
-        const realContactIds = new Set(visibleReal.map(t => t.contact?.id).filter(Boolean));
+        const realIds = new Set(enrichedReal.map(t => t.id));
+        const realContactIds = new Set(enrichedReal.map(t => t.contact?.id).filter(Boolean));
         
         // Filter pending: hide if its real counterpart is in the list
         const filteredPending = pendingThreads.filter(t => 
@@ -122,7 +148,7 @@ export default function ChatSidebar() {
             !realContactIds.has(t.contact?.id)
         );
         
-        const combined = [...filteredPending, ...visibleReal];
+        const combined = [...filteredPending, ...enrichedReal];
         
         // Sort by most recent activity
         return combined.sort((a, b) => {
@@ -130,7 +156,7 @@ export default function ChatSidebar() {
             const timeB = new Date(b.lastActivityAt || b.updatedAt || 0).getTime();
             return timeB - timeA; // Newest first (Standard for sidebar)
         });
-    }, [threads, pendingThreads]);
+    }, [threads, pendingThreads, visitors]);
 
     const activeConv = allThreads.find(c => c.id === activeConversationId);
     
@@ -177,8 +203,17 @@ export default function ChatSidebar() {
     }, [allThreads, searchQuery]);
 
     const availableVisitors = useMemo(() => {
-        const q = customerQuery?.toLowerCase() || '';
-        return (visitors as any[]).filter(v => v.name?.toLowerCase().includes(q));
+        const q = customerQuery?.toLowerCase().trim() || '';
+        return (visitors as any[]).filter(v => {
+            const displayName = v.name || 
+                (v.firstName || v.lastName 
+                    ? `${v.firstName || ''} ${v.lastName || ''}`.trim() 
+                    : '');
+            if (!q) return true; // Show all visitors when no search query
+            return displayName.toLowerCase().includes(q) || 
+                   v.phone?.toLowerCase().includes(q) || 
+                   v.email?.toLowerCase().includes(q);
+        });
     }, [visitors, customerQuery]);
 
     useEffect(() => {
@@ -447,7 +482,12 @@ export default function ChatSidebar() {
                                             ) : availableVisitors.length === 0 ? (
                                                 <div className="px-4 py-4 text-xs text-slate-400">No visitors available.</div>
                                             ) : (
-                                                availableVisitors.map(visitor => (
+                                                availableVisitors.map(visitor => {
+                                                    const visitorDisplayName = visitor.name || 
+                                                        (visitor.firstName || visitor.lastName 
+                                                            ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim() 
+                                                            : 'Unknown Visitor');
+                                                    return (
                                                     <button
                                                         key={visitor.id}
                                                         type="button"
@@ -460,7 +500,7 @@ export default function ChatSidebar() {
                                                             } else {
                                                                 addPendingThread({
                                                                     id: visitor.id,
-                                                                    name: visitor.name,
+                                                                    name: visitorDisplayName,
                                                                     phone: visitor.phone,
                                                                     email: visitor.email,
                                                                     isOnline: false,
@@ -472,14 +512,15 @@ export default function ChatSidebar() {
                                                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
                                                     >
                                                         <div className={`w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0 text-white text-xs font-bold ${getAvatarColor(visitor.id)}`}>
-                                                            {getInitials(visitor.name)}
+                                                            {getInitials(visitorDisplayName)}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-semibold text-slate-900 truncate">{visitor.name}</p>
+                                                            <p className="text-sm font-semibold text-slate-900 truncate">{visitorDisplayName}</p>
                                                             <p className="text-xs text-slate-400 truncate">{visitor.phone || visitor.email}</p>
                                                         </div>
                                                     </button>
-                                                ))
+                                                    );
+                                                })
                                             )}
                                             
                                         </div>
