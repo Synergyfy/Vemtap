@@ -4,6 +4,7 @@ import {
     BusinessControlRecord,
     CustomerControlRecord,
     BusinessSudoActionDto,
+    CustomerSudoActionDto,
     SudoActionResponse,
     ControlTowerSearchFilter,
 } from './types';

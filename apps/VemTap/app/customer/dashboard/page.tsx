@@ -143,7 +143,7 @@ export default function CustomerDashboardPage() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
             <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
-                {isAdminMode && <AdminViewerBanner subjectId={customerUid} type="customer" />}
+                {isAdminMode && <AdminViewerBanner />}
                 {/* ID Card / Quick Scan - Hero Section */}
                 <div className="bg-linear-to-br from-primary via-blue-600 to-indigo-700 rounded-2xl p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-primary/30 group">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full translate-x-32 -translate-y-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
