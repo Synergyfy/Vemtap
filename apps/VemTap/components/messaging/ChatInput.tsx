@@ -372,11 +372,18 @@ export default function ChatInput({
             return;
         }
 
-        if (e.key === 'Enter' && !e.shiftKey) {
-            const isMobileOrTablet = typeof window !== 'undefined' && window.innerWidth < 1024;
-            if (isMobileOrTablet) return;
-            e.preventDefault();
-            if (!isSending) handleSend();
+        if (e.key === 'Enter') {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                if (!isSending) handleSend();
+                return;
+            }
+            if (!e.shiftKey) {
+                const isMobileOrTablet = typeof window !== 'undefined' && window.innerWidth < 1024;
+                if (isMobileOrTablet) return;
+                e.preventDefault();
+                if (!isSending) handleSend();
+            }
         }
     };
 
@@ -489,6 +496,7 @@ export default function ChatInput({
                         onChange={handleTextChange}
                         placeholder={isCustomer ? "Type a message..." : "Type a message... (Use / for templates, # for rewards, ! for items)"}
                         disabled={isSending}
+                        onKeyDown={handleKeyDown}
                         className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm max-h-32 resize-none py-1 outline-none"
                     />
                 </div>

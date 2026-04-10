@@ -203,16 +203,10 @@ export default function ChatSidebar() {
     }, [allThreads, searchQuery]);
 
     const availableVisitors = useMemo(() => {
-        const q = customerQuery?.toLowerCase().trim() || '';
+        const q = customerQuery?.toLowerCase() || '';
         return (visitors as any[]).filter(v => {
-            const displayName = v.name || 
-                (v.firstName || v.lastName 
-                    ? `${v.firstName || ''} ${v.lastName || ''}`.trim() 
-                    : '');
-            if (!q) return true; // Show all visitors when no search query
-            return displayName.toLowerCase().includes(q) || 
-                   v.phone?.toLowerCase().includes(q) || 
-                   v.email?.toLowerCase().includes(q);
+            const name = v.name || `${v.firstName || ''} ${v.lastName || ''}`.trim() || 'Visitor';
+            return name.toLowerCase().includes(q);
         });
     }, [visitors, customerQuery]);
 

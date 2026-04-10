@@ -17,7 +17,7 @@ export interface VisitorStatsResponse {
 
 export interface Visitor {
     id: string;
-    name: string;
+    name?: string;
     firstName?: string;
     lastName?: string;
     email: string;
