@@ -4,47 +4,50 @@ import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Clock, Fingerprint, User, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSudoStore } from '@/store/useSudoStore';
 
-interface AdminViewerBannerProps {
-    durationMinutes?: number;
-    subjectId?: string | null;
-    type?: 'business' | 'customer';
-}
-
-export default function AdminViewerBanner({ 
-    durationMinutes = 15, 
-    subjectId,
-    type = 'business'
-}: AdminViewerBannerProps) {
+export default function AdminViewerBanner() {
     const { user } = useAuthStore();
-    const [secondsLeft, setSecondsLeft] = useState(durationMinutes * 60);
+    const { activeSession, endSession } = useSudoStore();
+    const [secondsLeft, setSecondsLeft] = useState(0);
     const [isDismissed, setIsDismissed] = useState(false);
     const router = useRouter();
 
-    const isUrgent = secondsLeft <= 300; // 5 minutes
-
+    // Sync secondsLeft with the session's expiresAt
     useEffect(() => {
-        if (isUrgent) {
-            setIsDismissed(false); // Force show when urgent
-        }
-    }, [isUrgent]);
+        if (!activeSession) return;
 
-    useEffect(() => {
-        if (secondsLeft <= 0) {
-            // Redirect back to control tower on expiry
-            const target = type === 'business' 
-                ? '/admin/control-tower/business-override' 
-                : '/admin/control-tower/customer-override';
-            router.push(target);
-            return;
-        }
+        const updateTimer = () => {
+            const now = Date.now();
+            const left = Math.max(0, Math.floor((activeSession.expiresAt - now) / 1000));
+            setSecondsLeft(left);
 
-        const timer = setInterval(() => {
-            setSecondsLeft((prev) => prev - 1);
-        }, 1000);
+            if (left <= 0) {
+                handleEndSession();
+            }
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
 
         return () => clearInterval(timer);
-    }, [secondsLeft, type, router]);
+    }, [activeSession]);
+
+    const handleEndSession = () => {
+        const type = activeSession?.type;
+        endSession();
+        
+        // Redirect back to control tower on end/expiry
+        const target = type === 'business' 
+            ? '/admin/control-tower/business-override' 
+            : '/admin/control-tower/customer-override';
+        
+        router.push(target);
+    };
+
+    if (!activeSession) return null;
+
+    const isUrgent = secondsLeft <= 300; // 5 minutes
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -76,10 +79,10 @@ export default function AdminViewerBanner({
                             <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary leading-none">
                                 Admin Sudo Session
                             </p>
-                            {subjectId && (
+                            {activeSession.subjectId && (
                                 <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-[9px] font-bold text-gray-500 font-mono">
                                     <Fingerprint size={10} />
-                                    {subjectId}
+                                    {activeSession.subjectId}
                                 </span>
                             )}
                         </div>
@@ -102,18 +105,13 @@ export default function AdminViewerBanner({
 
                     <div className="hidden sm:block max-w-[180px]">
                         <p className="text-[10px] font-bold text-text-secondary leading-tight line-clamp-2">
-                           {isUrgent ? 'Session ending soon. Redirecting shortly.' : `Authorized access to ${type} data. All actions are currently being logged.`}
+                           {isUrgent ? 'Session ending soon. Redirecting shortly.' : `Authorized access to ${activeSession.type} data. All actions are currently being logged.`}
                         </p>
                     </div>
 
                     <div className="flex items-center ml-2 border-l border-gray-100 pl-4">
                         <button
-                            onClick={() => {
-                                const target = type === 'business' 
-                                    ? '/admin/control-tower/business-override' 
-                                    : '/admin/control-tower/customer-override';
-                                router.push(target);
-                            }}
+                            onClick={handleEndSession}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95"
                         >
                             <XCircle size={14} />

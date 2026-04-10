@@ -44,6 +44,25 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
                 console.error('Error parsing auth storage', e);
             }
         }
+
+        // --- Sudo Header Interceptor ---
+        const sudoStorage = localStorage.getItem('vemtap-sudo-storage');
+        if (sudoStorage) {
+            try {
+                const { state } = JSON.parse(sudoStorage);
+                const session = state?.activeSession;
+                if (session && Date.now() < session.expiresAt) {
+                    const headerKey = session.type === 'business' ? 'X-VemTap-Sudo-Business' : 'X-VemTap-Sudo-Customer';
+                    headers.set(headerKey, session.subjectId);
+                    if (session.ticketRef) {
+                        headers.set('X-VemTap-Sudo-Ticket', session.ticketRef);
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing sudo storage', e);
+            }
+        }
+        // ------------------------------
     }
 
     const response = await fetch(url, {

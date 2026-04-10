@@ -1,33 +1,84 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { Search, ShieldCheck, LogIn } from 'lucide-react';
-import { useControlTowerBusinesses } from '@/services/control-tower/hooks';
+import { useRouter } from 'next/navigation';
+import { Search, ShieldCheck, LogIn, Loader2 } from 'lucide-react';
+import { useControlTowerBusinesses, useExecuteBusinessSudoAction } from '@/services/control-tower/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useSudoStore } from '@/store/useSudoStore';
+import toast from 'react-hot-toast';
 
 export default function BusinessOverridePage() {
+    const router = useRouter();
     const [businessQuery, setBusinessQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
     const debouncedBusinessQuery = useDebounce(businessQuery, 500);
-    const { data: businesses, isLoading: isLoadingBusinesses } = useControlTowerBusinesses({
+    
+    // Reset to page 1 when search query changes
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedBusinessQuery]);
+
+    // Workaround: fetch a larger limit (100) to allow client-side pagination
+    // since the backend and its DTO were reverted.
+    const { data: allBusinesses = [], isLoading: isLoadingBusinesses } = useControlTowerBusinesses({
         query: debouncedBusinessQuery,
-        limit: 10,
+        limit: 100,
     });
+
+    // Client-side pagination logic
+    const itemsPerPage = 10;
+    const totalItems = allBusinesses.length;
+    const lastPage = Math.ceil(totalItems / itemsPerPage);
+    const paginatedBusinesses = allBusinesses.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const { startSession } = useSudoStore();
+    const sudoMutation = useExecuteBusinessSudoAction();
+
+    const handleSudoLogin = async (biz: any) => {
+        try {
+            await sudoMutation.mutateAsync({
+                businessUid: biz.uid,
+                actionKey: 'assume_session',
+                payload: {
+                    businessName: biz.name,
+                    adminEntry: true
+                }
+            });
+
+            const durationMs = 15 * 60 * 1000; 
+            startSession({
+                type: 'business',
+                subjectId: biz.uid,
+                expiresAt: Date.now() + durationMs,
+            });
+
+            toast.success(`Entering Sudo mode for ${biz.name}`);
+            router.push('/dashboard');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to start sudo session');
+        }
+    };
 
     return (
         <div className="p-4 md:p-8 space-y-10">
-            <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Control Tower</p>
-                <h1 className="text-3xl font-display font-bold text-text-main mt-1">Business Override</h1>
-                <p className="text-sm text-text-secondary font-medium mt-1">Search and run major business workflows in admin mode.</p>
-            </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Control Tower</p>
+                    <h1 className="text-3xl font-display font-bold text-text-main mt-1">Business Override</h1>
+                    <p className="text-sm text-text-secondary font-medium mt-1">Search and run major business workflows in admin mode.</p>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
-                    <ShieldCheck size={18} className="text-blue-600 mt-0.5" />
-                    <div>
-                        <p className="text-xs text-blue-900 font-bold">Authorized Dashboard Access</p>
-                        <p className="text-xs text-blue-800 font-medium mt-0.5">Logging into a business dashboard as sudo grants full access for 15 minutes. All actions are logged.</p>
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                        <ShieldCheck size={18} className="text-blue-600 mt-0.5" />
+                        <div>
+                            <p className="text-xs text-blue-900 font-bold">Authorized Dashboard Access</p>
+                            <p className="text-xs text-blue-800 font-medium mt-0.5">Logging into a business dashboard as sudo grants full access for 15 minutes. All actions are logged.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -42,8 +93,8 @@ export default function BusinessOverridePage() {
                             <input
                                 value={businessQuery}
                                 onChange={(e) => setBusinessQuery(e.target.value)}
-                                className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                placeholder="Search business by name, owner, or UID..."
+                                className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+                                placeholder="Search business by name, owner, or email..."
                             />
                         </div>
                     </div>
@@ -62,20 +113,20 @@ export default function BusinessOverridePage() {
                         <tbody className="divide-y divide-gray-100">
                             {isLoadingBusinesses ? (
                                 <tr>
-                                    <td colSpan={4} className="py-12 text-center text-sm text-text-secondary italic">Loading businesses...</td>
+                                    <td colSpan={4} className="py-12 text-center text-sm text-text-secondary italic">Loading data...</td>
                                 </tr>
-                            ) : businesses?.length === 0 ? (
+                            ) : paginatedBusinesses.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} className="py-12 text-center text-sm text-text-secondary italic">No businesses found</td>
                                 </tr>
                             ) : (
-                                businesses?.map((biz) => (
+                                paginatedBusinesses.map((biz: any) => (
                                     <tr
                                         key={biz.uid}
                                         className="hover:bg-gray-50/50 transition-colors group"
                                     >
                                         <td className="py-4 px-6">
-                                            <p className="font-bold text-sm text-text-main">{biz.name}</p>
+                                            <p className="font-bold text-sm text-text-main group-hover:text-primary transition-colors">{biz.name}</p>
                                             <p className="text-[10px] text-text-secondary font-mono mt-0.5">{biz.uid} • {biz.owner}</p>
                                         </td>
                                         <td className="py-4 px-6 text-sm font-bold text-text-main">{biz.users}</td>
@@ -85,19 +136,50 @@ export default function BusinessOverridePage() {
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-right">
-                                            <Link
-                                                href={`/dashboard?admin_mode=1&business_uid=${encodeURIComponent(biz.uid)}`}
-                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95"
+                                            <button
+                                                onClick={() => handleSudoLogin(biz)}
+                                                disabled={sudoMutation.isPending}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                                             >
-                                                <LogIn size={14} />
+                                                {sudoMutation.isPending ? (
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                ) : (
+                                                    <LogIn size={14} />
+                                                )}
                                                 Sudo Login
-                                            </Link>
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
                             )}
                         </tbody>
                     </table>
+
+                    {/* Workaround Pagination Controls */}
+                    {totalItems > itemsPerPage && (
+                        <div className="bg-gray-50/50 border-t border-gray-100 px-6 py-4 flex items-center justify-between">
+                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+                                Page <span className="text-text-main">{currentPage}</span> of <span className="text-text-main">{lastPage}</span>
+                                <span className="ml-2 font-medium capitalize">({totalItems} results available)</span>
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-sm"
+                                >
+                                    Prev
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(lastPage, prev + 1))}
+                                    disabled={currentPage === lastPage}
+                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-sm"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
