@@ -39,10 +39,14 @@ interface MenuItem {
     onClick?: () => void;
 }
 
+import { useSudoStore } from '@/store/useSudoStore';
+
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { activeSession } = useSudoStore();
+    const isAdminMode = activeSession !== null;
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => {
         setIsMounted(true);
@@ -314,7 +318,22 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const filteredMenuItems = menuItems.filter(item => {
         const userRole = (user?.role as string)?.toLowerCase() || 'owner';
         if (userRole === 'admin') return true;
+        
+        // Hide sensitive items in Admin Sudo mode
+        if (isAdminMode) {
+            if (item.id === 'staff') return false;
+        }
+
         return !item.roles || item.roles.includes(userRole);
+    }).map(item => {
+        // Further filter submenus if in sudo mode
+        if (isAdminMode && item.id === 'settings' && item.submenu) {
+            return {
+                ...item,
+                submenu: item.submenu.filter(sub => sub.label !== 'Subscription')
+            };
+        }
+        return item;
     });
 
     const isActive = (href: string) => pathname === href;

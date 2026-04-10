@@ -20,10 +20,10 @@ export function useUrlPersistence() {
         try {
             const url = new URL(href, baseUrl || 'https://localhost');
             
-            // Parameters to persist
-            const sudoParams = ['admin_mode', 'business_uid', 'customer_uid', 'ticket_ref', 'branchId'];
+            // Parameters to persist (excluding sudo params now handled by global store)
+            const paramsToPersist = ['branchId'];
             
-            sudoParams.forEach(param => {
+            paramsToPersist.forEach(param => {
                 const value = searchParams.get(param);
                 if (value && !url.searchParams.has(param)) {
                     url.searchParams.set(param, value);

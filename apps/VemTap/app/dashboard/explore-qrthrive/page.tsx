@@ -127,7 +127,7 @@ export default function ExploreQRThrivePage() {
                         transition={{ delay: 0.3 }}
                     >
                         <a 
-                            href="https://test.qrthrive.com" 
+                            href="https://qrthrive.vercel.app" 
                             target="_blank" 
                             className="inline-flex items-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 group"
                         >
@@ -245,7 +245,7 @@ export default function ExploreQRThrivePage() {
                 </p>
                 <div className="pt-4 relative z-10">
                     <a 
-                        href="https://test.qrthrive.com" 
+                        href="https://qrthrive.vercel.app" 
                         target="_blank" 
                         className="inline-flex items-center gap-4 px-12 py-6 bg-white text-primary rounded-[2rem] font-black uppercase tracking-widest text-lg hover:scale-105 transition-all shadow-2xl active:scale-95"
                     >

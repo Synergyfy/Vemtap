@@ -374,7 +374,7 @@ export default function BusinessLinkPage() {
                                                         <div>
                                                             <span className="text-[10px] font-black text-slate-400 uppercase block leading-none mb-1">QR Marketing</span>
                                                             <a
-                                                                href={`https://test.qrthrive.com/?type=url&url=${encodeURIComponent(deviceUrl)}`}
+                                                                href={`https://qrthrive.vercel.app/?type=url&url=${encodeURIComponent(deviceUrl)}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className="flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-tighter"

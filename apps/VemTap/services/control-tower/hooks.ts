@@ -4,7 +4,6 @@ import {
     BusinessControlRecord,
     CustomerControlRecord,
     BusinessSudoActionDto,
-    CustomerSudoActionDto,
     SudoActionResponse,
     ControlTowerSearchFilter,
 } from './types';
@@ -15,7 +14,7 @@ export const useControlTowerBusinesses = (filter: ControlTowerSearchFilter) => {
         queryFn: async () => {
             const q = new URLSearchParams();
             if (filter.query) q.set('query', filter.query);
-            if (filter.limit && filter.limit !== 10) q.set('limit', String(filter.limit));
+            if (filter.limit) q.set('limit', String(filter.limit));
             return await api.get(`/admin/control-tower/businesses?${q.toString()}`);
         },
 
@@ -28,7 +27,7 @@ export const useControlTowerCustomers = (filter: ControlTowerSearchFilter) => {
         queryFn: async () => {
             const q = new URLSearchParams();
             if (filter.query) q.set('query', filter.query);
-            if (filter.limit && filter.limit !== 10) q.set('limit', String(filter.limit));
+            if (filter.limit) q.set('limit', String(filter.limit));
             return await api.get(`/admin/control-tower/customers?${q.toString()}`);
         },
 
