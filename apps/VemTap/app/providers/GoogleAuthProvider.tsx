@@ -7,12 +7,11 @@ export default function GoogleAuthProvider({ children }: { children: React.React
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   if (!clientId) {
-    console.warn('Google Client ID is not defined in environment variables');
-    return <>{children}</>;
+    console.warn('Google Client ID is not defined in environment variables. Google Login will not function correctly.');
   }
 
   return (
-    <GoogleOAuthProvider clientId={clientId}>
+    <GoogleOAuthProvider clientId={clientId || "placeholder-id"}>
       {children}
     </GoogleOAuthProvider>
   );
