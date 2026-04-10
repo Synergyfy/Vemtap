@@ -17,9 +17,9 @@ export default function DashboardMobileNav() {
             href: '/dashboard/visitors/all'
         },
         {
-            label: 'NFC',
+            label: 'Business Link',
             icon: Nfc,
-            href: '/dashboard/nfc-manager'
+            href: '/dashboard/business-link'
         },
         {
             label: 'Team',
