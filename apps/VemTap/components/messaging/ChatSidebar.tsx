@@ -178,7 +178,10 @@ export default function ChatSidebar() {
 
     const availableVisitors = useMemo(() => {
         const q = customerQuery?.toLowerCase() || '';
-        return (visitors as any[]).filter(v => v.name?.toLowerCase().includes(q));
+        return (visitors as any[]).filter(v => {
+            const name = v.name || `${v.firstName || ''} ${v.lastName || ''}`.trim() || 'Visitor';
+            return name.toLowerCase().includes(q);
+        });
     }, [visitors, customerQuery]);
 
     useEffect(() => {
