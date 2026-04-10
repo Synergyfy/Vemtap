@@ -11,7 +11,7 @@ interface EditVisitorModalProps {
     onClose: () => void;
     onSubmit: (data: VisitorFormData) => void;
     visitor: {
-        name: string;
+        name?: string;
         email: string;
         phone: string;
         status: string;
@@ -32,7 +32,7 @@ export default function EditVisitorModal({ isOpen, onClose, onSubmit, visitor, i
     useEffect(() => {
         if (visitor) {
             reset({
-                name: visitor.name,
+                name: visitor.name || `${(visitor as any).firstName || ''} ${(visitor as any).lastName || ''}`.trim() || 'Visitor',
                 email: visitor.email,
                 phone: visitor.phone,
                 status: visitor.status || 'Active',

@@ -14,6 +14,11 @@ import { BotConversationContext } from './entities/conversation-context.entity';
 import { User } from '../users/entities/user.entity';
 import { BusinessCreditWallet } from '../messaging/entities/business-credit-wallet.entity';
 
+import { MessagingModule } from '../messaging/messaging.module';
+import { SupportGateway } from './support.gateway';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -26,9 +31,19 @@ import { BusinessCreditWallet } from '../messaging/entities/business-credit-wall
       User,
       BusinessCreditWallet,
     ]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRATION') as any,
+        },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   controllers: [SupportController, AgentSupportController],
-  providers: [SupportService, SupportBotService, BotContextService, ConversationContextService],
-  exports: [SupportService, SupportBotService, BotContextService, ConversationContextService],
+  providers: [SupportService, SupportBotService, BotContextService, ConversationContextService, SupportGateway],
+  exports: [SupportService, SupportBotService, BotContextService, ConversationContextService, SupportGateway],
 })
 export class SupportModule {}

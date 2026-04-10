@@ -10,6 +10,9 @@ export class VisitorResponseDto {
   @ApiProperty({ example: 'Doe' })
   lastName: string;
 
+  @ApiProperty({ example: 'John Doe' })
+  name: string;
+
   @ApiProperty({ example: 'john@example.com' })
   email: string;
 
@@ -42,6 +45,9 @@ export class NewVisitorResponseDto {
   @ApiProperty({ example: 'Doe' })
   lastName: string;
 
+  @ApiProperty({ example: 'John Doe' })
+  name: string;
+
   @ApiProperty({ example: 'john@example.com' })
   email: string;
 
@@ -67,6 +73,9 @@ export class ReturningVisitorResponseDto {
 
   @ApiProperty({ example: 'Doe' })
   lastName: string;
+
+  @ApiProperty({ example: 'John Doe' })
+  name: string;
 
   @ApiProperty({ example: 'john@example.com' })
   email: string;
