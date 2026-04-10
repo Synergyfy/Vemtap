@@ -8,6 +8,10 @@ import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { useEscalateChat, useSendSupportMessage, useSupportTicket, useUserSupportTickets } from '@/services/support/hooks';
+import { useSupportSocket } from '@/hooks/useSupportSocket';
+import { toast } from 'react-hot-toast';
 
 export default function SupportChatbot() {
     const pathname = usePathname();
@@ -27,8 +31,70 @@ export default function SupportChatbot() {
         message: ''
     });
     const [handedToAgent, setHandedToAgent] = useState(false);
+    const [liveTicketId, setLiveTicketId] = useState<string | null>(null);
+    
+    // Hooks
+    const escalateMutation = useEscalateChat();
+    const { socket, isConnected } = useSupportSocket({ enabled: handedToAgent });
+    const { data: ticketData, refetch: refetchTicket } = useSupportTicket(liveTicketId || '', false);
+    const { data: userTicketsData } = useUserSupportTickets(1, 5);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-resume check
+    useEffect(() => {
+        if (isAuthenticated && userTicketsData?.data && !handedToAgent) {
+            const activeChat = userTicketsData.data.find((t: any) => 
+                t.type === 'Chat' && (t.status === 'Pending' || t.status === 'In Progress')
+            );
+            if (activeChat) {
+                setLiveTicketId(activeChat.id);
+                setHandedToAgent(true);
+                // If history is empty, could potentially load the activeChat.messages here
+                // For now, it will start with a fresh local history but connected to the socket
+            }
+        }
+    }, [isAuthenticated, userTicketsData, handedToAgent]);
+
+    // Socket listeners
+    useEffect(() => {
+        if (socket && handedToAgent && liveTicketId) {
+            socket.emit('joinTicket', { ticketId: liveTicketId });
+
+            const handleNewMessage = (msg: any) => {
+                // To avoid duplication, we check if the message is already in our history
+                // But since we are switching from Bot to Human, the bot history is local
+                // while human history comes from the backend.
+                // For simplicity, we'll just add the message if it's from the agent.
+                if (msg.senderId !== user?.id) {
+                    addMessage({
+                        role: 'assistant',
+                        content: msg.message
+                    });
+                }
+            };
+
+            const handleStatusUpdate = ({ status }: { status: string }) => {
+                if (status === 'Resolved') {
+                    addMessage({
+                        role: 'assistant',
+                        content: "This support session has been marked as resolved. Feel free to start a new chat if you need further assistance."
+                    });
+                    setHandedToAgent(false);
+                    setLiveTicketId(null);
+                }
+            };
+
+            socket.on('newSupportMessage', handleNewMessage);
+            socket.on('ticketStatusUpdated', handleStatusUpdate);
+
+            return () => {
+                socket.off('newSupportMessage', handleNewMessage);
+                socket.off('ticketStatusUpdated', handleStatusUpdate);
+                socket.emit('leaveTicket', { ticketId: liveTicketId });
+            };
+        }
+    }, [socket, handedToAgent, liveTicketId, addMessage, user?.id]);
 
     // Initial greeting if history is empty and logged in
     useEffect(() => {
@@ -106,6 +172,31 @@ export default function SupportChatbot() {
         }
     };
 
+    const handleEscalate = async () => {
+        if (!isAuthenticated) {
+            toast.error("Please log in to chat with a human agent.");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const lastUserMsg = history.filter(m => m.role === 'user').pop();
+            const ticket = await escalateMutation.mutateAsync({ 
+                initialMessage: lastUserMsg?.content || "User requested live support" 
+            });
+            setLiveTicketId(ticket.id);
+            setHandedToAgent(true);
+            addMessage({
+                role: 'assistant',
+                content: "Transferring you to a human agent... please hold on while one of our team members joins the chat."
+            });
+        } catch (error) {
+            toast.error("Failed to connect to agent. Please try again later.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isLoading) return;
 
@@ -113,20 +204,16 @@ export default function SupportChatbot() {
         setInputValue('');
         addMessage({ role: 'user', content: userText });
         
-        if (handedToAgent) {
-            // Mock agent interaction if already handed to agent
+        if (handedToAgent && liveTicketId) {
+            // Send to real support API
             setIsLoading(true);
-            setTimeout(() => {
+            try {
+                await api.post(`/support/tickets/${liveTicketId}/message`, { message: userText });
+            } catch (error) {
+                toast.error("Message not sent. Check your connection.");
+            } finally {
                 setIsLoading(false);
-                setIsTyping(true);
-                setTimeout(() => {
-                    setIsTyping(false);
-                    addMessage({
-                        role: 'assistant',
-                        content: "Thanks for reaching out! I've received your message. One of our agents is reviewing it now and will get back to you shortly."
-                    });
-                }, 2000);
-            }, 800);
+            }
         } else {
             await sendQuery(userText);
         }
@@ -237,13 +324,28 @@ export default function SupportChatbot() {
                                         <div className="text-white">
                                             <h3 className="font-bold text-lg leading-tight tracking-tight">VemTap Support</h3>
                                             <div className="flex items-center gap-1.5 overflow-hidden">
-                                                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full flex-shrink-0 animate-pulse"></span>
-                                                <p className="text-[10px] font-black uppercase tracking-widest opacity-90 truncate">Human Agent • Online</p>
+                                                <span className={cn(
+                                                    "w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse",
+                                                    handedToAgent ? "bg-emerald-400" : "bg-blue-400"
+                                                )}></span>
+                                                <p className="text-[10px] font-black uppercase tracking-widest opacity-90 truncate">
+                                                    {handedToAgent ? 'Human Agent • Online' : 'Automated Bot • Active'}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <button onClick={() => { clearHistory(); setIsSubmitted(false); }} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><Trash2 size={18} /></button>
+                                        {!handedToAgent && isAuthenticated && (
+                                            <button 
+                                                onClick={handleEscalate}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-white mr-2"
+                                                title="Talk to Human"
+                                            >
+                                                <User size={14} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Agent</span>
+                                            </button>
+                                        )}
+                                        <button onClick={() => { clearHistory(); setIsSubmitted(false); setHandedToAgent(false); setLiveTicketId(null); }} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><Trash2 size={18} /></button>
                                         <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white">{isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
                                         <button onClick={() => setIsOpen(false)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><X size={20} /></button>
                                     </div>

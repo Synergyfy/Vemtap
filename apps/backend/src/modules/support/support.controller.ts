@@ -59,6 +59,16 @@ export class SupportController {
     return this.botService.handleQuery(req.user.id, dto);
   }
 
+  @Post('escalate')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Escalate bot session to a live human agent' })
+  async escalateChat(
+    @Request() req: AuthRequest,
+    @Body('initialMessage') initialMessage?: string,
+  ) {
+    return this.supportService.escalateChat(req.user.id, initialMessage);
+  }
+
   @Patch('bot/interaction/:id')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
   @ApiOperation({ summary: 'Submit feedback for a bot interaction' })
