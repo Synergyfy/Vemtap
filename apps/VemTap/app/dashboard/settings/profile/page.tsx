@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSudoStore } from '@/store/useSudoStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { uploadToCloudinary } from '@/lib/cloudinary';
@@ -61,6 +62,7 @@ const statesData: Record<string, string[]> = {
 };
 
 export default function BusinessProfilePage() {
+    const isAdminMode = useSudoStore(state => state.activeSession !== null);
     const searchParams = useSearchParams();
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
     const user = useAuthStore((state) => state.user);
@@ -1209,90 +1211,92 @@ export default function BusinessProfilePage() {
                         )}
 
                         {/* Account Security Section */}
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                        <ShieldCheck size={20} />
+                        {!isAdminMode && (
+                            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                            <ShieldCheck size={20} />
+                                        </div>
+                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Account Security</h3>
                                     </div>
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Account Security</h3>
                                 </div>
+                                <form onSubmit={handleUpdatePassword} className="p-8 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Password</label>
+                                            <div className="relative">
+                                                <input
+                                                    type={showCurrentPassword ? "text" : "password"}
+                                                    value={currentPassword}
+                                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                                    placeholder="••••••••"
+                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                    required
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                                >
+                                                    {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">New Password</label>
+                                            <div className="relative">
+                                                <input
+                                                    type={showNewPassword ? "text" : "password"}
+                                                    value={newPassword}
+                                                    onChange={(e) => setNewPassword(e.target.value)}
+                                                    placeholder="••••••••"
+                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                    required
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowNewPassword(!showNewPassword)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                                >
+                                                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm New Password</label>
+                                            <div className="relative">
+                                                <input
+                                                    type={showConfirmNewPassword ? "text" : "password"}
+                                                    value={confirmNewPassword}
+                                                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                                    placeholder="••••••••"
+                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                    required
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                                >
+                                                    {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button
+                                            type="submit"
+                                            disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
+                                            className="h-11 px-8 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        >
+                                            {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+                                            Update Password
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                            <form onSubmit={handleUpdatePassword} className="p-8 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Password</label>
-                                        <div className="relative">
-                                            <input
-                                                type={showCurrentPassword ? "text" : "password"}
-                                                value={currentPassword}
-                                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                                placeholder="••••••••"
-                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                required
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
-                                            >
-                                                {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">New Password</label>
-                                        <div className="relative">
-                                            <input
-                                                type={showNewPassword ? "text" : "password"}
-                                                value={newPassword}
-                                                onChange={(e) => setNewPassword(e.target.value)}
-                                                placeholder="••••••••"
-                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                required
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowNewPassword(!showNewPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
-                                            >
-                                                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm New Password</label>
-                                        <div className="relative">
-                                            <input
-                                                type={showConfirmNewPassword ? "text" : "password"}
-                                                value={confirmNewPassword}
-                                                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                                                placeholder="••••••••"
-                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                required
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
-                                            >
-                                                {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex justify-end">
-                                    <button
-                                        type="submit"
-                                        disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
-                                        className="h-11 px-8 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-                                        Update Password
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                        )}
                     </div>
                 )}
                 {activeTab === 'schedule' && !isAllBranches && (
