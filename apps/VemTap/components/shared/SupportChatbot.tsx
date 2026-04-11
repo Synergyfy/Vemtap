@@ -42,18 +42,36 @@ export default function SupportChatbot() {
 
     // Auto-resume check
     useEffect(() => {
-        if (isAuthenticated && userTicketsData?.data && !handedToAgent) {
-            const activeChat = userTicketsData.data.find((t: any) => 
-                t.type === 'Chat' && (t.status === 'Pending' || t.status === 'In Progress')
-            );
-            if (activeChat) {
-                setLiveTicketId(activeChat.id);
-                setHandedToAgent(true);
-                // If history is empty, could potentially load the activeChat.messages here
-                // For now, it will start with a fresh local history but connected to the socket
+        const resumeActiveChat = async () => {
+            if (isAuthenticated && userTicketsData?.data && !handedToAgent) {
+                const activeChat = userTicketsData.data.find((t: any) => 
+                    t.type === 'Chat' && (t.status === 'Pending' || t.status === 'In Progress')
+                );
+                if (activeChat) {
+                    setLiveTicketId(activeChat.id);
+                    setHandedToAgent(true);
+                    
+                    // Load history from backend if store is empty
+                    if (history.length === 0) {
+                        try {
+                            const fullTicket = await api.get(`/support/tickets/${activeChat.id}`);
+                            if (fullTicket.messages) {
+                                fullTicket.messages.forEach((m: any) => {
+                                    addMessage({
+                                        role: !m.senderId ? 'assistant' : (m.senderId === user?.id ? 'user' : 'assistant'),
+                                        content: m.message
+                                    });
+                                });
+                            }
+                        } catch (err) {
+                            console.error("Failed to load history", err);
+                        }
+                    }
+                }
             }
-        }
-    }, [isAuthenticated, userTicketsData, handedToAgent]);
+        };
+        resumeActiveChat();
+    }, [isAuthenticated, userTicketsData, handedToAgent, history.length, addMessage, user?.id]);
 
     // Socket listeners
     useEffect(() => {
@@ -325,16 +343,6 @@ export default function SupportChatbot() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        {!handedToAgent && isAuthenticated && (
-                                            <button 
-                                                onClick={handleEscalate}
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-white mr-2"
-                                                title="Talk to Human"
-                                            >
-                                                <User size={14} />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Agent</span>
-                                            </button>
-                                        )}
                                         <button onClick={() => { clearHistory(); setIsSubmitted(false); setHandedToAgent(false); setLiveTicketId(null); }} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><Trash2 size={18} /></button>
                                         <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white">{isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
                                         <button onClick={() => setIsOpen(false)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><X size={20} /></button>
@@ -391,9 +399,10 @@ export default function SupportChatbot() {
                                                             </div>
                                                             <div className={`rounded-2xl px-5 py-3.5 shadow-sm relative ${message.role === 'user' ? 'bg-linear-to-br from-indigo-600 to-indigo-500 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
                                                                 <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                                                                <p className={`text-[9px] font-bold mt-1.5 flex items-center gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
-                                                                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                </p>
+                                                                <div className={`text-[9px] font-bold mt-1.5 flex items-center justify-between gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
+                                                                    <span>{message.role === 'assistant' && !message.interactionId ? 'Support Bot' : ''}</span>
+                                                                    <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </motion.div>
@@ -413,6 +422,21 @@ export default function SupportChatbot() {
                                                             </div>
                                                         </div>
                                                     </div>
+                                                )}
+                                                {refetchTicket && !handedToAgent && history.length > 0 && isAuthenticated && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        className="flex justify-center py-2"
+                                                    >
+                                                        <button 
+                                                            onClick={handleEscalate}
+                                                            className="flex items-center gap-2 px-6 py-3 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold text-xs shadow-lg shadow-blue-200 transition-all active:scale-95 group"
+                                                        >
+                                                            <Headset size={16} className="group-hover:rotate-12 transition-transform" />
+                                                            <span>Talk to a Human Agent</span>
+                                                        </button>
+                                                    </motion.div>
                                                 )}
                                                 <div ref={messagesEndRef} />
                                             </div>

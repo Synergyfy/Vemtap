@@ -14,6 +14,7 @@ import { AgentStatsDto } from './dto/agent-stats.dto';
 import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
 
 import { SupportGateway } from './support.gateway';
+import { ConversationContextService } from './conversation-context.service';
 
 @Injectable()
 export class SupportService {
@@ -27,6 +28,7 @@ export class SupportService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private readonly supportGateway: SupportGateway,
+    private readonly conversationContextService: ConversationContextService,
   ) {}
 
   async escalateChat(userId: string, initialMessage?: string): Promise<SupportTicket> {
@@ -52,6 +54,20 @@ export class SupportService {
       channel: 'Chatbot',
     });
     const savedTicket = await this.ticketRepository.save(ticket);
+
+    // Persist bot conversation history
+    const botContext = await this.conversationContextService.getContext(userId);
+    if (botContext && botContext.messages && botContext.messages.length > 0) {
+      const historyMessages = botContext.messages.map((msg) =>
+        this.messageRepository.create({
+          ticketId: savedTicket.id,
+          senderId: msg.role === 'user' ? userId : null,
+          message: msg.content,
+          createdAt: msg.timestamp || new Date(),
+        }),
+      );
+      await this.messageRepository.save(historyMessages);
+    }
 
     if (initialMessage) {
       const message = this.messageRepository.create({

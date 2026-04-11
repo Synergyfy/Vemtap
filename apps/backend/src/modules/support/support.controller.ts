@@ -9,7 +9,9 @@ import {
   Query,
   Patch,
   Delete,
+  Logger,
 } from '@nestjs/common';
+import { Public } from '../../common/decorators/public.decorator';
 import { SupportService } from './support.service';
 import { SupportBotService } from './support-bot.service';
 import { ConversationContextService } from './conversation-context.service';
@@ -43,6 +45,8 @@ type AuthRequest = { user: { id: string; role: UserRole } };
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('support')
 export class SupportController {
+  private readonly logger = new Logger(SupportController.name);
+
   constructor(
     private readonly supportService: SupportService,
     private readonly botService: SupportBotService,
