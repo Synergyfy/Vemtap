@@ -2,14 +2,49 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ShieldCheck, LogIn } from 'lucide-react';
-import { useControlTowerCustomers } from '@/services/control-tower/hooks';
+import { Search, ShieldCheck, LogIn, Loader2 } from 'lucide-react';
+import { useControlTowerCustomers, useExecuteCustomerSudoAction } from '@/services/control-tower/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useSudoStore } from '@/store/useSudoStore';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function CustomerOverridePage() {
+    const router = useRouter();
     const [query, setQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const debouncedQuery = useDebounce(query, 500);
+
+    const { startSession } = useSudoStore();
+    const sudoMutation = useExecuteCustomerSudoAction();
+
+    const handleSudoLogin = async (customer: any) => {
+        try {
+            // Optional: Backend action to record session start
+            await sudoMutation.mutateAsync({
+                customerUid: customer.uid,
+                businessUid: customer.businessUid,
+                actionKey: 'close_issue',
+                payload: {
+                    customerName: customer.name,
+                    adminEntry: true
+                }
+            });
+
+            const durationMs = 15 * 60 * 1000; // Standard 15m
+            startSession({
+                type: 'customer',
+                subjectId: customer.uid,
+                expiresAt: Date.now() + durationMs,
+                permissions: ['VIEW_EDIT'] // Default for direct override
+            });
+
+            toast.success(`Entering Sudo mode for ${customer.name}`);
+            router.push(`/customer/dashboard?admin_mode=1&customer_uid=${customer.uid}&business_uid=${customer.businessUid}`);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to start sudo session');
+        }
+    };
 
     // Reset to page 1 when search query changes
     React.useEffect(() => {
@@ -100,13 +135,18 @@ export default function CustomerOverridePage() {
                                         </td>
                                         <td className="py-4 px-6 text-sm text-text-main font-bold">{customer.visits}</td>
                                         <td className="py-4 px-6 text-right">
-                                            <Link
-                                                href={`/customer/dashboard?admin_mode=1&customer_uid=${encodeURIComponent(customer.uid)}&business_uid=${encodeURIComponent(customer.businessUid)}`}
-                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95"
+                                            <button
+                                                onClick={() => handleSudoLogin(customer)}
+                                                disabled={sudoMutation.isPending}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                                             >
-                                                <LogIn size={14} />
+                                                {sudoMutation.isPending ? (
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                ) : (
+                                                    <LogIn size={14} />
+                                                )}
                                                 Sudo Login
-                                            </Link>
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
