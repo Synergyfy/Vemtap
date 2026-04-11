@@ -11,7 +11,7 @@ import { Business } from '../../businesses/entities/business.entity';
 import { User } from '../../users/entities/user.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Campaign } from '../../campaigns/entities/campaign.entity';
-import { MessageCampaign } from '../../messaging/entities/message-campaign.entity';
+import type { MessageCampaign } from '../../messaging/entities/message-campaign.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
 
@@ -169,7 +169,7 @@ export class Branch extends AbstractBaseEntity {
   @OneToMany(() => Campaign, (campaign) => campaign.branch)
   campaigns: Campaign[];
 
-  @OneToMany(() => MessageCampaign, (mc) => mc.branch)
+  @OneToMany('MessageCampaign', 'branch')
   messageCampaigns: MessageCampaign[];
 
   @BeforeInsert()

@@ -32,6 +32,7 @@ export default function SupportChatbot() {
     const [handedToAgent, setHandedToAgent] = useState(false);
     const [liveTicketId, setLiveTicketId] = useState<string | null>(null);
     const [isGuestIdentified, setIsGuestIdentified] = useState(false);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     
     // Hooks
     const escalateMutation = useEscalateChat();
@@ -40,6 +41,18 @@ export default function SupportChatbot() {
     const { data: userTicketsData } = useUserSupportTickets(1, 5);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    
+    // Initialize Session ID for Guests
+    useEffect(() => {
+        if (!isAuthenticated) {
+            let storedId = localStorage.getItem('vemtap_support_session');
+            if (!storedId) {
+                storedId = `js_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                localStorage.setItem('vemtap_support_session', storedId);
+            }
+            setSessionId(storedId);
+        }
+    }, [isAuthenticated]);
 
     // Auto-resume check
     useEffect(() => {
@@ -160,6 +173,7 @@ export default function SupportChatbot() {
                 context: getContext(),
                 guestName: guestDetails.name,
                 guestEmail: guestDetails.email,
+                sessionId: sessionId || undefined,
                 history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
             });
 
@@ -200,7 +214,8 @@ export default function SupportChatbot() {
             const ticket = await escalateMutation.mutateAsync({ 
                 initialMessage: lastUserMsg?.content || "User requested live support",
                 guestName: guestDetails.name,
-                guestEmail: guestDetails.email
+                guestEmail: guestDetails.email,
+                sessionId: sessionId || undefined
             });
             setLiveTicketId(ticket.id);
             setHandedToAgent(true);
@@ -433,7 +448,7 @@ export default function SupportChatbot() {
                                                         </div>
                                                     </div>
                                                 )}
-                                                {refetchTicket && !handedToAgent && history.length > 0 && (
+                                                {!handedToAgent && history.length > 0 && (
                                                     <motion.div 
                                                         initial={{ opacity: 0, y: 10 }}
                                                         animate={{ opacity: 1, y: 0 }}

@@ -26,7 +26,7 @@ export const useSupportTicket = (id: string, isAdmin: boolean = false) => {
 export const useEscalateChat = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { initialMessage?: string; guestName?: string; guestEmail?: string }) => 
+    mutationFn: (data: { initialMessage?: string; guestName?: string; guestEmail?: string; sessionId?: string }) => 
       api.post('/support/escalate', data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['user-support-tickets'] });

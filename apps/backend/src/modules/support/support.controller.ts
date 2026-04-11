@@ -74,12 +74,13 @@ export class SupportController {
     @Body('initialMessage') initialMessage?: string,
     @Body('guestName') guestName?: string,
     @Body('guestEmail') guestEmail?: string,
+    @Body('sessionId') sessionId?: string,
   ) {
     const userId = req.user?.id || null;
     const name = guestName || (req.body as any).guestName;
     const email = guestEmail || (req.body as any).guestEmail;
     
-    return this.supportService.escalateChat(userId, initialMessage, name, email);
+    return this.supportService.escalateChat(userId, initialMessage, name, email, sessionId);
   }
 
   @Patch('bot/interaction/:id')

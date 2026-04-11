@@ -36,6 +36,7 @@ export class SupportService {
     initialMessage?: string,
     guestName?: string,
     guestEmail?: string,
+    sessionId?: string,
   ): Promise<SupportTicket> {
     // Check for existing active chat
     const existingTicket = await this.ticketRepository.findOne({
@@ -76,12 +77,13 @@ export class SupportService {
     const savedTicket = await this.ticketRepository.save(ticket);
 
     // Persist bot conversation history
-    const botContext = await this.conversationContextService.getContext(userId, undefined); // Session ID would be better if we had it here
+    const botContext = await this.conversationContextService.getContext(userId, sessionId);
     if (botContext && botContext.messages && botContext.messages.length > 0) {
       const historyMessages = botContext.messages.map((msg) =>
         this.messageRepository.create({
           ticketId: savedTicket.id,
           senderId: msg.role === 'user' ? userId : null,
+          senderRole: msg.role === 'user' ? 'CUSTOMER' : 'BOT',
           message: msg.content,
           createdAt: msg.timestamp || new Date(),
         }),
@@ -93,6 +95,7 @@ export class SupportService {
       const message = this.messageRepository.create({
         ticketId: savedTicket.id,
         senderId: userId,
+        senderRole: 'CUSTOMER',
         message: initialMessage,
       });
       const savedMessage = await this.messageRepository.save(message);
@@ -128,6 +131,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: userId,
+      senderRole: 'CUSTOMER',
       message: dto.message,
     });
     await this.messageRepository.save(message);
@@ -170,6 +174,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: userId,
+      senderRole: 'CUSTOMER',
       message: messageText,
     });
 
@@ -288,6 +293,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: agentId,
+      senderRole: 'AGENT',
       message: messageText,
     });
 

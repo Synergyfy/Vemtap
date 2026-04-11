@@ -31,6 +31,13 @@ export class TicketMessage {
   @Column('text')
   message: string;
 
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'CUSTOMER',
+  })
+  senderRole: 'CUSTOMER' | 'AGENT' | 'BOT' | 'SYSTEM';
+
   @CreateDateColumn()
   createdAt: Date;
 }
