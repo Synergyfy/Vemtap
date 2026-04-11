@@ -446,6 +446,13 @@ const ServiceTypeSelector = ({ type, responses, onChange }: { type: string, resp
 
 // ─── Category Specific Questions ──────────────────────────────────────
 const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string, responses: any, onChange: (key: string, value: any) => void }) => {
+    const toggleMulti = (key: string, opt: string) => {
+        const current = Array.isArray(responses[key]) ? responses[key] : (responses[key] ? [responses[key]] : []);
+        const next = current.includes(opt) ? current.filter((v: any) => v !== opt) : [...current, opt];
+        onChange(key, next);
+    };
+    const isSelected = (key: string, opt: string) => Array.isArray(responses[key]) ? responses[key].includes(opt) : responses[key] === opt;
+
     if (type === 'Retail & Shops') {
         return (
             <div className="space-y-6">
@@ -458,10 +465,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Discovery Channel" tooltip="Where do most customers come from?" />
+                    <FieldLabel label="Discovery Channels" tooltip="Where do most customers come from? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Walk-ins', 'Referrals', 'Social media', 'Online store', 'Repeat customers'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.discoveryChannel === opt} onClick={() => onChange('discoveryChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('discoveryChannel', opt)} onClick={() => toggleMulti('discoveryChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -538,10 +545,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
 
                 {/* Section 6: Marketing */}
                 <GameCard>
-                    <FieldLabel label="Promotional Channels" tooltip="How do you let people know about your services?" />
+                    <FieldLabel label="Promotional Channels" tooltip="How do you let people know about your services? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Social media', 'Flyers', 'Radio', 'Referrals'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.marketingChannel === opt} onClick={() => onChange('marketingChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('marketingChannel', opt)} onClick={() => toggleMulti('marketingChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -724,20 +731,20 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Customer Acquisition" tooltip="How do customers usually come to you?" />
+                    <FieldLabel label="Customer Acquisition" tooltip="How do customers usually come to you? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Walk-ins', 'Appointment / Booking', 'Social media', 'Referrals'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.customerSource === opt} onClick={() => onChange('customerSource', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('customerSource', opt)} onClick={() => toggleMulti('customerSource', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 {/* Section 2: Booking & Waiting Experience */}
                 <GameCard>
-                    <FieldLabel label="Booking Process" tooltip="How do customers book or request your service?" />
+                    <FieldLabel label="Booking Process" tooltip="How do customers book or request your service? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Walk-in only', 'Phone call / WhatsApp', 'Social media DM', 'Structured booking system'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.bookingProcess === opt} onClick={() => onChange('bookingProcess', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('bookingProcess', opt)} onClick={() => toggleMulti('bookingProcess', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1157,20 +1164,20 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Student Discovery" tooltip="How do students usually find you?" />
+                    <FieldLabel label="Student Discovery" tooltip="How do students usually find you? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Referrals', 'Social media', 'Walk-ins', 'Online search'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.studentSource === opt} onClick={() => onChange('studentSource', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('studentSource', opt)} onClick={() => toggleMulti('studentSource', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 {/* Section 2: Enrollment Process */}
                 <GameCard>
-                    <FieldLabel label="Enrollment Method" tooltip="How do students enroll in your program?" />
+                    <FieldLabel label="Enrollment Method" tooltip="How do students enroll in your program? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Physical registration', 'Phone / WhatsApp', 'Online form', 'Structured system'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.enrollmentMethod === opt} onClick={() => onChange('enrollmentMethod', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('enrollmentMethod', opt)} onClick={() => toggleMulti('enrollmentMethod', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1305,20 +1312,20 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Client Discovery" tooltip="How do clients usually find you?" />
+                    <FieldLabel label="Client Discovery" tooltip="How do clients usually find you? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Referrals', 'Social media', 'Website', 'Freelance platforms'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.acquisitionChannel === opt} onClick={() => onChange('acquisitionChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('acquisitionChannel', opt)} onClick={() => toggleMulti('acquisitionChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 {/* Section 2: Engagement & Response */}
                 <GameCard>
-                    <FieldLabel label="Contact Method" tooltip="How do clients request your service?" />
+                    <FieldLabel label="Contact Method" tooltip="How do clients request your service? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['WhatsApp', 'Email', 'Phone call', 'Website form'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.contactMethod === opt} onClick={() => onChange('contactMethod', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('contactMethod', opt)} onClick={() => toggleMulti('contactMethod', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1447,10 +1454,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
 
                 {/* Section 8: Problems & Improvement */}
                 <GameCard>
-                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth." />
+                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth. (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Low conversion', 'Poor coordination', 'No customer data', 'Low awareness', 'Weak marketing'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1479,20 +1486,20 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Lead Channels" tooltip="How do clients usually find your properties?" />
+                    <FieldLabel label="Lead Channels" tooltip="How do clients usually find your properties? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Referrals', 'Social media', 'Property platforms', 'Walk-ins'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.clientSource === opt} onClick={() => onChange('clientSource', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('clientSource', opt)} onClick={() => toggleMulti('clientSource', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 {/* Section 2: Client Engagement */}
                 <GameCard>
-                    <FieldLabel label="Inquiry Method" tooltip="Primary channel for property inquiries" />
+                    <FieldLabel label="Inquiry Method" tooltip="Primary channel for property inquiries (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Phone call', 'WhatsApp', 'Website', 'Physical office'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.inquiryMethod === opt} onClick={() => onChange('inquiryMethod', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('inquiryMethod', opt)} onClick={() => toggleMulti('inquiryMethod', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1621,10 +1628,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
 
                 {/* Section 8: Problems & Improvement */}
                 <GameCard>
-                    <FieldLabel label="Primary Challenges" tooltip="What is your biggest bottleneck?" />
+                    <FieldLabel label="Primary Challenges" tooltip="What is your biggest bottleneck? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Low conversion', 'Poor follow-up', 'No listings', 'Weak marketing', 'Client drop-off'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1652,20 +1659,20 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Customer Channels" tooltip="How do customers usually find your business?" />
+                    <FieldLabel label="Customer Channels" tooltip="How do customers usually find your business? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Walk-ins', 'Referrals', 'Online / Social media', 'Repeat customers'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.customerSource === opt} onClick={() => onChange('customerSource', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('customerSource', opt)} onClick={() => toggleMulti('customerSource', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 {/* Section 2: Customer Experience & Waiting */}
                 <GameCard>
-                    <FieldLabel label="Service Request Method" tooltip="How do customers request your service?" />
+                    <FieldLabel label="Service Request Method" tooltip="How do customers request your service? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Walk-in only', 'Phone call', 'WhatsApp', 'Booking system'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.inquiryMethod === opt} onClick={() => onChange('inquiryMethod', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('inquiryMethod', opt)} onClick={() => toggleMulti('inquiryMethod', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1794,10 +1801,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
 
                 {/* Section 8: Problems & Improvement */}
                 <GameCard>
-                    <FieldLabel label="Primary Challenges" tooltip="What are your biggest pain points?" />
+                    <FieldLabel label="Primary Challenges" tooltip="What are your biggest pain points? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Long waiting time', 'No structured process', 'No customer data', 'Low repeat customers', 'Weak marketing'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1826,10 +1833,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Request Channels" tooltip="How do customers usually request your service?" />
+                    <FieldLabel label="Request Channels" tooltip="How do customers usually request your service? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Phone calls', 'WhatsApp', 'Walk-ins', 'App/Website'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.requestChannel === opt} onClick={() => onChange('requestChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('requestChannel', opt)} onClick={() => toggleMulti('requestChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -1968,10 +1975,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
 
                 {/* Section 8: Problems Identification */}
                 <GameCard>
-                    <FieldLabel label="Primary Challenges" tooltip="What are your biggest challenges?" />
+                    <FieldLabel label="Primary Challenges" tooltip="What are your biggest challenges? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Delivery delays', 'Poor coordination', 'No tracking system', 'Low repeat customers', 'Weak marketing'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -2354,20 +2361,20 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Acquisition Channel" tooltip="How do customers usually come to you?" />
+                    <FieldLabel label="Acquisition Channels" tooltip="How do customers usually come to you? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Walk-ins', 'Referrals', 'Agents', 'Digital channels'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.acquisitionChannel === opt} onClick={() => onChange('acquisitionChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('acquisitionChannel', opt)} onClick={() => toggleMulti('acquisitionChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 {/* Section 2: Customer Experience & Response */}
                 <GameCard>
-                    <FieldLabel label="Service Access Channels" tooltip="How do customers access your services?" />
+                    <FieldLabel label="Service Access Channels" tooltip="How do customers access your services? (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Physical branch', 'Agent network', 'Mobile app / website', 'Mixed channels'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.serviceChannel === opt} onClick={() => onChange('serviceChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('serviceChannel', opt)} onClick={() => toggleMulti('serviceChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -2496,10 +2503,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
 
                 {/* Section 8: Problems Identification */}
                 <GameCard>
-                    <FieldLabel label="Biggest Challenges" />
+                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth. (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Low customer trust', 'Slow service', 'Poor communication', 'Low retention', 'Weak awareness'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -2529,20 +2536,20 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Sales Channels" tooltip="How do customers find you?" />
+                    <FieldLabel label="Sales Channels" tooltip="How do customers find you? (Select all that apply)" />
                     <div className="grid grid-cols-2 gap-2">
                         {['Local market', 'Middlemen/agents', 'Direct buyers', 'Online channels'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.acquisitionChannel === opt} onClick={() => onChange('acquisitionChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('acquisitionChannel', opt)} onClick={() => toggleMulti('acquisitionChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 {/* Section 2: Sales & Order Process */}
                 <GameCard>
-                    <FieldLabel label="Ordering Method" tooltip="How do buyers place orders?" />
+                    <FieldLabel label="Ordering Methods" tooltip="How do buyers place orders? (Select all that apply)" />
                     <div className="grid grid-cols-2 gap-2">
                         {['Physical visit', 'Phone call', 'WhatsApp', 'Structured order system'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.orderMethod === opt} onClick={() => onChange('orderMethod', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('orderMethod', opt)} onClick={() => toggleMulti('orderMethod', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -2670,10 +2677,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                 </GameCard>
 
                 <GameCard>
-                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth." />
+                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth. (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Low sales', 'Poor market access', 'No structured orders', 'Low repeat buyers', 'Weak marketing'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -2757,19 +2764,19 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                     </div>
                 </GameCard>
                 <GameCard>
-                    <FieldLabel label="Growth Channels" tooltip="How do people usually join or find you?" />
+                    <FieldLabel label="Growth Channels" tooltip="How do people usually join or find you? (Select all that apply)" />
                     <div className="grid grid-cols-2 gap-2">
                         {['Referrals', 'Social media', 'Physical visits', 'Outreach programs'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.acquisitionChannel === opt} onClick={() => onChange('acquisitionChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('acquisitionChannel', opt)} onClick={() => toggleMulti('acquisitionChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
 
                 <GameCard>
-                    <FieldLabel label="Information Channel" tooltip="How do members receive updates?" />
+                    <FieldLabel label="Information Channels" tooltip="How do members receive updates? (Select all that apply)" />
                     <div className="grid grid-cols-2 gap-2">
                         {['Announcements (physical)', 'WhatsApp groups', 'SMS', 'Structured system'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.infoMethod === opt} onClick={() => onChange('infoMethod', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('infoMethod', opt)} onClick={() => toggleMulti('infoMethod', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -2892,10 +2899,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                 </GameCard>
 
                 <GameCard>
-                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth." />
+                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth. (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Poor communication', 'Low participation', 'Low donations', 'No structured system', 'Weak awareness'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -2933,10 +2940,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
 
                 {/* Section 2: Customer Interaction */}
                 <GameCard>
-                    <FieldLabel label="Acquisition Channels" tooltip="How do customers reach you?" />
+                    <FieldLabel label="Acquisition Channels" tooltip="How do customers reach you? (Select all that apply)" />
                     <div className="grid grid-cols-2 gap-2">
                         {['Phone', 'WhatsApp', 'Physical visit', 'Social media'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.acquisitionChannel === opt} onClick={() => onChange('acquisitionChannel', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('acquisitionChannel', opt)} onClick={() => toggleMulti('acquisitionChannel', opt)} />
                         ))}
                     </div>
                 </GameCard>
@@ -3064,10 +3071,10 @@ const CategorySpecificQuestions = ({ type, responses, onChange }: { type: string
                 </GameCard>
 
                 <GameCard>
-                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth." />
+                    <FieldLabel label="Biggest Challenges" tooltip="Identify the main bottlenecks or areas slowing down growth. (Select all that apply)" />
                     <div className="flex flex-wrap gap-2">
                         {['Low sales', 'Poor communication', 'No structure', 'Low repeat customers', 'Weak marketing'].map(opt => (
-                            <ChoicePill key={opt} label={opt} selected={responses.biggestChallenges === opt} onClick={() => onChange('biggestChallenges', opt)} />
+                            <ChoicePill key={opt} label={opt} selected={isSelected('biggestChallenges', opt)} onClick={() => toggleMulti('biggestChallenges', opt)} />
                         ))}
                     </div>
                 </GameCard>

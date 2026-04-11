@@ -12,7 +12,7 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap, ShoppingBag
+    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -39,10 +39,14 @@ interface MenuItem {
     onClick?: () => void;
 }
 
+import { useSudoStore } from '@/store/useSudoStore';
+
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { activeSession } = useSudoStore();
+    const isAdminMode = activeSession !== null;
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => {
         setIsMounted(true);
@@ -281,11 +285,18 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         },
         {
             id: 'devices',
-            label: 'NFC',
+            label: 'Business Link',
             icon: Nfc,
-            href: '/dashboard/nfc-manager',
+            href: '/dashboard/business-link',
             roles: ['owner', 'manager', 'staff'],
 
+        },
+        {
+            id: 'explore-qrthrive',
+            label: 'Explore QRThrive',
+            icon: QrCode,
+            href: '/dashboard/explore-qrthrive',
+            roles: ['owner', 'manager', 'staff'],
         },
 
         {
@@ -307,7 +318,26 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const filteredMenuItems = menuItems.filter(item => {
         const userRole = (user?.role as string)?.toLowerCase() || 'owner';
         if (userRole === 'admin') return true;
+        
+        // Hide sensitive items in Admin Sudo mode
+        if (isAdminMode) {
+            if (item.id === 'staff') return false;
+        }
+
         return !item.roles || item.roles.includes(userRole);
+    }).map(item => {
+        // Further filter submenus if in sudo mode (Step 6)
+        if (isAdminMode && item.id === 'settings' && item.submenu) {
+            return {
+                ...item,
+                submenu: item.submenu.filter(sub => 
+                    sub.label !== 'Subscription' && 
+                    sub.label !== 'Profile' &&
+                    sub.label !== 'Business Locations'
+                )
+            };
+        }
+        return item;
     });
 
     const isActive = (href: string) => pathname === href;

@@ -23,6 +23,7 @@ export default function SupportChatbot() {
     const [isLoading, setIsLoading] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const [contactForm, setContactForm] = useState({
         name: user?.name || '',
         email: user?.email || '',
@@ -136,6 +137,13 @@ export default function SupportChatbot() {
             });
         }
     }, [history.length, addMessage, isAuthenticated, user]);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -291,10 +299,12 @@ export default function SupportChatbot() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        className="fixed bottom-24 lg:bottom-6 right-6 z-60"
+                        className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-60"
                     >
                         <Draggable 
                             nodeRef={nodeRef}
+                            disabled={isMobile}
+                            cancel=".cancel-drag"
                             onStart={(e, data) => {
                                 setDragStartPos({ x: data.x, y: data.y });
                             }}
@@ -312,7 +322,7 @@ export default function SupportChatbot() {
                             <div ref={nodeRef} className="group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); if (!isDragging) setIsVisible(false); }}
-                                    className="bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="cancel-drag bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                     <X size={14} />
                                 </button>
@@ -342,13 +352,13 @@ export default function SupportChatbot() {
                         initial={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(10px)' }}
                         animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
                         exit={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(10px)' }}
-                        className={`fixed z-60 pointer-events-none ${isFullScreen ? 'inset-0' : 'inset-x-4 bottom-24 sm:inset-auto sm:bottom-6 sm:right-6 flex items-end justify-end transition-all duration-500'}`}
+                        className={`fixed z-60 pointer-events-none ${isFullScreen ? 'inset-0' : 'inset-x-0 bottom-0 sm:inset-auto sm:bottom-6 sm:right-6 flex items-end justify-end transition-all duration-500'}`}
                     >
-                        <Draggable nodeRef={windowRef} handle=".chat-header" disabled={isFullScreen}>
-                            <div ref={windowRef} className={`bg-white shadow-3xl overflow-hidden flex flex-col pointer-events-auto border border-gray-100 transition-all duration-300 ${isFullScreen ? 'w-full h-full rounded-none' : 'w-full sm:w-[420px] h-[min(650px,calc(100dvh-140px))] rounded-[2rem]'}`}
+                        <Draggable nodeRef={windowRef} handle=".chat-header" cancel="button" disabled={isFullScreen || isMobile}>
+                            <div ref={windowRef} className={`bg-white shadow-3xl overflow-hidden flex flex-col pointer-events-auto border border-gray-100 transition-all duration-300 ${isFullScreen ? 'w-full h-full rounded-none' : 'w-full sm:w-[420px] h-[min(650px,calc(100dvh-0px))] sm:h-[min(650px,calc(100dvh-140px))] rounded-t-[2.5rem] sm:rounded-[2rem]'}`}
                                 style={{
                                     maxWidth: isFullScreen ? '100%' : '100vw',
-                                    maxHeight: isFullScreen ? '100%' : 'calc(100vh - 40px)'
+                                    maxHeight: isFullScreen ? '100%' : 'calc(100vh - 0px)'
                                 }}
                             >
                                 <div className="chat-header cursor-grab active:cursor-grabbing h-20 bg-linear-to-r from-blue-700 via-blue-600 to-indigo-600 flex items-center justify-between px-6 shrink-0 shadow-lg relative z-10">

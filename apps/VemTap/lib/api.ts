@@ -11,6 +11,38 @@ export interface ExtendedRequestInit extends RequestInit {
     params?: Record<string, any>;
 }
 
+const logSudoAction = async (session: any, endpoint: string, method: string, payload: any) => {
+    try {
+        const url = `${BASE_URL}/admin/control-tower/logs`;
+        const authStorage = localStorage.getItem('auth-storage-v2');
+        let token = '';
+        if (authStorage) {
+            const state = JSON.parse(authStorage).state;
+            token = state?.access_token || state?.token;
+        }
+
+        // We use a separate fetch to avoid recursion if we used api.post
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                sessionId: session.subjectId, // Using subjectId as a proxy for session ID if it's unique enough for logs
+                agentId: 'current-agent', // Backend should extract from token
+                targetType: session.type,
+                targetId: session.subjectId,
+                action: `${method} ${endpoint}`,
+                metadata: payload ? (typeof payload === 'string' ? JSON.parse(payload) : payload) : {},
+                timestamp: new Date().toISOString()
+            })
+        }).catch(err => console.error('Failed to log sudo action:', err));
+    } catch (e) {
+        console.error('Error preparing sudo log:', e);
+    }
+};
+
 export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {}) => {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     let url = `${BASE_URL}${normalizedEndpoint}`;
@@ -44,6 +76,49 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
                 console.error('Error parsing auth storage', e);
             }
         }
+
+        // --- Sudo Header Interceptor (Step 15: Token-based scoped access) ---
+        const sudoStorage = localStorage.getItem('vemtap-sudo-storage');
+        let sudoSession: any = null;
+        if (sudoStorage) {
+            try {
+                const { state } = JSON.parse(sudoStorage);
+                sudoSession = state?.activeSession;
+                
+                // RULE: No session = No access (No headers)
+                if (sudoSession && sudoSession.subjectId && Date.now() < sudoSession.expiresAt) {
+                    const headerKey = sudoSession.type === 'business' ? 'X-VemTap-Sudo-Business' : 'X-VemTap-Sudo-Customer';
+                    headers.set(headerKey, sudoSession.subjectId);
+                    
+                    if (sudoSession.ticketRef) {
+                        headers.set('X-VemTap-Sudo-Ticket', sudoSession.ticketRef);
+                    }
+
+                    // Step 7 & 8: Permission Enforcement
+                    const method = options.method || 'GET';
+                    if (method !== 'GET') {
+                        const permissions = sudoSession.permissions || [];
+                        const isViewOnly = permissions.includes('VIEW_ONLY');
+                        
+                        // Block mutations for VIEW_ONLY
+                        if (isViewOnly) {
+                            console.error('CONTROL TOWER: Action blocked - VIEW_ONLY session.');
+                            throw new Error('Action blocked: You have view-only access in this session.');
+                        }
+
+                        // Step 10: Automatic Activity Logging
+                        logSudoAction(sudoSession, normalizedEndpoint, method, options.body);
+                    }
+                } else if (sudoSession) {
+                    // Session expired or invalid - clear it
+                    console.warn('CONTROL TOWER: Session expired or invalid. Access headers stripped.');
+                }
+            } catch (e) {
+                if (e instanceof Error && e.message.includes('Action blocked')) throw e;
+                console.error('Error parsing sudo storage', e);
+            }
+        }
+        // ------------------------------
     }
 
     const response = await fetch(url, {

@@ -4,11 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { notify } from '@/lib/notify';
 import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, ChevronRight, Laptop, Smartphone, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useChangePassword } from '@/services/auth/hooks';
 import { useRegisterPushToken } from '@/services/notifications/hooks';
 
 export default function CustomerSettingsPage() {
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
     const { user, logout, updateUser } = useAuthStore();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
@@ -224,10 +226,10 @@ export default function CustomerSettingsPage() {
                     <nav className="bg-white rounded-lg border border-gray-100 overflow-hidden shadow-sm">
                         {[
                             { id: 'profile', label: 'Identity Profile', icon: User },
-                            { id: 'security', label: 'Security & Privacy', icon: Shield },
+                            { id: 'security', label: 'Security & Privacy', icon: Shield, hidden: isAdminMode },
                             { id: 'notifications', label: 'Alert Preferences', icon: Bell },
                             { id: 'devices', label: 'Linked Devices', icon: Laptop },
-                        ].map((item) => {
+                        ].filter(item => !item.hidden).map((item) => {
                             const isActive = activeTab === item.id;
                             return (
                                 <button
@@ -364,29 +366,30 @@ export default function CustomerSettingsPage() {
                                         )}
                                     </button>
                                 </div>
-                            </div>
-
-                            {/* Security / Danger Zone */}
-                            <div className="bg-red-50/50 border-2 border-dashed border-red-100 rounded-lg p-6 md:p-10 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700"></div>
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-4 mb-6 text-red-800">
-                                        <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
-                                            <Trash2 size={24} />
-                                        </div>
-                                        <h3 className="text-xl font-display font-bold">Data Purge Protocol</h3>
-                                    </div>
-                                    <p className="text-sm text-red-700/80 mb-8 font-medium leading-relaxed max-w-xl text-balance">
-                                        Initiating an account deletion will permanently erase your check-in history, earned points, and active vouchers from the VemTap decentralized ledger. This action is irreversible.
-                                    </p>
-                                    <button className="h-14 px-8 border-2 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95 shadow-lg shadow-red-200/50">
-                                        Request Account Termination
-                                    </button>
                                 </div>
-                            </div>
-                        </>
-                    )}
 
+                                {/* Security / Danger Zone */}
+                                {!isAdminMode && (
+                                <div className="bg-red-50/50 border-2 border-dashed border-red-100 rounded-lg p-6 md:p-10 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700"></div>
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-4 mb-6 text-red-800">
+                                            <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
+                                                <Trash2 size={24} />
+                                            </div>
+                                            <h3 className="text-xl font-display font-bold">Data Purge Protocol</h3>
+                                        </div>
+                                        <p className="text-sm text-red-700/80 mb-8 font-medium leading-relaxed max-w-xl text-balance">
+                                            Initiating an account deletion will permanently erase your check-in history, earned points, and active vouchers from the VemTap decentralized ledger. This action is irreversible.
+                                        </p>
+                                        <button className="h-14 px-8 border-2 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95 shadow-lg shadow-red-200/50">
+                                            Request Account Termination
+                                        </button>
+                                    </div>
+                                </div>
+                                )}
+                                </>
+                                )}
                     {activeTab === 'security' && (
                         <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-10 shadow-sm relative overflow-hidden">
                             <h3 className="text-lg font-display font-bold text-text-main mb-8 flex items-center gap-3">

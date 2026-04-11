@@ -272,8 +272,16 @@ export const useMessagingVisitorsByBranch = (branchId?: string, query?: Record<s
             // Use high limit to get more visitors for the selection dropdown
             searchParams.append('limit', '500'); 
             const response = await api.get(`/visitors?${searchParams.toString()}`);
-            // High-end apps often return just the array or a wrapped object
-            return response.data || [];
+            // API returns paginated { data: [...], total, page, limit } or a flat array
+            const visitors = Array.isArray(response) ? response : (response?.data || response?.visitors || []);
+            // Normalize each visitor to ensure a unified 'name' field exists
+            return (visitors as any[]).map((v: any) => ({
+                ...v,
+                name: v.name || 
+                    (v.firstName || v.lastName 
+                        ? `${v.firstName || ''} ${v.lastName || ''}`.trim() 
+                        : 'Unknown Visitor'),
+            }));
         },
         enabled: isAuthenticated && isStaff,
         staleTime: STALE_TIME,
