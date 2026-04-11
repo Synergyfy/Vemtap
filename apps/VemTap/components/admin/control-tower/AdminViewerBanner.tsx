@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, Clock, Fingerprint, User, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSudoStore } from '@/store/useSudoStore';
+import toast from 'react-hot-toast';
 
 export default function AdminViewerBanner() {
     const { user } = useAuthStore();
@@ -12,15 +13,28 @@ export default function AdminViewerBanner() {
     const [secondsLeft, setSecondsLeft] = useState(0);
     const [isDismissed, setIsDismissed] = useState(false);
     const router = useRouter();
+    const hasWarnedRef = useRef(false);
 
     // Sync secondsLeft with the session's expiresAt
     useEffect(() => {
-        if (!activeSession) return;
+        if (!activeSession) {
+            hasWarnedRef.current = false;
+            return;
+        }
 
         const updateTimer = () => {
             const now = Date.now();
             const left = Math.max(0, Math.floor((activeSession.expiresAt - now) / 1000));
             setSecondsLeft(left);
+
+            // Step 12: Notification at T-1 minute
+            if (left <= 60 && left > 0 && !hasWarnedRef.current) {
+                toast.error('Control Tower: Session expires in 60 seconds!', {
+                    duration: 5000,
+                    icon: '⚠️'
+                });
+                hasWarnedRef.current = true;
+            }
 
             if (left <= 0) {
                 handleEndSession();
@@ -48,6 +62,7 @@ export default function AdminViewerBanner() {
     if (!activeSession) return null;
 
     const isUrgent = secondsLeft <= 300; // 5 minutes
+    const isCritical = secondsLeft <= 60; // 1 minute warning (Step 4)
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -59,7 +74,7 @@ export default function AdminViewerBanner() {
 
     return (
         <div className="fixed top-6 right-6 z-[9999] animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className={`relative p-1 rounded-2xl shadow-2xl ${isUrgent ? 'bg-rose-500' : 'bg-indigo-600'} shadow-lg`}>
+            <div className={`relative p-1 rounded-2xl shadow-2xl ${isCritical ? 'bg-red-600 animate-pulse' : isUrgent ? 'bg-rose-500' : 'bg-indigo-600'} shadow-lg transition-colors duration-500`}>
                 {!isUrgent && (
                     <button 
                         onClick={() => setIsDismissed(true)}

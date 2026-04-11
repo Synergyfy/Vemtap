@@ -64,7 +64,7 @@ export default function CustomerDashboardPage() {
             return;
         }
 
-        if (user?.role?.toLowerCase() !== 'customer') {
+        if (!isAdminMode && user?.role?.toLowerCase() !== 'customer') {
 
             console.log('[CUSTOMER DASHBOARD] 🔄 Role not customer, redirecting to /dashboard');
             router.push('/dashboard');
@@ -95,7 +95,7 @@ export default function CustomerDashboardPage() {
         initializeDashboard();
     }, [isAuthenticated, user, router, flowBranchId, deviceCode]);
 
-    if (!isAuthenticated || user?.role?.toLowerCase() !== 'customer') {
+    if (!isAuthenticated || (!isAdminMode && user?.role?.toLowerCase() !== 'customer')) {
         return null;
     }
 

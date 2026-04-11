@@ -91,6 +91,13 @@ export default function DashboardPage() {
 
         const userRole = user.role?.toLowerCase();
 
+        // Step 6: If Admin is in Sudo mode targeting a customer, redirect to customer dashboard
+        if (isAdminMode && activeSession?.type === 'customer') {
+            const customerUid = activeSession.subjectId;
+            router.replace(`/customer/dashboard?admin_mode=1&customer_uid=${customerUid}`);
+            return;
+        }
+
         // Redirect Agents to their specific dashboard
         if (userRole === 'agent') {
             router.replace('/agent/dashboard');
