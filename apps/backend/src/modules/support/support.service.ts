@@ -31,13 +31,31 @@ export class SupportService {
     private readonly conversationContextService: ConversationContextService,
   ) {}
 
-  async escalateChat(userId: string, initialMessage?: string): Promise<SupportTicket> {
+  async escalateChat(
+    userId: string | null,
+    initialMessage?: string,
+    guestName?: string,
+    guestEmail?: string,
+  ): Promise<SupportTicket> {
     // Check for existing active chat
     const existingTicket = await this.ticketRepository.findOne({
-      where: [
-        { userId, type: TicketType.CHAT, status: TicketStatus.PENDING },
-        { userId, type: TicketType.CHAT, status: TicketStatus.IN_PROGRESS },
-      ],
+      where: userId
+        ? [
+            { userId, type: TicketType.CHAT, status: TicketStatus.PENDING },
+            { userId, type: TicketType.CHAT, status: TicketStatus.IN_PROGRESS },
+          ]
+        : [
+            {
+              guestEmail,
+              type: TicketType.CHAT,
+              status: TicketStatus.PENDING,
+            },
+            {
+              guestEmail,
+              type: TicketType.CHAT,
+              status: TicketStatus.IN_PROGRESS,
+            },
+          ],
       order: { createdAt: 'DESC' },
     });
 
@@ -47,6 +65,8 @@ export class SupportService {
 
     const ticket = this.ticketRepository.create({
       userId,
+      guestName,
+      guestEmail,
       subject: 'Live Support Chat',
       category: 'Support',
       status: TicketStatus.PENDING,
@@ -56,7 +76,7 @@ export class SupportService {
     const savedTicket = await this.ticketRepository.save(ticket);
 
     // Persist bot conversation history
-    const botContext = await this.conversationContextService.getContext(userId);
+    const botContext = await this.conversationContextService.getContext(userId, undefined); // Session ID would be better if we had it here
     if (botContext && botContext.messages && botContext.messages.length > 0) {
       const historyMessages = botContext.messages.map((msg) =>
         this.messageRepository.create({

@@ -44,12 +44,12 @@ export class SupportBotService {
     }
   }
 
-  async handleQuery(userId: string, dto: BotQueryDto): Promise<BotResponseDto> {
-    const { query, context, sessionId } = dto;
-    this.logger.log(`🔍 [BOT] Handling query for user ${userId}: "${query}" (sessionId: ${sessionId || 'new'})`);
+  async handleQuery(userId: string | null, dto: BotQueryDto): Promise<BotResponseDto> {
+    const { query, context, sessionId, guestName, guestEmail } = dto;
+    this.logger.log(`🔍 [BOT] Handling query for ${userId ? `user ${userId}` : 'anonymous visitor'}: "${query}" (sessionId: ${sessionId || 'new'})`);
     const normalizedQuery = query.toLowerCase().trim();
 
-    const userContext = await this.contextService.getUserContext(userId);
+    const userContext = userId ? await this.contextService.getUserContext(userId) : null;
     const convContext = await this.conversationContext.getOrCreateContext(userId, sessionId);
     const recentMessages = await this.conversationContext.getRecentMessages(userId, sessionId || '', 10);
 
@@ -173,7 +173,7 @@ export class SupportBotService {
     if (this.genAI) {
       try {
         this.logger.log(`🤖 [GEMINI] Attempting AI generation for: "${query}"...`);
-        const aiResponse = await this.getGeminiResponse(query, context, recentMessages, userContext, convContext);
+        const aiResponse = await this.getGeminiResponse(query, context, recentMessages, userContext, convContext, guestName);
         
         if (aiResponse.answer) {
           this.logger.log(`✅ [GEMINI] AI response generated`);
@@ -218,8 +218,8 @@ export class SupportBotService {
     normalizedQuery: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): Promise<BotResponseDto | null> {
     const path = convContext.currentPath;
 
@@ -252,7 +252,7 @@ export class SupportBotService {
     return null;
   }
 
-  private async logPathResponse(response: BotResponseDto, userId: string, query: string, sessionId: string): Promise<BotResponseDto> {
+  private async logPathResponse(response: BotResponseDto, userId: string | null, query: string, sessionId: string | null): Promise<BotResponseDto> {
     const interaction = await this.logInteraction(userId, query, response.content, 'knowledge_base', response.confidence, response.buttons, response.conversationPath);
     await this.conversationContext.addMessage(userId, sessionId, 'bot', response.content, interaction.id);
     return {
@@ -278,7 +278,7 @@ export class SupportBotService {
     return null;
   }
 
-  private getPathResponse(path: string, query: string, userId: string, sessionId: string): BotResponseDto {
+  private getPathResponse(path: string, query: string, userId: string | null, sessionId: string | null): BotResponseDto {
     const buttons: ChatButton[] = [];
 
     switch (path) {
@@ -341,8 +341,8 @@ export class SupportBotService {
     query: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): BotResponseDto | null {
     const responses = convContext.userResponses || {};
 
@@ -427,8 +427,8 @@ export class SupportBotService {
     query: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): BotResponseDto | null {
     const responses = convContext.userResponses || {};
 
@@ -483,8 +483,8 @@ export class SupportBotService {
     query: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): BotResponseDto | null {
     if (query.includes('human') || query.includes('agent') || query.includes('real person')) {
       return {
@@ -820,6 +820,7 @@ export class SupportBotService {
     history: any[] = [],
     userContext?: any,
     convContext?: any,
+    guestName?: string,
   ): Promise<{ answer: string; buttons?: ChatButton[]; followUp?: string[] }> {
     if (!this.genAI) {
       throw new Error('Gemini AI not initialized');
@@ -863,8 +864,8 @@ ${fullKnowledgeBase}
 ${mostRelevant}
 
 === USER CONTEXT ===
-- Name: ${userContext?.name || 'there'}
-- Business: ${userContext?.businessName || 'VemTap User'}
+- Name: ${userContext?.name || guestName || 'there'}
+- Business: ${userContext?.businessName || 'VemTap Visitor'}
 - Credits: SMS(${userContext?.credits?.sms || 0}), Email(${userContext?.credits?.email || 0}), WhatsApp(${userContext?.credits?.whatsapp || 0})
 - Current Page: ${context || 'General Dashboard'}
 
@@ -1210,7 +1211,7 @@ User's question: ${query}`;
   }
 
   private async logInteraction(
-    userId: string,
+    userId: string | null,
     query: string,
     response: string,
     source: string,

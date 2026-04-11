@@ -54,23 +54,32 @@ export class SupportController {
   ) {}
 
   @Post('bot/query')
+  @Public()
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
   @ApiOperation({ summary: 'Query the automated support bot' })
   async queryBot(
-    @Request() req: AuthRequest,
+    @Request() req: any,
     @Body() dto: BotQueryDto,
   ) {
-    return this.botService.handleQuery(req.user.id, dto);
+    const userId = req.user?.id || null;
+    return this.botService.handleQuery(userId, dto);
   }
 
   @Post('escalate')
+  @Public()
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
   @ApiOperation({ summary: 'Escalate bot session to a live human agent' })
   async escalateChat(
-    @Request() req: AuthRequest,
+    @Request() req: any,
     @Body('initialMessage') initialMessage?: string,
+    @Body('guestName') guestName?: string,
+    @Body('guestEmail') guestEmail?: string,
   ) {
-    return this.supportService.escalateChat(req.user.id, initialMessage);
+    const userId = req.user?.id || null;
+    const name = guestName || (req.body as any).guestName;
+    const email = guestEmail || (req.body as any).guestEmail;
+    
+    return this.supportService.escalateChat(userId, initialMessage, name, email);
   }
 
   @Patch('bot/interaction/:id')
