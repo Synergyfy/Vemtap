@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { motion } from 'framer-motion';
 import { 
@@ -13,7 +13,16 @@ import {
     ArrowRight, 
     CheckCircle2,
     ShieldCheck,
-    Globe
+    Globe,
+    Globe as LinkIcon,
+    FileText,
+    Mail,
+    Wifi,
+    Palette,
+    Frame,
+    Image as ImageIcon,
+    ChevronRight,
+    ChevronLeft
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -21,6 +30,15 @@ import { twMerge } from 'tailwind-merge';
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
+
+const QR_TYPES = [
+    { id: 'url', icon: Globe, title: 'Website', description: 'Link to any URL' },
+    { id: 'vcard', icon: Users, title: 'vCard', description: 'Digital business card' },
+    { id: 'pdf', icon: FileText, title: 'PDF', description: 'Share documents' },
+    { id: 'socials', icon: Smartphone, title: 'Socials', description: 'All your links' },
+    { id: 'wifi', icon: Wifi, title: 'WiFi', description: 'Share network access' },
+    { id: 'email', icon: Mail, title: 'Email', description: 'Send emails fast' },
+];
 
 const SYNERGY_POINTS = [
     {
@@ -81,60 +99,102 @@ export default function ExploreQRThrivePage() {
                 description="The ultimate power-up for your physical-to-digital business ecosystem."
             />
 
-            {/* Hero Section */}
-            <section className="relative group overflow-hidden rounded-[3rem] bg-slate-900 min-h-[500px] flex items-center">
-                <div className="absolute inset-0 z-0">
-                    <img 
-                        src="/qrthrive_vemtap_integration.png" 
-                        alt="Synergy" 
-                        className="w-full h-full object-cover opacity-60 mix-blend-overlay"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/40 to-transparent" />
-                </div>
+            {/* Generator Card Hero */}
+            <section className="bg-white rounded-[40px] shadow-[0_30px_100px_rgba(37,99,235,0.08)] border border-gray-100 overflow-hidden">
+                <div className="flex flex-col lg:flex-row min-h-[600px]">
+                    <div className="flex-1 p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-gray-100">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="flex items-center gap-1.5">
+                                {[1, 2, 3].map((s, idx) => (
+                                    <div key={s} className="flex items-center">
+                                        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold bg-blue-600 text-white shadow-lg shadow-blue-200">
+                                            {s}
+                                        </div>
+                                        {idx < 2 && <div className="w-6 h-0.5 mx-1 rounded-full bg-blue-600" />}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="h-4 w-px bg-gray-100 mx-2" />
+                            <h2 className="text-xl font-bold text-text-main leading-none">Create Your QR</h2>
+                        </div>
 
-                <div className="relative z-10 p-8 lg:p-20 max-w-2xl space-y-8">
-                    <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-xs font-bold uppercase tracking-widest"
-                    >
-                        <Zap size={14} className="fill-blue-400" />
-                        Next-Gen Integration
-                    </motion.div>
-                    
-                    <motion.h2 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="text-4xl lg:text-6xl font-black text-white tracking-tight leading-none"
-                    >
-                        Bridging Physical <br />
-                        <span className="text-blue-400">to Digital.</span>
-                    </motion.h2>
+                        <div className="space-y-6">
+                            <div>
+                                <h3 className="text-sm font-bold text-text-main uppercase tracking-widest mb-4">Choose Type</h3>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {QR_TYPES.map((type) => (
+                                        <button
+                                            key={type.id}
+                                            className="flex flex-col items-center text-center p-4 rounded-2xl border-2 border-gray-50 bg-gray-50/50 hover:border-blue-100 hover:scale-[1.02] transition-all group"
+                                        >
+                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white text-gray-400 group-hover:text-blue-600 transition-colors mb-2">
+                                                <type.icon className="w-5 h-5" />
+                                            </div>
+                                            <span className="font-bold text-text-main text-[11px] tracking-tight">{type.title}</span>
+                                            <span className="text-[9px] text-text-secondary leading-tight">{type.description}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
-                    <motion.p 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-lg text-slate-300 font-medium leading-relaxed"
-                    >
-                        Vemtap handles your data, QRThrive drives your traffic. Together, they create a closed-loop system that transforms every scan into a measurable business outcome.
-                    </motion.p>
+                            <div className="grid grid-cols-3 gap-3 pt-4">
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-gray-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Palette className="w-4 h-4 text-blue-600" />
+                                        <span className="text-xs font-bold text-text-main">Design</span>
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary">Custom colors & shapes</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-gray-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Frame className="w-4 h-4 text-purple-600" />
+                                        <span className="text-xs font-bold text-text-main">Frame</span>
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary">Add custom frames</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-gray-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <ImageIcon className="w-4 h-4 text-emerald-600" />
+                                        <span className="text-xs font-bold text-text-main">Logo</span>
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary">Add your brand</p>
+                                </div>
+                            </div>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                    >
-                        <a 
-                            href="https://qrthrive.vercel.app" 
-                            target="_blank" 
-                            className="inline-flex items-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 group"
-                        >
-                            Visit QRThrive Platform
-                            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </a>
-                    </motion.div>
+                            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                                <span className="text-xs text-text-secondary font-medium">Powered by QRThrive</span>
+                                <a 
+                                    href="https://qrthrive.vercel.app" 
+                                    target="_blank"
+                                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 active:scale-95 transition-all"
+                                >
+                                    Open Generator
+                                    <ChevronRight className="w-4 h-4" />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="w-full lg:w-[380px] bg-slate-50 p-8 lg:p-10 flex flex-col items-center justify-center shrink-0">
+                        <div className="relative w-[260px] h-[260px] bg-white p-6 rounded-[32px] shadow-2xl shadow-blue-100/30 border border-gray-100 flex items-center justify-center">
+                            <div className="absolute inset-6 border-4 border-dashed border-gray-100 rounded-2xl" />
+                            <QrCode className="w-32 h-32 text-gray-300" strokeWidth={1.5} />
+                        </div>
+                        
+                        <div className="mt-8 w-full max-w-[260px] space-y-3">
+                            <div className="flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-100">
+                                <Zap className="w-4 h-4 fill-white" />
+                                Dynamic & Trackable
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                    <span className="text-[10px] font-bold text-text-main uppercase tracking-wider">Live Preview</span>
+                                </div>
+                                <span className="text-[9px] text-text-secondary">Scan to see</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -231,6 +291,63 @@ export default function ExploreQRThrivePage() {
                             </div>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            {/* Hero Section - Immersive */}
+            <section className="relative group overflow-hidden rounded-[3rem] bg-slate-900 min-h-[500px] flex items-center">
+                <div className="absolute inset-0 z-0">
+                    <img 
+                        src="/qrthrive_vemtap_integration.png" 
+                        alt="Synergy" 
+                        className="w-full h-full object-cover opacity-60 mix-blend-overlay"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/40 to-transparent" />
+                </div>
+
+                <div className="relative z-10 p-8 lg:p-20 max-w-2xl space-y-8">
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-xs font-bold uppercase tracking-widest"
+                    >
+                        <Zap size={14} className="fill-blue-400" />
+                        Next-Gen Integration
+                    </motion.div>
+                    
+                    <motion.h2 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="text-4xl lg:text-6xl font-black text-white tracking-tight leading-none"
+                    >
+                        Bridging Physical <br />
+                        <span className="text-blue-400">to Digital.</span>
+                    </motion.h2>
+
+                    <motion.p 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-lg text-slate-300 font-medium leading-relaxed"
+                    >
+                        Vemtap handles your data, QRThrive drives your traffic. Together, they create a closed-loop system that transforms every scan into a measurable business outcome.
+                    </motion.p>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <a 
+                            href="https://qrthrive.vercel.app" 
+                            target="_blank" 
+                            className="inline-flex items-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 group"
+                        >
+                            Visit QRThrive Platform
+                            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                        </a>
+                    </motion.div>
                 </div>
             </section>
 
