@@ -450,6 +450,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: adminId,
+      senderRole: 'AGENT',
       message: messageText,
     });
 

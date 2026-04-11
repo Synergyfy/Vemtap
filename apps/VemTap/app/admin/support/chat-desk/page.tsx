@@ -215,7 +215,7 @@ export default function AdminChatDesk() {
                             </div>
 
                             {messages.map((m: any) => {
-                                const isAgent = m.senderRole === 'AGENT' || m.senderRole === 'BOT' || m.senderRole === 'SYSTEM' || m.senderId !== activeChat.userId;
+                                const isAgent = m.senderRole && m.senderRole !== 'CUSTOMER';
                                 return (
                                     <motion.div 
                                         initial={{ opacity: 0, y: 10 }}
@@ -329,7 +329,7 @@ export default function AdminChatDesk() {
                                         { icon: Mail, label: 'Email', value: activeChat.user?.email || activeChat.guestEmail || 'N/A' },
                                         { icon: Phone, label: 'Phone', value: activeChat.user?.phone || 'N/A' },
                                         { icon: MapPin, label: 'Location', value: 'N/A' },
-                                        { icon: Clock, label: 'Joined', value: format(new Date(activeChat.user?.createdAt || activeChat.createdAt), 'PPP') }
+                                        { icon: Clock, label: 'Joined', value: (activeChat.user?.createdAt || activeChat.createdAt) ? format(new Date(activeChat.user?.createdAt || activeChat.createdAt), 'PPP') : 'N/A' }
                                     ].map((item, idx) => (
                                         <div key={idx} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl shadow-sm">
                                             <item.icon size={14} className="text-gray-400" />
