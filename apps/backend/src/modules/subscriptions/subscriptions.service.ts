@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -29,6 +31,7 @@ import { CatalogueCategory } from '../catalogue/entities/catalogue-category.enti
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -56,6 +59,8 @@ export class SubscriptionsService {
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
+    @Inject(forwardRef(() => QrThriveService))
+    private readonly qrThriveService: QrThriveService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -224,6 +229,14 @@ export class SubscriptionsService {
 
       // Allocate messaging credits as per plan
       await this.creditService.allocateSubscriptionCredits(business.id, plan);
+
+      // Sync with QR-Thrive if plan is linked
+      if (plan.qrThrivePlanId) {
+        await this.qrThriveService.syncSubscription(
+          business.ownerId,
+          plan.qrThrivePlanId,
+        );
+      }
     }
 
     return savedSub;
@@ -421,6 +434,19 @@ export class SubscriptionsService {
         sub.businessId,
         sub.plan,
       );
+
+      // Sync with QR-Thrive if plan is linked
+      if (sub.plan.qrThrivePlanId) {
+        const business = await this.businessRepository.findOne({
+          where: { id: sub.businessId },
+        });
+        if (business) {
+          await this.qrThriveService.syncSubscription(
+            business.ownerId,
+            sub.plan.qrThrivePlanId,
+          );
+        }
+      }
     }
   }
 

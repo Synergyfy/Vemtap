@@ -78,4 +78,11 @@ export class QrThriveController {
   async getMagicLink(@Request() req: RequestWithUser) {
     return this.qrThriveService.getMagicLink(req.user.id);
   }
+
+  @Get('plans')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get available plans from QR-Thrive' })
+  async getPlans() {
+    return this.qrThriveService.getPlans();
+  }
 }

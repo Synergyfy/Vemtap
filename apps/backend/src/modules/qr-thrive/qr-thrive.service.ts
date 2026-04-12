@@ -1,4 +1,4 @@
-import { Injectable, Logger, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -19,6 +19,7 @@ export class QrThriveService implements OnModuleInit {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => BranchesService))
     private readonly branchesService: BranchesService,
     @InjectRepository(QrThriveUserMapping)
     private readonly userMappingRepo: Repository<QrThriveUserMapping>,
@@ -213,5 +214,44 @@ export class QrThriveService implements OnModuleInit {
    */
   async findCodesByBranch(branchId: string) {
     return await this.codeMappingRepo.find({ where: { branchId } });
+  }
+
+  /**
+   * Fetches available plans from QR-Thrive.
+   */
+  async getPlans() {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get(`${this.baseUrl}/integration/plans`, { headers: this.headers })
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to fetch QR-Thrive plans');
+    }
+  }
+
+  /**
+   * Syncs a user's subscription with QR-Thrive.
+   */
+  async syncSubscription(userId: string, qrThrivePlanId: string) {
+    const mapping = await this.userMappingRepo.findOne({ where: { userId } });
+    if (!mapping) {
+      this.logger.warn(`User ${userId} not synced with QR-Thrive. Syncing now...`);
+      // Optionally trigger syncUser if we have access to the full user object here
+      return; 
+    }
+
+    try {
+      await firstValueFrom(
+        this.httpService.post(
+          `${this.baseUrl}/integration/users/${mapping.qrThriveUserId}/subscription`,
+          { planId: qrThrivePlanId },
+          { headers: this.headers }
+        )
+      );
+      this.logger.log(`Successfully synced subscription for user ${userId} with QR-Thrive plan ${qrThrivePlanId}`);
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to sync subscription with QR-Thrive');
+    }
   }
 }
