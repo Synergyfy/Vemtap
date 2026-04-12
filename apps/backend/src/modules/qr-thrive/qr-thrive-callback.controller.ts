@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
 import { IntegrationApiKeyGuard } from './guards/integration-api-key.guard';
 import { ApiTags, ApiOperation, ApiHeader } from '@nestjs/swagger';
-import { Public } from 'src/common/decorators/public.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Internal Integration')
 @ApiHeader({
@@ -14,8 +14,9 @@ import { Public } from 'src/common/decorators/public.decorator';
 export class QrThriveCallbackController {
   private readonly logger = new Logger(QrThriveCallbackController.name);
 
+  @Public()
   @Post('callback')
-  @ApiOperation({ summary: 'Handle callbacks/webhooks from QR-Thrive' })
+  @ApiOperation({ summary: 'Handle incoming callback from QR-Thrive' })
   async handleCallback(@Body() payload: any) {
     this.logger.log(`Received callback from QR-Thrive: ${JSON.stringify(payload)}`);
 

@@ -174,5 +174,63 @@ describe('QrThriveService', () => {
         expect(e.getStatus()).toBe(500);
       }
     });
+  describe('getPlans', () => {
+    it('should fetch plans from QR-Thrive', async () => {
+      const mockPlans = [{ id: 'plan-1', name: 'Premium' }];
+      jest.spyOn(httpService, 'get').mockReturnValue(of(mockResponse(mockPlans)));
+
+      const result = await service.getPlans();
+
+      expect(httpService.get).toHaveBeenCalledWith(
+        expect.stringContaining('/integration/plans'),
+        expect.objectContaining({ headers: expect.any(Object) })
+      );
+      expect(result).toEqual(mockPlans);
+    });
+
+    it('should handle errors when fetching plans', async () => {
+      jest.spyOn(httpService, 'get').mockReturnValue(throwError(() => ({ 
+        response: { status: 500 },
+        message: 'Server error'
+      })));
+
+      await expect(service.getPlans()).rejects.toThrow(HttpException);
+    });
+  });
+
+  describe('syncSubscription', () => {
+    it('should send subscription sync request to QR-Thrive', async () => {
+      userMappingRepo.findOne.mockResolvedValue({ qrThriveUserId: 'qr-u-1' });
+      jest.spyOn(httpService, 'post').mockReturnValue(of(mockResponse({ status: 'success' })));
+
+      await service.syncSubscription('user-123', 'plan-thrive-1');
+
+      expect(httpService.post).toHaveBeenCalledWith(
+        expect.stringContaining('/integration/users/qr-u-1/subscription'),
+        { planId: 'plan-thrive-1' },
+        expect.objectContaining({ headers: expect.any(Object) })
+      );
+    });
+
+    it('should log warning if user mapping is missing', async () => {
+      userMappingRepo.findOne.mockResolvedValue(null);
+      const loggerSpy = jest.spyOn(service['logger'], 'warn');
+
+      await service.syncSubscription('user-123', 'plan-thrive-1');
+
+      expect(httpService.post).not.toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('not synced'));
+    });
+
+    it('should handle HTTP errors during sync', async () => {
+      userMappingRepo.findOne.mockResolvedValue({ qrThriveUserId: 'qr-u-1' });
+      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => ({ 
+        response: { status: 404, data: { message: 'Not Found' } },
+        message: 'Request failed'
+      })));
+
+      await expect(service.syncSubscription('user-123', 'plan-thrive-1')).rejects.toThrow(HttpException);
+    });
+  });
   });
 });
