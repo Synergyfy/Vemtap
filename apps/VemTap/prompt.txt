@@ -1,56 +1,23 @@
-for updating the business socials
-Endpoint: `/api/v1/users/engagement`
-Method: PATCH
-Body: {
-  {
-  "engagement": {
-    "instagram": {
-      "profile": "johndoe",
-      "link": "https://instagr.am/johndoe"
-    },
-    "facebook": {
-      "page": "John Doe Page",
-      "link": "https://fb.com/johndoe"
-    }
-  }
-}
+## Error Type
+Build Error
 
-}
+## Error Message
+Module not found: Can't resolve '../utils/upload'
 
+## Build Output
+./components/AudioProfilePreview.tsx:3:1
+Module not found: Can't resolve '../utils/upload'
+  1 | import React, { useState, useRef, useEffect } from 'react';
+  2 | import { Play, Pause, SkipBack, SkipForward, Volume2, Download } from 'lucide-react';
+> 3 | import { getDownloadUrl } from '../utils/upload';
+    | ^
+  4 |
+  5 | interface AudioProfilePreviewProps {
+  6 |   companyName?: string;
 
-for fetching the user profile 
-Endpoint: /users/profile
-Method: GET
-Body: {
-  {
-  "email": "user@example.com",
-  "firstName": "John",
-  "lastName": "Doe",
-  "role": "Owner",
-  "phone": "+2348012345678",
-  "jobTitle": "Store Manager",
-  "permissions": [
-    "view_reports",
-    "manage_staff"
-  ],
-  "status": "ACTIVE",
-  "uniqueCode": "CUST-12345",
-  "lastActive": "2023-10-25T10:00:00.000Z",
-  "pushToken": "fcm-token-string",
-  "branchId": "uuid-string",
-  "businessId": "uuid-string",
-  "engagement": {
-    "instagram": {
-      "profile": "johndoe",
-      "link": "https://instagr.am/johndoe"
-    }
-  },
-  "optInChannels": [
-    "SMS",
-    "WhatsApp"
-  ],
-  "optOut": false,
-  "isPasswordChanged": false
-}
-}
+https://nextjs.org/docs/messages/module-not-found
 
+Import trace for requested module:
+./app/dashboard/explore-qrthrive/page.tsx
+
+Next.js version: 16.1.6 (Webpack)
