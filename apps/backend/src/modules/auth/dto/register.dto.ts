@@ -53,6 +53,14 @@ export class RegisterDto {
   role?: UserRole;
 
   @ApiPropertyOptional({
+    example: 'REF12345',
+    description: 'Referral code from an affiliate',
+  })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
+
+  @ApiPropertyOptional({
     example: '+2348012345678',
     description: 'Phone number',
   })

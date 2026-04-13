@@ -10,6 +10,7 @@ import { BusinessesModule } from '../businesses/businesses.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { MailModule } from '../mail/mail.module';
 import { DevicesModule } from '../devices/devices.module';
+import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { Otp } from './entities/otp.entity';
@@ -23,6 +24,7 @@ import { Otp } from './entities/otp.entity';
     MailModule,
     PassportModule,
     TypeOrmModule.forFeature([Otp]),
+    AffiliatesModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

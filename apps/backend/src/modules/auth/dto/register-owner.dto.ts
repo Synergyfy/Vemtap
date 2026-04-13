@@ -171,4 +171,12 @@ export class RegisterOwnerDto {
   })
   @IsOptional()
   engagement?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    example: 'VEM-DAN-1234',
+    description: 'Optional referral code from an affiliate',
+  })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }

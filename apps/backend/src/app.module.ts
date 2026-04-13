@@ -39,6 +39,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
 import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
+import { AffiliatesModule } from './modules/affiliates/affiliates.module';
+import { TrainingModule } from './modules/training/training.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 
 
@@ -135,6 +137,8 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     CatalogueOrderModule,
     CatalogueCartModule,
     BusinessProfilingModule,
+    AffiliatesModule,
+    TrainingModule,
     QrThriveModule,
     ScheduleModule.forRoot(),
   ],
@@ -171,4 +175,4 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

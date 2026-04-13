@@ -11,6 +11,9 @@ import {
 import { NotificationsService } from './notifications.service';
 import { PushNotificationService } from './push-notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -95,10 +98,23 @@ export class NotificationsController {
     return this.notificationsService.markAsRead(id);
   }
 
-  @Post('mark-all-read')
-  @ApiOperation({ summary: 'Mark all notifications as read' })
-  @ApiResponse({ status: 200, description: 'All notifications marked as read' })
-  markAllAsRead(@Request() req) {
-    return this.notificationsService.markAllAsRead(req.user.id);
+  @Post('broadcast')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Broadcast a notification to all agents (affiliates)' })
+  async broadcast(@Body() data: { title: string; message: string }) {
+    return this.notificationsService.broadcastToRole(
+      UserRole.AGENT,
+      data.title,
+      data.message,
+    );
+  }
+
+  @Get('admin/history/broadcasts')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get broadcast history for admins' })
+  async getHistory() {
+    return this.notificationsService.getBroadcastHistory();
   }
 }
