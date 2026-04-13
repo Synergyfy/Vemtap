@@ -31,11 +31,8 @@ import { CatalogueCategory } from '../catalogue/entities/catalogue-category.enti
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
-<<<<<<< HEAD
 import { AffiliatesService } from '../affiliates/affiliates.service';
-=======
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
->>>>>>> be2928bfae5a87a275583e165791365ce0e70f1a
 
 @Injectable()
 export class SubscriptionsService {
@@ -63,12 +60,9 @@ export class SubscriptionsService {
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
-<<<<<<< HEAD
     private readonly affiliatesService: AffiliatesService,
-=======
     @Inject(forwardRef(() => QrThriveService))
     private readonly qrThriveService: QrThriveService,
->>>>>>> be2928bfae5a87a275583e165791365ce0e70f1a
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
