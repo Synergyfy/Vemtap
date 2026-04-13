@@ -18,7 +18,7 @@ import { Building2 } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
 
-export default function NFCManagerPage() {
+export default function BusinessLinkPage() {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const { capabilities } = useSubscriptionStore();
@@ -182,8 +182,8 @@ export default function NFCManagerPage() {
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
             <PageHeader
-                title="NFC Asset Hub"
-                description="Generate NFC links against your admin-approved hardware quotes."
+                title="Business Link"
+                description="Manage your physical business touchpoints and generate smart marketing tools."
             />
 
             {/* Approved Quota Panel */}
@@ -194,7 +194,7 @@ export default function NFCManagerPage() {
                     <div className="col-span-3 bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                         <div className="mb-6 flex justify-between items-end">
                             <div>
-                                <h3 className="font-display font-bold text-text-main mb-1">Approved NFC Allocations</h3>
+                                <h3 className="font-display font-bold text-text-main mb-1">Approved Business Links</h3>
                                 <p className="text-[10px] text-text-secondary font-medium uppercase tracking-widest">
                                     {totalRemainingQuota} units ready to generate across {readyOrders.length} order{readyOrders.length > 1 ? 's' : ''}
                                 </p>
@@ -292,8 +292,8 @@ export default function NFCManagerPage() {
             <div className="bg-white rounded-[2.5rem] border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                     <div>
-                        <h3 className="font-display font-bold text-text-main">Connected NFC Hardware</h3>
-                        <p className="text-[10px] text-text-secondary font-medium">Manage individual tag configurations and print-ready QR codes.</p>
+                        <h3 className="font-display font-bold text-text-main">Business Link Hardware</h3>
+                        <p className="text-[10px] text-text-secondary font-medium">Manage individual tag configurations and generate high-conversion QR codes.</p>
                     </div>
                     <span className="px-4 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-[10px] font-black uppercase tracking-tighter">
                         {devices.length} Assets Active
@@ -318,7 +318,7 @@ export default function NFCManagerPage() {
                                 <tr>
                                     <th className="px-8 py-4">Hardware ID</th>
                                     <th className="px-8 py-4">Configuration</th>
-                                    <th className="px-8 py-4">Print Code</th>
+                                    <th className="px-8 py-4">Marketing Tool</th>
                                     <th className="px-8 py-4">Status & Location</th>
                                     <th className="px-8 py-4 text-right">Utility</th>
                                 </tr>
@@ -368,24 +368,20 @@ export default function NFCManagerPage() {
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center gap-4 p-2 bg-slate-50 border border-slate-100 rounded-xl w-fit pr-4">
-                                                        <div className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-                                                            <QRCodeCanvas
-                                                                id={`qr-${device.id}`}
-                                                                value={deviceUrl}
-                                                                size={1024}
-                                                                level="H"
-                                                                style={{ width: 32, height: 32 }}
-                                                            />
+                                                        <div className="size-10 bg-white border border-slate-200 rounded-lg shadow-sm flex items-center justify-center">
+                                                            <QrCode size={20} className="text-primary" />
                                                         </div>
                                                         <div>
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase block leading-none mb-1">Print Code</span>
-                                                            <button
-                                                                onClick={() => downloadQRCode(device.id, device.code)}
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase block leading-none mb-1">QR Marketing</span>
+                                                            <a
+                                                                href={`https://qrthrive.vercel.app/?type=url&url=${encodeURIComponent(deviceUrl)}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
                                                                 className="flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-tighter"
                                                             >
-                                                                <Download size={12} />
-                                                                Download PNG
-                                                            </button>
+                                                                <Zap size={12} className="fill-primary" />
+                                                                Generate QR
+                                                            </a>
                                                         </div>
                                                     </div>
                                                 </td>

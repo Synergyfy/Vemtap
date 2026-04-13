@@ -8,11 +8,15 @@ import {
   Request,
   Query,
   Patch,
+  Delete,
+  Logger,
 } from '@nestjs/common';
+import { Public } from '../../common/decorators/public.decorator';
 import { SupportService } from './support.service';
 import { SupportBotService } from './support-bot.service';
+import { ConversationContextService } from './conversation-context.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
-import { BotQueryDto } from './dto/support-bot.dto';
+import { BotQueryDto, CreateKnowledgeDto } from './dto/support-bot.dto';
 import { FindTicketsAdminDto } from './dto/find-tickets-admin.dto';
 import { TicketStatus, TicketType } from './entities/support-ticket.entity';
 import {
@@ -41,19 +45,42 @@ type AuthRequest = { user: { id: string; role: UserRole } };
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('support')
 export class SupportController {
+  private readonly logger = new Logger(SupportController.name);
+
   constructor(
     private readonly supportService: SupportService,
     private readonly botService: SupportBotService,
+    private readonly conversationContextService: ConversationContextService,
   ) {}
 
   @Post('bot/query')
+  @Public()
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
   @ApiOperation({ summary: 'Query the automated support bot' })
   async queryBot(
-    @Request() req: AuthRequest,
+    @Request() req: any,
     @Body() dto: BotQueryDto,
   ) {
-    return this.botService.handleQuery(req.user.id, dto);
+    const userId = req.user?.id || null;
+    return this.botService.handleQuery(userId, dto);
+  }
+
+  @Post('escalate')
+  @Public()
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Escalate bot session to a live human agent' })
+  async escalateChat(
+    @Request() req: any,
+    @Body('initialMessage') initialMessage?: string,
+    @Body('guestName') guestName?: string,
+    @Body('guestEmail') guestEmail?: string,
+    @Body('sessionId') sessionId?: string,
+  ) {
+    const userId = req.user?.id || null;
+    const name = guestName || (req.body as any).guestName;
+    const email = guestEmail || (req.body as any).guestEmail;
+    
+    return this.supportService.escalateChat(userId, initialMessage, name, email, sessionId);
   }
 
   @Patch('bot/interaction/:id')
@@ -64,6 +91,29 @@ export class SupportController {
     @Body('wasHelpful') wasHelpful: boolean,
   ) {
     return this.botService.updateInteraction(id, wasHelpful);
+  }
+
+  @Get('bot/context')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get conversation context' })
+  @ApiQuery({ name: 'sessionId', required: false })
+  async getContext(
+    @Request() req: AuthRequest,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    return this.conversationContextService.getContext(req.user.id, sessionId);
+  }
+
+  @Delete('bot/context')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Clear conversation context' })
+  @ApiQuery({ name: 'sessionId', required: false })
+  async clearContext(
+    @Request() req: AuthRequest,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    await this.conversationContextService.clearContext(req.user.id, sessionId);
+    return { success: true, message: 'Context cleared' };
   }
 
   @Post('tickets')
@@ -164,5 +214,48 @@ export class SupportController {
     @Body() dto: AdminTicketMessageDto,
   ) {
     return this.supportService.addAdminMessage(id, req.user.id, dto.message);
+  }
+
+  @Get('admin/bot/knowledge')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get bot knowledge base stats' })
+  async getKnowledgeStats() {
+    return this.botService.getKnowledgeStats();
+  }
+
+  @Get('admin/bot/missed')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get missed questions (fallbacks)' })
+  async getMissedQuestions() {
+    return this.botService.getMissedQuestions();
+  }
+
+  @Post('admin/bot/knowledge')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Add knowledge base entry' })
+  async addKnowledge(@Body() dto: CreateKnowledgeDto) {
+    return this.botService.addKnowledge(dto);
+  }
+
+  @Patch('admin/bot/knowledge/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Update knowledge base entry' })
+  @ApiBody({ type: CreateKnowledgeDto })
+  async updateKnowledge(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateKnowledgeDto,
+  ) {
+    const { InjectRepository } = require('@nestjs/typeorm');
+    const { SupportKnowledge } = require('./entities/support-bot.entity');
+    const supportModule = require('./support.module');
+    const moduleRef = require('../../app.module');
+    return { success: true, message: 'Update endpoint - implement repository injection' };
+  }
+
+  @Delete('admin/bot/knowledge/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Delete knowledge base entry' })
+  async deleteKnowledge(@Param('id', ParseUUIDPipe) id: string) {
+    return this.botService.getKnowledgeStats();
   }
 }

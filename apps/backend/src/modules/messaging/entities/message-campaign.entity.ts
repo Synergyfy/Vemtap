@@ -1,6 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { Branch } from '../../branches/entities/branch.entity';
+import type { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessageTemplate } from './message-template.entity';
 
@@ -21,7 +21,7 @@ export enum AudienceType {
 
 @Entity('message_campaigns')
 export class MessageCampaign extends AbstractBaseEntity {
-  @ManyToOne(() => Branch, (branch) => branch.messageCampaigns, {
+  @ManyToOne('Branch', 'messageCampaigns', {
     onDelete: 'CASCADE',
     nullable: true,
   })

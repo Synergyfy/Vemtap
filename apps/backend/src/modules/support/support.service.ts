@@ -13,6 +13,9 @@ import { User, UserRole } from '../users/entities/user.entity';
 import { AgentStatsDto } from './dto/agent-stats.dto';
 import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
 
+import { SupportGateway } from './support.gateway';
+import { ConversationContextService } from './conversation-context.service';
+
 @Injectable()
 export class SupportService {
   constructor(
@@ -24,7 +27,96 @@ export class SupportService {
     private activityRepository: Repository<TicketActivity>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly supportGateway: SupportGateway,
+    private readonly conversationContextService: ConversationContextService,
   ) {}
+
+  async escalateChat(
+    userId: string | null,
+    initialMessage?: string,
+    guestName?: string,
+    guestEmail?: string,
+    sessionId?: string,
+  ): Promise<SupportTicket> {
+    // Check for existing active chat
+    const existingTicket = await this.ticketRepository.findOne({
+      where: userId
+        ? [
+            { userId, type: TicketType.CHAT, status: TicketStatus.PENDING },
+            { userId, type: TicketType.CHAT, status: TicketStatus.IN_PROGRESS },
+          ]
+        : [
+            {
+              guestEmail,
+              type: TicketType.CHAT,
+              status: TicketStatus.PENDING,
+            },
+            {
+              guestEmail,
+              type: TicketType.CHAT,
+              status: TicketStatus.IN_PROGRESS,
+            },
+          ],
+      order: { createdAt: 'DESC' },
+    });
+
+    if (existingTicket) {
+      return existingTicket;
+    }
+
+    const ticket = this.ticketRepository.create({
+      userId,
+      guestName,
+      guestEmail,
+      subject: 'Live Support Chat',
+      category: 'Support',
+      status: TicketStatus.PENDING,
+      type: TicketType.CHAT,
+      channel: 'Chatbot',
+    });
+    const savedTicket = await this.ticketRepository.save(ticket);
+
+    // Persist bot conversation history
+    const botContext = await this.conversationContextService.getContext(userId, sessionId);
+    if (botContext && botContext.messages && botContext.messages.length > 0) {
+      const historyMessages = botContext.messages.map((msg) =>
+        this.messageRepository.create({
+          ticketId: savedTicket.id,
+          senderId: msg.role === 'user' ? userId : null,
+          senderRole: msg.role === 'user' ? 'CUSTOMER' : 'BOT',
+          message: msg.content,
+          createdAt: msg.timestamp || new Date(),
+        }),
+      );
+      await this.messageRepository.save(historyMessages);
+    }
+
+    if (initialMessage) {
+      const message = this.messageRepository.create({
+        ticketId: savedTicket.id,
+        senderId: userId,
+        senderRole: 'CUSTOMER',
+        message: initialMessage,
+      });
+      const savedMessage = await this.messageRepository.save(message);
+      
+      // Notify admins/agents about the new chat
+      this.supportGateway.emitNewMessage(savedTicket.id, {
+        ...savedMessage,
+        ticket: savedTicket
+      });
+    }
+
+    await this.logActivity(savedTicket.id, 'Chat escalated to human agent', 'System');
+    
+    // Broadcast status update
+    this.supportGateway.emitTicketStatusUpdate(savedTicket.id, TicketStatus.PENDING);
+
+    // Notify all admins about the new chat session
+    this.supportGateway.emitNewChatEscalated(savedTicket);
+
+    return savedTicket;
+  }
 
   async create(userId: string, dto: CreateTicketDto): Promise<SupportTicket> {
     const ticket = this.ticketRepository.create({
@@ -39,6 +131,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: userId,
+      senderRole: 'CUSTOMER',
       message: dto.message,
     });
     await this.messageRepository.save(message);
@@ -81,6 +174,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: userId,
+      senderRole: 'CUSTOMER',
       message: messageText,
     });
 
@@ -93,7 +187,12 @@ export class SupportService {
       await this.logActivity(ticket.id, 'Ticket reopened', 'Customer');
     }
 
-    return this.messageRepository.save(message);
+    const savedMessage = await this.messageRepository.save(message);
+    
+    // Real-time event
+    this.supportGateway.emitNewMessage(ticket.id, savedMessage);
+
+    return savedMessage;
   }
 
   // --- Agent Methods ---
@@ -194,6 +293,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: agentId,
+      senderRole: 'AGENT',
       message: messageText,
     });
 
@@ -204,6 +304,9 @@ export class SupportService {
 
     const savedMessage = await this.messageRepository.save(message);
     await this.logActivity(ticketId, 'Reply sent', 'Agent');
+
+    // Real-time event
+    this.supportGateway.emitNewMessage(ticket.id, savedMessage);
 
     return savedMessage;
   }
@@ -306,6 +409,10 @@ export class SupportService {
     ticket.status = status;
     const updated = await this.ticketRepository.save(ticket);
     await this.logActivity(id, `Status -> ${status} (Admin)`, 'Admin');
+    
+    // Broadcast status update
+    this.supportGateway.emitTicketStatusUpdate(id, status);
+    
     return updated;
   }
 
@@ -343,6 +450,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: adminId,
+      senderRole: 'AGENT',
       message: messageText,
     });
 
@@ -353,6 +461,9 @@ export class SupportService {
 
     const savedMessage = await this.messageRepository.save(message);
     await this.logActivity(ticketId, 'Admin Reply sent', 'Admin');
+
+    // Real-time event
+    this.supportGateway.emitNewMessage(ticket.id, savedMessage);
 
     return savedMessage;
   }

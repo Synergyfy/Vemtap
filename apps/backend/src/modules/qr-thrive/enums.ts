@@ -1,0 +1,45 @@
+export enum QRType {
+  url = "url",
+  text = "text",
+  vcard = "vcard",
+  wifi = "wifi",
+  email = "email",
+  sms = "sms",
+  whatsapp = "whatsapp",
+  phone = "phone",
+  instagram = "instagram",
+  facebook = "facebook",
+  linkedin = "linkedin",
+  twitter = "twitter",
+  youtube = "youtube",
+  tiktok = "tiktok",
+  crypto = "crypto",
+  socials = "socials",
+  links = "links",
+  image = "image",
+  event = "event",
+  pdf = "pdf",
+  video = "video",
+  mp3 = "mp3",
+  app = "app",
+  business = "business",
+  menu = "menu",
+  coupon = "coupon",
+  form = "form"
+}
+
+export enum QRStatus {
+  active = "active",
+  archived = "archived"
+}
+
+export enum FormFieldType {
+  text = "text",
+  number = "number",
+  range = "range",
+  checkbox = "checkbox",
+  select = "select",
+  radio = "radio",
+  email = "email",
+  phone = "phone"
+}

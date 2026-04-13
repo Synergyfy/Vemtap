@@ -29,6 +29,11 @@ export class CreateBusinessProfileDto {
   @IsOptional()
   businessType?: string;
 
+  @ApiProperty({ example: { doYouHaveMenu: true, footTraffic: 'high' }, required: false })
+  @IsObject()
+  @IsOptional()
+  responses?: Record<string, any>;
+
   @ApiProperty({ example: { hasTableService: true, highFootTraffic: true }, required: false })
   @IsObject()
   @IsOptional()
@@ -74,6 +79,11 @@ export class UpdateBusinessProfileDto {
   @IsString()
   @IsOptional()
   businessType?: string;
+
+  @ApiProperty({ required: false })
+  @IsObject()
+  @IsOptional()
+  responses?: Record<string, any>;
 
   @ApiProperty({ required: false })
   @IsString()

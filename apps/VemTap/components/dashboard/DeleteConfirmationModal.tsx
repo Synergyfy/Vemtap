@@ -1,6 +1,7 @@
 import React from 'react';
 import Modal from '@/components/ui/Modal';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import SudoActionGuard from '@/components/shared/SudoActionGuard';
 
 interface DeleteConfirmationModalProps {
     isOpen: boolean;
@@ -40,13 +41,15 @@ export default function DeleteConfirmationModal({
                     >
                         Cancel
                     </button>
-                    <button
-                        onClick={onConfirm}
-                        disabled={isLoading}
-                        className="flex-1 h-12 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 text-sm uppercase tracking-wider flex items-center justify-center gap-2"
-                    >
-                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : 'Delete'}
-                    </button>
+                    <SudoActionGuard action="Deleting resources">
+                        <button
+                            onClick={onConfirm}
+                            disabled={isLoading}
+                            className="flex-1 h-12 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+                        >
+                            {isLoading ? <Loader2 size={16} className="animate-spin" /> : 'Delete'}
+                        </button>
+                    </SudoActionGuard>
                 </div>
             </div>
         </Modal>

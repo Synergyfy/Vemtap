@@ -21,8 +21,8 @@ export class TicketMessage {
   @JoinColumn({ name: 'ticketId' })
   ticket: SupportTicket;
 
-  @Column({ type: 'uuid' })
-  senderId: string;
+  @Column({ type: 'uuid', nullable: true })
+  senderId: string | null;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'senderId' })
@@ -30,6 +30,13 @@ export class TicketMessage {
 
   @Column('text')
   message: string;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'CUSTOMER',
+  })
+  senderRole: 'CUSTOMER' | 'AGENT' | 'BOT' | 'SYSTEM';
 
   @CreateDateColumn()
   createdAt: Date;

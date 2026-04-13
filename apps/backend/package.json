@@ -39,6 +39,7 @@
     "db:reset:staging": "dotenv -e .env.staging -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register src/database/reset-and-sync.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@infobip-api/sdk": "^0.3.2",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bullmq": "^11.0.4",

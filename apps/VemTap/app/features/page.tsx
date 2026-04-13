@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
+import ProfileMyBusinessCTA from '@/components/landing/ProfileMyBusinessCTA';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -122,6 +123,9 @@ export default function FeaturesPage() {
                         </Link>
                     </div>
                 </section>
+
+                {/* Profile My Business CTA */}
+                <ProfileMyBusinessCTA />
             </main>
 
             <Footer />

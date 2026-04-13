@@ -33,8 +33,8 @@ export default function DeviceStatsPage() {
                 </div>
                 <h2 className="text-2xl font-display font-bold text-text-main mb-2">Device Not Found</h2>
                 <p className="text-text-secondary mb-8">The hardware point you're looking for doesn't exist or has been removed.</p>
-                <Link href="/dashboard/nfc-manager" className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors">
-                    Back to NFC Hub
+                <Link href="/dashboard/business-link" className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors">
+                    Back to Business Hub
                 </Link>
             </div>
         );

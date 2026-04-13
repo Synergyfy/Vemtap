@@ -17,6 +17,7 @@ import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChann
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { exportToCSV } from '@/lib/utils/export';
 import { useDebounce } from '@/hooks/useDebounce';
+import SudoActionGuard from '@/components/shared/SudoActionGuard';
 
 export default function VisitorsOverviewPage() {
     const router = useRouter();
@@ -165,13 +166,15 @@ export default function VisitorsOverviewPage() {
                 description="Monitor your customer footfall and engagement levels"
                 actions={
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleExportCSV}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm"
-                        >
-                            <Download size={18} />
-                            Export
-                        </button>
+                        <SudoActionGuard action="Exporting visitor data">
+                            <button
+                                onClick={handleExportCSV}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm"
+                            >
+                                <Download size={18} />
+                                Export
+                            </button>
+                        </SudoActionGuard>
                     </div>
                 }
             />

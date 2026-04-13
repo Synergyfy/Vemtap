@@ -86,7 +86,8 @@ const DOCS: Category[] = [
         pages: [
           { id: 'devices', title: 'Devices', path: '/dashboard/devices', summary: 'Device list and status.' },
           { id: 'device-detail', title: 'Device Detail', path: '/dashboard/devices/[id]', summary: 'Configure single device behavior.' },
-          { id: 'nfc-manager', title: 'NFC Manager', path: '/dashboard/nfc-manager', summary: 'Tap routing and branch targeting.' },
+          { id: 'business-link', title: 'Business Link', path: '/dashboard/business-link', summary: 'Tap routing and branch targeting.' },
+          { id: 'explore-qrthrive', title: 'Explore QRThrive', path: '/dashboard/explore-qrthrive', summary: 'Discover the synergy between Vemtap and QRThrive.' },
           { id: 'hardware', title: 'Hardware', path: '/dashboard/hardware', summary: 'Hardware deployment and readiness.' },
         ],
       },
