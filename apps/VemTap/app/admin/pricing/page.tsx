@@ -256,7 +256,7 @@ export default function AdminPricingPage() {
         isActive: plan.isActive ?? true,
         description: plan.description || '',
         isPopular: !!plan.isPopular,
-        qrThrivePlanId: plan.qrThrivePlanId || null,
+        qrThrivePlanId: plan.qrThrivePlanId || undefined,
     });
 
     const handleSave = async () => {
