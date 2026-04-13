@@ -19,7 +19,7 @@ Both systems use a shared **Internal API Key** for server-to-server and integrat
 ---
 
 ## 2. QR-Thrive Integration API
-**Base URL**: `http://localhost:3005/api/v1/integration` (Development)
+**Base URL**: `https://api.qrthrive.com/api/v1/integration` 
 
 ### **2.1. User Management**
 
@@ -54,7 +54,7 @@ Generates a one-time magic link for the user to sign in to QR-Thrive without a p
 ```json
 {
   "token": "magic-token-abc",
-  "url": "http://localhost:3000/auth/magic-link?token=magic-token-abc",
+  "url": "https://api.qrthrive.com/auth/magic-link?token=magic-token-abc",
   "expiresAt": "2024-04-12T21:00:00Z"
 }
 ```
@@ -124,7 +124,7 @@ Updates the user's subscription status based on VemTap payments.
 ---
 
 ## 3. VemTap Integration API
-**Base URL**: `http://localhost:3001/api/v1` (Development)
+**Base URL**: `https://testapi.vemtap.com/api/v1` 
 
 ### **3.1. Plan Fetching**
 `GET /plans`  
