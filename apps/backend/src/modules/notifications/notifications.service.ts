@@ -2,13 +2,27 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
+
+  async broadcastToRole(role: UserRole, title: string, message: string, type: string = 'broadcast') {
+    const users = await this.userRepository.find({ where: { role } });
+    const notifications = users.map(user => this.notificationsRepository.create({
+      userId: user.id,
+      title,
+      message,
+      type,
+    }));
+    return this.notificationsRepository.save(notifications);
+  }
 
   async create(
     userId: string,
@@ -47,5 +61,35 @@ export class NotificationsService {
     return this.notificationsRepository.count({
       where: { userId, isRead: false },
     });
+  }
+
+  async getBroadcastHistory() {
+    // This is a simplified implementation. In a real system, 
+    // we might have a dedicated Broadcast entity.
+    // Here we find notifications of type 'broadcast' and group them by title/message.
+    const rawHistory = await this.notificationsRepository
+      .createQueryBuilder('notification')
+      .select('notification.title', 'title')
+      .addSelect('notification.message', 'message')
+      .addSelect('notification.type', 'type')
+      .addSelect('MIN(notification.createdAt)', 'date')
+      .addSelect('COUNT(notification.id)', 'recipientCount')
+      .where('notification.type = :type', { type: 'broadcast' })
+      .groupBy('notification.title')
+      .addGroupBy('notification.message')
+      .addGroupBy('notification.type')
+      .orderBy('date', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    return rawHistory.map(h => ({
+      id: `BRD-${Buffer.from(h.title).toString('hex').slice(0, 4)}`,
+      title: h.title,
+      message: h.message,
+      type: h.type === 'broadcast' ? 'Announcement' : 'Targeted',
+      status: 'Sent',
+      date: new Date(h.date).toLocaleDateString(),
+      recipients: `Sent to ${h.recipientCount} Affiliates`,
+    }));
   }
 }

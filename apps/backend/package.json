@@ -33,6 +33,8 @@
     "migration:revert": "npm run typeorm -- migration:revert",
     "migration:revert:staging": "npm run typeorm:staging -- migration:revert",
     "migration:revert:prod": "npm run typeorm:prod -- migration:revert",
+    "seed:training": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed-training.ts",
+    "db:setup": "npm run migration:run && npm run seed && npm run seed:training",
     "db:reset": "dotenv -e .env -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register src/database/reset-and-sync.ts",
     "db:reset:staging": "dotenv -e .env.staging -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register src/database/reset-and-sync.ts"
   },
