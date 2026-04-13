@@ -4,6 +4,7 @@ import { User } from './entities/user.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { IntegrationUsersController } from './integration-users.controller';
 
 import { BusinessesModule } from '../businesses/businesses.module';
 import { BranchesModule } from '../branches/branches.module';
@@ -19,7 +20,7 @@ import { MailModule } from '../mail/mail.module';
     forwardRef(() => SubscriptionsModule),
   ],
   providers: [UsersService],
-  controllers: [UsersController],
+  controllers: [UsersController, IntegrationUsersController],
   exports: [UsersService],
 })
 export class UsersModule {}

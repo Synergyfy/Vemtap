@@ -89,6 +89,9 @@ export class Plan extends AbstractBaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ type: 'text', nullable: true })
+  qrThrivePlanId: string | null;
+
   @Column({ default: false })
   isPopular: boolean;
 

@@ -126,12 +126,16 @@ export default function AdminChatDesk() {
                                     "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm border-2 transition-transform group-hover:scale-105",
                                     activeId === chat.id ? "bg-blue-600 border-blue-400 text-white" : "bg-white border-gray-100 text-gray-400"
                                 )}>
-                                    {chat.user?.firstName?.[0]}{chat.user?.lastName?.[0] || chat.user?.firstName?.[1]}
+                                    {chat.user 
+                                        ? `${chat.user.firstName?.[0] || ''}${chat.user.lastName?.[0] || ''}`
+                                        : (chat.guestName?.[0] || '?')}
                                 </div>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start mb-0.5">
-                                    <p className="font-bold text-[15px] text-gray-900 truncate">{chat.user?.firstName} {chat.user?.lastName}</p>
+                                    <p className="font-bold text-[15px] text-gray-900 truncate">
+                                        {chat.user ? `${chat.user.firstName} ${chat.user.lastName}` : (chat.guestName || 'Anonymous Guest')}
+                                    </p>
                                     <span className="text-[10px] text-gray-400 font-bold whitespace-nowrap pt-0.5">
                                         {format(new Date(chat.createdAt), 'HH:mm')}
                                     </span>
@@ -164,7 +168,9 @@ export default function AdminChatDesk() {
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-gray-900 text-lg leading-none">{activeChat.user?.firstName} {activeChat.user?.lastName}</h3>
+                                        <h3 className="font-bold text-gray-900 text-lg leading-none">
+                                            {activeChat.user ? `${activeChat.user.firstName} ${activeChat.user.lastName}` : (activeChat.guestName || 'Anonymous Guest')}
+                                        </h3>
                                         <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                                     </div>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1">
@@ -209,7 +215,7 @@ export default function AdminChatDesk() {
                             </div>
 
                             {messages.map((m: any) => {
-                                const isAgent = m.senderId !== activeChat.userId;
+                                const isAgent = m.senderRole && m.senderRole !== 'CUSTOMER';
                                 return (
                                     <motion.div 
                                         initial={{ opacity: 0, y: 10 }}
@@ -221,7 +227,7 @@ export default function AdminChatDesk() {
                                             'w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border shadow-sm',
                                             isAgent ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-gray-200 text-gray-400'
                                         )}>
-                                            {isAgent ? 'YOU' : activeChat.user?.firstName?.[0]}
+                                            {isAgent ? 'YOU' : (activeChat.user?.firstName?.[0] || activeChat.guestName?.[0] || '?')}
                                         </div>
                                         <div className={cn(
                                             'max-w-[60%] px-5 py-3.5 shadow-sm rounded-2xl text-[13px] leading-relaxed font-medium',
@@ -261,7 +267,7 @@ export default function AdminChatDesk() {
                                 <textarea
                                     value={replyText}
                                     onChange={(e) => setReplyText(e.target.value)}
-                                    placeholder={`Reply to ${activeChat.user?.firstName}...`}
+                                    placeholder={`Reply to ${activeChat.user?.firstName || activeChat.guestName || 'Guest'}...`}
                                     className="w-full pl-24 pr-32 py-5 bg-gray-50 border border-gray-100 rounded-[2rem] text-sm font-medium focus:ring-8 focus:ring-blue-50 focus:bg-white transition-all outline-none resize-none shadow-inner min-h-[64px]"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -303,12 +309,16 @@ export default function AdminChatDesk() {
                         <div className="p-8 space-y-8 overflow-y-auto">
                             <div className="text-center">
                                 <div className="w-24 h-24 bg-white border-4 border-white rounded-[2rem] shadow-2xl mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-blue-600 shadow-blue-500/10">
-                                    {activeChat.user?.firstName?.[0]}
+                                    {activeChat.user ? activeChat.user.firstName?.[0] : (activeChat.guestName?.[0] || '?')}
                                 </div>
-                                <h4 className="text-lg font-bold text-gray-900 leading-tight">{activeChat.user?.firstName} {activeChat.user?.lastName}</h4>
-                                <p className="text-xs text-gray-500 font-medium mb-1">{activeChat.user?.email}</p>
+                                <h4 className="text-lg font-bold text-gray-900 leading-tight">
+                                    {activeChat.user ? `${activeChat.user.firstName} ${activeChat.user.lastName}` : (activeChat.guestName || 'Anonymous Guest')}
+                                </h4>
+                                <p className="text-xs text-gray-500 font-medium mb-1">
+                                    {activeChat.user ? activeChat.user.email : (activeChat.guestEmail || 'N/A')}
+                                </p>
                                 <span className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-blue-100 inline-block mt-2">
-                                    {activeChat.user?.role}
+                                    {activeChat.user ? activeChat.user.role : 'Guest'}
                                 </span>
                             </div>
 
@@ -316,10 +326,10 @@ export default function AdminChatDesk() {
                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">User Details</p>
                                 <div className="space-y-3">
                                     {[
-                                        { icon: Mail, label: 'Email', value: activeChat.user?.email },
+                                        { icon: Mail, label: 'Email', value: activeChat.user?.email || activeChat.guestEmail || 'N/A' },
                                         { icon: Phone, label: 'Phone', value: activeChat.user?.phone || 'N/A' },
                                         { icon: MapPin, label: 'Location', value: 'N/A' },
-                                        { icon: Clock, label: 'Joined', value: format(new Date(activeChat.user?.createdAt), 'PPP') }
+                                        { icon: Clock, label: 'Joined', value: (activeChat.user?.createdAt || activeChat.createdAt) ? format(new Date(activeChat.user?.createdAt || activeChat.createdAt), 'PPP') : 'N/A' }
                                     ].map((item, idx) => (
                                         <div key={idx} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl shadow-sm">
                                             <item.icon size={14} className="text-gray-400" />

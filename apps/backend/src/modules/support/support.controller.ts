@@ -9,7 +9,9 @@ import {
   Query,
   Patch,
   Delete,
+  Logger,
 } from '@nestjs/common';
+import { Public } from '../../common/decorators/public.decorator';
 import { SupportService } from './support.service';
 import { SupportBotService } from './support-bot.service';
 import { ConversationContextService } from './conversation-context.service';
@@ -43,6 +45,8 @@ type AuthRequest = { user: { id: string; role: UserRole } };
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('support')
 export class SupportController {
+  private readonly logger = new Logger(SupportController.name);
+
   constructor(
     private readonly supportService: SupportService,
     private readonly botService: SupportBotService,
@@ -50,23 +54,33 @@ export class SupportController {
   ) {}
 
   @Post('bot/query')
+  @Public()
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
   @ApiOperation({ summary: 'Query the automated support bot' })
   async queryBot(
-    @Request() req: AuthRequest,
+    @Request() req: any,
     @Body() dto: BotQueryDto,
   ) {
-    return this.botService.handleQuery(req.user.id, dto);
+    const userId = req.user?.id || null;
+    return this.botService.handleQuery(userId, dto);
   }
 
   @Post('escalate')
+  @Public()
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
   @ApiOperation({ summary: 'Escalate bot session to a live human agent' })
   async escalateChat(
-    @Request() req: AuthRequest,
+    @Request() req: any,
     @Body('initialMessage') initialMessage?: string,
+    @Body('guestName') guestName?: string,
+    @Body('guestEmail') guestEmail?: string,
+    @Body('sessionId') sessionId?: string,
   ) {
-    return this.supportService.escalateChat(req.user.id, initialMessage);
+    const userId = req.user?.id || null;
+    const name = guestName || (req.body as any).guestName;
+    const email = guestEmail || (req.body as any).guestEmail;
+    
+    return this.supportService.escalateChat(userId, initialMessage, name, email, sessionId);
   }
 
   @Patch('bot/interaction/:id')

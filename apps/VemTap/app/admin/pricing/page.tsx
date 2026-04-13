@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
+import { useQrThrivePlans } from '@/services/qr-thrive/hooks';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
 type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers' | 'maxAutomations'> & {
@@ -27,6 +28,7 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     maxCatalogueCategories: string;
     maxCatalogueOffers: string;
     maxAutomations: string;
+    qrThrivePlanId?: string;
 };
 
 const defaultNewPlan: EditablePlanForm = {
@@ -57,6 +59,7 @@ const defaultNewPlan: EditablePlanForm = {
     isActive: true,
     description: '',
     isPopular: false,
+    qrThrivePlanId: '',
 };
 
 const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
@@ -88,6 +91,7 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     isActive: plan.isActive ?? true,
     description: plan.description || '',
     isPopular: !!plan.isPopular,
+    qrThrivePlanId: plan.qrThrivePlanId || '',
 });
 
 export default function AdminPricingPage() {
@@ -98,6 +102,7 @@ export default function AdminPricingPage() {
     const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
     const { data: plans = [], isLoading: plansLoading } = useAdminPricingPlans();
+    const { data: qrThrivePlans = [], isLoading: qrPlansLoading } = useQrThrivePlans();
 
     const [orderedPlans, setOrderedPlans] = useState<PricingPlan[]>([]);
     const [originalOrderIds, setOriginalOrderIds] = useState<string[]>([]);
@@ -251,6 +256,7 @@ export default function AdminPricingPage() {
         isActive: plan.isActive ?? true,
         description: plan.description || '',
         isPopular: !!plan.isPopular,
+        qrThrivePlanId: plan.qrThrivePlanId || null,
     });
 
     const handleSave = async () => {
@@ -288,7 +294,7 @@ export default function AdminPricingPage() {
                 'analyticsLevel', 'catalogueEnabled', 'maxCatalogueItems',
                 'maxCatalogueCategories', 'maxCatalogueOffers',
                 'automationsEnabled', 'maxAutomations',
-                'isActive', 'description', 'isPopular'
+                'isActive', 'description', 'isPopular', 'qrThrivePlanId'
             ];
 
             editableFields.forEach((k) => {
@@ -598,6 +604,23 @@ export default function AdminPricingPage() {
                                         ₦ Naira (NGN)
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">QR Thrive Plan Integration</label>
+                                <select
+                                    value={currentPlan.qrThrivePlanId}
+                                    onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, qrThrivePlanId: e.target.value } : prev))}
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none appearance-none"
+                                >
+                                    <option value="">No QR Thrive Plan Linked</option>
+                                    {qrThrivePlans.map((p: any) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} {p.isFree ? '(Free)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {qrPlansLoading && <p className="text-[9px] text-text-secondary animate-pulse ml-1">Loading QR Thrive plans...</p>}
                             </div>
 
                             <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-100">

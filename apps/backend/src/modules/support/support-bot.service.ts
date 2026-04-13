@@ -19,7 +19,7 @@ export class SupportBotService {
   private readonly logger = new Logger(SupportBotService.name);
   private genAI: GoogleGenerativeAI;
   private readonly CONFIDENCE_THRESHOLD = 70;
-  private readonly GEMINI_MODEL = 'gemini-2.5-flash-lite';
+  private readonly GEMINI_MODEL = 'gemini-1.5-flash';
 
   // Cached full knowledge base for Gemini grounding
   private knowledgeCache: string | null = null;
@@ -44,16 +44,29 @@ export class SupportBotService {
     }
   }
 
-  async handleQuery(userId: string, dto: BotQueryDto): Promise<BotResponseDto> {
-    const { query, context, sessionId } = dto;
+  async handleQuery(userId: string | null, dto: BotQueryDto): Promise<BotResponseDto> {
+    const { query, context, sessionId, guestName, guestEmail } = dto;
+    this.logger.log(`🔍 [BOT] Handling query for ${userId ? `user ${userId}` : 'anonymous visitor'}: "${query}" (sessionId: ${sessionId || 'new'})`);
     const normalizedQuery = query.toLowerCase().trim();
 
-    const userContext = await this.contextService.getUserContext(userId);
+    const userContext = userId ? await this.contextService.getUserContext(userId) : null;
     const convContext = await this.conversationContext.getOrCreateContext(userId, sessionId);
     const recentMessages = await this.conversationContext.getRecentMessages(userId, sessionId || '', 10);
 
+    this.logger.log(`📂 [CONTEXT] Current Path: ${convContext.currentPath || 'none'}, User Model: ${userContext?.businessName || 'Guest'}`);
+
     await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'user', query);
 
+    // 1. Handle specialized conversation paths (forms, multi-step queries)
+    const pathResponse = await this.handleConversationPath(normalizedQuery, query, convContext, userId, sessionId || convContext.sessionId);
+    if (pathResponse) {
+      this.logger.log(`🛣️ [PATH] Handled via conversation path: ${convContext.currentPath}`);
+      return pathResponse;
+    }
+
+    // 2. Try Rule-based keyword matching (Fastest/Most Reliable)
+    this.logger.log('🕵️ [MATCH] Searching for rule-based matches...');
+    
     // Handle casual acknowledgments (hmm, okay, yes, no)
     const casualResponse = this.handleCasualMessage(normalizedQuery);
     if (casualResponse) {
@@ -101,14 +114,10 @@ export class SupportBotService {
       };
     }
 
-    const pathResponse = await this.handleConversationPath(normalizedQuery, query, convContext, userId, sessionId || convContext.sessionId);
-    if (pathResponse) {
-      return pathResponse;
-    }
-
     const matchResult = await this.findBestMatch(normalizedQuery);
     
     if (matchResult && matchResult.confidence >= this.CONFIDENCE_THRESHOLD) {
+      this.logger.log(`✅ [MATCH] Found rule-based match with confidence ${matchResult.confidence}`);
       const parsedAnswer = this.parseTemplate(matchResult.knowledge.answer, userContext);
       const buttons = matchResult.knowledge.buttons || this.getDefaultButtons(matchResult.knowledge.category || undefined);
       const interaction = await this.logInteraction(userId, query, parsedAnswer, 'knowledge_base', matchResult.confidence, buttons, convContext.currentPath || undefined);
@@ -160,23 +169,17 @@ export class SupportBotService {
       };
     }
 
+    // 3. Try AI Generation (Gemini)
     if (this.genAI) {
       try {
-        this.logger.log(`🤖 [GEMINI] Handling query via Gemini AI: "${query}"`);
-        const aiResponse = await this.getGeminiResponse(query, context, recentMessages, userContext, convContext);
+        this.logger.log(`🤖 [GEMINI] Attempting AI generation for: "${query}"...`);
+        const aiResponse = await this.getGeminiResponse(query, context, recentMessages, userContext, convContext, guestName);
         
         if (aiResponse.answer) {
-          this.logger.log(`✅ [GEMINI] Response: ${aiResponse.answer.substring(0, 200)}...`);
-          this.logger.log(`✅ [GEMINI] Buttons: ${JSON.stringify(aiResponse.buttons || [])}`);
-          if (aiResponse.followUp) {
-            this.logger.log(`✅ [GEMINI] Follow-ups: ${JSON.stringify(aiResponse.followUp)}`);
-          }
-
-          await this.autoSaveToKnowledgeBase(query, aiResponse.answer, aiResponse.buttons);
-          
+          this.logger.log(`✅ [GEMINI] AI response generated`);
           const interaction = await this.logInteraction(userId, query, aiResponse.answer, 'ai', 50, aiResponse.buttons, convContext.currentPath || undefined);
           await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', aiResponse.answer, interaction.id);
-          
+
           return {
             id: interaction.id,
             content: aiResponse.answer,
@@ -186,16 +189,16 @@ export class SupportBotService {
             followUp: aiResponse.followUp,
             conversationPath: convContext.currentPath || undefined,
           };
-        } else {
-          this.logger.warn(`⚠️ [GEMINI] Empty response for query: "${query}"`);
         }
       } catch (error) {
-        this.logger.error(`❌ [GEMINI] Error for query "${query}":`, error);
+        this.logger.error(`❌ [GEMINI] Error for query "${query}":`, error.stack || error);
       }
     } else {
-      this.logger.warn(`⚠️ [GEMINI] Not initialized — skipping AI fallback for: "${query}"`);
+      this.logger.warn('⚠️ [BOT] Gemini AI is not initialized (no API key)');
     }
 
+    // 4. Final Fallback (If all above fail)
+    this.logger.log('🔙 [FALLBACK] No specific match found, using generic fallback');
     const fallbackMessage = this.getFallbackMessage(query);
     const buttons = this.getFallbackButtons();
     const interaction = await this.logInteraction(userId, query, fallbackMessage, 'fallback', 0, buttons, convContext.currentPath || undefined);
@@ -215,8 +218,8 @@ export class SupportBotService {
     normalizedQuery: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): Promise<BotResponseDto | null> {
     const path = convContext.currentPath;
 
@@ -249,7 +252,7 @@ export class SupportBotService {
     return null;
   }
 
-  private async logPathResponse(response: BotResponseDto, userId: string, query: string, sessionId: string): Promise<BotResponseDto> {
+  private async logPathResponse(response: BotResponseDto, userId: string | null, query: string, sessionId: string | null): Promise<BotResponseDto> {
     const interaction = await this.logInteraction(userId, query, response.content, 'knowledge_base', response.confidence, response.buttons, response.conversationPath);
     await this.conversationContext.addMessage(userId, sessionId, 'bot', response.content, interaction.id);
     return {
@@ -275,7 +278,7 @@ export class SupportBotService {
     return null;
   }
 
-  private getPathResponse(path: string, query: string, userId: string, sessionId: string): BotResponseDto {
+  private getPathResponse(path: string, query: string, userId: string | null, sessionId: string | null): BotResponseDto {
     const buttons: ChatButton[] = [];
 
     switch (path) {
@@ -338,8 +341,8 @@ export class SupportBotService {
     query: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): BotResponseDto | null {
     const responses = convContext.userResponses || {};
 
@@ -424,8 +427,8 @@ export class SupportBotService {
     query: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): BotResponseDto | null {
     const responses = convContext.userResponses || {};
 
@@ -480,8 +483,8 @@ export class SupportBotService {
     query: string,
     originalQuery: string,
     convContext: any,
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
   ): BotResponseDto | null {
     if (query.includes('human') || query.includes('agent') || query.includes('real person')) {
       return {
@@ -817,6 +820,7 @@ export class SupportBotService {
     history: any[] = [],
     userContext?: any,
     convContext?: any,
+    guestName?: string,
   ): Promise<{ answer: string; buttons?: ChatButton[]; followUp?: string[] }> {
     if (!this.genAI) {
       throw new Error('Gemini AI not initialized');
@@ -860,8 +864,8 @@ ${fullKnowledgeBase}
 ${mostRelevant}
 
 === USER CONTEXT ===
-- Name: ${userContext?.name || 'there'}
-- Business: ${userContext?.businessName || 'VemTap User'}
+- Name: ${userContext?.name || guestName || 'there'}
+- Business: ${userContext?.businessName || 'VemTap Visitor'}
 - Credits: SMS(${userContext?.credits?.sms || 0}), Email(${userContext?.credits?.email || 0}), WhatsApp(${userContext?.credits?.whatsapp || 0})
 - Current Page: ${context || 'General Dashboard'}
 
@@ -1207,7 +1211,7 @@ User's question: ${query}`;
   }
 
   private async logInteraction(
-    userId: string,
+    userId: string | null,
     query: string,
     response: string,
     source: string,

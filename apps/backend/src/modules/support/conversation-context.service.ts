@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, IsNull } from 'typeorm';
 import { BotConversationContext } from './entities/conversation-context.entity';
 
 interface ChatMessage {
@@ -21,8 +21,8 @@ export class ConversationContextService {
     private readonly contextRepo: Repository<BotConversationContext>,
   ) {}
 
-  async getContext(userId: string, sessionId?: string): Promise<BotConversationContext | null> {
-    const query: any = { userId, isActive: true };
+  async getContext(userId: string | null, sessionId?: string | null): Promise<BotConversationContext | null> {
+    const query: any = { userId: userId || IsNull(), isActive: true };
     if (sessionId) {
       query.sessionId = sessionId;
     }
@@ -32,7 +32,7 @@ export class ConversationContextService {
     });
   }
 
-  async getOrCreateContext(userId: string, sessionId?: string): Promise<BotConversationContext> {
+  async getOrCreateContext(userId: string | null, sessionId?: string | null): Promise<BotConversationContext> {
     let context = await this.getContext(userId, sessionId);
     
     if (!context) {
@@ -52,8 +52,8 @@ export class ConversationContextService {
   }
 
   async addMessage(
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
     role: 'user' | 'bot',
     content: string,
     messageId?: string,
@@ -79,8 +79,8 @@ export class ConversationContextService {
   }
 
   async addUserResponse(
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
     key: string,
     value: any,
   ): Promise<BotConversationContext> {
@@ -94,8 +94,8 @@ export class ConversationContextService {
   }
 
   async setPath(
-    userId: string,
-    sessionId: string,
+    userId: string | null,
+    sessionId: string | null,
     path: string,
   ): Promise<BotConversationContext> {
     const context = await this.getOrCreateContext(userId, sessionId);
@@ -104,14 +104,14 @@ export class ConversationContextService {
     return this.contextRepo.save(context);
   }
 
-  async getRecentMessages(userId: string, sessionId: string, limit: number = 10): Promise<ChatMessage[]> {
+  async getRecentMessages(userId: string | null, sessionId: string | null, limit: number = 10): Promise<ChatMessage[]> {
     const context = await this.getContext(userId, sessionId);
     if (!context || !context.messages) return [];
     return context.messages.slice(-limit);
   }
 
-  async clearContext(userId: string, sessionId?: string): Promise<void> {
-    const query: any = { userId, isActive: true };
+  async clearContext(userId: string | null, sessionId?: string | null): Promise<void> {
+    const query: any = { userId: userId || IsNull(), isActive: true };
     if (sessionId) {
       query.sessionId = sessionId;
     }

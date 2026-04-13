@@ -39,14 +39,22 @@ export class SupportTicket {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ApiProperty({ example: 'uuid-string' })
+  @ApiProperty({ example: 'uuid-string', nullable: true })
   @Index()
-  @Column({ type: 'uuid' })
-  userId: string;
+  @Column({ type: 'uuid', nullable: true })
+  userId: string | null;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user: User | null;
+
+  @ApiProperty({ example: 'John Doe', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  guestName: string | null;
+
+  @ApiProperty({ example: 'john@example.com', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  guestEmail: string | null;
 
   @ApiProperty({ example: 'SMS credits not reflecting' })
   @Column()

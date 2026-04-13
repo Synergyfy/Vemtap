@@ -19,9 +19,9 @@ interface UserResponses {
 @Entity('bot_conversation_context')
 @Index(['userId', 'sessionId'])
 export class BotConversationContext extends AbstractBaseEntity {
-  @Column({ name: 'user_id' })
+  @Column({ name: 'user_id', type: 'uuid', nullable: true })
   @Index()
-  userId: string;
+  userId: string | null;
 
   @Column({ name: 'session_id' })
   @Index()
