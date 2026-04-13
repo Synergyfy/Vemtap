@@ -187,6 +187,14 @@ export class CreatePlanDto {
   description?: string;
 
   @ApiPropertyOptional({
+    description: 'QR Thrive plan ID to link to',
+    example: 'plan_123',
+  })
+  @IsString()
+  @IsOptional()
+  qrThrivePlanId?: string;
+
+  @ApiPropertyOptional({
     description: 'Is this plan marked as popular?',
     example: true,
   })

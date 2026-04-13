@@ -25,6 +25,10 @@ export class SettingsService implements OnModuleInit {
         messagingCostSms: 0.05,
         messagingCostWhatsapp: 0.08,
         messagingCostEmail: 0.01,
+        affiliateDirectCommission: 20,
+        affiliateIndirectCommission: 5,
+        affiliateCommissionDurationMonths: 3,
+        affiliateMinimumWithdrawal: 5000,
       });
       await this.settingRepository.save(defaultSettings);
     }

@@ -13,6 +13,7 @@ import { BusinessesService } from '../businesses/businesses.service';
 import { DevicesService } from '../devices/devices.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
+import { AffiliatesService } from '../affiliates/affiliates.service';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
@@ -44,6 +45,7 @@ export class AuthService {
     private configService: ConfigService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
+    private affiliatesService: AffiliatesService,
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get<string>('GOOGLE_CLIENT_ID'),
@@ -171,12 +173,20 @@ export class AuthService {
       }
     }
 
+    let referralCode: string | undefined;
+
+    if (user.role === UserRole.AGENT) {
+      const affiliate = await this.affiliatesService.getStats(user.id as string);
+      referralCode = affiliate.referralCode;
+    }
+
     const payload = {
       email: user.email,
       sub: user.id,
       role: user.role,
       branchId: branchId,
       businessId: businessId || (user as any).businessId,
+      referralCode,
     };
     delete user.password;
     return {
@@ -185,6 +195,7 @@ export class AuthService {
         ...user,
         businessId: businessId || (user as any).businessId,
         branchId: branchId,
+        referralCode,
       },
       isNewUser,
     };
@@ -392,6 +403,23 @@ export class AuthService {
       if (refreshed) user = refreshed;
     }
 
+    // 3. Post-Registration Affiliate Logic
+    if (user.role === UserRole.AGENT) {
+      await this.affiliatesService.createProfile(user.id);
+    }
+
+    if (registrationData.referralCode) {
+      const affiliate = await this.affiliatesService.findByReferralCode(registrationData.referralCode);
+      if (affiliate) {
+        const business = await this.businessesService.findByOwner(user.id);
+        await this.affiliatesService.recordReferral(
+          affiliate.id,
+          business?.id,
+          user.id,
+        );
+      }
+    }
+
     // Consume OTP session
     await this.otpRepository.remove(otpRecord);
 
@@ -559,6 +587,19 @@ export class AuthService {
       });
       if (otpRecord) {
         await this.otpRepository.remove(otpRecord);
+      }
+    }
+
+    // --- Post-Registration Affiliate Logic (for Owners) ---
+    if (dto.referralCode) {
+      const affiliate = await this.affiliatesService.findByReferralCode(dto.referralCode);
+      if (affiliate) {
+        const business = await this.businessesService.findByOwner(updatedUser.id);
+        await this.affiliatesService.recordReferral(
+          affiliate.id,
+          business?.id,
+          updatedUser.id,
+        );
       }
     }
 

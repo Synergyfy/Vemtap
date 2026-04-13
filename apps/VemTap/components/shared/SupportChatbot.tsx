@@ -32,6 +32,8 @@ export default function SupportChatbot() {
     });
     const [handedToAgent, setHandedToAgent] = useState(false);
     const [liveTicketId, setLiveTicketId] = useState<string | null>(null);
+    const [isGuestIdentified, setIsGuestIdentified] = useState(false);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     
     // Hooks
     const escalateMutation = useEscalateChat();
@@ -40,21 +42,51 @@ export default function SupportChatbot() {
     const { data: userTicketsData } = useUserSupportTickets(1, 5);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    
+    // Initialize Session ID for Guests
+    useEffect(() => {
+        if (!isAuthenticated) {
+            let storedId = localStorage.getItem('vemtap_support_session');
+            if (!storedId) {
+                storedId = `js_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                localStorage.setItem('vemtap_support_session', storedId);
+            }
+            setSessionId(storedId);
+        }
+    }, [isAuthenticated]);
 
     // Auto-resume check
     useEffect(() => {
-        if (isAuthenticated && userTicketsData?.data && !handedToAgent) {
-            const activeChat = userTicketsData.data.find((t: any) => 
-                t.type === 'Chat' && (t.status === 'Pending' || t.status === 'In Progress')
-            );
-            if (activeChat) {
-                setLiveTicketId(activeChat.id);
-                setHandedToAgent(true);
-                // If history is empty, could potentially load the activeChat.messages here
-                // For now, it will start with a fresh local history but connected to the socket
+        const resumeActiveChat = async () => {
+            if (isAuthenticated && userTicketsData?.data && !handedToAgent) {
+                const activeChat = userTicketsData.data.find((t: any) => 
+                    t.type === 'Chat' && (t.status === 'Pending' || t.status === 'In Progress')
+                );
+                if (activeChat) {
+                    setLiveTicketId(activeChat.id);
+                    setHandedToAgent(true);
+                    
+                    // Load history from backend if store is empty
+                    if (history.length === 0) {
+                        try {
+                            const fullTicket = await api.get(`/support/tickets/${activeChat.id}`);
+                            if (fullTicket.messages) {
+                                fullTicket.messages.forEach((m: any) => {
+                                    addMessage({
+                                        role: !m.senderId ? 'assistant' : (m.senderId === user?.id ? 'user' : 'assistant'),
+                                        content: m.message
+                                    });
+                                });
+                            }
+                        } catch (err) {
+                            console.error("Failed to load history", err);
+                        }
+                    }
+                }
             }
-        }
-    }, [isAuthenticated, userTicketsData, handedToAgent]);
+        };
+        resumeActiveChat();
+    }, [isAuthenticated, userTicketsData, handedToAgent, history.length, addMessage, user?.id]);
 
     // Socket listeners
     useEffect(() => {
@@ -133,14 +165,23 @@ export default function SupportChatbot() {
         return context;
     };
 
+    const getGuestDetails = () => {
+        if (isAuthenticated) return { name: undefined, email: undefined };
+        return { name: contactForm.name, email: contactForm.email };
+    };
+
     const sendQuery = async (userText: string) => {
         if (isLoading) return;
         setIsLoading(true);
 
         try {
+            const guestDetails = getGuestDetails();
             const data = await api.post('/support/bot/query', {
                 query: userText,
                 context: getContext(),
+                guestName: guestDetails.name,
+                guestEmail: guestDetails.email,
+                sessionId: sessionId || undefined,
                 history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
             });
 
@@ -173,16 +214,16 @@ export default function SupportChatbot() {
     };
 
     const handleEscalate = async () => {
-        if (!isAuthenticated) {
-            toast.error("Please log in to chat with a human agent.");
-            return;
-        }
-
         setIsLoading(true);
         try {
             const lastUserMsg = history.filter(m => m.role === 'user').pop();
+            const guestDetails = getGuestDetails();
+            
             const ticket = await escalateMutation.mutateAsync({ 
-                initialMessage: lastUserMsg?.content || "User requested live support" 
+                initialMessage: lastUserMsg?.content || "User requested live support",
+                guestName: guestDetails.name,
+                guestEmail: guestDetails.email,
+                sessionId: sessionId || undefined
             });
             setLiveTicketId(ticket.id);
             setHandedToAgent(true);
@@ -229,10 +270,15 @@ export default function SupportChatbot() {
     const handleContactSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        // Simulate a slight delay for better UX
         setTimeout(() => {
             setIsLoading(false);
-            setIsSubmitted(true);
-        }, 1500);
+            setIsGuestIdentified(true);
+            addMessage({
+                role: 'assistant',
+                content: `Hi ${contactForm.name}! 👋 I'm the VemTap Support Bot. How can I help you today?`
+            });
+        }, 800);
     };
 
     const handleFollowUpClick = (question: string) => {
@@ -335,16 +381,6 @@ export default function SupportChatbot() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        {!handedToAgent && isAuthenticated && (
-                                            <button 
-                                                onClick={handleEscalate}
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-white mr-2"
-                                                title="Talk to Human"
-                                            >
-                                                <User size={14} />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Agent</span>
-                                            </button>
-                                        )}
                                         <button onClick={() => { clearHistory(); setIsSubmitted(false); setHandedToAgent(false); setLiveTicketId(null); }} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><Trash2 size={18} /></button>
                                         <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white">{isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
                                         <button onClick={() => setIsOpen(false)} className="p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/80 hover:text-white"><X size={20} /></button>
@@ -352,7 +388,7 @@ export default function SupportChatbot() {
                                 </div>
 
                                 <div className="flex-1 overflow-hidden flex flex-col bg-gray-50/50">
-                                    {!isAuthenticated ? (
+                                    {(!isAuthenticated && !isGuestIdentified) ? (
                                         <div className="flex-1 overflow-y-auto p-8 flex flex-col">
                                             {isSubmitted ? (
                                                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center text-center py-10">
@@ -366,8 +402,8 @@ export default function SupportChatbot() {
                                                     <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 flex gap-4">
                                                         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm shrink-0"><Info size={20} /></div>
                                                         <div>
-                                                            <h4 className="font-bold text-sm text-blue-900 mb-1">Quick Assistance</h4>
-                                                            <p className="text-blue-700 text-xs leading-relaxed">Drop us a message and our team will get back to you. Log in for live real-time chat.</p>
+                                                            <h4 className="font-bold text-sm text-blue-900 mb-1">Start a Conversation</h4>
+                                                            <p className="text-blue-700 text-xs leading-relaxed">Tell us who you are so we can assist you better. You'll be able to chat with our bot and escalate to an agent if needed.</p>
                                                         </div>
                                                     </div>
                                                     <form onSubmit={handleContactSubmit} className="space-y-4">
@@ -379,14 +415,11 @@ export default function SupportChatbot() {
                                                             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 mb-1.5 block">Email Address</label>
                                                             <input type="email" required value={contactForm.email} onChange={e => setContactForm({...contactForm, email: e.target.value})} className="w-full h-14 px-5 bg-white border border-gray-100 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm" placeholder="hello@example.com" />
                                                         </div>
-                                                        <div>
-                                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 mb-1.5 block">Message</label>
-                                                            <textarea required rows={4} value={contactForm.message} onChange={e => setContactForm({...contactForm, message: e.target.value})} className="w-full p-5 bg-white border border-gray-100 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm resize-none" placeholder="How can we help today?" />
-                                                        </div>
                                                         <button type="submit" disabled={isLoading} className="w-full h-14 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-2xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">
-                                                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <><Send size={18} /> Send Message</>}
+                                                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <>Start Chatting <Send size={18} /></>}
                                                         </button>
                                                     </form>
+                                                    <p className="text-center text-[10px] text-gray-400">By starting a chat, you agree to our privacy policy.</p>
                                                 </div>
                                             )}
                                         </div>
@@ -401,9 +434,10 @@ export default function SupportChatbot() {
                                                             </div>
                                                             <div className={`rounded-2xl px-5 py-3.5 shadow-sm relative ${message.role === 'user' ? 'bg-linear-to-br from-indigo-600 to-indigo-500 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
                                                                 <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                                                                <p className={`text-[9px] font-bold mt-1.5 flex items-center gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
-                                                                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                </p>
+                                                                <div className={`text-[9px] font-bold mt-1.5 flex items-center justify-between gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
+                                                                    <span>{message.role === 'assistant' && !message.interactionId ? 'Support Bot' : ''}</span>
+                                                                    <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </motion.div>
@@ -423,6 +457,21 @@ export default function SupportChatbot() {
                                                             </div>
                                                         </div>
                                                     </div>
+                                                )}
+                                                {!handedToAgent && history.length > 0 && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        className="flex justify-center py-2"
+                                                    >
+                                                        <button 
+                                                            onClick={handleEscalate}
+                                                            className="flex items-center gap-2 px-6 py-3 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold text-xs shadow-lg shadow-blue-200 transition-all active:scale-95 group"
+                                                        >
+                                                            <Headset size={16} className="group-hover:rotate-12 transition-transform" />
+                                                            <span>Talk to a Human Agent</span>
+                                                        </button>
+                                                    </motion.div>
                                                 )}
                                                 <div ref={messagesEndRef} />
                                             </div>

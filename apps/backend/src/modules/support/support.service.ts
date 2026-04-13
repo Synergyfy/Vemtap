@@ -14,6 +14,7 @@ import { AgentStatsDto } from './dto/agent-stats.dto';
 import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
 
 import { SupportGateway } from './support.gateway';
+import { ConversationContextService } from './conversation-context.service';
 
 @Injectable()
 export class SupportService {
@@ -27,15 +28,35 @@ export class SupportService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private readonly supportGateway: SupportGateway,
+    private readonly conversationContextService: ConversationContextService,
   ) {}
 
-  async escalateChat(userId: string, initialMessage?: string): Promise<SupportTicket> {
+  async escalateChat(
+    userId: string | null,
+    initialMessage?: string,
+    guestName?: string,
+    guestEmail?: string,
+    sessionId?: string,
+  ): Promise<SupportTicket> {
     // Check for existing active chat
     const existingTicket = await this.ticketRepository.findOne({
-      where: [
-        { userId, type: TicketType.CHAT, status: TicketStatus.PENDING },
-        { userId, type: TicketType.CHAT, status: TicketStatus.IN_PROGRESS },
-      ],
+      where: userId
+        ? [
+            { userId, type: TicketType.CHAT, status: TicketStatus.PENDING },
+            { userId, type: TicketType.CHAT, status: TicketStatus.IN_PROGRESS },
+          ]
+        : [
+            {
+              guestEmail,
+              type: TicketType.CHAT,
+              status: TicketStatus.PENDING,
+            },
+            {
+              guestEmail,
+              type: TicketType.CHAT,
+              status: TicketStatus.IN_PROGRESS,
+            },
+          ],
       order: { createdAt: 'DESC' },
     });
 
@@ -45,6 +66,8 @@ export class SupportService {
 
     const ticket = this.ticketRepository.create({
       userId,
+      guestName,
+      guestEmail,
       subject: 'Live Support Chat',
       category: 'Support',
       status: TicketStatus.PENDING,
@@ -53,10 +76,26 @@ export class SupportService {
     });
     const savedTicket = await this.ticketRepository.save(ticket);
 
+    // Persist bot conversation history
+    const botContext = await this.conversationContextService.getContext(userId, sessionId);
+    if (botContext && botContext.messages && botContext.messages.length > 0) {
+      const historyMessages = botContext.messages.map((msg) =>
+        this.messageRepository.create({
+          ticketId: savedTicket.id,
+          senderId: msg.role === 'user' ? userId : null,
+          senderRole: msg.role === 'user' ? 'CUSTOMER' : 'BOT',
+          message: msg.content,
+          createdAt: msg.timestamp || new Date(),
+        }),
+      );
+      await this.messageRepository.save(historyMessages);
+    }
+
     if (initialMessage) {
       const message = this.messageRepository.create({
         ticketId: savedTicket.id,
         senderId: userId,
+        senderRole: 'CUSTOMER',
         message: initialMessage,
       });
       const savedMessage = await this.messageRepository.save(message);
@@ -92,6 +131,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: userId,
+      senderRole: 'CUSTOMER',
       message: dto.message,
     });
     await this.messageRepository.save(message);
@@ -134,6 +174,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: userId,
+      senderRole: 'CUSTOMER',
       message: messageText,
     });
 
@@ -252,6 +293,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: agentId,
+      senderRole: 'AGENT',
       message: messageText,
     });
 
@@ -408,6 +450,7 @@ export class SupportService {
     const message = this.messageRepository.create({
       ticketId: ticket.id,
       senderId: adminId,
+      senderRole: 'AGENT',
       message: messageText,
     });
 

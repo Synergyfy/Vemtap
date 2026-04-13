@@ -23,6 +23,16 @@ export class BotQueryDto {
   @IsOptional()
   sessionId?: string;
 
+  @ApiPropertyOptional({ example: 'John Doe' })
+  @IsString()
+  @IsOptional()
+  guestName?: string;
+
+  @ApiPropertyOptional({ example: 'john@example.com' })
+  @IsString()
+  @IsOptional()
+  guestEmail?: string;
+
   @ApiPropertyOptional({ example: [] })
   @IsArray()
   @IsOptional()

@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -29,6 +31,8 @@ import { CatalogueCategory } from '../catalogue/entities/catalogue-category.enti
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
+import { AffiliatesService } from '../affiliates/affiliates.service';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -56,6 +60,9 @@ export class SubscriptionsService {
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
+    private readonly affiliatesService: AffiliatesService,
+    @Inject(forwardRef(() => QrThriveService))
+    private readonly qrThriveService: QrThriveService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -173,6 +180,13 @@ export class SubscriptionsService {
           userId: business.ownerId,
         });
 
+        // Trigger affiliate commission
+        await this.affiliatesService.processSubscriptionCommission(
+          businessId as string,
+          plan.monthlyPrice,
+          paymentReference,
+        );
+
         if (billingPeriod === BillingPeriod.MONTHLY)
           endDate.setMonth(endDate.getMonth() + 1);
         else if (billingPeriod === BillingPeriod.QUARTERLY)
@@ -224,6 +238,14 @@ export class SubscriptionsService {
 
       // Allocate messaging credits as per plan
       await this.creditService.allocateSubscriptionCredits(business.id, plan);
+
+      // Sync with QR-Thrive if plan is linked
+      if (plan.qrThrivePlanId) {
+        await this.qrThriveService.syncSubscription(
+          business.ownerId,
+          plan.qrThrivePlanId,
+        );
+      }
     }
 
     return savedSub;
@@ -314,6 +336,15 @@ export class SubscriptionsService {
         await this.activateSubscription(sub);
         await this.subscriptionRepository.save(sub);
 
+        // Trigger affiliate commission
+        if (sub.businessId) {
+          await this.affiliatesService.processSubscriptionCommission(
+            sub.businessId,
+            amount,
+            charge.reference,
+          );
+        }
+
         if (sub.businessId) {
           const branches = await this.branchRepository.find({
             where: { businessId: sub.businessId },
@@ -393,6 +424,15 @@ export class SubscriptionsService {
           userId: sub.business?.ownerId,
         });
 
+        // Trigger affiliate commission
+        if (sub.businessId) {
+          await this.affiliatesService.processSubscriptionCommission(
+            sub.businessId,
+            amount,
+            charge.reference,
+          );
+        }
+
         await this.activateSubscription(sub);
         await this.subscriptionRepository.save(sub);
       } else {
@@ -421,6 +461,19 @@ export class SubscriptionsService {
         sub.businessId,
         sub.plan,
       );
+
+      // Sync with QR-Thrive if plan is linked
+      if (sub.plan.qrThrivePlanId) {
+        const business = await this.businessRepository.findOne({
+          where: { id: sub.businessId },
+        });
+        if (business) {
+          await this.qrThriveService.syncSubscription(
+            business.ownerId,
+            sub.plan.qrThrivePlanId,
+          );
+        }
+      }
     }
   }
 
