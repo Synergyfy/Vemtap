@@ -39,6 +39,18 @@ export default function PlanDetailsPage() {
         const branch = formatLimit(plan?.branchLimit, 'Branches');
         if (branch) limits.push(branch);
 
+        const catalogueItems = formatLimit(plan?.maxCatalogueItems, 'Catalogue Items');
+        if (catalogueItems) limits.push(catalogueItems);
+
+        const catalogueCategories = formatLimit(plan?.maxCatalogueCategories, 'Catalogue Categories');
+        if (catalogueCategories) limits.push(catalogueCategories);
+
+        const catalogueOffers = formatLimit(plan?.maxCatalogueOffers, 'Catalogue Offers');
+        if (catalogueOffers) limits.push(catalogueOffers);
+
+        const automations = formatLimit(plan?.maxAutomations, 'Automations');
+        if (automations) limits.push(automations);
+
         const loyalty = formatLimit(plan?.loyaltyLimit, 'Loyalty Points');
         if (loyalty) limits.push(loyalty);
 

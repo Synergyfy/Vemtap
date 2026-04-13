@@ -170,9 +170,9 @@ export enum TriggerType {
 }
 
 export enum TargetType {
+    ALL = 'all',
     NEW_VISITORS = 'new_visitors',
     RETURNING_CUSTOMERS = 'returning_customers',
-    SPECIFIC_CATEGORY = 'specific_category',
 }
 
 export enum ActionType {
@@ -199,7 +199,7 @@ export interface AutomationRule {
 }
 
 export interface CreateAutomationRequest {
-    businessId: string;
+    businessId?: string;
     branchId?: string;
     name: string;
     triggerType: TriggerType;

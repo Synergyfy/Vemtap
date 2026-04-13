@@ -16,6 +16,7 @@ import {
   CreateCatalogueOrderDto,
   UpdateCatalogueOrderStatusDto,
   CatalogueOrderQueryDto,
+  BulkCheckoutDto,
 } from './dto/catalogue-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -39,6 +40,15 @@ export class CatalogueOrdersController {
   @ApiOperation({ summary: 'Place a new catalogue order (Public)' })
   async createOrder(@Body() dto: CreateCatalogueOrderDto) {
     return this.orderService.createOrder(dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Post('bulk-checkout')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Place multiple orders across different branches (Customer only)' })
+  async bulkCheckout(@Body() dto: BulkCheckoutDto, @Req() req: RequestWithUser) {
+    return this.orderService.bulkCheckout(dto, req.user);
   }
 
   @ApiBearerAuth()

@@ -18,36 +18,38 @@ import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { StepSocialConnect } from '@/components/visitor/StepSocialConnect';
 import { StepFormList } from '@/components/visitor/StepFormList';
 import { StepDynamicForm } from '@/components/visitor/StepDynamicForm';
-import { 
-    ShoppingBag, 
-    Calendar, 
-    Gift, 
-    ChevronRight, 
+import {
+    ShoppingBag,
+    Calendar,
+    Gift,
+    ChevronRight,
     ShieldCheck,
     Clock,
     ClipboardList,
     Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FaWhatsapp } from 'react-icons/fa';
 
 // --- Sub-components for the Portal ---
 
-const PortalWelcome = ({ 
-    branchName, 
-    logoUrl, 
-    welcomeMessage, 
-    onAction, 
-    productCount, 
-    serviceCount, 
+const PortalWelcome = ({
+    branchName,
+    logoUrl,
+    welcomeMessage,
+    onAction,
+    productCount,
+    serviceCount,
     offerCount,
     formCount,
     isFirstTimeVisit,
     isReturningUser,
-    engagement
-}: { 
-    branchName: string, 
-    logoUrl?: string, 
-    welcomeMessage?: string, 
+    engagement,
+    whatsappNumber
+}: {
+    branchName: string,
+    logoUrl?: string,
+    welcomeMessage?: string,
     onAction: (id: string) => void,
     productCount?: number,
     serviceCount?: number,
@@ -55,12 +57,14 @@ const PortalWelcome = ({
     formCount?: number,
     isFirstTimeVisit?: boolean,
     isReturningUser?: boolean,
-    engagement?: any
+    engagement?: any,
+    whatsappNumber?: string | null
 }) => {
     const actions = [
         { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
         { id: 'service', label: 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Reservations & Slots', count: serviceCount },
         { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
+        { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
         { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
         { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
     ].filter(action => action.count && action.count > 0);
@@ -68,7 +72,7 @@ const PortalWelcome = ({
     const useGrid = actions.length >= 4;
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -88,7 +92,7 @@ const PortalWelcome = ({
                 )}
                 <div className="space-y-0.5 flex-grow">
                     <h1 className="text-lg md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight">
-                       Welcome to {branchName}
+                        Welcome to {branchName}
                     </h1>
                     <p className="text-on-surface-variant text-[9px] md:text-[10px] max-w-xs font-medium opacity-70 italic line-clamp-1">
                         {welcomeMessage || "Select an option below to get started"}
@@ -169,11 +173,11 @@ const DynamicTapJourneyPage = () => {
         initializeFromBusiness, branchId, logoUrl, businessId,
         customWelcomeMessage, productCount, serviceCount, offerCount,
         formCount, engagementSettings, selectedFormCode, setSelectedFormCode,
-        sessionToken, setSessionToken
+        sessionToken, setSessionToken, whatsappNumber
     } = useCustomerFlowStore();
 
-    const { isAuthenticated, login } = useAuthStore();
-    
+    const { user, isAuthenticated, login, logout } = useAuthStore();
+
     const { data: deviceContext, isLoading: isQueryLoading, isError } = useDeviceTapContext(deviceCode);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showInitialAuth, setShowInitialAuth] = useState(false);
@@ -191,13 +195,13 @@ const DynamicTapJourneyPage = () => {
         if (!isMounted || !deviceContext) return;
 
         const state = useCustomerFlowStore.getState();
-        
+
         const isAlreadyOnThisDevice = state.deviceCode === deviceCode && !!state.businessId;
         const isPortalStep = ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM', 'FORMS_LIST', 'DYNAMIC_FORM', 'SOCIAL_CONNECT'].includes(state.currentStep);
         const isReturningVisitor = deviceContext.device?.isFirstTimeVisit === false;
-        
+
         const shouldSkipAnimation = isAlreadyOnThisDevice || isPortalStep || isReturningVisitor;
-        
+
         initializeFromBusiness(deviceContext, shouldSkipAnimation);
 
         if (shouldSkipAnimation) {
@@ -266,6 +270,11 @@ const DynamicTapJourneyPage = () => {
             setStep('FORMS_LIST');
         } else if (id === 'engagement') {
             setStep('SOCIAL_CONNECT');
+        } else if (id === 'whatsapp') {
+            if (whatsappNumber) {
+                const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
+                window.open(`https://wa.me/${cleanNumber}`, '_blank');
+            }
         } else {
             router.push(`/${slug}/${deviceCode}/${id}`);
         }
@@ -279,12 +288,34 @@ const DynamicTapJourneyPage = () => {
             const lastName = nameParts.slice(1).join(' ') || ' ';
             const defaultPassword = '123456';
 
-            await api.post(`/visitors/signup`, {
+            const signupResponse = await api.post(`/visitors/signup`, {
                 firstName,
                 lastName,
                 email: data.email,
-                phone: data.phone
+                phone: data.phone || undefined
             });
+
+            // If already authenticated (e.g. via Google), we just needed to sync profile/record visit
+            if (isAuthenticated) {
+                // Update local user state with the data from signup response if possible, 
+                // or just use the form data we have.
+                const updatedUser = signupResponse?.user || signupResponse;
+                
+                // We use login here to essentially "re-sync" the user object while keeping the current token
+                const currentToken = useAuthStore.getState().access_token;
+                if (currentToken) {
+                    login(updatedUser, currentToken);
+                }
+
+                setUserData(data);
+                setShowInitialAuth(false);
+
+                if (pendingAction) {
+                    await pendingAction();
+                    setPendingAction(null);
+                }
+                return;
+            }
 
             const authResponse = await api.post('/auth/login', {
                 identifier: data.email,
@@ -295,7 +326,7 @@ const DynamicTapJourneyPage = () => {
                 login(authResponse.user, authResponse.access_token);
                 setUserData(data);
                 setShowInitialAuth(false);
-                
+
                 if (pendingAction) {
                     await pendingAction();
                     setPendingAction(null);
@@ -324,17 +355,40 @@ const DynamicTapJourneyPage = () => {
             onReset={resetFlow}
             brandColor={useCustomerFlowStore.getState().engagementSettings?.brandColor}
         >
+            {isAuthenticated && user && (
+                <div className="w-full flex justify-end mb-4 relative z-[210]">
+                    <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-2 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-all hover:bg-white hover:shadow-md"
+                    >
+                        <div className="size-1.5 bg-green-500 rounded-full" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                            {user.email}
+                        </span>
+                        <button
+                            onClick={() => {
+                                logout();
+                                toast.success('Logged out');
+                            }}
+                            className="text-[9px] font-black uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-l border-slate-200 pl-2.5 ml-0.5"
+                        >
+                            Log out
+                        </button>
+                    </motion.div>
+                </div>
+            )}
             <div className={cn(
                 "relative w-full transition-all duration-700",
                 showInitialAuth ? "blur-2xl scale-[0.98] pointer-events-none opacity-60" : "blur-0 scale-100"
             )}>
                 <AnimatePresence mode="wait">
                     {currentStep === 'SCANNING' && <StepScanning key="scanning" storeName={storeName} />}
-                    
+
                     {currentStep === 'IDENTIFYING' && <StepIdentifying key="identifying" />}
 
                     {currentStep === 'PORTAL_MENU' && (
-                        <PortalWelcome 
+                        <PortalWelcome
                             key="portal-menu"
                             branchName={storeName}
                             welcomeMessage={customWelcomeMessage || undefined}
@@ -347,6 +401,7 @@ const DynamicTapJourneyPage = () => {
                             isFirstTimeVisit={deviceContext?.device?.isFirstTimeVisit ?? true}
                             isReturningUser={!!deviceContext?.device?.isReturningUser}
                             engagement={engagementSettings}
+                            whatsappNumber={whatsappNumber}
                         />
                     )}
 
@@ -368,7 +423,7 @@ const DynamicTapJourneyPage = () => {
                     )}
 
                     {currentStep === 'SOCIAL_CONNECT' && (
-                        <StepSocialConnect 
+                        <StepSocialConnect
                             key="social"
                             storeName={storeName}
                             logoUrl={logoUrl}
@@ -378,7 +433,7 @@ const DynamicTapJourneyPage = () => {
                     )}
 
                     {currentStep === 'FORMS_LIST' && (
-                        <StepFormList 
+                        <StepFormList
                             key="forms-list"
                             branchId={branchId || ''}
                             storeName={storeName}
@@ -392,7 +447,7 @@ const DynamicTapJourneyPage = () => {
                     )}
 
                     {currentStep === 'DYNAMIC_FORM' && selectedFormCode && (
-                        <StepDynamicForm 
+                        <StepDynamicForm
                             key={`dynamic-form-${selectedFormCode}`}
                             formCode={selectedFormCode}
                             storeName={storeName}
@@ -414,13 +469,13 @@ const DynamicTapJourneyPage = () => {
             <AnimatePresence>
                 {showInitialAuth && (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="absolute inset-0 bg-black/5 backdrop-blur-sm"
                         />
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}

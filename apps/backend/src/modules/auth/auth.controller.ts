@@ -23,6 +23,9 @@ import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SwitchRoleDto } from './dto/switch-role.dto';
+import { CheckStatusDto } from './dto/check-status.dto';
+import { UpdateEmailDto } from './dto/update-email.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import {
   AuthResponseDto,
   MessageResponseDto,
@@ -75,6 +78,20 @@ export class AuthController {
   })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Public()
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login or Register with Google' })
+  @ApiBody({ type: GoogleLoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Google Authentication successful',
+    type: AuthResponseDto,
+  })
+  async googleAuth(@Body() googleLoginDto: GoogleLoginDto) {
+    return this.authService.googleLogin(googleLoginDto);
   }
 
   @Public()
@@ -218,5 +235,26 @@ export class AuthController {
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
     return this.authService.changePassword(req.user, dto, { ip, userAgent });
+  }
+
+  @Public()
+  @Post('check-status')
+  @ApiOperation({ summary: 'Check user status by email or phone' })
+  async checkStatus(@Body() dto: CheckStatusDto) {
+    return this.authService.checkUserStatus(dto);
+  }
+
+  @Public()
+  @Post('customer/complete-setup')
+  @ApiOperation({ summary: 'Complete customer setup by updating email' })
+  async completeCustomerSetup(@Body() dto: UpdateEmailDto) {
+    return this.authService.completeCustomerSetup(dto);
+  }
+
+  @Public()
+  @Post('resend-default-password')
+  @ApiOperation({ summary: 'Resend default password to a customer' })
+  async resendDefaultPassword(@Body('identifier') identifier: string) {
+    return this.authService.resendDefaultPassword(identifier);
   }
 }

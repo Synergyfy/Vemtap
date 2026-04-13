@@ -3,7 +3,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { join } from 'path';
 import * as dotenv from 'dotenv';
 
-const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+const envFile = process.env.NODE_ENV ? `.env.${process.env.NODE_ENV}` : '.env';
 dotenv.config({ path: join(process.cwd(), envFile), override: true });
 
 export const dataSourceOptions: DataSourceOptions = {

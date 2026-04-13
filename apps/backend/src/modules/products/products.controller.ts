@@ -20,7 +20,7 @@ import { UpdateProductTypeDto } from './dto/update-product-type.dto';
 import { Product } from './entities/product.entity';
 import { ProductType } from './entities/product-type.entity';
 import { Quote } from './entities/quote.entity';
-import { Order } from './entities/order.entity';
+import { Order, OrderStatus } from './entities/order.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -421,5 +421,21 @@ export class ProductsController {
   })
   markOrderCompleted(@Param('id') id: string) {
     return this.productsService.markOrderCompleted(id);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('orders/:id/status')
+  @ApiOperation({ summary: 'Update order status (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    type: Order,
+    description: 'Order status updated successfully',
+  })
+  updateOrderStatus(
+    @Param('id') id: string,
+    @Body('status') status: OrderStatus,
+  ) {
+    return this.productsService.updateOrderStatus(id, status);
   }
 }

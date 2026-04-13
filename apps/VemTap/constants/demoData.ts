@@ -1,0 +1,1 @@
+export const DEMO_DATA: Record<string, any> = {};

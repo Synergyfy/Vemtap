@@ -19,8 +19,15 @@ describe('Subscriptions & Trial System (e2e)', () => {
   let businessId: string;
   let planId: string;
 
+  const mockHttpService = {
+    post: jest.fn().mockReturnValue(require('rxjs').of({ data: { status: 'success' } })),
+    get: jest.fn(),
+  };
+
   beforeAll(async () => {
-    app = await createTestApp();
+    app = await createTestApp((builder) => {
+      builder.overrideProvider(require('@nestjs/axios').HttpService).useValue(mockHttpService);
+    });
     // Helper now creates business and main branch automatically for OWNER
     const { token, user } = await createAuthenticatedUser(app, UserRole.OWNER);
     ownerToken = token;
@@ -42,6 +49,7 @@ describe('Subscriptions & Trial System (e2e)', () => {
         emailCredits: 100,
         isActive: true,
         monthlyPrice: 50,
+        qrThrivePlanId: 'qr-plan-xyz', // Link to QR-Thrive
       }),
     );
     planId = plan.id;
@@ -52,7 +60,17 @@ describe('Subscriptions & Trial System (e2e)', () => {
   });
 
   describe('Subscription & Trial Flow', () => {
-    it('/subscriptions/subscribe (POST) - should create a subscription', async () => {
+    it('/subscriptions/subscribe (POST) - should create a subscription and sync with QR-Thrive', async () => {
+      // First, we need to ensure the user is synced with QR-Thrive
+      // Alternatively, we can just mock the user mapping in the test database
+      const dataSource = app.get(DataSource);
+      const userRepo = dataSource.getRepository(require('../../src/modules/users/entities/user.entity').User);
+      const user = await userRepo.findOne({ where: { role: require('../../src/modules/users/entities/user.entity').UserRole.OWNER } });
+      if (!user) throw new Error('Test owner user not found');
+      
+      const userMappingRepo = dataSource.getRepository(require('../../src/modules/qr-thrive/entities/qr-thrive-user-mapping.entity').QrThriveUserMapping);
+      await userMappingRepo.save(userMappingRepo.create({ userId: user.id, qrThriveUserId: 'qr-u-123' }));
+
       await request(app.getHttpServer())
         .post('/api/v1/subscriptions/subscribe')
         .set('Authorization', `Bearer ${ownerToken}`)
@@ -62,6 +80,13 @@ describe('Subscriptions & Trial System (e2e)', () => {
           paymentReference: 'test-ref-123',
         })
         .expect(201);
+
+      // Verify side effect: HttpService.post was called to sync subscription
+      expect(mockHttpService.post).toHaveBeenCalledWith(
+        expect.stringContaining('/integration/users/qr-u-123/subscription'),
+        { planId: 'qr-plan-xyz' },
+        expect.any(Object)
+      );
     });
 
     it('/subscriptions/active (GET) - should return active subscription', async () => {

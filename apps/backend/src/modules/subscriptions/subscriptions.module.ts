@@ -16,12 +16,15 @@ import { CapabilityGuard } from './guards/capability.guard';
 import { AnalyticsLevelGuard } from './guards/analytics-level.guard';
 import { BranchesModule } from '../branches/branches.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { AffiliatesModule } from '../affiliates/affiliates.module';
+import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
 
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 
 @Module({
   imports: [
@@ -35,11 +38,14 @@ import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
       CatalogueCategory,
       CatalogueItem,
       CatalogueOffer,
+      AutomationRule,
     ]),
     forwardRef(() => BusinessesModule),
     PaymentsModule,
     forwardRef(() => BranchesModule),
     forwardRef(() => MessagingModule),
+    AffiliatesModule,
+    forwardRef(() => QrThriveModule),
   ],
   controllers: [PlansController, SubscriptionsController],
   providers: [

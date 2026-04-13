@@ -189,20 +189,24 @@ export default function AgentChatDesk() {
                                         <p className="text-[10px] font-black uppercase tracking-widest">No messages in this thread</p>
                                     </div>
                                 ) : activeChat.messages.map((m: any, idx: number) => {
-                                    const isAgent = m.sender === 'agent';
+                                    const isBot = !m.senderId;
+                                    const isAgent = m.sender?.role === 'AGENT' || m.sender?.role === 'ADMIN';
+                                    
                                     return (
                                         <div key={idx} className={cn('flex flex-col', isAgent ? 'items-end' : 'items-start')}>
                                             <div className={cn(
                                                 'max-w-[70%] px-4 py-3 shadow-sm rounded-2xl text-sm leading-relaxed',
                                                 isAgent 
                                                     ? 'bg-primary text-white rounded-tr-none' 
-                                                    : 'bg-white border border-gray-100 text-text-main rounded-tl-none'
+                                                    : isBot
+                                                        ? 'bg-gray-100 text-gray-800 border-none rounded-tl-none italic font-medium'
+                                                        : 'bg-white border border-gray-100 text-text-main rounded-tl-none'
                                             )}>
-                                                {m.text}
+                                                {m.message}
                                             </div>
                                             <div className="flex items-center gap-2 mt-1.5 px-1 opacity-50">
                                                 <span className="text-[8px] font-black uppercase tracking-[0.1em]">
-                                                    {isAgent ? 'Support Team' : (activeChat.user?.name || 'Customer')}
+                                                    {isAgent ? 'Support Team' : isBot ? 'Support Bot' : (activeChat.user?.name || m.sender?.firstName || 'Customer')}
                                                 </span>
                                                 <Clock size={8} />
                                                 <span className="text-[8px] font-bold">

@@ -2,132 +2,122 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ShoppingBag, ArrowRight, Package, Shield, Zap } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Package, Shield, Zap, Nfc, CreditCard, Scan } from 'lucide-react';
 
 export default function MarketplaceCTA() {
     return (
-        <section className="py-24 bg-linear-to-br from-primary/5 via-white to-primary/5 overflow-hidden relative">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <section className="py-12 md:py-20 bg-white overflow-hidden relative">
+            {/* Ambient background decoration */}
+            <div className="absolute top-0 right-0 w-1/3 h-full bg-linear-to-l from-primary/5 to-transparent pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+
+            <div className="max-w-7xl mx-auto px-6 sm:px-10 relative z-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 items-center">
                     {/* Left Content */}
-                    <div>
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6">
-                            <ShoppingBag size={16} className="text-primary" />
-                            <span className="text-xs font-black uppercase tracking-widest text-primary">
+                    <div className="text-left order-2 lg:order-1">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-8">
+                            <ShoppingBag size={14} className="text-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
                                 Hardware Marketplace
                             </span>
                         </div>
-                        <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-text-main leading-tight">
-                            Get the hardware that powers your business
+                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-8 text-text-main leading-[1.1] tracking-tight">
+                            Power your business with <span className="text-primary">Smart Hardware</span>
                         </h2>
-                        <p className="text-lg text-text-secondary font-medium mb-8 leading-relaxed">
+                        <p className="text-base md:text-lg text-text-secondary font-medium mb-10 leading-relaxed max-w-xl">
                             Browse our curated selection of enterprise-grade NFC readers, smart cards, and access control hardware.
-                            All products are tested, certified, and ready to integrate with your VemTap system.
+                            Tested, certified, and ready for instant integration.
                         </p>
 
                         {/* Features Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-                            <div className="flex flex-col items-start">
-                                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-3">
-                                    <Package className="text-primary" size={24} />
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8 mb-12">
+                            {[
+                                { icon: <Package className="text-primary" size={24} />, title: 'Premium Quality', desc: 'Industrial built' },
+                                { icon: <Shield className="text-primary" size={24} />, title: 'Certified', desc: 'Global standards' },
+                                { icon: <Zap className="text-primary" size={24} />, title: 'Fast Delivery', desc: 'Nigeria-wide' }
+                            ].map((item, i) => (
+                                <div key={i} className="flex flex-col items-start group">
+                                    <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-primary transition-colors group-hover:text-white group-hover:scale-110 duration-300">
+                                        {item.icon}
+                                    </div>
+                                    <h4 className="font-bold text-text-main text-sm mb-1">{item.title}</h4>
+                                    <p className="text-xs text-text-secondary font-medium">{item.desc}</p>
                                 </div>
-                                <h4 className="font-bold text-text-main mb-1">Premium Quality</h4>
-                                <p className="text-sm text-text-secondary">Industrial-grade hardware built to last</p>
-                            </div>
-                            <div className="flex flex-col items-start">
-                                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-3">
-                                    <Shield className="text-primary" size={24} />
-                                </div>
-                                <h4 className="font-bold text-text-main mb-1">Certified</h4>
-                                <p className="text-sm text-text-secondary">All products meet international standards</p>
-                            </div>
-                            <div className="flex flex-col items-start">
-                                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-3">
-                                    <Zap className="text-primary" size={24} />
-                                </div>
-                                <h4 className="font-bold text-text-main mb-1">Fast Delivery</h4>
-                                <p className="text-sm text-text-secondary">Quick shipping across Nigeria</p>
-                            </div>
+                            ))}
                         </div>
 
                         {/* CTA Buttons */}
-                        <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex flex-col sm:flex-row gap-5">
                             <Link
                                 href="/marketplace"
-                                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 group"
+                                className="inline-flex items-center justify-center gap-3 px-10 py-4.5 bg-primary text-white text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/25 group/btn"
                             >
-                                Browse Marketplace
-                                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                Browse Store
+                                <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
                             </Link>
                             <Link
                                 href="/marketplace#bulk-orders"
-                                className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-primary text-primary font-bold rounded-2xl hover:bg-primary hover:text-white transition-all"
+                                className="inline-flex items-center justify-center gap-3 px-10 py-4.5 bg-white border-2 border-gray-100 text-text-main text-sm font-black uppercase tracking-widest rounded-2xl hover:border-primary hover:text-primary transition-all shadow-sm"
                             >
-                                Request Bulk Quote
+                                Bulk Orders
                             </Link>
                         </div>
                     </div>
 
-                    {/* Right Visual */}
-                    <div className="relative">
-                        <div className="grid grid-cols-2 gap-4">
+                    {/* Right Visual - Interactive Card Grid */}
+                    <div className="relative order-1 lg:order-2">
+                        <div className="grid grid-cols-2 gap-4 md:gap-6">
                             {/* Product Cards */}
-                            <div className="space-y-4">
-                                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
-                                    <div className="w-full aspect-square bg-gray-50 rounded-xl mb-4 flex items-center justify-center">
-                                        <span className="material-icons-round text-primary text-5xl">nfc</span>
+                            <div className="space-y-4 md:space-y-6">
+                                <div className="bg-white p-5 md:p-6 rounded-[2rem] border border-gray-100 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 group">
+                                    <div className="w-full aspect-square bg-gray-50 rounded-2xl mb-5 flex items-center justify-center overflow-hidden relative">
+                                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <Nfc size={48} className="text-primary transform group-hover:scale-110 transition-transform duration-500" />
                                     </div>
-                                    <h4 className="font-bold text-sm text-text-main mb-1">NFC Reader Pro</h4>
-                                    <p className="text-xs text-text-secondary mb-3">Enterprise-grade</p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-lg font-bold text-primary">₦45,000</span>
-                                        <span className="text-xs text-green-600 font-bold">In Stock</span>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-sm text-text-main">NFC Reader Pro</h4>
+                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">₦45,000</p>
                                     </div>
                                 </div>
-                                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
-                                    <div className="w-full aspect-square bg-gray-50 rounded-xl mb-4 flex items-center justify-center">
-                                        <span className="material-icons-round text-primary text-5xl">credit_card</span>
+                                <div className="bg-white p-5 md:p-6 rounded-[2rem] border border-gray-100 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 group translate-y-4 md:translate-y-8">
+                                    <div className="w-full aspect-square bg-gray-50 rounded-2xl mb-5 flex items-center justify-center overflow-hidden relative">
+                                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <CreditCard size={48} className="text-primary transform group-hover:scale-110 transition-transform duration-500" />
                                     </div>
-                                    <h4 className="font-bold text-sm text-text-main mb-1">Smart Cards</h4>
-                                    <p className="text-xs text-text-secondary mb-3">Pack of 100</p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-lg font-bold text-primary">₦25,000</span>
-                                        <span className="text-xs text-green-600 font-bold">In Stock</span>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-sm text-text-main">Smart Cards</h4>
+                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">₦25,000</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-4 pt-8">
-                                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
-                                    <div className="w-full aspect-square bg-gray-50 rounded-xl mb-4 flex items-center justify-center">
-                                        <span className="material-icons-round text-primary text-5xl">qr_code_scanner</span>
+                            <div className="space-y-4 md:space-y-6 pt-8 md:pt-16">
+                                <div className="bg-white p-5 md:p-6 rounded-[2rem] border border-gray-100 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 group">
+                                    <div className="w-full aspect-square bg-gray-50 rounded-2xl mb-5 flex items-center justify-center overflow-hidden relative">
+                                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <Scan size={48} className="text-primary transform group-hover:scale-110 transition-transform duration-500" />
                                     </div>
-                                    <h4 className="font-bold text-sm text-text-main mb-1">Access Terminal</h4>
-                                    <p className="text-xs text-text-secondary mb-3">Wall-mounted</p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-lg font-bold text-primary">₦85,000</span>
-                                        <span className="text-xs text-green-600 font-bold">In Stock</span>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-sm text-text-main">Wall Terminal</h4>
+                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">₦85,000</p>
                                     </div>
                                 </div>
-                                <div className="bg-primary/10 p-6 rounded-2xl border-2 border-dashed border-primary/30">
-                                    <div className="text-center">
-                                        <ShoppingBag className="mx-auto text-primary mb-3" size={32} />
-                                        <p className="text-sm font-bold text-text-main mb-1">100+ Products</p>
-                                        <p className="text-xs text-text-secondary">Available now</p>
-                                    </div>
+                                <div className="bg-primary p-6 md:p-8 rounded-[2rem] shadow-2xl shadow-primary/20 flex flex-col items-center justify-center text-center text-white relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700" />
+                                    <ShoppingBag size={32} className="mb-4 text-white/90" />
+                                    <p className="text-base font-bold leading-tight mb-1">100+</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/60">More Items</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Floating Badge */}
-                        <div className="absolute -top-4 -right-4 bg-white px-4 py-3 rounded-full shadow-xl border border-gray-200">
-                            <p className="text-xs font-black uppercase tracking-wider text-primary">Free Shipping</p>
+                        <div className="absolute -top-6 -right-2 bg-white/95 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-gray-100 z-20 animate-bounce-slow">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Free Shipping</p>
+                            <p className="text-[9px] text-text-secondary font-bold mt-0.5">Across Nigeria</p>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-1/3 h-full bg-linear-to-l from-primary/5 to-transparent pointer-events-none" />
         </section>
     );
 }

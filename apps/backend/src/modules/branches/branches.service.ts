@@ -41,7 +41,11 @@ export class BranchesService {
       const branch = await this.branchesRepository.findOne({
         where: { id: targetBranchId },
       });
-      if (!branch) return false;
+      
+      if (!branch) {
+        console.warn(`[BRANCH_GUARD] Access denied: Branch ${targetBranchId} not found`);
+        return false;
+      }
 
       // Check if branch belongs to user's businessId from token
       if (user.businessId && branch.businessId === user.businessId) {
@@ -52,11 +56,23 @@ export class BranchesService {
       const business = await this.businessRepository.findOne({
         where: { ownerId: user.id },
       });
-      return business ? branch.businessId === business.id : false;
+      
+      const hasAccess = business ? branch.businessId === business.id : false;
+      
+      if (!hasAccess) {
+        console.warn(`[BRANCH_GUARD] Owner ${user.id} access denied to branch ${targetBranchId}. ` +
+          `User Business: ${user.businessId}, Branch Business: ${branch.businessId}, Real Business: ${business?.id}`);
+      }
+      
+      return hasAccess;
     }
 
     // Manager and Staff can only access their assigned branch
-    return user.branchId === targetBranchId;
+    const hasAccess = user.branchId === targetBranchId;
+    if (!hasAccess) {
+      console.warn(`[BRANCH_GUARD] Staff/Manager ${user.id} access denied to branch ${targetBranchId}. Assigned: ${user.branchId}`);
+    }
+    return hasAccess;
   }
 
   async create(

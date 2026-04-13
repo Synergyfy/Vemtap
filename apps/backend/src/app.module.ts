@@ -38,6 +38,11 @@ import { CustomerImpersonationGuard } from './modules/administration/customer-im
 import { ScheduleModule } from '@nestjs/schedule';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
+import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
+import { AffiliatesModule } from './modules/affiliates/affiliates.module';
+import { TrainingModule } from './modules/training/training.module';
+import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
+
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
@@ -46,10 +51,10 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath:
-        process.env.NODE_ENV === 'test'
-          ? join(process.cwd(), '.env.test')
-          : join(process.cwd(), '.env'),
+      envFilePath: [
+        join(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
+        join(process.cwd(), '.env'),
+      ],
     }),
     CacheModule.registerAsync({
       isGlobal: true,
@@ -131,6 +136,10 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     CatalogueModule,
     CatalogueOrderModule,
     CatalogueCartModule,
+    BusinessProfilingModule,
+    AffiliatesModule,
+    TrainingModule,
+    QrThriveModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
@@ -166,4 +175,4 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useResolvedBranchParams, getReadContextParams, normalizeRole } from '@/services/visitors/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useMemo } from 'react';
 
 // --- Helpers ---
 
@@ -31,22 +35,34 @@ const normalizeThread = (thread: any, isCustomer: boolean) => {
 // --- Inbox Hooks ---
 
 export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string, isCustomer: boolean = false) => {
+  const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
+  const businessId = useAuthStore((state) => state.user?.businessId);
+  const role = useAuthStore((state) => state.user?.role);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isStaff = ['owner', 'admin', 'manager', 'staff'].includes(normalizeRole(role));
+
+  const contextParams = useMemo(() => 
+    getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+    [role, businessId, resolvedBranchId, allBranches]
+  );
+
   return useQuery({
-    queryKey: ['chat-threads', channel, branchId, isCustomer],
+    queryKey: ['chat-threads', channel, businessId, role, resolvedBranchId, allBranches, isCustomer, contextParams.toString()],
     queryFn: async () => {
       let endpoint = isCustomer 
         ? `/customer/messaging/threads`
         : `/messaging/inbox/${channel}`;
       
-      const params = new URLSearchParams();
-      if (!isCustomer && branchId) params.append('branchId', branchId);
-      if (isCustomer && branchId) params.append('branchId', branchId);
+      const searchParams = new URLSearchParams(isCustomer ? {} : contextParams);
+      // For customers, if a branchId is provided, filter by it
+      if (isCustomer && branchId) searchParams.append('branchId', branchId);
       
-      const qs = params.toString();
-      const data = await api.get(`${endpoint}${qs ? `?${qs}` : ''}`);
+      const qs = searchParams.toString();
+      const response = await api.get(`${endpoint}${qs ? `?${qs}` : ''}`);
+      const data = Array.isArray(response) ? response : (response?.data || []);
       return (data as any[]).map(t => normalizeThread(t, isCustomer));
     },
-    enabled: isCustomer || !!branchId || channel === 'IN_HOUSE',
+    enabled: isAuthenticated && (isCustomer || isStaff),
   });
 };
 
@@ -66,11 +82,11 @@ export const useThreadMessages = (threadId: string, branchId?: string, isCustome
 export const useSendReply = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ threadId, content, branchId, replyToId }: { threadId: string; content: string; branchId?: string; replyToId?: string }) => {
+    mutationFn: ({ threadId, content, branchId, replyToId, metadata }: { threadId: string; content: string; branchId?: string; replyToId?: string; metadata?: any }) => {
       const endpoint = isCustomer
         ? `/customer/messaging/threads/${threadId}/reply`
         : `/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`;
-      return api.post(endpoint, { content, replyToId });
+      return api.post(endpoint, { content, replyToId, metadata });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.threadId] });
@@ -120,11 +136,16 @@ export const useInitBranchConversation = () => {
 
 export const useMarkThreadAsRead = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
+  const { activeBranchId } = useActiveBranch();
+  
   return useMutation({
     mutationFn: ({ threadId, branchId }: { threadId: string; branchId?: string }) => {
       if (isCustomer) return Promise.resolve(null);
-      if (!branchId) return Promise.resolve(null);
-      return api.post(`/messaging/inbox/threads/${threadId}/read?branchId=${branchId}`, {});
+      
+      const targetBranchId = branchId || activeBranchId;
+      const qs = targetBranchId && targetBranchId !== 'all' ? `?branchId=${targetBranchId}` : '';
+      
+      return api.post(`/messaging/inbox/threads/${threadId}/read${qs}`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-threads'] });

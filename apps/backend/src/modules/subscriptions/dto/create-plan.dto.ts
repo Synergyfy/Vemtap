@@ -157,6 +157,19 @@ export class CreatePlanDto {
   @IsOptional()
   maxCatalogueOffers?: number;
 
+  @ApiPropertyOptional({ description: 'Is automations enabled?', example: false })
+  @IsBoolean()
+  @IsOptional()
+  automationsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Maximum automations limit (null or -1 for unlimited)',
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  maxAutomations?: number;
+
   @ApiPropertyOptional({
     description: 'Is plan currently active?',
     example: true,
@@ -172,6 +185,14 @@ export class CreatePlanDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiPropertyOptional({
+    description: 'QR Thrive plan ID to link to',
+    example: 'plan_123',
+  })
+  @IsString()
+  @IsOptional()
+  qrThrivePlanId?: string;
 
   @ApiPropertyOptional({
     description: 'Is this plan marked as popular?',

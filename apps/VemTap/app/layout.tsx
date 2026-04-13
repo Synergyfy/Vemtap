@@ -19,10 +19,10 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vemtap.io";
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
     title: {
-        default: "VemTap | NFC Visitor Engagement and Loyalty Platform",
-        template: "%s | VemTap"
+        default: "Vemtap",
+        template: "%s | Vemtap"
     },
-    description: "VemTap helps businesses capture visitor data with NFC taps, grow loyalty, and automate follow-up across customer journeys.",
+    description: "VemTap is a digital engagement platform designed for businesses to instantly capture customer information through a simple \"tap\" using NFC (Near Field Communication) or QR codes. It is primarily used to replace manual data entry and paper forms, allowing businesses to collect visitor details in under two seconds",
     keywords: ["VemTap", "NFC visitor engagement", "loyalty platform", "business analytics", "visitor management", "customer retention", "offline to online"],
     authors: [{ name: "VemTap Team" }],
     creator: "VemTap",
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
         locale: "en_US",
         url: siteUrl,
         siteName: "VemTap",
-        title: "VemTap | NFC Visitor Engagement and Loyalty Platform",
-        description: "Capture, engage, and retain visitors with NFC-powered check-ins, analytics, and loyalty workflows.",
+        title: "Vemtap",
+        description: "VemTap is a digital engagement platform designed for businesses to instantly capture customer information through a simple \"tap\" using NFC (Near Field Communication) or QR codes. It is primarily used to replace manual data entry and paper forms, allowing businesses to collect visitor details in under two seconds",
         images: [
             {
                 url: "/VEMTAP_TITLE.png",
@@ -58,8 +58,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "VemTap | NFC Visitor Engagement and Loyalty Platform",
-        description: "Capture visitor data with NFC taps and turn it into retention with loyalty and messaging.",
+        title: "Vemtap",
+        description: "VemTap is a digital engagement platform designed for businesses to instantly capture customer information through a simple \"tap\" using NFC (Near Field Communication) or QR codes. It is primarily used to replace manual data entry and paper forms, allowing businesses to collect visitor details in under two seconds",
         images: ["/VEMTAP_TITLE.png"],
     },
     icons: {
@@ -80,6 +80,8 @@ import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
 import SupportChatbot from "@/components/shared/SupportChatbot";
 import InstallPWA from "@/components/shared/InstallPWA";
+import GoogleAuthProvider from "./providers/GoogleAuthProvider";
+import AdminViewerBanner from "@/components/admin/control-tower/AdminViewerBanner";
 
 export default function RootLayout({
     children,
@@ -109,13 +111,17 @@ export default function RootLayout({
                 className={`antialiased font-sans`}
                 style={{ fontFamily: "var(--font-body)" }}
                 suppressHydrationWarning
-            >                <QueryProvider>
+            >
+                <QueryProvider>
                     <AuthProvider>
-                        <ToastProvider />
-                        {children}
-                        <CookieBanner />
-                        <SupportChatbot />
-                        <InstallPWA />
+                        <GoogleAuthProvider>
+                            <ToastProvider />
+                            <AdminViewerBanner />
+                            {children}
+                            <CookieBanner />
+                            <SupportChatbot />
+                            <InstallPWA />
+                        </GoogleAuthProvider>
                     </AuthProvider>
                 </QueryProvider>
             </body>

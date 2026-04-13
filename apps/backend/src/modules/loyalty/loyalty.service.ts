@@ -333,12 +333,18 @@ export class LoyaltyService {
     const where: FindOptionsWhere<Reward> = {
       branchId: resolvedBranchId,
       isActive: true,
-      remainingQuantity: MoreThanOrEqual(1),
       expiryDate: MoreThanOrEqual(new Date()),
     };
 
+    // If quantity is not -1 (infinity), it must be at least 1
+    // Using a more complex where clause for TypeORM to handle OR condition
+    const finalWhere: FindOptionsWhere<Reward>[] = [
+      { ...where, remainingQuantity: MoreThanOrEqual(1) },
+      { ...where, totalQuantity: -1 },
+    ];
+
     if (search) {
-      where.name = ILike(`%${search}%`);
+      finalWhere.forEach(w => w.name = ILike(`%${search}%`));
     }
 
     const order: FindOptionsOrder<Reward> = {};
@@ -353,7 +359,7 @@ export class LoyaltyService {
     else order.createdAt = 'DESC'; // default sorting
 
     const [items, total] = await this.rewardRepo.findAndCount({
-      where,
+      where: finalWhere,
       order,
       take: limit,
       skip: (page - 1) * limit,
@@ -378,6 +384,12 @@ export class LoyaltyService {
       take: limit,
       skip: (page - 1) * limit,
     });
+  }
+
+  async findOne(id: string) {
+    const reward = await this.rewardRepo.findOne({ where: { id } });
+    if (!reward) throw new NotFoundException('Reward not found');
+    return reward;
   }
 
   async getRewardRedemptions(
@@ -446,7 +458,7 @@ export class LoyaltyService {
       throw new BadRequestException('Reward has expired');
     }
 
-    if (reward.remainingQuantity <= 0) {
+    if (reward.totalQuantity !== -1 && reward.remainingQuantity <= 0) {
       throw new BadRequestException('Reward out of stock');
     }
 
@@ -498,7 +510,11 @@ export class LoyaltyService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      if (!lockedReward || lockedReward.remainingQuantity <= 0) {
+      if (!lockedReward) {
+        throw new BadRequestException('Reward not found');
+      }
+
+      if (lockedReward.totalQuantity !== -1 && lockedReward.remainingQuantity <= 0) {
         throw new BadRequestException('Reward out of stock');
       }
 
@@ -522,7 +538,9 @@ export class LoyaltyService {
       redemptionCode.usedAt = new Date();
       await queryRunner.manager.save(redemptionCode);
 
-      lockedReward.remainingQuantity -= 1;
+      if (lockedReward.totalQuantity !== -1) {
+        lockedReward.remainingQuantity -= 1;
+      }
       lockedReward.redemptionCount += 1;
       await queryRunner.manager.save(lockedReward);
 

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { Reward } from '../loyalty/types';
 
 // --- Types ---
 
@@ -62,6 +63,7 @@ export interface CatalogueOffer {
     branchId: string;
     status: CatalogueOfferStatus;
     items: CatalogueItem[];
+    reward?: Reward;
     createdAt: string;
     updatedAt: string;
 }
@@ -168,7 +170,16 @@ export interface CreateOrderDto {
     branchId: string;
     tableNumber?: string;
     notes?: string;
-    items: { itemId?: string, offerId?: string, quantity: number }[];
+    items: { 
+        itemId?: string, 
+        offerId?: string, 
+        newItem?: {
+            name: string,
+            price: number,
+            categoryId?: string
+        },
+        quantity: number 
+    }[];
     deviceId?: string;
 }
 
@@ -323,10 +334,11 @@ export const useDeleteCatalogueCategory = () => {
     });
 };
 
-export const useCatalogueItems = (params: { branchId?: string, categoryId?: string, search?: string } = {}) => {
+export const useCatalogueItems = (params: { branchId?: string, categoryId?: string, search?: string } = {}, options: any = {}) => {
     return useQuery<CatalogueItem[]>({
         queryKey: ['catalogue', 'items', params],
         queryFn: () => getItems(params),
+        ...options,
     });
 };
 
@@ -368,6 +380,7 @@ export const useCreateCatalogueItem = () => {
         mutationFn: createItem,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'items'] });
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'item'] });
         },
     });
 };
@@ -376,8 +389,9 @@ export const useUpdateCatalogueItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ id, data }: { id: string, data: UpdateItemDto }) => updateItem(id, data),
-        onSuccess: () => {
+        onSuccess: (_, { id }) => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'items'] });
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'item', id] });
         },
     });
 };
@@ -434,10 +448,11 @@ export const useUpdateCatalogueOrderStatus = () => {
     });
 };
 
-export const useCatalogueOffersAdmin = (params: { branchId?: string } = {}) => {
+export const useCatalogueOffersAdmin = (params: { branchId?: string } = {}, options: any = {}) => {
     return useQuery<CatalogueOffer[]>({
         queryKey: ['catalogue', 'offers', 'admin', params],
         queryFn: () => getOffersAdmin(params),
+        ...options,
     });
 };
 

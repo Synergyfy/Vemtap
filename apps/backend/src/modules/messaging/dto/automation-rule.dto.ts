@@ -9,7 +9,7 @@ import {
   IsObject,
   IsUUID,
 } from 'class-validator';
-import { TriggerType, ActionType } from '../enums/automation.enum';
+import { TriggerType, ActionType, TargetType } from '../enums/automation.enum';
 
 export class CreateAutomationRuleDto {
   @ApiProperty({ example: 'uuid-of-branch' })
@@ -27,9 +27,14 @@ export class CreateAutomationRuleDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ enum: TriggerType, example: TriggerType.FIRST_TAG })
+  @ApiProperty({ enum: TriggerType, example: TriggerType.FIRST_MESSAGE })
   @IsEnum(TriggerType)
   triggerType: TriggerType;
+
+  @ApiPropertyOptional({ enum: TargetType, example: TargetType.NEW_VISITORS })
+  @IsOptional()
+  @IsEnum(TargetType)
+  targetType?: TargetType;
 
   @ApiPropertyOptional({
     example: 3600,
@@ -63,10 +68,15 @@ export class UpdateAutomationRuleDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ enum: TriggerType, example: TriggerType.FIRST_TAG })
+  @ApiPropertyOptional({ enum: TriggerType, example: TriggerType.FIRST_MESSAGE })
   @IsOptional()
   @IsEnum(TriggerType)
   triggerType?: TriggerType;
+
+  @ApiPropertyOptional({ enum: TargetType, example: TargetType.NEW_VISITORS })
+  @IsOptional()
+  @IsEnum(TargetType)
+  targetType?: TargetType;
 
   @ApiPropertyOptional({ example: 7200 })
   @IsOptional()
@@ -92,6 +102,7 @@ export class UpdateAutomationRuleDto {
 export class AutomationTriggerDto {
   branchId: string;
   customerId: string;
+  content?: string;
   metadata?: Record<string, any>;
 }
 
@@ -129,6 +140,11 @@ export class UpdateAutomationConfigDto {
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-segment' })
+  @IsOptional()
+  @IsUUID()
+  segmentId?: string;
 }
 
 export class AutomationLogResponseDto {

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -13,9 +13,12 @@ import {
   UpdateAutomationToggleDto,
   UpdateAutomationConfigDto,
 } from '../dto/automation-rule.dto';
-import { TriggerType, ActionType } from '../enums/automation.enum';
+import { TriggerType, ActionType, TargetType } from '../enums/automation.enum';
 import { Channel } from '../enums/channel.enum';
 import { BranchesService } from '../../branches/branches.service';
+import { Subscription, SubscriptionStatus } from '../../subscriptions/entities/subscription.entity';
+import { Visit } from '../../visitors/entities/visit.entity';
+import { Segment } from '../../contacts/entities/segment.entity';
 
 @Injectable()
 export class AutomationService {
@@ -26,6 +29,12 @@ export class AutomationService {
     private readonly ruleRepo: Repository<AutomationRule>,
     @InjectRepository(AutomationLog)
     private readonly logRepo: Repository<AutomationLog>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Visit)
+    private readonly visitRepo: Repository<Visit>,
+    @InjectRepository(Segment)
+    private readonly segmentRepo: Repository<Segment>,
     private readonly messagingEngine: MessagingEngineService,
     private readonly branchesService: BranchesService,
     @InjectQueue('messaging-automation')
@@ -36,6 +45,46 @@ export class AutomationService {
     return this.branchesService.checkBranchAccess(user, branchId);
   }
 
+  // --- Limits ---
+
+  /**
+   * Validates if the business can create a new automation rule based on their subscription plan.
+   */
+  async validateAutomationLimit(businessId: string): Promise<void> {
+    const subscription = await this.subscriptionRepo.findOne({
+      where: { businessId: businessId, status: SubscriptionStatus.ACTIVE },
+      relations: ['plan'],
+    });
+
+    if (!subscription) {
+      throw new ForbiddenException('No active subscription found for this business');
+    }
+
+    const plan = subscription.plan;
+
+    if (!plan) {
+      throw new ForbiddenException('No active subscription plan found');
+    }
+
+    if (!plan.automationsEnabled) {
+      throw new ForbiddenException('Automations are not enabled for your current plan');
+    }
+
+    // If maxAutomations is null or -1, it means unlimited
+    if (plan.maxAutomations !== null && plan.maxAutomations !== -1) {
+      // Count all automation rules for this business across all branches
+      const currentRuleCount = await this.ruleRepo.count({
+        where: { businessId: businessId },
+      });
+
+      if (currentRuleCount >= plan.maxAutomations) {
+        throw new ForbiddenException(
+          `You have reached the maximum allowed automations (${plan.maxAutomations}) for your plan. Please upgrade your plan to create more.`,
+        );
+      }
+    }
+  }
+
   // --- CRUD ---
 
   async create(dto: CreateAutomationRuleDto): Promise<AutomationRule> {
@@ -43,6 +92,9 @@ export class AutomationService {
       const branch = await this.branchesService.findById(dto.branchId);
       dto.businessId = branch.businessId;
     }
+
+    await this.validateAutomationLimit(dto.businessId);
+
     const rule = this.ruleRepo.create(dto as any) as unknown as AutomationRule;
     return this.ruleRepo.save(rule);
   }
@@ -245,17 +297,51 @@ export class AutomationService {
       `Triggering automation ${type} for customer ${dto.customerId}`,
     );
 
+    // Map legacy WELCOME_MESSAGE to FIRST_MESSAGE for unified rule searching
+    const effectiveType = type === TriggerType.WELCOME_MESSAGE ? TriggerType.FIRST_MESSAGE : type;
+
     const rules = await this.ruleRepo.find({
-      where: {
-        branchId: dto.branchId,
-        triggerType: type,
-        isActive: true,
-      },
+      where: [
+        { branchId: dto.branchId, triggerType: effectiveType, isActive: true },
+        // Also check for legacy WELCOME_MESSAGE if we are searching for FIRST_MESSAGE
+        ...(effectiveType === TriggerType.FIRST_MESSAGE 
+          ? [{ branchId: dto.branchId, triggerType: TriggerType.WELCOME_MESSAGE, isActive: true }]
+          : [])
+      ],
     });
 
-    this.logger.log(`Found ${rules.length} matching rules`);
+    this.logger.log(`Found ${rules.length} matching rules for ${type}`);
 
     for (const rule of rules) {
+      // 1. Check for Keyword Matching (FAQ)
+      if (type === TriggerType.INBOUND_MESSAGE && dto.content) {
+        const keywords = rule.actionConfig?.keywords || [];
+        if (keywords.length > 0) {
+          const content = dto.content.toLowerCase();
+          const matches = keywords.some((kw: string) =>
+            content.includes(kw.toLowerCase()),
+          );
+          if (!matches) {
+            this.logger.log(`Rule ${rule.id} keywords do not match message content`);
+            continue;
+          }
+        } else {
+          // If it's an FAQ trigger but has no keywords, it shouldn't fire on every message
+          continue; 
+        }
+      }
+
+      // 2. Check for Off-Hours
+      if (type === TriggerType.OFF_HOURS) {
+        const branch = await this.branchesService.findById(dto.branchId);
+        if (!this.isCurrentlyOffHours(branch, rule)) {
+          this.logger.log(
+            `Branch ${dto.branchId} is currently OPEN according to the rule's schedule; skipping off-hours automation.`,
+          );
+          continue;
+        }
+      }
+
       if (rule.delaySeconds && rule.delaySeconds > 0) {
         this.logger.log(
           `Queuing delayed execution for rule ${rule.id} (${rule.delaySeconds}s)`,
@@ -276,6 +362,48 @@ export class AutomationService {
     }
   }
 
+  private isCurrentlyOffHours(branch: any, rule: AutomationRule): boolean {
+    const config = rule.actionConfig || {};
+    const schedule = config.schedule || 'Outside Business Hours';
+
+    if (schedule === 'Always On (Away Mode)') return true;
+
+    const now = new Date();
+    const days = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
+    const currentDay = days[now.getDay()];
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    if (schedule === 'Custom Schedule' && config.customSchedule?.days) {
+      const todayConfig = config.customSchedule.days[currentDay];
+      if (!todayConfig) return true; // If day not in custom schedule, assume off-hours
+      return (
+        currentTime < todayConfig.startTime || currentTime > todayConfig.endTime
+      );
+    }
+
+    // Default: Outside Business Hours
+    if (!branch.businessHours) return false;
+
+    const todayConfig = branch.businessHours[currentDay];
+    if (!todayConfig || !todayConfig.isOpen) return true;
+
+    if (todayConfig.startTime && todayConfig.endTime) {
+      return (
+        currentTime < todayConfig.startTime || currentTime > todayConfig.endTime
+      );
+    }
+
+    return false;
+  }
+
   async executeRule(
     ruleId: string,
     triggerDto: AutomationTriggerDto,
@@ -288,17 +416,66 @@ export class AutomationService {
     );
 
     try {
+      // 1. Audience Filtering
+      if (rule.targetType && rule.targetType !== TargetType.ALL) {
+        const visitCount = await this.visitRepo.count({
+          where: {
+            customerId: triggerDto.customerId,
+            branchId: rule.branchId,
+          },
+        });
+
+        if (rule.targetType === TargetType.NEW_VISITORS && visitCount > 1) {
+          this.logger.log(
+            `Rule ${rule.id} skipped for customer ${triggerDto.customerId}: target is NEW_VISITORS but visit count is ${visitCount}`,
+          );
+          return;
+        }
+
+        if (
+          rule.targetType === TargetType.RETURNING_CUSTOMERS &&
+          visitCount <= 1
+        ) {
+          this.logger.log(
+            `Rule ${rule.id} skipped for customer ${triggerDto.customerId}: target is RETURNING_CUSTOMERS but visit count is ${visitCount}`,
+          );
+          return;
+        }
+
+        if (rule.targetType === TargetType.SEGMENT) {
+          const segmentId = rule.actionConfig?.segmentId;
+          if (segmentId) {
+            const isMember = await this.segmentRepo
+              .createQueryBuilder('segment')
+              .innerJoin('segment.users', 'user')
+              .where('segment.id = :segmentId', { segmentId })
+              .andWhere('user.id = :userId', { userId: triggerDto.customerId })
+              .getCount();
+
+            if (isMember === 0) {
+              this.logger.log(
+                `Rule ${rule.id} skipped for customer ${triggerDto.customerId}: customer is not a member of segment ${segmentId}`,
+              );
+              return;
+            }
+          }
+        }
+      }
+
+      // 2. Action Execution
       if (
         rule.actionType === ActionType.SEND_SMS ||
         rule.actionType === ActionType.SEND_WHATSAPP ||
-        rule.actionType === ActionType.SEND_EMAIL
+        rule.actionType === ActionType.SEND_EMAIL ||
+        rule.actionType === ActionType.SEND_IN_HOUSE ||
+        rule.actionType === ActionType.SEND_IN_APP_CHAT
       ) {
         const channel = this.mapActionToChannel(rule.actionType);
         await this.messagingEngine.sendMessage({
           branchId: rule.branchId,
           channel,
           customerIds: [triggerDto.customerId],
-          content: rule.actionConfig?.content,
+          content: rule.actionConfig?.content || rule.actionConfig?.message,
           templateId: rule.actionConfig?.templateId,
         });
       } else if (rule.actionType === ActionType.PUSH_REVIEW) {
@@ -338,6 +515,11 @@ export class AutomationService {
     if (action === ActionType.SEND_SMS) return Channel.SMS;
     if (action === ActionType.SEND_WHATSAPP) return Channel.WHATSAPP;
     if (action === ActionType.SEND_EMAIL) return Channel.EMAIL;
+    if (
+      action === ActionType.SEND_IN_HOUSE ||
+      action === ActionType.SEND_IN_APP_CHAT
+    )
+      return Channel.IN_HOUSE;
     return Channel.SMS;
   }
 }

@@ -26,9 +26,12 @@ export interface PricingPlan {
     maxCatalogueItems: number;
     maxCatalogueCategories: number;
     maxCatalogueOffers: number;
+    automationsEnabled: boolean;
+    maxAutomations: number;
     isActive: boolean;
     description: string;
     isPopular?: boolean;
+    qrThrivePlanId?: string;
 }
 
 export interface HardwareOption {

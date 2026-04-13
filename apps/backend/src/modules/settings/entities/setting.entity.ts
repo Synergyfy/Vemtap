@@ -64,4 +64,32 @@ export class Setting extends AbstractBaseEntity {
   })
   @Column({ default: 'https://graph.facebook.com/v17.0/' })
   whatsappApiBaseUrl: string;
+
+  @ApiProperty({
+    example: 20,
+    description: 'Percentage earned from direct business referrals',
+  })
+  @Column('decimal', { precision: 10, scale: 2, default: 20 })
+  affiliateDirectCommission: number;
+
+  @ApiProperty({
+    example: 5,
+    description: 'Percentage earned from sub-affiliate referrals',
+  })
+  @Column('decimal', { precision: 10, scale: 2, default: 5 })
+  affiliateIndirectCommission: number;
+
+  @ApiProperty({
+    example: 3,
+    description: 'How many months an affiliate earns from a referral',
+  })
+  @Column({ default: 3 })
+  affiliateCommissionDurationMonths: number;
+
+  @ApiProperty({
+    example: 5000,
+    description: 'Minimum balance required for withdrawal requests',
+  })
+  @Column('decimal', { precision: 10, scale: 2, default: 5000 })
+  affiliateMinimumWithdrawal: number;
 }

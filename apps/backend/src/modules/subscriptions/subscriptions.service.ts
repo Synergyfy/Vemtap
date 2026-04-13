@@ -3,7 +3,10 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Subscription,
@@ -27,6 +30,9 @@ import { CreditService } from '../messaging/services/credit.service';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { AutomationRule } from '../messaging/entities/automation-rule.entity';
+import { AffiliatesService } from '../affiliates/affiliates.service';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -49,9 +55,14 @@ export class SubscriptionsService {
     private readonly catalogueItemRepository: Repository<CatalogueItem>,
     @InjectRepository(CatalogueOffer)
     private readonly catalogueOfferRepository: Repository<CatalogueOffer>,
+    @InjectRepository(AutomationRule)
+    private readonly automationRuleRepository: Repository<AutomationRule>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
+    private readonly affiliatesService: AffiliatesService,
+    @Inject(forwardRef(() => QrThriveService))
+    private readonly qrThriveService: QrThriveService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -68,9 +79,15 @@ export class SubscriptionsService {
     });
 
     if (sub && sub.endDate < new Date()) {
-      sub.status = SubscriptionStatus.EXPIRED;
-      await this.subscriptionRepository.save(sub);
-      return null;
+      const now = new Date();
+      const gracePeriod = new Date(sub.endDate);
+      gracePeriod.setHours(gracePeriod.getHours() + 24);
+
+      if (now > gracePeriod) {
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+        return null;
+      }
     }
 
     return sub;
@@ -163,6 +180,13 @@ export class SubscriptionsService {
           userId: business.ownerId,
         });
 
+        // Trigger affiliate commission
+        await this.affiliatesService.processSubscriptionCommission(
+          businessId as string,
+          plan.monthlyPrice,
+          paymentReference,
+        );
+
         if (billingPeriod === BillingPeriod.MONTHLY)
           endDate.setMonth(endDate.getMonth() + 1);
         else if (billingPeriod === BillingPeriod.QUARTERLY)
@@ -214,6 +238,14 @@ export class SubscriptionsService {
 
       // Allocate messaging credits as per plan
       await this.creditService.allocateSubscriptionCredits(business.id, plan);
+
+      // Sync with QR-Thrive if plan is linked
+      if (plan.qrThrivePlanId) {
+        await this.qrThriveService.syncSubscription(
+          business.ownerId,
+          plan.qrThrivePlanId,
+        );
+      }
     }
 
     return savedSub;
@@ -237,6 +269,13 @@ export class SubscriptionsService {
     return null;
   }
 
+  @Cron(CronExpression.EVERY_HOUR)
+  async processDailySubscriptions() {
+    this.logger.log('Running automated subscription processing...');
+    await this.processExpiredTrials();
+    await this.processRenewals();
+  }
+
   async processExpiredTrials() {
     const now = new Date();
     const expiredTrials = await this.subscriptionRepository.find({
@@ -244,7 +283,7 @@ export class SubscriptionsService {
         status: SubscriptionStatus.TRIAL,
         endDate: LessThanOrEqual(now),
       },
-      relations: ['plan', 'business'],
+      relations: ['plan', 'business', 'business.owner'],
     });
 
     this.logger.log(`Found ${expiredTrials.length} expired trials to process.`);
@@ -271,7 +310,7 @@ export class SubscriptionsService {
         continue;
       }
 
-      const ownerEmail = 'unknown@latap.com';
+      const ownerEmail = sub.business?.officialEmail || sub.business?.owner?.email || 'billing@latap.com';
 
       const charge = await this.paymentsService.chargeAuthorization(
         amount,
@@ -297,6 +336,15 @@ export class SubscriptionsService {
         await this.activateSubscription(sub);
         await this.subscriptionRepository.save(sub);
 
+        // Trigger affiliate commission
+        if (sub.businessId) {
+          await this.affiliatesService.processSubscriptionCommission(
+            sub.businessId,
+            amount,
+            charge.reference,
+          );
+        }
+
         if (sub.businessId) {
           const branches = await this.branchRepository.find({
             where: { businessId: sub.businessId },
@@ -311,6 +359,84 @@ export class SubscriptionsService {
         }
       } else {
         this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+      }
+    }
+  }
+
+  async processRenewals() {
+    const now = new Date();
+    const expiringSubscriptions = await this.subscriptionRepository.find({
+      where: {
+        status: SubscriptionStatus.ACTIVE,
+        endDate: LessThanOrEqual(now),
+      },
+      relations: ['plan', 'business', 'business.owner'],
+    });
+
+    this.logger.log(
+      `Found ${expiringSubscriptions.length} active subscriptions to renew.`,
+    );
+
+    for (const sub of expiringSubscriptions) {
+      if (!sub.paystackAuthorizationCode) {
+        this.logger.warn(
+          `Subscription ${sub.id} has no auth code for renewal. Expiring...`,
+        );
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+        continue;
+      }
+
+      let amount = sub.plan.monthlyPrice;
+      if (sub.billingPeriod === BillingPeriod.QUARTERLY)
+        amount = sub.plan.quarterlyPrice;
+      if (sub.billingPeriod === BillingPeriod.YEARLY)
+        amount = sub.plan.yearlyPrice;
+
+      if (amount <= 0) {
+        await this.activateSubscription(sub);
+        await this.subscriptionRepository.save(sub);
+        continue;
+      }
+
+      const ownerEmail = sub.business?.officialEmail || sub.business?.owner?.email || 'billing@latap.com';
+
+      const charge = await this.paymentsService.chargeAuthorization(
+        amount,
+        ownerEmail,
+        sub.paystackAuthorizationCode,
+      );
+
+      if (charge && charge.status === 'success') {
+        this.logger.log(
+          `Successfully renewed subscription ${sub.id}. Upgrading end date.`,
+        );
+
+        await this.paymentsService.recordPayment({
+          reference: charge.reference,
+          amount: amount,
+          purpose: PaymentPurpose.SUBSCRIPTION,
+          status: PaymentStatus.SUCCESS,
+          metadata: { subscriptionId: sub.id, planId: sub.planId, renewal: true },
+          businessId: sub.businessId,
+          userId: sub.business?.ownerId,
+        });
+
+        // Trigger affiliate commission
+        if (sub.businessId) {
+          await this.affiliatesService.processSubscriptionCommission(
+            sub.businessId,
+            amount,
+            charge.reference,
+          );
+        }
+
+        await this.activateSubscription(sub);
+        await this.subscriptionRepository.save(sub);
+      } else {
+        this.logger.error(`Failed to renew subscription ${sub.id}. Expiring.`);
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
       }
@@ -335,6 +461,19 @@ export class SubscriptionsService {
         sub.businessId,
         sub.plan,
       );
+
+      // Sync with QR-Thrive if plan is linked
+      if (sub.plan.qrThrivePlanId) {
+        const business = await this.businessRepository.findOne({
+          where: { id: sub.businessId },
+        });
+        if (business) {
+          await this.qrThriveService.syncSubscription(
+            business.ownerId,
+            sub.plan.qrThrivePlanId,
+          );
+        }
+      }
     }
   }
 
@@ -376,6 +515,10 @@ export class SubscriptionsService {
       where: { businessId },
     });
     const usedCatalogueOffers = await this.catalogueOfferRepository.count({
+      where: { businessId },
+    });
+
+    const usedAutomations = await this.automationRuleRepository.count({
       where: { businessId },
     });
 
@@ -428,6 +571,19 @@ export class SubscriptionsService {
             : plan.branchLimit === -1
               ? 'unlimited'
               : Math.max(0, (plan.branchLimit ?? 0) - usedBranches),
+        },
+        automations: {
+          enabled: plan.automationsEnabled,
+          limit:
+            plan.maxAutomations === -1 || plan.maxAutomations === null
+              ? 'unlimited'
+              : plan.maxAutomations,
+          used: usedAutomations,
+          remaining: !plan.automationsEnabled
+            ? 0
+            : plan.maxAutomations === -1 || plan.maxAutomations === null
+              ? 'unlimited'
+              : Math.max(0, plan.maxAutomations - usedAutomations),
         },
         analytics: {
           enabled: plan.analyticsEnabled,

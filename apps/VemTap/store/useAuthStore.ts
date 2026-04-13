@@ -42,6 +42,8 @@ export interface User {
   businessName?: string;
   businessLogo?: string;
   avatar?: string;
+  googleId?: string;
+  authProvider?: 'LOCAL' | 'GOOGLE' | string;
 
   // Subscription fields
   planId?: SubscriptionPlan;
@@ -81,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       activeBranchId: null,
 
-      login: (userData, access_token) => {
+      login: (userData: User, access_token: string) => {
         console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
         
         // Clear chat history on login to ensure fresh session
@@ -101,14 +103,40 @@ export const useAuthStore = create<AuthState>()(
           console.error('Error clearing chat history during login', e);
         }
 
-        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
+        if (userData?.role) {
+          userData.role = userData.role.toLowerCase() as UserRole;
+        }
+
+        // Sync activeBranchId with the user's branchId to prevent stale dashboard views
+        const branchIdToSet = userData.branchId || null;
+        
+        set({ 
+          user: userData, 
+          access_token, 
+          isAuthenticated: true, 
+          activeBranchId: branchIdToSet 
+        });
+        
         setAuthCookie(access_token);
-        console.log('[AUTH] Login complete, isAuthenticated:', true);
+        console.log('[AUTH] Login complete, isAuthenticated:', true, 'Active Branch:', branchIdToSet);
       },
 
-      signup: (userData, access_token) => {
+      signup: (userData: User, access_token: string) => {
         console.log('[AUTH] signup() called', { email: userData?.email });
-        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
+        if (userData?.role) {
+          userData.role = userData.role.toLowerCase() as UserRole;
+        }
+        
+        // Sync activeBranchId on signup as well
+        const branchIdToSet = userData.branchId || null;
+        
+        set({ 
+          user: userData, 
+          access_token, 
+          isAuthenticated: true, 
+          activeBranchId: branchIdToSet 
+        });
+        
         setAuthCookie(access_token);
       },
 
@@ -116,7 +144,21 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         console.log('[AUTH] 🚪 logout() called');
         
-        // 1. Clear chat history to prevent leakage between accounts
+        // 1. Clear Google Session if it exists
+        if (typeof window !== 'undefined') {
+          try {
+            import('@react-oauth/google').then((module) => {
+              if (module.googleLogout) {
+                module.googleLogout();
+                console.log('[AUTH] Google logout successful');
+              }
+            });
+          } catch (e) {
+            console.error('Failed to logout of Google:', e);
+          }
+        }
+
+        // 2. Clear chat history to prevent leakage between accounts
         try {
           // Main chatStore
           import('./chatStore').then((module) => {
@@ -135,7 +177,7 @@ export const useAuthStore = create<AuthState>()(
           console.error('Error clearing chat history during logout', e);
         }
 
-        // 2. Explicitly purge local storage keys
+        // 3. Explicitly purge local storage keys
         if (typeof window !== 'undefined') {
           localStorage.removeItem('chat-history');
           localStorage.removeItem('vemtap-chat-storage');

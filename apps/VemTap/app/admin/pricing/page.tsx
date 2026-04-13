@@ -11,9 +11,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
+import { useQrThrivePlans } from '@/services/qr-thrive/hooks';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
-type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers'> & {
+type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers' | 'maxAutomations'> & {
     id?: string;
     monthlyPrice: string;
     trialDurationDays: string;
@@ -26,6 +27,8 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     maxCatalogueItems: string;
     maxCatalogueCategories: string;
     maxCatalogueOffers: string;
+    maxAutomations: string;
+    qrThrivePlanId?: string;
 };
 
 const defaultNewPlan: EditablePlanForm = {
@@ -51,9 +54,12 @@ const defaultNewPlan: EditablePlanForm = {
     maxCatalogueItems: '',
     maxCatalogueCategories: '',
     maxCatalogueOffers: '',
+    automationsEnabled: false,
+    maxAutomations: '',
     isActive: true,
     description: '',
     isPopular: false,
+    qrThrivePlanId: '',
 };
 
 const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
@@ -80,9 +86,12 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     maxCatalogueItems: (plan.maxCatalogueItems ?? 0).toString(),
     maxCatalogueCategories: (plan.maxCatalogueCategories ?? 0).toString(),
     maxCatalogueOffers: (plan.maxCatalogueOffers ?? 0).toString(),
+    automationsEnabled: !!plan.automationsEnabled,
+    maxAutomations: (plan.maxAutomations ?? 0).toString(),
     isActive: plan.isActive ?? true,
     description: plan.description || '',
     isPopular: !!plan.isPopular,
+    qrThrivePlanId: plan.qrThrivePlanId || '',
 });
 
 export default function AdminPricingPage() {
@@ -93,6 +102,7 @@ export default function AdminPricingPage() {
     const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
     const { data: plans = [], isLoading: plansLoading } = useAdminPricingPlans();
+    const { data: qrThrivePlans = [], isLoading: qrPlansLoading } = useQrThrivePlans();
 
     const [orderedPlans, setOrderedPlans] = useState<PricingPlan[]>([]);
     const [originalOrderIds, setOriginalOrderIds] = useState<string[]>([]);
@@ -241,9 +251,12 @@ export default function AdminPricingPage() {
         maxCatalogueItems: toNumber(plan.maxCatalogueItems),
         maxCatalogueCategories: toNumber(plan.maxCatalogueCategories),
         maxCatalogueOffers: toNumber(plan.maxCatalogueOffers),
+        automationsEnabled: !!plan.automationsEnabled,
+        maxAutomations: toNumber(plan.maxAutomations),
         isActive: plan.isActive ?? true,
         description: plan.description || '',
         isPopular: !!plan.isPopular,
+        qrThrivePlanId: plan.qrThrivePlanId || undefined,
     });
 
     const handleSave = async () => {
@@ -280,12 +293,23 @@ export default function AdminPricingPage() {
                 'branchesEnabled', 'branchLimit', 'analyticsEnabled',
                 'analyticsLevel', 'catalogueEnabled', 'maxCatalogueItems',
                 'maxCatalogueCategories', 'maxCatalogueOffers',
-                'isActive', 'description', 'isPopular'
+                'automationsEnabled', 'maxAutomations',
+                'isActive', 'description', 'isPopular', 'qrThrivePlanId'
             ];
 
             editableFields.forEach((k) => {
-                const newVal = payload[k];
-                const oldVal = originalPlan[k];
+                let newVal = payload[k];
+                let oldVal = originalPlan[k];
+
+                // Normalize for comparison (handle undefined/null defaults)
+                if (k === 'automationsEnabled') {
+                    newVal = !!newVal;
+                    oldVal = !!oldVal;
+                }
+                if (k === 'maxAutomations') {
+                    newVal = Number(newVal) || 0;
+                    oldVal = Number(oldVal) || 0;
+                }
 
                 let changed = false;
                 if (Array.isArray(newVal)) {
@@ -295,7 +319,7 @@ export default function AdminPricingPage() {
                 }
 
                 if (changed) {
-                    deltas[k] = newVal;
+                    deltas[k] = payload[k]; // Use the original payload value
                     hasChanges = true;
                 }
             });
@@ -313,7 +337,7 @@ export default function AdminPricingPage() {
     };
 
     const setNumericField = (
-        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers'>,
+        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers' | 'maxAutomations'>,
         value: string,
     ) => {
         setEditingPlan((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -496,6 +520,10 @@ export default function AdminPricingPage() {
                                                         <div className={`w-1.5 h-1.5 rounded-full ${plan.branchesEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
                                                         Branches: {plan.branchesEnabled ? 'Enabled' : 'Disabled'}
                                                     </p>
+                                                    <p className="flex items-center gap-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.automationsEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
+                                                        Automations: {plan.automationsEnabled ? 'Enabled' : 'Disabled'}
+                                                    </p>
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
@@ -504,6 +532,7 @@ export default function AdminPricingPage() {
                                                     <p>Team Limit: {unlimited(plan.teamMembersLimit)}</p>
                                                     <p>Branch Limit: {unlimited(plan.branchLimit)}</p>
                                                     <p>Loyalty Limit: {unlimited(plan.loyaltyLimit)}</p>
+                                                    <p>Automations Limit: {unlimited(plan.maxAutomations)}</p>
                                                     <p>Trial: {plan.trialDurationDays} days</p>
                                                 </div>
                                             </div>
@@ -575,6 +604,23 @@ export default function AdminPricingPage() {
                                         ₦ Naira (NGN)
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">QR Thrive Plan Integration</label>
+                                <select
+                                    value={currentPlan.qrThrivePlanId}
+                                    onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, qrThrivePlanId: e.target.value } : prev))}
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none appearance-none"
+                                >
+                                    <option value="">No QR Thrive Plan Linked</option>
+                                    {qrThrivePlans.map((p: any) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} {p.isFree ? '(Free)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {qrPlansLoading && <p className="text-[9px] text-text-secondary animate-pulse ml-1">Loading QR Thrive plans...</p>}
                             </div>
 
                             <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -1008,6 +1054,63 @@ export default function AdminPricingPage() {
                                         </motion.div>
                                     )}
                                 </div>
+
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div 
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.automationsEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        automationsEnabled: nextEnabled,
+                                                        maxAutomations: nextEnabled ? (prev.maxAutomations || '1') : '0'
+                                                    };
+                                                })}
+                                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.automationsEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.automationsEnabled ? 'translate-x-6' : ''}`} />
+                                            </div>
+                                            <label className="text-sm font-bold text-text-main">Automations Feature</label>
+                                        </div>
+                                    </div>
+
+                                    {currentPlan.automationsEnabled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="grid grid-cols-1 gap-4 pt-2 border-t border-slate-200"
+                                        >
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between ml-1">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Automations</label>
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={currentPlan.maxAutomations === '-1'} 
+                                                            onChange={(e) => setNumericField('maxAutomations', e.target.checked ? '-1' : '1')}
+                                                            className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                    </label>
+                                                </div>
+                                                {currentPlan.maxAutomations === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.maxAutomations === '0' ? '' : currentPlan.maxAutomations} 
+                                                        onChange={(value) => setNumericField('maxAutomations', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4">
@@ -1160,7 +1263,7 @@ export default function AdminPricingPage() {
                 title="Delete Plan"
                 message="Are you sure you want to delete this pricing plan? This action cannot be undone, although existing subscriptions will remain valid."
                 confirmText="Delete Plan"
-                isLoading={deleteMutation.isPending}
+                 isLoading={deleteMutation.isPending}
             />
         </>
     );

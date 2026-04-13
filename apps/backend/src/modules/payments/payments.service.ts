@@ -1,4 +1,5 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment } from './entities/payment.entity';
@@ -8,11 +9,26 @@ import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     @InjectRepository(Payment)
     private paymentRepository: Repository<Payment>,
     private readonly httpService: HttpService,
   ) {}
+
+  verifyWebhookSignature(signature: string, payload: any): boolean {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) return false;
+
+    const hash = crypto
+      .createHmac('sha512', secretKey)
+      .update(JSON.stringify(payload))
+      .digest('hex');
+
+    return hash === signature;
+  }
+
 
   async verifyTransaction(reference: string): Promise<any> {
     try {

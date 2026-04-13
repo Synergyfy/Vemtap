@@ -8,7 +8,7 @@ import {
     Bolt, 
     SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText,
     UserCircle, Building2, Link as LinkIcon, Star, Coins, Clock, Copy,
-    Zap, Target, MessageSquare
+    Zap, Target, MessageSquare, Eye, EyeOff
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -30,6 +30,7 @@ import {
     useUpdateAutomation, 
     useDeleteAutomation 
 } from '@/services/messaging/hooks';
+import { useCapabilities } from '@/services/subscriptions/hooks';
 import { TriggerType, TargetType, ActionType } from '@/services/messaging/types';
 
 const TEMPLATE_CATEGORIES = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
@@ -38,16 +39,13 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 function TargetModal({ 
     isOpen, 
     onClose, 
-    onConfirm, 
-    availableTags 
+    onConfirm
 }: { 
     isOpen: boolean; 
     onClose: () => void; 
-    onConfirm: (target: 'all' | string) => void; 
-    availableTags: string[];
+    onConfirm: (target: TargetType) => void; 
 }) {
-    const [selection, setSelection] = useState<'all' | 'tag'>('all');
-    const [selectedTag, setSelectedTag] = useState('');
+    const [selection, setSelection] = useState<TargetType>(TargetType.ALL);
 
     if (!isOpen) return null;
 
@@ -63,54 +61,50 @@ function TargetModal({
                 <div className="p-6 space-y-6">
                     <div className="space-y-3">
                         <button 
-                            onClick={() => setSelection('all')}
-                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === 'all' ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                            onClick={() => setSelection(TargetType.ALL)}
+                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === TargetType.ALL ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                         >
-                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === 'all' ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
-                                {selection === 'all' && <div className="size-2 bg-white rounded-full" />}
+                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === TargetType.ALL ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
+                                {selection === TargetType.ALL && <div className="size-2 bg-white rounded-full" />}
                             </div>
                             <div>
-                                <p className="font-bold text-slate-900 text-sm">Send to All</p>
+                                <p className="font-bold text-slate-900 text-sm">All Visitors</p>
                                 <p className="text-xs text-slate-500">Every visitor who sends a message will receive this.</p>
                             </div>
                         </button>
 
                         <button 
-                            onClick={() => setSelection('tag')}
-                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === 'tag' ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                            onClick={() => setSelection(TargetType.NEW_VISITORS)}
+                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === TargetType.NEW_VISITORS ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                         >
-                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === 'tag' ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
-                                {selection === 'tag' && <div className="size-2 bg-white rounded-full" />}
+                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === TargetType.NEW_VISITORS ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
+                                {selection === TargetType.NEW_VISITORS && <div className="size-2 bg-white rounded-full" />}
                             </div>
                             <div>
-                                <p className="font-bold text-slate-900 text-sm">Target Specific Tag</p>
-                                <p className="text-xs text-slate-500">Only visitors with the selected tag will receive this.</p>
+                                <p className="font-bold text-slate-900 text-sm">New Visitors</p>
+                                <p className="text-xs text-slate-500">Only first-time visitors will receive this message.</p>
+                            </div>
+                        </button>
+
+                        <button 
+                            onClick={() => setSelection(TargetType.RETURNING_CUSTOMERS)}
+                            className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${selection === TargetType.RETURNING_CUSTOMERS ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                        >
+                            <div className={`size-5 rounded-full border-2 flex items-center justify-center ${selection === TargetType.RETURNING_CUSTOMERS ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
+                                {selection === TargetType.RETURNING_CUSTOMERS && <div className="size-2 bg-white rounded-full" />}
+                            </div>
+                            <div>
+                                <p className="font-bold text-slate-900 text-sm">Returning Customers</p>
+                                <p className="text-xs text-slate-500">Only visitors who have visited before will receive this.</p>
                             </div>
                         </button>
                     </div>
-
-                    {selection === 'tag' && (
-                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Select Tag</label>
-                            <select 
-                                value={selectedTag}
-                                onChange={e => setSelectedTag(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-sm"
-                            >
-                                <option value="">Choose a tag...</option>
-                                {availableTags.map(tag => (
-                                    <option key={tag} value={tag}>{tag}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
                 </div>
                 <div className="p-6 bg-slate-50 flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl">Cancel</button>
                     <button 
-                        disabled={selection === 'tag' && !selectedTag}
-                        onClick={() => onConfirm(selection === 'all' ? 'all' : selectedTag)}
-                        className="flex-1 py-3 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-dark shadow-lg shadow-primary/20 disabled:opacity-50"
+                        onClick={() => onConfirm(selection)}
+                        className="flex-1 py-3 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all"
                     >
                         Confirm & Save
                     </button>
@@ -281,6 +275,11 @@ export default function ChatSettingsPanel() {
     const user = useAuthStore(s => s.user);
     const branchId = searchParams.get('branchId');
 
+    const { data: capabilities } = useCapabilities();
+    const autoLimit = capabilities?.capabilities?.automations;
+    const isAutomationsEnabled = autoLimit?.enabled ?? true;
+    const isLimitReached = autoLimit?.remaining !== 'unlimited' && (autoLimit?.remaining ?? 1) <= 0;
+
     // Queries
     const { data: automation = {} as any, isLoading: autoLoading } = useChatAutomation(branchId || undefined);
     const { data: templates = [], isLoading: templatesLoading } = useChatTemplates(branchId || undefined);
@@ -375,22 +374,21 @@ export default function ChatSettingsPanel() {
         }
     };
 
-    const handleConfirmTarget = async (target: 'all' | string) => {
+    const handleConfirmTarget = async (target: TargetType) => {
         setIsTargetModalOpen(false);
-        const name = editingRule ? editingRule.name : `Welcome Message (${target})`;
+        const targetLabel = target === TargetType.ALL ? 'All' : target === TargetType.NEW_VISITORS ? 'New' : 'Returning';
+        const name = editingRule ? editingRule.name : `Welcome Message (${targetLabel})`;
         const content = editingRule ? editingRule.actionConfig?.message : tempMessage;
         
         const payload = {
-            businessId: user?.businessId || '',
             branchId: branchId || undefined,
             name,
             triggerType: TriggerType.FIRST_MESSAGE,
-            targetType: target === 'all' ? TargetType.NEW_VISITORS : TargetType.SPECIFIC_CATEGORY,
+            targetType: target,
             actionType: ActionType.SEND_IN_APP_CHAT,
             isActive: true,
             actionConfig: { 
-                message: content,
-                targetTag: target !== 'all' ? target : undefined
+                message: content
             }
         };
 
@@ -713,10 +711,8 @@ export default function ChatSettingsPanel() {
                     isLoading={createRule.isPending}
                     onSave={async (data) => {
                         const payload = {
-                            businessId: user?.businessId || '',
                             branchId: branchId || undefined,
-                            name: data.name,
-                            triggerType: data.triggerType,
+                            name: data.name,                            triggerType: data.triggerType,
                             targetType: data.targetType,
                             actionType: data.actionType,
                             isActive: true,
@@ -737,7 +733,6 @@ export default function ChatSettingsPanel() {
                     isOpen={isTargetModalOpen}
                     onClose={() => setIsTargetModalOpen(false)}
                     onConfirm={handleConfirmTarget}
-                    availableTags={['New Visitors', 'Returning', 'VIP', 'High Intent', 'Potential Sales']}
                 />
 
                 {(autoLoading || templatesLoading || rulesLoading) && (
@@ -764,15 +759,45 @@ export default function ChatSettingsPanel() {
                                     </div>
                                     {!isComposing && (
                                         <button 
-                                            onClick={() => { setIsComposing(true); setEditingRule(null); setTempMessage(''); }}
-                                            className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-dark transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+                                            onClick={() => {
+                                                if (isLimitReached) {
+                                                    toast.error('Automation limit reached for your plan. Please upgrade to add more.');
+                                                    return;
+                                                }
+                                                setIsComposing(true); 
+                                                setEditingRule(null); 
+                                                setTempMessage(''); 
+                                            }}
+                                            disabled={isLimitReached}
+                                            className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 shadow-lg ${isLimitReached ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-primary hover:bg-primary-dark shadow-primary/20'}`}
                                         >
                                             <Plus size={14} /> Add Automation
                                         </button>
                                     )}
                                 </div>
 
-                                {!isComposing ? (
+                                {isLimitReached && (
+                                    <div className="bg-amber-50 border-b border-amber-100 p-3 px-6 flex items-center gap-3">
+                                        <AlertTriangle size={16} className="text-amber-600" />
+                                        <p className="text-[11px] font-bold text-amber-700">
+                                            You have reached the limit of {autoLimit?.limit} automations for your plan. 
+                                            <Link href="/dashboard/settings/billing" className="ml-2 underline hover:text-amber-900">Upgrade plan &rarr;</Link>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {!isAutomationsEnabled ? (
+                                    <div className="p-12 text-center bg-slate-50/50">
+                                        <div className="size-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Zap size={32} />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-slate-900 mb-2">Automations Disabled</h4>
+                                        <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">Automated messaging is not available on your current plan. Upgrade to unlock this feature.</p>
+                                        <Link href="/dashboard/settings/billing" className="inline-flex items-center px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
+                                            View Pricing Plans
+                                        </Link>
+                                    </div>
+                                ) : !isComposing ? (
                                     <div className="p-6 bg-slate-50/50 space-y-4">
                                         {welcomeRules.length === 0 ? (
                                             <div className="py-12 text-center text-slate-400 italic text-sm">No automations defined. Click the plus button to start.</div>
@@ -781,8 +806,14 @@ export default function ChatSettingsPanel() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-bold text-slate-900 text-sm">{rule.name}</span>
-                                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${rule.targetType === TargetType.SPECIFIC_CATEGORY ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                            {rule.targetType === TargetType.SPECIFIC_CATEGORY ? `Tag: ${rule.actionConfig?.targetTag || 'Selected'}` : 'All Visitors'}
+                                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
+                                                            rule.targetType === TargetType.NEW_VISITORS ? 'bg-emerald-100 text-emerald-600' : 
+                                                            rule.targetType === TargetType.RETURNING_CUSTOMERS ? 'bg-amber-100 text-amber-600' : 
+                                                            'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                            {rule.targetType === TargetType.NEW_VISITORS ? 'New Visitors' : 
+                                                             rule.targetType === TargetType.RETURNING_CUSTOMERS ? 'Returning' : 
+                                                             'All Visitors'}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-3">
@@ -1004,43 +1035,93 @@ export default function ChatSettingsPanel() {
                                 </div>
                                 <div className="p-6 bg-slate-50/50 space-y-4">
                                     {(automation.faqKeywords || []).map((faq: any, i: number) => (
-                                        <div key={faq.id} className={`p-4 bg-white border border-slate-200 rounded-xl ${!faq.enabled ? 'opacity-60' : ''} transition-all`}>
-                                            <div className="flex flex-wrap gap-2 mb-3">
-                                                {faq.keywords.map((kw: string) => (
-                                                    <span key={kw} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium border border-slate-200 flex items-center gap-1">
-                                                        {kw}
-                                                    </span>
-                                                ))}
-                                                <button 
-                                                    onClick={() => deleteFaq.mutate(faq.id)} 
-                                                    disabled={deleteFaq.isPending}
-                                                    className="text-red-500 p-1 hover:bg-red-50 rounded ml-auto transition-colors disabled:opacity-30"
-                                                >
-                                                    {deleteFaq.isPending ? <div className="size-3 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" /> : <Trash2 size={14} />}
-                                                </button>
+                                        <div key={faq.id} className={`p-5 bg-white border border-slate-200 rounded-2xl shadow-sm ${!faq.enabled ? 'opacity-60 grayscale-[0.5]' : ''} transition-all space-y-4`}>
+                                            <div className="flex items-start gap-4">
+                                                <div className="flex-1 space-y-1.5">
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trigger Keywords (comma separated)</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <button 
+                                                                onClick={() => updateFaq.mutate({ id: faq.id, data: { enabled: !faq.enabled } })}
+                                                                className={`p-1.5 rounded-lg transition-all ${faq.enabled ? 'text-primary bg-primary/5 hover:bg-primary/10' : 'text-slate-400 bg-slate-100 hover:bg-slate-200'}`}
+                                                                title={faq.enabled ? "Disable Trigger" : "Enable Trigger"}
+                                                            >
+                                                                {faq.enabled ? <Eye size={14} /> : <EyeOff size={14} />}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => { if(confirm('Delete this trigger?')) deleteFaq.mutate(faq.id); }}
+                                                                disabled={deleteFaq.isPending}
+                                                                className="text-slate-300 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
+                                                                title="Delete Trigger"
+                                                            >
+                                                                {deleteFaq.isPending ? <div className="size-3.5 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" /> : <Trash2 size={14} />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <input 
+                                                        type="text"
+                                                        defaultValue={faq.keywords.join(', ')}
+                                                        placeholder="e.g. price, cost, how much"
+                                                        onBlur={e => {
+                                                            const val = e.target.value.trim();
+                                                            const newKeywords = val.split(',').map(k => k.trim()).filter(Boolean);
+                                                            if (newKeywords.length > 0) {
+                                                                updateFaq.mutate({ id: faq.id, data: { keywords: newKeywords } });
+                                                            } else {
+                                                                toast.error('Keywords cannot be empty');
+                                                                e.target.value = faq.keywords.join(', ');
+                                                            }
+                                                        }}
+                                                        disabled={updateFaq.isPending}
+                                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all"
+                                                    />
+                                                </div>
                                             </div>
-                                            <textarea 
-                                                defaultValue={faq.response}
-                                                onBlur={e => {
-                                                    if (e.target.value.trim()) {
-                                                        updateFaq.mutate({ id: faq.id, data: { response: e.target.value } });
-                                                    } else {
-                                                        toast.error('Response cannot be empty');
-                                                        e.target.value = faq.response;
-                                                    }
-                                                }}
-                                                disabled={updateFaq.isPending}
-                                                className="block w-full px-4 py-2 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
-                                                rows={2} 
-                                            />
+
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between items-center px-1">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Auto-Response Message</label>
+                                                </div>
+                                                <textarea 
+                                                    defaultValue={faq.response}
+                                                    placeholder="Type the automated reply here..."
+                                                    onBlur={e => {
+                                                        if (e.target.value.trim()) {
+                                                            updateFaq.mutate({ id: faq.id, data: { response: e.target.value } });
+                                                        } else {
+                                                            toast.error('Response cannot be empty');
+                                                            e.target.value = faq.response;
+                                                        }
+                                                    }}
+                                                    disabled={updateFaq.isPending}
+                                                    className="block w-full px-4 py-3 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all disabled:opacity-50 min-h-[80px] resize-none font-medium"
+                                                    rows={2} 
+                                                />
+                                            </div>
                                         </div>
                                     ))}
+                                    
                                     <button 
-                                        onClick={() => addFaq.mutate({ keywords: ['new-keyword'], response: 'New auto response' })}
+                                        onClick={() => {
+                                            const kws = prompt('Enter keywords for this trigger (comma separated):', 'new-keyword');
+                                            if (!kws) return;
+                                            const keywords = kws.split(',').map(k => k.trim()).filter(Boolean);
+                                            if (keywords.length === 0) return;
+                                            addFaq.mutate({ keywords, response: 'Hi! Thanks for asking. How can we help you with that?' });
+                                        }}
                                         disabled={addFaq.isPending}
-                                        className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-sm hover:border-primary/50 hover:text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-sm hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 group"
                                     >
-                                        {addFaq.isPending ? <div className="size-4 border-2 border-slate-200 border-t-primary rounded-full animate-spin" /> : '+ Add New Keyword Trigger'}
+                                        {addFaq.isPending ? (
+                                            <div className="size-5 border-2 border-slate-200 border-t-primary rounded-full animate-spin" />
+                                        ) : (
+                                            <>
+                                                <div className="size-6 rounded-full bg-slate-100 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                                                    <Plus size={14} />
+                                                </div>
+                                                Add New Keyword Trigger
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </section>
@@ -1066,13 +1147,43 @@ export default function ChatSettingsPanel() {
                                     </div>
                                     <button 
                                         type="button"
-                                        onClick={() => setIsRuleModalOpen(true)}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20"
+                                        onClick={() => {
+                                            if (isLimitReached) {
+                                                toast.error('Automation limit reached for your plan.');
+                                                return;
+                                            }
+                                            setIsRuleModalOpen(true);
+                                        }}
+                                        disabled={isLimitReached}
+                                        className={`inline-flex items-center gap-2 px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-md ${isLimitReached ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'}`}
                                     >
                                         <Plus size={14} /> New Rule
                                     </button>
                                 </div>
-                                <div className="p-6 bg-slate-50/50 space-y-4">
+
+                                {isLimitReached && (
+                                    <div className="bg-amber-50 border-b border-amber-100 p-3 px-6 flex items-center gap-3">
+                                        <AlertTriangle size={16} className="text-amber-600" />
+                                        <p className="text-[11px] font-bold text-amber-700">
+                                            You have reached the limit of {autoLimit?.limit} automations. 
+                                            <Link href="/dashboard/settings/billing" className="ml-2 underline hover:text-amber-900">Upgrade plan &rarr;</Link>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {!isAutomationsEnabled ? (
+                                    <div className="p-12 text-center bg-slate-50/50">
+                                        <div className="size-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Zap size={32} />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-slate-900 mb-2">Advanced Rules Disabled</h4>
+                                        <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">Custom automation workflows are not available on your current plan.</p>
+                                        <Link href="/dashboard/settings/billing" className="inline-flex items-center px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
+                                            Upgrade Plan
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <div className="p-6 bg-slate-50/50 space-y-4">
                                     {rulesLoading ? (
                                         <div className="py-12 flex justify-center"><div className="size-8 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin" /></div>
                                     ) : (advancedRules as any[]).length === 0 ? (
@@ -1176,7 +1287,8 @@ export default function ChatSettingsPanel() {
                                             </div>
                                         </div>
                                     ))}
-                                </div>
+                                    </div>
+                                )}
                             </section>
                         </div>
                     </div>

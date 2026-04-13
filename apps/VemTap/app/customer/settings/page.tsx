@@ -4,14 +4,25 @@ import React, { useState, useEffect } from 'react';
 import { notify } from '@/lib/notify';
 import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, ChevronRight, Laptop, Smartphone, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useChangePassword } from '@/services/auth/hooks';
+import { useRegisterPushToken } from '@/services/notifications/hooks';
 
 export default function CustomerSettingsPage() {
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
     const { user, logout, updateUser } = useAuthStore();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('profile');
+
+    // Push Notification States
+    const [pushSupported, setPushSupported] = useState(false);
+    const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+    const [pushSubscribed, setPushSubscribed] = useState(false);
+    const [pushLoading, setPushLoading] = useState(false);
+
+    const registerPushToken = useRegisterPushToken();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -22,6 +33,87 @@ export default function CustomerSettingsPage() {
             }
         }
     }, []);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+            setPushSupported(supported);
+            if (supported) {
+                setPushPermission(Notification.permission);
+                checkPushStatus();
+            }
+        }
+    }, []);
+
+    const checkPushStatus = async () => {
+        if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+            const subscription = await registration.pushManager.getSubscription();
+            setPushSubscribed(!!subscription);
+        }
+    };
+
+    const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; i += 1) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const handleTogglePush = async () => {
+        if (!pushSupported) {
+            notify.error('Push notifications are not supported on this device');
+            return;
+        }
+
+        setPushLoading(true);
+        try {
+            if (pushSubscribed) {
+                // Disable
+                const registration = await navigator.serviceWorker.getRegistration();
+                const subscription = await registration?.pushManager.getSubscription();
+                if (subscription) {
+                    await subscription.unsubscribe();
+                }
+                setPushSubscribed(false);
+                notify.success('Notifications disabled');
+            } else {
+                // Enable
+                const permission = await Notification.requestPermission();
+                setPushPermission(permission);
+                if (permission !== 'granted') {
+                    notify.error('Notification permission denied');
+                    return;
+                }
+
+                const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                if (!vapidPublicKey) {
+                    notify.error('System error: Missing VAPID key');
+                    return;
+                }
+
+                await navigator.serviceWorker.register('/sw.js');
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+                });
+
+                await registerPushToken.mutateAsync({ token: JSON.stringify(subscription) });
+                setPushSubscribed(true);
+                notify.success('Notifications enabled successfully!');
+            }
+        } catch (error: any) {
+            notify.error(error.message || 'Failed to update notification settings');
+        } finally {
+            setPushLoading(false);
+        }
+    };
 
     const { changePassword, isLoading: isChangingPassword } = useChangePassword();
     const [currentPassword, setCurrentPassword] = useState('');
@@ -134,10 +226,10 @@ export default function CustomerSettingsPage() {
                     <nav className="bg-white rounded-lg border border-gray-100 overflow-hidden shadow-sm">
                         {[
                             { id: 'profile', label: 'Identity Profile', icon: User },
-                            { id: 'security', label: 'Security & Privacy', icon: Shield },
+                            { id: 'security', label: 'Security & Privacy', icon: Shield, hidden: isAdminMode },
                             { id: 'notifications', label: 'Alert Preferences', icon: Bell },
                             { id: 'devices', label: 'Linked Devices', icon: Laptop },
-                        ].map((item) => {
+                        ].filter(item => !item.hidden).map((item) => {
                             const isActive = activeTab === item.id;
                             return (
                                 <button
@@ -225,18 +317,32 @@ export default function CustomerSettingsPage() {
                                         </h3>
                                     </div>
                                     <div className="space-y-5">
+                                        <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-all cursor-pointer group" onClick={handleTogglePush}>
+                                            <div>
+                                                <p className="font-bold text-sm text-text-main flex items-center gap-2">
+                                                    Order Status Notifications
+                                                    {pushLoading && <Loader2 className="animate-spin text-primary" size={14} />}
+                                                </p>
+                                                <p className="text-xs text-text-secondary font-medium">Receive real-time alerts for your orders</p>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer pointer-events-none">
+                                                <input type="checkbox" className="sr-only peer" checked={pushSubscribed} readOnly />
+                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                            </label>
+                                        </div>
+
                                         {[
                                             { label: 'Reward Unlocked Notifications', desc: 'Alert me instantly when a voucher is ready for use', checked: true },
                                             { label: 'Activity Summaries', desc: 'Weekly digest of my check-ins and savings', checked: true },
                                             { label: 'SMS Security Alerts', desc: 'Notice for logins from unrecognized devices', checked: false },
                                         ].map((pref, i) => (
-                                            <div key={i} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-all cursor-pointer group">
+                                            <div key={i} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-all cursor-pointer group opacity-50">
                                                 <div>
                                                     <p className="font-bold text-sm text-text-main">{pref.label}</p>
                                                     <p className="text-xs text-text-secondary font-medium">{pref.desc}</p>
                                                 </div>
                                                 <label className="relative inline-flex items-center cursor-pointer">
-                                                    <input type="checkbox" className="sr-only peer" defaultChecked={pref.checked} />
+                                                    <input type="checkbox" className="sr-only peer" defaultChecked={pref.checked} disabled />
                                                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                                                 </label>
                                             </div>
@@ -260,29 +366,30 @@ export default function CustomerSettingsPage() {
                                         )}
                                     </button>
                                 </div>
-                            </div>
-
-                            {/* Security / Danger Zone */}
-                            <div className="bg-red-50/50 border-2 border-dashed border-red-100 rounded-lg p-6 md:p-10 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700"></div>
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-4 mb-6 text-red-800">
-                                        <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
-                                            <Trash2 size={24} />
-                                        </div>
-                                        <h3 className="text-xl font-display font-bold">Data Purge Protocol</h3>
-                                    </div>
-                                    <p className="text-sm text-red-700/80 mb-8 font-medium leading-relaxed max-w-xl text-balance">
-                                        Initiating an account deletion will permanently erase your check-in history, earned points, and active vouchers from the VemTap decentralized ledger. This action is irreversible.
-                                    </p>
-                                    <button className="h-14 px-8 border-2 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95 shadow-lg shadow-red-200/50">
-                                        Request Account Termination
-                                    </button>
                                 </div>
-                            </div>
-                        </>
-                    )}
 
+                                {/* Security / Danger Zone */}
+                                {!isAdminMode && (
+                                <div className="bg-red-50/50 border-2 border-dashed border-red-100 rounded-lg p-6 md:p-10 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700"></div>
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-4 mb-6 text-red-800">
+                                            <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
+                                                <Trash2 size={24} />
+                                            </div>
+                                            <h3 className="text-xl font-display font-bold">Data Purge Protocol</h3>
+                                        </div>
+                                        <p className="text-sm text-red-700/80 mb-8 font-medium leading-relaxed max-w-xl text-balance">
+                                            Initiating an account deletion will permanently erase your check-in history, earned points, and active vouchers from the VemTap decentralized ledger. This action is irreversible.
+                                        </p>
+                                        <button className="h-14 px-8 border-2 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95 shadow-lg shadow-red-200/50">
+                                            Request Account Termination
+                                        </button>
+                                    </div>
+                                </div>
+                                )}
+                                </>
+                                )}
                     {activeTab === 'security' && (
                         <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-10 shadow-sm relative overflow-hidden">
                             <h3 className="text-lg font-display font-bold text-text-main mb-8 flex items-center gap-3">

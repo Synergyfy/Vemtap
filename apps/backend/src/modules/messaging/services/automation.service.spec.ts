@@ -9,11 +9,14 @@ import { AutomationLog } from '../entities/automation-log.entity';
 import { MessagingEngineService } from './messaging-engine.service';
 import { TriggerType, ActionType } from '../enums/automation.enum';
 import { BranchesService } from '../../branches/branches.service';
+import { Subscription, SubscriptionStatus } from '../../subscriptions/entities/subscription.entity';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('AutomationService', () => {
   let service: AutomationService;
   let ruleRepo: Repository<AutomationRule>;
   let logRepo: Repository<AutomationLog>;
+  let subscriptionRepo: Repository<Subscription>;
   let messagingEngine: MessagingEngineService;
   let queue: Queue;
 
@@ -41,6 +44,12 @@ describe('AutomationService', () => {
           },
         },
         {
+          provide: getRepositoryToken(Subscription),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
           provide: MessagingEngineService,
           useValue: {
             sendMessage: jest.fn(),
@@ -56,6 +65,7 @@ describe('AutomationService', () => {
           provide: BranchesService,
           useValue: {
             getBusinessId: jest.fn().mockResolvedValue('bus-1'),
+            findById: jest.fn(),
           },
         },
       ],
@@ -64,12 +74,56 @@ describe('AutomationService', () => {
     service = module.get<AutomationService>(AutomationService);
     ruleRepo = module.get(getRepositoryToken(AutomationRule));
     logRepo = module.get(getRepositoryToken(AutomationLog));
+    subscriptionRepo = module.get(getRepositoryToken(Subscription));
     messagingEngine = module.get(MessagingEngineService);
     queue = module.get(getQueueToken('messaging-automation'));
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('validateAutomationLimit', () => {
+    const businessId = 'bus-1';
+
+    it('should throw if no active subscription', async () => {
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue(null);
+      await expect(service.validateAutomationLimit(businessId)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw if automations disabled in plan', async () => {
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+        status: SubscriptionStatus.ACTIVE,
+        plan: { automationsEnabled: false }
+      } as any);
+      await expect(service.validateAutomationLimit(businessId)).rejects.toThrow('Automations are not enabled');
+    });
+
+    it('should throw if limit reached', async () => {
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+        status: SubscriptionStatus.ACTIVE,
+        plan: { automationsEnabled: true, maxAutomations: 2 }
+      } as any);
+      jest.spyOn(ruleRepo, 'count').mockResolvedValue(2);
+      await expect(service.validateAutomationLimit(businessId)).rejects.toThrow('maximum allowed automations');
+    });
+
+    it('should pass if limit not reached', async () => {
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+        status: SubscriptionStatus.ACTIVE,
+        plan: { automationsEnabled: true, maxAutomations: 5 }
+      } as any);
+      jest.spyOn(ruleRepo, 'count').mockResolvedValue(2);
+      await expect(service.validateAutomationLimit(businessId)).resolves.not.toThrow();
+    });
+
+    it('should pass if unlimited (-1)', async () => {
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+        status: SubscriptionStatus.ACTIVE,
+        plan: { automationsEnabled: true, maxAutomations: -1 }
+      } as any);
+      await expect(service.validateAutomationLimit(businessId)).resolves.not.toThrow();
+    });
   });
 
   describe('trigger', () => {

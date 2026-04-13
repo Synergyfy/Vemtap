@@ -77,11 +77,20 @@ export class Plan extends AbstractBaseEntity {
   @Column({ type: 'int', nullable: true })
   maxCatalogueOffers: number | null;
 
+  @Column({ default: false })
+  automationsEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  maxAutomations: number | null;
+
   @Column({ default: true })
   isActive: boolean;
 
   @Column({ type: 'text', nullable: true })
   description: string;
+
+  @Column({ type: 'text', nullable: true })
+  qrThrivePlanId: string | null;
 
   @Column({ default: false })
   isPopular: boolean;

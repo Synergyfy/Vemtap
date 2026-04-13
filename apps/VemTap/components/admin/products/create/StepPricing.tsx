@@ -4,14 +4,22 @@ import React from 'react';
 import { useProductFormStore } from '@/store/useProductFormStore';
 import { Percent, Trash2, Plus, Info, LayoutGrid, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
 import { TbCurrencyNaira } from "react-icons/tb";
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProductsApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { ProductCategory } from '@/types/marketplace';
 
 export default function StepPricing() {
     const { formData, updateFormData, nextStep, prevStep, editingProductId, setSubmissionResult } = useProductFormStore();
     const queryClient = useQueryClient();
+
+    const { data: categories } = useQuery<ProductCategory[]>({
+        queryKey: ['admin-product-types'],
+        queryFn: () => adminProductsApi.getAllTypes(),
+    });
+
+    const categoryName = categories?.find((c) => c.id === formData.productTypeId)?.name || 'Uncategorized';
 
     const mutation = useMutation({
         mutationFn: async () => {
@@ -50,18 +58,26 @@ export default function StepPricing() {
                 imagesArray.push('https://placehold.co/600x400/png?text=Hardware+Product');
             }
 
-            // 3. Construct Payload
+            // 3. Map specs to technicalSpecifications object
+            const techSpecs: Record<string, string> = {};
+            formData.specs.forEach(s => {
+                if (s.label.trim() && s.value.trim()) {
+                    techSpecs[s.label] = s.value;
+                }
+            });
+
+            // 4. Construct Payload (CLEAN - only valid backend fields)
             const payload = {
                 name: formData.title,
+                sku: formData.sku,
                 description: formData.description,
                 productTypeId: formData.productTypeId,
-                category: formData.category,
                 price: formData.msrp,
                 originalPrice: formData.originalPrice,
                 costPrice: formData.costPrice,
                 customizationFee: formData.customizationFee,
                 images: imagesArray,
-                image: imagesArray[0] || 'https://placehold.co/600x400/png?text=Hardware+Product',
+                videos: videoUrl ? [videoUrl] : [],
                 tag: formData.tag,
                 tagColor: formData.tagColor,
                 moq: formData.volumeDiscounts[0]?.minQty || 1,
@@ -72,13 +88,7 @@ export default function StepPricing() {
                 })),
                 status: 'Published',
                 customBrandedCards: formData.customBrandingEnabled,
-                technicalSpecifications: formData.specs.reduce((acc, spec) => {
-                    if (spec.label && spec.value) {
-                        acc[spec.label] = spec.value;
-                    }
-                    return acc;
-                }, {} as Record<string, string>),
-                videos: videoUrl ? [videoUrl] : [],
+                technicalSpecifications: techSpecs,
                 howToUse: formData.howToSteps.map(step => ({
                     title: step.title,
                     description: step.description
@@ -86,8 +96,6 @@ export default function StepPricing() {
                 rating: 5, // Default rating
                 requestQuoteThreshold: formData.bulkQuotesEnabled ? 100 : null
             };
-
-
 
             if (editingProductId) {
                 return adminProductsApi.update(editingProductId, payload);
@@ -116,6 +124,13 @@ export default function StepPricing() {
             notify.warning('Please fill in the basic product details in Step 1.');
             return;
         }
+
+        const invalidStep = formData.howToSteps.find(step => !step.title.trim() || !step.description.trim());
+        if (invalidStep) {
+            notify.warning('One or more "How to Use" steps are incomplete. Please go back to Step 1 and fix them.');
+            return;
+        }
+
         setSubmissionResult('idle', null);
         mutation.mutate();
     };
@@ -403,7 +418,7 @@ export default function StepPricing() {
                         <div className="bg-gray-50 p-8 flex items-center justify-center relative h-64 overflow-hidden">
                             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
                                 <span className={`${formData.tagColor} text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm`}>{formData.tag}</span>
-                                <span className="bg-white/90 backdrop-blur text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border border-gray-100 shadow-sm text-text-main">{formData.category}</span>
+                                <span className="bg-white/90 backdrop-blur text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border border-gray-100 shadow-sm text-text-main">{categoryName}</span>
                             </div>
                             {formData.images.primary.url ? (
                                 <img src={formData.images.primary.url} className="w-40 h-40 object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-500" />

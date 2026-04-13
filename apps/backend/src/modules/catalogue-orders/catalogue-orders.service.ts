@@ -21,9 +21,15 @@ import { PushNotificationService } from '../notifications/push-notification.serv
 import {
   CreateCatalogueOrderDto,
   CatalogueOrderQueryDto,
+  BulkCheckoutDto,
 } from './dto/catalogue-order.dto';
 import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
+import { MailService } from '../mail/mail.service';
+import { CatalogueService } from '../catalogue/catalogue.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class CatalogueOrderService {
@@ -47,9 +53,46 @@ export class CatalogueOrderService {
     private readonly loyaltyService: LoyaltyService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly visitorsService: VisitorsService,
-  ) {}
+    private readonly mailService: MailService,
+    private readonly catalogueService: CatalogueService,
+    @InjectQueue('order-notifications')
+    private readonly orderNotificationQueue: Queue,
+  ) { }
 
-  async createOrder(dto: CreateCatalogueOrderDto) {
+  async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
+    const results: CatalogueOrder[] = [];
+    const customerInfo = {
+      firstName: user?.firstName || dto.firstName,
+      lastName: user?.lastName || dto.lastName,
+      phone: user?.phone || dto.phone,
+      email: user?.email || dto.email,
+    };
+
+    if (!customerInfo.firstName || !customerInfo.phone) {
+      throw new BadRequestException('Customer information (name and phone) is required');
+    }
+
+    // Process each branch order
+    for (const orderDto of dto.orders) {
+      const order = await this.createOrder({
+        ...customerInfo,
+        branchId: orderDto.branchId,
+        items: orderDto.items,
+        notes: orderDto.notes,
+        tableNumber: orderDto.tableNumber,
+        deviceId: dto.deviceId,
+      } as CreateCatalogueOrderDto, user);
+      results.push(order);
+    }
+
+    return {
+      success: true,
+      message: `${results.length} orders placed successfully`,
+      orders: results,
+    };
+  }
+
+  async createOrder(dto: CreateCatalogueOrderDto, existingUser?: User) {
     // 1. Resolve branch
     const branch = await this.branchRepository.findOne({
       where: { id: dto.branchId },
@@ -57,41 +100,90 @@ export class CatalogueOrderService {
     if (!branch) throw new NotFoundException('Branch not found');
 
     // 2. Resolve or Create customer (User)
-    let customer = await this.userRepository.findOne({
-      where: { phone: dto.phone },
-    });
+    let customer: User | null = existingUser || null;
 
-    if (!customer && dto.email) {
+    if (!customer) {
       customer = await this.userRepository.findOne({
-        where: { email: dto.email },
+        where: { phone: dto.phone },
       });
+
+      if (!customer && dto.email) {
+        customer = await this.userRepository.findOne({
+          where: { email: dto.email },
+        });
+      }
     }
 
     if (!customer) {
       const defaultPassword = '123456';
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+      // Use provided email or generate a dummy one
+      const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
+      const finalEmail = dto.email || dummyEmail;
+      const isDummy = !dto.email;
+
       customer = this.userRepository.create({
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        email: dto.email,
+        email: finalEmail,
         role: UserRole.CUSTOMER,
         password: hashedPassword,
         uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
       });
       await this.userRepository.save(customer);
+
+      // Send welcome email ONLY if it's not a dummy email
+      if (!isDummy) {
+        this.mailService.sendWelcomeEmail(
+          customer.email,
+          `${customer.firstName} ${customer.lastName}`,
+          defaultPassword
+        ).catch(err => console.error('Failed to send welcome email:', err));
+      }
     }
+
+    // 2.1 Record Visit for Manual Order
+    const effectiveSessionToken = dto.sessionToken || uuidv4();
+    await this.visitorsService.recordDirectVisit({
+      user: customer,
+      branchId: branch.id,
+      businessId: branch.businessId,
+      deviceId: dto.deviceId,
+      sessionToken: effectiveSessionToken,
+    });
 
     // 3. Process items/offers and calculate total
     let totalAmount = 0;
     const orderItems: CatalogueOrderItem[] = [];
 
     for (const itemDto of dto.items) {
-      if (!itemDto.itemId && !itemDto.offerId) {
-        throw new BadRequestException('Each order item must have either itemId or offerId');
+      if (!itemDto.itemId && !itemDto.offerId && !itemDto.newItem) {
+        throw new BadRequestException('Each order item must have either itemId, offerId or newItem');
       }
 
-      if (itemDto.itemId) {
+      if (itemDto.newItem) {
+        // Create the new item on the fly
+        const newItem = await this.catalogueService.createItem({
+          name: itemDto.newItem.name,
+          price: itemDto.newItem.price,
+          categoryId: itemDto.newItem.categoryId,
+          branchId: dto.branchId,
+          shortDescription: 'Quick added item from manual order',
+          description: 'This item was created automatically during manual order entry.',
+          mainImage: 'https://res.cloudinary.com/dqr68m9p6/image/upload/v1711545600/vemtap/placeholder-item.png', // Default placeholder
+        }, branch.businessId);
+
+        const orderItem = this.orderItemRepository.create({
+          itemId: newItem.id,
+          quantity: itemDto.quantity,
+          priceAtOrder: newItem.price,
+          loyaltyPointsAtOrder: newItem.loyaltyPoints,
+        });
+        orderItems.push(orderItem);
+        totalAmount += Number(newItem.price) * itemDto.quantity;
+      } else if (itemDto.itemId) {
         const item = await this.itemRepository.findOne({
           where: { id: itemDto.itemId },
           relations: ['branches'],
@@ -138,16 +230,16 @@ export class CatalogueOrderService {
 
         // Offer stock check
         if (offer.quantity !== null && offer.quantity < itemDto.quantity) {
-            throw new BadRequestException(`Insufficient stock for offer ${offer.name}`);
+          throw new BadRequestException(`Insufficient stock for offer ${offer.name}`);
         }
 
         // Check stock for ALL items in offer
         for (const offerItem of offer.items) {
-            if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {
-                if (offerItem.stockQuantity < itemDto.quantity) {
-                    throw new BadRequestException(`Insufficient stock for item ${offerItem.name} in offer ${offer.name}`);
-                }
+          if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {
+            if (offerItem.stockQuantity < itemDto.quantity) {
+              throw new BadRequestException(`Insufficient stock for item ${offerItem.name} in offer ${offer.name}`);
             }
+          }
         }
 
         const orderItem = this.orderItemRepository.create({
@@ -172,7 +264,7 @@ export class CatalogueOrderService {
       items: orderItems,
       stockDeducted: true,
       deviceId: dto.deviceId,
-      sessionToken: dto.sessionToken,
+      sessionToken: effectiveSessionToken,
     });
 
     const savedOrder = await this.orderRepository.save(order);
@@ -187,19 +279,25 @@ export class CatalogueOrderService {
 
     // 5. Deduct stock IMMEDIATELY (locking the spot)
     for (const orderItem of order.items) {
-        if (orderItem.itemId) {
-            const item = await this.itemRepository.findOne({ where: { id: orderItem.itemId } });
-            if (item) await this.deductStock(item, orderItem.quantity);
-        } else if (orderItem.offerId) {
-            const offer = await this.offerRepository.findOne({ where: { id: orderItem.offerId }, relations: ['items'] });
-            if (offer) {
-                await this.deductOfferStock(offer, orderItem.quantity);
-                for (const offerItem of offer.items) {
-                    await this.deductStock(offerItem, orderItem.quantity);
-                }
-            }
+      if (orderItem.itemId) {
+        const item = await this.itemRepository.findOne({ where: { id: orderItem.itemId } });
+        if (item) await this.deductStock(item, orderItem.quantity);
+      } else if (orderItem.offerId) {
+        const offer = await this.offerRepository.findOne({ where: { id: orderItem.offerId }, relations: ['items'] });
+        if (offer) {
+          await this.deductOfferStock(offer, orderItem.quantity);
+          for (const offerItem of offer.items) {
+            await this.deductStock(offerItem, orderItem.quantity);
+          }
         }
+      }
     }
+
+    // Queue "Order Placed" email
+    this.orderNotificationQueue.add('send-order-email', {
+      orderId: savedOrder.id,
+      status: 'placed',
+    }).catch(err => console.error('Failed to queue order placed email:', err));
 
     return savedOrder;
   }
@@ -218,62 +316,62 @@ export class CatalogueOrderService {
 
     // If order is cancelled/rejected and stock was deducted, return it
     if (
-        (status === CatalogueOrderStatus.CANCELLED || status === CatalogueOrderStatus.REJECTED) && 
-        order.stockDeducted
+      (status === CatalogueOrderStatus.CANCELLED || status === CatalogueOrderStatus.REJECTED) &&
+      order.stockDeducted
     ) {
-        for (const orderItem of order.items) {
-            if (orderItem.itemId && orderItem.item) {
-                await this.restoreStock(orderItem.item, orderItem.quantity);
-            } else if (orderItem.offerId && orderItem.offer) {
-                await this.restoreOfferStock(orderItem.offer, orderItem.quantity);
-                for (const offerItem of orderItem.offer.items) {
-                    await this.restoreStock(offerItem, orderItem.quantity);
-                }
-            }
+      for (const orderItem of order.items) {
+        if (orderItem.itemId && orderItem.item) {
+          await this.restoreStock(orderItem.item, orderItem.quantity);
+        } else if (orderItem.offerId && orderItem.offer) {
+          await this.restoreOfferStock(orderItem.offer, orderItem.quantity);
+          for (const offerItem of orderItem.offer.items) {
+            await this.restoreStock(offerItem, orderItem.quantity);
+          }
         }
-        order.stockDeducted = false;
+      }
+      order.stockDeducted = false;
     }
 
     // Award loyalty points and rewards if moving to COMPLETED
     if (status === CatalogueOrderStatus.COMPLETED && !order.loyaltyAwarded) {
-        let totalPoints = 0;
-        for (const orderItem of order.items) {
-          if (orderItem.loyaltyPointsAtOrder) {
-            totalPoints += orderItem.loyaltyPointsAtOrder * orderItem.quantity;
-          }
-
-          if (orderItem.offerId && orderItem.offer && orderItem.offer.rewardId) {
-            for (let i = 0; i < orderItem.quantity; i++) {
-              await this.loyaltyService.generateRedemptionCode(staff, {
-                rewardId: orderItem.offer.rewardId,
-                branchId: order.branchId,
-              });
-            }
-          }
+      let totalPoints = 0;
+      for (const orderItem of order.items) {
+        if (orderItem.loyaltyPointsAtOrder) {
+          totalPoints += orderItem.loyaltyPointsAtOrder * orderItem.quantity;
         }
 
-        if (totalPoints > 0) {
-          await this.loyaltyService.awardPoints(
-            order.customerId,
-            totalPoints,
-            order.businessId,
-            order.branchId,
-            `Points earned from order #${order.id.slice(0, 8)}`,
-            staff.id,
-          );
+        if (orderItem.offerId && orderItem.offer && orderItem.offer.rewardId) {
+          for (let i = 0; i < orderItem.quantity; i++) {
+            await this.loyaltyService.generateRedemptionCode(staff, {
+              rewardId: orderItem.offer.rewardId,
+              branchId: order.branchId,
+            });
+          }
         }
+      }
 
-        // --- UPGRADE PORTAL VISIT TO PATRONAGE ---
-        await this.visitorsService.upgradeVisitToPatronage({
-          sessionToken: order.sessionToken,
-          orderId: order.id,
-          customerId: order.customerId,
-          branchId: order.branchId,
-          businessId: order.businessId,
-          deviceId: order.deviceId,
-        });
+      if (totalPoints > 0) {
+        await this.loyaltyService.awardPoints(
+          order.customerId,
+          totalPoints,
+          order.businessId,
+          order.branchId,
+          `Points earned from order #${order.id.slice(0, 8)}`,
+          staff.id,
+        );
+      }
 
-        order.loyaltyAwarded = true;
+      // --- UPGRADE PORTAL VISIT TO PATRONAGE ---
+      await this.visitorsService.upgradeVisitToPatronage({
+        sessionToken: order.sessionToken,
+        orderId: order.id,
+        customerId: order.customerId,
+        branchId: order.branchId,
+        businessId: order.businessId,
+        deviceId: order.deviceId,
+      });
+
+      order.loyaltyAwarded = true;
     }
 
     order.status = status;
@@ -307,6 +405,29 @@ export class CatalogueOrderService {
       ).catch(err => console.error('Failed to send customer notification:', err));
     }
 
+    // Queue order status email
+    if (status === CatalogueOrderStatus.PROCESSING) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'processing',
+      }).catch(err => console.error('Failed to queue order processing email:', err));
+    } else if (status === CatalogueOrderStatus.COMPLETED) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'completed',
+      }).catch(err => console.error('Failed to queue order completed email:', err));
+    } else if (status === CatalogueOrderStatus.CANCELLED) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'cancelled',
+      }).catch(err => console.error('Failed to queue order cancelled email:', err));
+    } else if (status === CatalogueOrderStatus.REJECTED) {
+      this.orderNotificationQueue.add('send-order-email', {
+        orderId: order.id,
+        status: 'rejected',
+      }).catch(err => console.error('Failed to queue order rejected email:', err));
+    }
+
     return updatedOrder;
   }
 
@@ -323,32 +444,32 @@ export class CatalogueOrderService {
 
   private async restoreStock(item: CatalogueItem, quantity: number) {
     if (item.stockQuantity !== null) {
-        item.stockQuantity += quantity;
-        if (item.stockQuantity > 0 && item.status === CatalogueItemStatus.OUT_OF_STOCK) {
-            item.status = CatalogueItemStatus.ACTIVE;
-        }
-        await this.itemRepository.save(item);
+      item.stockQuantity += quantity;
+      if (item.stockQuantity > 0 && item.status === CatalogueItemStatus.OUT_OF_STOCK) {
+        item.status = CatalogueItemStatus.ACTIVE;
+      }
+      await this.itemRepository.save(item);
     }
   }
 
   private async deductOfferStock(offer: CatalogueOffer, quantity: number) {
     if (offer.quantity !== null) {
-        offer.quantity -= quantity;
-        if (offer.quantity <= 0) {
-            offer.quantity = 0;
-            offer.status = CatalogueOfferStatus.INACTIVE;
-        }
-        await this.offerRepository.save(offer);
+      offer.quantity -= quantity;
+      if (offer.quantity <= 0) {
+        offer.quantity = 0;
+        offer.status = CatalogueOfferStatus.INACTIVE;
+      }
+      await this.offerRepository.save(offer);
     }
   }
 
   private async restoreOfferStock(offer: CatalogueOffer, quantity: number) {
     if (offer.quantity !== null) {
-        offer.quantity += quantity;
-        if (offer.quantity > 0 && offer.status === CatalogueOfferStatus.INACTIVE) {
-            offer.status = CatalogueOfferStatus.ACTIVE;
-        }
-        await this.offerRepository.save(offer);
+      offer.quantity += quantity;
+      if (offer.quantity > 0 && offer.status === CatalogueOfferStatus.INACTIVE) {
+        offer.status = CatalogueOfferStatus.ACTIVE;
+      }
+      await this.offerRepository.save(offer);
     }
   }
 

@@ -164,3 +164,91 @@ export const useChangePassword = () => {
     };
 };
 
+export const useCheckUserStatus = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const checkStatus = async (identifier: string): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/check-status', { identifier });
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to check status';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { checkStatus, isLoading, error };
+};
+
+export const useCompleteCustomerSetup = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const completeSetup = async (payload: { identifier: string; email: string }): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/customer/complete-setup', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to complete setup';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { completeSetup, isLoading, error };
+};
+
+export const useResendDefaultPassword = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const resendPassword = async (identifier: string): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/resend-default-password', { identifier });
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to resend password';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { resendPassword, isLoading, error };
+};
+
+export const useGoogleLogin = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const googleLogin = async (payload: { token: string; role?: string }): Promise<AuthResponse> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/google', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Google authentication failed';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { googleLogin, isLoading, error };
+};
+

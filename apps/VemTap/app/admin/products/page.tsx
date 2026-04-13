@@ -13,19 +13,22 @@ import { adminProductsApi } from '@/lib/api/admin';
 import { format } from 'date-fns';
 import { useProductFormStore } from '@/store/useProductFormStore';
 import { useRouter } from 'next/navigation';
+import { Product } from '@/types/marketplace';
 
 export default function ProductsPage() {
-    const { data: productsData, isLoading: isProductsLoading } = useQuery({
+    const queryClient = useQueryClient();
+    const { data: productsData, isLoading: isProductsLoading } = useQuery<Product[]>({
         queryKey: ['admin-products'],
         queryFn: () => adminProductsApi.getAll(),
     });
+
+    const products = productsData || [];
 
     const { data: statsData, isLoading: isStatsLoading } = useQuery({
         queryKey: ['admin-product-stats'],
         queryFn: () => adminProductsApi.getStats(),
     });
 
-    const queryClient = useQueryClient();
     const { loadProductForEditing, resetForm } = useProductFormStore();
     const router = useRouter();
 
@@ -48,13 +51,10 @@ export default function ProductsPage() {
         }
     };
 
-    const handleEdit = (product: any) => {
+    const handleEdit = (product: Product) => {
         loadProductForEditing(product);
         router.push('/admin/products/create');
     };
-
-    const isLoading = isProductsLoading || isStatsLoading || deleteMutation.isPending;
-    const products = Array.isArray(productsData) ? productsData : (productsData?.data || []);
 
     const stats = [
         { label: 'Total Products', value: statsData?.total || 0, icon: Package, color: 'text-primary' },
@@ -120,7 +120,7 @@ export default function ProductsPage() {
                                 <thead>
                                     <tr className="bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-text-secondary">
                                         <th className="px-6 py-4">Product</th>
-                                        <th className="px-6 py-4">Category</th>
+                                        <th className="px-6 py-4">Category & Label</th>
                                         <th className="px-6 py-4">Status</th>
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
@@ -140,8 +140,8 @@ export default function ProductsPage() {
                                             <td colSpan={4} className="py-20 text-center text-text-secondary font-medium">No products found.</td>
                                         </tr>
                                     ) : (
-                                        products.map((product: any) => (
-                                            <tr key={product.id} className="group hover:bg-gray-50 transition-colors">
+                                        products.map((product: Product) => (
+                                            <tr key={product.id} className="group relative hover:bg-gray-50/80 transition-colors">
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">
                                                         <div className="size-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">
@@ -153,14 +153,21 @@ export default function ProductsPage() {
                                                         </div>
                                                         <div>
                                                             <div className="font-bold text-text-main group-hover:text-primary transition-colors">{product.name}</div>
-                                                            <div className="text-xs text-text-secondary line-clamp-1">{product.description}</div>
+                                                            <div className="text-[10px] text-gray-400 font-mono">{product.sku}</div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-bold text-text-main">
-                                                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider ${product.tagColor?.replace('bg-', 'bg-') || 'bg-blue-50 text-blue-600'}`}>
-                                                        {product.tag || 'Uncategorized'}
-                                                    </span>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <span className="px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200">
+                                                            {product.productType?.name || 'Uncategorized'}
+                                                        </span>
+                                                        {product.tag && (
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider text-white shadow-sm ${product.tagColor || 'bg-primary'}`}>
+                                                                {product.tag}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border 
@@ -171,7 +178,7 @@ export default function ProductsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex items-center justify-end gap-2 transition-all duration-200">
                                                         <button
                                                             onClick={() => handleEdit(product)}
                                                             className="size-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors"

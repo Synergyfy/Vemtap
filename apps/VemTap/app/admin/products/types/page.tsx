@@ -9,11 +9,12 @@ import {
     MoreVertical, Package, Layers, Loader2
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
+import { ProductCategory } from '@/types/marketplace';
 
 export default function ProductTypesPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [selectedType, setSelectedType] = useState<any>(null);
+    const [selectedType, setSelectedType] = useState<ProductCategory | null>(null);
 
     // Form state
     const [typeName, setTypeName] = useState('');
@@ -22,13 +23,13 @@ export default function ProductTypesPage() {
 
     const queryClient = useQueryClient();
 
-    const { data: types, isLoading } = useQuery({
+    const { data: types, isLoading } = useQuery<ProductCategory[]>({
         queryKey: ['admin-product-types'],
         queryFn: () => adminProductsApi.getAllTypes(),
     });
 
     const createMutation = useMutation({
-        mutationFn: (data: any) => adminProductsApi.createType(data),
+        mutationFn: (data: Partial<ProductCategory>) => adminProductsApi.createType(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-product-types'] });
             notify.success('Category created successfully');
@@ -40,7 +41,7 @@ export default function ProductTypesPage() {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string, data: any }) => adminProductsApi.updateType(id, data),
+        mutationFn: ({ id, data }: { id: string, data: Partial<ProductCategory> }) => adminProductsApi.updateType(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-product-types'] });
             notify.success('Category updated successfully');
@@ -68,7 +69,7 @@ export default function ProductTypesPage() {
         }
     };
 
-    const handleEdit = (type: any) => {
+    const handleEdit = (type: ProductCategory) => {
         setSelectedType(type);
         setTypeName(type.name);
         setTypeSlug(type.slug || '');
@@ -108,7 +109,7 @@ export default function ProductTypesPage() {
         setTypeDescription('');
     };
 
-    const filteredTypes = (types || []).filter((t: any) =>
+    const filteredTypes = (types || []).filter((t) =>
         t.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.slug?.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -121,7 +122,7 @@ export default function ProductTypesPage() {
                         <Layers size={20} />
                         <span className="text-xs font-black uppercase tracking-widest">Inventory Setup</span>
                     </div>
-                    <h1 className="text-4xl font-display font-bold text-text-main">Product Categories</h1>
+                    <h1 className="text-4xl font-display font-bold text-text-main">Hardware Categories</h1>
                 </div>
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
@@ -169,7 +170,7 @@ export default function ProductTypesPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredTypes.map((type: any) => (
+                                filteredTypes.map((type) => (
                                     <tr key={type.id} className="group hover:bg-gray-50/50 transition-colors">
                                         <td className="px-8 py-6">
                                             <div className="flex items-center gap-3">
