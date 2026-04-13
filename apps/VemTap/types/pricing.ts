@@ -31,6 +31,7 @@ export interface PricingPlan {
     isActive: boolean;
     description: string;
     isPopular?: boolean;
+    qrThrivePlanId?: string;
 }
 
 export interface HardwareOption {
