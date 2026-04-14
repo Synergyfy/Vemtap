@@ -59,6 +59,10 @@ export interface User {
   createdAt?: string;
   permissions?: string[];
   engagement?: UserEngagement;
+
+  // QR-Thrive integration
+  qrThriveUserId?: string;
+  qrThriveProvisioned?: boolean;
 }
 
 export interface AuthState {
@@ -172,12 +176,24 @@ export const useAuthStore = create<AuthState>()(
             if (module.useChatStore) {
               module.useChatStore.getState().reset();
             }
-          }).catch(err => console.error('Failed to clear dashboard chat history:', err));
+          }).catch(err => console.error('Failed to clear dashboard chat history on login:', err));
         } catch (e) {
           console.error('Error clearing chat history during logout', e);
         }
 
-        // 3. Explicitly purge local storage keys
+        // 3. Clear QR-Thrive store
+        try {
+          import('./useQrThriveStore').then((module) => {
+            if (module.useQrThriveStore) {
+              module.useQrThriveStore.getState().clear();
+              console.log('[AUTH] QR-Thrive store cleared');
+            }
+          }).catch(err => console.error('Failed to clear QR-Thrive store:', err));
+        } catch (e) {
+          console.error('Error clearing QR-Thrive store during logout', e);
+        }
+
+        // 4. Explicitly purge local storage keys
         if (typeof window !== 'undefined') {
           localStorage.removeItem('chat-history');
           localStorage.removeItem('vemtap-chat-storage');
@@ -197,6 +213,7 @@ export const useAuthStore = create<AuthState>()(
           localStorage.removeItem('business-storage');
           localStorage.removeItem('chat-history'); // Directly clear the persist key
           localStorage.removeItem('business-forms-storage-v1'); // Clear forms as well to be safe
+          localStorage.removeItem('qr-thrive-storage'); // Clear QR-Thrive storage
         }
       },
 

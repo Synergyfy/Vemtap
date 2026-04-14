@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Users, Nfc, Users2, User } from 'lucide-react';
+import { Users, MessageCircle, ShoppingBag, QrCode } from 'lucide-react';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 import { useSudoStore } from '@/store/useSudoStore';
@@ -21,22 +21,21 @@ export default function DashboardMobileNav() {
             href: '/dashboard/visitors/all'
         },
         {
-            label: 'Business Link',
-            icon: Nfc,
+            label: 'Chat',
+            icon: MessageCircle,
+            href: '/dashboard/messaging/chat'
+        },
+        {
+            label: 'Catalogue',
+            icon: ShoppingBag,
+            href: '/dashboard/catalogue'
+        },
+        {
+            label: 'QR',
+            icon: QrCode,
             href: '/dashboard/business-link'
-        },
-        {
-            label: 'Team',
-            icon: Users2,
-            href: '/dashboard/staff',
-            hidden: isAdminMode
-        },
-        {
-            label: 'Profile',
-            icon: User,
-            href: '/dashboard/settings/profile'
         }
-    ].filter(item => !item.hidden);
+    ];
 
     return (
         <div
