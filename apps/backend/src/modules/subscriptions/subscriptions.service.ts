@@ -240,7 +240,7 @@ export class SubscriptionsService {
       await this.creditService.allocateSubscriptionCredits(business.id, plan);
 
       // Sync with QR-Thrive
-      await this.syncUserSubscriptionToQrThrive(businessId);
+      await this.syncUserSubscriptionToQrThrive(business.id);
     }
 
     return savedSub;
