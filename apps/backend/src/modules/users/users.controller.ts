@@ -37,14 +37,19 @@ import {
   AdminCreateUserDto,
   AdminUpdateUserDto,
 } from './dto/admin-user-management.dto';
-import { ParseUUIDPipe } from '@nestjs/common';
+import { ParseUUIDPipe, Inject, forwardRef } from '@nestjs/common';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 @ApiTags('Users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    @Inject(forwardRef(() => QrThriveService))
+    private readonly qrThriveService: QrThriveService,
+  ) {}
 
   private getBranchId(req: any, queryBranchId?: string): string {
     const branchId = queryBranchId || req.user?.branchId;
@@ -68,6 +73,30 @@ export class UsersController {
   @ApiResponse({ status: 200, type: User })
   async updateProfile(@Request() req, @Body() updates: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.id, updates);
+  }
+
+  // --- QR-Thrive Integration ---
+
+  @Get('me/qr-thrive')
+  @ApiOperation({ summary: 'Check if current user is mapped to QR-Thrive' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the QR-Thrive user ID if mapped',
+  })
+  async getQrThriveMapping(@Request() req) {
+    const mapping = await this.qrThriveService.getMappingByUserId(req.user.id);
+    return { qrThriveUserId: mapping?.qrThriveUserId || null };
+  }
+
+  @Post('me/qr-thrive/provision')
+  @ApiOperation({ summary: 'Provision current user in QR-Thrive' })
+  @ApiResponse({
+    status: 201,
+    description: 'Returns the newly created QR-Thrive user ID',
+  })
+  async provisionQrThrive(@Request() req) {
+    const mapping = await this.qrThriveService.syncUser(req.user);
+    return { qrThriveUserId: mapping.qrThriveUserId };
   }
 
   // --- Team Management ---
