@@ -254,4 +254,12 @@ export class QrThriveService implements OnModuleInit {
       return this.handleExternalError(error, 'Failed to sync subscription with QR-Thrive');
     }
   }
+
+  /**
+   * Retrieves an existing user mapping by VemTap user ID.
+   */
+  async getMappingByUserId(userId: string): Promise<QrThriveUserMapping | null> {
+    return await this.userMappingRepo.findOne({ where: { userId } });
+  }
 }
+
