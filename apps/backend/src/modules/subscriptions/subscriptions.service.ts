@@ -239,13 +239,8 @@ export class SubscriptionsService {
       // Allocate messaging credits as per plan
       await this.creditService.allocateSubscriptionCredits(business.id, plan);
 
-      // Sync with QR-Thrive if plan is linked
-      if (plan.qrThrivePlanId) {
-        await this.qrThriveService.syncSubscription(
-          business.ownerId,
-          plan.qrThrivePlanId,
-        );
-      }
+      // Sync with QR-Thrive
+      await this.syncUserSubscriptionToQrThrive(businessId);
     }
 
     return savedSub;
@@ -361,6 +356,11 @@ export class SubscriptionsService {
         this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
+        
+        // Sync with QR-Thrive (will fallback to free plan)
+        if (sub.businessId) {
+          await this.syncUserSubscriptionToQrThrive(sub.businessId);
+        }
       }
     }
   }
@@ -439,6 +439,11 @@ export class SubscriptionsService {
         this.logger.error(`Failed to renew subscription ${sub.id}. Expiring.`);
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
+
+        // Sync with QR-Thrive (will fallback to free plan)
+        if (sub.businessId) {
+          await this.syncUserSubscriptionToQrThrive(sub.businessId);
+        }
       }
     }
   }
@@ -462,18 +467,42 @@ export class SubscriptionsService {
         sub.plan,
       );
 
-      // Sync with QR-Thrive if plan is linked
-      if (sub.plan.qrThrivePlanId) {
-        const business = await this.businessRepository.findOne({
-          where: { id: sub.businessId },
-        });
-        if (business) {
-          await this.qrThriveService.syncSubscription(
-            business.ownerId,
-            sub.plan.qrThrivePlanId,
-          );
-        }
+      // Sync with QR-Thrive
+      await this.syncUserSubscriptionToQrThrive(sub.businessId);
+    }
+  }
+
+  /**
+   * Syncs the current effective subscription plan to QR-Thrive.
+   * Fallbacks to the free plan if no active subscription exists.
+   */
+  async syncUserSubscriptionToQrThrive(businessId: string) {
+    try {
+      const business = await this.businessRepository.findOne({
+        where: { id: businessId },
+        relations: ['owner'],
+      });
+      if (!business) return;
+
+      const activeSub = await this.activeSubscription(businessId);
+      let qrThrivePlanId = activeSub?.plan?.qrThrivePlanId;
+
+      // If no active paid plan mapped, try to find the default free plan mapping
+      if (!qrThrivePlanId) {
+        const freePlan = await this.plansService.findFreePlan();
+        qrThrivePlanId = freePlan?.qrThrivePlanId;
       }
+
+      if (qrThrivePlanId) {
+        await this.qrThriveService.syncSubscription(
+          business.ownerId,
+          qrThrivePlanId,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to sync subscription to QR-Thrive for business ${businessId}: ${error.message}`,
+      );
     }
   }
 

@@ -10,6 +10,7 @@ import { BusinessesModule } from '../businesses/businesses.module';
 import { BranchesModule } from '../branches/branches.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { MailModule } from '../mail/mail.module';
+import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
 
 @Module({
   imports: [
@@ -18,7 +19,9 @@ import { MailModule } from '../mail/mail.module';
     BranchesModule,
     MailModule,
     forwardRef(() => SubscriptionsModule),
+    forwardRef(() => QrThriveModule),
   ],
+
   providers: [UsersService],
   controllers: [UsersController, IntegrationUsersController],
   exports: [UsersService],
