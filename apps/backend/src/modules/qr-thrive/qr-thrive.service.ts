@@ -39,9 +39,18 @@ export class QrThriveService implements OnModuleInit {
   private handleExternalError(error: any, defaultMessage: string): never {
     const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
     const externalMessage = error.response?.data?.message;
+    const errorCode = error.code || error.response?.data?.code;
 
-    // Log the full error internally
-    this.logger.error(`${defaultMessage}: ${error.message}`, error.stack);
+    // Log the full error internally with context
+    this.logger.error(
+      `${defaultMessage}: ${error.message}${errorCode ? ` (${errorCode})` : ''}`,
+      error.stack
+    );
+
+    // If it's a connection error (Axios ECONNABORTED, ECONNREFUSED, etc.)
+    if (!error.response && error.request) {
+      this.logger.error(`Connection failed for ${defaultMessage}. Is the QR-Thrive service running at ${this.baseUrl}?`);
+    }
 
     // Sanitize message for the client
     const clientMessage = (status < 500 && externalMessage) 
