@@ -96,8 +96,11 @@ export default function DashboardPricingPage() {
                 isTrial: shouldStartTrial
             }, {
                 onSuccess: () => {
-                    toast.success(shouldStartTrial ? `Started ${trialDays}-Day Free Trial!` : 'Switched to Free plan!');
+                    toast.success(trialDays > 0 ? `Started ${trialDays}-Day Free Trial!` : 'Switched to Free plan!');
                     fetchSubscriptionData();
+                    setTimeout(() => {
+                        router.push('/dashboard/business-link');
+                    }, 100);
                 },
                 onError: (error) => toast.error(error instanceof Error ? error.message : 'Failed to update plan')
             });

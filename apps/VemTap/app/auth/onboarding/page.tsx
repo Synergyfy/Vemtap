@@ -48,7 +48,7 @@ function OnboardingContent() {
                 toast.success('Account created successfully! Welcome to VemTap.');
 
                 setTimeout(() => {
-                    router.push('/dashboard');
+                    router.push('/dashboard/settings/subscription');
                 }, 2000);
             } catch (error) {
                 console.error('Onboarding error:', error);
