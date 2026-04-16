@@ -1,6 +1,6 @@
 import React from 'react';
 import { Download, FileImage, FileType } from 'lucide-react';
-import { useQRCode } from '../hooks/useQRCode';
+import { useQRCode } from '../../hooks/useQRCode';
 import type { QRConfiguration } from '../types/qr';
 
 interface ExportPanelProps {

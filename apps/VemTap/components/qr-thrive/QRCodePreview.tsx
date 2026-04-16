@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQRCode } from '../hooks/useQRCode';
+import { useQRCode } from '../../hooks/useQRCode';
 import type { QRConfiguration } from '../types/qr';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';

@@ -33,10 +33,10 @@ export default function PublicFooter() {
           <div>
             <h4 className="font-bold text-sm uppercase tracking-[0.2em] mb-8 text-blue-200">Product</h4>
             <ul className="space-y-5 text-blue-100 text-sm font-semibold">
-              <li><Link to="/" className="hover:text-white transition-colors">QR Generator</Link></li>
+              <li><Link href="/" className="hover:text-white transition-colors">QR Generator</Link></li>
               <li><a href="#" className="hover:text-white transition-colors">Dynamic Links</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Analytics Pro</a></li>
-              <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing Plans</Link></li>
+              <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing Plans</Link></li>
             </ul>
           </div>
 

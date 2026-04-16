@@ -11,6 +11,7 @@ interface DesignPanelProps {
   onDesignChange: (design: Partial<QrThriveDesign>) => void;
   onFrameChange: (frame: Partial<QrThriveFrame>) => void;
   onLogoUpload: (logo: string | undefined) => void;
+  logo?: string;
 }
 
 const DOT_STYLES = [
@@ -47,7 +48,7 @@ const FRAME_STYLES = [
 ];
 
 export const DesignPanel: React.FC<DesignPanelProps> = ({ 
-  design, frame, onDesignChange, onFrameChange, onLogoUpload 
+  design, frame, onDesignChange, onFrameChange, onLogoUpload, logo 
 }) => {
   const [tab, setTab] = React.useState<'shape' | 'frame' | 'logo'>('shape');
 
@@ -239,14 +240,14 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
       {tab === 'logo' && (
         <div className="text-center py-12 space-y-6">
           <div className="w-32 h-32 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden">
-            {qrLogo ? (
-              <img src={qrLogo} alt="Logo" className="w-full h-full object-contain p-4" />
+            {logo ? (
+              <img src={logo} alt="Logo" className="w-full h-full object-contain p-4" />
             ) : (
               <ImageIcon className="w-12 h-12 text-slate-300" />
             )}
           </div>
           
-          {qrLogo && (
+          {logo && (
             <button 
               onClick={() => onLogoUpload(undefined)}
               className="text-xs text-red-500 font-medium hover:text-red-700"
@@ -274,7 +275,7 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
               htmlFor="logo-upload"
               className="inline-flex px-6 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
             >
-              {qrLogo ? 'Change Image' : 'Upload Logo'}
+              {logo ? 'Change Image' : 'Upload Logo'}
             </label>
           </div>
           

@@ -34,8 +34,11 @@ import {
   QrCode
 } from 'lucide-react';
 import type { QRConfiguration, QRData, QRType } from '../../types/qr';
+// @ts-ignore
 import FormBuilder from '../FormBuilder';
+// @ts-ignore
 import { countries } from '../../constants/countries';
+// @ts-ignore
 import ImageEditor from '../ImageEditor';
 
 interface ContentPanelProps {
@@ -144,7 +147,7 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
         .then(res => res.json())
         .then(geoData => {
           if (geoData.country_code) {
-            const country = countries.find(c => c.code === geoData.country_code);
+            const country = (countries as any[]).find((c: any) => c.code === geoData.country_code);
             if (country) {
               updateData({ 
                 whatsapp: { 
@@ -705,7 +708,7 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
                         onChange={(e) => updateData({ whatsapp: { ...(data.whatsapp || { message: '' }), countryCode: e.target.value } })}
                         className="w-full pl-11 pr-10 py-4 border-2 border-gray-50 focus:border-blue-600 rounded-2xl outline-none text-gray-900 font-semibold transition-all bg-gray-50/30 appearance-none cursor-pointer"
                       >
-                        {countries.map(c => (
+                        {(countries as any[]).map((c: any) => (
                           <option key={`${c.code}-${c.dialCode}`} value={c.dialCode}>
                             {c.flag} {c.name} ({c.dialCode})
                           </option>
@@ -1362,7 +1365,7 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
                     <div className="pt-4 border-t border-slate-100">
                        <FormBuilder 
                         fields={data.form?.fields || []} 
-                        onChange={(fields) => updateData({ form: { ...(data.form || { title: '' }), fields } })} 
+                        onChange={(fields: any) => updateData({ form: { ...(data.form || { title: '' }), fields } })} 
                        />
                     </div>
                  </div>
@@ -1978,7 +1981,7 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
                         <div className="animate-in fade-in slide-in-from-top-4 duration-300">
                           <FormBuilder 
                             fields={(data.booking?.customFormFields || []) as any} 
-                            onChange={(fields) => updateData({ booking: { ...(data.booking || {}), customFormFields: fields } })}
+                            onChange={(fields: any) => updateData({ booking: { ...(data.booking || {}), customFormFields: fields } })}
                           />
                         </div>
                       )}
@@ -2218,7 +2221,7 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
       {editingImage && (
         <ImageEditor
           imageSrc={editingImage}
-          onSave={(editedImage) => {
+          onSave={(editedImage: any) => {
             updateData({ image: { url: editedImage } } as any);
             setEditingImage(null);
           }}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -12,7 +13,9 @@ import {
     Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import toast from 'react-hot-toast';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { updateDevice } from '@/lib/api/devices';
+
 
 // Components
 import { QrTypeSelector } from './components/QrTypeSelector';
@@ -29,7 +32,11 @@ import {
     useQrThriveCodes, 
     useCreateQrThriveCode, 
     useQrThriveStats,
-    useQrThriveProvisioningStatus 
+    useQrThriveProvisioningStatus,
+    useProvisionQrThriveUser,
+    useDeleteQrThriveCode,
+    useDuplicateQrThriveCode,
+    useSetQrThriveCodeStatus
 } from '@/services/qr-thrive/hooks';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
 
@@ -52,73 +59,43 @@ export default function ExploreQRThrivePage() {
     const [qrFrame, setQrFrame] = useState(DEFAULT_QR_FRAME);
     const [qrLogo, setQrLogo] = useState<string | undefined>();
     const [qrName, setQrName] = useState('');
+    const [sourceDeviceId, setSourceDeviceId] = useState<string | null>(null);
+    const [isLocked, setIsLocked] = useState(false);
 
-    // Temporarily mock provisioning for UI testing
-    const isProvisioned = true;
-    const isProvisioning = false;
-    const provisionError = null;
-    // const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
+    const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
+    const provisionMutation = useProvisionQrThriveUser();
     
-    // Mocked data for UI testing
-    const codes = [
-        {
-            id: '1',
-            shortId: 'demo1',
-            shortUrl: 'https://qr-thrive.com/demo1',
-            name: 'Company Website',
-            type: 'url',
-            isDynamic: true,
-            status: 'active',
-            scans: 124,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            design: DEFAULT_QR_DESIGN,
-            frame: DEFAULT_QR_FRAME,
-            data: { url: 'https://vemtap.com' }
-        },
-        {
-            id: '2',
-            shortId: 'demo2',
-            shortUrl: 'https://qr-thrive.com/demo2',
-            name: 'Digital Menu',
-            type: 'menu',
-            isDynamic: true,
-            status: 'active',
-            scans: 850,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            design: DEFAULT_QR_DESIGN,
-            frame: DEFAULT_QR_FRAME,
-            data: { items: [] }
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const prefillUrl = searchParams.get('prefill_url');
+    const prefillName = searchParams.get('prefill_name');
+    const prefillDeviceId = searchParams.get('device_id');
+
+    useEffect(() => {
+        if (prefillUrl) {
+            setView('create');
+            setSelectedType('url' as QRType);
+            setQrData({ type: 'url', url: decodeURIComponent(prefillUrl) });
+            if (prefillName) setQrName(decodeURIComponent(prefillName));
+            if (prefillDeviceId) {
+                setSourceDeviceId(prefillDeviceId);
+                setIsLocked(true);
+            }
+            setStep('content');
+            // Clean up URL to avoid re-triggering on refresh
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.delete('prefill_url');
+            newParams.delete('prefill_name');
+            newParams.delete('device_id');
+            const cleanPath = window.location.pathname + (newParams.toString() ? `?${newParams.toString()}` : '');
+            router.replace(cleanPath);
         }
-    ];
-    const isLoadingCodes = false;
-    const refetchCodes = () => {};
+    }, [prefillUrl, prefillName, prefillDeviceId, router, searchParams]);
 
-    const stats = {
-        totalQRs: 2,
-        totalScans: 974,
-        uniqueVisitors: 642,
-        scansLastHour: 12,
-        deviceDist: { 'Mobile': 85, 'Desktop': 15 },
-        osDist: { 'iOS': 50, 'Android': 35, 'Windows': 10, 'MacOS': 5 },
-        browserDist: { 'Safari': 45, 'Chrome': 40, 'Firefox': 10, 'Edge': 5 },
-        countryDist: { 'US': 40, 'GB': 20, 'DE': 15, 'FR': 10, 'Other': 15 },
-        timeDist: {},
-        chartData: [
-            { name: 'Mon', scans: 40, unique: 30 },
-            { name: 'Tue', scans: 60, unique: 45 },
-            { name: 'Wed', scans: 45, unique: 35 },
-            { name: 'Thu', scans: 90, unique: 70 },
-            { name: 'Fri', scans: 120, unique: 95 },
-            { name: 'Sat', scans: 80, unique: 60 },
-            { name: 'Sun', scans: 50, unique: 40 }
-        ]
-    };
-
-    // const { data: codes, isLoading: isLoadingCodes, refetch: refetchCodes } = useQrThriveCodes();
-    // const { data: stats } = useQrThriveStats();
+    const { data: codes, isLoading: isLoadingCodes, refetch: refetchCodes } = useQrThriveCodes();
+    const { data: stats } = useQrThriveStats();
     const createMutation = useCreateQrThriveCode();
+
 
     const handleCreateNew = () => {
         setView('create');
@@ -137,7 +114,13 @@ export default function ExploreQRThrivePage() {
     };
 
     const handleBack = () => {
-        if (step === 'content') setStep('type');
+        if (step === 'content') {
+            if (isLocked) {
+                setView('list');
+                return;
+            }
+            setStep('type');
+        }
         else if (step === 'design') setStep('content');
     };
 
@@ -151,7 +134,13 @@ export default function ExploreQRThrivePage() {
             setQrName(`${selectedType} QR`);
         }
         try {
-            await createMutation.mutateAsync({
+            const config = {
+                design: qrDesign,
+                frame: qrFrame,
+                logo: qrLogo,
+            };
+
+            const newQr = await createMutation.mutateAsync({
                 name: qrName || `${selectedType} QR`,
                 type: selectedType!,
                 data: qrData,
@@ -160,6 +149,23 @@ export default function ExploreQRThrivePage() {
                 logo: qrLogo,
                 isDynamic: true
             });
+
+            // If we came from a device, update the device with this design config
+            if (sourceDeviceId) {
+                try {
+                    await updateDevice(sourceDeviceId, {
+                        // Assuming the backend can store design settings
+                        // We store the design metadata so the Business Link page can render it
+                        config: {
+                            ...config,
+                            qrThriveId: newQr.id
+                        }
+                    } as any);
+                } catch (deviceErr) {
+                    console.error('Failed to update source device:', deviceErr);
+                }
+            }
+
             toast.success('QR Code created successfully!');
             setView('list');
             refetchCodes();
@@ -168,9 +174,18 @@ export default function ExploreQRThrivePage() {
         }
     };
 
+    const handleProvision = async () => {
+        try {
+            await provisionMutation.mutateAsync();
+            toast.success('QR-Thrive account activated!');
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to activate QR-Thrive');
+        }
+    };
+
     const isSaving = createMutation.isPending;
 
-    if (isProvisioning) {
+    if (isProvisioning || provisionMutation.isPending) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[600px]">
                 <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
@@ -189,7 +204,7 @@ export default function ExploreQRThrivePage() {
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
                 <p className="text-gray-500 max-w-md mb-8">{provisionError}</p>
                 <button 
-                    onClick={() => window.location.reload()}
+                    onClick={handleProvision}
                     className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100"
                 >
                     Try Again
@@ -197,6 +212,73 @@ export default function ExploreQRThrivePage() {
             </div>
         );
     }
+
+    if (!isProvisioned) {
+        return (
+            <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 lg:p-12">
+                <div className="max-w-xl w-full text-center space-y-8">
+                    <div className="relative inline-block">
+                        <div className="absolute inset-0 bg-blue-600/20 blur-[50px] rounded-full" />
+                        <div className="relative w-24 h-24 bg-white rounded-[2rem] border border-slate-100 shadow-xl flex items-center justify-center mx-auto">
+                            <Zap className="w-12 h-12 text-blue-600 fill-blue-600" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                            Activate <span className="text-blue-600">QR-Thrive</span>
+                        </h1>
+                        <p className="text-lg text-slate-500 font-medium leading-relaxed">
+                            Create dynamic QR codes, track analytics, and build custom landing pages for your business.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                        {[
+                            { title: 'Dynamic Codes', desc: 'Change URLs anytime', icon: RefreshCw },
+                            { title: 'Full Analytics', desc: 'Track scans and devices', icon: BarChart3 },
+                            { title: 'Custom Frames', desc: 'Professional designs', icon: Palette },
+                            { title: 'SSO Dashboard', desc: 'Unified experience', icon: ExternalLink },
+                        ].map((feat, i) => (
+                            <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 flex items-start gap-4 shadow-sm">
+                                <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center shrink-0">
+                                    <feat.icon className="w-5 h-5 text-slate-600" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-900 text-sm italic">{feat.title}</p>
+                                    <p className="text-xs text-slate-400 font-medium mt-1 uppercase tracking-wider">{feat.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="pt-4">
+                        <button 
+                            onClick={handleProvision}
+                            disabled={provisionMutation.isPending}
+                            className="w-full sm:w-auto px-12 py-5 bg-blue-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 mx-auto"
+                        >
+                            {provisionMutation.isPending ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    Activate Now
+                                    <ArrowRight className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-6">
+                            Included with your VemTap subscription
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const deleteMutation = useDeleteQrThriveCode();
+    const duplicateMutation = useDuplicateQrThriveCode();
+    const statusMutation = useSetQrThriveCodeStatus();
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -261,18 +343,29 @@ export default function ExploreQRThrivePage() {
                                     setQrName(qr.name);
                                     setView('edit');
                                 }}
-                                onDelete={(id) => {
-                                    // Use delete mutation
-                                    toast.success('QR Code deleted');
-                                    refetchCodes();
+                                onDelete={async (id) => {
+                                    try {
+                                        await deleteMutation.mutateAsync(id);
+                                        toast.success('QR Code deleted');
+                                    } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to delete');
+                                    }
                                 }}
-                                onDuplicate={(id) => {
-                                    toast.success('QR Code duplicated');
-                                    refetchCodes();
+                                onDuplicate={async (id) => {
+                                    try {
+                                        await duplicateMutation.mutateAsync(id);
+                                        toast.success('QR Code duplicated');
+                                    } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to duplicate');
+                                    }
                                 }}
-                                onArchive={(id, status) => {
-                                    toast.success(status === 'archived' ? 'QR Code archived' : 'QR Code restored');
-                                    refetchCodes();
+                                onArchive={async (id, status) => {
+                                    try {
+                                        await statusMutation.mutateAsync({ qrId: id, status: status as 'active' | 'archived' });
+                                        toast.success(status === 'archived' ? 'QR Code archived' : 'QR Code restored');
+                                    } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to update status');
+                                    }
                                 }}
                                 onViewStats={(qr) => {
                                     toast.success(`Total scans: ${qr.scans}`);
@@ -286,6 +379,7 @@ export default function ExploreQRThrivePage() {
                                 }}
                             />
                         )}
+
 
                         <div className="bg-slate-900 rounded-[3rem] p-8 lg:p-12 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-[100px] rounded-full -mr-32 -mt-32" />
@@ -316,7 +410,7 @@ export default function ExploreQRThrivePage() {
                         <div className="flex-1 lg:pr-[400px] p-8 lg:p-12 flex flex-col">
                             {/* Stepper */}
                             <div className="flex items-center gap-4 mb-10">
-                                {STEPS.map((s, idx) => (
+                                {STEPS.filter(s => !isLocked || s.id !== 'type').map((s, idx) => (
                                     <React.Fragment key={s.id}>
                                         <div className="flex items-center gap-2">
                                             <div className={cn(
@@ -359,7 +453,7 @@ export default function ExploreQRThrivePage() {
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-1">
                                                 <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                                                    2. {selectedType?.charAt(0).toUpperCase() + selectedType?.slice(1)}
+                                                    2. {(selectedType as string)?.charAt(0).toUpperCase() + (selectedType as string)?.slice(1)}
                                                 </h1>
                                                 <p className="text-slate-400 font-medium">Complete the information for your QR Code.</p>
                                             </div>
@@ -377,6 +471,7 @@ export default function ExploreQRThrivePage() {
                                             type={selectedType!} 
                                             data={qrData} 
                                             onChange={setQrData} 
+                                            isLocked={isLocked}
                                         />
                                     </div>
                                 )}

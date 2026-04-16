@@ -56,9 +56,9 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
         imageSize: design.imageOptions?.imageSize || 0.4,
       },
       qrOptions: {
-        typeNumber: design.qrOptions?.typeNumber || 0,
-        mode: design.qrOptions?.mode || 'Byte',
-        errorCorrectionLevel: design.qrOptions?.errorCorrectionLevel || 'M',
+        typeNumber: (design.qrOptions?.typeNumber || 0) as any,
+        mode: (design.qrOptions?.mode || 'Byte') as any,
+        errorCorrectionLevel: (design.qrOptions?.errorCorrectionLevel || 'M') as any,
       },
     });
     

@@ -109,8 +109,10 @@ async function qrThriveRequest<T>(
   }
 
   const text = await response.text();
-  return text ? JSON.parse(text) : {};
+  return text ? JSON.parse(text) : {} as T;
 }
+
+import { api } from '@/lib/api';
 
 export const qrThriveApi = {
   // ============================================
@@ -118,14 +120,17 @@ export const qrThriveApi = {
   // ============================================
 
   /**
-   * Provision a new user in QR-Thrive
-   * If user exists, returns the existing user
+   * Provision a new user in QR-Thrive via VemTap backend
    */
-  provisionUser: async (data: ProvisionUserDto): Promise<QrThriveUser> => {
-    return qrThriveRequest<QrThriveUser>('/users', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  provisionUser: async (): Promise<{ qrThriveUserId: string }> => {
+    return api.post('/users/me/qr-thrive/provision', {});
+  },
+
+  /**
+   * Check if current user is mapped to a QR-Thrive user via VemTap backend
+   */
+  getUserMapping: async (): Promise<{ qrThriveUserId: string | null }> => {
+    return api.get('/users/me/qr-thrive');
   },
 
   /**
@@ -152,7 +157,7 @@ export const qrThriveApi = {
    * Get all QR codes for a user
    */
   getQRCodes: async (userId: string, params?: QrThriveListParams): Promise<QrThriveQRCode[]> => {
-    return qrThriveRequest<QrThriveQRCode[]>(`/users/${userId}/qr-codes`, { params });
+    return qrThriveRequest<QrThriveQRCode[]>(`/users/${userId}/qr-codes`, { params: params as any });
   },
 
   /**

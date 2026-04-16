@@ -2,12 +2,13 @@
 
 import React from 'react';
 import { QRType } from '@/services/qr-thrive/types';
-import { Globe, User, Wifi, Mail, MessageSquare, Phone, Type, Video, FileText, Image as ImageIcon, Link2, Building2, UtensilsCrossed, SmartphoneNfc, Ticket, Calendar } from 'lucide-react';
+import { Globe, User, Wifi, Mail, MessageSquare, Phone, Type, Video, FileText, Image as ImageIcon, Link2, Building2, UtensilsCrossed, SmartphoneNfc, Ticket, Calendar, ShieldAlert } from 'lucide-react';
 
 interface ContentFormProps {
   type: QRType;
   data: any;
   onChange: (data: any) => void;
+  isLocked?: boolean;
 }
 
 const TypeIcon: React.FC<{ type: QRType }> = ({ type }) => {
@@ -23,7 +24,7 @@ const TypeIcon: React.FC<{ type: QRType }> = ({ type }) => {
   return <Icon className="w-6 h-6" />;
 };
 
-export const ContentForm: React.FC<ContentFormProps> = ({ type, data, onChange }) => {
+export const ContentForm: React.FC<ContentFormProps> = ({ type, data, onChange, isLocked }) => {
   const handleChange = (field: string, value: any) => {
     onChange({ ...data, [field]: value });
   };
@@ -42,13 +43,31 @@ export const ContentForm: React.FC<ContentFormProps> = ({ type, data, onChange }
                 <p className="text-xs text-slate-400">Enter your website address</p>
               </div>
             </div>
-            <input
-              type="url"
-              placeholder="https://example.com"
-              className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-blue-600 focus:bg-white font-bold transition-all"
-              value={data.url || ''}
-              onChange={(e) => handleChange('url', e.target.value)}
-            />
+            <div className="relative group">
+              <input
+                type="url"
+                placeholder="https://example.com"
+                className={`w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all font-bold ${
+                  isLocked 
+                    ? "opacity-60 cursor-not-allowed bg-slate-100 text-slate-500 pr-12" 
+                    : "focus:border-blue-600 focus:bg-white"
+                }`}
+                value={data.url || ''}
+                onChange={(e) => !isLocked && handleChange('url', e.target.value)}
+                disabled={isLocked}
+              />
+              {isLocked && (
+                <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                  <SmartphoneNfc className="text-amber-500 w-5 h-5" />
+                </div>
+              )}
+            </div>
+            {isLocked && (
+              <p className="text-[10px] font-bold text-amber-600/70 ml-2 uppercase tracking-widest flex items-center gap-1.5">
+                <ShieldAlert size={10} className="text-amber-500" />
+                This link is tied to your hardware and cannot be changed.
+              </p>
+            )}
           </div>
         );
 

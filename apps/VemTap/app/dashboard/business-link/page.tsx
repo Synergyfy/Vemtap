@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useQuoteStore } from '@/store/quoteStore';
-import { Smartphone, Plus, QrCode, Copy, Download, Trash2, Link as LinkIcon, X, Save, ShieldAlert, CheckCircle2, Clock, Zap, BarChart3, Loader2 } from 'lucide-react';
+import { Smartphone, Plus, QrCode, Copy, Download, Trash2, Link as LinkIcon, X, Save, ShieldAlert, CheckCircle2, Clock, Zap, BarChart3, Loader2, Brush, ExternalLink, MoreVertical, Search, Calendar, ChevronDown, ChevronRight, Edit3, ArrowRight, Building2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,11 +15,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MarketplaceOrder } from '@/types/marketplace';
 import { useBranches } from '@/services/branches/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { Building2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useMyBusiness } from '@/services/businesses/hooks';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
+const defaultLogo = '/VEMTAP_PNG.png';
+ 
+const getFullLogoUrl = (url?: string) => {
+    if (!url) return defaultLogo;
+    if (url.startsWith('http')) return url;
+    const serverUrl = 'http://localhost:3001'; // Fallback to common dev port
+    return `${serverUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const getColorFromType = (type: string) => {
+    const map: Record<string, string> = {
+        'NFC': 'blue', 'SMART': 'purple', 'STATIC': 'emerald', 'DYNAMIC': 'amber'
+    };
+    return map[type] || 'blue';
+};
 
 export default function BusinessLinkPage() {
+    const router = useRouter();
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const { capabilities } = useSubscriptionStore();
@@ -26,8 +44,15 @@ export default function BusinessLinkPage() {
     const [selectedLink, setSelectedLink] = useState<any | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '', status: 'active' });
+    const [searchQuery, setSearchQuery] = useState('');
+    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
+
+    const { data: myBusiness } = useMyBusiness();
     const { data: branches = [] } = useBranches();
+    
+    const mainBranch = myBusiness?.branches?.find((b: any) => b.isMainBranch);
+    const businessLogo = getFullLogoUrl(myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo);
 
     // API Data
     const { data: devices = [], isLoading: devicesLoading } = useQuery({
@@ -109,6 +134,7 @@ export default function BusinessLinkPage() {
 
         generateMutation.mutate(urlBranchId || undefined);
     };
+
     const openEditModal = (device: any) => {
         const fallbackTapUrl = `${window.location.origin}/tap/${device.code}`;
         const currentTargetUrl = device.targetUrl || device.redirectUrl || device.url || fallbackTapUrl;
@@ -149,7 +175,6 @@ export default function BusinessLinkPage() {
         };
 
         if (normalizedTargetUrl) {
-            // Send common aliases to support backend variants while keeping one input in UI.
             payload.targetUrl = normalizedTargetUrl;
             payload.redirectUrl = normalizedTargetUrl;
             payload.url = normalizedTargetUrl;
@@ -163,20 +188,38 @@ export default function BusinessLinkPage() {
         toast.success('Link copied to clipboard');
     };
 
-    const downloadQRCode = (id: string, code: string, isModal = false) => {
+    const downloadQRCode = (id: string, code: string, isModal = false, format = 'PNG') => {
         const canvasId = isModal ? `qr-modal-${id}` : `qr-${id}`;
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+        
         if (canvas) {
-            const url = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = `QR-${code}.png`;
-            link.href = url;
-            link.click();
+            try {
+                const mimeType = format === 'JPG' ? 'image/jpeg' : 'image/png';
+                const extension = format.toLowerCase();
+                const url = canvas.toDataURL(mimeType);
+                const link = document.createElement('a');
+                link.download = `QR-${code}.${extension}`;
+                link.href = url;
+                link.click();
+                toast.success(`QR Code downloaded as ${format}!`);
+            } catch (err) {
+                console.error('QR Download failed:', err);
+                toast.error('Download failed. Try right-clicking to save.');
+            }
         }
     };
 
     const getConfiguredTargetUrl = (device: any) => {
         return device?.targetUrl || device?.redirectUrl || device?.url || '';
+    };
+
+    const handleEditDesign = (device: any) => {
+        const deviceUrl = `${window.location.origin}/tap/${device.code}`;
+        const params = new URLSearchParams();
+        params.append('prefill_url', encodeURIComponent(deviceUrl));
+        params.append('prefill_name', encodeURIComponent(`${device.name || 'Hardware'} QR`));
+        params.append('device_id', device.id);
+        router.push(`/dashboard/explore-qrthrive?${params.toString()}`);
     };
 
     return (
@@ -188,8 +231,6 @@ export default function BusinessLinkPage() {
 
             {/* Approved Quota Panel */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Trial Allocation Card */}
-
                 {readyOrders.length > 0 ? (
                     <div className="col-span-3 bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                         <div className="mb-6 flex justify-between items-end">
@@ -288,155 +329,203 @@ export default function BusinessLinkPage() {
                 ))}
             </div>
 
-            {/* Links Table */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                    <div>
-                        <h3 className="font-display font-bold text-text-main">Business Link Hardware</h3>
-                        <p className="text-[10px] text-text-secondary font-medium">Manage individual tag configurations and generate high-conversion QR codes.</p>
-                    </div>
-                    <span className="px-4 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                        {devices.length} Assets Active
-                    </span>
+            {/* List Header & Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                    <h2 className="text-2xl font-black text-text-main tracking-tight flex items-center gap-3">
+                        Business Link Hardware
+                        <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-lg">
+                            {devices.length} TOTAL
+                        </span>
+                    </h2>
+                    <p className="text-sm text-text-secondary font-medium">Manage and brand your physical assets.</p>
                 </div>
-
-                {devicesLoading ? (
-                    <div className="p-20 flex justify-center">
-                        <Loader2 className="animate-spin text-primary" size={32} />
-                    </div>
-                ) : devices.length === 0 ? (
-                    <div className="p-20 text-center space-y-4">
-                        <div className="size-16 bg-gray-50 text-gray-300 rounded-2xl flex items-center justify-center mx-auto">
-                            <Smartphone size={32} />
-                        </div>
-                        <p className="text-sm font-bold text-text-secondary">No assets generated yet. Your allocated hardware will appear here once activated.</p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50/30 text-[10px] font-black uppercase tracking-widest text-slate-700 border-b border-gray-100">
-                                <tr>
-                                    <th className="px-8 py-4">Hardware ID</th>
-                                    <th className="px-8 py-4">Configuration</th>
-                                    <th className="px-8 py-4">Marketing Tool</th>
-                                    <th className="px-8 py-4">Status & Location</th>
-                                    <th className="px-8 py-4 text-right">Utility</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                <AnimatePresence mode="popLayout">
-                                    {devices.map((device: any) => {
-                                        const deviceUrl = `${window.location.origin}/tap/${device.code}`;
-                                        const configuredTargetUrl = getConfiguredTargetUrl(device);
-                                        const displayedTargetUrl = configuredTargetUrl || deviceUrl;
-                                        const deviceBranch = branches.find((b: any) => b.id === device.branchId);
-                                        return (
-                                            <motion.tr
-                                                key={device.id}
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
-                                                className="group hover:bg-gray-50/50 transition-colors"
-                                            >
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="size-10 bg-slate-100 text-slate-800 border border-slate-200 rounded-xl flex items-center justify-center font-black text-xs">
-                                                            {device.code.slice(0, 2)}
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-mono font-bold text-sm text-text-main tracking-widest block">{device.code}</span>
-                                                            <span className="text-[9px] text-text-secondary font-medium uppercase">{new Date(device.createdAt).toDateString()}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-100 rounded-xl w-fit pr-4">
-                                                        <div className="size-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
-                                                            <LinkIcon size={14} className="text-primary" />
-                                                        </div>
-                                                        <div className="min-w-0 max-w-[150px]">
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase block leading-none mb-1">Target link</span>
-                                                            <span className="text-xs font-bold text-text-main truncate block">{displayedTargetUrl}</span>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => copyToClipboard(displayedTargetUrl)}
-                                                            className="size-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center hover:bg-primary/5 hover:border-primary/20 transition-all shadow-sm"
-                                                        >
-                                                            <Copy size={14} className="text-slate-400 group-hover:text-primary transition-colors" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-4 p-2 bg-slate-50 border border-slate-100 rounded-xl w-fit pr-4">
-                                                        <div className="size-10 bg-white border border-slate-200 rounded-lg shadow-sm flex items-center justify-center">
-                                                            <QrCode size={20} className="text-primary" />
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase block leading-none mb-1">QR Marketing</span>
-                                                            <a
-                                                                href={`https://qrthrive.vercel.app/?type=url&url=${encodeURIComponent(deviceUrl)}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-tighter"
-                                                            >
-                                                                <Zap size={12} className="fill-primary" />
-                                                                Generate QR
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
-                                                            <span className="text-xs font-bold text-text-main uppercase tracking-tighter">{device.status}</span>
-                                                        </div>
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <span className="text-[10px] text-text-secondary font-medium uppercase">{device.location || 'No location set'}</span>
-                                                            {deviceBranch && (
-                                                                <div className="flex items-center gap-1 text-[9px] text-primary font-bold uppercase">
-                                                                    <Building2 size={10} />
-                                                                    {deviceBranch.name}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button
-                                                            onClick={() => openEditModal(device)}
-                                                            className="px-4 py-2 bg-white border border-slate-200 text-[10px] font-black text-slate-800 rounded-xl hover:border-primary hover:text-primary transition-all shadow-sm uppercase tracking-widest"
-                                                        >
-                                                            Details
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                if (confirm('Decommission this asset?')) {
-                                                                    deleteMutation.mutate({ id: device.id, branchId: device.branchId });
-                                                                }
-                                                            }}
-                                                            disabled={deleteMutation.isPending}
-                                                            className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-red-100"
-                                                        >
-                                                            {deleteMutation.isPending ? <Loader2 className="animate-spin text-red-500" size={14} /> : <Trash2 size={16} />}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </motion.tr>
-                                        );
-                                    })}
-                                </AnimatePresence>
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                
+                <div className="flex items-center gap-4 bg-white px-5 py-2.5 rounded-2xl border border-gray-100 shadow-sm focus-within:ring-2 ring-primary/10 transition-all w-full md:max-w-xs">
+                    <Search size={18} className="text-gray-400" />
+                    <input 
+                        type="text" 
+                        placeholder="Search devices..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-transparent text-sm font-bold text-gray-700 outline-none w-full placeholder:text-gray-400"
+                    />
+                </div>
             </div>
+
+            {/* Grid View */}
+            {devicesLoading ? (
+                <div className="py-24 flex flex-col items-center justify-center space-y-4">
+                    <div className="relative">
+                        <Loader2 className="animate-spin text-primary" size={48} strokeWidth={3} />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <QrCode size={18} className="text-primary" />
+                        </div>
+                    </div>
+                    <p className="text-sm font-bold text-text-secondary animate-pulse uppercase tracking-widest">Loading assets...</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <AnimatePresence mode="popLayout">
+                        {devices
+                            .filter((d: any) => !searchQuery || d.name?.toLowerCase().includes(searchQuery.toLowerCase()) || d.code?.toLowerCase().includes(searchQuery.toLowerCase()))
+                            .map((device: any) => {
+                                const deviceUrl = `${window.location.origin}/tap/${device.code}`;
+                                const configuredTargetUrl = getConfiguredTargetUrl(device);
+                                const displayedTargetUrl = configuredTargetUrl || deviceUrl;
+                                // Using branches data from hook
+                                const deviceBranch = branches.find((b: any) => b.id === device.branchId);
+                                const color = getColorFromType(device.type || 'NFC');
+                                
+                                return (
+                                    <motion.div
+                                        key={device.id}
+                                        layout
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        className="bg-white rounded-[40px] border border-gray-100 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 group flex flex-col relative overflow-hidden"
+                                    >
+                                        {/* Status Badge Top Right */}
+                                        <div className="absolute top-6 right-8 flex items-center gap-1.5">
+                                            <div className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{device.status}</span>
+                                        </div>
+
+                                        <div className="p-8 pb-0">
+                                            <div className="flex items-center gap-4 mb-8">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-${color}-100 text-${color}-600 shadow-sm border border-${color}-200/50`}>
+                                                    <Smartphone size={24} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Hardware ID</p>
+                                                    <h3 className="text-lg font-black text-text-main tracking-tight font-mono">{device.code}</h3>
+                                                </div>
+                                            </div>
+
+                                            {/* Preview Area */}
+                                            <div className="relative aspect-square bg-slate-50/50 rounded-[32px] border border-dashed border-slate-200 p-8 flex items-center justify-center group/qr mb-8">
+                                                <div className="relative">
+                                                    <QRCodeCanvas
+                                                        id={`qr-${device.id}`}
+                                                        value={deviceUrl}
+                                                        size={1024}
+                                                        level="H"
+                                                        includeMargin={false}
+                                                        imageSettings={businessLogo ? {
+                                                            src: businessLogo,
+                                                            height: 256,
+                                                            width: 256,
+                                                            excavate: true,
+                                                            crossOrigin: 'anonymous',
+                                                        } : undefined}
+                                                        style={{ width: 140, height: 140 }}
+                                                        className="relative z-10"
+                                                    />
+                                                    <div className="absolute inset-0 bg-white blur-2xl opacity-0 group-hover/qr:opacity-30 transition-opacity" />
+                                                </div>
+                                                
+                                                {/* Hover Overlay for Quick Actions */}
+                                                <div className="absolute inset-0 bg-primary/90 opacity-0 group-hover:opacity-100 transition-all duration-400 rounded-[32px] flex flex-col items-center justify-center gap-4 z-20">
+                                                    <button 
+                                                        onClick={() => handleEditDesign(device)}
+                                                        className="px-6 py-3 bg-white text-primary rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transform -translate-y-4 group-hover:translate-y-0 transition-all duration-500 delay-75 shadow-lg flex items-center gap-2"
+                                                    >
+                                                        <Brush size={14} /> Full Design Tools
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Info Fields */}
+                                            <div className="space-y-4 mb-8">
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 relative group/link">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Active Path</label>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold text-text-main truncate max-w-[150px]">{displayedTargetUrl}</span>
+                                                        <button 
+                                                            onClick={() => copyToClipboard(displayedTargetUrl)}
+                                                            className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-primary hover:border-primary transition-all shadow-sm"
+                                                        >
+                                                            <Copy size={12} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="flex-1 py-3 px-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Scans</label>
+                                                        <span className="text-lg font-black text-text-main">{device.totalScans}</span>
+                                                    </div>
+                                                    <div className="flex-1 py-3 px-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Battery</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-emerald-500" style={{ width: `${device.batteryLevel}%` }} />
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-text-main">{device.batteryLevel}%</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer Actions */}
+                                        <div className="mt-auto p-4 bg-slate-50/50 border-t border-gray-100 grid grid-cols-2 gap-3">
+                                            <button 
+                                                onClick={() => openEditModal(device)}
+                                                className="h-12 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-slate-700 uppercase tracking-widest hover:border-primary hover:text-primary transition-all shadow-sm active:scale-95"
+                                            >
+                                                <Edit3 size={14} /> Details
+                                            </button>
+                                            
+                                            <div className="relative flex-1 flex">
+                                                <button 
+                                                    onClick={() => setOpenDropdownId(openDropdownId === device.id ? null : device.id)}
+                                                    className="flex-1 h-12 flex items-center justify-center gap-2 bg-primary text-white border border-primary rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-95"
+                                                >
+                                                    <Download size={14} /> Download <ChevronDown size={14} className={cn("transition-transform duration-300", openDropdownId === device.id && "rotate-180")} />
+                                                </button>
+
+                                                <AnimatePresence>
+                                                    {openDropdownId === device.id && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)} />
+                                                            <motion.div 
+                                                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                                className="absolute bottom-full right-0 mb-3 w-48 bg-white rounded-2xl border border-gray-100 shadow-xl p-2 z-50 overflow-hidden"
+                                                            >
+                                                                {['PNG', 'JPG'].map(format => (
+                                                                    <button
+                                                                        key={format}
+                                                                        onClick={() => {
+                                                                            downloadQRCode(device.id, device.code, false, format);
+                                                                            setOpenDropdownId(null);
+                                                                        }}
+                                                                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-[10px] font-black text-slate-700 uppercase tracking-widest group/item"
+                                                                    >
+                                                                        {format}
+                                                                        <ArrowRight size={12} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                                                                    </button>
+                                                                ))}
+                                                            </motion.div>
+                                                        </>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                    </AnimatePresence>
+                </div>
+            )}
 
             {/* Edit/Details Modal */}
             <AnimatePresence>
                 {isEditModalOpen && selectedLink && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -477,6 +566,13 @@ export default function BusinessLinkPage() {
                                             size={1024}
                                             level="H"
                                             includeMargin={true}
+                                            imageSettings={businessLogo ? {
+                                                src: businessLogo,
+                                                height: 256,
+                                                width: 256,
+                                                excavate: true,
+                                                crossOrigin: 'anonymous',
+                                            } : undefined}
                                             style={{ width: 180, height: 180 }}
                                         />
                                         <div className="absolute inset-x-0 -bottom-3 flex justify-center">
@@ -580,7 +676,7 @@ export default function BusinessLinkPage() {
                                     </button>
                                     <button
                                         onClick={saveEdit}
-                                        className="flex-2 h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 px-8"
+                                        className="flex-[2] h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 px-8"
                                     >
                                         <Save size={18} />
                                         Save Configuration
@@ -594,4 +690,3 @@ export default function BusinessLinkPage() {
         </div >
     );
 }
-

@@ -21,13 +21,12 @@ import type {
 // ============================================
 
 /**
- * Hook to provision a user in QR-Thrive
- * Should be called after VemTap login to create/link QR-Thrive account
+ * Hook to provision a user in QR-Thrive via VemTap backend
  */
 export const useProvisionQrThriveUser = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const { setQrThriveUser, setProvisioning, setProvisioned, setProvisionError, setLastProvisionAttempt } = useQrThriveStore();
+  const { setQrThriveUser, setProvisioning, setProvisionError, setLastProvisionAttempt } = useQrThriveStore();
 
   return useMutation({
     mutationFn: async () => {
@@ -39,18 +38,14 @@ export const useProvisionQrThriveUser = () => {
       setProvisionError(null);
 
       try {
-        const response = await qrThriveApi.provisionUser({
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-        });
-
-        setQrThriveUser(response.id, response.email);
+        const response = await qrThriveApi.provisionUser();
+        // The VemTap backend returns { qrThriveUserId: string }
+        setQrThriveUser(response.qrThriveUserId, user.email);
         setLastProvisionAttempt(new Date().toISOString());
         
         return response;
       } catch (error) {
-        const message = error instanceof QrThriveApiError 
+        const message = error instanceof Error 
           ? error.message 
           : 'Failed to provision user in QR-Thrive';
         setProvisionError(message);
@@ -60,11 +55,55 @@ export const useProvisionQrThriveUser = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-thrive-user'] });
+      queryClient.invalidateQueries({ queryKey: ['qr-thrive-user-mapping'] });
+      queryClient.invalidateQueries({ queryKey: ['qr-thrive-codes'] });
     },
   });
 };
 
+/**
+ * Hook to check if current user is mapped to QR-Thrive
+ */
+export const useQrThriveMappingStatus = () => {
+  const { isAuthenticated } = useAuthStore();
+  const { setQrThriveUser, setProvisioned } = useQrThriveStore();
+
+  return useQuery({
+    queryKey: ['qr-thrive-user-mapping'],
+    queryFn: async () => {
+      const response = await qrThriveApi.getUserMapping();
+      if (response.qrThriveUserId) {
+        setQrThriveUser(response.qrThriveUserId);
+      } else {
+        setProvisioned(false);
+      }
+      return response;
+    },
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
+};
+
+/**
+ * Hook to check if user needs provisioning
+ */
+export const useQrThriveProvisioningStatus = () => {
+  const { user, isAuthenticated } = useAuthStore();
+  const { isProvisioned, isProvisioning, qrThriveUserId, provisionError, needsProvision } = useQrThriveStore();
+  
+  // Use the mapping status hook to ensure store is up to date
+  const { isLoading: isCheckingMapping } = useQrThriveMappingStatus();
+
+  return {
+    isAuthenticated,
+    hasVemtapUser: !!user,
+    isProvisioned,
+    isProvisioning: isProvisioning || isCheckingMapping,
+    qrThriveUserId,
+    provisionError,
+    needsProvision: needsProvision(),
+  };
+};
 /**
  * Hook to generate a magic link for SSO into QR-Thrive
  */
@@ -85,24 +124,6 @@ export const useGenerateMagicLink = () => {
       return response;
     },
   });
-};
-
-/**
- * Hook to check if user needs provisioning
- */
-export const useQrThriveProvisioningStatus = () => {
-  const { user, isAuthenticated } = useAuthStore();
-  const { isProvisioned, isProvisioning, qrThriveUserId, provisionError, needsProvision } = useQrThriveStore();
-
-  return {
-    isAuthenticated,
-    hasVemtapUser: !!user,
-    isProvisioned,
-    isProvisioning,
-    qrThriveUserId,
-    provisionError,
-    needsProvision: needsProvision(),
-  };
 };
 
 // ============================================
