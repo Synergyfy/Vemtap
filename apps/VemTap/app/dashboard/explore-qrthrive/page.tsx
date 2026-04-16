@@ -406,7 +406,7 @@ export default function ExploreQRThrivePage() {
                 ) : (
                     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-200px)]">
                         {/* Left Side: Configuration */}
-                        <div className="flex-1 lg:pr-[400px] p-8 lg:p-12 flex flex-col">
+                        <div className="flex-1 lg:pr-[500px] p-8 lg:p-12 flex flex-col">
                             {/* Stepper */}
                             <div className="flex items-center gap-4 mb-10">
                                 {STEPS.filter(s => !isLocked || s.id !== 'type').map((s, idx) => (
@@ -551,7 +551,7 @@ export default function ExploreQRThrivePage() {
                         </div>
 
                         {/* Right Side: Preview (Fixed) */}
-                        <div className="fixed top-20 right-0 bottom-0 w-[400px] bg-white border-l border-slate-100 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-30 p-8 flex flex-col items-center overflow-y-auto custom-scrollbar">
+                        <div className="fixed top-20 right-0 bottom-0 w-[500px] bg-white border-l border-slate-100 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-30 p-8 flex flex-col items-center overflow-y-auto custom-scrollbar">
                             {/* Toggle - Always show when in create mode */}
                             <div className="mb-8 w-full max-w-[200px] p-1 bg-slate-50 rounded-full border border-slate-100 flex items-center relative group/switcher shadow-sm">
                                 <div className={cn(
