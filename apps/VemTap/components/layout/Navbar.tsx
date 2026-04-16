@@ -8,6 +8,7 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
+    const [isMobileSolutionsOpen, setIsMobileSolutionsOpen] = useState(false);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
     const { data: business } = useMyBusiness(isAuthenticated && user?.role?.toLowerCase() !== 'customer');
@@ -28,6 +29,13 @@ export default function Navbar() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Reset mobile solutions dropdown when mobile menu is closed
+    useEffect(() => {
+        if (!isMenuOpen) {
+            setIsMobileSolutionsOpen(false);
+        }
+    }, [isMenuOpen]);
 
     const userRole = user?.role?.toLowerCase();
     const dashboardHref = userRole === 'admin' ? '/admin/dashboard' : userRole === 'agent' ? '/agent/dashboard' : '/dashboard';
@@ -184,10 +192,40 @@ export default function Navbar() {
                         <Link onClick={() => setIsMenuOpen(false)} className="hover:text-primary transition-colors" href="/">Home</Link>
                         <Link onClick={() => setIsMenuOpen(false)} className="hover:text-primary transition-colors" href="/marketplace">Marketplace</Link>
                         <div className="flex flex-col gap-4">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Solutions</span>
-                            <Link onClick={() => setIsMenuOpen(false)} className="hover:text-primary transition-colors pl-4 border-l-2 border-gray-100" href="/solutions/hardware">Hardware</Link>
-                            <Link onClick={() => setIsMenuOpen(false)} className="hover:text-primary transition-colors pl-4 border-l-2 border-gray-100" href="/solutions/software">Software</Link>
-                            <Link onClick={() => setIsMenuOpen(false)} className="hover:text-primary transition-colors pl-4 border-l-2 border-gray-100" href="/pricing">White Label</Link>
+                            <button
+                                onClick={() => setIsMobileSolutionsOpen(!isMobileSolutionsOpen)}
+                                className="flex items-center justify-between w-full hover:text-primary transition-colors text-left text-xl font-bold text-text-secondary"
+                            >
+                                Solutions
+                                <span className={`material-icons-round transition-transform duration-200 ${isMobileSolutionsOpen ? 'rotate-180' : ''}`}>
+                                    expand_more
+                                </span>
+                            </button>
+                            {isMobileSolutionsOpen && (
+                                <div className="flex flex-col gap-6 mt-2 ml-4 border-l-2 border-gray-100 pl-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <Link
+                                        href="/solutions/hardware"
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="text-lg font-bold text-text-secondary hover:text-primary transition-colors"
+                                    >
+                                        Hardware
+                                    </Link>
+                                    <Link
+                                        href="/solutions/software"
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="text-lg font-bold text-text-secondary hover:text-primary transition-colors"
+                                    >
+                                        Software
+                                    </Link>
+                                    <Link
+                                        href="/pricing"
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="text-lg font-bold text-text-secondary hover:text-primary transition-colors"
+                                    >
+                                        White Label
+                                    </Link>
+                                </div>
+                            )}
                         </div>
                         <Link onClick={() => setIsMenuOpen(false)} className="hover:text-primary transition-colors" href="/features">Features</Link>
                         <Link onClick={() => setIsMenuOpen(false)} className="hover:text-primary transition-colors" href="/pricing">Pricing</Link>

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useQrThriveAuth } from '@/hooks/useQrThriveAuth';
 
 const setAuthCookie = (token: string) => {
   if (typeof document === 'undefined') return;
@@ -11,6 +12,9 @@ const setAuthCookie = (token: string) => {
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const { access_token, isAuthenticated, user } = useAuthStore();
+
+  // Initialize QR-Thrive auto-provisioning
+  useQrThriveAuth();
 
   useEffect(() => {
     // Sync token to cookie whenever it changes or on hydration
