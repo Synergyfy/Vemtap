@@ -95,7 +95,10 @@ export default function ExploreQRThrivePage() {
     const { data: codes, isLoading: isLoadingCodes, refetch: refetchCodes } = useQrThriveCodes();
     const { data: stats } = useQrThriveStats();
     const createMutation = useCreateQrThriveCode();
-
+    
+    const deleteMutation = useDeleteQrThriveCode();
+    const duplicateMutation = useDuplicateQrThriveCode();
+    const statusMutation = useSetQrThriveCodeStatus();
 
     const handleCreateNew = () => {
         setView('create');
@@ -275,10 +278,6 @@ export default function ExploreQRThrivePage() {
             </div>
         );
     }
-
-    const deleteMutation = useDeleteQrThriveCode();
-    const duplicateMutation = useDuplicateQrThriveCode();
-    const statusMutation = useSetQrThriveCodeStatus();
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -507,6 +506,8 @@ export default function ExploreQRThrivePage() {
                                                     onDesignChange={(d) => setQrDesign(prev => ({ ...prev, ...d }))}
                                                     onFrameChange={(f) => setQrFrame(prev => ({ ...prev, ...f }))}
                                                     onLogoUpload={setQrLogo}
+                                                    logo={qrLogo}
+                                                    activeTab={designTab}
                                                 />
                                             </div>
                                         </div>

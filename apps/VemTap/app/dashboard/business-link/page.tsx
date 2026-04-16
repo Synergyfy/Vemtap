@@ -308,12 +308,11 @@ export default function BusinessLinkPage() {
             </div>
 
             {/* Fleet Analytics Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                     { label: 'Total Fleet', value: stats?.totalDevices || 0, icon: Smartphone, color: 'text-blue-600', bg: 'bg-blue-50' },
                     { label: 'Active Now', value: stats?.activeNow || 0, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                     { label: 'Total Scans', value: stats?.totalScans || 0, icon: BarChart3, color: 'text-primary', bg: 'bg-primary/5' },
-                    { label: 'Offline', value: stats?.offline || 0, icon: ShieldAlert, color: 'text-amber-600', bg: 'bg-amber-50' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
@@ -455,15 +454,6 @@ export default function BusinessLinkPage() {
                                                     <div className="flex-1 py-3 px-4 bg-slate-50 rounded-2xl border border-slate-100">
                                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Scans</label>
                                                         <span className="text-lg font-black text-text-main">{device.totalScans}</span>
-                                                    </div>
-                                                    <div className="flex-1 py-3 px-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Battery</label>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                                                <div className="h-full bg-emerald-500" style={{ width: `${device.batteryLevel}%` }} />
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-text-main">{device.batteryLevel}%</span>
-                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -651,16 +641,7 @@ export default function BusinessLinkPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Battery Level</span>
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                                <div className="h-full bg-emerald-500" style={{ width: `${selectedLink.batteryLevel}%` }} />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-slate-800">{selectedLink.batteryLevel}%</span>
-                                        </div>
-                                    </div>
+                                <div className="grid grid-cols-1 gap-4">
                                     <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total Scans</span>
                                         <span className="text-sm font-bold text-slate-800">{selectedLink.totalScans}</span>

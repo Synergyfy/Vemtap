@@ -250,11 +250,17 @@ export default function LoginPage() {
                                                         {activeTab === 'email' ? 'email' : 'phone'}
                                                     </span>
                                                     <input
-                                                        type={activeTab === 'email' ? 'email' : 'text'}
+                                                        type={activeTab === 'email' ? 'email' : 'tel'}
                                                         placeholder={activeTab === 'email' ? 'email@company.com' : '+234...'}
                                                         className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl pl-12 pr-5 font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all text-sm"
                                                         value={formData.identifier}
-                                                        onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                                                        onChange={(e) => {
+                                                            let val = e.target.value;
+                                                            if (activeTab === 'phone') {
+                                                                val = val.replace(/[^\d+]/g, '');
+                                                            }
+                                                            setFormData({ ...formData, identifier: val });
+                                                        }}
                                                         required
                                                     />
                                                 </div>

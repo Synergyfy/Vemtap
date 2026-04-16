@@ -12,7 +12,19 @@ interface DesignPanelProps {
   onFrameChange: (frame: Partial<QrThriveFrame>) => void;
   onLogoUpload: (logo: string | undefined) => void;
   logo?: string;
+  activeTab: 'shape' | 'frame' | 'logo';
 }
+
+const PRESET_LOGOS = [
+  { id: 'whatsapp', name: 'WhatsApp', url: 'https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg' },
+  { id: 'instagram', name: 'Instagram', url: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg' },
+  { id: 'facebook', name: 'Facebook', url: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg' },
+  { id: 'twitter', name: 'Twitter (X)', url: 'https://upload.wikimedia.org/wikipedia/commons/c/ce/X_logo_2023.svg' },
+  { id: 'youtube', name: 'YouTube', url: 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg' },
+  { id: 'linkedin', name: 'LinkedIn', url: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png' },
+  { id: 'paypal', name: 'PayPal', url: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg' },
+  { id: 'tiktok', name: 'TikTok', url: 'https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg' },
+];
 
 const DOT_STYLES = [
   { id: 'square', label: 'Square' },
@@ -48,9 +60,8 @@ const FRAME_STYLES = [
 ];
 
 export const DesignPanel: React.FC<DesignPanelProps> = ({ 
-  design, frame, onDesignChange, onFrameChange, onLogoUpload, logo 
+  design, frame, onDesignChange, onFrameChange, onLogoUpload, logo, activeTab 
 }) => {
-  const [tab, setTab] = React.useState<'shape' | 'frame' | 'logo'>('shape');
 
   const handleDotStyleChange = (style: string) => {
     onDesignChange({ 
@@ -62,7 +73,7 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
 
   return (
     <div className="space-y-8">
-      {tab === 'shape' && (
+      {activeTab === 'shape' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="space-y-6">
             <div>
@@ -181,7 +192,7 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
         </div>
       )}
 
-      {tab === 'frame' && (
+      {activeTab === 'frame' && (
         <div className="space-y-8">
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Frame Style</h4>
@@ -237,7 +248,7 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
         </div>
       )}
 
-      {tab === 'logo' && (
+      {activeTab === 'logo' && (
         <div className="text-center py-12 space-y-6">
           <div className="w-32 h-32 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden">
             {logo ? (
@@ -280,6 +291,25 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
           </div>
           
           <p className="text-xs text-slate-400">Upload a PNG or JPG. Recommended size: 500x500px</p>
+
+          <div className="pt-8 mt-8 border-t border-slate-100">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Popular Icons</h4>
+            <div className="grid grid-cols-4 md:grid-cols-8 gap-4 justify-items-center">
+              {PRESET_LOGOS.map(preset => (
+                <button
+                  key={preset.id}
+                  onClick={() => onLogoUpload(preset.url)}
+                  className={cn(
+                    "w-12 h-12 p-2 border-2 rounded-xl flex items-center justify-center transition-all hover:scale-110",
+                    logo === preset.url ? "border-blue-600 bg-blue-50 shadow-sm" : "border-slate-100 hover:border-slate-300 bg-white"
+                  )}
+                  title={preset.name}
+                >
+                  <img src={preset.url} alt={preset.name} className="w-full h-full object-contain" />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
