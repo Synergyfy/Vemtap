@@ -157,62 +157,49 @@ export const qrThriveApi = {
    * Get all QR codes for a user
    */
   getQRCodes: async (userId: string, params?: QrThriveListParams): Promise<QrThriveQRCode[]> => {
-    return qrThriveRequest<QrThriveQRCode[]>(`/users/${userId}/qr-codes`, { params: params as any });
+    return api.get(`/qr-thrive/branches/${userId}/qr-codes`, { params: params as any });
   },
 
   /**
    * Get a single QR code by ID
    */
   getQRCode: async (userId: string, qrId: string): Promise<QrThriveQRCode> => {
-    return qrThriveRequest<QrThriveQRCode>(`/users/${userId}/qr-codes/${qrId}`);
+    return api.get(`/qr-thrive/branches/${userId}/qr-codes/${qrId}`);
   },
 
   /**
    * Create a new QR code
    */
   createQRCode: async (userId: string, data: CreateQrThriveQRDto): Promise<QrThriveQRCode> => {
-    return qrThriveRequest<QrThriveQRCode>(`/users/${userId}/qr-codes`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return api.post(`/qr-thrive/branches/${userId}/qr-codes`, data);
   },
 
   /**
    * Update an existing QR code
    */
   updateQRCode: async (userId: string, qrId: string, data: UpdateQrThriveQRDto): Promise<QrThriveQRCode> => {
-    return qrThriveRequest<QrThriveQRCode>(`/users/${userId}/qr-codes/${qrId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    return api.put(`/qr-thrive/branches/${userId}/qr-codes/${qrId}`, data);
   },
 
   /**
    * Delete a QR code
    */
   deleteQRCode: async (userId: string, qrId: string): Promise<void> => {
-    return qrThriveRequest<void>(`/users/${userId}/qr-codes/${qrId}`, {
-      method: 'DELETE',
-    });
+    return api.delete(`/qr-thrive/branches/${userId}/qr-codes/${qrId}`);
   },
 
   /**
    * Duplicate a QR code
    */
   duplicateQRCode: async (userId: string, qrId: string): Promise<QrThriveQRCode> => {
-    return qrThriveRequest<QrThriveQRCode>(`/users/${userId}/qr-codes/${qrId}/duplicate`, {
-      method: 'POST',
-    });
+    return api.post(`/qr-thrive/branches/${userId}/qr-codes/${qrId}/duplicate`, {});
   },
 
   /**
    * Archive/Unarchive a QR code
    */
   setQRCodeStatus: async (userId: string, qrId: string, status: 'active' | 'archived'): Promise<QrThriveQRCode> => {
-    return qrThriveRequest<QrThriveQRCode>(`/users/${userId}/qr-codes/${qrId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    });
+    return api.patch(`/qr-thrive/branches/${userId}/qr-codes/${qrId}`, { status });
   },
 
   // ============================================
@@ -223,21 +210,21 @@ export const qrThriveApi = {
    * Get scan analytics for a QR code
    */
   getScans: async (userId: string, qrId: string): Promise<QrThriveScan[]> => {
-    return qrThriveRequest<QrThriveScan[]>(`/users/${userId}/qr-codes/${qrId}/scans`);
+    return api.get(`/qr-thrive/branches/${userId}/qr-codes/${qrId}/scans`);
   },
 
   /**
    * Get form responses for a form-type QR code
    */
   getResponses: async (userId: string, qrId: string): Promise<Record<string, any>[]> => {
-    return qrThriveRequest<Record<string, any>[]>(`/users/${userId}/qr-codes/${qrId}/responses`);
+    return api.get(`/qr-thrive/branches/${userId}/qr-codes/${qrId}/responses`);
   },
 
   /**
    * Get dashboard statistics
    */
   getStats: async (userId: string): Promise<QrThriveStats> => {
-    return qrThriveRequest<QrThriveStats>(`/users/${userId}/stats`);
+    return api.get(`/qr-thrive/branches/${userId}/stats`);
   },
 
   // ============================================
@@ -248,36 +235,28 @@ export const qrThriveApi = {
    * Get all folders for a user
    */
   getFolders: async (userId: string): Promise<QrThriveFolder[]> => {
-    return qrThriveRequest<QrThriveFolder[]>(`/users/${userId}/folders`);
+    return api.get(`/qr-thrive/branches/${userId}/folders`);
   },
 
   /**
    * Create a new folder
    */
   createFolder: async (userId: string, data: CreateQrThriveFolderDto): Promise<QrThriveFolder> => {
-    return qrThriveRequest<QrThriveFolder>(`/users/${userId}/folders`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return api.post(`/qr-thrive/branches/${userId}/folders`, data);
   },
 
   /**
    * Delete a folder
    */
   deleteFolder: async (userId: string, folderId: string): Promise<void> => {
-    return qrThriveRequest<void>(`/users/${userId}/folders/${folderId}`, {
-      method: 'DELETE',
-    });
+    return api.delete(`/qr-thrive/branches/${userId}/folders/${folderId}`);
   },
 
   /**
    * Update a folder
    */
   updateFolder: async (userId: string, folderId: string, data: Partial<CreateQrThriveFolderDto>): Promise<QrThriveFolder> => {
-    return qrThriveRequest<QrThriveFolder>(`/users/${userId}/folders/${folderId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    return api.put(`/qr-thrive/branches/${userId}/folders/${folderId}`, data);
   },
 
   // ============================================
