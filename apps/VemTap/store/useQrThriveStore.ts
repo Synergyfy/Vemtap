@@ -20,6 +20,7 @@ interface QrThriveState {
   setProvisionError: (error: string | null) => void;
   setLastProvisionAttempt: (timestamp: string) => void;
   clear: () => void;
+  clearQrThriveData: () => void;
 
   isMagicLinkValid: () => boolean;
   needsProvision: () => boolean;
@@ -82,6 +83,14 @@ export const useQrThriveStore = create<QrThriveState>()(
       }),
 
       clear: () => set(initialState),
+
+      clearQrThriveData: () => set({
+        qrThriveUserId: null,
+        qrThriveUserEmail: null,
+        isProvisioned: false,
+        isProvisioning: false,
+        provisionError: null,
+      }),
 
       isMagicLinkValid: () => {
         const state = get();

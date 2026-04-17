@@ -36,8 +36,10 @@ import {
     useProvisionQrThriveUser,
     useDeleteQrThriveCode,
     useDuplicateQrThriveCode,
-    useSetQrThriveCodeStatus
+    useSetQrThriveCodeStatus,
+    useResetQrThriveMapping
 } from '@/services/qr-thrive/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
 
 const STEPS = [
@@ -65,6 +67,7 @@ export default function ExploreQRThrivePage() {
     const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
     const provisionMutation = useProvisionQrThriveUser();
     
+    const { activeBranchId } = useActiveBranch();
     const searchParams = useSearchParams();
     const router = useRouter();
     const prefillUrl = searchParams.get('prefill_url');
@@ -92,13 +95,14 @@ export default function ExploreQRThrivePage() {
         }
     }, [prefillUrl, prefillName, prefillDeviceId, router, searchParams]);
 
-    const { data: codes, isLoading: isLoadingCodes, refetch: refetchCodes } = useQrThriveCodes();
-    const { data: stats } = useQrThriveStats();
-    const createMutation = useCreateQrThriveCode();
-    
     const deleteMutation = useDeleteQrThriveCode();
     const duplicateMutation = useDuplicateQrThriveCode();
     const statusMutation = useSetQrThriveCodeStatus();
+    const resetMappingMutation = useResetQrThriveMapping();
+    const createMutation = useCreateQrThriveCode();
+
+    const { data: codes, isLoading: isLoadingCodes, refetch: refetchCodes, error: codesError } = useQrThriveCodes();
+    const { data: stats, error: statsError } = useQrThriveStats();
 
     const handleCreateNew = () => {
         setView('create');
@@ -144,13 +148,16 @@ export default function ExploreQRThrivePage() {
             };
 
             const newQr = await createMutation.mutateAsync({
-                name: qrName || `${selectedType} QR`,
-                type: selectedType!,
-                data: qrData,
-                design: qrDesign,
-                frame: qrFrame,
-                logo: qrLogo,
-                isDynamic: true
+                data: {
+                    name: qrName || `${selectedType} QR`,
+                    type: selectedType!,
+                    data: qrData,
+                    design: qrDesign,
+                    frame: qrFrame,
+                    logo: qrLogo,
+                    isDynamic: true
+                },
+                branchId: activeBranchId || undefined
             });
 
             // If we came from a device, update the device with this design config
@@ -186,7 +193,21 @@ export default function ExploreQRThrivePage() {
         }
     };
 
+    const handleResetMapping = async () => {
+        try {
+            await resetMappingMutation.mutateAsync();
+            toast.success('Integration reset. Please activate again.');
+            refetchCodes();
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to reset integration');
+        }
+    };
+
     const isSaving = createMutation.isPending;
+    const isError404 = (codesError as any)?.status === 404 || 
+                       (statsError as any)?.status === 404 ||
+                       (codesError as any)?.message?.includes('404') ||
+                       (statsError as any)?.message?.includes('404');
 
     if (isProvisioning || provisionMutation.isPending) {
         return (
@@ -198,20 +219,58 @@ export default function ExploreQRThrivePage() {
         );
     }
 
-    if (provisionError) {
+    if (provisionError || isError404) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[600px] p-6 text-center">
-                <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mb-6">
-                    <Zap className="w-10 h-10" />
+            <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 lg:p-12 text-center bg-slate-50">
+                <div className="max-w-xl w-full bg-white rounded-[3rem] p-10 lg:p-14 border border-slate-100 shadow-2xl shadow-slate-200/50">
+                    <div className="w-24 h-24 bg-red-50 text-red-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 relative">
+                        <div className="absolute inset-0 bg-red-600/10 blur-[30px] rounded-full animate-pulse" />
+                        <Zap className="w-12 h-12 relative z-10 fill-red-600" />
+                    </div>
+                    
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">Integration Sync Issue</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed mb-10">
+                        {isError404 
+                            ? "Your QR-Thrive account mapping seems to be out of sync. This can happen after system updates or if account data was moved. A quick repair will restore your access." 
+                            : provisionError || "We encountered an error while connecting to QR-Thrive."}
+                    </p>
+
+                    <div className="space-y-4">
+                        <button 
+                            onClick={isError404 ? handleResetMapping : handleProvision}
+                            disabled={resetMappingMutation.isPending || provisionMutation.isPending}
+                            className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:pointer-events-none"
+                        >
+                            {(resetMappingMutation.isPending || provisionMutation.isPending) ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    {isError404 ? 'Repair Integration' : 'Try Again'}
+                                    <RefreshCw className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                refetchCodes();
+                                toast.success('Checking status...');
+                            }}
+                            className="w-full py-5 bg-slate-50 text-slate-400 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-slate-100 transition-all border border-slate-100 active:scale-95"
+                        >
+                            I fixed it manually, refresh now
+                        </button>
+                    </div>
+
+                    <div className="mt-12 pt-10 border-t border-slate-50 flex flex-col items-center gap-4">
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">Still having issues?</p>
+                        <div className="flex items-center gap-6">
+                            <button className="text-xs font-bold text-blue-600 hover:text-blue-700 underline underline-offset-4">Contact Support</button>
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                            <button className="text-xs font-bold text-slate-500 hover:text-slate-600" onClick={() => window.location.reload()}>Reload Page</button>
+                        </div>
+                    </div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
-                <p className="text-gray-500 max-w-md mb-8">{provisionError}</p>
-                <button 
-                    onClick={handleProvision}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100"
-                >
-                    Try Again
-                </button>
             </div>
         );
     }
@@ -309,6 +368,16 @@ export default function ExploreQRThrivePage() {
 
                 {view === 'list' ? (
                     <div className="space-y-8">
+                        {(!activeBranchId || activeBranchId === 'all') && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex items-start gap-4 mb-8">
+                                <HelpCircle className="w-6 h-6 text-amber-600 shrink-0 mt-1" />
+                                <div>
+                                    <h4 className="text-sm font-bold text-amber-900 uppercase tracking-widest leading-none mb-2">Select a Location</h4>
+                                    <p className="text-xs text-amber-700 font-medium">Please select a specific branch from the location switcher above to manage and create QR codes.</p>
+                                </div>
+                            </div>
+                        )}
+                        
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {[
                                 { label: 'Total QR Codes', value: stats?.totalQRs || 0, icon: QrCode, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -342,9 +411,10 @@ export default function ExploreQRThrivePage() {
                                     setQrName(qr.name);
                                     setView('edit');
                                 }}
-                                onDelete={async (id) => {
+                                 onDelete={async (id) => {
+                                    console.log('Page onDelete called with:', id);
                                     try {
-                                        await deleteMutation.mutateAsync(id);
+                                        await deleteMutation.mutateAsync({ qrId: id });
                                         toast.success('QR Code deleted');
                                     } catch (err: any) {
                                         toast.error(err?.message || 'Failed to delete');
@@ -352,7 +422,7 @@ export default function ExploreQRThrivePage() {
                                 }}
                                 onDuplicate={async (id) => {
                                     try {
-                                        await duplicateMutation.mutateAsync(id);
+                                        await duplicateMutation.mutateAsync({ qrId: id });
                                         toast.success('QR Code duplicated');
                                     } catch (err: any) {
                                         toast.error(err?.message || 'Failed to duplicate');

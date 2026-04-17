@@ -18,11 +18,23 @@ export class QrThriveCallbackController {
   @Post('callback')
   @ApiOperation({ summary: 'Handle incoming callback from QR-Thrive' })
   async handleCallback(@Body() payload: any) {
-    this.logger.log(`Received callback from QR-Thrive: ${JSON.stringify(payload)}`);
+    const { event, data } = payload;
+    this.logger.log(`Received callback event "${event}" from QR-Thrive: ${JSON.stringify(data)}`);
 
-    // TODO: Implement specific logic for different event types
-    // For now, we just acknowledge receipt
+    switch (event) {
+      case 'user.synced':
+        this.logger.log(`User ${data.email} synchronization confirmed by QR-Thrive.`);
+        break;
+      case 'scan.milestone':
+        this.logger.log(`QR Code ${data.qrCodeId} reached scan milestone: ${data.milestone}`);
+        break;
+      case 'branding.update':
+        this.logger.log(`Branding update received for organization: ${data.orgId}`);
+        break;
+      default:
+        this.logger.warn(`Unhandled integration event from QR-Thrive: ${event}`);
+    }
 
-    return { status: 'success', message: 'Callback received' };
+    return { status: 'success', message: 'Callback processed' };
   }
 }
