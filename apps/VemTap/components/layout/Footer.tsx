@@ -41,9 +41,12 @@ export default function Footer() {
                 </div>
                 <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
                     <p>© {new Date().getFullYear()} VemTap Inc. All rights reserved.</p>
-                    <div className="flex gap-8 mt-6 md:mt-0">
+                    <div className="flex gap-8 mt-6 md:mt-0 flex-wrap justify-center">
                         <Link href="/privacy" className="hover:text-text-main transition-colors">Privacy Policy</Link>
                         <Link href="/terms" className="hover:text-text-main transition-colors">Terms of Service</Link>
+                        <Link href="/cookie-policy" className="hover:text-text-main transition-colors">Cookie Policy</Link>
+                        <Link href="/dpa" className="hover:text-text-main transition-colors">DPA</Link>
+                        <Link href="/trust" className="hover:text-text-main transition-colors">Trust & Security</Link>
                         <Link href="/status" className="hover:text-text-main transition-colors">Status</Link>
                     </div>
                 </div>

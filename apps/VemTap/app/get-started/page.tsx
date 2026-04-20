@@ -609,7 +609,12 @@ export default function GetStarted() {
                                                 onChange={(e) => setFormData({ ...formData, agreeToTerms: e.target.checked })}
                                             />
                                             <label htmlFor="terms" className="text-[11px] font-medium text-text-secondary leading-normal">
-                                                I agree to the <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</Link> and <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</Link>.
+                                                I agree to:
+                                                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                                                    <li><Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</Link></li>
+                                                    <li><Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</Link></li>
+                                                    <li><Link href="/dpa" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Data Processing Agreement</Link></li>
+                                                </ul>
                                             </label>
                                         </div>
 

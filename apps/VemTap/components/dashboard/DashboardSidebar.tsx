@@ -311,6 +311,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
                 { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
+                { label: 'Legal & Compliance', href: '/dashboard/compliance' },
             ]
         },
     ];

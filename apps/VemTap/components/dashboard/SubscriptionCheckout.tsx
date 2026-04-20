@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useRouter } from 'next/navigation';
 import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info } from 'lucide-react';
 import { useSubscribe } from '@/services/subscriptions/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', onBillingPeriodChange, businessId, isTrial = false }: Props) {
+    const router = useRouter();
     const { user } = useAuthStore();
     const subscribeMutation = useSubscribe();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -51,8 +53,9 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     paymentReference: `mock-ref-${Date.now()}`
                 }, {
                     onSuccess: () => {
-                        setIsProcessing(false);
                         toast.success(`Welcome to the ${plan.name} plan!`);
+                        router.push('/dashboard/business-link');
+                        setIsProcessing(false);
                         onClose();
                     },
                     onError: (error) => {
@@ -79,11 +82,6 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 toast.error('Payment window closed');
             },
             callback: (response: any) => {
-                // Close modal immediately after payment success to prevent double clicks
-                // even before the mutation finishes if necessary, or at least ensure it closes on success
-                onClose();
-                setIsProcessing(false);
-
                 // Payment successful
                 subscribeMutation.mutate({
                     businessId: resolvedBusinessId,
@@ -94,8 +92,18 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 }, {
                     onSuccess: () => {
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
+                        
+                        // Force a small delay to ensure toast is seen and router is ready
+                        setTimeout(() => {
+                            router.push('/dashboard/business-link');
+                            // We don't necessarily need to onClose if we are redirecting,
+                            // but it helps if the redirect is slow.
+                            onClose();
+                            setIsProcessing(false);
+                        }, 100);
                     },
                     onError: (error) => {
+                        setIsProcessing(false);
                         toast.error(error instanceof Error ? error.message : 'Payment verified but subscription sync failed. Please contact support.');
                     }
                 });
@@ -103,6 +111,15 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         });
         handler.openIframe();
         };
+
+    const getFullLogoUrl = (url?: string) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        // Assuming BASE_URL is something like http://localhost:3001/api/v1
+        const { BASE_URL } = require('@/lib/api');
+        const serverUrl = (BASE_URL || 'http://localhost:3001/api/v1').replace('/api/v1', '');
+        return `${serverUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+    };
 
     const getPriceByCycle = () => {
         if (billingPeriod === 'yearly') return plan.yearlyPrice;
