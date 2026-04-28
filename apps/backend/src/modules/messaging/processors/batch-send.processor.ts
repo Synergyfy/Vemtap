@@ -11,6 +11,8 @@ import { User, UserRole } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { TemplateService } from '../services/template.service';
 import { Channel } from '../enums/channel.enum';
+import { MessageDirection } from '../enums/message.enum';
+import { formatPhoneNumber } from '../../../common/utils/phone.util';
 
 interface BatchJobData {
   campaignId: string;
@@ -103,14 +105,48 @@ export class BatchSendProcessor extends WorkerHost {
                 }
               }
 
-              await this.messagingEngine.processSingleSend(
-                branchId,
-                customerId,
+              // Instead of processing directly, we'll create the message record 
+              // and queue it for the individual sender. This provides better
+              // retry granularity and staggering.
+              
+              const resolvedContent = await this.messagingEngine.resolvePlaceholders(
                 content || '',
+                customerId,
+                branch,
+              );
+
+              // Find or create conversation thread
+              let thread = await this.messagingEngine.getOrCreateThread(
+                branch.id,
+                customerId,
                 job.data.channel,
+              );
+
+              const message = await this.messagingEngine.createMessage({
+                branchId: branch.id,
+                businessId: branch.businessId,
+                customerId,
+                threadId: thread.id,
+                campaignId,
+                content: resolvedContent,
+                channel: job.data.channel,
+                direction: MessageDirection.OUTBOUND,
+                from,
+                to: job.data.channel === Channel.EMAIL ? customer.email || '' : formatPhoneNumber(customer.phone || ''),
+                metadata: {},
+              });
+
+              await this.messagingEngine.queueIndividualSend({
+                branchId: branch.id,
+                customerId,
+                content: resolvedContent,
+                channel: job.data.channel,
                 from,
                 campaignId,
-              );
+                messageId: message.id,
+                delay: 0, // No extra delay here as we are already in a background job
+              });
+              
               successCount++;
             } catch (err: any) {
               this.logger.error(

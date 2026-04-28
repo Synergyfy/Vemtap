@@ -199,6 +199,16 @@ export class MessagingEngineService {
       );
     }
 
+    // Deduct credits upfront to prevent race conditions
+    if (totalCreditsNeeded > 0 && channel !== Channel.IN_HOUSE) {
+      await this.creditService.deductCredits(
+        effectiveBusinessId,
+        channel,
+        totalCreditsNeeded,
+        `Campaign/Message for ${validUsers.length} recipients`,
+      );
+    }
+
     const validUserIds = validUsers.map((u) => u.id);
 
     // 5. Determine "From" number/id
@@ -229,7 +239,7 @@ export class MessagingEngineService {
       const campaign = await this.campaignService.createCampaign({
         name: `Campaign ${new Date().toISOString()}`,
         branchId,
-        businessId: businessId || branch.businessId,
+        businessId: effectiveBusinessId,
         channel,
         audienceType: audienceType || AudienceType.ALL,
         audienceSize: validUserIds.length,
@@ -239,7 +249,7 @@ export class MessagingEngineService {
       campaignId = campaign.id;
     }
 
-    // 7. Batch or Single?
+    // 7. Batch (> 50)
     if (validUserIds.length > 50) {
       await this.batchQueue.add('send-batch', {
         ...dto,
@@ -257,25 +267,77 @@ export class MessagingEngineService {
       };
     }
 
-    // 8. Queue Individual Messages for Background Processing
-    const jobs = validUserIds.map((customerId) => ({
-      name: 'send-individual',
-      data: {
-        branchId,
-        customerId,
-        content: baseContent,
-        channel,
-        from,
+    // 8. Individual (<= 50): Create records and queue sending
+    const messageIds: string[] = [];
+    const jobs: any[] = [];
+
+    for (let i = 0; i < validUsers.length; i++) {
+      const customer = validUsers[i];
+      const resolvedContent = await this.resolvePlaceholders(
+        baseContent,
+        customer.id,
+        branch,
+      );
+
+      // Find or create conversation thread
+      let thread = await this.threadRepo.findOne({
+        where: { branchId: branch.id, customerId: customer.id, channel },
+      });
+
+      if (!thread) {
+        thread = this.threadRepo.create({
+          branchId: branch.id,
+          businessId: branch.businessId,
+          customerId: customer.id,
+          channel,
+          status: ThreadStatus.OPEN,
+        } as any) as unknown as ConversationThread;
+        await this.threadRepo.save(thread);
+      }
+
+      const message = this.messageRepo.create({
+        branchId: branch.id,
+        businessId: branch.businessId,
+        customerId: customer.id,
+        threadId: thread.id,
         campaignId,
-      },
-    }));
+        content: resolvedContent,
+        channel,
+        direction: MessageDirection.OUTBOUND,
+        status: MessageStatus.PENDING,
+        from,
+        to: channel === Channel.EMAIL ? customer.email || '' : formatPhoneNumber(customer.phone || ''),
+        timestamp: new Date(),
+        metadata: dto.metadata || {},
+      } as any) as unknown as Message;
+
+      const savedMessage = await this.messageRepo.save(message);
+      messageIds.push(savedMessage.id);
+
+      jobs.push({
+        name: 'send-individual',
+        data: {
+          branchId,
+          customerId: customer.id,
+          content: resolvedContent,
+          channel,
+          from,
+          campaignId,
+          messageId: savedMessage.id,
+        },
+        opts: {
+          delay: i * 500, // 0.5s stagger between messages
+        },
+      });
+    }
+
     await this.individualQueue.addBulk(jobs);
 
     return {
-      message: 'Messages queued for background processing',
+      message: 'Messages queued for delivery',
       status: 'QUEUED',
-      count: validUserIds.length,
-      messageIds: [],
+      count: messageIds.length,
+      messageIds,
       campaignId,
     };
   }
@@ -355,21 +417,6 @@ export class MessagingEngineService {
         branch,
       );
 
-      // Credit Check (only for new messages)
-      if (!campaignId && channel !== Channel.IN_HOUSE) {
-        const wallet = await this.creditService.getOrCreateWallet(
-          branch.businessId,
-        );
-        let balance = 0;
-        if (channel === Channel.SMS) balance = wallet.smsCredits;
-        else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
-        else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
-
-        if (balance < 1) {
-          throw new BadRequestException(`Insufficient ${channel} credits`);
-        }
-      }
-
       // Find or create conversation thread
       let thread = await this.threadRepo.findOne({
         where: {
@@ -412,7 +459,7 @@ export class MessagingEngineService {
       const savedResult = await this.messageRepo.save(message);
       savedMessage = (Array.isArray(savedResult) ? savedResult[0] : savedResult) as Message;
 
-      // Update thread metadata (don't strictly await if it's not critical for the response)
+      // Update thread metadata
       this.threadRepo.update(thread.id, {
         lastActivityAt: new Date(),
         lastMessageContent: content,
@@ -422,7 +469,7 @@ export class MessagingEngineService {
 
     // --- Delivery Logic ---
     if (channel === Channel.IN_HOUSE) {
-      // For chat, emit immediately (background)
+      // For chat, emit immediately
       this.messagingGateway.emitMessage(
         savedMessage.threadId,
         branch.id,
@@ -441,20 +488,8 @@ export class MessagingEngineService {
         .catch((e) =>
           this.logger.error(`Push notification failed: ${e.message}`),
         );
-    } else if (!messageId) {
-      // If NOT already in a background worker, queue it for the provider
-      this.individualQueue.add('send-provider-msg', {
-        branchId: branch.id,
-        customerId,
-        content,
-        channel,
-        from,
-        campaignId,
-        metadata,
-        messageId: savedMessage.id, // Pass ID to process this existing message
-      }).catch(e => this.logger.error(`Failed to queue message ${savedMessage.id}: ${e.message}`));
     } else {
-      // We ARE in a background worker, actually call the provider
+      // Actually call the provider
       try {
         const providerResult = await this.providerRouter.sendMessage({
           channel,
@@ -471,28 +506,18 @@ export class MessagingEngineService {
         savedMessage.reference = providerResult.reference;
         await this.messageRepo.save(savedMessage);
 
-        const customerName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
         if (
           savedMessage.status === MessageStatus.SENT ||
           savedMessage.status === MessageStatus.DELIVERED ||
           savedMessage.status === MessageStatus.PENDING
         ) {
-          this.logger.log(`✅ SUCCESS: [${channel}] background delivery status: ${savedMessage.status}`);
-
-          let units = providerResult.units || 1;
-          if (channel === Channel.SMS && savedMessage.content.length > 160) units = 2;
-          
-          await this.creditService.deductCredits(
-            branch.businessId,
-            channel,
-            units,
-            `Message to ${savedMessage.to}`,
-          );
+          this.logger.log(`✅ SUCCESS: [${channel}] delivery status: ${savedMessage.status}`);
         }
       } catch (err: any) {
-        this.logger.error(`❌ ERROR: Background delivery failed: ${err.message}`);
+        this.logger.error(`❌ ERROR: Delivery failed: ${err.message}`);
         savedMessage.status = MessageStatus.FAILED;
         await this.messageRepo.save(savedMessage);
+        throw err; // Throw to allow BullMQ to retry if this was called from a processor
       }
     }
 
@@ -503,7 +528,7 @@ export class MessagingEngineService {
     return savedMessage;
   }
 
-  private async resolvePlaceholders(
+  public async resolvePlaceholders(
     content: string,
     customerId: string,
     branch: Branch,
@@ -596,6 +621,49 @@ export class MessagingEngineService {
     await this.logRepo.update({ messageId }, { status, errorReason: error });
   }
 
+  async getOrCreateThread(branchId: string, customerId: string, channel: Channel): Promise<ConversationThread> {
+    let thread = await this.threadRepo.findOne({
+      where: { branchId, customerId, channel },
+    });
+
+    if (!thread) {
+      const branch = await this.branchRepo.findOneBy({ id: branchId });
+      thread = this.threadRepo.create({
+        branchId,
+        businessId: branch?.businessId,
+        customerId,
+        channel,
+        status: ThreadStatus.OPEN,
+      } as any) as unknown as ConversationThread;
+      await this.threadRepo.save(thread);
+    }
+    return thread;
+  }
+
+  async createMessage(data: any): Promise<Message> {
+    const message = this.messageRepo.create({
+      ...data,
+      status: data.channel === Channel.IN_HOUSE ? MessageStatus.DELIVERED : MessageStatus.PENDING,
+      timestamp: new Date(),
+    } as any) as unknown as Message;
+    return this.messageRepo.save(message);
+  }
+
+  async queueIndividualSend(data: {
+    branchId: string;
+    customerId: string;
+    content: string;
+    channel: Channel;
+    from: string;
+    campaignId?: string;
+    messageId: string;
+    delay?: number;
+  }) {
+    return this.individualQueue.add('send-individual', data, {
+      delay: data.delay || 0,
+    });
+  }
+
   async processSingleSend(
     branchId: string,
     customerId: string,
@@ -656,6 +724,17 @@ export class MessagingEngineService {
       );
     } else {
       from = formatPhoneNumber(branch.whatsappNumber || '');
+    }
+
+    // Deduct credits for reply
+    if (thread.channel !== Channel.IN_HOUSE) {
+      const units = content.length > 160 && thread.channel === Channel.SMS ? 2 : 1;
+      await this.creditService.deductCredits(
+        branch.businessId,
+        thread.channel,
+        units,
+        `Reply to ${thread.customerId}`,
+      );
     }
 
     const msg = await this.sendIndividualMessage(

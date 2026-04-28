@@ -5,9 +5,7 @@ import {
   SendMessagePayload,
   ProviderResponse,
 } from '../interfaces/messaging-provider.interface';
-import { TermiiProvider } from '../providers/termii.provider';
 import { TwilioProvider } from '../providers/twilio.provider';
-import { AfricaTalkingProvider } from '../providers/africastalking.provider';
 import { BestBulkSmsProvider } from '../providers/bestbulksms.provider';
 import { EmailProvider } from '../providers/email.provider';
 import { InHouseProvider } from '../providers/inhouse.provider';
@@ -15,9 +13,7 @@ import { InHouseProvider } from '../providers/inhouse.provider';
 @Injectable()
 export class ProviderRouterService {
   constructor(
-    private readonly termiiProvider: TermiiProvider,
     private readonly twilioProvider: TwilioProvider,
-    private readonly africaTalkingProvider: AfricaTalkingProvider,
     private readonly bestBulkSmsProvider: BestBulkSmsProvider,
     private readonly emailProvider: EmailProvider,
     private readonly inHouseProvider: InHouseProvider,
