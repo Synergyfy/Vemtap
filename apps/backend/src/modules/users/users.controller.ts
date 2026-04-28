@@ -84,6 +84,9 @@ export class UsersController {
     description: 'Returns the QR-Thrive user ID if mapped',
   })
   async getQrThriveMapping(@Request() req) {
+    if (req.user.role === UserRole.CUSTOMER || req.user.role === UserRole.ADMIN) {
+      return { qrThriveUserId: null };
+    }
     const mapping = await this.qrThriveService.getMappingByUserId(req.user.id);
     return { qrThriveUserId: mapping?.qrThriveUserId || null };
   }
@@ -95,8 +98,11 @@ export class UsersController {
     description: 'Returns the newly created QR-Thrive user ID',
   })
   async provisionQrThrive(@Request() req) {
+    if (req.user.role === UserRole.CUSTOMER || req.user.role === UserRole.ADMIN) {
+      return { qrThriveUserId: null };
+    }
     const mapping = await this.qrThriveService.syncUser(req.user);
-    return { qrThriveUserId: mapping.qrThriveUserId };
+    return { qrThriveUserId: mapping?.qrThriveUserId || null };
   }
 
   // --- Team Management ---
