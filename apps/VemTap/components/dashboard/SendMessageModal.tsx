@@ -506,9 +506,9 @@ export default function SendMessageModal({
                     </div>
 
                     {/* Channel Overlays */}
-                    {(selectedChannel === 'SMS' || selectedChannel === 'Email') && (
+                    {/* {(selectedChannel === 'SMS' || selectedChannel === 'Email') && (
                         <ComingSoonOverlay channel={selectedChannel} />
-                    )}
+                    )} */}
                 </div>
             )}
         </Modal>

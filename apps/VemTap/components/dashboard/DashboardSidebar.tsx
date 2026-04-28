@@ -242,6 +242,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Offers', href: '/dashboard/catalogue/offers' },
                 { label: 'Categories', href: '/dashboard/catalogue/categories' },
                 { label: 'Orders', href: '/dashboard/catalogue/orders' },
+                { label: 'Bookings', href: '/dashboard/catalogue/bookings' },
             ]
         },
         {

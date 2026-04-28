@@ -94,4 +94,12 @@ export class CatalogueOrder extends AbstractBaseEntity {
   @ApiProperty({ example: 'uuid-v4-session-token', nullable: true, required: false })
   @Column({ type: 'uuid', nullable: true })
   sessionToken: string;
+
+  @ApiProperty({ example: '2024-05-20', nullable: true, required: false })
+  @Column({ type: 'varchar', nullable: true })
+  bookingDate: string;
+
+  @ApiProperty({ example: '10:00 AM', nullable: true, required: false })
+  @Column({ type: 'varchar', nullable: true })
+  bookingTime: string;
 }

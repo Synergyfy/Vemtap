@@ -15,7 +15,7 @@ export const PremiumBottomNav = () => {
     const params = useParams();
     const pathname = usePathname();
     const { isAuthenticated } = useAuthStore();
-    const { branchId } = useCustomerFlowStore();
+    const { branchId, productCount } = useCustomerFlowStore();
 
     const slug = params.slug;
     const code = params.code;
@@ -37,7 +37,11 @@ export const PremiumBottomNav = () => {
         { id: 'services', icon: Calendar, label: 'Book', path: `/${slug}/${code}/services` },
         { id: 'offers', icon: Gift, label: 'Offers', path: `/${slug}/${code}/offers` },
         { id: 'cart', icon: ShoppingCart, label: 'Cart', path: `/${slug}/${code}/cart` },
-    ];
+    ].filter(item => {
+        if (item.id === 'products' && productCount === 0) return false;
+        if (item.id === 'cart' && productCount === 0) return false;
+        return true;
+    });
 
     return (
         <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-3 pt-1.5 bg-surface/80 backdrop-blur-xl rounded-t-3xl border-t border-slate-200 shadow-[0_-15px_30px_rgba(0,74,198,0.05)]">
