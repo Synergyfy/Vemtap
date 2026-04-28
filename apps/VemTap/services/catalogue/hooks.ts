@@ -181,6 +181,8 @@ export interface CreateOrderDto {
         quantity: number 
     }[];
     deviceId?: string;
+    bookingDate?: string;
+    bookingTime?: string;
 }
 
 // --- API Functions ---
@@ -416,7 +418,7 @@ export const useImportCatalogueItem = () => {
     });
 };
 
-export const useCatalogueOrders = (params: { branchId?: string, status?: string, search?: string } = {}) => {
+export const useCatalogueOrders = (params: { branchId?: string, status?: string, search?: string, type?: string } = {}) => {
     return useQuery<PaginatedResponse<Order>>({
         queryKey: ['catalogue', 'orders', params],
         queryFn: () => getOrders(params),

@@ -35,6 +35,10 @@ export const useProvisionQrThriveUser = () => {
         throw new Error('User not authenticated');
       }
 
+      if (user.role === 'customer' || user.role === 'admin') {
+        throw new Error('This role cannot be provisioned in QR-Thrive');
+      }
+
       setProvisioning(true);
       setProvisionError(null);
 
@@ -66,7 +70,7 @@ export const useProvisionQrThriveUser = () => {
  * Hook to check if current user is mapped to QR-Thrive
  */
 export const useQrThriveMappingStatus = () => {
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { setQrThriveUser, setProvisioned } = useQrThriveStore();
 
   return useQuery({
@@ -80,7 +84,7 @@ export const useQrThriveMappingStatus = () => {
       }
       return response;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && user?.role !== 'customer' && user?.role !== 'admin',
     staleTime: 1000 * 60 * 30, // 30 minutes
   });
 };

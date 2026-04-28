@@ -6,7 +6,7 @@ import { Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
 import { QrThriveCodeMapping } from './entities/qr-thrive-code-mapping.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { CreateQRCodeDto, UpdateQRCodeDto, CreateFolderDto, UpdateFolderDto } from './dto/qr-thrive.dto';
 import { BranchesService } from '../branches/branches.service';
 
@@ -70,7 +70,11 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Ensures a user exists in QR-Thrive and stores the mapping.
    */
-  async syncUser(user: User): Promise<QrThriveUserMapping> {
+  async syncUser(user: User): Promise<QrThriveUserMapping | null> {
+    if (user.role === UserRole.CUSTOMER || user.role === UserRole.ADMIN) {
+      this.logger.warn(`Skipping QR-Thrive sync for restricted role (${user.role}): ${user.id}`);
+      return null;
+    }
     const existingMapping = await this.userMappingRepo.findOne({ where: { userId: user.id } });
     
     try {

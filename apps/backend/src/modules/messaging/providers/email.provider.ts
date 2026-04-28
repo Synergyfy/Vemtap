@@ -38,8 +38,8 @@ export class EmailProvider implements MessagingProvider {
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
-    // Nodemailer doesn't typically handle webhooks for inbound or delivery reports
-    // This would require a more sophisticated email provider like SendGrid or Postmark
+    // Resend webhook parsing can be added here for delivery status tracking
+    // See: https://resend.com/docs/dashboard/webhooks/introduction
     return null;
   }
 

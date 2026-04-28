@@ -60,14 +60,21 @@ const PortalWelcome = ({
     engagement?: any,
     whatsappNumber?: string | null
 }) => {
+    const isServiceOnly = serviceCount && serviceCount > 0 && (!productCount || productCount === 0);
+
     const actions = [
         { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
-        { id: 'service', label: 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Reservations & Slots', count: serviceCount },
+        { id: 'service', label: isServiceOnly ? 'Book Appointment' : 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: serviceCount },
         { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
         { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
         { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
         { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
     ].filter(action => action.count && action.count > 0);
+
+    // If service only, sort to put it first
+    if (isServiceOnly) {
+        actions.sort((a, b) => a.id === 'service' ? -1 : (b.id === 'service' ? 1 : 0));
+    }
 
     const useGrid = actions.length >= 4;
 
@@ -259,10 +266,23 @@ const DynamicTapJourneyPage = () => {
         }
     }, [currentStep, isAuthenticated, deviceCode, sessionToken, setSessionToken, recordPortalVisit]);
 
-    const handleAction = (id: string) => {
+    const handleAction = async (id: string) => {
         if (id === 'order') {
             router.push(`/${slug}/${deviceCode}/products`);
         } else if (id === 'service') {
+            if (serviceCount === 1) {
+                try {
+                    // Fetch the single service to get its ID
+                    const response = await api.get(`/public/catalogue/items/branch/${branchId}?itemType=service&limit=1`);
+                    const singleService = response.data?.[0];
+                    if (singleService) {
+                        router.push(`/${slug}/${deviceCode}/services/${singleService.id}`);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch single service:', error);
+                }
+            }
             router.push(`/${slug}/${deviceCode}/services`);
         } else if (id === 'offers') {
             router.push(`/${slug}/${deviceCode}/offers`);
