@@ -181,6 +181,8 @@ export interface CreateOrderDto {
         quantity: number 
     }[];
     deviceId?: string;
+    bookingDate?: string;
+    bookingTime?: string;
 }
 
 // --- API Functions ---
