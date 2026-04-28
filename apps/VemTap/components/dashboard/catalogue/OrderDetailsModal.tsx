@@ -81,6 +81,11 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                         <div>
                             <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-2">Order Info</p>
                             <p className="font-bold text-text-main text-sm">{order.tableNumber ? `Table ${order.tableNumber}` : 'Walk-in'}</p>
+                            {(order as any).bookingDate && (
+                                <p className="text-xs text-primary font-black mt-1 uppercase tracking-wider flex items-center gap-1">
+                                    <Clock size={12}/> Appointment: {(order as any).bookingDate} @ {(order as any).bookingTime}
+                                </p>
+                            )}
                             <p className="text-xs text-text-secondary">
                                 {formatOrderDate(order.createdAt)} at {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>

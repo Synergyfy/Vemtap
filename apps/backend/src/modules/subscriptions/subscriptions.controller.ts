@@ -67,6 +67,9 @@ export class SubscriptionsController {
   @ApiOperation({ summary: 'Subscribe to a pricing plan' })
   @ApiResponse({ status: 201, description: 'Successfully subscribed' })
   async subscribe(@Request() req, @Body() subscribeDto: SubscribeDto) {
+    if (subscribeDto.isAdminOverride && req.user.role !== UserRole.ADMIN) {
+      throw new BadRequestException('Only admins can override plans');
+    }
     if (!subscribeDto.businessId) {
       subscribeDto.businessId = await this.getBusinessId(req);
     }

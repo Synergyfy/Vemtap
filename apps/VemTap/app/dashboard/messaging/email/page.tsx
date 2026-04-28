@@ -22,12 +22,12 @@ export default function EmailOverviewPage() {
 
     return (
         <div className="relative min-h-[calc(100vh-4rem)]">
-            <ComingSoonOverlay 
+            {/* <ComingSoonOverlay 
                 title="Email Marketing is Coming Soon" 
                 description="We're building a powerful drag-and-drop email editor with advanced segmentation and automation. Drive more loyalty with personalized newsletters."
-            />
+            /> */}
             
-            <div className="p-4 md:p-8 space-y-8 blur-[2px] pointer-events-none select-none">
+            <div className="p-4 md:p-8 space-y-8">
                 <PageHeader
                     title="Email Channel"
                     description="Drive engagement with beautifully designed email newsletters and transactional mail."

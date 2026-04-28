@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
+import { Repository, MoreThanOrEqual, Not, IsNull } from 'typeorm';
 import {
   CatalogueOrder,
   CatalogueOrderStatus,
@@ -265,6 +265,8 @@ export class CatalogueOrderService {
       stockDeducted: true,
       deviceId: dto.deviceId,
       sessionToken: effectiveSessionToken,
+      bookingDate: dto.bookingDate,
+      bookingTime: dto.bookingTime,
     });
 
     const savedOrder = await this.orderRepository.save(order);
@@ -474,12 +476,18 @@ export class CatalogueOrderService {
   }
 
   async findAllOrders(businessId: string, query: CatalogueOrderQueryDto) {
-    const { page = 1, limit = 10, status, branchId } = query;
+    const { page = 1, limit = 10, status, branchId, type } = query;
     const skip = (page - 1) * limit;
 
     const where: any = { businessId };
     if (status) where.status = status;
     if (branchId) where.branchId = branchId;
+
+    if (type === 'booking') {
+      where.bookingDate = Not(IsNull());
+    } else if (type === 'order') {
+      where.bookingDate = IsNull();
+    }
 
     const [data, total] = await this.orderRepository.findAndCount({
       where,
