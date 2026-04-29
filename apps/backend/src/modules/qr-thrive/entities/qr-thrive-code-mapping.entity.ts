@@ -37,4 +37,7 @@ export class QrThriveCodeMapping extends AbstractBaseEntity {
 
   @Column({ nullable: true })
   qrThriveUserId: string;
+
+  @Column({ default: false })
+  isFeaturedOnUbl: boolean;
 }
