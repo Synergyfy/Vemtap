@@ -87,7 +87,11 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
                 
                 // RULE: No session = No access (No headers)
                 if (sudoSession && sudoSession.token && Date.now() < sudoSession.expiresAt) {
-                    headers.set('x-impersonation-token', sudoSession.token);
+                    if (sudoSession.type === 'customer') {
+                        headers.set('x-customer-impersonation-token', sudoSession.token);
+                    } else {
+                        headers.set('x-impersonation-token', sudoSession.token);
+                    }
                     
                     if (sudoSession.ticketRef) {
                         headers.set('X-VemTap-Sudo-Ticket', sudoSession.ticketRef);
