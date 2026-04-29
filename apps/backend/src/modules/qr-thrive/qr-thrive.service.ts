@@ -204,6 +204,31 @@ export class QrThriveService implements OnModuleInit {
   }
 
   /**
+   * Fetches all leads (form submissions) for a user across all their QR codes.
+   */
+  async getLeads(user: User, branchId: string) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    if (!hasAccess) {
+      throw new HttpException('You do not have access to this branch', HttpStatus.FORBIDDEN);
+    }
+
+    const mapping = await this.userMappingRepo.findOne({ where: { userId: user.id } });
+    if (!mapping) throw new HttpException('User not synced with QR-Thrive. Please sync first.', HttpStatus.BAD_REQUEST);
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/leads`,
+          { headers: this.headers }
+        )
+      );
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to fetch leads from QR-Thrive');
+    }
+  }
+
+  /**
    * Generates a Magic Link for SSO.
    */
   async getMagicLink(userId: string) {
@@ -408,6 +433,34 @@ export class QrThriveService implements OnModuleInit {
     } catch (error) {
       return this.handleExternalError(error, 'Failed to duplicate QR code');
     }
+  }
+
+  /**
+   * Toggles whether a QR code is featured on the branch's Unique Business Link (UBL).
+   */
+  async toggleUblFeature(user: User, branchId: string, qrCodeId: string, isFeatured: boolean) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    if (!hasAccess) {
+      throw new HttpException('You do not have access to this branch', HttpStatus.FORBIDDEN);
+    }
+
+    const mapping = await this.codeMappingRepo.findOne({
+      where: { shortId: qrCodeId, branchId }, // Allow by shortId or qrThriveCodeId. Actually, `qrCodeId` from frontend usually maps to `qrThriveCodeId` in QR-Thrive.
+    });
+    
+    let targetMapping = mapping;
+    if (!targetMapping) {
+      targetMapping = await this.codeMappingRepo.findOne({
+        where: { qrThriveCodeId: qrCodeId, branchId },
+      });
+    }
+
+    if (!targetMapping) {
+      throw new HttpException('QR code mapping not found for this branch', HttpStatus.NOT_FOUND);
+    }
+
+    targetMapping.isFeaturedOnUbl = isFeatured;
+    return await this.codeMappingRepo.save(targetMapping);
   }
 
   /**

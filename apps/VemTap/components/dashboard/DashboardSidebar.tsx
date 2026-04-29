@@ -318,15 +318,22 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     ];
 
     const filteredMenuItems = menuItems.filter(item => {
-        const userRole = (user?.role as string)?.toLowerCase() || 'owner';
-        if (userRole === 'admin') return true;
+        const realUserRole = (user?.role as string)?.toLowerCase() || 'owner';
         
-        // Hide sensitive items in Admin Sudo mode
+        // Handle Admin/Agent Sudo Mode (Impersonation)
         if (isAdminMode) {
+            // Hide sensitive items or agent/admin tools while impersonating a business
             if (item.id === 'staff') return false;
+            if (item.id === 'agent-desk') return false;
+            if (item.id === 'admin-nfc') return false;
+            
+            // Treat the impersonator as an 'owner' so they see standard business menus
+            return !item.roles || item.roles.includes('owner');
         }
 
-        return !item.roles || item.roles.includes(userRole);
+        // Normal Flow (Not impersonating)
+        if (realUserRole === 'admin') return true;
+        return !item.roles || item.roles.includes(realUserRole);
     }).map(item => {
         // Further filter submenus if in sudo mode (Step 6)
         if (isAdminMode && item.id === 'settings' && item.submenu) {

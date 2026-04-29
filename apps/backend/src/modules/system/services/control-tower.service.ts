@@ -7,6 +7,8 @@ import {
 } from '../../businesses/entities/business.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
+import { AdministrationService } from '../../administration/administration.service';
+import { BadRequestException } from '@nestjs/common';
 import {
   BusinessControlRecord,
   CustomerControlRecord,
@@ -28,6 +30,7 @@ export class ControlTowerService {
     private readonly contactRepo: Repository<Contact>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly adminService: AdministrationService,
   ) {}
 
   async searchBusinesses(
@@ -103,9 +106,11 @@ export class ControlTowerService {
 
   async executeBusinessSudoAction(
     dto: BusinessSudoActionDto,
+    actorId: string,
   ): Promise<SudoActionResponse> {
     const business = await this.businessRepo.findOne({
       where: { id: dto.businessUid },
+      relations: ['branches'],
     });
     if (!business) throw new NotFoundException('Business not found');
 
@@ -125,12 +130,24 @@ export class ControlTowerService {
       case 'add_user':
         return { success: true, message: `User added to ${business.name}.` };
 
-      case 'assume_session':
+      case 'assume_session': {
+        if (!business.branches || business.branches.length === 0) {
+          throw new NotFoundException('Business has no branches to impersonate');
+        }
+        const targetBranchId = business.branches[0].id;
+        const expiresAt = dto.payload?.expiresAt ? new Date(dto.payload.expiresAt) : new Date(Date.now() + 15 * 60 * 1000);
+        
+        const impersonationToken = await this.adminService.generateToken(actorId, {
+          targetBranchId,
+          expiresAt: expiresAt.toISOString(),
+        });
+
         return {
           success: true,
           message: `Assume session token generated for ${business.name}.`,
-          data: { token: 'mock_impersonation_token' },
+          data: { token: impersonationToken.token },
         };
+      }
 
       default:
         return {
@@ -142,6 +159,7 @@ export class ControlTowerService {
 
   async executeCustomerSudoAction(
     dto: CustomerSudoActionDto,
+    actorId: string,
   ): Promise<SudoActionResponse> {
     const contact = await this.contactRepo.findOne({
       where: { id: dto.customerUid },
@@ -166,6 +184,57 @@ export class ControlTowerService {
 
       case 'close_issue':
         return { success: true, message: `Support case closed for customer.` };
+
+      case 'assume_session': {
+        const expiresAt = dto.payload?.expiresAt
+          ? new Date(dto.payload.expiresAt)
+          : new Date(Date.now() + 15 * 60 * 1000);
+
+        // The CustomerImpersonationToken.targetCustomerId references the User table.
+        // Contacts are anonymous CRM records; resolve the linked User by email/phone.
+        let customerUserId: string | null = null;
+        if (contact.email) {
+          const user = await this.userRepo.findOne({
+            where: { email: contact.email, role: UserRole.CUSTOMER },
+            select: ['id'],
+          });
+          customerUserId = user?.id ?? null;
+        }
+        if (!customerUserId && contact.phone) {
+          const user = await this.userRepo.findOne({
+            where: { phone: contact.phone, role: UserRole.CUSTOMER },
+            select: ['id'],
+          });
+          customerUserId = user?.id ?? null;
+        }
+
+        if (!customerUserId) {
+          throw new BadRequestException(
+            'Cannot impersonate: no registered User account found for this contact.',
+          );
+        }
+
+        if (!contact.branchId) {
+          throw new BadRequestException(
+            'Cannot impersonate: contact has no associated branch.',
+          );
+        }
+
+        const impersonationToken = await this.adminService.generateCustomerToken(
+          actorId,
+          {
+            targetCustomerId: customerUserId,
+            targetBranchId: contact.branchId,
+            expiresAt: expiresAt.toISOString(),
+          },
+        );
+
+        return {
+          success: true,
+          message: `Assume session token generated for customer ${contact.name || contact.id}.`,
+          data: { token: impersonationToken.token },
+        };
+      }
 
       default:
         return {

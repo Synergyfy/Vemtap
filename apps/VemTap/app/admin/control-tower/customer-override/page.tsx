@@ -20,21 +20,23 @@ export default function CustomerOverridePage() {
 
     const handleSudoLogin = async (customer: any) => {
         try {
+            const durationMs = 15 * 60 * 1000; // Standard 15m
             // Optional: Backend action to record session start
-            await sudoMutation.mutateAsync({
+            const response = await sudoMutation.mutateAsync({
                 customerUid: customer.uid,
                 businessUid: customer.businessUid,
-                actionKey: 'close_issue',
+                actionKey: 'assume_session',
                 payload: {
                     customerName: customer.name,
-                    adminEntry: true
+                    adminEntry: true,
+                    expiresAt: Date.now() + durationMs,
                 }
             });
 
-            const durationMs = 15 * 60 * 1000; // Standard 15m
             startSession({
                 type: 'customer',
                 subjectId: customer.uid,
+                token: response.data?.token || '',
                 expiresAt: Date.now() + durationMs,
                 permissions: ['VIEW_EDIT'] // Default for direct override
             });

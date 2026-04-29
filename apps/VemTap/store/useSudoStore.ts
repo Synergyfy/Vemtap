@@ -6,6 +6,7 @@ export type SudoTargetType = 'business' | 'customer';
 export interface SudoSession {
     type: SudoTargetType;
     subjectId: string;
+    token: string;
     ticketRef?: string;
     startTime: number;
     expiresAt: number;
