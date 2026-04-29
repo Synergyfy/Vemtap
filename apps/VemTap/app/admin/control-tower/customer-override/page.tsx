@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, ShieldCheck, LogIn, Loader2 } from 'lucide-react';
 import { useControlTowerCustomers, useExecuteCustomerSudoAction } from '@/services/control-tower/hooks';
+import { CustomerControlRecord } from '@/services/control-tower/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSudoStore } from '@/store/useSudoStore';
 import { useRouter } from 'next/navigation';
@@ -18,7 +19,7 @@ export default function CustomerOverridePage() {
     const { startSession } = useSudoStore();
     const sudoMutation = useExecuteCustomerSudoAction();
 
-    const handleSudoLogin = async (customer: any) => {
+    const handleSudoLogin = async (customer: CustomerControlRecord) => {
         try {
             const durationMs = 15 * 60 * 1000; // Standard 15m
             // Optional: Backend action to record session start
