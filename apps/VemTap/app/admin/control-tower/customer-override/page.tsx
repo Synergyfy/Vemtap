@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, ShieldCheck, LogIn, Loader2 } from 'lucide-react';
 import { useControlTowerCustomers, useExecuteCustomerSudoAction } from '@/services/control-tower/hooks';
+import { CustomerControlRecord } from '@/services/control-tower/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSudoStore } from '@/store/useSudoStore';
 import { useRouter } from 'next/navigation';
@@ -18,23 +19,25 @@ export default function CustomerOverridePage() {
     const { startSession } = useSudoStore();
     const sudoMutation = useExecuteCustomerSudoAction();
 
-    const handleSudoLogin = async (customer: any) => {
+    const handleSudoLogin = async (customer: CustomerControlRecord) => {
         try {
+            const durationMs = 15 * 60 * 1000; // Standard 15m
             // Optional: Backend action to record session start
-            await sudoMutation.mutateAsync({
+            const response = await sudoMutation.mutateAsync({
                 customerUid: customer.uid,
                 businessUid: customer.businessUid,
-                actionKey: 'close_issue',
+                actionKey: 'assume_session',
                 payload: {
                     customerName: customer.name,
-                    adminEntry: true
+                    adminEntry: true,
+                    expiresAt: Date.now() + durationMs,
                 }
             });
 
-            const durationMs = 15 * 60 * 1000; // Standard 15m
             startSession({
                 type: 'customer',
                 subjectId: customer.uid,
+                token: response.data?.token || '',
                 expiresAt: Date.now() + durationMs,
                 permissions: ['VIEW_EDIT'] // Default for direct override
             });

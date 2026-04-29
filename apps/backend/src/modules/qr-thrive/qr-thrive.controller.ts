@@ -22,7 +22,8 @@ import {
   CreateQRCodeDto, 
   UpdateQRCodeDto, 
   CreateFolderDto, 
-  UpdateFolderDto 
+  UpdateFolderDto,
+  ToggleUblFeatureDto
 } from './dto/qr-thrive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -125,6 +126,18 @@ export class QrThriveController {
     return this.qrThriveService.updateQRCode(req.user, branchId, qrCodeId, dto);
   }
 
+  @Patch('branches/:branchId/qr-codes/:qrCodeId/ubl')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Toggle whether a QR code is featured on the branch UBL profile' })
+  async toggleUblFeature(
+    @Request() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Param('qrCodeId') qrCodeId: string,
+    @Body() dto: ToggleUblFeatureDto,
+  ) {
+    return this.qrThriveService.toggleUblFeature(req.user, branchId, qrCodeId, dto.isFeatured);
+  }
+
   @Get('branches/:branchId/stats')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get QR-Thrive dashboard statistics' })
@@ -192,6 +205,22 @@ export class QrThriveController {
     @Param('qrCodeId') qrCodeId: string,
   ) {
     return this.qrThriveService.getResponses(req.user, branchId, qrCodeId);
+  }
+
+  @Get('branches/:branchId/leads')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Get all leads for a branch',
+    description: 'Fetches all form submission leads across every QR code owned by the current user via QR-Thrive.',
+  })
+  @ApiResponse({ status: 200, description: 'List of lead submissions returned successfully.' })
+  @ApiResponse({ status: 400, description: 'User not synced with QR-Thrive.' })
+  @ApiResponse({ status: 403, description: 'No access to this branch.' })
+  async getLeads(
+    @Request() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+  ) {
+    return this.qrThriveService.getLeads(req.user, branchId);
   }
 
   @Get('sso')

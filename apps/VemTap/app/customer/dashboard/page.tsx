@@ -35,17 +35,18 @@ export default function CustomerDashboardPage() {
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
 
-    const businessId = flowBusinessId || user?.businessId;
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const customerUid = searchParams.get('customer_uid');
+    const overrideBusinessId = searchParams.get('business_uid');
+
+    const businessId = overrideBusinessId || flowBusinessId || user?.businessId;
     const { data: analyticsResponse } = useCustomerLoyaltyAnalytics();
     const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
     const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(flowBranchId || businessInfo?.branch?.id || businessInfo?.device?.branchId || user?.branchId || businessId);
     const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerGlobalHistory();
     const redeemMutation = useRedeemCustomerReward();
-
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const isAdminMode = searchParams.get('admin_mode') === '1';
-    const customerUid = searchParams.get('customer_uid');
 
     const analytics = analyticsResponse?.data || analyticsResponse;
     const profile = profileResponse?.data || profileResponse;

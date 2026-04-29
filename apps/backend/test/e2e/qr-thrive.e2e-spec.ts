@@ -174,6 +174,34 @@ describe('QrThrive (e2e)', () => {
     });
   });
 
+  describe('/qr-thrive/branches/:branchId/qr-codes/:qrCodeId/ubl (PATCH)', () => {
+    it('should fail (400) with validation error if isFeatured is missing', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/qr-thrive/branches/${branchId}/qr-codes/qr-code-uuid/ubl`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({}) // Missing isFeatured
+        .expect(400);
+    });
+
+    it('should fail (403) when accessing forbidden branch', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/qr-thrive/branches/${forbiddenBranchId}/qr-codes/qr-code-uuid/ubl`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ isFeatured: true })
+        .expect(403);
+    });
+
+    it('should fail (404) if the QR code mapping does not exist', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/qr-thrive/branches/${branchId}/qr-codes/non-existent-qr/ubl`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ isFeatured: true })
+        .expect(404);
+
+      expect(res.body.message).toContain('QR code mapping not found');
+    });
+  });
+
   describe('Analytics Endpoints', () => {
     it('should fetch scans using branch-scoped URL', async () => {
       mockHttpService.get.mockReturnValue(of({ data: [] }));
