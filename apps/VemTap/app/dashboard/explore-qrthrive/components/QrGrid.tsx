@@ -10,11 +10,20 @@ import { cn } from '@/lib/utils';
 import { QrThriveQRCode } from '@/services/qr-thrive/types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import DeleteConfirmationModal from '@/components/dashboard/DeleteConfirmationModal';
+
+const QR_THRIVE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_URL || 'http://localhost:5173';
+
+const getQrUrl = (qr: QrThriveQRCode): string => {
+  if (qr.shortUrl) return qr.shortUrl;
+  return `${QR_THRIVE_URL}/s/${qr.shortId}`;
+};
 
 interface QrGridProps {
   codes: QrThriveQRCode[];
-  onEdit: (code: QrThriveQRCode) => void;
-  onDelete: (id: string) => void;
+  isLoading?: boolean;
+  onEdit: (qr: QrThriveQRCode) => void;
+  onDelete: (id: string) => Promise<void>;
   onDuplicate: (id: string) => void;
   onArchive: (id: string, currentStatus: string) => void;
   onViewStats: (code: QrThriveQRCode) => void;
@@ -23,8 +32,9 @@ interface QrGridProps {
   isLoading?: boolean;
 }
 
-export const QrGrid: React.FC<QrGridProps> = ({ 
+export const QrGrid = ({ 
   codes, 
+  isLoading, 
   onEdit, 
   onDelete, 
   onDuplicate, 
@@ -35,6 +45,8 @@ export const QrGrid: React.FC<QrGridProps> = ({
   isLoading 
 }) => {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,17 +59,31 @@ export const QrGrid: React.FC<QrGridProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this QR code? This action cannot be undone.')) {
-      onDelete(id);
-      toast.success('QR Code deleted');
-      setMenuOpen(null);
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id);
+    setDeleteModalOpen(true);
+    setMenuOpen(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (deletingId) {
+      try {
+        await onDelete(deletingId);
+      } catch (err: any) {
+        console.error('Delete error:', err);
+      }
     }
+    setDeleteModalOpen(false);
+    setDeletingId(null);
+  };
+
+  const handleDeleteClose = () => {
+    setDeleteModalOpen(false);
+    setDeletingId(null);
   };
 
   const handleDuplicate = (id: string) => {
     onDuplicate(id);
-    toast.success('QR Code duplicated');
     setMenuOpen(null);
   };
 
@@ -75,13 +101,13 @@ export const QrGrid: React.FC<QrGridProps> = ({
     setMenuOpen(null);
   };
 
-  const handleDownload = (id: string, format: 'png' | 'svg' | 'jpeg') => {
+  const handleDownloadInternal = (id: string, format: 'png' | 'svg' | 'jpeg') => {
     const qr = codes.find(c => c.id === id);
     if (qr && onDownload) {
       onDownload(qr, format);
     } else if (qr) {
       const link = document.createElement('a');
-      link.href = qr.shortUrl;
+      link.href = getQrUrl(qr);
       link.download = `${qr.name}.${format}`;
       link.click();
       toast.success('Download started');
@@ -113,11 +139,13 @@ export const QrGrid: React.FC<QrGridProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {codes.map((qr) => (
         <div 
           key={qr.id} 
           className="bg-white rounded-[32px] border border-slate-100 p-6 hover:shadow-xl hover:shadow-blue-900/5 transition-all group flex flex-col relative"
+          onClick={() => setMenuOpen(null)}
         >
           {qr.status === 'archived' && (
             <div className="absolute top-4 right-20 px-3 py-1 bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest rounded-full">
@@ -147,30 +175,36 @@ export const QrGrid: React.FC<QrGridProps> = ({
               </div>
             </div>
             
-            <div className="relative" ref={menuRef}>
+            <div className="relative" ref={menuOpen === qr.id ? menuRef : null}>
               <button 
-                onClick={() => setMenuOpen(menuOpen === qr.id ? null : qr.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(menuOpen === qr.id ? null : qr.id);
+                }}
                 className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all"
               >
                 <MoreVertical className="w-5 h-5" />
               </button>
               
               {menuOpen === qr.id && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div 
+                  className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-[100] animate-in fade-in slide-in-from-top-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button 
-                    onClick={() => { onEdit(qr); setMenuOpen(null); }}
+                    onClick={(e) => { e.stopPropagation(); onEdit(qr); setMenuOpen(null); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     <Edit2 className="w-4 h-4" /> Edit
                   </button>
                   <button 
-                    onClick={() => handleDuplicate(qr.id)}
+                    onClick={(e) => { e.stopPropagation(); handleDuplicate(qr.id); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     <Copy className="w-4 h-4" /> Duplicate
                   </button>
                   <button 
-                    onClick={() => handleArchive(qr.id, qr.status)}
+                    onClick={(e) => { e.stopPropagation(); handleArchive(qr.id, qr.status); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     <Archive className="w-4 h-4" /> {qr.status === 'archived' ? 'Restore' : 'Archive'}
@@ -192,13 +226,13 @@ export const QrGrid: React.FC<QrGridProps> = ({
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Download</p>
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => handleDownload(qr.id, 'png')}
+                        onClick={() => handleDownloadInternal(qr.id, 'png')}
                         className="flex-1 flex items-center justify-center py-2 bg-slate-50 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100"
                       >
                         PNG
                       </button>
                       <button 
-                        onClick={() => handleDownload(qr.id, 'svg')}
+                        onClick={() => handleDownloadInternal(qr.id, 'svg')}
                         className="flex-1 flex items-center justify-center py-2 bg-slate-50 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100"
                       >
                         SVG
@@ -207,7 +241,10 @@ export const QrGrid: React.FC<QrGridProps> = ({
                   </div>
                   <div className="border-t border-slate-100 my-1" />
                   <button 
-                    onClick={() => handleDelete(qr.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(qr.id);
+                    }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" /> Delete
@@ -221,7 +258,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
             <div className="w-20 h-20 bg-white rounded-xl shadow-inner flex items-center justify-center p-3 relative group/qr">
                <QrCode className="w-full h-full text-slate-900" />
                <a 
-                href={qr.shortUrl}
+                href={getQrUrl(qr)}
                 target="_blank"
                 rel="noreferrer"
                 className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover/qr:opacity-100 transition-opacity rounded-xl flex items-center justify-center"
@@ -233,26 +270,26 @@ export const QrGrid: React.FC<QrGridProps> = ({
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Last Updated</p>
               <p className="text-xs font-bold text-slate-600">{format(new Date(qr.updatedAt), 'MMM d, yyyy')}</p>
               <a 
-                href={qr.shortUrl} 
+                href={getQrUrl(qr)} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="text-[10px] font-bold text-blue-600 hover:underline truncate block"
               >
-                {qr.shortUrl.replace(/^https?:\/\//, '')}
+                {getQrUrl(qr).replace(/^https?:\/\//, '')}
               </a>
             </div>
           </div>
 
           <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
             <button 
-              onClick={() => onViewStats(qr)}
+              onClick={(e) => { e.stopPropagation(); onViewStats(qr); }}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
             >
               <BarChart3 className="w-4 h-4" />
               <span>{qr.scans} Scans</span>
             </button>
             <button 
-              onClick={() => onEdit(qr)}
+              onClick={(e) => { e.stopPropagation(); onEdit(qr); }}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
             >
               <Edit2 className="w-4 h-4" />
@@ -262,6 +299,15 @@ export const QrGrid: React.FC<QrGridProps> = ({
         </div>
       ))}
     </div>
+
+    <DeleteConfirmationModal
+      isOpen={deleteModalOpen}
+      onClose={handleDeleteClose}
+      onConfirm={handleDeleteConfirm}
+      title="Delete QR Code"
+      description="Are you sure you want to delete this QR code? This action cannot be undone."
+    />
+  </>
   );
 };
 

@@ -30,6 +30,12 @@ export function useQrThriveAuth() {
         return;
       }
 
+      // Skip QR-Thrive sync for customers and admins
+      if (user.role === 'customer' || user.role === 'admin') {
+        syncAttempted.current = true;
+        return;
+      }
+
       // If already provisioned in store, we're good
       if (isProvisioned && qrThriveUserId) {
         syncAttempted.current = true;

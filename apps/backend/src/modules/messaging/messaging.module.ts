@@ -58,15 +58,12 @@ import { CustomerMessagingController } from './controllers/customer-messaging.co
 import { ChatSettingsController } from './controllers/chat-settings.controller';
 import { FlowController } from './controllers/flow.controller';
 import { AdminFlowEngineController } from './controllers/admin-flow-engine.controller';
-import { TermiiWebhookController } from './controllers/termii.controller';
 import { AutomationsController } from './controllers/automations.controller';
 import { CreditPlanController } from './controllers/credit-plan.controller';
 import { CreditController } from './controllers/credit.controller';
 
 import { CreditPlanService } from './services/credit-plan.service';
-import { TermiiProvider } from './providers/termii.provider';
 import { TwilioProvider } from './providers/twilio.provider';
-import { AfricaTalkingProvider } from './providers/africastalking.provider';
 import { EmailProvider } from './providers/email.provider';
 import { BestBulkSmsProvider } from './providers/bestbulksms.provider';
 import { InHouseProvider } from './providers/inhouse.provider';
@@ -151,6 +148,11 @@ import { JwtModule } from '@nestjs/jwt';
           defaultJobOptions: {
             removeOnComplete: true,
             removeOnFail: 1000,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 5000,
+            },
           },
         };
       },
@@ -182,9 +184,7 @@ import { JwtModule } from '@nestjs/jwt';
     FlowEngineService,
     AdminFlowEngineService,
     AutomationService,
-    TermiiProvider,
     TwilioProvider,
-    AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,
     InHouseProvider,
@@ -205,7 +205,6 @@ import { JwtModule } from '@nestjs/jwt';
     ChatSettingsController,
     FlowController,
     AdminFlowEngineController,
-    TermiiWebhookController,
     TwilioWebhookController,
     AutomationsController,
     CreditPlanController,
@@ -223,9 +222,7 @@ import { JwtModule } from '@nestjs/jwt';
     FlowEngineService,
     AdminFlowEngineService,
     AutomationService,
-    TermiiProvider,
     TwilioProvider,
-    AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,
     InHouseProvider,

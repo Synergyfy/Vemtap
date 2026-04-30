@@ -116,6 +116,7 @@ export class SubscriptionsService {
       billingPeriod,
       paymentReference,
       isTrial = false,
+      isAdminOverride = false,
     } = subscribeDto;
 
     const plan = await this.plansService.findOne(planId);
@@ -164,28 +165,30 @@ export class SubscriptionsService {
         trialEndDate = trialEnd;
         endDate = trialEnd;
       } else {
-        if (!paymentReference) {
+        if (!paymentReference && !isAdminOverride) {
           throw new BadRequestException(
             'Payment reference is required for direct subscription',
           );
         }
 
-        await this.paymentsService.recordPayment({
-          reference: paymentReference,
-          amount: plan.monthlyPrice,
-          purpose: PaymentPurpose.SUBSCRIPTION,
-          status: PaymentStatus.SUCCESS,
-          metadata: { planId, billingPeriod },
-          businessId,
-          userId: business.ownerId,
-        });
+        if (paymentReference) {
+          await this.paymentsService.recordPayment({
+            reference: paymentReference,
+            amount: plan.monthlyPrice,
+            purpose: PaymentPurpose.SUBSCRIPTION,
+            status: PaymentStatus.SUCCESS,
+            metadata: { planId, billingPeriod },
+            businessId,
+            userId: business.ownerId,
+          });
 
-        // Trigger affiliate commission
-        await this.affiliatesService.processSubscriptionCommission(
-          businessId as string,
-          plan.monthlyPrice,
-          paymentReference,
-        );
+          // Trigger affiliate commission
+          await this.affiliatesService.processSubscriptionCommission(
+            businessId as string,
+            plan.monthlyPrice,
+            paymentReference,
+          );
+        }
 
         if (billingPeriod === BillingPeriod.MONTHLY)
           endDate.setMonth(endDate.getMonth() + 1);

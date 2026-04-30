@@ -54,6 +54,8 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
       envFilePath: [
         join(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
         join(process.cwd(), '.env'),
+        join(__dirname, '..', '..', `.env.${process.env.NODE_ENV || 'development'}`),
+        join(__dirname, '..', '..', '.env'),
       ],
     }),
     CacheModule.registerAsync({

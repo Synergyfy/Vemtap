@@ -22,12 +22,12 @@ export default function SMSOverviewPage() {
 
     return (
         <div className="relative min-h-[calc(100vh-4rem)]">
-            <ComingSoonOverlay 
+            {/* <ComingSoonOverlay 
                 title="SMS Gateway is Coming Soon" 
                 description="We're currently integrating with Tier-1 global SMS carriers to ensure 99.9% delivery rates for your business campaigns. Stay tuned!"
-            />
+            /> */}
             
-            <div className="p-4 md:p-8 space-y-8 blur-[2px] pointer-events-none select-none">
+            <div className="p-4 md:p-8 space-y-8">
                 <PageHeader
                     title="SMS Channel"
                     description="Reach your customers directly on their mobile phones via high-delivery SMS."

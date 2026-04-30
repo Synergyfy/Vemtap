@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
-import { adminBusinessesApi, adminCreditsApi } from '@/lib/api/admin';
-import { CheckCircle, XCircle, Search, Trash2, Edit, MoreVertical, Plus, Download, Filter, Eye, EyeOff, CreditCard, Ban, RotateCcw, Loader2, Check, RefreshCw, Copy } from 'lucide-react';
+import { adminBusinessesApi, adminCreditsApi, adminSubscriptionsApi } from '@/lib/api/admin';
+import { CheckCircle, XCircle, Search, Trash2, Edit, MoreVertical, Plus, Download, Filter, Eye, EyeOff, CreditCard, Ban, RotateCcw, Loader2, Check, RefreshCw, Copy, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PasswordValidation from '@/components/shared/PasswordValidation';
+import { fetchPricingPlans } from '@/lib/api/pricing';
+import { PricingPlan } from '@/types/pricing';
 
 const PAGE_SIZE = 10;
 
@@ -125,12 +128,26 @@ export default function AdminBusinessesPage() {
 
 
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+    const [menuPosition, setMenuPosition] = useState<{ 
+        top: number; 
+        left: number; 
+        isFlipped: boolean; 
+        rectTop: number; 
+        rectBottom: number 
+    } | null>(null);
+    const menuTriggerRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
     const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
     const [creditBusiness, setCreditBusiness] = useState<Business | null>(null);
     const [creditBalances, setCreditBalances] = useState<any>(null);
     const [isCreditLoading, setIsCreditLoading] = useState(false);
     const [adjustForm, setAdjustForm] = useState({ channel: 'SMS', amount: '', action: 'add' });
+
+    const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+    const [planBusiness, setPlanBusiness] = useState<Business | null>(null);
+    const [availablePlans, setAvailablePlans] = useState<PricingPlan[]>([]);
+    const [isPlansLoading, setIsPlansLoading] = useState(false);
+    const [planForm, setPlanForm] = useState({ planId: '', billingPeriod: 'monthly' as 'monthly' | 'quarterly' | 'yearly' });
 
     const fetchCredits = async (businessId: string) => {
         setIsCreditLoading(true);
@@ -159,6 +176,38 @@ export default function AdminBusinessesPage() {
             setAdjustForm({ ...adjustForm, amount: '' });
         } catch (err: any) {
             notify.error(err.message || 'Failed to adjust credits');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const fetchPlans = async () => {
+        setIsPlansLoading(true);
+        try {
+            const data = await fetchPricingPlans();
+            setAvailablePlans(data);
+        } catch (err: any) {
+            notify.error('Failed to fetch pricing plans');
+        } finally {
+            setIsPlansLoading(false);
+        }
+    };
+
+    const handleChangePlan = async () => {
+        if (!planBusiness || !planForm.planId) return;
+        setIsSubmitting(true);
+        try {
+            await adminSubscriptionsApi.subscribe({
+                businessId: planBusiness.id,
+                planId: planForm.planId,
+                billingPeriod: planForm.billingPeriod,
+                isAdminOverride: true
+            });
+            notify.success('Plan changed successfully');
+            setIsPlanModalOpen(false);
+            fetchBusinesses();
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to change plan');
         } finally {
             setIsSubmitting(false);
         }
@@ -520,87 +569,40 @@ export default function AdminBusinessesPage() {
                                             <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <div className="relative inline-block text-left">
                                                     <button
+                                                        ref={(el) => { menuTriggerRefs.current[biz.id] = el; }}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setActiveMenuId(activeMenuId === biz.id ? null : biz.id);
+                                                            if (activeMenuId === biz.id) {
+                                                                setActiveMenuId(null);
+                                                                setMenuPosition(null);
+                                                            } else {
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                const menuHeight = 350; // Max estimated height
+                                                                const windowHeight = window.innerHeight;
+                                                                const spaceBelow = windowHeight - rect.bottom;
+                                                                
+                                                                const isFlipped = spaceBelow < menuHeight && rect.top > menuHeight;
+                                                                
+                                                                let left = rect.right + window.scrollX - 208; // 208 is w-52
+                                                                if (left < 10) left = 10 + window.scrollX;
+                                                                if (left + 208 > window.innerWidth + window.scrollX) {
+                                                                    left = window.innerWidth + window.scrollX - 218;
+                                                                }
+
+                                                                setMenuPosition({
+                                                                    top: rect.bottom + window.scrollY,
+                                                                    left: left,
+                                                                    isFlipped,
+                                                                    rectTop: rect.top + window.scrollY,
+                                                                    rectBottom: rect.bottom + window.scrollY
+                                                                });
+                                                                setActiveMenuId(biz.id);
+                                                            }
                                                         }}
                                                         className="p-2 hover:bg-gray-100 rounded-lg transition-all text-gray-400 hover:text-text-main"
                                                     >
                                                         <MoreVertical size={20} />
                                                     </button>
-
-                                                    <AnimatePresence>
-                                                        {activeMenuId === biz.id && (
-                                                            <motion.div
-                                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                                className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2"
-                                                            >
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setCreditBusiness(biz);
-                                                                        setIsCreditModalOpen(true);
-                                                                        fetchCredits(biz.id);
-                                                                        setActiveMenuId(null);
-                                                                    }}
-                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-3 transition-colors"
-                                                                >
-                                                                    <CreditCard size={16} />
-                                                                    Manage Credits
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setDetailBusiness(biz);
-                                                                        setIsDetailModalOpen(true);
-                                                                        setActiveMenuId(null);
-                                                                    }}
-                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-primary hover:bg-primary/5 flex items-center gap-3 transition-colors"
-                                                                >
-                                                                    <Eye size={16} />
-                                                                    View Details
-                                                                </button>
-
-                                                                {normalizeBusinessStatus(biz.status) === 'pending' && (
-                                                                    <button
-                                                                        onClick={() => { handleUnverifiedClick(biz); setActiveMenuId(null); }}
-                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-600 hover:bg-orange-50 flex items-center gap-3 transition-colors border-t border-gray-50"
-                                                                    >
-                                                                        <CheckCircle size={16} />
-                                                                        Review Documents
-                                                                    </button>
-                                                                )}
-
-                                                                <div className="border-t border-gray-50 my-1" />
-
-                                                                {normalizeBusinessStatus(biz.status) === 'active' && (
-                                                                    <button
-                                                                        onClick={() => { handleAction('suspend', biz); setActiveMenuId(null); }}
-                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-500 hover:bg-orange-50 flex items-center gap-3 transition-colors"
-                                                                    >
-                                                                        <Ban size={16} />
-                                                                        Suspend
-                                                                    </button>
-                                                                )}
-                                                                {normalizeBusinessStatus(biz.status) === 'suspended' && (
-                                                                    <button
-                                                                        onClick={() => { handleAction('reactivate', biz); setActiveMenuId(null); }}
-                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-green-500 hover:bg-green-50 flex items-center gap-3 transition-colors"
-                                                                    >
-                                                                        <RotateCcw size={16} />
-                                                                        Reactivate
-                                                                    </button>
-                                                                )}
-                                                                <button
-                                                                    onClick={() => { handleAction('delete', biz); setActiveMenuId(null); }}
-                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                    Delete Business
-                                                                </button>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
                                                 </div>
                                             </td>
                                         </tr>
@@ -1050,6 +1052,191 @@ export default function AdminBusinessesPage() {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Change Plan Modal */}
+            {isPlanModalOpen && planBusiness && (
+                <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsPlanModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center justify-between mb-7">
+                            <div>
+                                <h2 className="text-2xl font-display font-bold text-text-main">Change Plan</h2>
+                                <p className="text-sm text-text-secondary font-medium mt-1">Override plan for {planBusiness.name}</p>
+                            </div>
+                            <button onClick={() => setIsPlanModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><span className="material-icons-round text-gray-400">close</span></button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Select New Plan</label>
+                                <select 
+                                    value={planForm.planId} 
+                                    onChange={(e) => setPlanForm({ ...planForm, planId: e.target.value })}
+                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                    disabled={isPlansLoading}
+                                >
+                                    <option value="">Select a plan...</option>
+                                    {availablePlans.map(plan => (
+                                        <option key={plan.id} value={plan.id}>{plan.name} {plan.isFree ? '(Free)' : ''}</option>
+                                    ))}
+                                </select>
+                                {isPlansLoading && <p className="text-[10px] text-primary font-bold mt-1 ml-1 animate-pulse">Loading plans...</p>}
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Billing Cycle</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['monthly', 'quarterly', 'yearly'] as const).map((period) => (
+                                        <button
+                                            key={period}
+                                            onClick={() => setPlanForm({ ...planForm, billingPeriod: period })}
+                                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                                                planForm.billingPeriod === period 
+                                                ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' 
+                                                : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-white hover:border-gray-200'
+                                            }`}
+                                        >
+                                            {period.charAt(0).toUpperCase() + period.slice(1)}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="mt-3 text-[11px] text-orange-600 font-medium bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                    <strong>Note:</strong> This is an admin override. No payment will be required, and the next billing cycle will be set based on the selected period.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsPlanModalOpen(false)} 
+                                    className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleChangePlan}
+                                    disabled={isSubmitting || !planForm.planId} 
+                                    className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70"
+                                >
+                                    {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                    Confirm Change
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Action Menu Portal */}
+            {activeMenuId && menuPosition && typeof document !== 'undefined' && createPortal(
+                <div 
+                    className="fixed inset-0 z-[100]" 
+                    onClick={() => {
+                        setActiveMenuId(null);
+                        setMenuPosition(null);
+                    }}
+                >
+                    <AnimatePresence>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: menuPosition.isFlipped ? 10 : -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: menuPosition.isFlipped ? 10 : -10 }}
+                            style={{ 
+                                top: menuPosition.isFlipped ? 'auto' : (menuPosition.rectBottom - (typeof window !== 'undefined' ? window.scrollY : 0) + 8),
+                                bottom: menuPosition.isFlipped ? ((typeof window !== 'undefined' ? window.innerHeight : 0) - (menuPosition.rectTop - (typeof window !== 'undefined' ? window.scrollY : 0)) + 8) : 'auto',
+                                left: menuPosition.left - (typeof window !== 'undefined' ? window.scrollX : 0),
+                                position: 'fixed',
+                                transformOrigin: menuPosition.isFlipped ? 'bottom right' : 'top right',
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-52 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-[101]"
+                        >
+                            {(() => {
+                                const biz = businesses.find(b => b.id === activeMenuId);
+                                if (!biz) return null;
+                                return (
+                                    <>
+                                        <button
+                                            onClick={() => {
+                                                setCreditBusiness(biz);
+                                                setIsCreditModalOpen(true);
+                                                fetchCredits(biz.id);
+                                                setActiveMenuId(null);
+                                            }}
+                                            className="w-full px-4 py-2.5 text-left text-sm font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-3 transition-colors"
+                                        >
+                                            <CreditCard size={16} />
+                                            Manage Credits
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setDetailBusiness(biz);
+                                                setIsDetailModalOpen(true);
+                                                setActiveMenuId(null);
+                                            }}
+                                            className="w-full px-4 py-2.5 text-left text-sm font-bold text-primary hover:bg-primary/5 flex items-center gap-3 transition-colors"
+                                        >
+                                            <Eye size={16} />
+                                            View Details
+                                        </button>
+
+                                        {normalizeBusinessStatus(biz.status) === 'pending' && (
+                                            <button
+                                                onClick={() => { handleUnverifiedClick(biz); setActiveMenuId(null); }}
+                                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-600 hover:bg-orange-50 flex items-center gap-3 transition-colors border-t border-gray-50"
+                                            >
+                                                <CheckCircle size={16} />
+                                                Review Documents
+                                            </button>
+                                        )}
+
+                                        <div className="border-t border-gray-50 my-1" />
+
+                                        {normalizeBusinessStatus(biz.status) === 'active' && (
+                                            <button
+                                                onClick={() => { handleAction('suspend', biz); setActiveMenuId(null); }}
+                                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-500 hover:bg-orange-50 flex items-center gap-3 transition-colors"
+                                            >
+                                                <Ban size={16} />
+                                                Suspend
+                                            </button>
+                                        )}
+                                        {normalizeBusinessStatus(biz.status) === 'suspended' && (
+                                            <button
+                                                onClick={() => { handleAction('reactivate', biz); setActiveMenuId(null); }}
+                                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-green-500 hover:bg-green-50 flex items-center gap-3 transition-colors"
+                                            >
+                                                <RotateCcw size={16} />
+                                                Reactivate
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => {
+                                                setPlanBusiness(biz);
+                                                setIsPlanModalOpen(true);
+                                                fetchPlans();
+                                                setActiveMenuId(null);
+                                            }}
+                                            className="w-full px-4 py-2.5 text-left text-sm font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-3 transition-colors border-t border-gray-50"
+                                        >
+                                            <Layers size={16} />
+                                            Change Plan
+                                        </button>
+                                        <button
+                                            onClick={() => { handleAction('delete', biz); setActiveMenuId(null); }}
+                                            className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                                        >
+                                            <Trash2 size={16} />
+                                            Delete Business
+                                        </button>
+                                    </>
+                                );
+                            })()}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>,
+                document.body
             )}
         </div>
     );

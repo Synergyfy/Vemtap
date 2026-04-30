@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { Reward } from '@/types/loyalty';
 import { Star, Gift, Search, Info, CheckCircle2, QrCode, Clock, Coffee, Dumbbell, Smartphone, Flower2, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useCustomerLoyaltyProfile, useCustomerLoyaltyRewards, useRedeemCustomerReward } from '@/services/customer/hooks';
 
 export default function CustomerRewardsPage() {
@@ -17,7 +18,9 @@ export default function CustomerRewardsPage() {
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [redemptionCode, setRedemptionCode] = useState<string | undefined>();
     const { branchId: flowBranchId } = useCustomerFlowStore();
-    const businessId = user?.businessId;
+    const searchParams = useSearchParams();
+    const overrideBusinessId = searchParams?.get('business_uid');
+    const businessId = overrideBusinessId || user?.businessId;
     const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
     const { data: rewardsResponse = [], isLoading } = useCustomerLoyaltyRewards(flowBranchId || user?.branchId || businessId);
     const redeemMutation = useRedeemCustomerReward();

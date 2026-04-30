@@ -43,4 +43,12 @@ export class SubscribeDto {
   @IsBoolean()
   @IsOptional()
   isTrial?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether this is an admin override (no payment required)',
+    default: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isAdminOverride?: boolean;
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, Req } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -26,7 +26,7 @@ import {
 @ApiTags('Admin Control Tower')
 @Controller('admin/control-tower')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.AGENT)
 @ApiBearerAuth()
 export class ControlTowerController {
   constructor(private readonly controlTowerService: ControlTowerService) {}
@@ -46,8 +46,9 @@ export class ControlTowerController {
   @ApiResponse({ status: 200, type: SudoActionResponse })
   async executeBusinessSudoAction(
     @Body() dto: BusinessSudoActionDto,
+    @Req() req: any,
   ): Promise<SudoActionResponse> {
-    return this.controlTowerService.executeBusinessSudoAction(dto);
+    return this.controlTowerService.executeBusinessSudoAction(dto, req.user.id);
   }
 
   @Get('customers')
@@ -65,7 +66,8 @@ export class ControlTowerController {
   @ApiResponse({ status: 200, type: SudoActionResponse })
   async executeCustomerSudoAction(
     @Body() dto: CustomerSudoActionDto,
+    @Req() req: any,
   ): Promise<SudoActionResponse> {
-    return this.controlTowerService.executeCustomerSudoAction(dto);
+    return this.controlTowerService.executeCustomerSudoAction(dto, req.user.id);
   }
 }

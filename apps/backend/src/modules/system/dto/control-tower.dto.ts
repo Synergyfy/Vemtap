@@ -77,6 +77,7 @@ export class CustomerSudoActionDto {
       'redeem_fix',
       'update_contact',
       'close_issue',
+      'assume_session',
     ],
   })
   @IsEnum([
@@ -85,6 +86,7 @@ export class CustomerSudoActionDto {
     'redeem_fix',
     'update_contact',
     'close_issue',
+    'assume_session',
   ])
   actionKey: string;
 

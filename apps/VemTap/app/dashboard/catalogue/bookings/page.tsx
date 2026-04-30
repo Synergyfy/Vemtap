@@ -4,27 +4,24 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, Clock, CheckCircle, XCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { useCatalogueOrders, Order } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import OrderDetailsModal from '@/components/dashboard/catalogue/OrderDetailsModal';
-import ManualOrderModal from '@/components/dashboard/catalogue/ManualOrderModal';
 import { formatOrderDate } from '@/lib/utils/date';
-import { Plus } from 'lucide-react';
 
-export default function OrdersPage() {
+export default function BookingsPage() {
     const { activeBranchId } = useActiveBranch();
     const [statusFilter, setStatusFilter] = useState('all');
     
     const { data: ordersData, isLoading } = useCatalogueOrders({ 
         branchId: activeBranchId ?? undefined, 
         status: statusFilter !== 'all' ? statusFilter : undefined,
-        type: 'order'
+        type: 'booking'
     });
-    const orders = ((ordersData as any)?.data as Order[]) || [];
+    const bookings = ((ordersData as any)?.data as Order[]) || [];
     
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
     const handleViewDetails = (order: Order) => {
@@ -49,11 +46,11 @@ export default function OrdersPage() {
 
     const columns: Column<Order>[] = [
         {
-            header: 'Order Info',
+            header: 'Booking Info',
             accessor: (item: Order) => (
                 <div className="flex flex-col">
                     <span className="font-bold text-text-main">#{item.id.slice(0, 8)}</span>
-                    <span className="text-[10px] text-text-secondary uppercase">{item.tableNumber ? `Table ${item.tableNumber}` : 'Walk-in'}</span>
+                    <span className="text-[10px] text-text-secondary uppercase">{item.items.length} Service(s)</span>
                 </div>
             )
         },
@@ -69,15 +66,16 @@ export default function OrdersPage() {
             )
         },
         {
-            header: 'Items',
-            accessor: (item: Order) => (
-                <span className="text-sm font-medium text-text-secondary">{item.items.reduce((acc, curr) => acc + curr.quantity, 0)} items</span>
-            )
-        },
-        {
-            header: 'Total',
-            accessor: (item: Order) => (
-                <span className="font-bold text-primary">₦{Number(item.totalAmount).toLocaleString()}</span>
+            header: 'Appointment',
+            accessor: (item: any) => (
+                <div className="flex flex-col">
+                    <span className="font-bold text-primary flex items-center gap-1">
+                        <CalendarIcon size={12} /> {item.bookingDate || 'N/A'}
+                    </span>
+                    <span className="text-[10px] text-text-secondary font-black uppercase">
+                        <Clock size={10} className="inline mr-1" /> {item.bookingTime || 'N/A'}
+                    </span>
+                </div>
             )
         },
         {
@@ -85,10 +83,10 @@ export default function OrdersPage() {
             accessor: (item: Order) => getStatusBadge(item.status)
         },
         {
-            header: 'Date & Time',
+            header: 'Booked On',
             accessor: (item: Order) => (
                 <div className="flex flex-col">
-                    <span className="text-xs text-text-main font-bold">
+                    <span className="text-xs text-text-main font-medium">
                         {formatOrderDate(item.createdAt)}
                     </span>
                     <span className="text-[10px] text-text-secondary uppercase">
@@ -114,16 +112,8 @@ export default function OrdersPage() {
     return (
         <div className="p-4 md:p-8">
             <PageHeader
-                title="Customer Orders"
-                description="Monitor and fulfill QR menu orders"
-                actions={
-                    <button
-                        onClick={() => setIsManualOrderModalOpen(true)}
-                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 cursor-pointer"
-                    >
-                        <Plus size={16} strokeWidth={3} /> Create Manual Order
-                    </button>
-                }
+                title="Service Bookings"
+                description="Manage appointments and service schedules"
             />
 
             <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6 flex flex-col md:flex-row gap-4">
@@ -149,14 +139,14 @@ export default function OrdersPage() {
 
             <DataTable
                 columns={columns}
-                data={orders}
+                data={bookings}
                 isLoading={isLoading}
                 onRowClick={handleViewDetails}
                 emptyState={
                     <EmptyState
-                        icon="layout"
-                        title="No orders yet"
-                        description="Customer orders from your QR menu will appear here."
+                        icon="calendar"
+                        title="No bookings yet"
+                        description="Customer appointments for your services will appear here."
                     />
                 }
             />
@@ -169,14 +159,6 @@ export default function OrdersPage() {
                 }}
                 orderId={selectedOrderId}
             />
-
-            {activeBranchId && (
-                <ManualOrderModal
-                    isOpen={isManualOrderModalOpen}
-                    onClose={() => setIsManualOrderModalOpen(false)}
-                    branchId={activeBranchId}
-                />
-            )}
         </div>
     );
 }
