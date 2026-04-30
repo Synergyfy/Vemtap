@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       provisioned: !!user.qrThriveUserId,
     });
   } catch (error) {
-    console.error('[QR-THRIVE STATUS] Error:', error);
+    console.error('[QRThrive STATUS] Error:', error);
     return NextResponse.json(
       { qrThriveUserId: null, provisioned: false },
       { status: 200 }
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       qrThriveUserId: qrThriveUser.id,
     });
   } catch (error) {
-    console.error('[QR-THRIVE PROVISION] Error:', error);
+    console.error('[QRThrive PROVISION] Error:', error);
     return NextResponse.json(
       { error: 'Failed to provision user' },
       { status: 500 }

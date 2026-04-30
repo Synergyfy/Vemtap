@@ -13,7 +13,7 @@ const setAuthCookie = (token: string) => {
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const { access_token, isAuthenticated, user } = useAuthStore();
 
-  // Initialize QR-Thrive auto-provisioning
+  // Initialize QRThrive auto-provisioning
   useQrThriveAuth();
 
   useEffect(() => {

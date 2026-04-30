@@ -15,7 +15,7 @@ export const useSubscriptionSync = () => {
   return useMutation({
     mutationFn: async () => {
       if (!qrThriveUserId || !isProvisioned) {
-        throw new Error('QR-Thrive user not provisioned');
+        throw new Error('QRThrive user not provisioned');
       }
 
       const planId = subscription?.planId || 'free';
@@ -27,10 +27,10 @@ export const useSubscriptionSync = () => {
       });
     },
     onSuccess: () => {
-      console.log('[QR-THRIVE] Subscription synced successfully');
+      console.log('[QRThrive] Subscription synced successfully');
     },
     onError: (error) => {
-      console.error('[QR-THRIVE] Subscription sync failed:', error);
+      console.error('[QRThrive] Subscription sync failed:', error);
     },
   });
 };
@@ -42,14 +42,14 @@ export const useSyncOnSubscriptionChange = () => {
 
   const syncIfNeeded = async () => {
     if (!isProvisioned) {
-      console.log('[QR-THRIVE] Skipping sync - not provisioned');
+      console.log('[QRThrive] Skipping sync - not provisioned');
       return;
     }
 
     try {
       await subscriptionSync.mutateAsync();
     } catch (error) {
-      console.error('[QR-THRIVE] Auto-sync failed:', error);
+      console.error('[QRThrive] Auto-sync failed:', error);
     }
   };
 

@@ -143,6 +143,7 @@ interface CustomerFlowState {
     serviceCount: number;
     offerCount: number;
     formCount: number;
+    qrThriveCodes: any[];
     selectedFormCode: string | null;
 
     redemptionStatus: 'none' | 'pending' | 'approved' | 'declined';
@@ -162,6 +163,7 @@ interface CustomerFlowState {
         facebook?: string;
         linkedin?: string;
         postSubmitFormIds?: string[];
+        ublSequence?: string[];
         brandColor?: string;
     };
     surveyQuestions: Array<{
@@ -260,6 +262,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             serviceCount: 0,
             offerCount: 0,
             formCount: 0,
+            qrThriveCodes: [],
             selectedFormCode: null,
 
             redemptionStatus: 'none',
@@ -278,6 +281,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 facebook: '',
                 linkedin: '',
                 postSubmitFormIds: [],
+                ublSequence: [],
                 brandColor: '#2563eb',
             },
             surveyQuestions: [
@@ -373,6 +377,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     serviceCount: branch.serviceCount || 0,
                     offerCount: branch.offerCount || 0,
                     formCount: branch.formCount || 0,
+                    qrThriveCodes: device.branch?.qrThriveCodes || device.qrThriveCodes || [],
                     isFirstTimeVisit: device.isFirstTimeVisit ?? true,
                     isReturningUser: isReturning,
                     engagementSettings: {
@@ -395,6 +400,10 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                         postSubmitFormIds: Array.isArray(ownerEngagement.postSubmitFormIds)
                             ? ownerEngagement.postSubmitFormIds
                             : (Array.isArray(branch.engagement?.postSubmitFormIds) ? branch.engagement.postSubmitFormIds : []),
+                        ublSequence: Array.isArray(branch.engagement?.ublSequence)
+                            ? branch.engagement.ublSequence
+                            : (Array.isArray(ownerEngagement.ublSequence) ? ownerEngagement.ublSequence : []),
+                        brandColor: branch.formAppearanceColor || b.brandColor || ownerEngagement.brandColor || '#2563eb',
                     },
                     currentStep: finalSkipAnimation ? (['SELECT_TYPE', 'SCANNING', 'IDENTIFYING'].includes(state.currentStep) ? 'PORTAL_MENU' : state.currentStep) : 'SCANNING'
                 });

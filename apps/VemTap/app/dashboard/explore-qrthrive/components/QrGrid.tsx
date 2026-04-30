@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   QrCode, MoreVertical, ExternalLink, BarChart3, 
   Trash2, Edit2, Globe, Copy, Archive, Loader2, Download,
-  X, Check
+  X, Check, Star, StarOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { QrThriveQRCode } from '@/services/qr-thrive/types';
@@ -25,12 +25,13 @@ interface QrGridProps {
   onEdit: (qr: QrThriveQRCode) => void;
   onDelete: (id: string) => Promise<void>;
   onDuplicate: (id: string) => void;
-  onArchive: (id: string, status: string) => void;
-  onViewStats: (qr: QrThriveQRCode) => void;
-  onDownload?: (qr: QrThriveQRCode, format: 'png' | 'svg' | 'jpeg') => void;
+  onArchive: (id: string, currentStatus: string) => void;
+  onViewStats: (code: QrThriveQRCode) => void;
+  onToggleUbl?: (id: string, isFeatured: boolean) => void;
+  onDownload?: (code: QrThriveQRCode, format: 'png' | 'svg' | 'jpeg') => void;
 }
 
-export const QrGrid = ({ 
+export const QrGrid: React.FC<QrGridProps> = ({ 
   codes, 
   isLoading, 
   onEdit, 
@@ -38,8 +39,9 @@ export const QrGrid = ({
   onDuplicate, 
   onArchive, 
   onViewStats,
-  onDownload 
-}: QrGridProps) => {
+  onToggleUbl,
+  onDownload
+}) => {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -86,6 +88,14 @@ export const QrGrid = ({
   const handleArchive = (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'archived' ? 'active' : 'archived';
     onArchive(id, newStatus);
+    toast.success(newStatus === 'archived' ? 'QR Code archived' : 'QR Code restored');
+    setMenuOpen(null);
+  };
+
+  const handleToggleUbl = (id: string, currentFeatured: boolean) => {
+    if (onToggleUbl) {
+      onToggleUbl(id, !currentFeatured);
+    }
     setMenuOpen(null);
   };
 
@@ -140,6 +150,13 @@ export const QrGrid = ({
               Archived
             </div>
           )}
+          
+          {qr.isFeaturedOnUbl && (
+            <div className="absolute top-4 right-20 px-3 py-1 bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-widest rounded-full flex items-center gap-1">
+              <Star size={10} className="fill-blue-700" />
+              Featured
+            </div>
+          )}
 
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -190,6 +207,18 @@ export const QrGrid = ({
                   >
                     <Archive className="w-4 h-4" /> {qr.status === 'archived' ? 'Restore' : 'Archive'}
                   </button>
+                  {onToggleUbl && (
+                    <button 
+                      onClick={() => handleToggleUbl(qr.id, !!qr.isFeaturedOnUbl)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      {qr.isFeaturedOnUbl ? (
+                        <><StarOff className="w-4 h-4 text-amber-500" /> Remove from UBL</>
+                      ) : (
+                        <><Star className="w-4 h-4 text-amber-500" /> Feature on UBL</>
+                      )}
+                    </button>
+                  )}
                   <div className="border-t border-slate-100 my-1" />
                   <div className="px-4 py-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Download</p>

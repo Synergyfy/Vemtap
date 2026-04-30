@@ -74,35 +74,45 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
   return (
     <div className="space-y-8">
       {activeTab === 'shape' && (
-        <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-bold text-slate-900">Shapes & Colors</h3>
-            <button 
-              onClick={() => onDesignChange(DEFAULT_QR_DESIGN)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-blue-600 border-2 border-blue-600 rounded-[2rem] text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-50 active:scale-95"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Reset to Default
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            <div className="space-y-6">
-              <div>
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Dot Style</h4>
+        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          {/* Section: Patterns */}
+          <section className="space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+                  <Palette className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">QR Patterns</h3>
+              </div>
+              <button 
+                onClick={() => onDesignChange({ 
+                  dots: { ...design.dots, type: DEFAULT_QR_DESIGN.dots.type },
+                  cornersSquare: { ...design.cornersSquare, type: DEFAULT_QR_DESIGN.cornersSquare.type },
+                  cornersDot: { ...design.cornersDot, type: DEFAULT_QR_DESIGN.cornersDot.type },
+                })}
+                className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3 h-3" /> Reset Styles
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Dot Style</h4>
                 <div className="grid grid-cols-3 gap-3">
                   {DOT_STYLES.map(style => (
                     <button
                       key={style.id}
                       onClick={() => handleDotStyleChange(style.id)}
                       className={cn(
-                        "aspect-square bg-white rounded-2xl border-2 p-4 flex flex-col items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-sm",
+                        "aspect-square bg-white rounded-[1.5rem] border-2 p-4 flex flex-col items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-sm",
                         design.dots.type === style.id 
-                          ? "border-blue-600 bg-blue-50/50" 
+                          ? "border-blue-600 bg-blue-50/30" 
                           : "border-slate-100 hover:border-slate-200"
                       )}
                     >
                       <div className={cn(
-                        "w-8 h-8 bg-slate-900 transition-all duration-300",
+                        "w-7 h-7 bg-slate-900 transition-all duration-300",
                         style.id === 'dots' && "rounded-full",
                         style.id === 'rounded' && "rounded-lg",
                         style.id === 'extra-rounded' && "rounded-2xl",
@@ -116,8 +126,8 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
                 </div>
               </div>
 
-              <div>
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Corner Style</h4>
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Corner Style</h4>
                 <div className="grid grid-cols-3 gap-3">
                   {CORNER_STYLES.map(style => (
                     <button
@@ -127,14 +137,14 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
                         cornersDot: { ...design.cornersDot, type: style.id },
                       })}
                       className={cn(
-                        "aspect-square bg-white rounded-2xl border-2 p-4 flex flex-col items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-sm",
+                        "aspect-square bg-white rounded-[1.5rem] border-2 p-4 flex flex-col items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-sm",
                         design.cornersSquare.type === style.id 
-                          ? "border-blue-600 bg-blue-50/50" 
+                          ? "border-blue-600 bg-blue-50/30" 
                           : "border-slate-100 hover:border-slate-200"
                       )}
                     >
                       <div className={cn(
-                        "w-8 h-8 border-4 border-slate-900 transition-all duration-300",
+                        "w-7 h-7 border-4 border-slate-900 transition-all duration-300",
                         style.id === 'dot' && "rounded-full",
                         style.id === 'extra-rounded' && "rounded-xl"
                       )} />
@@ -144,30 +154,59 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
                 </div>
               </div>
             </div>
+          </section>
 
-            <div className="space-y-8">
-              {/* Dot Color */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Dot Color</h4>
-                  <div className="flex items-center gap-2 bg-slate-900 border-2 border-slate-700 px-4 py-2 rounded-xl shadow-lg ring-4 ring-slate-900/5 transition-all focus-within:ring-blue-500/20">
-                    <Hexagon className="w-4 h-4 text-blue-400" />
-                    <input 
-                      type="text" 
-                      value={design.dots.color} 
-                      onChange={(e) => onDesignChange({ dots: { ...design.dots, color: e.target.value } })}
-                      className="text-[11px] font-black w-20 outline-none uppercase bg-transparent text-white tracking-widest"
-                    />
-                  </div>
+          {/* Section: Colors */}
+          <section className="space-y-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600">
+                  <Hexagon className="w-4 h-4" />
                 </div>
-                <div className="grid grid-cols-5 gap-3 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                <h3 className="text-base font-bold text-slate-900">Color System</h3>
+              </div>
+              <button 
+                onClick={() => onDesignChange({ 
+                  dots: { ...design.dots, color: DEFAULT_QR_DESIGN.dots.color },
+                  background: { ...design.background, color: DEFAULT_QR_DESIGN.background.color },
+                  cornersSquare: { ...design.cornersSquare, color: DEFAULT_QR_DESIGN.cornersSquare.color },
+                  cornersDot: { ...design.cornersDot, color: DEFAULT_QR_DESIGN.cornersDot.color },
+                })}
+                className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-purple-600 transition-colors flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3 h-3" /> Reset Colors
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+              {/* Dot Color */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Dot Color</h4>
+                  <button 
+                    onClick={() => onDesignChange({ dots: { ...design.dots, color: DEFAULT_QR_DESIGN.dots.color } })}
+                    className="w-6 h-6 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-300 hover:text-blue-600 transition-all"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-900 border-2 border-slate-700 px-4 py-2.5 rounded-2xl shadow-lg ring-4 ring-slate-900/5 transition-all focus-within:ring-blue-500/20">
+                  <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: design.dots.color }} />
+                  <input 
+                    type="text" 
+                    value={design.dots.color} 
+                    onChange={(e) => onDesignChange({ dots: { ...design.dots, color: e.target.value } })}
+                    className="text-[11px] font-black w-20 outline-none uppercase bg-transparent text-white tracking-widest"
+                  />
+                </div>
+                <div className="grid grid-cols-5 gap-2.5">
                   {COLORS.map(color => (
                     <button
                       key={color}
                       onClick={() => onDesignChange({ dots: { ...design.dots, color } })}
                       className={cn(
-                        "aspect-square rounded-full border-2 transition-transform hover:scale-110 shadow-sm",
-                        design.dots.color.toLowerCase() === color.toLowerCase() ? "border-white ring-2 ring-blue-600 ring-offset-2" : "border-white"
+                        "aspect-square rounded-full border-2 transition-all hover:scale-110",
+                        design.dots.color.toLowerCase() === color.toLowerCase() ? "border-white ring-2 ring-blue-600 ring-offset-2 scale-110" : "border-white shadow-sm"
                       )}
                       style={{ backgroundColor: color }}
                     />
@@ -176,27 +215,33 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
               </div>
 
               {/* Background Color */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Background</h4>
-                  <div className="flex items-center gap-2 bg-slate-900 border-2 border-slate-700 px-4 py-2 rounded-xl shadow-lg ring-4 ring-slate-900/5 transition-all focus-within:ring-blue-500/20">
-                    <Hexagon className="w-4 h-4 text-blue-400" />
-                    <input 
-                      type="text" 
-                      value={design.background.color} 
-                      onChange={(e) => onDesignChange({ background: { ...design.background, color: e.target.value } })}
-                      className="text-[11px] font-black w-20 outline-none uppercase bg-transparent text-white tracking-widest"
-                    />
-                  </div>
+                  <button 
+                    onClick={() => onDesignChange({ background: { ...design.background, color: DEFAULT_QR_DESIGN.background.color } })}
+                    className="w-6 h-6 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-300 hover:text-blue-600 transition-all"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
                 </div>
-                <div className="grid grid-cols-5 gap-3 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                <div className="flex items-center gap-2 bg-slate-900 border-2 border-slate-700 px-4 py-2.5 rounded-2xl shadow-lg ring-4 ring-slate-900/5 transition-all focus-within:ring-blue-500/20">
+                  <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: design.background.color }} />
+                  <input 
+                    type="text" 
+                    value={design.background.color} 
+                    onChange={(e) => onDesignChange({ background: { ...design.background, color: e.target.value } })}
+                    className="text-[11px] font-black w-20 outline-none uppercase bg-transparent text-white tracking-widest"
+                  />
+                </div>
+                <div className="grid grid-cols-5 gap-2.5">
                   {COLORS.map(color => (
                     <button
                       key={`bg-${color}`}
                       onClick={() => onDesignChange({ background: { ...design.background, color } })}
                       className={cn(
-                        "aspect-square rounded-full border-2 transition-transform hover:scale-110 shadow-sm",
-                        design.background.color.toLowerCase() === color.toLowerCase() ? "border-white ring-2 ring-blue-600 ring-offset-2" : "border-white"
+                        "aspect-square rounded-full border-2 transition-all hover:scale-110",
+                        design.background.color.toLowerCase() === color.toLowerCase() ? "border-white ring-2 ring-blue-600 ring-offset-2 scale-110" : "border-white shadow-sm"
                       )}
                       style={{ backgroundColor: color }}
                     />
@@ -205,23 +250,32 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
               </div>
 
               {/* Corner Color */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Corners</h4>
-                  <div className="flex items-center gap-2 bg-slate-900 border-2 border-slate-700 px-4 py-2 rounded-xl shadow-lg ring-4 ring-slate-900/5 transition-all focus-within:ring-blue-500/20">
-                    <Hexagon className="w-4 h-4 text-blue-400" />
-                    <input 
-                      type="text" 
-                      value={design.cornersSquare.color} 
-                      onChange={(e) => onDesignChange({ 
-                        cornersSquare: { ...design.cornersSquare, color: e.target.value },
-                        cornersDot: { ...design.cornersDot, color: e.target.value }
-                      })}
-                      className="text-[11px] font-black w-20 outline-none uppercase bg-transparent text-white tracking-widest"
-                    />
-                  </div>
+                  <button 
+                    onClick={() => onDesignChange({ 
+                      cornersSquare: { ...design.cornersSquare, color: DEFAULT_QR_DESIGN.cornersSquare.color },
+                      cornersDot: { ...design.cornersDot, color: DEFAULT_QR_DESIGN.cornersDot.color }
+                    })}
+                    className="w-6 h-6 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-300 hover:text-blue-600 transition-all"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
                 </div>
-                <div className="grid grid-cols-5 gap-3 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                <div className="flex items-center gap-2 bg-slate-900 border-2 border-slate-700 px-4 py-2.5 rounded-2xl shadow-lg ring-4 ring-slate-900/5 transition-all focus-within:ring-blue-500/20">
+                  <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: design.cornersSquare.color }} />
+                  <input 
+                    type="text" 
+                    value={design.cornersSquare.color} 
+                    onChange={(e) => onDesignChange({ 
+                      cornersSquare: { ...design.cornersSquare, color: e.target.value },
+                      cornersDot: { ...design.cornersDot, color: e.target.value }
+                    })}
+                    className="text-[11px] font-black w-20 outline-none uppercase bg-transparent text-white tracking-widest"
+                  />
+                </div>
+                <div className="grid grid-cols-5 gap-2.5">
                   {COLORS.map(color => (
                     <button
                       key={`corner-${color}`}
@@ -230,8 +284,8 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
                         cornersDot: { ...design.cornersDot, color },
                       })}
                       className={cn(
-                        "aspect-square rounded-full border-2 transition-transform hover:scale-110 shadow-sm",
-                        design.cornersSquare.color.toLowerCase() === color.toLowerCase() ? "border-white ring-2 ring-blue-600 ring-offset-2" : "border-white"
+                        "aspect-square rounded-full border-2 transition-all hover:scale-110",
+                        design.cornersSquare.color.toLowerCase() === color.toLowerCase() ? "border-white ring-2 ring-blue-600 ring-offset-2 scale-110" : "border-white shadow-sm"
                       )}
                       style={{ backgroundColor: color }}
                     />
@@ -239,7 +293,7 @@ export const DesignPanel: React.FC<DesignPanelProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+          </section>
         </div>
       )}
 

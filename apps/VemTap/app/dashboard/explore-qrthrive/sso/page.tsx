@@ -17,7 +17,7 @@ export default function SSOPage() {
     const performSSO = async () => {
       if (!isProvisioned || !qrThriveUserId) {
         setStatus('error');
-        setError('Your QR-Thrive account is not set up yet. Please try again later or contact support.');
+        setError('Your QRThrive account is not set up yet. Please try again later or contact support.');
         return;
       }
 
@@ -30,7 +30,7 @@ export default function SSOPage() {
         if (result.url) {
           window.location.href = result.url;
         } else {
-          window.location.href = `https://qr-thrive.com/dashboard?token=${result.token}`;
+          window.location.href = `https://qrthrive.com/dashboard?token=${result.token}`;
         }
       } catch (err: any) {
         console.error('SSO Error:', err);
@@ -43,7 +43,7 @@ export default function SSOPage() {
       performSSO();
     } else {
       setStatus('error');
-      setError('Your QR-Thrive account is not set up. Please return to the dashboard and try again.');
+      setError('Your QRThrive account is not set up. Please return to the dashboard and try again.');
     }
   }, [qrThriveUserId, isProvisioned]);
 
@@ -53,7 +53,7 @@ export default function SSOPage() {
         <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center mb-6">
           <Zap className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Connecting to QR-Thrive</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Connecting to QRThrive</h2>
         <p className="text-slate-400 mb-8">Generating your secure login link...</p>
         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
       </div>
@@ -67,7 +67,7 @@ export default function SSOPage() {
           <Zap className="w-8 h-8" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Redirecting...</h2>
-        <p className="text-slate-400 mb-8">Taking you to QR-Thrive Dashboard</p>
+        <p className="text-slate-400 mb-8">Taking you to QRThrive Dashboard</p>
         <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
       </div>
     );
