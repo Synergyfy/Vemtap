@@ -48,6 +48,18 @@ export interface Branch {
     updatedAt?: string;
     deletedAt?: string | null;
     engagement?: Record<string, any>;
+    qrThriveCodes?: Array<{
+        id: string;
+        shortId: string;
+        name: string;
+        type: string;
+        config: {
+            design?: any;
+            frame?: any;
+            data?: any;
+        };
+        isFeaturedOnUbl: boolean;
+    }>;
 }
 
 export interface CreateBranchRequest {

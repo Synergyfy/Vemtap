@@ -14,6 +14,7 @@ import type {
   QrThriveListParams,
   ProvisionUserDto,
   MagicLinkResponse,
+  QrThriveLead,
 } from './types';
 
 // ============================================
@@ -262,6 +263,27 @@ export const useSetQrThriveCodeStatus = () => {
   });
 };
 
+/**
+ * Hook to toggle featured status on UBL
+ */
+export const useToggleUbl = () => {
+  const queryClient = useQueryClient();
+  const { qrThriveUserId } = useQrThriveStore();
+
+  return useMutation({
+    mutationFn: ({ qrId, isFeatured }: { qrId: string; isFeatured: boolean }) => {
+      if (!qrThriveUserId) {
+        throw new Error('User not provisioned in QR-Thrive');
+      }
+      return qrThriveApi.toggleUbl(qrThriveUserId, qrId, isFeatured);
+    },
+    onSuccess: (_, { qrId }) => {
+      queryClient.invalidateQueries({ queryKey: ['qr-thrive-codes'] });
+      queryClient.invalidateQueries({ queryKey: ['qr-thrive-code', qrId] });
+    },
+  });
+};
+
 // ============================================
 // ANALYTICS HOOKS
 // ============================================
@@ -289,6 +311,18 @@ export const useQrThriveResponses = (qrId: string | null) => {
     queryKey: ['qr-thrive-responses', qrId],
     queryFn: () => qrThriveApi.getResponses(qrThriveUserId!, qrId!),
     enabled: !!qrThriveUserId && isProvisioned && !!qrId,
+  });
+};
+
+/**
+ * Hook to fetch all leads for a branch
+ */
+export const useQrThriveLeads = (branchId: string | null) => {
+  return useQuery({
+    queryKey: ['qr-thrive-leads', branchId],
+    queryFn: () => qrThriveApi.getLeads(branchId!),
+    enabled: !!branchId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 

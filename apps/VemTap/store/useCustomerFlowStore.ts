@@ -143,6 +143,7 @@ interface CustomerFlowState {
     serviceCount: number;
     offerCount: number;
     formCount: number;
+    qrThriveCodes: any[];
     selectedFormCode: string | null;
 
     redemptionStatus: 'none' | 'pending' | 'approved' | 'declined';
@@ -260,6 +261,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             serviceCount: 0,
             offerCount: 0,
             formCount: 0,
+            qrThriveCodes: [],
             selectedFormCode: null,
 
             redemptionStatus: 'none',
@@ -373,6 +375,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     serviceCount: branch.serviceCount || 0,
                     offerCount: branch.offerCount || 0,
                     formCount: branch.formCount || 0,
+                    qrThriveCodes: device.branch?.qrThriveCodes || device.qrThriveCodes || [],
                     isFirstTimeVisit: device.isFirstTimeVisit ?? true,
                     isReturningUser: isReturning,
                     engagementSettings: {

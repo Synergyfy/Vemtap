@@ -24,7 +24,7 @@ import { QrPreview } from './components/QrPreview';
 import { DesignPanel } from './components/DesignPanel';
 import { ContentForm } from './components/ContentForm';
 
-// QR-Thrive Dynamic Preview
+// QRThrive Dynamic Preview
 import DynamicView from '@/components/qr-thrive/DynamicView';
 
 // Hooks & Services
@@ -36,9 +36,11 @@ import {
     useProvisionQrThriveUser,
     useDeleteQrThriveCode,
     useDuplicateQrThriveCode,
-    useSetQrThriveCodeStatus
+    useSetQrThriveCodeStatus,
+    useToggleUbl
 } from '@/services/qr-thrive/hooks';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
+
 
 const STEPS = [
     { id: 'type', label: 'Choose Type' },
@@ -54,7 +56,7 @@ export default function ExploreQRThrivePage() {
     
     const [selectedType, setSelectedType] = useState<QRType | null>(null);
     const [hoveredType, setHoveredType] = useState<QRType | null>(null);
-    const [qrData, setQrData] = useState<any>({ type: 'url', url: 'https://qr-thrive.com' });
+    const [qrData, setQrData] = useState<any>({ type: 'url', url: 'https://qrthrive.com' });
     const [qrDesign, setQrDesign] = useState(DEFAULT_QR_DESIGN);
     const [qrFrame, setQrFrame] = useState(DEFAULT_QR_FRAME);
     const [qrLogo, setQrLogo] = useState<string | undefined>();
@@ -99,12 +101,13 @@ export default function ExploreQRThrivePage() {
     const deleteMutation = useDeleteQrThriveCode();
     const duplicateMutation = useDuplicateQrThriveCode();
     const statusMutation = useSetQrThriveCodeStatus();
+    const toggleUblMutation = useToggleUbl();
 
     const handleCreateNew = () => {
         setView('create');
         setStep('type');
         setSelectedType(null);
-        setQrData({ type: 'url', url: 'https://qr-thrive.com' });
+        setQrData({ type: 'url', url: 'https://qrthrive.com' });
         setQrName('');
         setQrDesign(DEFAULT_QR_DESIGN);
         setQrFrame(DEFAULT_QR_FRAME);
@@ -112,7 +115,7 @@ export default function ExploreQRThrivePage() {
 
     const handleTypeSelect = (type: QRType) => {
         setSelectedType(type);
-        setQrData({ type, url: 'https://qr-thrive.com' });
+        setQrData({ type, url: 'https://qrthrive.com' });
         setStep('content');
     };
 
@@ -180,9 +183,9 @@ export default function ExploreQRThrivePage() {
     const handleProvision = async () => {
         try {
             await provisionMutation.mutateAsync();
-            toast.success('QR-Thrive account activated!');
+            toast.success('QRThrive account activated!');
         } catch (error: any) {
-            toast.error(error?.message || 'Failed to activate QR-Thrive');
+            toast.error(error?.message || 'Failed to activate QRThrive');
         }
     };
 
@@ -192,7 +195,7 @@ export default function ExploreQRThrivePage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[600px]">
                 <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-                <h2 className="text-xl font-bold text-gray-900">Setting up your QR-Thrive account...</h2>
+                <h2 className="text-xl font-bold text-gray-900">Setting up your QRThrive account...</h2>
                 <p className="text-gray-500">This only takes a few seconds.</p>
             </div>
         );
@@ -229,7 +232,7 @@ export default function ExploreQRThrivePage() {
 
                     <div className="space-y-4">
                         <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                            Activate <span className="text-blue-600">QR-Thrive</span>
+                            Activate <span className="text-blue-600">QRThrive</span>
                         </h1>
                         <p className="text-lg text-slate-500 font-medium leading-relaxed">
                             Create dynamic QR codes, track analytics, and build custom landing pages for your business.
@@ -282,26 +285,34 @@ export default function ExploreQRThrivePage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
             <div className="max-w-7xl mx-auto w-full p-4 lg:p-10">
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <PageHeader 
                         title="QR-Thrive Integration" 
                         description="Create and manage your dynamic QR codes"
                     />
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        {view === 'list' && (
+                            <button 
+                                onClick={() => router.push('/dashboard/explore-qrthrive/leads')}
+                                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white border border-slate-100 text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm text-sm"
+                            >
+                                <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5" /> View Leads
+                            </button>
+                        )}
                         {view === 'list' ? (
                             <button 
                                 onClick={handleCreateNew}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
+                                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 text-sm"
                             >
-                                <Plus className="w-5 h-5" /> Create New
+                                <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Create New
                             </button>
                         ) : (
                             <button 
                                 onClick={() => setView('list')}
-                                className="px-6 py-3 bg-slate-50 text-slate-600 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-100 transition-all border border-slate-100"
+                                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-slate-50 text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 transition-all border border-slate-100 text-sm"
                             >
-                                <List className="w-5 h-5" /> Back to List
+                                <List className="w-4 h-4 sm:w-5 sm:h-5" /> Back to List
                             </button>
                         )}
                     </div>
@@ -366,6 +377,14 @@ export default function ExploreQRThrivePage() {
                                         toast.error(err?.message || 'Failed to update status');
                                     }
                                 }}
+                                onToggleUbl={async (id, isFeatured) => {
+                                    try {
+                                        await toggleUblMutation.mutateAsync({ qrId: id, isFeatured });
+                                        toast.success(isFeatured ? 'Added to UBL' : 'Removed from UBL');
+                                    } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to update UBL status');
+                                    }
+                                }}
                                 onViewStats={(qr) => {
                                     toast.success(`Total scans: ${qr.scans}`);
                                 }}
@@ -390,7 +409,7 @@ export default function ExploreQRThrivePage() {
                                     </div>
                                     <h3 className="text-3xl font-bold text-white leading-tight">
                                         Need more power? <br />
-                                        <span className="text-blue-400">Use the full QR-Thrive platform.</span>
+                                        <span className="text-blue-400">Use the full QRThrive platform.</span>
                                     </h3>
                                 </div>
                                 <a 
@@ -404,9 +423,9 @@ export default function ExploreQRThrivePage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-200px)]">
+                    <div className="flex flex-col lg:flex-row relative min-h-[calc(100vh-200px)]">
                         {/* Left Side: Configuration */}
-                        <div className="flex-1 lg:pr-[500px] p-8 lg:p-12 flex flex-col">
+                        <div className="flex-1 w-full lg:pr-[500px] p-4 sm:p-8 lg:p-12 flex flex-col">
                             {/* Stepper */}
                             <div className="flex items-center gap-4 mb-10">
                                 {STEPS.filter(s => !isLocked || s.id !== 'type').map((s, idx) => (
@@ -420,12 +439,15 @@ export default function ExploreQRThrivePage() {
                                                 {idx + 1}
                                             </div>
                                             <span className={cn(
-                                                "text-xs font-bold tracking-tight whitespace-nowrap",
+                                                "text-[10px] sm:text-xs font-bold tracking-tight whitespace-nowrap",
                                                 step === s.id ? "text-slate-900" : "text-slate-400"
-                                            )}>{s.label}</span>
+                                            )}>
+                                                <span className="sm:inline hidden">{s.label}</span>
+                                                <span className="sm:hidden">{s.label.split(' ')[0]}</span>
+                                            </span>
                                         </div>
                                         {idx < STEPS.length - 1 && (
-                                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                                            <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-slate-300" />
                                         )}
                                     </React.Fragment>
                                 ))}
@@ -436,7 +458,7 @@ export default function ExploreQRThrivePage() {
                                 {step === 'type' && (
                                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                         <div className="space-y-2">
-                                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">1. Select a type of QR code</h1>
+                                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">1. Select a type of QR code</h1>
                                             <p className="text-slate-400 font-medium">Click on the type you need to continue.</p>
                                         </div>
                                         <QrTypeSelector 
@@ -451,17 +473,18 @@ export default function ExploreQRThrivePage() {
                                     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-1">
-                                                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
                                                     2. {(selectedType as string)?.charAt(0).toUpperCase() + (selectedType as string)?.slice(1)}
                                                 </h1>
-                                                <p className="text-slate-400 font-medium">Complete the information for your QR Code.</p>
+                                                <p className="text-slate-400 font-medium text-sm sm:text-base">Complete the information for your QR Code.</p>
                                             </div>
                                         </div>
                                         <div className="space-y-4">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">QR Name</label>
                                             <input 
                                                 type="text"
-                                                placeholder="QR Code Name"
-                                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:border-blue-600 font-bold transition-all"
+                                                placeholder="e.g. My Website QR"
+                                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:border-blue-600 font-bold transition-all shadow-sm"
                                                 value={qrName}
                                                 onChange={(e) => setQrName(e.target.value)}
                                             />
@@ -478,28 +501,28 @@ export default function ExploreQRThrivePage() {
                                 {step === 'design' && (
                                     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                                         <div className="space-y-2">
-                                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">3. Design your QR code</h1>
+                                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">3. Design your QR code</h1>
                                             <p className="text-slate-400 font-medium">Customize the appearance of your QR code to match your brand.</p>
                                         </div>
                                         <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
-                                            <div className="flex border-b border-slate-100 p-2 bg-slate-50/50">
+                                            <div className="grid grid-cols-3 border-b border-slate-100 p-2 bg-slate-50/50 gap-2">
                                                 {(['shape', 'frame', 'logo'] as const).map(tab => (
                                                     <button
                                                         key={tab}
                                                         onClick={() => setDesignTab(tab)}
                                                         className={cn(
-                                                            "flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all",
+                                                            "flex flex-col items-center justify-center gap-1 sm:gap-2 py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-xs font-bold uppercase tracking-widest transition-all",
                                                             designTab === tab ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
                                                         )}
                                                     >
-                                                        {tab === 'shape' && <Palette className="w-4 h-4" />}
-                                                        {tab === 'frame' && <Frame className="w-4 h-4" />}
-                                                        {tab === 'logo' && <ImageIcon className="w-4 h-4" />}
-                                                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                                        {tab === 'shape' && <Palette className="w-3 h-3 sm:w-4 sm:h-4" />}
+                                                        {tab === 'frame' && <Frame className="w-3 h-3 sm:w-4 sm:h-4" />}
+                                                        {tab === 'logo' && <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />}
+                                                        <span>{tab}</span>
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className="p-8">
+                                            <div className="p-4 sm:p-8">
                                                 <DesignPanel 
                                                     design={qrDesign}
                                                     frame={qrFrame}
@@ -516,42 +539,38 @@ export default function ExploreQRThrivePage() {
                             </div>
 
                             {/* Navigation */}
-                            <div className="mt-8 pt-8 border-t border-slate-100 flex items-center justify-between">
+                            <div className="mt-8 pt-8 border-t border-slate-100 flex items-center justify-between gap-4">
                                 <button
                                     onClick={handleBack}
-                                    disabled={step === 'type'}
                                     className={cn(
-                                        "px-5 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
-                                        step === 'type' ? "opacity-0 pointer-events-none" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100"
+                                        "flex-1 sm:flex-none px-6 sm:px-8 py-3 sm:py-4 bg-white border border-slate-100 text-slate-400 hover:text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all text-sm sm:text-base",
+                                        step === 'type' ? "opacity-0 pointer-events-none" : ""
                                     )}
                                 >
-                                    <ChevronLeft className="w-4 h-4" /> Back
+                                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" /> Back
                                 </button>
                                 
                                 <button
                                     onClick={step === 'design' ? handleFinish : handleNext}
                                     disabled={step === 'type' && !selectedType}
-                                    className={cn(
-                                        "px-8 py-3 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg min-w-[140px] justify-center tracking-widest uppercase",
-                                        (step === 'type' && !selectedType) 
-                                            ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
-                                            : "bg-blue-600 text-white shadow-blue-100 hover:bg-blue-700 active:scale-95"
-                                    )}
+                                    className="flex-1 sm:flex-none px-6 sm:px-10 py-3 sm:py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-sm sm:text-base"
                                 >
                                     {isSaving ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <Loader2 className="w-5 h-5 animate-spin" />
                                     ) : (
                                         <>
-                                            {step === 'design' ? 'Finish' : 'Next'}
-                                            {step !== 'design' && <ChevronRight className="w-4 h-4" />}
+                                            <span className="sm:inline hidden">{step === 'design' ? 'Finish & Save' : 'Next Step'}</span>
+                                            <span className="sm:hidden">{step === 'design' ? 'Finish' : 'Next'}</span>
+                                            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                                         </>
                                     )}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Right Side: Preview (Fixed) */}
-                        <div className="fixed top-20 right-0 bottom-0 w-[500px] bg-white border-l border-slate-100 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-30 p-8 flex flex-col items-center overflow-y-auto custom-scrollbar">
+                         {/* Right Side: Preview */}
+                        <div className="w-full lg:w-[500px] lg:fixed lg:top-20 lg:right-0 lg:bottom-0 bg-white border-t lg:border-t-0 lg:border-l border-slate-100 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-30 p-6 sm:p-8 flex flex-col items-center overflow-y-auto custom-scrollbar lg:min-h-0 min-h-[500px]">
+                            {/* Toggle */}
                             {/* Toggle - Always show when in create mode */}
                             <div className="mb-8 w-full max-w-[200px] p-1 bg-slate-50 rounded-full border border-slate-100 flex items-center relative group/switcher shadow-sm">
                                 <div className={cn(
@@ -580,7 +599,7 @@ export default function ExploreQRThrivePage() {
 
 {previewMode === 'qr' ? (
                                 <QrPreview 
-                                    data={qrData?.url || qrData?.text || 'https://qr-thrive.com'} 
+                                    data={qrData?.url || qrData?.text || 'https://qrthrive.com'} 
                                     design={qrDesign}
                                     frame={qrFrame}
                                     logo={qrLogo}

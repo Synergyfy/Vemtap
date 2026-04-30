@@ -26,7 +26,11 @@ import {
     ShieldCheck,
     Clock,
     ClipboardList,
-    Share2
+    Share2,
+    Link2,
+    FileText,
+    Image as ImageIcon,
+    Contact
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -58,7 +62,8 @@ const PortalWelcome = ({
     isFirstTimeVisit?: boolean,
     isReturningUser?: boolean,
     engagement?: any,
-    whatsappNumber?: string | null
+    whatsappNumber?: string | null,
+    qrThriveCodes?: any[]
 }) => {
     const actions = [
         { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
@@ -67,6 +72,19 @@ const PortalWelcome = ({
         { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
         { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
         { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
+        ...(qrThriveCodes || []).map((code: any) => ({
+            id: `qr-${code.shortId}`,
+            label: code.name,
+            icon: code.type === 'pdf' ? FileText : 
+                  code.type === 'image' ? ImageIcon : 
+                  code.type === 'vcard' ? Contact : Link2,
+            color: 'text-blue-600',
+            bg: 'bg-blue-50',
+            desc: code.type.toUpperCase(),
+            count: 1,
+            isExternal: true,
+            url: `https://api.qrthrive.com/s/${code.shortId}`
+        }))
     ].filter(action => action.count && action.count > 0);
 
     const useGrid = actions.length >= 4;
@@ -110,7 +128,7 @@ const PortalWelcome = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + (idx * 0.1) }}
-                        onClick={() => onAction(item.id)}
+                        onClick={() => (item as any).isExternal ? window.open((item as any).url, '_blank') : onAction(item.id)}
                         className={cn(
                             "group relative flex border border-slate-50 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all text-left overflow-hidden bg-white asymmetric-leaf",
                             useGrid
@@ -402,6 +420,7 @@ const DynamicTapJourneyPage = () => {
                             isReturningUser={!!deviceContext?.device?.isReturningUser}
                             engagement={engagementSettings}
                             whatsappNumber={whatsappNumber}
+                            qrThriveCodes={useCustomerFlowStore.getState().qrThriveCodes}
                         />
                     )}
 
