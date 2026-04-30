@@ -83,7 +83,13 @@ export class BusinessProfile extends AbstractBaseEntity {
   @Column({ default: 0 })
   score: number;
 
-  @ApiProperty({ example: { recommendations: ['Use Table QR'], suggestedPackage: 'Growth', salesPitch: '...' } })
+  @ApiProperty({
+    example: {
+      recommendations: ['Use Table QR'],
+      suggestedPackage: 'Growth',
+      salesPitch: '...',
+    },
+  })
   @Column({ type: 'jsonb', default: {} })
   insights: BusinessInsights;
 

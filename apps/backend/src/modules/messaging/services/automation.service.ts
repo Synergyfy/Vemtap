@@ -16,7 +16,10 @@ import {
 import { TriggerType, ActionType, TargetType } from '../enums/automation.enum';
 import { Channel } from '../enums/channel.enum';
 import { BranchesService } from '../../branches/branches.service';
-import { Subscription, SubscriptionStatus } from '../../subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../../subscriptions/entities/subscription.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Segment } from '../../contacts/entities/segment.entity';
 
@@ -57,7 +60,9 @@ export class AutomationService {
     });
 
     if (!subscription) {
-      throw new ForbiddenException('No active subscription found for this business');
+      throw new ForbiddenException(
+        'No active subscription found for this business',
+      );
     }
 
     const plan = subscription.plan;
@@ -67,7 +72,9 @@ export class AutomationService {
     }
 
     if (!plan.automationsEnabled) {
-      throw new ForbiddenException('Automations are not enabled for your current plan');
+      throw new ForbiddenException(
+        'Automations are not enabled for your current plan',
+      );
     }
 
     // If maxAutomations is null or -1, it means unlimited
@@ -298,15 +305,22 @@ export class AutomationService {
     );
 
     // Map legacy WELCOME_MESSAGE to FIRST_MESSAGE for unified rule searching
-    const effectiveType = type === TriggerType.WELCOME_MESSAGE ? TriggerType.FIRST_MESSAGE : type;
+    const effectiveType =
+      type === TriggerType.WELCOME_MESSAGE ? TriggerType.FIRST_MESSAGE : type;
 
     const rules = await this.ruleRepo.find({
       where: [
         { branchId: dto.branchId, triggerType: effectiveType, isActive: true },
         // Also check for legacy WELCOME_MESSAGE if we are searching for FIRST_MESSAGE
-        ...(effectiveType === TriggerType.FIRST_MESSAGE 
-          ? [{ branchId: dto.branchId, triggerType: TriggerType.WELCOME_MESSAGE, isActive: true }]
-          : [])
+        ...(effectiveType === TriggerType.FIRST_MESSAGE
+          ? [
+              {
+                branchId: dto.branchId,
+                triggerType: TriggerType.WELCOME_MESSAGE,
+                isActive: true,
+              },
+            ]
+          : []),
       ],
     });
 
@@ -322,12 +336,14 @@ export class AutomationService {
             content.includes(kw.toLowerCase()),
           );
           if (!matches) {
-            this.logger.log(`Rule ${rule.id} keywords do not match message content`);
+            this.logger.log(
+              `Rule ${rule.id} keywords do not match message content`,
+            );
             continue;
           }
         } else {
           // If it's an FAQ trigger but has no keywords, it shouldn't fire on every message
-          continue; 
+          continue;
         }
       }
 

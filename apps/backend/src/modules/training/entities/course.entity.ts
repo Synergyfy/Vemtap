@@ -1,8 +1,4 @@
-import {
-  Entity,
-  Column,
-  OneToMany,
-} from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { TrainingLesson } from './lesson.entity';
@@ -13,11 +9,16 @@ export class TrainingCourse extends AbstractBaseEntity {
   @Column()
   title: string;
 
-  @ApiProperty({ example: 'Learn the basics of affiliate marketing with Vemtap.' })
+  @ApiProperty({
+    example: 'Learn the basics of affiliate marketing with Vemtap.',
+  })
   @Column({ type: 'text' })
   description: string;
 
-  @ApiProperty({ example: 'https://cdn.example.com/course-thumbnail.png', nullable: true })
+  @ApiProperty({
+    example: 'https://cdn.example.com/course-thumbnail.png',
+    nullable: true,
+  })
   @Column({ nullable: true })
   thumbnailUrl: string;
 

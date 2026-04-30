@@ -101,7 +101,9 @@ export class NotificationsController {
   @Post('broadcast')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Broadcast a notification to all agents (affiliates)' })
+  @ApiOperation({
+    summary: 'Broadcast a notification to all agents (affiliates)',
+  })
   async broadcast(@Body() data: { title: string; message: string }) {
     return this.notificationsService.broadcastToRole(
       UserRole.AGENT,

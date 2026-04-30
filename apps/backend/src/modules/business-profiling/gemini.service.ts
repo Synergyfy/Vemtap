@@ -31,7 +31,9 @@ export class GeminiService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash-lite',
+      });
 
       const prompt = `
         You are an expert Business Consultant for Vemtap, an NFC/QR-powered visitor engagement and loyalty platform.
@@ -62,7 +64,7 @@ export class GeminiService {
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-      
+
       // Extract JSON from the response (in case AI adds markdown blocks)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

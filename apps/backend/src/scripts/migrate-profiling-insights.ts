@@ -8,7 +8,9 @@ import { Repository } from 'typeorm';
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const profilingService = app.get(BusinessProfilingService);
-  const profileRepo = app.get<Repository<BusinessProfile>>(getRepositoryToken(BusinessProfile));
+  const profileRepo = app.get<Repository<BusinessProfile>>(
+    getRepositoryToken(BusinessProfile),
+  );
 
   console.log('🚀 Starting Business Profiling Insights Migration...');
 
@@ -20,11 +22,11 @@ async function bootstrap() {
   for (const profile of profiles) {
     // Force update for all profiles to ensure they have the new Expert System insights
     console.log(`🔄 Processing: ${profile.businessName}...`);
-    
+
     try {
       const { score, priority, insights } = profilingService.calculateProfiling(
         profile.businessType,
-        profile.physicalSetup
+        profile.physicalSetup,
       );
 
       profile.score = score;
@@ -51,7 +53,7 @@ async function bootstrap() {
   process.exit(0);
 }
 
-bootstrap().catch(err => {
+bootstrap().catch((err) => {
   console.error('💥 Migration failed:', err);
   process.exit(1);
 });

@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsObject, IsOptional, IsEnum, IsEmail } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsEnum,
+  IsEmail,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ProfileStatus } from '../entities/business-profile.entity';
 
@@ -29,12 +36,18 @@ export class CreateBusinessProfileDto {
   @IsOptional()
   businessType?: string;
 
-  @ApiProperty({ example: { doYouHaveMenu: true, footTraffic: 'high' }, required: false })
+  @ApiProperty({
+    example: { doYouHaveMenu: true, footTraffic: 'high' },
+    required: false,
+  })
   @IsObject()
   @IsOptional()
   responses?: Record<string, any>;
 
-  @ApiProperty({ example: { hasTableService: true, highFootTraffic: true }, required: false })
+  @ApiProperty({
+    example: { hasTableService: true, highFootTraffic: true },
+    required: false,
+  })
   @IsObject()
   @IsOptional()
   physicalSetup?: Record<string, any>;

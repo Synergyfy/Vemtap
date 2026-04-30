@@ -24,7 +24,10 @@ export class AffiliateTrainingModule extends AbstractBaseEntity {
   @Column({ type: 'text' })
   description: string;
 
-  @ApiProperty({ enum: TrainingModuleType, default: TrainingModuleType.ARTICLE })
+  @ApiProperty({
+    enum: TrainingModuleType,
+    default: TrainingModuleType.ARTICLE,
+  })
   @Column({
     type: 'simple-enum',
     enum: TrainingModuleType,
@@ -44,7 +47,10 @@ export class AffiliateTrainingModule extends AbstractBaseEntity {
   @Column({ nullable: true })
   duration: string;
 
-  @ApiProperty({ enum: TrainingModuleStatus, default: TrainingModuleStatus.DRAFT })
+  @ApiProperty({
+    enum: TrainingModuleStatus,
+    default: TrainingModuleStatus.DRAFT,
+  })
   @Column({
     type: 'simple-enum',
     enum: TrainingModuleStatus,

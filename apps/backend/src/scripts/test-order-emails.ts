@@ -24,7 +24,7 @@ async function bootstrap() {
         item: {
           name: 'Premium Burger',
           shortDescription: 'With double cheese and truffle mayo',
-        }
+        },
       },
       {
         quantity: 1,
@@ -32,55 +32,50 @@ async function bootstrap() {
         item: {
           name: 'Craft Beer',
           shortDescription: 'Local brewery special',
-        }
-      }
-    ]
+        },
+      },
+    ],
   };
 
   const business = {
     name: 'Synergyfy Eliztap',
     address: '123 Innovation Drive, Tech City',
     phone: '+234 800 123 4567',
-    website: 'https://synergyfy.com'
+    website: 'https://synergyfy.com',
   };
 
-  const statuses: ('placed' | 'processing' | 'completed' | 'cancelled' | 'rejected')[] = [
-    'placed', 'processing', 'completed', 'cancelled', 'rejected'
-  ];
+  const statuses: (
+    | 'placed'
+    | 'processing'
+    | 'completed'
+    | 'cancelled'
+    | 'rejected'
+  )[] = ['placed', 'processing', 'completed', 'cancelled', 'rejected'];
 
   console.log('Generating test emails...');
 
-  // Mock the Resend client to capture HTML instead of sending
   const resultsDir = path.join(process.cwd(), 'tmp', 'email-previews');
   if (!fs.existsSync(resultsDir)) {
     fs.mkdirSync(resultsDir, { recursive: true });
   }
 
-  // @ts-ignore - access private resend client for testing
-  const originalSend = mailService.resend.emails.send.bind(mailService.resend.emails);
-  // @ts-ignore
-  mailService.resend = {
-    emails: {
-      send: async (options: { from: string; to: string; subject: string; html: string }) => {
-        const status = options.subject.toLowerCase().includes('confirmation') ? 'placed' : 
-                       options.subject.toLowerCase().includes('prepared') ? 'processing' :
-                       options.subject.toLowerCase().includes('delivered') ? 'completed' :
-                       options.subject.toLowerCase().includes('cancelled') ? 'cancelled' : 'rejected';
-        
-        const filePath = path.join(resultsDir, `${status}.html`);
-        fs.writeFileSync(filePath, options.html);
-        console.log(`Captured ${status} email to ${filePath}`);
-        return { data: { id: 'mock-id' }, error: null };
-      },
-    },
-  };
-
   for (const status of statuses) {
-    await mailService.sendOrderNotification('test@example.com', mockOrder, status, business);
+    const { html } = mailService.generateOrderNotificationHtml(
+      mockOrder,
+      status,
+      business,
+    );
+
+    const filePath = path.join(resultsDir, `${status}.html`);
+    fs.writeFileSync(filePath, html);
+    console.log(`Captured ${status} email to ${filePath}`);
   }
 
   console.log('All test emails generated in tmp/email-previews/');
   await app.close();
 }
 
-bootstrap();
+bootstrap().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

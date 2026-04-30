@@ -36,7 +36,9 @@ export class TrainingService {
     const profile = await this.profileRepository.findOne({ where: { userId } });
     if (!profile) throw new NotFoundException('Affiliate profile not found');
 
-    const lesson = await this.lessonRepository.findOne({ where: { id: lessonId } });
+    const lesson = await this.lessonRepository.findOne({
+      where: { id: lessonId },
+    });
     if (!lesson) throw new NotFoundException('Lesson not found');
 
     if (!profile.completedModules) {
@@ -54,7 +56,10 @@ export class TrainingService {
     return this.courseRepository.save(course);
   }
 
-  async updateCourse(id: string, data: Partial<TrainingCourse>): Promise<TrainingCourse> {
+  async updateCourse(
+    id: string,
+    data: Partial<TrainingCourse>,
+  ): Promise<TrainingCourse> {
     const course = await this.findCourseById(id);
     Object.assign(course, data);
     return this.courseRepository.save(course);
@@ -67,7 +72,10 @@ export class TrainingService {
 
   // --- Lesson Management ---
 
-  async createLesson(courseId: string, data: Partial<TrainingLesson>): Promise<TrainingLesson> {
+  async createLesson(
+    courseId: string,
+    data: Partial<TrainingLesson>,
+  ): Promise<TrainingLesson> {
     const course = await this.findCourseById(courseId);
     const lesson = this.lessonRepository.create({
       ...data,
@@ -76,7 +84,10 @@ export class TrainingService {
     return this.lessonRepository.save(lesson);
   }
 
-  async updateLesson(id: string, data: Partial<TrainingLesson>): Promise<TrainingLesson> {
+  async updateLesson(
+    id: string,
+    data: Partial<TrainingLesson>,
+  ): Promise<TrainingLesson> {
     const lesson = await this.lessonRepository.findOne({ where: { id } });
     if (!lesson) throw new NotFoundException('Lesson not found');
     Object.assign(lesson, data);

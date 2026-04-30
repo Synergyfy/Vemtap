@@ -13,10 +13,19 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CatalogueCategory, CatalogueItem, CatalogueOffer, Branch]),
+    TypeOrmModule.forFeature([
+      CatalogueCategory,
+      CatalogueItem,
+      CatalogueOffer,
+      Branch,
+    ]),
     SubscriptionsModule,
   ],
-  controllers: [AdminCatalogueController, PublicCatalogueController, CatalogueOfferController],
+  controllers: [
+    AdminCatalogueController,
+    PublicCatalogueController,
+    CatalogueOfferController,
+  ],
   providers: [CatalogueService, CatalogueOfferService],
   exports: [CatalogueService, CatalogueOfferService],
 })

@@ -11,9 +11,18 @@ import {
   Req,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { CatalogueOfferService } from './catalogue-offer.service';
-import { CreateCatalogueOfferDto, UpdateCatalogueOfferDto, CatalogueOfferQueryDto } from './dto/offer.dto';
+import {
+  CreateCatalogueOfferDto,
+  UpdateCatalogueOfferDto,
+  CatalogueOfferQueryDto,
+} from './dto/offer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';

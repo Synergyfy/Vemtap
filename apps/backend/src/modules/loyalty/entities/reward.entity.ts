@@ -11,7 +11,6 @@ export enum RewardAudienceType {
   ALL = 'all',
 }
 
-
 @Entity('rewards')
 export class Reward extends AbstractBaseEntity {
   @ApiProperty()
@@ -31,7 +30,11 @@ export class Reward extends AbstractBaseEntity {
   category: RewardCategory;
 
   @ApiProperty({ enum: RewardAudienceType, default: RewardAudienceType.ALL })
-  @Column({ type: 'simple-enum', enum: RewardAudienceType, default: RewardAudienceType.ALL })
+  @Column({
+    type: 'simple-enum',
+    enum: RewardAudienceType,
+    default: RewardAudienceType.ALL,
+  })
   audienceType: RewardAudienceType;
 
   @ApiProperty()

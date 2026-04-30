@@ -21,7 +21,8 @@ export class AuditInterceptor implements NestInterceptor {
 
     // Only log state-changing requests or impersonated requests
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
-    const isCustomerImpersonated = !!request.headers['x-customer-impersonation-token'];
+    const isCustomerImpersonated =
+      !!request.headers['x-customer-impersonation-token'];
     const isImpersonated = !!impersonationTokenStr || isCustomerImpersonated;
     const isAdminOrAgent =
       user && (user.role === UserRole.ADMIN || user.role === UserRole.AGENT);
@@ -57,7 +58,9 @@ export class AuditInterceptor implements NestInterceptor {
           if (impersonationToken) {
             actorId = impersonationToken.actorId;
             branchId = impersonationToken.targetBranchId;
-            businessId = impersonationToken.targetBranch?.business?.id ?? impersonationToken.targetBranch.businessId;
+            businessId =
+              impersonationToken.targetBranch?.business?.id ??
+              impersonationToken.targetBranch.businessId;
             impersonationTokenId = impersonationToken.id;
           } else if (customerImpersonationToken) {
             actorId = customerImpersonationToken.actorId;
@@ -92,10 +95,18 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
-  private sanitisePayload(body: Record<string, unknown>): Record<string, unknown> {
+  private sanitisePayload(
+    body: Record<string, unknown>,
+  ): Record<string, unknown> {
     if (!body || typeof body !== 'object') return body;
     const sanitised = { ...body };
-    const SENSITIVE_KEYS = ['password', 'currentPassword', 'newPassword', 'pin', 'cardNumber'];
+    const SENSITIVE_KEYS = [
+      'password',
+      'currentPassword',
+      'newPassword',
+      'pin',
+      'cardNumber',
+    ];
     for (const key of SENSITIVE_KEYS) {
       if (key in sanitised) sanitised[key] = '[REDACTED]';
     }
@@ -104,13 +115,20 @@ export class AuditInterceptor implements NestInterceptor {
 
   private determineModule(url: string): BackendModule {
     if (url.includes('/loyalty')) return BackendModule.LOYALTY;
-    if (url.includes('/visitors') || url.includes('/contacts')) return BackendModule.VISITORS;
+    if (url.includes('/visitors') || url.includes('/contacts'))
+      return BackendModule.VISITORS;
     if (url.includes('/support') || url.includes('/tickets'))
       return BackendModule.TICKETS;
     if (url.includes('/messaging') || url.includes('/campaigns'))
       return BackendModule.MESSAGING;
     if (url.includes('/payments')) return BackendModule.PAYMENTS;
-    if (url.includes('/settings') || url.includes('/forms') || url.includes('/users') || url.includes('/devices')) return BackendModule.SETTINGS;
+    if (
+      url.includes('/settings') ||
+      url.includes('/forms') ||
+      url.includes('/users') ||
+      url.includes('/devices')
+    )
+      return BackendModule.SETTINGS;
     if (url.includes('/branches')) return BackendModule.BRANCHES;
     if (url.includes('/businesses')) return BackendModule.BUSINESSES;
     if (url.includes('/analytics') || url.includes('/reports'))

@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  ManyToMany,
+  JoinTable,
+} from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
@@ -40,7 +47,11 @@ export class CatalogueOffer extends AbstractBaseEntity {
   quantity: number | null;
 
   @ApiProperty({ enum: CatalogueOfferPricingType })
-  @Column({ type: 'enum', enum: CatalogueOfferPricingType, default: CatalogueOfferPricingType.SUM })
+  @Column({
+    type: 'enum',
+    enum: CatalogueOfferPricingType,
+    default: CatalogueOfferPricingType.SUM,
+  })
   pricingType: CatalogueOfferPricingType;
 
   @ApiProperty({ example: 10, nullable: true })
@@ -81,7 +92,11 @@ export class CatalogueOffer extends AbstractBaseEntity {
   branchId: string;
 
   @ApiProperty({ enum: CatalogueOfferStatus })
-  @Column({ type: 'enum', enum: CatalogueOfferStatus, default: CatalogueOfferStatus.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: CatalogueOfferStatus,
+    default: CatalogueOfferStatus.ACTIVE,
+  })
   status: CatalogueOfferStatus;
 
   @ManyToMany(() => CatalogueItem)

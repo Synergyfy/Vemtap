@@ -1,16 +1,13 @@
-import {
-  Entity,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { TrainingCourse } from './course.entity';
 
 @Entity('training_lessons')
 export class TrainingLesson extends AbstractBaseEntity {
-  @ManyToOne(() => TrainingCourse, (course) => course.lessons, { onDelete: 'CASCADE' })
+  @ManyToOne(() => TrainingCourse, (course) => course.lessons, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'courseId' })
   course: TrainingCourse;
 
@@ -22,7 +19,9 @@ export class TrainingLesson extends AbstractBaseEntity {
   @Column()
   title: string;
 
-  @ApiProperty({ example: 'In this lesson, you will learn how commissions are calculated.' })
+  @ApiProperty({
+    example: 'In this lesson, you will learn how commissions are calculated.',
+  })
   @Column({ type: 'text' })
   content: string;
 

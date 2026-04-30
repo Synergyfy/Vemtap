@@ -37,10 +37,15 @@ export class CatalogueItem extends AbstractBaseEntity {
   name: string;
 
   @ApiProperty({ example: 15.99 })
-  @Column({ type: 'decimal', precision: 12, scale: 2, transformer: {
-    to: (value: number) => value,
-    from: (value: string) => parseFloat(value),
-  } })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
   price: number;
 
   @ApiProperty({ example: 'Delicious cheeseburger with bacon' })

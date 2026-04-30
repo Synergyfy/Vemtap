@@ -13,7 +13,7 @@ export class TrialRestrictionGuard implements CanActivate {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly branchesService: BranchesService,
-  ) { }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();

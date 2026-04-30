@@ -105,18 +105,19 @@ export class BatchSendProcessor extends WorkerHost {
                 }
               }
 
-              // Instead of processing directly, we'll create the message record 
+              // Instead of processing directly, we'll create the message record
               // and queue it for the individual sender. This provides better
               // retry granularity and staggering.
-              
-              const resolvedContent = await this.messagingEngine.resolvePlaceholders(
-                content || '',
-                customerId,
-                branch,
-              );
+
+              const resolvedContent =
+                await this.messagingEngine.resolvePlaceholders(
+                  content || '',
+                  customerId,
+                  branch,
+                );
 
               // Find or create conversation thread
-              let thread = await this.messagingEngine.getOrCreateThread(
+              const thread = await this.messagingEngine.getOrCreateThread(
                 branch.id,
                 customerId,
                 job.data.channel,
@@ -132,7 +133,10 @@ export class BatchSendProcessor extends WorkerHost {
                 channel: job.data.channel,
                 direction: MessageDirection.OUTBOUND,
                 from,
-                to: job.data.channel === Channel.EMAIL ? customer.email || '' : formatPhoneNumber(customer.phone || ''),
+                to:
+                  job.data.channel === Channel.EMAIL
+                    ? customer.email || ''
+                    : formatPhoneNumber(customer.phone || ''),
                 metadata: {},
               });
 
@@ -146,7 +150,7 @@ export class BatchSendProcessor extends WorkerHost {
                 messageId: message.id,
                 delay: 0, // No extra delay here as we are already in a background job
               });
-              
+
               successCount++;
             } catch (err: any) {
               this.logger.error(

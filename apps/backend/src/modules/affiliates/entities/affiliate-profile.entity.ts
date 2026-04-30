@@ -1,10 +1,4 @@
-import {
-  Entity,
-  Column,
-  OneToOne,
-  JoinColumn,
-  OneToMany,
-} from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { AffiliateReferral } from './referral.entity';
@@ -83,7 +77,10 @@ export class AffiliateProfile extends AbstractBaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   bankAccountDetails: any;
 
-  @ApiProperty({ example: ['uuid-1', 'uuid-2'], description: 'Completed training module/lesson IDs' })
+  @ApiProperty({
+    example: ['uuid-1', 'uuid-2'],
+    description: 'Completed training module/lesson IDs',
+  })
   @Column({ type: 'text', array: true, default: '{}' })
   completedModules: string[];
 

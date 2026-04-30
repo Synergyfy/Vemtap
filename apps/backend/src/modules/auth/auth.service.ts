@@ -4,6 +4,8 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +16,7 @@ import { DevicesService } from '../devices/devices.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
+import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
@@ -37,8 +40,10 @@ export class AuthService {
 
   constructor(
     private usersService: UsersService,
+    @Inject(forwardRef(() => BusinessesService))
     private businessesService: BusinessesService,
     private devicesService: DevicesService,
+    @Inject(forwardRef(() => SubscriptionsService))
     private subscriptionsService: SubscriptionsService,
     private mailService: MailService,
     private jwtService: JwtService,
@@ -46,6 +51,7 @@ export class AuthService {
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
     private affiliatesService: AffiliatesService,
+    private externalAffiliateService: ExternalAffiliateService,
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get<string>('GOOGLE_CLIENT_ID'),
@@ -162,10 +168,12 @@ export class AuthService {
       );
       if (business) {
         businessId = business.id;
-        
+
         // If user doesn't have a branchId assigned yet, find the main branch for this business
         if (!branchId) {
-          const mainBranch = await this.businessesService.findMainBranch(business.id);
+          const mainBranch = await this.businessesService.findMainBranch(
+            business.id,
+          );
           if (mainBranch) {
             branchId = mainBranch.id;
           }
@@ -176,7 +184,9 @@ export class AuthService {
     let referralCode: string | undefined;
 
     if (user.role === UserRole.AGENT) {
-      const affiliate = await this.affiliatesService.getStats(user.id as string);
+      const affiliate = await this.affiliatesService.getStats(
+        user.id as string,
+      );
       referralCode = affiliate.referralCode;
     }
 
@@ -211,7 +221,10 @@ export class AuthService {
       throw new UnauthorizedException('Please log in using Google');
     }
 
-    if (!user.password || !(await bcrypt.compare(dto.password, user.password))) {
+    if (
+      !user.password ||
+      !(await bcrypt.compare(dto.password, user.password))
+    ) {
       throw new UnauthorizedException('Invalid email/phone or password');
     }
 
@@ -231,9 +244,18 @@ export class AuthService {
         throw new UnauthorizedException('Invalid Google token');
       }
 
-      const { email, sub: googleId, name, picture, given_name, family_name } = payload;
+      const {
+        email,
+        sub: googleId,
+        name,
+        picture,
+        given_name,
+        family_name,
+      } = payload;
       if (!email) {
-        throw new UnauthorizedException('Google account must have an associated email');
+        throw new UnauthorizedException(
+          'Google account must have an associated email',
+        );
       }
 
       // 1. Try finding by Google ID first (stable identifier)
@@ -260,9 +282,9 @@ export class AuthService {
         if (!user.avatar && picture) {
           user.avatar = picture;
         }
-        
+
         user = await this.usersService.create(user);
-        return this.generateAuthResponse(user as User, false);
+        return this.generateAuthResponse(user, false);
       } else {
         // 3. Create new user
         user = await this.usersService.create({
@@ -276,7 +298,7 @@ export class AuthService {
           status: UserStatus.ACTIVE,
           isPasswordChanged: true,
         });
-        return this.generateAuthResponse(user as User, true);
+        return this.generateAuthResponse(user, true);
       }
     } catch (error) {
       console.error('Google Auth Error:', error);
@@ -409,14 +431,28 @@ export class AuthService {
     }
 
     if (registrationData.referralCode) {
-      const affiliate = await this.affiliatesService.findByReferralCode(registrationData.referralCode);
+      const affiliate = await this.affiliatesService.findByReferralCode(
+        registrationData.referralCode,
+      );
+      const business = await this.businessesService.findByOwner(user.id);
+
       if (affiliate) {
-        const business = await this.businessesService.findByOwner(user.id);
         await this.affiliatesService.recordReferral(
           affiliate.id,
           business?.id,
           user.id,
         );
+      } else {
+        // Check external affiliate system
+        const externalAffiliate =
+          await this.externalAffiliateService.validateReferralCode(
+            registrationData.referralCode,
+          );
+        if (externalAffiliate.valid && business) {
+          await this.businessesService.update(business.id, {
+            referralCode: registrationData.referralCode,
+          } as any);
+        }
       }
     }
 
@@ -563,7 +599,6 @@ export class AuthService {
 
       // 4. User Status is finalized to ACTIVE inside businessesService.create
 
-
       // 5. Auto-Subscribe to Free Plan if available
       try {
         await this.subscriptionsService.subscribeToFreePlan(business.id);
@@ -592,14 +627,28 @@ export class AuthService {
 
     // --- Post-Registration Affiliate Logic (for Owners) ---
     if (dto.referralCode) {
-      const affiliate = await this.affiliatesService.findByReferralCode(dto.referralCode);
+      const affiliate = await this.affiliatesService.findByReferralCode(
+        dto.referralCode,
+      );
+      const business = await this.businessesService.findByOwner(updatedUser.id);
+
       if (affiliate) {
-        const business = await this.businessesService.findByOwner(updatedUser.id);
         await this.affiliatesService.recordReferral(
           affiliate.id,
           business?.id,
           updatedUser.id,
         );
+      } else {
+        // Check external affiliate system
+        const externalAffiliate =
+          await this.externalAffiliateService.validateReferralCode(
+            dto.referralCode,
+          );
+        if (externalAffiliate.valid && business) {
+          await this.businessesService.update(business.id, {
+            referralCode: dto.referralCode,
+          } as any);
+        }
       }
     }
 
@@ -759,12 +808,14 @@ export class AuthService {
 
   async checkUserStatus(dto: CheckStatusDto): Promise<CheckStatusResponseDto> {
     const user = await this.usersService.findByIdentifier(dto.identifier);
-    
+
     if (!user) {
       return { exists: false };
     }
 
-    const hasRealEmail = !!(user.email && !user.email.endsWith('@vemtap.dummy'));
+    const hasRealEmail = !!(
+      user.email && !user.email.endsWith('@vemtap.dummy')
+    );
 
     return {
       exists: true,
@@ -795,11 +846,13 @@ export class AuthService {
 
     // Send welcome email with default password
     const defaultPassword = '123456';
-    await this.mailService.sendWelcomeEmail(
-      user.email,
-      `${user.firstName} ${user.lastName}`,
-      defaultPassword
-    ).catch(err => console.error('Failed to send welcome email:', err));
+    await this.mailService
+      .sendWelcomeEmail(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        defaultPassword,
+      )
+      .catch((err) => console.error('Failed to send welcome email:', err));
 
     return { message: 'Setup completed and welcome email sent' };
   }
@@ -809,18 +862,22 @@ export class AuthService {
     if (!user) throw new NotFoundException('User not found');
 
     if (user.isPasswordChanged) {
-      throw new BadRequestException('Password has already been changed. Please use the reset password feature.');
+      throw new BadRequestException(
+        'Password has already been changed. Please use the reset password feature.',
+      );
     }
 
     if (!user.email || user.email.endsWith('@vemtap.dummy')) {
-      throw new BadRequestException('No real email associated with this account. Please complete setup first.');
+      throw new BadRequestException(
+        'No real email associated with this account. Please complete setup first.',
+      );
     }
 
     const defaultPassword = '123456';
     await this.mailService.sendWelcomeEmail(
       user.email,
       `${user.firstName} ${user.lastName}`,
-      defaultPassword
+      defaultPassword,
     );
 
     return { message: 'Default password resent successfully' };

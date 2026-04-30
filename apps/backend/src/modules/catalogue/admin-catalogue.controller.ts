@@ -41,7 +41,10 @@ export class AdminCatalogueController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @Permissions('catalogue')
   @ApiOperation({ summary: 'Create a new catalogue category' })
-  async createCategory(@Body() dto: CreateCatalogueCategoryDto, @Req() req: any) {
+  async createCategory(
+    @Body() dto: CreateCatalogueCategoryDto,
+    @Req() req: any,
+  ) {
     return this.catalogueService.createCategory(dto, req.user.businessId);
   }
 
@@ -69,7 +72,10 @@ export class AdminCatalogueController {
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @Permissions('catalogue')
   @ApiOperation({ summary: 'Delete a catalogue category' })
-  async deleteCategory(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+  async deleteCategory(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+  ) {
     return this.catalogueService.deleteCategory(id, req.user.businessId);
   }
 
@@ -87,7 +93,10 @@ export class AdminCatalogueController {
   @Permissions('catalogue')
   @ApiOperation({ summary: 'List all items in the business catalogue' })
   async listItems(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.catalogueService.findAllItemsAdmin(req.user.businessId, branchId);
+    return this.catalogueService.findAllItemsAdmin(
+      req.user.businessId,
+      branchId,
+    );
   }
 
   @Patch('items/:id')
@@ -112,7 +121,12 @@ export class AdminCatalogueController {
     @Query('applyGlobally') applyGlobally: boolean,
     @Req() req: any,
   ) {
-    return this.catalogueService.deleteItem(id, req.user.businessId, branchId, applyGlobally);
+    return this.catalogueService.deleteItem(
+      id,
+      req.user.businessId,
+      branchId,
+      applyGlobally,
+    );
   }
 
   @Post('items/:id/import')
@@ -124,13 +138,20 @@ export class AdminCatalogueController {
     @Body('targetBranchId') targetBranchId: string,
     @Req() req: any,
   ) {
-    return this.catalogueService.importItem(id, targetBranchId, req.user.businessId);
+    return this.catalogueService.importItem(
+      id,
+      targetBranchId,
+      req.user.businessId,
+    );
   }
 
   @Post('items/:id/suspend')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Suspend an item (System Admin only)' })
-  async suspendItem(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SuspendItemDto) {
+  async suspendItem(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SuspendItemDto,
+  ) {
     return this.catalogueService.suspendItem(id, dto.reason);
   }
 

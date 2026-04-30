@@ -49,8 +49,14 @@ export class DeviceTapController {
 
     const branchId = deviceWithRelations.branch.id;
     const [productCount, serviceCount, offerCount, forms] = await Promise.all([
-      this.catalogueService.countItemsByType(branchId, CatalogueItemType.PRODUCT),
-      this.catalogueService.countItemsByType(branchId, CatalogueItemType.SERVICE),
+      this.catalogueService.countItemsByType(
+        branchId,
+        CatalogueItemType.PRODUCT,
+      ),
+      this.catalogueService.countItemsByType(
+        branchId,
+        CatalogueItemType.SERVICE,
+      ),
       this.catalogueOfferService.countOffers(branchId),
       this.formsService.getFormsForVisitor(branchId),
     ]);

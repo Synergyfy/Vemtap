@@ -38,26 +38,31 @@ export class IntegrationUsersController {
   @ApiOperation({ summary: 'Provision a user from QR-Thrive' })
   @ApiResponse({ status: 201, description: 'User provisioned successfully' })
   async provision(
-    @Body() dto: {
+    @Body()
+    dto: {
       email: string;
       firstName: string;
       lastName: string;
       planId: string;
     },
   ) {
-    this.logger.log(`Provisioning user ${dto.email} from QR-Thrive with plan ${dto.planId}...`);
+    this.logger.log(
+      `Provisioning user ${dto.email} from QR-Thrive with plan ${dto.planId}...`,
+    );
 
     // 1. Check if user exists
     let user = await this.usersService.findByEmail(dto.email);
-    
+
     if (user) {
-      this.logger.warn(`User ${dto.email} already exists in Vemtap. Linking to new subscription.`);
+      this.logger.warn(
+        `User ${dto.email} already exists in Vemtap. Linking to new subscription.`,
+      );
     } else {
       // 2. Create User (Owner)
       // Default password for integrated users (they should change it or use SSO)
-      const defaultPassword = 'IntegratedUser123!'; 
+      const defaultPassword = 'IntegratedUser123!';
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-      
+
       user = await this.usersService.create({
         email: dto.email.toLowerCase(),
         firstName: dto.firstName,
@@ -89,10 +94,14 @@ export class IntegrationUsersController {
         billingPeriod: BillingPeriod.MONTHLY,
         isTrial: false,
       });
-      this.logger.log(`Successfully subscribed ${dto.email} to plan ${dto.planId}`);
+      this.logger.log(
+        `Successfully subscribed ${dto.email} to plan ${dto.planId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to assign plan ${dto.planId} to business ${business.id}: ${error.message}`);
-      // Don't fail the whole request if subscription fails, 
+      this.logger.error(
+        `Failed to assign plan ${dto.planId} to business ${business.id}: ${error.message}`,
+      );
+      // Don't fail the whole request if subscription fails,
       // the user still exists and can be manually upgraded.
     }
 
