@@ -163,6 +163,7 @@ interface CustomerFlowState {
         facebook?: string;
         linkedin?: string;
         postSubmitFormIds?: string[];
+        ublSequence?: string[];
         brandColor?: string;
     };
     surveyQuestions: Array<{
@@ -280,6 +281,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 facebook: '',
                 linkedin: '',
                 postSubmitFormIds: [],
+                ublSequence: [],
                 brandColor: '#2563eb',
             },
             surveyQuestions: [
@@ -398,6 +400,9 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                         postSubmitFormIds: Array.isArray(ownerEngagement.postSubmitFormIds)
                             ? ownerEngagement.postSubmitFormIds
                             : (Array.isArray(branch.engagement?.postSubmitFormIds) ? branch.engagement.postSubmitFormIds : []),
+                        ublSequence: Array.isArray(branch.engagement?.ublSequence)
+                            ? branch.engagement.ublSequence
+                            : (Array.isArray(ownerEngagement.ublSequence) ? ownerEngagement.ublSequence : []),
                     },
                     currentStep: finalSkipAnimation ? (['SELECT_TYPE', 'SCANNING', 'IDENTIFYING'].includes(state.currentStep) ? 'PORTAL_MENU' : state.currentStep) : 'SCANNING'
                 });

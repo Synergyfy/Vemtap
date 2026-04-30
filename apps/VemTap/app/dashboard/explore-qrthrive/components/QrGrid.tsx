@@ -32,7 +32,7 @@ interface QrGridProps {
   isLoading?: boolean;
 }
 
-export const QrGrid = ({ 
+export const QrGrid: React.FC<QrGridProps> = ({ 
   codes, 
   isLoading, 
   onEdit, 
@@ -41,8 +41,7 @@ export const QrGrid = ({
   onArchive, 
   onViewStats,
   onToggleUbl,
-  onDownload,
-  isLoading 
+  onDownload
 }) => {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);

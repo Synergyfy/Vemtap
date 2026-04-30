@@ -37,7 +37,8 @@ import {
     useDeleteQrThriveCode,
     useDuplicateQrThriveCode,
     useSetQrThriveCodeStatus,
-    useToggleUbl
+    useToggleUbl,
+    useResetQrThriveMapping
 } from '@/services/qr-thrive/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
@@ -100,6 +101,20 @@ export default function ExploreQRThrivePage() {
     const duplicateMutation = useDuplicateQrThriveCode();
     const statusMutation = useSetQrThriveCodeStatus();
     const toggleUblMutation = useToggleUbl();
+    const createMutation = useCreateQrThriveCode();
+    const resetMappingMutation = useResetQrThriveMapping();
+
+    const { 
+        data: codes, 
+        isLoading: isLoadingCodes, 
+        error: codesError,
+        refetch: refetchCodes 
+    } = useQrThriveCodes();
+    
+    const { 
+        data: stats, 
+        error: statsError 
+    } = useQrThriveStats();
 
     const handleCreateNew = () => {
         setView('create');
@@ -224,7 +239,7 @@ export default function ExploreQRThrivePage() {
 
                     <div className="space-y-4">
                         <button 
-                            onClick={isError404 ? handleResetMapping : handleProvision}
+                            onClick={isError404 ? () => resetMappingMutation.mutate() : handleProvision}
                             disabled={resetMappingMutation.isPending || provisionMutation.isPending}
                             className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:pointer-events-none"
                         >

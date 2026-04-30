@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -49,7 +50,11 @@ const PortalWelcome = ({
     isFirstTimeVisit,
     isReturningUser,
     engagement,
-    whatsappNumber
+    whatsappNumber,
+    qrThriveCodes,
+    availableForms,
+    availableRewards,
+    ublSequence
 }: {
     branchName: string,
     logoUrl?: string,
@@ -63,35 +68,85 @@ const PortalWelcome = ({
     isReturningUser?: boolean,
     engagement?: any,
     whatsappNumber?: string | null,
-    qrThriveCodes?: any[]
+    qrThriveCodes?: any[],
+    availableForms?: any[],
+    availableRewards?: any[],
+    ublSequence?: string[]
 }) => {
     const isServiceOnly = serviceCount && serviceCount > 0 && (!productCount || productCount === 0);
 
-    const actions = [
-        { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
-        { id: 'service', label: isServiceOnly ? 'Book Appointment' : 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: serviceCount },
-        { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
-        { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
-        { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
-        { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
-        ...(qrThriveCodes || []).map((code: any) => ({
-            id: `qr-${code.shortId}`,
-            label: code.name,
-            icon: code.type === 'pdf' ? FileText : 
-                  code.type === 'image' ? ImageIcon : 
-                  code.type === 'vcard' ? Contact : Link2,
-            color: 'text-blue-600',
-            bg: 'bg-blue-50',
-            desc: code.type.toUpperCase(),
-            count: 1,
-            isExternal: true,
-            url: `https://api.qrthrive.com/s/${code.shortId}`
-        }))
-    ].filter(action => action.count && action.count > 0);
+    const dynamicActions = useMemo(() => {
+        const sequenceToUse = ublSequence && ublSequence.length > 0 ? ublSequence : [];
+        if (sequenceToUse.length === 0) return null;
 
-    // If service only, sort to put it first
-    if (isServiceOnly) {
-        actions.sort((a, b) => a.id === 'service' ? -1 : (b.id === 'service' ? 1 : 0));
+        const formMap = new Map(availableForms?.map(f => [f.id, f]) || []);
+        const rewardMap = new Map(availableRewards?.map(r => [r.id, r]) || []);
+        const qrMap = new Map(qrThriveCodes?.map(q => [q.id, q]) || []);
+
+        return sequenceToUse.map(id => {
+            // System Actions
+            if (id === 'system:order') return { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount };
+            if (id === 'system:service') return { id: 'service', label: isServiceOnly ? 'Book Appointment' : 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: serviceCount };
+            if (id === 'system:offers') return { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount };
+            if (id === 'system:whatsapp') return { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 };
+            if (id === 'system:forms') return { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount };
+            if (id === 'system:engagement') return { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 };
+
+            // Custom Items
+            const form = formMap.get(id);
+            if (form) return { id: `form-${form.uniqueCode}`, label: form.title, icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Feedback Form', count: 1 };
+            
+            const reward = rewardMap.get(id);
+            if (reward) return { id: 'rewards', label: reward.name, icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Loyalty Reward', count: 1 };
+            
+            const qr = qrMap.get(id);
+            if (qr) return {
+                id: `qr-${qr.shortId}`,
+                label: qr.name,
+                icon: qr.type === 'pdf' ? FileText : 
+                      qr.type === 'image' ? ImageIcon : 
+                      qr.type === 'vcard' ? Contact : Link2,
+                color: 'text-blue-600',
+                bg: 'bg-blue-50',
+                desc: qr.type.toUpperCase(),
+                isExternal: true,
+                url: `https://api.qrthrive.com/s/${qr.shortId}`,
+                count: 1
+            };
+            return null;
+        }).filter(action => action && (action as any).count !== 0);
+    }, [ublSequence, availableForms, availableRewards, qrThriveCodes, productCount, serviceCount, isServiceOnly, offerCount, whatsappNumber, formCount, engagement]);
+
+    const actions = useMemo(() => {
+        if (dynamicActions) return dynamicActions;
+
+        // Fallback for legacy / no sequence defined
+        return [
+            { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
+            { id: 'service', label: isServiceOnly ? 'Book Appointment' : 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: serviceCount },
+            { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
+            { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
+            { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
+            ...(qrThriveCodes || []).map((code: any) => ({
+                id: `qr-${code.shortId}`,
+                label: code.name,
+                icon: code.type === 'pdf' ? FileText : 
+                      code.type === 'image' ? ImageIcon : 
+                      code.type === 'vcard' ? Contact : Link2,
+                color: 'text-blue-600',
+                bg: 'bg-blue-50',
+                desc: code.type.toUpperCase(),
+                count: 1,
+                isExternal: true,
+                url: `https://api.qrthrive.com/s/${code.shortId}`
+            })),
+            { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
+        ].filter(action => (action as any).count !== 0);
+    }, [dynamicActions, productCount, serviceCount, isServiceOnly, offerCount, whatsappNumber, formCount, qrThriveCodes, engagement]);
+
+    // If service only, and no custom sequence, sort to put it first
+    if (isServiceOnly && !ublSequence?.length) {
+        (actions as any[]).sort((a, b) => a.id === 'service' ? -1 : (b.id === 'service' ? 1 : 0));
     }
 
     const useGrid = actions.length >= 4;
@@ -198,8 +253,26 @@ const DynamicTapJourneyPage = () => {
         initializeFromBusiness, branchId, logoUrl, businessId,
         customWelcomeMessage, productCount, serviceCount, offerCount,
         formCount, engagementSettings, selectedFormCode, setSelectedFormCode,
-        sessionToken, setSessionToken, whatsappNumber
+        sessionToken, setSessionToken, whatsappNumber, qrThriveCodes
     } = useCustomerFlowStore();
+
+    const { data: availableForms } = useQuery<any[]>({
+        queryKey: ['visitor-forms', branchId],
+        queryFn: async () => {
+            const response = await api.get(`/visitor-forms/branch/${branchId}`);
+            return Array.isArray(response) ? response : (response as any)?.data || [];
+        },
+        enabled: !!branchId
+    });
+
+    const { data: availableRewards } = useQuery<any[]>({
+        queryKey: ['visitor-rewards', branchId],
+        queryFn: async () => {
+            const response = await api.get(`/loyalty/rewards/branch/${branchId}`);
+            return Array.isArray(response) ? response : (response as any)?.data || [];
+        },
+        enabled: !!branchId
+    });
 
     const { user, isAuthenticated, login, logout } = useAuthStore();
 
@@ -302,10 +375,14 @@ const DynamicTapJourneyPage = () => {
                 }
             }
             router.push(`/${slug}/${deviceCode}/services`);
-        } else if (id === 'offers') {
+        } else if (id === 'offers' || id === 'rewards') {
             router.push(`/${slug}/${deviceCode}/offers`);
         } else if (id === 'forms') {
             setStep('FORMS_LIST');
+        } else if (id.startsWith('form-')) {
+            const formCode = id.replace('form-', '');
+            setSelectedFormCode(formCode);
+            setStep('DYNAMIC_FORM');
         } else if (id === 'engagement') {
             setStep('SOCIAL_CONNECT');
         } else if (id === 'whatsapp') {
@@ -440,7 +517,10 @@ const DynamicTapJourneyPage = () => {
                             isReturningUser={!!deviceContext?.device?.isReturningUser}
                             engagement={engagementSettings}
                             whatsappNumber={whatsappNumber}
-                            qrThriveCodes={useCustomerFlowStore.getState().qrThriveCodes}
+                            qrThriveCodes={qrThriveCodes}
+                            availableForms={availableForms}
+                            availableRewards={availableRewards}
+                            ublSequence={engagementSettings?.ublSequence}
                         />
                     )}
 

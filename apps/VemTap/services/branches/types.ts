@@ -60,6 +60,7 @@ export interface Branch {
         };
         isFeaturedOnUbl: boolean;
     }>;
+    ublSequence?: string[];
 }
 
 export interface CreateBranchRequest {
@@ -111,6 +112,6 @@ export interface UpdateBranchRequest {
     showRewards?: boolean;
     identityNumber?: string;
     utilityBill?: string;
-    engagement?: Record<string, any>;
+    engagement?: Record<string, any> & { ublSequence?: string[] };
     isMainBranch?: boolean;
 }
