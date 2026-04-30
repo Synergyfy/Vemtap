@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { Info, Loader2, AlertTriangle, X } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import { cn } from '@/lib/utils';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
@@ -39,6 +40,17 @@ const SYSTEM_ACTIONS = [
 ];
 const DEFAULT_UBL_SEQUENCE = SYSTEM_ACTIONS.map(a => a.id);
 const SYSTEM_ACTION_MAP = new Map(SYSTEM_ACTIONS.map(a => [a.id, a]));
+
+const getQrIcon = (type: string) => {
+    switch (type) {
+        case 'url': return 'language';
+        case 'pdf': return 'description';
+        case 'menu': return 'restaurant_menu';
+        case 'image': return 'image';
+        case 'vcard': return 'contact_page';
+        default: return 'link';
+    }
+};
 
 export default function ActiveFormsPage() {
     const { data: branches = [] } = useBranches();
@@ -124,7 +136,7 @@ export default function ActiveFormsPage() {
             const reward = rewardMap.get(id);
             if (reward) return { id: reward.id, title: reward.name || 'Untitled Reward', subtitle: 'Reward Strategy', icon: 'redeem', type: 'reward' };
             const qr = qrMap.get(id);
-            if (qr) return { id: qr.id, title: qr.name || 'QR Code', subtitle: qr.type.toUpperCase(), icon: 'qr_code', type: 'qr' };
+            if (qr) return { id: qr.id, title: qr.name || 'QR Code', subtitle: qr.type.toUpperCase(), icon: getQrIcon(qr.type), type: 'qr' };
             return null;
         }).filter(Boolean);
     }, [effectiveSequence, availableForms, availableRewards, qrCodes]);
@@ -226,10 +238,10 @@ export default function ActiveFormsPage() {
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
                     { label: 'Default Form', href: '/dashboard/engagement/experience/default-form' },
                     { label: 'Default Success', href: '/dashboard/engagement/experience/default-success' },
-                    { label: additionalTabLabel, active: true },
+                    { label: 'Additional Items', active: true },
+                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
                 ]}
             />
 
@@ -357,7 +369,7 @@ export default function ActiveFormsPage() {
                                                 className="flex items-center gap-3 p-3 rounded-xl border border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition-all text-left shadow-sm group"
                                             >
                                                 <div className="flex-shrink-0 size-8 rounded-lg flex items-center justify-center bg-blue-100 text-blue-600">
-                                                    <span className="material-symbols-outlined text-sm">qr_code</span>
+                                                    <span className="material-symbols-outlined text-sm">{getQrIcon(qr.type)}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <span className="text-sm font-bold text-gray-900 truncate block group-hover:text-blue-700">{qr.name || 'QR Code'}</span>
@@ -413,10 +425,19 @@ export default function ActiveFormsPage() {
                                                                 className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm"
                                                             >
                                                                 <div className={cn("size-7 rounded-lg flex items-center justify-center shrink-0", sys?.bg || (item?.type === 'form' ? 'bg-purple-50' : item?.type === 'qr' ? 'bg-blue-50' : 'bg-gray-50'))}>
-                                                                    <span className={cn("material-symbols-outlined text-xs", sys?.color || (item?.type === 'form' ? 'text-purple-500' : item?.type === 'qr' ? 'text-blue-600' : 'text-gray-400'))}>{item?.icon}</span>
+                                                                    {item?.id === 'system:whatsapp' ? (
+                                                                        <FaWhatsapp className={cn("text-[14px]", sys?.color || "text-green-500")} />
+                                                                    ) : (
+                                                                        <span className={cn("material-symbols-outlined !text-[14px]", sys?.color || (item?.type === 'form' ? 'text-purple-500' : item?.type === 'qr' ? 'text-blue-600' : 'text-gray-400'))}>{item?.icon}</span>
+                                                                    )}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <span className="text-[9px] font-bold text-slate-900 truncate block leading-tight">{item?.title}</span>
+                                                                    <span 
+                                                                        className="text-[9px] font-bold truncate block leading-tight"
+                                                                        style={{ color: brandColor || '#0f172a' }}
+                                                                    >
+                                                                        {item?.title}
+                                                                    </span>
                                                                     <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400 block truncate">{item?.subtitle}</span>
                                                                 </div>
                                                             </div>

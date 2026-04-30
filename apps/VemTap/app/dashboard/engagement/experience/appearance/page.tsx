@@ -11,6 +11,16 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { toast } from 'react-hot-toast';
 import { Loader2, Save, Palette, Info, Star, MessageSquare, Heart } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
+import { cn } from '@/lib/utils';
+import { buildBrandCssVars } from '@/lib/brandColor';
+
+const SYSTEM_ACTIONS = [
+    { id: 'system:order', title: 'Place Order', subtitle: 'Default Action', icon: 'shopping_bag', color: 'text-orange-500', bg: 'bg-orange-50' },
+    { id: 'system:service', title: 'Book Service', subtitle: 'Default Action', icon: 'calendar_month', color: 'text-blue-500', bg: 'bg-blue-50' },
+    { id: 'system:offers', title: 'See Offers', subtitle: 'Default Action', icon: 'redeem', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { id: 'system:whatsapp', title: 'WhatsApp', subtitle: 'Default Action', icon: 'chat', color: 'text-green-500', bg: 'bg-green-50' },
+];
 
 export default function UserExperienceAppearancePage() {
     const { activeBranchId } = useActiveBranch();
@@ -24,6 +34,10 @@ export default function UserExperienceAppearancePage() {
 
     // Use store value primarily for UI responsiveness, fall back to branch/business settings
     const brandColor = engagementSettings?.brandColor || branch?.formAppearanceColor || business?.brandColor || '#2563eb';
+    const brandVars = React.useMemo(() => buildBrandCssVars(brandColor), [brandColor]);
+
+    const previewBusinessName = branch?.name || business?.name || 'Your Business';
+    const previewBusinessLogo = business?.logoUrl || null;
 
     // Sync brandColor to store when data is available
     React.useEffect(() => {
@@ -57,10 +71,10 @@ export default function UserExperienceAppearancePage() {
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Appearance', active: true },
                     { label: 'Default Form', href: '/dashboard/engagement/experience/default-form' },
                     { label: 'Default Success', href: '/dashboard/engagement/experience/default-success' },
-                    { label: 'Additional Forms', href: '/dashboard/engagement/experience/additional-forms' },
+                    { label: 'Additional Items', href: '/dashboard/engagement/experience/additional-forms' },
+                    { label: 'Appearance', active: true },
                 ]}
             />
 
@@ -147,91 +161,61 @@ export default function UserExperienceAppearancePage() {
 
                 {/* Preview Column */}
                 <div className="lg:col-span-5 flex flex-col items-center">
-                    <PhoneFrame title="Live Customer Preview">
-                        <div className="min-h-full bg-slate-50 py-6 px-3 space-y-3 flex flex-col items-stretch">
-                            {/* ─── Header Container — Matching Additional Forms style ─── */}
-                            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm flex flex-col">
-                                {/* Top brand accent bar */}
-                                <div 
-                                    className="h-1 flex-shrink-0" 
-                                    style={{ backgroundColor: brandColor }}
-                                />
-
-                                <div className="px-4 pt-3 pb-4 text-left">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                        <div className="size-8 rounded-lg bg-white border border-gray-100 overflow-hidden flex items-center justify-center p-0.5 shrink-0 shadow-sm relative">
-                                            <div className="absolute inset-0 bg-slate-50 flex items-center justify-center opacity-50" />
-                                            <Palette size={14} className="text-slate-300 relative z-10" />
+                    <div className="flex justify-center" style={brandVars}>
+                        <PhoneFrame title="UBL Preview">
+                            <div className="min-h-full bg-slate-50 py-4 px-3 space-y-2">
+                                <div className="flex items-center gap-2 mb-3 border-b border-slate-100/50 pb-3">
+                                    {previewBusinessLogo ? (
+                                        <div className="size-8 rounded-full border border-white shadow-sm overflow-hidden bg-white shrink-0">
+                                            <img src={previewBusinessLogo} alt={previewBusinessName} className="size-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/VEMTAP_PNG.png'; }} />
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <h2 className="text-[11px] font-black text-slate-400 tracking-tight leading-tight truncate uppercase">
-                                                Your Business
-                                            </h2>
+                                    ) : (
+                                        <div className="size-8 rounded-full bg-primary flex items-center justify-center text-white shadow-sm shrink-0">
+                                            <span className="text-[10px] font-black uppercase">{previewBusinessName.charAt(0)}</span>
                                         </div>
+                                    )}
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-slate-900 truncate leading-tight">Welcome to {previewBusinessName}</p>
+                                        <p className="text-[8px] text-slate-400 italic truncate">Select an option below</p>
                                     </div>
-
-                                    <h1 className="text-base font-display font-black text-slate-900 tracking-tight leading-tight">
-                                        Join Our Community
-                                    </h1>
-                                    <p className="mt-1 text-[11px] text-slate-500 font-medium leading-relaxed">
-                                        Sign up to receive rewards and exclusive updates.
-                                    </p>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    {SYSTEM_ACTIONS.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm"
+                                        >
+                                            <div className={cn("size-7 rounded-lg flex items-center justify-center shrink-0", item.bg)}>
+                                                {item.id === 'system:whatsapp' ? (
+                                                    <FaWhatsapp className={cn("text-[14px]", item.color)} />
+                                                ) : (
+                                                    <span className={cn("material-symbols-outlined !text-[14px]", item.color)}>{item.icon}</span>
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span 
+                                                    className="text-[9px] font-bold truncate block leading-tight"
+                                                    style={{ color: brandColor || '#0f172a' }}
+                                                >
+                                                    {item.title}
+                                                </span>
+                                                <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400 block truncate">{item.subtitle}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="flex justify-center gap-3 py-2 opacity-30">
+                                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Verified</span>
+                                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Instant Service</span>
+                                </div>
+                                <p className="text-center text-[7px] font-medium text-slate-400">
+                                    Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                                </p>
                             </div>
-
-                            {/* ─── Form Elements Container ─── */}
-                            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-left flex-1 space-y-4">
-                                <div className="space-y-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Full Name</label>
-                                        <div className="h-11 w-full bg-slate-50 border border-slate-100 rounded-xl px-4 flex items-center">
-                                            <div className="h-2 w-24 bg-slate-200 rounded animate-pulse" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Email Address</label>
-                                        <div className="h-11 w-full bg-slate-50 border border-slate-100 rounded-xl px-4 flex items-center">
-                                            <div className="h-2 w-32 bg-slate-200 rounded animate-pulse" />
-                                        </div>
-                                    </div>
-                                    
-                                    <button 
-                                        className="w-full h-12 rounded-2xl text-white font-bold text-xs shadow-lg transition-all mt-4 hover:brightness-110 active:scale-95"
-                                        style={{ 
-                                            backgroundColor: brandColor,
-                                            boxShadow: `0 10px 15px -3px ${brandColor}20` 
-                                        }}
-                                    >
-                                        Continue & Finish
-                                    </button>
-                                </div>
-
-                                {/* Sample Post-Submit Previews */}
-                                <div className="pt-4 border-t border-slate-50 space-y-3">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] text-center mb-1">Preview Accents</p>
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex-1 bg-slate-50 p-2 rounded-xl flex flex-col items-center gap-1 border border-slate-100">
-                                            <Heart size={12} style={{ color: brandColor }} />
-                                            <span className="text-[8px] font-bold text-slate-500 uppercase">Like</span>
-                                        </div>
-                                        <div className="flex-1 bg-slate-50 p-2 rounded-xl flex flex-col items-center gap-1 border border-slate-100">
-                                            <Star size={12} style={{ color: brandColor }} />
-                                            <span className="text-[8px] font-bold text-slate-500 uppercase">Review</span>
-                                        </div>
-                                        <div className="flex-1 bg-slate-50 p-2 rounded-xl flex flex-col items-center gap-1 border border-slate-100">
-                                            <MessageSquare size={12} style={{ color: brandColor }} />
-                                            <span className="text-[8px] font-bold text-slate-500 uppercase">Feedback</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Powered by tag */}
-                            <p className="text-center text-[8px] font-bold text-slate-300 uppercase tracking-widest pt-2">
-                                Powered by <span style={{ color: brandColor }}>VemTap</span>
-                            </p>
-                        </div>
-                    </PhoneFrame>
+                        </PhoneFrame>
+                    </div>
                     
                     <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 mt-8 max-w-[280px]">
                         <p className="text-[10px] text-blue-600 font-medium leading-relaxed italic text-center">

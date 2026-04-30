@@ -54,7 +54,8 @@ const PortalWelcome = ({
     qrThriveCodes,
     availableForms,
     availableRewards,
-    ublSequence
+    ublSequence,
+    brandColor
 }: {
     branchName: string,
     logoUrl?: string,
@@ -71,7 +72,8 @@ const PortalWelcome = ({
     qrThriveCodes?: any[],
     availableForms?: any[],
     availableRewards?: any[],
-    ublSequence?: string[]
+    ublSequence?: string[],
+    brandColor?: string
 }) => {
     const isServiceOnly = serviceCount && serviceCount > 0 && (!productCount || productCount === 0);
 
@@ -171,10 +173,10 @@ const PortalWelcome = ({
                     </div>
                 )}
                 <div className="space-y-0.5 flex-grow">
-                    <h1 className="text-lg md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight">
+                    <h1 className="text-sm md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight">
                         Welcome to {branchName}
                     </h1>
-                    <p className="text-on-surface-variant text-[9px] md:text-[10px] max-w-xs font-medium opacity-70 italic line-clamp-1">
+                    <p className="text-on-surface-variant text-[7px] md:text-[10px] max-w-xs font-medium opacity-70 italic">
                         {welcomeMessage || "Select an option below to get started"}
                     </p>
                 </div>
@@ -184,13 +186,13 @@ const PortalWelcome = ({
                 "gap-3 md:gap-4",
                 useGrid ? "grid grid-cols-2" : "flex flex-col"
             )}>
-                {actions.map((item, idx) => (
+                {actions.filter(item => item !== null).map((item, idx) => (
                     <motion.button
-                        key={item.id}
+                        key={item!.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + (idx * 0.1) }}
-                        onClick={() => (item as any).isExternal ? window.open((item as any).url, '_blank') : onAction(item.id)}
+                        onClick={() => (item as any).isExternal ? window.open((item as any).url, '_blank') : onAction(item!.id)}
                         className={cn(
                             "group relative flex border border-slate-50 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all text-left overflow-hidden bg-white asymmetric-leaf",
                             useGrid
@@ -200,21 +202,28 @@ const PortalWelcome = ({
                     >
                         <div className={cn(
                             "rounded-lg md:rounded-xl flex items-center justify-center shadow-inner shrink-0 transition-transform group-hover:scale-105",
-                            item.bg,
-                            item.color,
+                            item!.bg,
+                            item!.color,
                             useGrid ? "size-12 md:size-16" : "size-11 md:size-13"
                         )}>
-                            <item.icon size={useGrid ? 24 : 20} className={useGrid ? "md:size-8" : "md:size-6"} strokeWidth={2.5} />
+                            {React.createElement(item!.icon, { 
+                                size: useGrid ? 24 : 20, 
+                                className: useGrid ? "md:size-8" : "md:size-6", 
+                                strokeWidth: 2.5 
+                            })}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h3 className={cn(
-                                "font-headline font-bold text-slate-900 tracking-tight leading-tight truncate",
-                                useGrid ? "text-lg md:text-xl" : "text-sm md:text-base"
-                            )}>{item.label}</h3>
+                            <h3 
+                                className={cn(
+                                    "font-headline font-bold tracking-tight leading-snug",
+                                    useGrid ? "text-sm md:text-xl" : "text-xs md:text-base"
+                                )}
+                                style={{ color: brandColor || '#0f172a' }}
+                            >{item!.label}</h3>
                             <p className={cn(
                                 "text-slate-400 font-bold uppercase tracking-widest mt-0.5",
-                                useGrid ? "text-[10px]" : "text-[9px] md:text-[10px]"
-                            )}>{item.desc}</p>
+                                useGrid ? "text-[8px] md:text-[10px]" : "text-[7px] md:text-[10px]"
+                            )}>{item!.desc}</p>
                         </div>
                         <div className={cn(
                             "p-1 opacity-10 group-hover:opacity-100 transition-opacity",
@@ -468,7 +477,7 @@ const DynamicTapJourneyPage = () => {
     return (
         <VisitorLayout
             onReset={resetFlow}
-            brandColor={useCustomerFlowStore.getState().engagementSettings?.brandColor}
+            brandColor={engagementSettings?.brandColor}
         >
             {isAuthenticated && user && (
                 <div className="w-full flex justify-end mb-4 relative z-[210]">
@@ -521,6 +530,7 @@ const DynamicTapJourneyPage = () => {
                             availableForms={availableForms}
                             availableRewards={availableRewards}
                             ublSequence={engagementSettings?.ublSequence}
+                            brandColor={engagementSettings?.brandColor}
                         />
                     )}
 

@@ -29,7 +29,6 @@ interface QrGridProps {
   onViewStats: (code: QrThriveQRCode) => void;
   onToggleUbl?: (id: string, isFeatured: boolean) => void;
   onDownload?: (code: QrThriveQRCode, format: 'png' | 'svg' | 'jpeg') => void;
-  isLoading?: boolean;
 }
 
 export const QrGrid: React.FC<QrGridProps> = ({ 
