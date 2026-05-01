@@ -13,6 +13,7 @@ import {
   SubscriptionStatus,
   BillingPeriod,
 } from './entities/subscription.entity';
+import { Plan } from './entities/plan.entity';
 import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { PlansService } from './plans.service';
 import { SubscribeDto } from './dto/subscribe.dto';
@@ -32,6 +33,7 @@ import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 import { AffiliatesService } from '../affiliates/affiliates.service';
+import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 @Injectable()
@@ -61,6 +63,7 @@ export class SubscriptionsService {
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
     private readonly affiliatesService: AffiliatesService,
+    private readonly externalAffiliateService: ExternalAffiliateService,
     @Inject(forwardRef(() => QrThriveService))
     private readonly qrThriveService: QrThriveService,
   ) {}
@@ -183,11 +186,7 @@ export class SubscriptionsService {
           });
 
           // Trigger affiliate commission
-          await this.affiliatesService.processSubscriptionCommission(
-            businessId as string,
-            plan.monthlyPrice,
-            paymentReference,
-          );
+          await this.reportCommission(business, plan, paymentReference);
         }
 
         if (billingPeriod === BillingPeriod.MONTHLY)
@@ -308,9 +307,12 @@ export class SubscriptionsService {
         continue;
       }
 
-      const ownerEmail = sub.business?.officialEmail || sub.business?.owner?.email || 'billing@latap.com';
+      const ownerEmail =
+        sub.business?.officialEmail ||
+        sub.business?.owner?.email ||
+        'billing@latap.com';
 
-      const charge = await this.paymentsService.chargeAuthorization(
+      const charge: any = await this.paymentsService.chargeAuthorization(
         amount,
         ownerEmail,
         sub.paystackAuthorizationCode,
@@ -335,12 +337,8 @@ export class SubscriptionsService {
         await this.subscriptionRepository.save(sub);
 
         // Trigger affiliate commission
-        if (sub.businessId) {
-          await this.affiliatesService.processSubscriptionCommission(
-            sub.businessId,
-            amount,
-            charge.reference,
-          );
+        if (sub.business) {
+          await this.reportCommission(sub.business, sub.plan, charge.reference);
         }
 
         if (sub.businessId) {
@@ -359,7 +357,7 @@ export class SubscriptionsService {
         this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
-        
+
         // Sync with QR-Thrive (will fallback to free plan)
         if (sub.businessId) {
           await this.syncUserSubscriptionToQrThrive(sub.businessId);
@@ -404,9 +402,12 @@ export class SubscriptionsService {
         continue;
       }
 
-      const ownerEmail = sub.business?.officialEmail || sub.business?.owner?.email || 'billing@latap.com';
+      const ownerEmail =
+        sub.business?.officialEmail ||
+        sub.business?.owner?.email ||
+        'billing@latap.com';
 
-      const charge = await this.paymentsService.chargeAuthorization(
+      const charge: any = await this.paymentsService.chargeAuthorization(
         amount,
         ownerEmail,
         sub.paystackAuthorizationCode,
@@ -422,18 +423,18 @@ export class SubscriptionsService {
           amount: amount,
           purpose: PaymentPurpose.SUBSCRIPTION,
           status: PaymentStatus.SUCCESS,
-          metadata: { subscriptionId: sub.id, planId: sub.planId, renewal: true },
+          metadata: {
+            subscriptionId: sub.id,
+            planId: sub.planId,
+            renewal: true,
+          },
           businessId: sub.businessId,
           userId: sub.business?.ownerId,
         });
 
         // Trigger affiliate commission
-        if (sub.businessId) {
-          await this.affiliatesService.processSubscriptionCommission(
-            sub.businessId,
-            amount,
-            charge.reference,
-          );
+        if (sub.business) {
+          await this.reportCommission(sub.business, sub.plan, charge.reference);
         }
 
         await this.activateSubscription(sub);
@@ -502,7 +503,7 @@ export class SubscriptionsService {
           qrThrivePlanId,
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         `Failed to sync subscription to QR-Thrive for business ${businessId}: ${error.message}`,
       );
@@ -543,9 +544,10 @@ export class SubscriptionsService {
     const usedCatalogueItems = await this.catalogueItemRepository.count({
       where: { businessId },
     });
-    const usedCatalogueCategories = await this.catalogueCategoryRepository.count({
-      where: { businessId },
-    });
+    const usedCatalogueCategories =
+      await this.catalogueCategoryRepository.count({
+        where: { businessId },
+      });
     const usedCatalogueOffers = await this.catalogueOfferRepository.count({
       where: { businessId },
     });
@@ -737,5 +739,47 @@ export class SubscriptionsService {
       expiringSoon,
       pastDue,
     };
+  }
+
+  private async reportCommission(
+    business: Business,
+    plan: Plan,
+    paymentReference: string,
+  ) {
+    // 1. Internal System
+    await this.affiliatesService.processSubscriptionCommission(
+      business.id,
+      plan.monthlyPrice,
+      paymentReference,
+    );
+
+    // 2. External Affiliate System
+    if (business.referralCode) {
+      await this.externalAffiliateService.recordReferral({
+        referralCode: business.referralCode,
+        businessName: business.name,
+        ownerName: business.owner
+          ? `${business.owner.firstName} ${business.owner.lastName}`
+          : 'Business Owner',
+        email:
+          business.officialEmail ||
+          business.owner?.email ||
+          'billing@vemtap.com',
+        phone: business.phone || business.owner?.phone || '',
+        planType: this.mapPlanToExternal(plan.name),
+        address: business.address || '',
+      });
+    }
+  }
+
+  private mapPlanToExternal(planName: string): string {
+    const name = planName.toUpperCase();
+    if (name.includes('BASIC')) return 'BASIC';
+    if (name.includes('STARTER') || name.includes('STANDARD')) return 'STARTER';
+    if (name.includes('PRO') || name.includes('PROFESSIONAL'))
+      return 'PROFESSIONAL';
+    if (name.includes('ENTERPRISE') || name.includes('PREMIUM'))
+      return 'ENTERPRISE';
+    return 'BASIC'; // Fallback
   }
 }

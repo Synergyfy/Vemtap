@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { SupportKnowledge, BotInteraction, ChatButton } from './entities/support-bot.entity';
+import {
+  SupportKnowledge,
+  BotInteraction,
+  ChatButton,
+} from './entities/support-bot.entity';
 import { BotQueryDto, BotResponseDto } from './dto/support-bot.dto';
 import { BotContextService } from './bot-context.service';
 import { ConversationContextService } from './conversation-context.service';
@@ -40,38 +44,83 @@ export class SupportBotService {
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.logger.log('Gemini AI initialized successfully');
     } else {
-      this.logger.warn('GEMINI_API_KEY not found - AI responses will use fallback');
+      this.logger.warn(
+        'GEMINI_API_KEY not found - AI responses will use fallback',
+      );
     }
   }
 
-  async handleQuery(userId: string | null, dto: BotQueryDto): Promise<BotResponseDto> {
+  async handleQuery(
+    userId: string | null,
+    dto: BotQueryDto,
+  ): Promise<BotResponseDto> {
     const { query, context, sessionId, guestName, guestEmail } = dto;
-    this.logger.log(`🔍 [BOT] Handling query for ${userId ? `user ${userId}` : 'anonymous visitor'}: "${query}" (sessionId: ${sessionId || 'new'})`);
+    this.logger.log(
+      `🔍 [BOT] Handling query for ${userId ? `user ${userId}` : 'anonymous visitor'}: "${query}" (sessionId: ${sessionId || 'new'})`,
+    );
     const normalizedQuery = query.toLowerCase().trim();
 
-    const userContext = userId ? await this.contextService.getUserContext(userId) : null;
-    const convContext = await this.conversationContext.getOrCreateContext(userId, sessionId);
-    const recentMessages = await this.conversationContext.getRecentMessages(userId, sessionId || '', 10);
+    const userContext = userId
+      ? await this.contextService.getUserContext(userId)
+      : null;
+    const convContext = await this.conversationContext.getOrCreateContext(
+      userId,
+      sessionId,
+    );
+    const recentMessages = await this.conversationContext.getRecentMessages(
+      userId,
+      sessionId || '',
+      10,
+    );
 
-    this.logger.log(`📂 [CONTEXT] Current Path: ${convContext.currentPath || 'none'}, User Model: ${userContext?.businessName || 'Guest'}`);
+    this.logger.log(
+      `📂 [CONTEXT] Current Path: ${convContext.currentPath || 'none'}, User Model: ${userContext?.businessName || 'Guest'}`,
+    );
 
-    await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'user', query);
+    await this.conversationContext.addMessage(
+      userId,
+      sessionId || convContext.sessionId,
+      'user',
+      query,
+    );
 
     // 1. Handle specialized conversation paths (forms, multi-step queries)
-    const pathResponse = await this.handleConversationPath(normalizedQuery, query, convContext, userId, sessionId || convContext.sessionId);
+    const pathResponse = await this.handleConversationPath(
+      normalizedQuery,
+      query,
+      convContext,
+      userId,
+      sessionId || convContext.sessionId,
+    );
     if (pathResponse) {
-      this.logger.log(`🛣️ [PATH] Handled via conversation path: ${convContext.currentPath}`);
+      this.logger.log(
+        `🛣️ [PATH] Handled via conversation path: ${convContext.currentPath}`,
+      );
       return pathResponse;
     }
 
     // 2. Try Rule-based keyword matching (Fastest/Most Reliable)
     this.logger.log('🕵️ [MATCH] Searching for rule-based matches...');
-    
+
     // Handle casual acknowledgments (hmm, okay, yes, no)
     const casualResponse = this.handleCasualMessage(normalizedQuery);
     if (casualResponse) {
-      const interaction = await this.logInteraction(userId, query, casualResponse.content, 'knowledge_base', 100, casualResponse.buttons, convContext.currentPath || undefined);
-      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', casualResponse.content, interaction.id);
+      const interaction = await this.logInteraction(
+        userId,
+        query,
+        casualResponse.content,
+        'knowledge_base',
+        100,
+        casualResponse.buttons,
+        convContext.currentPath || undefined,
+      );
+      await this.conversationContext.addMessage(
+        userId,
+        sessionId || convContext.sessionId,
+        'bot',
+        casualResponse.content,
+        interaction.id,
+      );
       return {
         id: interaction.id,
         content: casualResponse.content,
@@ -85,8 +134,22 @@ export class SupportBotService {
     // Handle identity/meta questions (who are you, are you human)
     const identityResponse = this.handleIdentityQuestion(normalizedQuery);
     if (identityResponse) {
-      const interaction = await this.logInteraction(userId, query, identityResponse.content, 'knowledge_base', 100, identityResponse.buttons, convContext.currentPath || undefined);
-      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', identityResponse.content, interaction.id);
+      const interaction = await this.logInteraction(
+        userId,
+        query,
+        identityResponse.content,
+        'knowledge_base',
+        100,
+        identityResponse.buttons,
+        convContext.currentPath || undefined,
+      );
+      await this.conversationContext.addMessage(
+        userId,
+        sessionId || convContext.sessionId,
+        'bot',
+        identityResponse.content,
+        interaction.id,
+      );
       return {
         id: interaction.id,
         content: identityResponse.content,
@@ -98,12 +161,29 @@ export class SupportBotService {
     }
 
     if (this.isGreeting(normalizedQuery)) {
-      const greeting = this.generateGreetingResponse(userContext, convContext.currentPath || undefined);
+      const greeting = this.generateGreetingResponse(
+        userContext,
+        convContext.currentPath || undefined,
+      );
       const buttons = this.getGreetingButtons();
-      const interaction = await this.logInteraction(userId, query, greeting, 'knowledge_base', 100, buttons, convContext.currentPath || undefined);
-      
-      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', greeting, interaction.id);
-      
+      const interaction = await this.logInteraction(
+        userId,
+        query,
+        greeting,
+        'knowledge_base',
+        100,
+        buttons,
+        convContext.currentPath || undefined,
+      );
+
+      await this.conversationContext.addMessage(
+        userId,
+        sessionId || convContext.sessionId,
+        'bot',
+        greeting,
+        interaction.id,
+      );
+
       return {
         id: interaction.id,
         content: greeting,
@@ -115,17 +195,46 @@ export class SupportBotService {
     }
 
     const matchResult = await this.findBestMatch(normalizedQuery);
-    
+
     if (matchResult && matchResult.confidence >= this.CONFIDENCE_THRESHOLD) {
-      this.logger.log(`✅ [MATCH] Found rule-based match with confidence ${matchResult.confidence}`);
-      const parsedAnswer = this.parseTemplate(matchResult.knowledge.answer, userContext);
-      const buttons = matchResult.knowledge.buttons || this.getDefaultButtons(matchResult.knowledge.category || undefined);
-      const interaction = await this.logInteraction(userId, query, parsedAnswer, 'knowledge_base', matchResult.confidence, buttons, convContext.currentPath || undefined);
-      
-      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', parsedAnswer, interaction.id);
-      await this.knowledgeRepo.increment({ id: matchResult.knowledge.id }, 'useCount', 1);
-      await this.knowledgeRepo.increment({ id: matchResult.knowledge.id }, 'matchCount', 1);
-      
+      this.logger.log(
+        `✅ [MATCH] Found rule-based match with confidence ${matchResult.confidence}`,
+      );
+      const parsedAnswer = this.parseTemplate(
+        matchResult.knowledge.answer,
+        userContext,
+      );
+      const buttons =
+        matchResult.knowledge.buttons ||
+        this.getDefaultButtons(matchResult.knowledge.category || undefined);
+      const interaction = await this.logInteraction(
+        userId,
+        query,
+        parsedAnswer,
+        'knowledge_base',
+        matchResult.confidence,
+        buttons,
+        convContext.currentPath || undefined,
+      );
+
+      await this.conversationContext.addMessage(
+        userId,
+        sessionId || convContext.sessionId,
+        'bot',
+        parsedAnswer,
+        interaction.id,
+      );
+      await this.knowledgeRepo.increment(
+        { id: matchResult.knowledge.id },
+        'useCount',
+        1,
+      );
+      await this.knowledgeRepo.increment(
+        { id: matchResult.knowledge.id },
+        'matchCount',
+        1,
+      );
+
       return {
         id: interaction.id,
         content: parsedAnswer,
@@ -139,9 +248,25 @@ export class SupportBotService {
     // Guard: Block sensitive topics before sending to Gemini
     const sensitiveBlock = this.checkSensitiveTopic(normalizedQuery);
     if (sensitiveBlock) {
-      this.logger.log(`🚫 [GUARD] Blocked sensitive topic: "${query}" → ${sensitiveBlock.reason}`);
-      const interaction = await this.logInteraction(userId, query, sensitiveBlock.content, 'knowledge_base', 100, sensitiveBlock.buttons, convContext.currentPath || undefined);
-      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', sensitiveBlock.content, interaction.id);
+      this.logger.log(
+        `🚫 [GUARD] Blocked sensitive topic: "${query}" → ${sensitiveBlock.reason}`,
+      );
+      const interaction = await this.logInteraction(
+        userId,
+        query,
+        sensitiveBlock.content,
+        'knowledge_base',
+        100,
+        sensitiveBlock.buttons,
+        convContext.currentPath || undefined,
+      );
+      await this.conversationContext.addMessage(
+        userId,
+        sessionId || convContext.sessionId,
+        'bot',
+        sensitiveBlock.content,
+        interaction.id,
+      );
       return {
         id: interaction.id,
         content: sensitiveBlock.content,
@@ -155,10 +280,25 @@ export class SupportBotService {
     // Guard: Block prompt injection attempts
     if (this.isPromptInjection(normalizedQuery)) {
       this.logger.warn(`🛡️ [GUARD] Prompt injection blocked: "${query}"`);
-      const content = "I'm here to help with VemTap! 😊 What would you like to know about our platform?";
+      const content =
+        "I'm here to help with VemTap! 😊 What would you like to know about our platform?";
       const buttons = this.getGreetingButtons();
-      const interaction = await this.logInteraction(userId, query, content, 'knowledge_base', 100, buttons, convContext.currentPath || undefined);
-      await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', content, interaction.id);
+      const interaction = await this.logInteraction(
+        userId,
+        query,
+        content,
+        'knowledge_base',
+        100,
+        buttons,
+        convContext.currentPath || undefined,
+      );
+      await this.conversationContext.addMessage(
+        userId,
+        sessionId || convContext.sessionId,
+        'bot',
+        content,
+        interaction.id,
+      );
       return {
         id: interaction.id,
         content,
@@ -172,13 +312,36 @@ export class SupportBotService {
     // 3. Try AI Generation (Gemini)
     if (this.genAI) {
       try {
-        this.logger.log(`🤖 [GEMINI] Attempting AI generation for: "${query}"...`);
-        const aiResponse = await this.getGeminiResponse(query, context, recentMessages, userContext, convContext, guestName);
-        
+        this.logger.log(
+          `🤖 [GEMINI] Attempting AI generation for: "${query}"...`,
+        );
+        const aiResponse = await this.getGeminiResponse(
+          query,
+          context,
+          recentMessages,
+          userContext,
+          convContext,
+          guestName,
+        );
+
         if (aiResponse.answer) {
           this.logger.log(`✅ [GEMINI] AI response generated`);
-          const interaction = await this.logInteraction(userId, query, aiResponse.answer, 'ai', 50, aiResponse.buttons, convContext.currentPath || undefined);
-          await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', aiResponse.answer, interaction.id);
+          const interaction = await this.logInteraction(
+            userId,
+            query,
+            aiResponse.answer,
+            'ai',
+            50,
+            aiResponse.buttons,
+            convContext.currentPath || undefined,
+          );
+          await this.conversationContext.addMessage(
+            userId,
+            sessionId || convContext.sessionId,
+            'bot',
+            aiResponse.answer,
+            interaction.id,
+          );
 
           return {
             id: interaction.id,
@@ -191,19 +354,38 @@ export class SupportBotService {
           };
         }
       } catch (error) {
-        this.logger.error(`❌ [GEMINI] Error for query "${query}":`, error.stack || error);
+        this.logger.error(
+          `❌ [GEMINI] Error for query "${query}":`,
+          error.stack || error,
+        );
       }
     } else {
       this.logger.warn('⚠️ [BOT] Gemini AI is not initialized (no API key)');
     }
 
     // 4. Final Fallback (If all above fail)
-    this.logger.log('🔙 [FALLBACK] No specific match found, using generic fallback');
+    this.logger.log(
+      '🔙 [FALLBACK] No specific match found, using generic fallback',
+    );
     const fallbackMessage = this.getFallbackMessage(query);
     const buttons = this.getFallbackButtons();
-    const interaction = await this.logInteraction(userId, query, fallbackMessage, 'fallback', 0, buttons, convContext.currentPath || undefined);
-    await this.conversationContext.addMessage(userId, sessionId || convContext.sessionId, 'bot', fallbackMessage, interaction.id);
-    
+    const interaction = await this.logInteraction(
+      userId,
+      query,
+      fallbackMessage,
+      'fallback',
+      0,
+      buttons,
+      convContext.currentPath || undefined,
+    );
+    await this.conversationContext.addMessage(
+      userId,
+      sessionId || convContext.sessionId,
+      'bot',
+      fallbackMessage,
+      interaction.id,
+    );
+
     return {
       id: interaction.id,
       content: fallbackMessage,
@@ -228,7 +410,17 @@ export class SupportBotService {
       if (pathTrigger) {
         await this.conversationContext.setPath(userId, sessionId, pathTrigger);
         convContext.currentPath = pathTrigger;
-        return this.logPathResponse(await this.getPathResponse(pathTrigger, originalQuery, userId, sessionId), userId, originalQuery, sessionId);
+        return this.logPathResponse(
+          await this.getPathResponse(
+            pathTrigger,
+            originalQuery,
+            userId,
+            sessionId,
+          ),
+          userId,
+          originalQuery,
+          sessionId,
+        );
       }
       return null;
     }
@@ -236,13 +428,31 @@ export class SupportBotService {
     let result: BotResponseDto | null = null;
     switch (path) {
       case 'grow_business':
-        result = this.handleGrowBusinessPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        result = this.handleGrowBusinessPath(
+          normalizedQuery,
+          originalQuery,
+          convContext,
+          userId,
+          sessionId,
+        );
         break;
       case 'exploring':
-        result = this.handleExploringPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        result = this.handleExploringPath(
+          normalizedQuery,
+          originalQuery,
+          convContext,
+          userId,
+          sessionId,
+        );
         break;
       case 'need_help':
-        result = this.handleNeedHelpPath(normalizedQuery, originalQuery, convContext, userId, sessionId);
+        result = this.handleNeedHelpPath(
+          normalizedQuery,
+          originalQuery,
+          convContext,
+          userId,
+          sessionId,
+        );
         break;
     }
 
@@ -252,9 +462,28 @@ export class SupportBotService {
     return null;
   }
 
-  private async logPathResponse(response: BotResponseDto, userId: string | null, query: string, sessionId: string | null): Promise<BotResponseDto> {
-    const interaction = await this.logInteraction(userId, query, response.content, 'knowledge_base', response.confidence, response.buttons, response.conversationPath);
-    await this.conversationContext.addMessage(userId, sessionId, 'bot', response.content, interaction.id);
+  private async logPathResponse(
+    response: BotResponseDto,
+    userId: string | null,
+    query: string,
+    sessionId: string | null,
+  ): Promise<BotResponseDto> {
+    const interaction = await this.logInteraction(
+      userId,
+      query,
+      response.content,
+      'knowledge_base',
+      response.confidence,
+      response.buttons,
+      response.conversationPath,
+    );
+    await this.conversationContext.addMessage(
+      userId,
+      sessionId,
+      'bot',
+      response.content,
+      interaction.id,
+    );
     return {
       ...response,
       id: interaction.id,
@@ -262,9 +491,31 @@ export class SupportBotService {
   }
 
   private detectPathTrigger(query: string): string | null {
-    const growTriggers = ['grow', 'grow my business', 'start', 'get started', 'increase sales', 'more customers', 'business growth'];
-    const exploreTriggers = ['exploring', 'learn', 'features', 'pricing', 'how it works', 'information'];
-    const helpTriggers = ['help', 'support', 'issue', 'problem', 'not working', 'error'];
+    const growTriggers = [
+      'grow',
+      'grow my business',
+      'start',
+      'get started',
+      'increase sales',
+      'more customers',
+      'business growth',
+    ];
+    const exploreTriggers = [
+      'exploring',
+      'learn',
+      'features',
+      'pricing',
+      'how it works',
+      'information',
+    ];
+    const helpTriggers = [
+      'help',
+      'support',
+      'issue',
+      'problem',
+      'not working',
+      'error',
+    ];
 
     for (const trigger of growTriggers) {
       if (query.includes(trigger)) return 'grow_business';
@@ -278,14 +529,19 @@ export class SupportBotService {
     return null;
   }
 
-  private getPathResponse(path: string, query: string, userId: string | null, sessionId: string | null): BotResponseDto {
+  private getPathResponse(
+    path: string,
+    query: string,
+    userId: string | null,
+    sessionId: string | null,
+  ): BotResponseDto {
     const buttons: ChatButton[] = [];
 
     switch (path) {
       case 'grow_business':
         return {
           id: '',
-          content: "Great! What type of business do you run?",
+          content: 'Great! What type of business do you run?',
           source: 'knowledge_base',
           confidence: 100,
           buttons: [
@@ -300,7 +556,7 @@ export class SupportBotService {
       case 'exploring':
         return {
           id: '',
-          content: "No problem! What would you like to learn about?",
+          content: 'No problem! What would you like to learn about?',
           source: 'knowledge_base',
           confidence: 100,
           buttons: [
@@ -318,7 +574,11 @@ export class SupportBotService {
           source: 'knowledge_base',
           confidence: 100,
           buttons: [
-            { label: 'Account Issue', action: 'action', value: 'account_issue' },
+            {
+              label: 'Account Issue',
+              action: 'action',
+              value: 'account_issue',
+            },
             { label: 'Setup Help', action: 'action', value: 'setup_help' },
             { label: 'Talk to Human', action: 'action', value: 'human_agent' },
           ],
@@ -328,7 +588,7 @@ export class SupportBotService {
       default:
         return {
           id: '',
-          content: "How can I help you?",
+          content: 'How can I help you?',
           source: 'knowledge_base',
           confidence: 100,
           buttons: this.getDefaultButtons('general'),
@@ -348,10 +608,15 @@ export class SupportBotService {
 
     if (!responses.businessType) {
       const businessTypes = ['fashion', 'restaurant', 'service', 'other'];
-      const selectedType = businessTypes.find(type => query.includes(type));
-      
+      const selectedType = businessTypes.find((type) => query.includes(type));
+
       if (selectedType) {
-        this.conversationContext.addUserResponse(userId, sessionId, 'businessType', selectedType);
+        this.conversationContext.addUserResponse(
+          userId,
+          sessionId,
+          'businessType',
+          selectedType,
+        );
         return {
           id: '',
           content: `Great! ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} businesses use VemTap to capture customers and grow sales. How many customers do you get daily?`,
@@ -371,18 +636,31 @@ export class SupportBotService {
 
     if (!responses.customerVolume) {
       const volumes = ['1-10', '10-50', '50+'];
-      const selectedVolume = volumes.find(v => query.includes(v));
-      
+      const selectedVolume = volumes.find((v) => query.includes(v));
+
       if (selectedVolume) {
-        this.conversationContext.addUserResponse(userId, sessionId, 'customerVolume', selectedVolume);
+        this.conversationContext.addUserResponse(
+          userId,
+          sessionId,
+          'customerVolume',
+          selectedVolume,
+        );
         return {
           id: '',
-          content: "What is your biggest challenge right now?",
+          content: 'What is your biggest challenge right now?',
           source: 'knowledge_base',
           confidence: 100,
           buttons: [
-            { label: 'Getting customers', action: 'action', value: 'getting_customers' },
-            { label: 'Tracking customers', action: 'action', value: 'tracking' },
+            {
+              label: 'Getting customers',
+              action: 'action',
+              value: 'getting_customers',
+            },
+            {
+              label: 'Tracking customers',
+              action: 'action',
+              value: 'tracking',
+            },
             { label: 'Increasing sales', action: 'action', value: 'sales' },
             { label: 'Managing orders', action: 'action', value: 'orders' },
           ],
@@ -395,15 +673,26 @@ export class SupportBotService {
 
     if (!responses.challenge) {
       const challenges = ['getting_customers', 'tracking', 'sales', 'orders'];
-      const selectedChallenge = challenges.find(c => query.includes(c.replace('_', ' ')));
-      
+      const selectedChallenge = challenges.find((c) =>
+        query.includes(c.replace('_', ' ')),
+      );
+
       if (selectedChallenge) {
-        this.conversationContext.addUserResponse(userId, sessionId, 'challenge', selectedChallenge);
-        
+        this.conversationContext.addUserResponse(
+          userId,
+          sessionId,
+          'challenge',
+          selectedChallenge,
+        );
+
         const businessType = responses.businessType;
         const volume = responses.customerVolume;
-        const recommendation = this.getRecommendation(businessType, volume, selectedChallenge);
-        
+        const recommendation = this.getRecommendation(
+          businessType,
+          volume,
+          selectedChallenge,
+        );
+
         return {
           id: '',
           content: recommendation,
@@ -434,35 +723,50 @@ export class SupportBotService {
 
     if (!responses.topic) {
       const topics = ['features', 'pricing', 'how_it_works'];
-      const selectedTopic = topics.find(t => query.includes(t));
-      
+      const selectedTopic = topics.find((t) => query.includes(t));
+
       if (selectedTopic) {
-        this.conversationContext.addUserResponse(userId, sessionId, 'topic', selectedTopic);
-        
-        const responses: Record<string, { content: string; buttons: ChatButton[] }> = {
+        this.conversationContext.addUserResponse(
+          userId,
+          sessionId,
+          'topic',
+          selectedTopic,
+        );
+
+        const responses: Record<
+          string,
+          { content: string; buttons: ChatButton[] }
+        > = {
           features: {
-            content: "VemTap helps you capture customers, engage them, and grow your business using QR codes, NFC, and smart links.",
+            content:
+              'VemTap helps you capture customers, engage them, and grow your business using QR codes, NFC, and smart links.',
             buttons: [
               { label: 'See How It Works', action: 'url', value: '/features' },
               { label: 'Get Started', action: 'url', value: '/auth/signup' },
             ],
           },
           pricing: {
-            content: "We offer flexible plans for all business sizes, including a free plan to get started.",
+            content:
+              'We offer flexible plans for all business sizes, including a free plan to get started.',
             buttons: [
               { label: 'View Pricing', action: 'url', value: '/pricing' },
-              { label: 'Talk to Human', action: 'action', value: 'human_agent' },
+              {
+                label: 'Talk to Human',
+                action: 'action',
+                value: 'human_agent',
+              },
             ],
           },
           how_it_works: {
-            content: "Customers scan your QR code, interact with your business, and you capture their details for follow-up and engagement.",
+            content:
+              'Customers scan your QR code, interact with your business, and you capture their details for follow-up and engagement.',
             buttons: [
               { label: 'Try Demo', action: 'url', value: '/demo' },
               { label: 'Get Started', action: 'url', value: '/auth/signup' },
             ],
           },
         };
-        
+
         const response = responses[selectedTopic] || responses.features;
         return {
           id: '',
@@ -486,15 +790,27 @@ export class SupportBotService {
     userId: string | null,
     sessionId: string | null,
   ): BotResponseDto | null {
-    if (query.includes('human') || query.includes('agent') || query.includes('real person')) {
+    if (
+      query.includes('human') ||
+      query.includes('agent') ||
+      query.includes('real person')
+    ) {
       return {
         id: '',
-        content: "Let me connect you to a human agent for better assistance.",
+        content: 'Let me connect you to a human agent for better assistance.',
         source: 'knowledge_base',
         confidence: 100,
         buttons: [
-          { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
-          { label: 'Open Support Ticket', action: 'action', value: 'open_ticket' },
+          {
+            label: 'Chat on WhatsApp',
+            action: 'url',
+            value: 'https://wa.me/234XXXXXXXXXX',
+          },
+          {
+            label: 'Open Support Ticket',
+            action: 'action',
+            value: 'open_ticket',
+          },
         ],
         conversationPath: 'need_help',
         suggestedAction: 'escalate',
@@ -504,7 +820,8 @@ export class SupportBotService {
     if (query.includes('account')) {
       return {
         id: '',
-        content: "I can help with account issues. What seems to be the problem? (e.g., can't login, password reset, billing)",
+        content:
+          "I can help with account issues. What seems to be the problem? (e.g., can't login, password reset, billing)",
         source: 'knowledge_base',
         confidence: 100,
         buttons: [
@@ -517,7 +834,8 @@ export class SupportBotService {
     if (query.includes('setup')) {
       return {
         id: '',
-        content: "Let's get you set up! Visit your dashboard settings or I can guide you step by step.",
+        content:
+          "Let's get you set up! Visit your dashboard settings or I can guide you step by step.",
         source: 'knowledge_base',
         confidence: 100,
         buttons: [
@@ -531,23 +849,34 @@ export class SupportBotService {
     return null;
   }
 
-  private getRecommendation(businessType: string, volume: string, challenge: string): string {
+  private getRecommendation(
+    businessType: string,
+    volume: string,
+    challenge: string,
+  ): string {
     const recommendations: Record<string, string> = {
-      fashion: "Fashion stores use VemTap to capture customer details, promote new arrivals, and follow up with buyers. This can help you increase repeat purchases.",
-      restaurant: "Restaurants use VemTap to take orders, reduce wait time, and manage customer flow. Perfect for increasing turnover during peak hours.",
-      service: "Service providers like barbers and salons use VemTap to allow customers to book appointments and reduce waiting time.",
-      other: "VemTap helps businesses of all types capture customer data, engage visitors, and increase sales through QR codes and NFC.",
+      fashion:
+        'Fashion stores use VemTap to capture customer details, promote new arrivals, and follow up with buyers. This can help you increase repeat purchases.',
+      restaurant:
+        'Restaurants use VemTap to take orders, reduce wait time, and manage customer flow. Perfect for increasing turnover during peak hours.',
+      service:
+        'Service providers like barbers and salons use VemTap to allow customers to book appointments and reduce waiting time.',
+      other:
+        'VemTap helps businesses of all types capture customer data, engage visitors, and increase sales through QR codes and NFC.',
     };
 
-    const baseRecommendation = recommendations[businessType] || recommendations.other;
+    const baseRecommendation =
+      recommendations[businessType] || recommendations.other;
     return `${baseRecommendation}\n\nBased on your needs, VemTap can help you ${this.getChallengeSolution(challenge)}. Would you like to get started?`;
   }
 
   private getChallengeSolution(challenge: string): string {
     const solutions: Record<string, string> = {
-      getting_customers: 'attract more customers through smart QR and NFC marketing',
+      getting_customers:
+        'attract more customers through smart QR and NFC marketing',
       tracking: 'track every visitor and customer interaction automatically',
-      sales: 'turn more visitors into paying customers with automated follow-ups',
+      sales:
+        'turn more visitors into paying customers with automated follow-ups',
       orders: 'manage orders and customer requests more efficiently',
     };
     return solutions[challenge] || 'grow your business';
@@ -572,24 +901,32 @@ export class SupportBotService {
     return null;
   }
 
-  private async findExactMatch(query: string): Promise<SupportKnowledge | null> {
+  private async findExactMatch(
+    query: string,
+  ): Promise<SupportKnowledge | null> {
     return this.knowledgeRepo.findOne({
       where: { question: query, isActive: true },
     });
   }
 
   private async findKeywordMatches(query: string): Promise<MatchResult[]> {
-    const allKnowledge = await this.knowledgeRepo.find({ where: { isActive: true } });
-    
+    const allKnowledge = await this.knowledgeRepo.find({
+      where: { isActive: true },
+    });
+
     const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '');
-    const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 2);
-    
+    const queryWords = cleanQuery.split(/\s+/).filter((w) => w.length > 2);
+
     const results: MatchResult[] = [];
 
     for (const item of allKnowledge) {
-      const itemKeywords = item.keywords.map(kw => kw.toLowerCase().replace(/[^\w\s]/g, ''));
-      const itemText = (item.question + ' ' + item.answer).toLowerCase().replace(/[^\w\s]/g, '');
-      const itemWords = itemText.split(/\s+/).filter(w => w.length > 2);
+      const itemKeywords = item.keywords.map((kw) =>
+        kw.toLowerCase().replace(/[^\w\s]/g, ''),
+      );
+      const itemText = (item.question + ' ' + item.answer)
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '');
+      const itemWords = itemText.split(/\s+/).filter((w) => w.length > 2);
 
       let score = 0;
       let keywordMatches = 0;
@@ -609,15 +946,15 @@ export class SupportBotService {
 
       if (score > 0) {
         let confidence = Math.min(score * 10, 95);
-        
+
         const useBoost = Math.min((item.useCount || 0) / 50, 0.15) * 100;
         confidence += useBoost;
-        
+
         const successBoost = (item.successRate || 0) * 10;
         confidence += successBoost;
-        
+
         if (query.length < 15) confidence *= 0.9;
-        
+
         confidence = Math.min(confidence, 95);
 
         results.push({
@@ -629,37 +966,43 @@ export class SupportBotService {
     }
 
     return results
-      .filter(r => r.confidence >= 30)
+      .filter((r) => r.confidence >= 30)
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 5);
   }
 
   private async findSemanticMatch(query: string): Promise<MatchResult | null> {
-    const allKnowledge = await this.knowledgeRepo.find({ 
+    const allKnowledge = await this.knowledgeRepo.find({
       where: { isActive: true },
       order: { useCount: 'DESC' },
       take: 20,
     });
 
     const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '');
-    const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 2);
-    
+    const queryWords = cleanQuery.split(/\s+/).filter((w) => w.length > 2);
+
     let bestMatch: MatchResult | null = null;
     let bestScore = 0;
 
     for (const item of allKnowledge) {
-      const itemText = (item.question + ' ' + item.answer + ' ' + item.keywords.join(' ')).toLowerCase();
-      const itemWords = itemText.split(/[^\w]+/).filter(w => w.length > 2);
-      
-      const intersection = queryWords.filter(w => 
-        itemWords.some(iw => iw.includes(w) || w.includes(iw))
+      const itemText = (
+        item.question +
+        ' ' +
+        item.answer +
+        ' ' +
+        item.keywords.join(' ')
+      ).toLowerCase();
+      const itemWords = itemText.split(/[^\w]+/).filter((w) => w.length > 2);
+
+      const intersection = queryWords.filter((w) =>
+        itemWords.some((iw) => iw.includes(w) || w.includes(iw)),
       );
-      
+
       const union = [...new Set([...queryWords, ...itemWords])];
       const similarity = intersection.length / union.length;
-      
+
       const score = similarity * 50 + (item.useCount || 0) * 0.1;
-      
+
       if (score > bestScore && score > 0.3) {
         bestScore = score;
         bestMatch = {
@@ -677,7 +1020,7 @@ export class SupportBotService {
     if (set1.length === 0 || set2.length === 0) return 0;
     const s1 = new Set(set1);
     const s2 = new Set(set2);
-    const intersection = [...s1].filter(x => s2.has(x)).length;
+    const intersection = [...s1].filter((x) => s2.has(x)).length;
     const union = new Set([...s1, ...s2]).size;
     return intersection / union;
   }
@@ -688,38 +1031,78 @@ export class SupportBotService {
    */
   private async getFullKnowledgeContext(): Promise<string> {
     const now = Date.now();
-    if (this.knowledgeCache && (now - this.knowledgeCacheTimestamp) < this.CACHE_TTL_MS) {
+    if (
+      this.knowledgeCache &&
+      now - this.knowledgeCacheTimestamp < this.CACHE_TTL_MS
+    ) {
       return this.knowledgeCache;
     }
 
-    const allKnowledge = await this.knowledgeRepo.find({ where: { isActive: true } });
-    this.knowledgeCache = allKnowledge.map(k =>
-      `Q: ${k.question}\nA: ${k.answer}`
-    ).join('\n\n');
+    const allKnowledge = await this.knowledgeRepo.find({
+      where: { isActive: true },
+    });
+    this.knowledgeCache = allKnowledge
+      .map((k) => `Q: ${k.question}\nA: ${k.answer}`)
+      .join('\n\n');
     this.knowledgeCacheTimestamp = now;
-    this.logger.log(`📚 [CACHE] Refreshed knowledge base cache: ${allKnowledge.length} entries`);
+    this.logger.log(
+      `📚 [CACHE] Refreshed knowledge base cache: ${allKnowledge.length} entries`,
+    );
     return this.knowledgeCache;
   }
 
   /**
    * Checks if a query is about a sensitive, off-topic, or blocked subject.
    */
-  private checkSensitiveTopic(query: string): { content: string; buttons: ChatButton[]; reason: string } | null {
-    const q = query.toLowerCase().replace(/[^\w\s]/g, '').trim();
+  private checkSensitiveTopic(
+    query: string,
+  ): { content: string; buttons: ChatButton[]; reason: string } | null {
+    const q = query
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .trim();
 
     // Competitor mentions — hard block
     const competitors = [
-      'hubspot', 'mailchimp', 'salesforce', 'zoho', 'freshworks', 'intercom',
-      'zendesk', 'drift', 'typeform', 'jotform', 'surveymonkey', 'buffer',
-      'hootsuite', 'sprout social', 'semrush', 'ahrefs', 'moz',
-      'shopify', 'woocommerce', 'squarespace', 'wix', 'flutterwave', 'paystack',
-      'termii', 'twilio', 'sendgrid', 'brevo', 'activecampaign',
+      'hubspot',
+      'mailchimp',
+      'salesforce',
+      'zoho',
+      'freshworks',
+      'intercom',
+      'zendesk',
+      'drift',
+      'typeform',
+      'jotform',
+      'surveymonkey',
+      'buffer',
+      'hootsuite',
+      'sprout social',
+      'semrush',
+      'ahrefs',
+      'moz',
+      'shopify',
+      'woocommerce',
+      'squarespace',
+      'wix',
+      'flutterwave',
+      'paystack',
+      'termii',
+      'twilio',
+      'sendgrid',
+      'brevo',
+      'activecampaign',
     ];
-    if (competitors.some(c => q.includes(c))) {
+    if (competitors.some((c) => q.includes(c))) {
       return {
-        content: "I focus exclusively on VemTap! 😊 We're built specifically for businesses in Nigeria and Africa. Want to learn what makes VemTap special?",
+        content:
+          "I focus exclusively on VemTap! 😊 We're built specifically for businesses in Nigeria and Africa. Want to learn what makes VemTap special?",
         buttons: [
-          { label: 'What Makes VemTap Different?', action: 'action', value: 'What makes VemTap different?' },
+          {
+            label: 'What Makes VemTap Different?',
+            action: 'action',
+            value: 'What makes VemTap different?',
+          },
           { label: 'View Features', action: 'url', value: '/features' },
           { label: 'Talk to Human', action: 'action', value: 'human_agent' },
         ],
@@ -728,42 +1111,102 @@ export class SupportBotService {
     }
 
     // Politics
-    const politicsPatterns = ['election', 'president', 'governor', 'politician', 'political party', 'buhari', 'tinubu', 'atiku', 'obi', 'pdp', 'apc', 'labour party', 'government policy', 'senate', 'house of rep'];
-    if (politicsPatterns.some(p => q.includes(p))) {
+    const politicsPatterns = [
+      'election',
+      'president',
+      'governor',
+      'politician',
+      'political party',
+      'buhari',
+      'tinubu',
+      'atiku',
+      'obi',
+      'pdp',
+      'apc',
+      'labour party',
+      'government policy',
+      'senate',
+      'house of rep',
+    ];
+    if (politicsPatterns.some((p) => q.includes(p))) {
       return {
-        content: "I'm only trained to help with VemTap and business growth 😊 For other topics, a search engine would be better. How can I help with your business?",
+        content:
+          "I'm only trained to help with VemTap and business growth 😊 For other topics, a search engine would be better. How can I help with your business?",
         buttons: this.getGreetingButtons(),
         reason: 'politics',
       };
     }
 
     // Religion
-    const religionPatterns = ['pray', 'prayer', 'church', 'mosque', 'bible', 'quran', 'pastor', 'imam', 'god says', 'allah', 'jesus', 'sermon', 'religious'];
-    if (religionPatterns.some(p => q.includes(p))) {
+    const religionPatterns = [
+      'pray',
+      'prayer',
+      'church',
+      'mosque',
+      'bible',
+      'quran',
+      'pastor',
+      'imam',
+      'god says',
+      'allah',
+      'jesus',
+      'sermon',
+      'religious',
+    ];
+    if (religionPatterns.some((p) => q.includes(p))) {
       return {
-        content: "I'm not able to discuss religious topics, but I'd love to help with your business! 😊 What can I assist you with on VemTap?",
+        content:
+          "I'm not able to discuss religious topics, but I'd love to help with your business! 😊 What can I assist you with on VemTap?",
         buttons: this.getGreetingButtons(),
         reason: 'religion',
       };
     }
 
     // Personal/Medical/Harmful
-    const personalPatterns = ['depressed', 'depression', 'suicide', 'kill myself', 'self harm', 'medication', 'diagnosis', 'symptoms', 'therapy', 'medical advice'];
-    if (personalPatterns.some(p => q.includes(p))) {
+    const personalPatterns = [
+      'depressed',
+      'depression',
+      'suicide',
+      'kill myself',
+      'self harm',
+      'medication',
+      'diagnosis',
+      'symptoms',
+      'therapy',
+      'medical advice',
+    ];
+    if (personalPatterns.some((p) => q.includes(p))) {
       return {
-        content: "I'm not qualified to help with personal or medical matters. Please reach out to a professional or contact a helpline. I'm here for business-related questions anytime 💙",
+        content:
+          "I'm not qualified to help with personal or medical matters. Please reach out to a professional or contact a helpline. I'm here for business-related questions anytime 💙",
         buttons: [
-          { label: 'Talk to Human Agent', action: 'action', value: 'human_agent' },
+          {
+            label: 'Talk to Human Agent',
+            action: 'action',
+            value: 'human_agent',
+          },
         ],
         reason: 'personal_medical',
       };
     }
 
     // Internal data requests
-    const dataPatterns = ['show me all users', 'give me database', 'list all customers', 'export all data', 'show passwords', 'admin credentials', 'api key', 'secret key', 'show all emails', 'user data dump'];
-    if (dataPatterns.some(p => q.includes(p))) {
+    const dataPatterns = [
+      'show me all users',
+      'give me database',
+      'list all customers',
+      'export all data',
+      'show passwords',
+      'admin credentials',
+      'api key',
+      'secret key',
+      'show all emails',
+      'user data dump',
+    ];
+    if (dataPatterns.some((p) => q.includes(p))) {
       return {
-        content: "I can't share internal or user data for security reasons 🔒 If you need specific reports, please use your dashboard or contact our support team.",
+        content:
+          "I can't share internal or user data for security reasons 🔒 If you need specific reports, please use your dashboard or contact our support team.",
         buttons: [
           { label: 'Go to Dashboard', action: 'url', value: '/dashboard' },
           { label: 'Talk to Support', action: 'action', value: 'human_agent' },
@@ -773,10 +1216,21 @@ export class SupportBotService {
     }
 
     // Harmful / illegal
-    const harmfulPatterns = ['hack', 'exploit', 'bypass', 'crack password', 'illegal', 'steal', 'fraud', 'scam how to', 'phishing'];
-    if (harmfulPatterns.some(p => q.includes(p))) {
+    const harmfulPatterns = [
+      'hack',
+      'exploit',
+      'bypass',
+      'crack password',
+      'illegal',
+      'steal',
+      'fraud',
+      'scam how to',
+      'phishing',
+    ];
+    if (harmfulPatterns.some((p) => q.includes(p))) {
       return {
-        content: "I can't assist with that topic. I'm here to help you grow your business with VemTap! 😊",
+        content:
+          "I can't assist with that topic. I'm here to help you grow your business with VemTap! 😊",
         buttons: this.getGreetingButtons(),
         reason: 'harmful_content',
       };
@@ -811,7 +1265,7 @@ export class SupportBotService {
       'dan mode',
       'developer mode',
     ];
-    return injectionPatterns.some(p => q.includes(p));
+    return injectionPatterns.some((p) => q.includes(p));
   }
 
   private async getGeminiResponse(
@@ -833,13 +1287,15 @@ export class SupportBotService {
 
     // Get most relevant entries for emphasis
     const relevantKnowledge = await this.findKnowledgeContext(query);
-    const mostRelevant = relevantKnowledge.length > 0
-      ? `\nMOST RELEVANT ENTRIES (prioritize these):\n${relevantKnowledge.map(k => `Q: ${k.question}\nA: ${k.answer}`).join('\n\n')}`
-      : '';
+    const mostRelevant =
+      relevantKnowledge.length > 0
+        ? `\nMOST RELEVANT ENTRIES (prioritize these):\n${relevantKnowledge.map((k) => `Q: ${k.question}\nA: ${k.answer}`).join('\n\n')}`
+        : '';
 
-    const conversationHistory = history.length > 0
-      ? `Recent Conversation:\n${history.map(m => `${m.role}: ${m.content}`).join('\n')}`
-      : 'No previous messages in this conversation.';
+    const conversationHistory =
+      history.length > 0
+        ? `Recent Conversation:\n${history.map((m) => `${m.role}: ${m.content}`).join('\n')}`
+        : 'No previous messages in this conversation.';
 
     const prompt = `You are the VemTap AI Assistant — a warm, professional chatbot for VemTap.
 
@@ -887,7 +1343,7 @@ User's question: ${query}`;
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-      
+
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -897,7 +1353,7 @@ User's question: ${query}`;
           followUp: parsed.followUp,
         };
       }
-      
+
       return { answer: text, buttons: this.getDefaultButtons('general') };
     } catch (error) {
       this.logger.error('Gemini response error:', error);
@@ -905,37 +1361,60 @@ User's question: ${query}`;
     }
   }
 
-  private async findKnowledgeContext(query: string): Promise<SupportKnowledge[]> {
+  private async findKnowledgeContext(
+    query: string,
+  ): Promise<SupportKnowledge[]> {
     const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '');
-    const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 2);
-    
+    const queryWords = cleanQuery.split(/\s+/).filter((w) => w.length > 2);
+
     if (queryWords.length === 0) return [];
 
-    const allKnowledge = await this.knowledgeRepo.find({ where: { isActive: true } });
-    
-    const scored = allKnowledge.map(item => {
+    const allKnowledge = await this.knowledgeRepo.find({
+      where: { isActive: true },
+    });
+
+    const scored = allKnowledge.map((item) => {
       let score = 0;
-      const itemText = (item.question + ' ' + item.answer + ' ' + item.keywords.join(' ')).toLowerCase();
-      
+      const itemText = (
+        item.question +
+        ' ' +
+        item.answer +
+        ' ' +
+        item.keywords.join(' ')
+      ).toLowerCase();
+
       for (const word of queryWords) {
         if (itemText.includes(word)) score++;
-        if (item.keywords.some(kw => kw.toLowerCase().includes(word) || word.includes(kw.toLowerCase()))) score += 2;
+        if (
+          item.keywords.some(
+            (kw) =>
+              kw.toLowerCase().includes(word) ||
+              word.includes(kw.toLowerCase()),
+          )
+        )
+          score += 2;
       }
       return { item, score };
     });
 
     return scored
-      .filter(s => s.score > 0)
+      .filter((s) => s.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
-      .map(s => s.item);
+      .map((s) => s.item);
   }
 
-  private async autoSaveToKnowledgeBase(query: string, answer: string, buttons?: ChatButton[]): Promise<void> {
+  private async autoSaveToKnowledgeBase(
+    query: string,
+    answer: string,
+    buttons?: ChatButton[],
+  ): Promise<void> {
     try {
       const keywords = this.extractKeywords(query);
-      
-      const existing = await this.knowledgeRepo.findOne({ where: { question: query } });
+
+      const existing = await this.knowledgeRepo.findOne({
+        where: { question: query },
+      });
       if (existing) return;
 
       const newKnowledge = this.knowledgeRepo.create({
@@ -951,7 +1430,7 @@ User's question: ${query}`;
         matchCount: 0,
         buttons: buttons || this.getDefaultButtons('general'),
       });
-      
+
       await this.knowledgeRepo.save(newKnowledge);
       this.logger.log(`Auto-saved new knowledge: ${query.substring(0, 50)}...`);
     } catch (error) {
@@ -960,28 +1439,85 @@ User's question: ${query}`;
   }
 
   private extractKeywords(query: string): string[] {
-    const stopWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'how', 'what', 'why', 'when', 'where', 'can', 'do', 'i', 'you', 'to', 'for', 'of', 'in', 'on', 'at', 'it'];
-    const words = query.toLowerCase()
+    const stopWords = [
+      'the',
+      'a',
+      'an',
+      'is',
+      'are',
+      'was',
+      'were',
+      'how',
+      'what',
+      'why',
+      'when',
+      'where',
+      'can',
+      'do',
+      'i',
+      'you',
+      'to',
+      'for',
+      'of',
+      'in',
+      'on',
+      'at',
+      'it',
+    ];
+    const words = query
+      .toLowerCase()
       .replace(/[^\w\s]/g, '')
       .split(/\s+/)
-      .filter(w => w.length > 2 && !stopWords.includes(w));
-    
+      .filter((w) => w.length > 2 && !stopWords.includes(w));
+
     return [...new Set(words)].slice(0, 10);
   }
 
   private categorizeQuery(query: string): string {
     const categories: Record<string, string[]> = {
-      billing: ['credit', 'payment', 'bill', 'price', 'cost', 'subscription', 'plan', 'upgrade'],
-      technical: ['error', 'not working', 'bug', 'issue', 'problem', 'crash', 'fail'],
-      features: ['feature', 'function', 'capability', 'how', 'what can', 'able to'],
-      sales: ['buy', 'purchase', 'get started', 'sign up', 'register', 'pricing', 'cost'],
+      billing: [
+        'credit',
+        'payment',
+        'bill',
+        'price',
+        'cost',
+        'subscription',
+        'plan',
+        'upgrade',
+      ],
+      technical: [
+        'error',
+        'not working',
+        'bug',
+        'issue',
+        'problem',
+        'crash',
+        'fail',
+      ],
+      features: [
+        'feature',
+        'function',
+        'capability',
+        'how',
+        'what can',
+        'able to',
+      ],
+      sales: [
+        'buy',
+        'purchase',
+        'get started',
+        'sign up',
+        'register',
+        'pricing',
+        'cost',
+      ],
       support: ['help', 'support', 'assist', 'contact', 'agent', 'human'],
       account: ['account', 'login', 'password', 'profile', 'settings'],
       general: [],
     };
 
     for (const [category, keywords] of Object.entries(categories)) {
-      if (keywords.some(kw => query.toLowerCase().includes(kw))) {
+      if (keywords.some((kw) => query.toLowerCase().includes(kw))) {
         return category;
       }
     }
@@ -990,116 +1526,208 @@ User's question: ${query}`;
 
   private isGreeting(query: string): boolean {
     const greetings = [
-      'hi', 'hello', 'good morning', 'good day', 'good afternoon', 'good evening',
-      'hola', 'hey', 'yo', 'sup', 'howdy', 'greetings', 'what\'s up', 'hi there',
+      'hi',
+      'hello',
+      'good morning',
+      'good day',
+      'good afternoon',
+      'good evening',
+      'hola',
+      'hey',
+      'yo',
+      'sup',
+      'howdy',
+      'greetings',
+      "what's up",
+      'hi there',
       'are you there',
     ];
-    const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '').trim();
-    return greetings.includes(cleanQuery) || greetings.some(g => cleanQuery.startsWith(g + ' ') || cleanQuery === g);
+    const cleanQuery = query
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .trim();
+    return (
+      greetings.includes(cleanQuery) ||
+      greetings.some((g) => cleanQuery.startsWith(g + ' ') || cleanQuery === g)
+    );
   }
 
-  private handleCasualMessage(query: string): { content: string; buttons?: ChatButton[] } | null {
-    const casualMap: Record<string, { content: string; buttons?: ChatButton[] }> = {
-      'hmm': {
+  private handleCasualMessage(
+    query: string,
+  ): { content: string; buttons?: ChatButton[] } | null {
+    const casualMap: Record<
+      string,
+      { content: string; buttons?: ChatButton[] }
+    > = {
+      hmm: {
         content: "I'm here whenever you're ready 😊",
         buttons: [
-          { label: 'Grow My Business', action: 'action', value: 'I want to grow my business' },
+          {
+            label: 'Grow My Business',
+            action: 'action',
+            value: 'I want to grow my business',
+          },
           { label: 'I Need Help', action: 'action', value: 'I need help' },
         ],
       },
-      'okay': {
-        content: "Great! What would you like to do next?",
+      okay: {
+        content: 'Great! What would you like to do next?',
         buttons: this.getGreetingButtons(),
       },
-      'ok': {
-        content: "Great! What would you like to do next?",
+      ok: {
+        content: 'Great! What would you like to do next?',
         buttons: this.getGreetingButtons(),
       },
-      'yes': {
-        content: "Awesome 👍 How can I help further?",
+      yes: {
+        content: 'Awesome 👍 How can I help further?',
         buttons: this.getGreetingButtons(),
       },
-      'no': {
-        content: "No problem. Let me know if you need anything later! 😊",
+      no: {
+        content: 'No problem. Let me know if you need anything later! 😊',
         buttons: [
           { label: 'Get Started', action: 'url', value: '/auth/signup' },
           { label: 'Talk to Human', action: 'action', value: 'human_agent' },
         ],
       },
       'thank you': {
-        content: "You're welcome! 😊 If you need anything else, feel free to ask.",
+        content:
+          "You're welcome! 😊 If you need anything else, feel free to ask.",
         buttons: [
           { label: 'Get Started', action: 'url', value: '/auth/signup' },
         ],
       },
-      'thanks': {
-        content: "You're welcome! 😊 If you need anything else, feel free to ask.",
+      thanks: {
+        content:
+          "You're welcome! 😊 If you need anything else, feel free to ask.",
         buttons: [
           { label: 'Get Started', action: 'url', value: '/auth/signup' },
         ],
       },
-      'bye': {
-        content: "Goodbye! 👋 Have a great day! Feel free to come back if you need any help.",
+      bye: {
+        content:
+          'Goodbye! 👋 Have a great day! Feel free to come back if you need any help.',
         buttons: [],
       },
-      'goodbye': {
-        content: "Goodbye! 👋 Have a great day! Feel free to come back if you need any help.",
+      goodbye: {
+        content:
+          'Goodbye! 👋 Have a great day! Feel free to come back if you need any help.',
         buttons: [],
       },
     };
 
-    const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    const cleanQuery = query
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .trim();
     return casualMap[cleanQuery] || null;
   }
 
-  private handleIdentityQuestion(query: string): { content: string; buttons?: ChatButton[] } | null {
-    const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '').trim();
+  private handleIdentityQuestion(
+    query: string,
+  ): { content: string; buttons?: ChatButton[] } | null {
+    const cleanQuery = query
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .trim();
 
-    const identityTriggers: { patterns: string[]; response: { content: string; buttons?: ChatButton[] } }[] = [
+    const identityTriggers: {
+      patterns: string[];
+      response: { content: string; buttons?: ChatButton[] };
+    }[] = [
       {
         patterns: ['who are you', 'what are you', 'whats your name'],
         response: {
-          content: "I am VemTap's virtual assistant 🤖 I'm here to help you understand how VemTap works and assist you with anything you need.",
+          content:
+            "I am VemTap's virtual assistant 🤖 I'm here to help you understand how VemTap works and assist you with anything you need.",
           buttons: [
-            { label: 'Learn About VemTap', action: 'action', value: 'What is Vemtap?' },
+            {
+              label: 'Learn About VemTap',
+              action: 'action',
+              value: 'What is Vemtap?',
+            },
             { label: 'Talk to Human', action: 'action', value: 'human_agent' },
           ],
         },
       },
       {
-        patterns: ['are you human', 'are you a human', 'are you real', 'are you a robot', 'are you a bot', 'are you ai'],
+        patterns: [
+          'are you human',
+          'are you a human',
+          'are you real',
+          'are you a robot',
+          'are you a bot',
+          'are you ai',
+        ],
         response: {
-          content: "I'm an AI assistant created to help you quickly 🤖 But if you need a human, I can connect you right away!",
+          content:
+            "I'm an AI assistant created to help you quickly 🤖 But if you need a human, I can connect you right away!",
           buttons: [
-            { label: 'Talk to Human Agent', action: 'action', value: 'human_agent' },
-            { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+            {
+              label: 'Talk to Human Agent',
+              action: 'action',
+              value: 'human_agent',
+            },
+            {
+              label: 'Chat on WhatsApp',
+              action: 'url',
+              value: 'https://wa.me/234XXXXXXXXXX',
+            },
           ],
         },
       },
       {
-        patterns: ['can i speak to a human', 'speak to human', 'talk to someone', 'real person', 'human agent', 'live agent', 'connect me'],
+        patterns: [
+          'can i speak to a human',
+          'speak to human',
+          'talk to someone',
+          'real person',
+          'human agent',
+          'live agent',
+          'connect me',
+        ],
         response: {
-          content: "Yes, I can connect you to a human support agent. Please hold on while I arrange that for you.",
+          content:
+            'Yes, I can connect you to a human support agent. Please hold on while I arrange that for you.',
           buttons: [
-            { label: 'Talk to Human Agent', action: 'action', value: 'open_ticket' },
-            { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+            {
+              label: 'Talk to Human Agent',
+              action: 'action',
+              value: 'open_ticket',
+            },
+            {
+              label: 'Chat on WhatsApp',
+              action: 'url',
+              value: 'https://wa.me/234XXXXXXXXXX',
+            },
           ],
         },
       },
       {
-        patterns: ['i dont understand', 'i don understand', 'confused', 'what do you mean'],
+        patterns: [
+          'i dont understand',
+          'i don understand',
+          'confused',
+          'what do you mean',
+        ],
         response: {
-          content: "No problem! Could you please rephrase your question? Or I can connect you with a human for better assistance.",
+          content:
+            'No problem! Could you please rephrase your question? Or I can connect you with a human for better assistance.',
           buttons: [
             { label: 'Talk to Human', action: 'action', value: 'human_agent' },
-            { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+            {
+              label: 'Chat on WhatsApp',
+              action: 'url',
+              value: 'https://wa.me/234XXXXXXXXXX',
+            },
           ],
         },
       },
     ];
 
     for (const trigger of identityTriggers) {
-      if (trigger.patterns.some(p => cleanQuery.includes(p) || cleanQuery === p)) {
+      if (
+        trigger.patterns.some((p) => cleanQuery.includes(p) || cleanQuery === p)
+      ) {
         return trigger.response;
       }
     }
@@ -1110,7 +1738,7 @@ User's question: ${query}`;
     const name = context?.name;
     const hour = new Date().getHours();
     let timeGreeting = 'Hello';
-    
+
     if (hour < 12) timeGreeting = 'Good morning';
     else if (hour < 17) timeGreeting = 'Good afternoon';
     else timeGreeting = 'Good evening';
@@ -1124,7 +1752,7 @@ User's question: ${query}`;
       `Hi${name ? ' ' + name : ''}! I'm your VemTap assistant. How can I help you grow your business?`,
       `${timeGreeting}${name ? ', ' + name : ''}! 😊 Ready to capture more customers with VemTap?`,
     ];
-    
+
     return responses[Math.floor(Math.random() * responses.length)];
   }
 
@@ -1136,7 +1764,10 @@ User's question: ${query}`;
       .replace(/{{businessName}}/g, context.businessName || 'your business')
       .replace(/{{smsCredits}}/g, context.credits?.sms?.toString() || '0')
       .replace(/{{emailCredits}}/g, context.credits?.email?.toString() || '0')
-      .replace(/{{whatsappCredits}}/g, context.credits?.whatsapp?.toString() || '0')
+      .replace(
+        /{{whatsappCredits}}/g,
+        context.credits?.whatsapp?.toString() || '0',
+      )
       .replace(/{{openTickets}}/g, context.openTickets?.toString() || '0');
   }
 
@@ -1160,10 +1791,18 @@ User's question: ${query}`;
       ],
       support: [
         { label: 'Talk to Human', action: 'action', value: 'human_agent' },
-        { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+        {
+          label: 'Chat on WhatsApp',
+          action: 'url',
+          value: 'https://wa.me/234XXXXXXXXXX',
+        },
       ],
       technical: [
-        { label: 'Open Support Ticket', action: 'action', value: 'open_ticket' },
+        {
+          label: 'Open Support Ticket',
+          action: 'action',
+          value: 'open_ticket',
+        },
         { label: 'Talk to Human', action: 'action', value: 'human_agent' },
       ],
       general: [
@@ -1172,13 +1811,19 @@ User's question: ${query}`;
       ],
     };
 
-    return buttonsByCategory[category || 'general'] || buttonsByCategory.general;
+    return (
+      buttonsByCategory[category || 'general'] || buttonsByCategory.general
+    );
   }
 
   private getFallbackButtons(): ChatButton[] {
     return [
       { label: 'Talk to Human', action: 'action', value: 'human_agent' },
-      { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
+      {
+        label: 'Chat on WhatsApp',
+        action: 'url',
+        value: 'https://wa.me/234XXXXXXXXXX',
+      },
     ];
   }
 
@@ -1194,19 +1839,22 @@ User's question: ${query}`;
   async updateInteraction(id: string, wasHelpful: boolean) {
     const interaction = await this.interactionRepo.findOne({ where: { id } });
     if (!interaction) return null;
-    
+
     interaction.wasHelpful = wasHelpful;
-    
+
     if (interaction.knowledgeId && wasHelpful) {
-      const knowledge = await this.knowledgeRepo.findOne({ where: { id: interaction.knowledgeId } });
+      const knowledge = await this.knowledgeRepo.findOne({
+        where: { id: interaction.knowledgeId },
+      });
       if (knowledge) {
         const total = knowledge.matchCount || 1;
-        const helpful = (knowledge.successRate * total + (wasHelpful ? 1 : 0)) / (total + 1);
+        const helpful =
+          (knowledge.successRate * total + (wasHelpful ? 1 : 0)) / (total + 1);
         knowledge.successRate = helpful;
         await this.knowledgeRepo.save(knowledge);
       }
     }
-    
+
     return this.interactionRepo.save(interaction);
   }
 
@@ -1253,14 +1901,16 @@ User's question: ${query}`;
 
   async getKnowledgeStats() {
     const total = await this.knowledgeRepo.count({ where: { isActive: true } });
-    const aiGenerated = await this.knowledgeRepo.count({ where: { isActive: true, isAiGenerated: true } });
+    const aiGenerated = await this.knowledgeRepo.count({
+      where: { isActive: true, isAiGenerated: true },
+    });
     const topUsed = await this.knowledgeRepo.find({
       where: { isActive: true },
       order: { useCount: 'DESC' },
       take: 10,
       select: ['id', 'question', 'useCount', 'successRate'],
     });
-    
+
     return { total, aiGenerated, humanCreated: total - aiGenerated, topUsed };
   }
 }

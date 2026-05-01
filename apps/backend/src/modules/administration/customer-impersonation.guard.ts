@@ -22,12 +22,16 @@ export class CustomerImpersonationGuard implements CanActivate {
     // Actor must be the one who generated the token
     const actor = request.user;
     if (!actor || actor.id !== token.actorId) {
-      throw new ForbiddenException('You are not the actor for this customer impersonation token');
+      throw new ForbiddenException(
+        'You are not the actor for this customer impersonation token',
+      );
     }
 
     // Only Admin/Agent can use this
     if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.AGENT) {
-      throw new ForbiddenException('Only admins and agents can perform customer impersonation');
+      throw new ForbiddenException(
+        'Only admins and agents can perform customer impersonation',
+      );
     }
 
     // Fetch the target customer

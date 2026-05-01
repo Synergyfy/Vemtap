@@ -143,8 +143,6 @@ export class User extends AbstractBaseEntity {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
-
-
   @OneToMany(() => Visit, (visit) => visit.customer)
   visits: Visit[];
 

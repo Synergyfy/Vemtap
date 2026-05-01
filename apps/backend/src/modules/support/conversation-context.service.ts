@@ -21,7 +21,10 @@ export class ConversationContextService {
     private readonly contextRepo: Repository<BotConversationContext>,
   ) {}
 
-  async getContext(userId: string | null, sessionId?: string | null): Promise<BotConversationContext | null> {
+  async getContext(
+    userId: string | null,
+    sessionId?: string | null,
+  ): Promise<BotConversationContext | null> {
     const query: any = { userId: userId || IsNull(), isActive: true };
     if (sessionId) {
       query.sessionId = sessionId;
@@ -32,9 +35,12 @@ export class ConversationContextService {
     });
   }
 
-  async getOrCreateContext(userId: string | null, sessionId?: string | null): Promise<BotConversationContext> {
+  async getOrCreateContext(
+    userId: string | null,
+    sessionId?: string | null,
+  ): Promise<BotConversationContext> {
     let context = await this.getContext(userId, sessionId);
-    
+
     if (!context) {
       context = this.contextRepo.create({
         userId,
@@ -47,7 +53,7 @@ export class ConversationContextService {
       });
       context = await this.contextRepo.save(context);
     }
-    
+
     return context;
   }
 
@@ -59,22 +65,22 @@ export class ConversationContextService {
     messageId?: string,
   ): Promise<BotConversationContext> {
     const context = await this.getOrCreateContext(userId, sessionId);
-    
+
     const message: ChatMessage = {
       role,
       content,
       timestamp: new Date(),
       messageId,
     };
-    
+
     context.messages.push(message);
-    
+
     if (context.messages.length > this.MAX_MESSAGES) {
       context.messages = context.messages.slice(-this.MAX_MESSAGES);
     }
-    
+
     context.lastActivity = new Date();
-    
+
     return this.contextRepo.save(context);
   }
 
@@ -85,11 +91,11 @@ export class ConversationContextService {
     value: any,
   ): Promise<BotConversationContext> {
     const context = await this.getOrCreateContext(userId, sessionId);
-    
+
     context.userResponses = context.userResponses || {};
     context.userResponses[key] = value;
     context.lastActivity = new Date();
-    
+
     return this.contextRepo.save(context);
   }
 
@@ -104,13 +110,20 @@ export class ConversationContextService {
     return this.contextRepo.save(context);
   }
 
-  async getRecentMessages(userId: string | null, sessionId: string | null, limit: number = 10): Promise<ChatMessage[]> {
+  async getRecentMessages(
+    userId: string | null,
+    sessionId: string | null,
+    limit: number = 10,
+  ): Promise<ChatMessage[]> {
     const context = await this.getContext(userId, sessionId);
     if (!context || !context.messages) return [];
     return context.messages.slice(-limit);
   }
 
-  async clearContext(userId: string | null, sessionId?: string | null): Promise<void> {
+  async clearContext(
+    userId: string | null,
+    sessionId?: string | null,
+  ): Promise<void> {
     const query: any = { userId: userId || IsNull(), isActive: true };
     if (sessionId) {
       query.sessionId = sessionId;
@@ -121,7 +134,7 @@ export class ConversationContextService {
   async cleanupExpiredContexts(): Promise<number> {
     const expiryDate = new Date();
     expiryDate.setHours(expiryDate.getHours() - this.CONTEXT_EXPIRY_HOURS);
-    
+
     const result = await this.contextRepo.update(
       {
         lastActivity: LessThan(expiryDate),
@@ -129,7 +142,7 @@ export class ConversationContextService {
       },
       { isActive: false },
     );
-    
+
     return result.affected || 0;
   }
 

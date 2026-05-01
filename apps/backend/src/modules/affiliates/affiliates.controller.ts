@@ -112,7 +112,12 @@ export class AffiliatesController {
     @Body('status') status: any,
     @Body('note') note?: string,
   ) {
-    return this.affiliatesService.processWithdrawal(id, req.user.id, status, note);
+    return this.affiliatesService.processWithdrawal(
+      id,
+      req.user.id,
+      status,
+      note,
+    );
   }
 
   @Get('admin/profiles')
@@ -146,8 +151,13 @@ export class AffiliatesController {
   @Patch('admin/settings')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update global commission rules' })
-  async updateSettings(@Body() data: { directRate: number; indirectRate?: number }) {
-    return this.affiliatesService.updateCommissionSettings(data.directRate, data.indirectRate);
+  async updateSettings(
+    @Body() data: { directRate: number; indirectRate?: number },
+  ) {
+    return this.affiliatesService.updateCommissionSettings(
+      data.directRate,
+      data.indirectRate,
+    );
   }
 
   @Post('admin/profiles/:id/verify-kyc')

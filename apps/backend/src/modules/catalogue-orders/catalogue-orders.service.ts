@@ -10,8 +10,14 @@ import {
   CatalogueOrderStatus,
 } from './entities/catalogue-order.entity';
 import { CatalogueOrderItem } from './entities/catalogue-order-item.entity';
-import { CatalogueItem, CatalogueItemStatus } from '../catalogue/entities/catalogue-item.entity';
-import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+} from '../catalogue/entities/catalogue-item.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferStatus,
+} from '../catalogue/entities/catalogue-offer.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
@@ -57,7 +63,7 @@ export class CatalogueOrderService {
     private readonly catalogueService: CatalogueService,
     @InjectQueue('order-notifications')
     private readonly orderNotificationQueue: Queue,
-  ) { }
+  ) {}
 
   async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
     const results: CatalogueOrder[] = [];
@@ -69,19 +75,24 @@ export class CatalogueOrderService {
     };
 
     if (!customerInfo.firstName || !customerInfo.phone) {
-      throw new BadRequestException('Customer information (name and phone) is required');
+      throw new BadRequestException(
+        'Customer information (name and phone) is required',
+      );
     }
 
     // Process each branch order
     for (const orderDto of dto.orders) {
-      const order = await this.createOrder({
-        ...customerInfo,
-        branchId: orderDto.branchId,
-        items: orderDto.items,
-        notes: orderDto.notes,
-        tableNumber: orderDto.tableNumber,
-        deviceId: dto.deviceId,
-      } as CreateCatalogueOrderDto, user);
+      const order = await this.createOrder(
+        {
+          ...customerInfo,
+          branchId: orderDto.branchId,
+          items: orderDto.items,
+          notes: orderDto.notes,
+          tableNumber: orderDto.tableNumber,
+          deviceId: dto.deviceId,
+        } as CreateCatalogueOrderDto,
+        user,
+      );
       results.push(order);
     }
 
@@ -136,11 +147,13 @@ export class CatalogueOrderService {
 
       // Send welcome email ONLY if it's not a dummy email
       if (!isDummy) {
-        this.mailService.sendWelcomeEmail(
-          customer.email,
-          `${customer.firstName} ${customer.lastName}`,
-          defaultPassword
-        ).catch(err => console.error('Failed to send welcome email:', err));
+        this.mailService
+          .sendWelcomeEmail(
+            customer.email,
+            `${customer.firstName} ${customer.lastName}`,
+            defaultPassword,
+          )
+          .catch((err) => console.error('Failed to send welcome email:', err));
       }
     }
 
@@ -160,20 +173,27 @@ export class CatalogueOrderService {
 
     for (const itemDto of dto.items) {
       if (!itemDto.itemId && !itemDto.offerId && !itemDto.newItem) {
-        throw new BadRequestException('Each order item must have either itemId, offerId or newItem');
+        throw new BadRequestException(
+          'Each order item must have either itemId, offerId or newItem',
+        );
       }
 
       if (itemDto.newItem) {
         // Create the new item on the fly
-        const newItem = await this.catalogueService.createItem({
-          name: itemDto.newItem.name,
-          price: itemDto.newItem.price,
-          categoryId: itemDto.newItem.categoryId,
-          branchId: dto.branchId,
-          shortDescription: 'Quick added item from manual order',
-          description: 'This item was created automatically during manual order entry.',
-          mainImage: 'https://res.cloudinary.com/dqr68m9p6/image/upload/v1711545600/vemtap/placeholder-item.png', // Default placeholder
-        }, branch.businessId);
+        const newItem = await this.catalogueService.createItem(
+          {
+            name: itemDto.newItem.name,
+            price: itemDto.newItem.price,
+            categoryId: itemDto.newItem.categoryId,
+            branchId: dto.branchId,
+            shortDescription: 'Quick added item from manual order',
+            description:
+              'This item was created automatically during manual order entry.',
+            mainImage:
+              'https://res.cloudinary.com/dqr68m9p6/image/upload/v1711545600/vemtap/placeholder-item.png', // Default placeholder
+          },
+          branch.businessId,
+        );
 
         const orderItem = this.orderItemRepository.create({
           itemId: newItem.id,
@@ -196,17 +216,24 @@ export class CatalogueOrderService {
         }
 
         if (item.status === CatalogueItemStatus.SUSPENDED || item.isSuspended) {
-          throw new BadRequestException(`Item ${item.name} is currently suspended`);
+          throw new BadRequestException(
+            `Item ${item.name} is currently suspended`,
+          );
         }
 
-        if (item.status === CatalogueItemStatus.OUT_OF_STOCK && !item.allowBackOrder) {
+        if (
+          item.status === CatalogueItemStatus.OUT_OF_STOCK &&
+          !item.allowBackOrder
+        ) {
           throw new BadRequestException(`Item ${item.name} is out of stock`);
         }
 
         // Stock check
         if (item.stockQuantity !== null && !item.allowBackOrder) {
           if (item.stockQuantity < itemDto.quantity) {
-            throw new BadRequestException(`Insufficient stock for ${item.name}`);
+            throw new BadRequestException(
+              `Insufficient stock for ${item.name}`,
+            );
           }
         }
 
@@ -225,19 +252,25 @@ export class CatalogueOrderService {
         });
 
         if (!offer) {
-          throw new BadRequestException(`Offer ${itemDto.offerId} not available in this branch`);
+          throw new BadRequestException(
+            `Offer ${itemDto.offerId} not available in this branch`,
+          );
         }
 
         // Offer stock check
         if (offer.quantity !== null && offer.quantity < itemDto.quantity) {
-          throw new BadRequestException(`Insufficient stock for offer ${offer.name}`);
+          throw new BadRequestException(
+            `Insufficient stock for offer ${offer.name}`,
+          );
         }
 
         // Check stock for ALL items in offer
         for (const offerItem of offer.items) {
           if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {
             if (offerItem.stockQuantity < itemDto.quantity) {
-              throw new BadRequestException(`Insufficient stock for item ${offerItem.name} in offer ${offer.name}`);
+              throw new BadRequestException(
+                `Insufficient stock for item ${offerItem.name} in offer ${offer.name}`,
+              );
             }
           }
         }
@@ -272,20 +305,27 @@ export class CatalogueOrderService {
     const savedOrder = await this.orderRepository.save(order);
 
     // Trigger notification to branch staff
-    this.pushNotificationService.sendToBranchStaff(
-      branch.id,
-      'New Order Received',
-      `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
-      { orderId: savedOrder.id, type: 'NEW_ORDER' },
-    ).catch(err => console.error('Failed to send staff notification:', err));
+    this.pushNotificationService
+      .sendToBranchStaff(
+        branch.id,
+        'New Order Received',
+        `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
+        { orderId: savedOrder.id, type: 'NEW_ORDER' },
+      )
+      .catch((err) => console.error('Failed to send staff notification:', err));
 
     // 5. Deduct stock IMMEDIATELY (locking the spot)
     for (const orderItem of order.items) {
       if (orderItem.itemId) {
-        const item = await this.itemRepository.findOne({ where: { id: orderItem.itemId } });
+        const item = await this.itemRepository.findOne({
+          where: { id: orderItem.itemId },
+        });
         if (item) await this.deductStock(item, orderItem.quantity);
       } else if (orderItem.offerId) {
-        const offer = await this.offerRepository.findOne({ where: { id: orderItem.offerId }, relations: ['items'] });
+        const offer = await this.offerRepository.findOne({
+          where: { id: orderItem.offerId },
+          relations: ['items'],
+        });
         if (offer) {
           await this.deductOfferStock(offer, orderItem.quantity);
           for (const offerItem of offer.items) {
@@ -296,10 +336,14 @@ export class CatalogueOrderService {
     }
 
     // Queue "Order Placed" email
-    this.orderNotificationQueue.add('send-order-email', {
-      orderId: savedOrder.id,
-      status: 'placed',
-    }).catch(err => console.error('Failed to queue order placed email:', err));
+    this.orderNotificationQueue
+      .add('send-order-email', {
+        orderId: savedOrder.id,
+        status: 'placed',
+      })
+      .catch((err) =>
+        console.error('Failed to queue order placed email:', err),
+      );
 
     return savedOrder;
   }
@@ -318,7 +362,8 @@ export class CatalogueOrderService {
 
     // If order is cancelled/rejected and stock was deducted, return it
     if (
-      (status === CatalogueOrderStatus.CANCELLED || status === CatalogueOrderStatus.REJECTED) &&
+      (status === CatalogueOrderStatus.CANCELLED ||
+        status === CatalogueOrderStatus.REJECTED) &&
       order.stockDeducted
     ) {
       for (const orderItem of order.items) {
@@ -398,36 +443,56 @@ export class CatalogueOrderService {
     }
 
     if (title && body) {
-      this.pushNotificationService.sendNotification(
-        order.customerId,
-        title,
-        body,
-        { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
-        true,
-      ).catch(err => console.error('Failed to send customer notification:', err));
+      this.pushNotificationService
+        .sendNotification(
+          order.customerId,
+          title,
+          body,
+          { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
+          true,
+        )
+        .catch((err) =>
+          console.error('Failed to send customer notification:', err),
+        );
     }
 
     // Queue order status email
     if (status === CatalogueOrderStatus.PROCESSING) {
-      this.orderNotificationQueue.add('send-order-email', {
-        orderId: order.id,
-        status: 'processing',
-      }).catch(err => console.error('Failed to queue order processing email:', err));
+      this.orderNotificationQueue
+        .add('send-order-email', {
+          orderId: order.id,
+          status: 'processing',
+        })
+        .catch((err) =>
+          console.error('Failed to queue order processing email:', err),
+        );
     } else if (status === CatalogueOrderStatus.COMPLETED) {
-      this.orderNotificationQueue.add('send-order-email', {
-        orderId: order.id,
-        status: 'completed',
-      }).catch(err => console.error('Failed to queue order completed email:', err));
+      this.orderNotificationQueue
+        .add('send-order-email', {
+          orderId: order.id,
+          status: 'completed',
+        })
+        .catch((err) =>
+          console.error('Failed to queue order completed email:', err),
+        );
     } else if (status === CatalogueOrderStatus.CANCELLED) {
-      this.orderNotificationQueue.add('send-order-email', {
-        orderId: order.id,
-        status: 'cancelled',
-      }).catch(err => console.error('Failed to queue order cancelled email:', err));
+      this.orderNotificationQueue
+        .add('send-order-email', {
+          orderId: order.id,
+          status: 'cancelled',
+        })
+        .catch((err) =>
+          console.error('Failed to queue order cancelled email:', err),
+        );
     } else if (status === CatalogueOrderStatus.REJECTED) {
-      this.orderNotificationQueue.add('send-order-email', {
-        orderId: order.id,
-        status: 'rejected',
-      }).catch(err => console.error('Failed to queue order rejected email:', err));
+      this.orderNotificationQueue
+        .add('send-order-email', {
+          orderId: order.id,
+          status: 'rejected',
+        })
+        .catch((err) =>
+          console.error('Failed to queue order rejected email:', err),
+        );
     }
 
     return updatedOrder;
@@ -447,7 +512,10 @@ export class CatalogueOrderService {
   private async restoreStock(item: CatalogueItem, quantity: number) {
     if (item.stockQuantity !== null) {
       item.stockQuantity += quantity;
-      if (item.stockQuantity > 0 && item.status === CatalogueItemStatus.OUT_OF_STOCK) {
+      if (
+        item.stockQuantity > 0 &&
+        item.status === CatalogueItemStatus.OUT_OF_STOCK
+      ) {
         item.status = CatalogueItemStatus.ACTIVE;
       }
       await this.itemRepository.save(item);
@@ -468,7 +536,10 @@ export class CatalogueOrderService {
   private async restoreOfferStock(offer: CatalogueOffer, quantity: number) {
     if (offer.quantity !== null) {
       offer.quantity += quantity;
-      if (offer.quantity > 0 && offer.status === CatalogueOfferStatus.INACTIVE) {
+      if (
+        offer.quantity > 0 &&
+        offer.status === CatalogueOfferStatus.INACTIVE
+      ) {
         offer.status = CatalogueOfferStatus.ACTIVE;
       }
       await this.offerRepository.save(offer);
@@ -503,11 +574,16 @@ export class CatalogueOrderService {
   async findAllByCustomer(customerId: string) {
     return this.orderRepository.find({
       where: { customerId },
-      relations: ['items', 'items.item', 'items.offer', 'branch', 'branch.business'],
+      relations: [
+        'items',
+        'items.item',
+        'items.offer',
+        'branch',
+        'branch.business',
+      ],
       order: { createdAt: 'DESC' },
     });
   }
-
 
   async findOneOrder(orderId: string, businessId: string) {
     const order = await this.orderRepository.findOne({

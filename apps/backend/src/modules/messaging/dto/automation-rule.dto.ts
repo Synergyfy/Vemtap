@@ -68,7 +68,10 @@ export class UpdateAutomationRuleDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ enum: TriggerType, example: TriggerType.FIRST_MESSAGE })
+  @ApiPropertyOptional({
+    enum: TriggerType,
+    example: TriggerType.FIRST_MESSAGE,
+  })
   @IsOptional()
   @IsEnum(TriggerType)
   triggerType?: TriggerType;

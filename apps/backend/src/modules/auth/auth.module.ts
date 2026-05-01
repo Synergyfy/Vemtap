@@ -11,6 +11,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { MailModule } from '../mail/mail.module';
 import { DevicesModule } from '../devices/devices.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
+import { ExternalAffiliateModule } from '../affiliates/external-affiliate.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { Otp } from './entities/otp.entity';
@@ -20,11 +21,12 @@ import { Otp } from './entities/otp.entity';
     UsersModule,
     forwardRef(() => BusinessesModule),
     forwardRef(() => DevicesModule),
-    SubscriptionsModule,
+    forwardRef(() => SubscriptionsModule),
     MailModule,
     PassportModule,
     TypeOrmModule.forFeature([Otp]),
     AffiliatesModule,
+    ExternalAffiliateModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

@@ -10,7 +10,10 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CatalogueOfferPricingType, CatalogueOfferStatus } from '../entities/catalogue-offer.entity';
+import {
+  CatalogueOfferPricingType,
+  CatalogueOfferStatus,
+} from '../entities/catalogue-offer.entity';
 
 export class CreateCatalogueOfferDto {
   @ApiProperty({ example: 'Summer Deal' })
@@ -41,7 +44,10 @@ export class CreateCatalogueOfferDto {
   @Min(0)
   quantity?: number;
 
-  @ApiProperty({ enum: CatalogueOfferPricingType, default: CatalogueOfferPricingType.SUM })
+  @ApiProperty({
+    enum: CatalogueOfferPricingType,
+    default: CatalogueOfferPricingType.SUM,
+  })
   @IsNotEmpty()
   @IsEnum(CatalogueOfferPricingType)
   pricingType: CatalogueOfferPricingType;

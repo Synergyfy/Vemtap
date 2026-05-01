@@ -243,7 +243,7 @@ describe('Auth & Notifications (e2e)', () => {
         goals: ['Resumption'],
         officialEmail: resumptionEmail,
         businessNumber: resumptionPhone,
-        engagement: { linkedin: "url" },
+        engagement: { linkedin: 'url' },
       })
       .expect(201)
       .expect((res) => {

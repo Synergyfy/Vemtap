@@ -22,7 +22,8 @@ export class GoogleLoginDto {
   @Transform(({ value }) => {
     if (typeof value !== 'string') return value;
     // Map 'owner' -> 'Owner', 'customer' -> 'Customer', etc.
-    const normalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    const normalized =
+      value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
     return normalized;
   })
   @IsEnum(UserRole)

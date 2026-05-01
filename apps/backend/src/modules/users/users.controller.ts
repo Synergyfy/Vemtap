@@ -84,7 +84,10 @@ export class UsersController {
     description: 'Returns the QR-Thrive user ID if mapped',
   })
   async getQrThriveMapping(@Request() req) {
-    if (req.user.role === UserRole.CUSTOMER || req.user.role === UserRole.ADMIN) {
+    if (
+      req.user.role === UserRole.CUSTOMER ||
+      req.user.role === UserRole.ADMIN
+    ) {
       return { qrThriveUserId: null };
     }
     const mapping = await this.qrThriveService.getMappingByUserId(req.user.id);
@@ -98,7 +101,10 @@ export class UsersController {
     description: 'Returns the newly created QR-Thrive user ID',
   })
   async provisionQrThrive(@Request() req) {
-    if (req.user.role === UserRole.CUSTOMER || req.user.role === UserRole.ADMIN) {
+    if (
+      req.user.role === UserRole.CUSTOMER ||
+      req.user.role === UserRole.ADMIN
+    ) {
       return { qrThriveUserId: null };
     }
     const mapping = await this.qrThriveService.syncUser(req.user);
@@ -131,7 +137,10 @@ export class UsersController {
   async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
     const businessId = req.user.businessId;
 
-    if (filter.allBranches && (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)) {
+    if (
+      filter.allBranches &&
+      (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)
+    ) {
       return this.usersService.findTeamMembers({ businessId });
     }
 

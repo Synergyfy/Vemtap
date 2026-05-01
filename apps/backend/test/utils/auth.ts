@@ -53,7 +53,7 @@ export async function createAuthenticatedUser(
   branchId?: string,
 ) {
   await ensureFreePlanExists(app);
-  
+
   const dataSource = app.get(DataSource);
   const userRepo = dataSource.getRepository(User);
   const businessRepo = dataSource.getRepository(Business);

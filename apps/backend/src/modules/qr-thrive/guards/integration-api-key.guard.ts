@@ -18,8 +18,10 @@ export class IntegrationApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('API key is missing');
     }
 
-    const expectedApiKey = this.configService.get<string>('VEMTAP_INTEGRATION_KEY');
-    
+    const expectedApiKey = this.configService.get<string>(
+      'VEMTAP_INTEGRATION_KEY',
+    );
+
     if (!expectedApiKey) {
       // If not configured, we might want to log this and fail closed for security
       return false;

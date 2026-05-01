@@ -38,7 +38,10 @@ export class CatalogueOrder extends AbstractBaseEntity {
   @Column({ type: 'uuid' })
   customerId: string;
 
-  @ApiProperty({ enum: CatalogueOrderStatus, example: CatalogueOrderStatus.NEW })
+  @ApiProperty({
+    enum: CatalogueOrderStatus,
+    example: CatalogueOrderStatus.NEW,
+  })
   @Column({
     type: 'enum',
     enum: CatalogueOrderStatus,
@@ -74,9 +77,13 @@ export class CatalogueOrder extends AbstractBaseEntity {
   @Column({ default: false })
   stockDeducted: boolean;
 
-  @OneToMany(() => CatalogueOrderItem, (item: CatalogueOrderItem) => item.order, {
-    cascade: true,
-  })
+  @OneToMany(
+    () => CatalogueOrderItem,
+    (item: CatalogueOrderItem) => item.order,
+    {
+      cascade: true,
+    },
+  )
   items: CatalogueOrderItem[];
 
   @ManyToOne(() => Device, { nullable: true, onDelete: 'SET NULL' })
@@ -91,7 +98,11 @@ export class CatalogueOrder extends AbstractBaseEntity {
    * Used to link this order to the corresponding portal Visit record
    * so the visit can be upgraded to 'patronage' on order completion.
    */
-  @ApiProperty({ example: 'uuid-v4-session-token', nullable: true, required: false })
+  @ApiProperty({
+    example: 'uuid-v4-session-token',
+    nullable: true,
+    required: false,
+  })
   @Column({ type: 'uuid', nullable: true })
   sessionToken: string;
 

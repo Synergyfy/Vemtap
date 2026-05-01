@@ -198,7 +198,10 @@ describe('SubscriptionsService', () => {
       };
 
       mockSubRepository.find.mockResolvedValueOnce([expiringSub]);
-      mockPaymentsService.chargeAuthorization.mockResolvedValue({ status: 'success', reference: 'REF_123' });
+      mockPaymentsService.chargeAuthorization.mockResolvedValue({
+        status: 'success',
+        reference: 'REF_123',
+      });
 
       await service.processRenewals();
 
@@ -237,7 +240,10 @@ describe('SubscriptionsService', () => {
       };
 
       mockSubRepository.find.mockResolvedValueOnce([trialWithAuth]);
-      mockPaymentsService.chargeAuthorization.mockResolvedValue({ status: 'success', reference: 'REF_TRIAL' });
+      mockPaymentsService.chargeAuthorization.mockResolvedValue({
+        status: 'success',
+        reference: 'REF_TRIAL',
+      });
       mockBranchRepo.find.mockResolvedValue([]);
 
       await service.processExpiredTrials();
