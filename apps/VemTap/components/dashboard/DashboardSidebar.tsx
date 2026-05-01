@@ -335,17 +335,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         if (realUserRole === 'admin') return true;
         return !item.roles || item.roles.includes(realUserRole);
     }).map(item => {
-        // Further filter submenus if in sudo mode (Step 6)
-        if (isAdminMode && item.id === 'settings' && item.submenu) {
-            return {
-                ...item,
-                submenu: item.submenu.filter(sub => 
-                    sub.label !== 'Subscription' && 
-                    sub.label !== 'Profile' &&
-                    sub.label !== 'Business Locations'
-                )
-            };
-        }
         return item;
     });
 
