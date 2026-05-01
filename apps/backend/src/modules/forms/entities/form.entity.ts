@@ -56,7 +56,10 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   showAfterLeadCapture: boolean;
 
-  @ApiProperty({ example: 0, description: 'Total number of responses received' })
+  @ApiProperty({
+    example: 0,
+    description: 'Total number of responses received',
+  })
   @Column({ default: 0 })
   responseCount: number;
 

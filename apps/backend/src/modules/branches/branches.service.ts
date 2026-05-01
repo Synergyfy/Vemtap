@@ -41,9 +41,11 @@ export class BranchesService {
       const branch = await this.branchesRepository.findOne({
         where: { id: targetBranchId },
       });
-      
+
       if (!branch) {
-        console.warn(`[BRANCH_GUARD] Access denied: Branch ${targetBranchId} not found`);
+        console.warn(
+          `[BRANCH_GUARD] Access denied: Branch ${targetBranchId} not found`,
+        );
         return false;
       }
 
@@ -56,21 +58,25 @@ export class BranchesService {
       const business = await this.businessRepository.findOne({
         where: { ownerId: user.id },
       });
-      
+
       const hasAccess = business ? branch.businessId === business.id : false;
-      
+
       if (!hasAccess) {
-        console.warn(`[BRANCH_GUARD] Owner ${user.id} access denied to branch ${targetBranchId}. ` +
-          `User Business: ${user.businessId}, Branch Business: ${branch.businessId}, Real Business: ${business?.id}`);
+        console.warn(
+          `[BRANCH_GUARD] Owner ${user.id} access denied to branch ${targetBranchId}. ` +
+            `User Business: ${user.businessId}, Branch Business: ${branch.businessId}, Real Business: ${business?.id}`,
+        );
       }
-      
+
       return hasAccess;
     }
 
     // Manager and Staff can only access their assigned branch
     const hasAccess = user.branchId === targetBranchId;
     if (!hasAccess) {
-      console.warn(`[BRANCH_GUARD] Staff/Manager ${user.id} access denied to branch ${targetBranchId}. Assigned: ${user.branchId}`);
+      console.warn(
+        `[BRANCH_GUARD] Staff/Manager ${user.id} access denied to branch ${targetBranchId}. Assigned: ${user.branchId}`,
+      );
     }
     return hasAccess;
   }
@@ -184,7 +190,9 @@ export class BranchesService {
 
     if (branch && branch.qrThriveCodes) {
       // Filter out non-featured codes from the result
-      branch.qrThriveCodes = branch.qrThriveCodes.filter(c => c.isFeaturedOnUbl);
+      branch.qrThriveCodes = branch.qrThriveCodes.filter(
+        (c) => c.isFeaturedOnUbl,
+      );
     }
     if (!branch)
       throw new NotFoundException(`Branch with code ${uniqueCode} not found`);

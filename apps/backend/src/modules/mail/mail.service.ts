@@ -9,9 +9,7 @@ export class MailService {
   private readonly fromEmail = 'VemTap <hello@vemtap.com>';
 
   constructor(private configService: ConfigService) {
-    this.resend = new Resend(
-      this.configService.get<string>('RESEND_API_KEY'),
-    );
+    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
   }
 
   async sendOtp(email: string, otp: string) {
@@ -87,7 +85,10 @@ export class MailService {
       this.logger.log(`Password reset OTP sent to ${email}`);
       return true;
     } catch (error) {
-      this.logger.error(`Error sending password reset email to ${email}:`, error);
+      this.logger.error(
+        `Error sending password reset email to ${email}:`,
+        error,
+      );
       return false;
     }
   }
@@ -120,8 +121,48 @@ export class MailService {
     email: string,
     order: any,
     status: 'placed' | 'processing' | 'completed' | 'cancelled' | 'rejected',
-    business: { name: string; logo?: string; address?: string; phone?: string; website?: string },
+    business: {
+      name: string;
+      logo?: string;
+      address?: string;
+      phone?: string;
+      website?: string;
+    },
   ) {
+    const { subject, html } = this.generateOrderNotificationHtml(
+      order,
+      status,
+      business,
+    );
+
+    try {
+      const { data } = await this.resend.emails.send({
+        from: `${business.name} via VemTap <hello@vemtap.com>`,
+        to: email,
+        subject,
+        html,
+      });
+      this.logger.log(
+        `Order notification email sent to ${email}, id: ${data?.id}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending order notification email:', error);
+      return false;
+    }
+  }
+
+  public generateOrderNotificationHtml(
+    order: any,
+    status: 'placed' | 'processing' | 'completed' | 'cancelled' | 'rejected',
+    business: {
+      name: string;
+      logo?: string;
+      address?: string;
+      phone?: string;
+      website?: string;
+    },
+  ): { subject: string; html: string } {
     let subject = '';
     let statusText = '';
     let statusColor = '#4A90E2';
@@ -170,7 +211,9 @@ export class MailService {
               </tr>
             </thead>
             <tbody>
-              ${order.items.map((item: any) => `
+              ${order.items
+                .map(
+                  (item: any) => `
                 <tr>
                   <td style="padding: 20px 0; border-bottom: 1px solid #f8fafc;">
                     <div style="font-weight: 600; color: #334155; font-size: 15px;">${item.item?.name || item.offer?.name || 'Item'}</div>
@@ -179,7 +222,9 @@ export class MailService {
                   <td style="padding: 20px 0; text-align: center; color: #475569; font-weight: 500; border-bottom: 1px solid #f8fafc;">${item.quantity}</td>
                   <td style="padding: 20px 0; text-align: right; color: #1e293b; font-weight: 600; border-bottom: 1px solid #f8fafc;">₦${Number(item.priceAtOrder * item.quantity).toLocaleString()}</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join('')}
             </tbody>
           </table>
         </div>
@@ -198,7 +243,7 @@ export class MailService {
       </div>
     `;
 
-    const htmlContent = `
+    const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -224,11 +269,17 @@ export class MailService {
               </div>
               <h2 style="margin: 0 0 12px 0; color: #0f172a; font-size: 24px; font-weight: 700;">Hi ${order.customer?.firstName || 'Valued Customer'},</h2>
               <p style="color: #64748b; font-size: 16px; margin: 0; max-width: 400px; margin: 0 auto;">
-                ${status === 'placed' ? `We've received your order and our team is already on it. Thank you for choosing us!` :
-        status === 'processing' ? `Exciting news! Your order is currently being prepared with care.` :
-          status === 'completed' ? `Your order is ready and waiting! We can't wait for you to experience it.` :
-            status === 'cancelled' ? `We're sorry, but your order has been cancelled. If this was a mistake, please reach out.` :
-              `Your order could not be fulfilled at this time and has been rejected.`}
+                ${
+                  status === 'placed'
+                    ? `We've received your order and our team is already on it. Thank you for choosing us!`
+                    : status === 'processing'
+                      ? `Exciting news! Your order is currently being prepared with care.`
+                      : status === 'completed'
+                        ? `Your order is ready and waiting! We can't wait for you to experience it.`
+                        : status === 'cancelled'
+                          ? `We're sorry, but your order has been cancelled. If this was a mistake, please reach out.`
+                          : `Your order could not be fulfilled at this time and has been rejected.`
+                }
               </p>
             </div>
 
@@ -243,12 +294,16 @@ export class MailService {
                   <td style="color: #64748b; padding-bottom: 12px;">Order date</td>
                   <td style="text-align: right; font-weight: 600; color: #1e293b; padding-bottom: 12px;">${new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</td>
                 </tr>
-                ${order.tableNumber ? `
+                ${
+                  order.tableNumber
+                    ? `
                 <tr>
                   <td style="color: #64748b; padding-bottom: 12px;">Table / Location</td>
                   <td style="text-align: right; font-weight: 600; color: #1e293b; padding-bottom: 12px;">${order.tableNumber}</td>
                 </tr>
-                ` : ''}
+                `
+                    : ''
+                }
               </table>
             </div>
 
@@ -280,18 +335,6 @@ export class MailService {
       </html>
     `;
 
-    try {
-      const { data } = await this.resend.emails.send({
-        from: `${business.name} via VemTap <hello@vemtap.com>`,
-        to: email,
-        subject,
-        html: htmlContent,
-      });
-      this.logger.log(`Order notification email sent to ${email}, id: ${data?.id}`);
-      return true;
-    } catch (error) {
-      this.logger.error('Error sending order notification email:', error);
-      return false;
-    }
+    return { subject, html };
   }
 }

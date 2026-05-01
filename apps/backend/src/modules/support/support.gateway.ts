@@ -42,7 +42,7 @@ export class SupportGateway
       const token =
         client.handshake.auth.token ||
         client.handshake.headers.authorization?.split(' ')[1];
-      
+
       if (!token) {
         this.logger.debug('Anonymous support client connected');
         client.data.userId = null;
@@ -52,13 +52,17 @@ export class SupportGateway
 
       try {
         const payload = this.jwtService.verify(token);
-        const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+        const user = await this.userRepo.findOne({
+          where: { id: payload.sub },
+        });
 
         if (user) {
           client.data.userId = user.id;
           client.data.role = user.role;
           client.join(`user_${user.id}`);
-          this.logger.log(`Support client connected: ${user.id} (${user.role})`);
+          this.logger.log(
+            `Support client connected: ${user.id} (${user.role})`,
+          );
         } else {
           client.data.userId = null;
           client.data.role = 'guest';
@@ -83,7 +87,9 @@ export class SupportGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { ticketId: string },
   ) {
-    this.logger.debug(`User ${client.data.userId} joining support ticket ${data.ticketId}`);
+    this.logger.debug(
+      `User ${client.data.userId} joining support ticket ${data.ticketId}`,
+    );
     client.join(`ticket_${data.ticketId}`);
     return { status: 'joined', ticketId: data.ticketId };
   }
@@ -99,19 +105,23 @@ export class SupportGateway
 
   emitNewMessage(ticketId: string, message: any) {
     this.server.to(`ticket_${ticketId}`).emit('newSupportMessage', message);
-    
+
     // Also notify the specific user if they are not in the ticket room
     if (message.recipientId) {
-      this.server.to(`user_${message.recipientId}`).emit('supportNotification', {
-        type: 'new_message',
-        ticketId,
-        message,
-      });
+      this.server
+        .to(`user_${message.recipientId}`)
+        .emit('supportNotification', {
+          type: 'new_message',
+          ticketId,
+          message,
+        });
     }
   }
 
   emitTicketStatusUpdate(ticketId: string, status: string) {
-    this.server.to(`ticket_${ticketId}`).emit('ticketStatusUpdated', { ticketId, status });
+    this.server
+      .to(`ticket_${ticketId}`)
+      .emit('ticketStatusUpdated', { ticketId, status });
   }
 
   emitNewChatEscalated(ticket: any) {

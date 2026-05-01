@@ -99,9 +99,9 @@ describe('Catalogue Orders (E2E)', () => {
         .expect(200);
 
       const res = await request(app.getHttpServer())
-          .get(`/api/v1/catalogue/orders/${orderId}`)
-          .set('Authorization', `Bearer ${ownerToken}`);
-      
+        .get(`/api/v1/catalogue/orders/${orderId}`)
+        .set('Authorization', `Bearer ${ownerToken}`);
+
       expect(res.body.status).toBe('processing');
     });
   });

@@ -5,11 +5,15 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { User, UserRole, UserStatus } from '../../modules/users/entities/user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../modules/users/entities/user.entity';
 
 @Injectable()
 export class UserStatusGuard implements CanActivate {
-  constructor(private reflector: Reflector) { }
+  constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     const isPublic = this.reflector.getAllAndOverride<boolean>(

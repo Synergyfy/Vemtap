@@ -221,7 +221,10 @@ export class CatalogueOrderQueryDto {
   @IsUUID()
   branchId?: string;
 
-  @ApiPropertyOptional({ example: 'booking', description: 'Filter by type: order or booking' })
+  @ApiPropertyOptional({
+    example: 'booking',
+    description: 'Filter by type: order or booking',
+  })
   @IsOptional()
   @IsString()
   type?: string;

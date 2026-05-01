@@ -3,7 +3,10 @@ import { CatalogueCartService } from './catalogue-cart.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CatalogueCart } from './entities/catalogue-cart.entity';
 import { CatalogueCartItem } from './entities/catalogue-cart-item.entity';
-import { CatalogueItem, CatalogueItemStatus } from '../catalogue/entities/catalogue-item.entity';
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+} from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
@@ -88,7 +91,12 @@ describe('CatalogueCartService', () => {
 
   describe('getOrCreateCart', () => {
     it('should return existing cart if found', async () => {
-      const mockCart = { id: 'cart-1', customerId: 'cust-1', branchId: 'branch-1', items: [] };
+      const mockCart = {
+        id: 'cart-1',
+        customerId: 'cust-1',
+        branchId: 'branch-1',
+        items: [],
+      };
       mockCartRepository.findOne.mockResolvedValue(mockCart);
 
       const result = await service.getOrCreateCart('cust-1', 'branch-1');
@@ -98,14 +106,25 @@ describe('CatalogueCartService', () => {
 
     it('should create a new cart if not found', async () => {
       mockCartRepository.findOne.mockResolvedValue(null);
-      mockBranchRepository.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'bus-1' });
-      const newCart = { id: 'cart-1', customerId: 'cust-1', branchId: 'branch-1', businessId: 'bus-1', items: [] };
+      mockBranchRepository.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'bus-1',
+      });
+      const newCart = {
+        id: 'cart-1',
+        customerId: 'cust-1',
+        branchId: 'branch-1',
+        businessId: 'bus-1',
+        items: [],
+      };
       mockCartRepository.create.mockReturnValue(newCart);
       mockCartRepository.save.mockResolvedValue(newCart);
 
       const result = await service.getOrCreateCart('cust-1', 'branch-1');
       expect(result).toEqual(newCart);
-      expect(mockBranchRepository.findOne).toHaveBeenCalledWith({ where: { id: 'branch-1' } });
+      expect(mockBranchRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 'branch-1' },
+      });
       expect(mockCartRepository.create).toHaveBeenCalledWith({
         customerId: 'cust-1',
         branchId: 'branch-1',
@@ -119,7 +138,9 @@ describe('CatalogueCartService', () => {
       mockCartRepository.findOne.mockResolvedValue(null);
       mockBranchRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.getOrCreateCart('cust-1', 'branch-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getOrCreateCart('cust-1', 'branch-1'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

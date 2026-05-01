@@ -1,4 +1,13 @@
-import { IsUUID, IsInt, Min, IsOptional, ValidateIf, IsArray, ValidateNested, IsString } from 'class-validator';
+import {
+  IsUUID,
+  IsInt,
+  Min,
+  IsOptional,
+  ValidateIf,
+  IsArray,
+  ValidateNested,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AddToCartDto {

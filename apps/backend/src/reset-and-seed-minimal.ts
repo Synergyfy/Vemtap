@@ -596,10 +596,7 @@ async function seedPlansAndCategories() {
         }
       }
     } catch (error: any) {
-      console.error(
-        `Error seeding category ${catData.name}:`,
-        error.message,
-      );
+      console.error(`Error seeding category ${catData.name}:`, error.message);
     }
   }
 
@@ -611,7 +608,9 @@ async function main() {
   await deleteAllData();
   await seedPlansAndCategories();
   console.log('\n=== DONE ===');
-  console.log('Database has been reset with only plans, categories, and subcategories.');
+  console.log(
+    'Database has been reset with only plans, categories, and subcategories.',
+  );
 }
 
 main().catch((e) => {

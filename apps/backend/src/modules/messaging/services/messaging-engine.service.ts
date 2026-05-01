@@ -306,7 +306,10 @@ export class MessagingEngineService {
         direction: MessageDirection.OUTBOUND,
         status: MessageStatus.PENDING,
         from,
-        to: channel === Channel.EMAIL ? customer.email || '' : formatPhoneNumber(customer.phone || ''),
+        to:
+          channel === Channel.EMAIL
+            ? customer.email || ''
+            : formatPhoneNumber(customer.phone || ''),
         timestamp: new Date(),
         metadata: dto.metadata || {},
       } as any) as unknown as Message;
@@ -446,7 +449,10 @@ export class MessagingEngineService {
         content: resolvedContent,
         channel,
         direction: MessageDirection.OUTBOUND,
-        status: channel === Channel.IN_HOUSE ? MessageStatus.DELIVERED : MessageStatus.PENDING,
+        status:
+          channel === Channel.IN_HOUSE
+            ? MessageStatus.DELIVERED
+            : MessageStatus.PENDING,
         from,
         to:
           channel === Channel.EMAIL
@@ -457,14 +463,18 @@ export class MessagingEngineService {
       } as any) as unknown as Message;
 
       const savedResult = await this.messageRepo.save(message);
-      savedMessage = (Array.isArray(savedResult) ? savedResult[0] : savedResult) as Message;
+      savedMessage = (
+        Array.isArray(savedResult) ? savedResult[0] : savedResult
+      ) as Message;
 
       // Update thread metadata
-      this.threadRepo.update(thread.id, {
-        lastActivityAt: new Date(),
-        lastMessageContent: content,
-        status: ThreadStatus.OPEN,
-      }).catch(e => this.logger.error(`Thread update failed: ${e.message}`));
+      this.threadRepo
+        .update(thread.id, {
+          lastActivityAt: new Date(),
+          lastMessageContent: content,
+          status: ThreadStatus.OPEN,
+        })
+        .catch((e) => this.logger.error(`Thread update failed: ${e.message}`));
     }
 
     // --- Delivery Logic ---
@@ -511,7 +521,9 @@ export class MessagingEngineService {
           savedMessage.status === MessageStatus.DELIVERED ||
           savedMessage.status === MessageStatus.PENDING
         ) {
-          this.logger.log(`✅ SUCCESS: [${channel}] delivery status: ${savedMessage.status}`);
+          this.logger.log(
+            `✅ SUCCESS: [${channel}] delivery status: ${savedMessage.status}`,
+          );
         }
       } catch (err: any) {
         this.logger.error(`❌ ERROR: Delivery failed: ${err.message}`);
@@ -522,7 +534,9 @@ export class MessagingEngineService {
     }
 
     if (!messageId) {
-      this.logMessage(savedMessage).catch(e => this.logger.error(`Logging failed: ${e.message}`));
+      this.logMessage(savedMessage).catch((e) =>
+        this.logger.error(`Logging failed: ${e.message}`),
+      );
     }
 
     return savedMessage;
@@ -621,7 +635,11 @@ export class MessagingEngineService {
     await this.logRepo.update({ messageId }, { status, errorReason: error });
   }
 
-  async getOrCreateThread(branchId: string, customerId: string, channel: Channel): Promise<ConversationThread> {
+  async getOrCreateThread(
+    branchId: string,
+    customerId: string,
+    channel: Channel,
+  ): Promise<ConversationThread> {
     let thread = await this.threadRepo.findOne({
       where: { branchId, customerId, channel },
     });
@@ -643,9 +661,12 @@ export class MessagingEngineService {
   async createMessage(data: any): Promise<Message> {
     const message = this.messageRepo.create({
       ...data,
-      status: data.channel === Channel.IN_HOUSE ? MessageStatus.DELIVERED : MessageStatus.PENDING,
+      status:
+        data.channel === Channel.IN_HOUSE
+          ? MessageStatus.DELIVERED
+          : MessageStatus.PENDING,
       timestamp: new Date(),
-    } as any) as unknown as Message;
+    }) as unknown as Message;
     return this.messageRepo.save(message);
   }
 
@@ -728,7 +749,8 @@ export class MessagingEngineService {
 
     // Deduct credits for reply
     if (thread.channel !== Channel.IN_HOUSE) {
-      const units = content.length > 160 && thread.channel === Channel.SMS ? 2 : 1;
+      const units =
+        content.length > 160 && thread.channel === Channel.SMS ? 2 : 1;
       await this.creditService.deductCredits(
         branch.businessId,
         thread.channel,

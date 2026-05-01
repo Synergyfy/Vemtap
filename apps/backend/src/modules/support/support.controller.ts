@@ -55,19 +55,30 @@ export class SupportController {
 
   @Post('bot/query')
   @Public()
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.STAFF,
+    UserRole.MANAGER,
+    UserRole.OWNER,
+    UserRole.AGENT,
+    UserRole.ADMIN,
+  )
   @ApiOperation({ summary: 'Query the automated support bot' })
-  async queryBot(
-    @Request() req: any,
-    @Body() dto: BotQueryDto,
-  ) {
+  async queryBot(@Request() req: any, @Body() dto: BotQueryDto) {
     const userId = req.user?.id || null;
     return this.botService.handleQuery(userId, dto);
   }
 
   @Post('escalate')
   @Public()
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.STAFF,
+    UserRole.MANAGER,
+    UserRole.OWNER,
+    UserRole.AGENT,
+    UserRole.ADMIN,
+  )
   @ApiOperation({ summary: 'Escalate bot session to a live human agent' })
   async escalateChat(
     @Request() req: any,
@@ -77,14 +88,27 @@ export class SupportController {
     @Body('sessionId') sessionId?: string,
   ) {
     const userId = req.user?.id || null;
-    const name = guestName || (req.body as any).guestName;
-    const email = guestEmail || (req.body as any).guestEmail;
-    
-    return this.supportService.escalateChat(userId, initialMessage, name, email, sessionId);
+    const name = guestName || req.body.guestName;
+    const email = guestEmail || req.body.guestEmail;
+
+    return this.supportService.escalateChat(
+      userId,
+      initialMessage,
+      name,
+      email,
+      sessionId,
+    );
   }
 
   @Patch('bot/interaction/:id')
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.STAFF,
+    UserRole.MANAGER,
+    UserRole.OWNER,
+    UserRole.AGENT,
+    UserRole.ADMIN,
+  )
   @ApiOperation({ summary: 'Submit feedback for a bot interaction' })
   async updateInteraction(
     @Param('id', ParseUUIDPipe) id: string,
@@ -94,7 +118,14 @@ export class SupportController {
   }
 
   @Get('bot/context')
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.STAFF,
+    UserRole.MANAGER,
+    UserRole.OWNER,
+    UserRole.AGENT,
+    UserRole.ADMIN,
+  )
   @ApiOperation({ summary: 'Get conversation context' })
   @ApiQuery({ name: 'sessionId', required: false })
   async getContext(
@@ -105,7 +136,14 @@ export class SupportController {
   }
 
   @Delete('bot/context')
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.STAFF,
+    UserRole.MANAGER,
+    UserRole.OWNER,
+    UserRole.AGENT,
+    UserRole.ADMIN,
+  )
   @ApiOperation({ summary: 'Clear conversation context' })
   @ApiQuery({ name: 'sessionId', required: false })
   async clearContext(
@@ -249,7 +287,10 @@ export class SupportController {
     const { SupportKnowledge } = require('./entities/support-bot.entity');
     const supportModule = require('./support.module');
     const moduleRef = require('../../app.module');
-    return { success: true, message: 'Update endpoint - implement repository injection' };
+    return {
+      success: true,
+      message: 'Update endpoint - implement repository injection',
+    };
   }
 
   @Delete('admin/bot/knowledge/:id')

@@ -127,6 +127,10 @@ export class Business extends AbstractBaseEntity {
   @Column()
   ownerId: string;
 
+  @ApiProperty({ example: 'AFF001', nullable: true })
+  @Column({ nullable: true })
+  referralCode: string;
+
   @OneToMany(() => Branch, (branch) => branch.business)
   branches: Branch[];
 

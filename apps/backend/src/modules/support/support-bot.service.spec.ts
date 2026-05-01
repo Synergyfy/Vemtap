@@ -2,7 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SupportBotService } from './support-bot.service';
 import { BotContextService } from './bot-context.service';
-import { SupportKnowledge, BotInteraction } from './entities/support-bot.entity';
+import {
+  SupportKnowledge,
+  BotInteraction,
+} from './entities/support-bot.entity';
 import { Repository } from 'typeorm';
 
 describe('SupportBotService', () => {
@@ -17,7 +20,7 @@ describe('SupportBotService', () => {
       answer: 'Hi {{name}}, you have {{smsCredits}} credits.',
       keywords: ['topup', 'credits'],
       isActive: true,
-      link: '/billing'
+      link: '/billing',
     },
   ];
 
@@ -44,24 +47,36 @@ describe('SupportBotService', () => {
             findOne: jest.fn(),
             find: jest.fn().mockResolvedValue(mockKnowledge),
             increment: jest.fn(),
-            create: jest.fn().mockImplementation(dto => dto),
-            save: jest.fn().mockImplementation(dto => Promise.resolve({ id: 'new-id', ...dto })),
+            create: jest.fn().mockImplementation((dto) => dto),
+            save: jest
+              .fn()
+              .mockImplementation((dto) =>
+                Promise.resolve({ id: 'new-id', ...dto }),
+              ),
           },
         },
         {
           provide: getRepositoryToken(BotInteraction),
           useValue: {
             findOne: jest.fn(),
-            create: jest.fn().mockImplementation(dto => dto),
-            save: jest.fn().mockImplementation(dto => Promise.resolve({ id: 'int-id', ...dto })),
+            create: jest.fn().mockImplementation((dto) => dto),
+            save: jest
+              .fn()
+              .mockImplementation((dto) =>
+                Promise.resolve({ id: 'int-id', ...dto }),
+              ),
           },
         },
       ],
     }).compile();
 
     service = module.get<SupportBotService>(SupportBotService);
-    knowledgeRepo = module.get<Repository<SupportKnowledge>>(getRepositoryToken(SupportKnowledge));
-    interactionRepo = module.get<Repository<BotInteraction>>(getRepositoryToken(BotInteraction));
+    knowledgeRepo = module.get<Repository<SupportKnowledge>>(
+      getRepositoryToken(SupportKnowledge),
+    );
+    interactionRepo = module.get<Repository<BotInteraction>>(
+      getRepositoryToken(BotInteraction),
+    );
   });
 
   it('should be defined', () => {
@@ -70,9 +85,13 @@ describe('SupportBotService', () => {
 
   describe('handleQuery - Context Awareness', () => {
     it('should parse templates with user context', async () => {
-      jest.spyOn(knowledgeRepo, 'findOne').mockResolvedValue(mockKnowledge[0] as any);
+      jest
+        .spyOn(knowledgeRepo, 'findOne')
+        .mockResolvedValue(mockKnowledge[0] as any);
 
-      const result = await service.handleQuery('user-1', { query: 'how to top up' });
+      const result = await service.handleQuery('user-1', {
+        query: 'how to top up',
+      });
 
       expect(result.id).toBe('int-id');
       expect(result.content).toContain('Hi Azeem');
@@ -86,7 +105,9 @@ describe('SupportBotService', () => {
     it('should match even with punctuation', async () => {
       jest.spyOn(knowledgeRepo, 'findOne').mockResolvedValue(null);
 
-      const result = await service.handleQuery('user-1', { query: 'Credits??' });
+      const result = await service.handleQuery('user-1', {
+        query: 'Credits??',
+      });
 
       expect(result.content).toContain('Hi Azeem');
       expect(result.source).toBe('rule');
@@ -96,12 +117,18 @@ describe('SupportBotService', () => {
   describe('updateInteraction', () => {
     it('should update the helpfulness of an interaction', async () => {
       const mockInteraction = { id: 'int-1', wasHelpful: false };
-      jest.spyOn(interactionRepo, 'findOne').mockResolvedValue(mockInteraction as any);
-      jest.spyOn(interactionRepo, 'save').mockImplementation(dto => Promise.resolve(dto as any));
+      jest
+        .spyOn(interactionRepo, 'findOne')
+        .mockResolvedValue(mockInteraction as any);
+      jest
+        .spyOn(interactionRepo, 'save')
+        .mockImplementation((dto) => Promise.resolve(dto as any));
 
       await service.updateInteraction('int-1', true);
 
-      expect(interactionRepo.save).toHaveBeenCalledWith(expect.objectContaining({ wasHelpful: true }));
+      expect(interactionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ wasHelpful: true }),
+      );
     });
   });
 });

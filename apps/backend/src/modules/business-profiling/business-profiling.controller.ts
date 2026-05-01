@@ -10,9 +10,17 @@ import {
   Query,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { BusinessProfilingService } from './business-profiling.service';
-import { CreateBusinessProfileDto, UpdateBusinessProfileDto } from './dto/business-profile.dto';
+import {
+  CreateBusinessProfileDto,
+  UpdateBusinessProfileDto,
+} from './dto/business-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -35,7 +43,10 @@ export class BusinessProfilingController {
   @ApiOperation({ summary: 'Create a new business profile' })
   @ApiResponse({ status: 201, type: BusinessProfile })
   @Roles(UserRole.AGENT, UserRole.ADMIN)
-  create(@Request() req: RequestWithUser, @Body() createDto: CreateBusinessProfileDto) {
+  create(
+    @Request() req: RequestWithUser,
+    @Body() createDto: CreateBusinessProfileDto,
+  ) {
     return this.profilingService.create(req.user, createDto);
   }
 
@@ -66,7 +77,12 @@ export class BusinessProfilingController {
     @Query('status') status?: string,
     @Query('type') type?: string,
   ) {
-    return this.profilingService.findAll(req.user, { search, priority, status, type });
+    return this.profilingService.findAll(req.user, {
+      search,
+      priority,
+      status,
+      type,
+    });
   }
 
   @Get(':id')

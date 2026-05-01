@@ -6,12 +6,22 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { AffiliateProfile, KycStatus } from './entities/affiliate-profile.entity';
+import {
+  AffiliateProfile,
+  KycStatus,
+} from './entities/affiliate-profile.entity';
 import { AffiliateReferral, ReferralStatus } from './entities/referral.entity';
-import { AffiliateCommission, CommissionStatus } from './entities/commission.entity';
-import { AffiliateWithdrawalRequest, WithdrawalStatus } from './entities/withdrawal-request.entity';
+import {
+  AffiliateCommission,
+  CommissionStatus,
+} from './entities/commission.entity';
+import {
+  AffiliateWithdrawalRequest,
+  WithdrawalStatus,
+} from './entities/withdrawal-request.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { SettingsService } from '../settings/settings.service';
+import { ExternalAffiliateService } from './external-affiliate.service';
 
 @Injectable()
 export class AffiliatesService {
@@ -28,6 +38,7 @@ export class AffiliatesService {
     private readonly userRepository: Repository<User>,
     private readonly settingsService: SettingsService,
     private readonly dataSource: DataSource,
+    private readonly externalAffiliateService: ExternalAffiliateService,
   ) {}
 
   /**
@@ -37,7 +48,9 @@ export class AffiliatesService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const existing = await this.profileRepository.findOne({ where: { userId } });
+    const existing = await this.profileRepository.findOne({
+      where: { userId },
+    });
     if (existing) return existing;
 
     // Generate a unique referral code
@@ -64,7 +77,11 @@ export class AffiliatesService {
   /**
    * Records a new referral
    */
-  async recordReferral(affiliateId: string, referredBusinessId?: string, referredUserId?: string): Promise<AffiliateReferral> {
+  async recordReferral(
+    affiliateId: string,
+    referredBusinessId?: string,
+    referredUserId?: string,
+  ): Promise<AffiliateReferral> {
     const referral = this.referralRepository.create({
       affiliateId,
       referredBusinessId,
@@ -78,7 +95,11 @@ export class AffiliatesService {
   /**
    * Processes a subscription payment to generate commissions
    */
-  async processSubscriptionCommission(businessId: string, amount: number, paymentId?: string) {
+  async processSubscriptionCommission(
+    businessId: string,
+    amount: number,
+    paymentId?: string,
+  ) {
     const referral = await this.referralRepository.findOne({
       where: { referredBusinessId: businessId },
       relations: ['affiliate'],
@@ -157,7 +178,10 @@ export class AffiliatesService {
   /**
    * Requests a withdrawal
    */
-  async requestWithdrawal(userId: string, amount: number): Promise<AffiliateWithdrawalRequest> {
+  async requestWithdrawal(
+    userId: string,
+    amount: number,
+  ): Promise<AffiliateWithdrawalRequest> {
     const profile = await this.profileRepository.findOne({ where: { userId } });
     if (!profile) throw new NotFoundException('Affiliate profile not found');
 
@@ -165,7 +189,9 @@ export class AffiliatesService {
     const minWithdrawal = settings.affiliateMinimumWithdrawal || 5000;
 
     if (amount < minWithdrawal) {
-      throw new BadRequestException(`Minimum withdrawal amount is ₦${minWithdrawal}`);
+      throw new BadRequestException(
+        `Minimum withdrawal amount is ₦${minWithdrawal}`,
+      );
     }
 
     if (profile.availableBalance < amount) {
@@ -210,22 +236,32 @@ export class AffiliatesService {
 
     // Combine and sort by date
     const activity = [
-      ...referrals.map(r => ({ type: 'referral', title: 'New Referral', desc: `Referral signed up`, time: r.createdAt })),
-      ...commissions.map(c => ({ 
-        type: 'commission', 
-        title: 'Commission Earned', 
-        desc: `₦${c.amount} from ${c.referredBusiness?.name || 'Business'}`, 
-        time: c.createdAt 
+      ...referrals.map((r) => ({
+        type: 'referral',
+        title: 'New Referral',
+        desc: `Referral signed up`,
+        time: r.createdAt,
       })),
-      ...withdrawals.map(w => ({ 
-        type: 'withdrawal', 
-        title: w.status === WithdrawalStatus.PAID ? 'Withdrawal Paid' : 'Withdrawal Request', 
-        desc: `₦${w.amount} to your bank`, 
-        time: w.createdAt 
+      ...commissions.map((c) => ({
+        type: 'commission',
+        title: 'Commission Earned',
+        desc: `₦${c.amount} from ${c.referredBusiness?.name || 'Business'}`,
+        time: c.createdAt,
+      })),
+      ...withdrawals.map((w) => ({
+        type: 'withdrawal',
+        title:
+          w.status === WithdrawalStatus.PAID
+            ? 'Withdrawal Paid'
+            : 'Withdrawal Request',
+        desc: `₦${w.amount} to your bank`,
+        time: w.createdAt,
       })),
     ];
 
-    return activity.sort((a, b) => b.time.getTime() - a.time.getTime()).slice(0, limit);
+    return activity
+      .sort((a, b) => b.time.getTime() - a.time.getTime())
+      .slice(0, limit);
   }
 
   /**
@@ -247,14 +283,27 @@ export class AffiliatesService {
       .getRawMany();
 
     // Map to frontend format
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
     // Ensure we have at least some data for the chart to render nicely
     if (rawData.length === 0) {
-      return monthNames.slice(0, 7).map(name => ({ name, earnings: 0 }));
+      return monthNames.slice(0, 7).map((name) => ({ name, earnings: 0 }));
     }
 
-    return rawData.map(item => ({
+    return rawData.map((item) => ({
       name: item.month,
       earnings: Number(item.earnings),
     }));
@@ -309,7 +358,12 @@ export class AffiliatesService {
     if (data.idImageUrl) profile.idImageUrl = data.idImageUrl;
 
     // Auto-set KYC to pending if all details are provided
-    if (profile.idType && profile.idNumber && profile.idImageUrl && profile.kycStatus === KycStatus.UNVERIFIED) {
+    if (
+      profile.idType &&
+      profile.idNumber &&
+      profile.idImageUrl &&
+      profile.kycStatus === KycStatus.UNVERIFIED
+    ) {
       profile.kycStatus = KycStatus.PENDING;
     }
 
@@ -333,15 +387,25 @@ export class AffiliatesService {
   /**
    * Process a withdrawal request (Admin only)
    */
-  async processWithdrawal(id: string, adminId: string, status: WithdrawalStatus, note?: string) {
-    const request = await this.withdrawalRepository.findOne({ 
+  async processWithdrawal(
+    id: string,
+    adminId: string,
+    status: WithdrawalStatus,
+    note?: string,
+  ) {
+    const request = await this.withdrawalRepository.findOne({
       where: { id },
-      relations: ['affiliate'] 
+      relations: ['affiliate'],
     });
-    
+
     if (!request) throw new NotFoundException('Withdrawal request not found');
-    if (request.status !== WithdrawalStatus.PENDING && request.status !== WithdrawalStatus.APPROVED) {
-      throw new BadRequestException('Request has already been processed or rejected');
+    if (
+      request.status !== WithdrawalStatus.PENDING &&
+      request.status !== WithdrawalStatus.APPROVED
+    ) {
+      throw new BadRequestException(
+        'Request has already been processed or rejected',
+      );
     }
 
     request.status = status;
@@ -349,10 +413,38 @@ export class AffiliatesService {
     request.processedAt = new Date();
     request.note = note || request.note;
 
+    // If approved and marked as PAID, sync with external system
+    if (status === WithdrawalStatus.PAID) {
+      const profile = await this.profileRepository.findOne({
+        where: { id: request.affiliateId },
+        relations: ['user'],
+      });
+
+      if (profile && profile.bankAccountDetails) {
+        try {
+          await this.externalAffiliateService.processWithdrawal({
+            email: profile.user.email,
+            amount: Number(request.amount),
+            bankName: profile.bankAccountDetails.bankName,
+            accountNumber: profile.bankAccountDetails.accountNumber,
+            accountName: profile.bankAccountDetails.accountName,
+            reference: request.id,
+          });
+        } catch (error: any) {
+          console.error(
+            'Failed to sync withdrawal with external affiliate system:',
+            error.message,
+          );
+          // We don't throw here to avoid blocking the local update, but in production we might want to
+        }
+      }
+    }
+
     // If rejected, refund the balance
     if (status === WithdrawalStatus.REJECTED) {
       const profile = request.affiliate;
-      profile.availableBalance = Number(profile.availableBalance) + Number(request.amount);
+      profile.availableBalance =
+        Number(profile.availableBalance) + Number(request.amount);
       await this.profileRepository.save(profile);
     }
 
@@ -375,15 +467,19 @@ export class AffiliatesService {
       .getRawOne();
 
     const totalReferrals = await this.referralRepository.count();
-    const activeAffiliates = await this.profileRepository.count({ where: { kycStatus: KycStatus.VERIFIED } });
-    const fraudAlerts = await this.profileRepository.count({ where: { isFlagged: true } });
+    const activeAffiliates = await this.profileRepository.count({
+      where: { kycStatus: KycStatus.VERIFIED },
+    });
+    const fraudAlerts = await this.profileRepository.count({
+      where: { isFlagged: true },
+    });
 
     const pendingPayoutsAmount = await this.withdrawalRepository
       .createQueryBuilder('w')
       .select('SUM(w.amount)', 'sum')
       .where('w.status = :status', { status: WithdrawalStatus.PENDING })
       .getRawOne();
-      
+
     const approvedPayoutsAmount = await this.withdrawalRepository
       .createQueryBuilder('w')
       .select('SUM(w.amount)', 'sum')
@@ -468,7 +564,7 @@ export class AffiliatesService {
 
     profile.isFlagged = isFlagged;
     profile.fraudReason = reason || profile.fraudReason;
-    
+
     return this.profileRepository.save(profile);
   }
 
@@ -493,7 +589,9 @@ export class AffiliatesService {
     while (!isUnique) {
       const random = Math.floor(1000 + Math.random() * 9000);
       code = `VEM-${prefix}-${random}`;
-      const existing = await this.profileRepository.findOne({ where: { referralCode: code } });
+      const existing = await this.profileRepository.findOne({
+        where: { referralCode: code },
+      });
       if (!existing) isUnique = true;
     }
 
@@ -501,10 +599,13 @@ export class AffiliatesService {
   }
 
   private async updateAffiliateBalance(affiliateId: string, amount: number) {
-    const profile = await this.profileRepository.findOne({ where: { id: affiliateId } });
+    const profile = await this.profileRepository.findOne({
+      where: { id: affiliateId },
+    });
     if (profile) {
       profile.totalEarnings = Number(profile.totalEarnings) + Number(amount);
-      profile.availableBalance = Number(profile.availableBalance) + Number(amount);
+      profile.availableBalance =
+        Number(profile.availableBalance) + Number(amount);
       await this.profileRepository.save(profile);
     }
   }

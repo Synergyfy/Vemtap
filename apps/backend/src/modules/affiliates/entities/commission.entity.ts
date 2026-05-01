@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { AffiliateProfile } from './affiliate-profile.entity';
 import { AffiliateReferral } from './referral.entity';
