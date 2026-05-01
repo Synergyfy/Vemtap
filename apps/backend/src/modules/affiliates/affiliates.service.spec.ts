@@ -3,10 +3,20 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AffiliatesService } from './affiliates.service';
-import { AffiliateProfile, KycStatus } from './entities/affiliate-profile.entity';
+import { ExternalAffiliateService } from './external-affiliate.service';
+import {
+  AffiliateProfile,
+  KycStatus,
+} from './entities/affiliate-profile.entity';
 import { AffiliateReferral, ReferralStatus } from './entities/referral.entity';
-import { AffiliateCommission, CommissionStatus } from './entities/commission.entity';
-import { AffiliateWithdrawalRequest, WithdrawalStatus } from './entities/withdrawal-request.entity';
+import {
+  AffiliateCommission,
+  CommissionStatus,
+} from './entities/commission.entity';
+import {
+  AffiliateWithdrawalRequest,
+  WithdrawalStatus,
+} from './entities/withdrawal-request.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { SettingsService } from '../settings/settings.service';
 
@@ -24,7 +34,9 @@ describe('AffiliatesService', () => {
     profileRepository = {
       findOne: jest.fn(),
       create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockImplementation((p) => Promise.resolve({ id: 'p1', ...p })),
+      save: jest
+        .fn()
+        .mockImplementation((p) => Promise.resolve({ id: 'p1', ...p })),
       count: jest.fn(),
       find: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue({
@@ -36,14 +48,18 @@ describe('AffiliatesService', () => {
     referralRepository = {
       findOne: jest.fn(),
       create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockImplementation((r) => Promise.resolve({ id: 'r1', ...r })),
+      save: jest
+        .fn()
+        .mockImplementation((r) => Promise.resolve({ id: 'r1', ...r })),
       count: jest.fn(),
       find: jest.fn(),
     };
 
     commissionRepository = {
       create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockImplementation((c) => Promise.resolve({ id: 'c1', ...c })),
+      save: jest
+        .fn()
+        .mockImplementation((c) => Promise.resolve({ id: 'c1', ...c })),
       find: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnThis(),
@@ -59,7 +75,9 @@ describe('AffiliatesService', () => {
 
     withdrawalRepository = {
       create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockImplementation((w) => Promise.resolve({ id: 'w1', ...w })),
+      save: jest
+        .fn()
+        .mockImplementation((w) => Promise.resolve({ id: 'w1', ...w })),
       find: jest.fn(),
       findOne: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue({
@@ -89,13 +107,33 @@ describe('AffiliatesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AffiliatesService,
-        { provide: getRepositoryToken(AffiliateProfile), useValue: profileRepository },
-        { provide: getRepositoryToken(AffiliateReferral), useValue: referralRepository },
-        { provide: getRepositoryToken(AffiliateCommission), useValue: commissionRepository },
-        { provide: getRepositoryToken(AffiliateWithdrawalRequest), useValue: withdrawalRepository },
+        {
+          provide: getRepositoryToken(AffiliateProfile),
+          useValue: profileRepository,
+        },
+        {
+          provide: getRepositoryToken(AffiliateReferral),
+          useValue: referralRepository,
+        },
+        {
+          provide: getRepositoryToken(AffiliateCommission),
+          useValue: commissionRepository,
+        },
+        {
+          provide: getRepositoryToken(AffiliateWithdrawalRequest),
+          useValue: withdrawalRepository,
+        },
         { provide: getRepositoryToken(User), useValue: userRepository },
         { provide: SettingsService, useValue: settingsService },
         { provide: DataSource, useValue: dataSource },
+        {
+          provide: ExternalAffiliateService,
+          useValue: {
+            processWithdrawal: jest.fn().mockResolvedValue({ success: true }),
+            validateReferralCode: jest.fn().mockResolvedValue({ valid: false }),
+            recordReferral: jest.fn().mockResolvedValue({ success: true }),
+          },
+        },
       ],
     }).compile();
 
@@ -130,7 +168,9 @@ describe('AffiliatesService', () => {
 
     it('should throw NotFoundException if user not found', async () => {
       userRepository.findOne.mockResolvedValue(null);
-      await expect(service.createProfile('u1')).rejects.toThrow(NotFoundException);
+      await expect(service.createProfile('u1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -148,8 +188,12 @@ describe('AffiliatesService', () => {
   describe('processSubscriptionCommission', () => {
     it('should process commission and update balance', async () => {
       const affiliateId = 'a1';
-      const affiliateProfile = { id: affiliateId, totalEarnings: 0, availableBalance: 0 };
-      
+      const affiliateProfile = {
+        id: affiliateId,
+        totalEarnings: 0,
+        availableBalance: 0,
+      };
+
       referralRepository.findOne.mockResolvedValue({
         id: 'r1',
         affiliateId,
@@ -160,13 +204,17 @@ describe('AffiliatesService', () => {
       await service.processSubscriptionCommission('b1', 10000);
 
       expect(referralRepository.save).toHaveBeenCalled();
-      expect(commissionRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-        amount: 2000, // 20% of 10000
-      }));
-      expect(profileRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-        totalEarnings: 2000,
-        availableBalance: 2000,
-      }));
+      expect(commissionRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 2000, // 20% of 10000
+        }),
+      );
+      expect(profileRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          totalEarnings: 2000,
+          availableBalance: 2000,
+        }),
+      );
     });
   });
 
@@ -185,18 +233,26 @@ describe('AffiliatesService', () => {
 
     it('should throw BadRequestException for amount below minimum', async () => {
       profileRepository.findOne.mockResolvedValue({ availableBalance: 10000 });
-      await expect(service.requestWithdrawal('u1', 1000)).rejects.toThrow(BadRequestException);
+      await expect(service.requestWithdrawal('u1', 1000)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException for insufficient balance', async () => {
       profileRepository.findOne.mockResolvedValue({ availableBalance: 4000 });
-      await expect(service.requestWithdrawal('u1', 6000)).rejects.toThrow(BadRequestException);
+      await expect(service.requestWithdrawal('u1', 6000)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('Admin Methods', () => {
     it('should process withdrawal approval', async () => {
-      const request = { id: 'w1', status: WithdrawalStatus.PENDING, amount: 5000 };
+      const request = {
+        id: 'w1',
+        status: WithdrawalStatus.PENDING,
+        amount: 5000,
+      };
       withdrawalRepository.findOne.mockResolvedValue(request);
 
       await service.processWithdrawal('w1', 'admin1', WithdrawalStatus.PAID);
@@ -208,10 +264,19 @@ describe('AffiliatesService', () => {
 
     it('should refund balance on withdrawal rejection', async () => {
       const profile = { id: 'p1', availableBalance: 5000 };
-      const request = { id: 'w1', status: WithdrawalStatus.PENDING, amount: 5000, affiliate: profile };
+      const request = {
+        id: 'w1',
+        status: WithdrawalStatus.PENDING,
+        amount: 5000,
+        affiliate: profile,
+      };
       withdrawalRepository.findOne.mockResolvedValue(request);
 
-      await service.processWithdrawal('w1', 'admin1', WithdrawalStatus.REJECTED);
+      await service.processWithdrawal(
+        'w1',
+        'admin1',
+        WithdrawalStatus.REJECTED,
+      );
 
       expect(request.status).toBe(WithdrawalStatus.REJECTED);
       expect(profile.availableBalance).toBe(10000);

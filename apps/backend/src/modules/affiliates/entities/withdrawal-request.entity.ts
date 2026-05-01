@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { AffiliateProfile } from './affiliate-profile.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -41,7 +36,11 @@ export class AffiliateWithdrawalRequest extends AbstractBaseEntity {
   @Column({ nullable: true })
   note: string;
 
-  @ApiProperty({ example: 'uuid-string', description: 'Admin who processed the request', nullable: true })
+  @ApiProperty({
+    example: 'uuid-string',
+    description: 'Admin who processed the request',
+    nullable: true,
+  })
   @Column({ type: 'uuid', nullable: true })
   processedById: string;
 

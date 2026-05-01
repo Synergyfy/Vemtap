@@ -48,8 +48,10 @@ export class BestBulkSmsProvider implements MessagingProvider {
     // BestBulkSMS parameters for v1/send: to, sender_id, message
     // Forcing 'VEMTAP' as requested to test carrier delivery
     const senderId = 'VEMTAP';
-    
-    this.logger.log(`Sending SMS to ${payload.to} using Sender ID: ${senderId}`);
+
+    this.logger.log(
+      `Sending SMS to ${payload.to} using Sender ID: ${senderId}`,
+    );
 
     const data = {
       sender_id: senderId,

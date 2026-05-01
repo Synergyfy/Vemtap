@@ -1,9 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CatalogueOrderService } from './catalogue-orders.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { CatalogueOrder, CatalogueOrderStatus } from './entities/catalogue-order.entity';
+import {
+  CatalogueOrder,
+  CatalogueOrderStatus,
+} from './entities/catalogue-order.entity';
 import { CatalogueOrderItem } from './entities/catalogue-order-item.entity';
-import { CatalogueItem, CatalogueItemStatus } from '../catalogue/entities/catalogue-item.entity';
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+} from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
@@ -21,7 +27,11 @@ describe('CatalogueOrderService', () => {
 
   const mockOrderRepo = {
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((order) => Promise.resolve({ id: 'order-1', ...order })),
+    save: jest
+      .fn()
+      .mockImplementation((order) =>
+        Promise.resolve({ id: 'order-1', ...order }),
+      ),
     findOne: jest.fn(),
     findAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
@@ -44,7 +54,9 @@ describe('CatalogueOrderService', () => {
   const mockUserRepo = {
     findOne: jest.fn(),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((user) => Promise.resolve({ id: 'cust-1', ...user })),
+    save: jest
+      .fn()
+      .mockImplementation((user) => Promise.resolve({ id: 'cust-1', ...user })),
   };
 
   const mockBranchRepo = {
@@ -56,14 +68,32 @@ describe('CatalogueOrderService', () => {
     generateRedemptionCode: jest.fn(),
   };
 
-  const mockStaff: User = { id: 'staff-1', businessId: 'bus-1', role: UserRole.STAFF } as any;
+  const mockStaff: User = {
+    id: 'staff-1',
+    businessId: 'bus-1',
+    role: UserRole.STAFF,
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        { provide: PushNotificationService, useValue: { sendToBranchStaff: jest.fn().mockResolvedValue({}), sendNotification: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: PushNotificationService,
+          useValue: {
+            sendToBranchStaff: jest.fn().mockResolvedValue({}),
+            sendNotification: jest.fn().mockResolvedValue({}),
+          },
+        },
         { provide: getRepositoryToken(Device), useValue: {} },
-        { provide: getRepositoryToken(Visit), useValue: { findOne: jest.fn(), count: jest.fn().mockResolvedValue(0), create: jest.fn(), save: jest.fn() } },
+        {
+          provide: getRepositoryToken(Visit),
+          useValue: {
+            findOne: jest.fn(),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
         CatalogueOrderService,
         {
           provide: getRepositoryToken(CatalogueOrder),
@@ -129,8 +159,14 @@ describe('CatalogueOrderService', () => {
         items: [{ itemId: 'item-1', quantity: 2 }],
       };
 
-      mockBranchRepo.findOne.mockResolvedValue({ id: 'br-1', businessId: 'bus-1' });
-      mockUserRepo.findOne.mockResolvedValue({ id: 'cust-1', phone: '12345678' });
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'cust-1',
+        phone: '12345678',
+      });
       mockItemRepo.findOne.mockResolvedValue({
         id: 'item-1',
         name: 'Burger',
@@ -159,9 +195,16 @@ describe('CatalogueOrderService', () => {
         items: [{ offerId: 'offer-1', quantity: 1 }],
       };
 
-      mockBranchRepo.findOne.mockResolvedValue({ id: 'br-1', businessId: 'bus-1' });
-      mockUserRepo.findOne.mockResolvedValue({ id: 'cust-1', phone: '12345678' });
-      mockOfferRepo.findOne.mockResolvedValue({ items: [{ stockQuantity: 10, allowBackOrder: true }],
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'cust-1',
+        phone: '12345678',
+      });
+      mockOfferRepo.findOne.mockResolvedValue({
+        items: [{ stockQuantity: 10, allowBackOrder: true }],
         id: 'offer-1',
         name: 'Combo',
         calculatedPrice: 15,
@@ -191,13 +234,18 @@ describe('CatalogueOrderService', () => {
             itemId: 'item-1',
             quantity: 2,
             loyaltyPointsAtOrder: 10,
-            item: { id: 'item-1', stockQuantity: 10 }
-          }
-        ]
+            item: { id: 'item-1', stockQuantity: 10 },
+          },
+        ],
       };
       mockOrderRepo.findOne.mockResolvedValue(mockOrder);
 
-      await service.updateStatus('order-1', CatalogueOrderStatus.COMPLETED, 'bus-1', mockStaff);
+      await service.updateStatus(
+        'order-1',
+        CatalogueOrderStatus.COMPLETED,
+        'bus-1',
+        mockStaff,
+      );
 
       expect(mockLoyaltyService.awardPoints).toHaveBeenCalledWith(
         'cust-1',
@@ -205,7 +253,7 @@ describe('CatalogueOrderService', () => {
         'bus-1',
         'br-1',
         expect.any(String),
-        'staff-1'
+        'staff-1',
       );
       expect(mockOrder.loyaltyAwarded).toBe(true);
       // expect(mockItemRepo.save).toHaveBeenCalled(); // stock deduction
@@ -227,16 +275,23 @@ describe('CatalogueOrderService', () => {
             offer: {
               id: 'offer-1',
               rewardId: 'rew-1',
-              items: [{ id: 'item-1', stockQuantity: 10 }]
-            }
-          }
-        ]
+              items: [{ id: 'item-1', stockQuantity: 10 }],
+            },
+          },
+        ],
       };
       mockOrderRepo.findOne.mockResolvedValue(mockOrder);
 
-      await service.updateStatus('order-1', CatalogueOrderStatus.COMPLETED, 'bus-1', mockStaff);
+      await service.updateStatus(
+        'order-1',
+        CatalogueOrderStatus.COMPLETED,
+        'bus-1',
+        mockStaff,
+      );
 
-      expect(mockLoyaltyService.generateRedemptionCode).toHaveBeenCalledTimes(2); // quantity is 2
+      expect(mockLoyaltyService.generateRedemptionCode).toHaveBeenCalledTimes(
+        2,
+      ); // quantity is 2
     });
   });
 });

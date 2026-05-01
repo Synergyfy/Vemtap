@@ -181,7 +181,7 @@ describe('BusinessesService', () => {
         ownerPassword: 'Password123!',
         ownerPhone: '1234567890',
         businessNumber: '0987654321',
-        engagement: { linkedin: "url" },
+        engagement: { linkedin: 'url' },
       };
 
       usersRepository.findOne.mockResolvedValue(null);

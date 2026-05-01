@@ -77,7 +77,10 @@ export class SupportService {
     const savedTicket = await this.ticketRepository.save(ticket);
 
     // Persist bot conversation history
-    const botContext = await this.conversationContextService.getContext(userId, sessionId);
+    const botContext = await this.conversationContextService.getContext(
+      userId,
+      sessionId,
+    );
     if (botContext && botContext.messages && botContext.messages.length > 0) {
       const historyMessages = botContext.messages.map((msg) =>
         this.messageRepository.create({
@@ -99,18 +102,25 @@ export class SupportService {
         message: initialMessage,
       });
       const savedMessage = await this.messageRepository.save(message);
-      
+
       // Notify admins/agents about the new chat
       this.supportGateway.emitNewMessage(savedTicket.id, {
         ...savedMessage,
-        ticket: savedTicket
+        ticket: savedTicket,
       });
     }
 
-    await this.logActivity(savedTicket.id, 'Chat escalated to human agent', 'System');
-    
+    await this.logActivity(
+      savedTicket.id,
+      'Chat escalated to human agent',
+      'System',
+    );
+
     // Broadcast status update
-    this.supportGateway.emitTicketStatusUpdate(savedTicket.id, TicketStatus.PENDING);
+    this.supportGateway.emitTicketStatusUpdate(
+      savedTicket.id,
+      TicketStatus.PENDING,
+    );
 
     // Notify all admins about the new chat session
     this.supportGateway.emitNewChatEscalated(savedTicket);
@@ -188,7 +198,7 @@ export class SupportService {
     }
 
     const savedMessage = await this.messageRepository.save(message);
-    
+
     // Real-time event
     this.supportGateway.emitNewMessage(ticket.id, savedMessage);
 
@@ -409,10 +419,10 @@ export class SupportService {
     ticket.status = status;
     const updated = await this.ticketRepository.save(ticket);
     await this.logActivity(id, `Status -> ${status} (Admin)`, 'Admin');
-    
+
     // Broadcast status update
     this.supportGateway.emitTicketStatusUpdate(id, status);
-    
+
     return updated;
   }
 

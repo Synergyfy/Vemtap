@@ -38,7 +38,9 @@ export class PublicCatalogueController {
 
   @Public()
   @Get('categories/branch/:branchId')
-  @ApiOperation({ summary: 'List categories with active items for a specific branch' })
+  @ApiOperation({
+    summary: 'List categories with active items for a specific branch',
+  })
   async listCategoriesByBranch(
     @Param('branchId', ParseUUIDPipe) branchId: string,
   ) {

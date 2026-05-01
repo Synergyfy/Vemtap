@@ -56,7 +56,7 @@ export class AdminFormsController {
         id: 'uuid-form-1',
         title: 'Customer Feedback',
         adminDisabled: true,
-        adminDisabledNote: 'Violated terms of service'
+        adminDisabledNote: 'Violated terms of service',
       },
     },
   })
@@ -64,7 +64,11 @@ export class AdminFormsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: DisableFormDto,
   ) {
-    return this.formsService.setAdminDisabledStatus(id, true, dto.adminDisabledNote);
+    return this.formsService.setAdminDisabledStatus(
+      id,
+      true,
+      dto.adminDisabledNote,
+    );
   }
 
   @Patch(':id/enable')

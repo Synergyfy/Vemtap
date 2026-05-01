@@ -26,7 +26,9 @@ describe('QrThriveCallbackController', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    controller = module.get<QrThriveCallbackController>(QrThriveCallbackController);
+    controller = module.get<QrThriveCallbackController>(
+      QrThriveCallbackController,
+    );
   });
 
   it('should be defined', () => {
@@ -40,8 +42,13 @@ describe('QrThriveCallbackController', () => {
 
       const result = await controller.handleCallback(payload);
 
-      expect(result).toEqual({ status: 'success', message: 'Callback received' });
-      expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify(payload)));
+      expect(result).toEqual({
+        status: 'success',
+        message: 'Callback received',
+      });
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining(JSON.stringify(payload)),
+      );
     });
 
     it('should handle empty payloads gracefully', async () => {

@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdministrationController } from './administration.controller';
 import { AdministrationService } from './administration.service';
-import { AdminCreateAgentDto, GenerateImpersonationTokenDto, GenerateCustomerImpersonationTokenDto, AuditLogFilterDto } from './dto/administration.dto';
+import {
+  AdminCreateAgentDto,
+  GenerateImpersonationTokenDto,
+  GenerateCustomerImpersonationTokenDto,
+  AuditLogFilterDto,
+} from './dto/administration.dto';
 import { UserRole } from '../users/entities/user.entity';
 import { BackendModule } from '../../common/enums/backend-module.enum';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
@@ -144,7 +149,10 @@ describe('AdministrationController', () => {
       mockAdminService.generateCustomerToken.mockResolvedValue(result);
 
       expect(await controller.generateCustomerToken(req, dto)).toEqual(result);
-      expect(service.generateCustomerToken).toHaveBeenCalledWith('actor-id', dto);
+      expect(service.generateCustomerToken).toHaveBeenCalledWith(
+        'actor-id',
+        dto,
+      );
     });
   });
 });

@@ -56,9 +56,9 @@ describe('SupportController', () => {
       const query = { page: 1, limit: 10 };
       mockSupportService.findAll.mockResolvedValue(result);
 
-      expect(await controller.getTickets(mockReq as any, query.page, query.limit)).toBe(
-        result,
-      );
+      expect(
+        await controller.getTickets(mockReq as any, query.page, query.limit),
+      ).toBe(result);
       expect(mockSupportService.findAll).toHaveBeenCalledWith(
         mockUser.id,
         query.page,

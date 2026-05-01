@@ -26,8 +26,16 @@ export class IndividualSendProcessor extends WorkerHost {
   }
 
   async process(job: Job<IndividualMessageJobData, any, string>): Promise<any> {
-    const { branchId, customerId, content, channel, from, campaignId, metadata, messageId } =
-      job.data;
+    const {
+      branchId,
+      customerId,
+      content,
+      channel,
+      from,
+      campaignId,
+      metadata,
+      messageId,
+    } = job.data;
 
     this.logger.log(
       `📥 Job started for individual message to Customer ID: ${customerId} (Message ID: ${messageId || 'new'})`,

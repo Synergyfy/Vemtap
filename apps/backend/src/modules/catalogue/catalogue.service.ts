@@ -41,7 +41,9 @@ export class CatalogueService {
   async createCategory(dto: CreateCatalogueCategoryDto, businessId: string) {
     const caps = await this.subscriptionsService.getCapabilities(businessId);
     if (!caps.capabilities.catalogueCategories.enabled) {
-      throw new ForbiddenException('Catalogue feature is not enabled for your plan');
+      throw new ForbiddenException(
+        'Catalogue feature is not enabled for your plan',
+      );
     }
 
     if (
@@ -49,7 +51,9 @@ export class CatalogueService {
       typeof caps.capabilities.catalogueCategories.remaining === 'number' &&
       caps.capabilities.catalogueCategories.remaining <= 0
     ) {
-      throw new ForbiddenException('You have reached the limit for catalogue categories');
+      throw new ForbiddenException(
+        'You have reached the limit for catalogue categories',
+      );
     }
 
     const category = this.categoryRepository.create({
@@ -94,11 +98,14 @@ export class CatalogueService {
     const branch = await this.branchRepository.findOne({
       where: { id: dto.branchId, businessId },
     });
-    if (!branch) throw new BadRequestException('Branch not found or unauthorized');
+    if (!branch)
+      throw new BadRequestException('Branch not found or unauthorized');
 
     const caps = await this.subscriptionsService.getCapabilities(businessId);
     if (!caps.capabilities.catalogueItems.enabled) {
-      throw new ForbiddenException('Catalogue feature is not enabled for your plan');
+      throw new ForbiddenException(
+        'Catalogue feature is not enabled for your plan',
+      );
     }
 
     if (
@@ -106,12 +113,17 @@ export class CatalogueService {
       typeof caps.capabilities.catalogueItems.remaining === 'number' &&
       caps.capabilities.catalogueItems.remaining <= 0
     ) {
-      throw new ForbiddenException('You have reached the limit for catalogue items');
+      throw new ForbiddenException(
+        'You have reached the limit for catalogue items',
+      );
     }
 
     // Auto-generate SKU if not provided
     if (!dto.sku) {
-      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const randomPart = Math.random()
+        .toString(36)
+        .substring(2, 8)
+        .toUpperCase();
       dto.sku = `SKU-${randomPart}`;
     }
 
@@ -124,7 +136,11 @@ export class CatalogueService {
     return this.itemRepository.save(item);
   }
 
-  async updateItem(id: string, dto: UpdateCatalogueItemDto, businessId: string) {
+  async updateItem(
+    id: string,
+    dto: UpdateCatalogueItemDto,
+    businessId: string,
+  ) {
     const item = await this.itemRepository.findOne({
       where: { id, businessId },
       relations: ['branches'],
@@ -134,7 +150,8 @@ export class CatalogueService {
     // cloning logic
     if (!dto.applyGlobally && dto.branchId && item.branches.length > 1) {
       const branchToIsolate = item.branches.find((b) => b.id === dto.branchId);
-      if (!branchToIsolate) throw new BadRequestException('Item not found in specified branch');
+      if (!branchToIsolate)
+        throw new BadRequestException('Item not found in specified branch');
 
       // Remove branch from original item
       item.branches = item.branches.filter((b) => b.id !== dto.branchId);
@@ -201,7 +218,8 @@ export class CatalogueService {
     const targetBranch = await this.branchRepository.findOne({
       where: { id: targetBranchId, businessId },
     });
-    if (!targetBranch) throw new BadRequestException('Target branch not found or unauthorized');
+    if (!targetBranch)
+      throw new BadRequestException('Target branch not found or unauthorized');
 
     if (item.branches.some((b) => b.id === targetBranchId)) {
       throw new BadRequestException('Item already exists in target branch');
@@ -236,7 +254,9 @@ export class CatalogueService {
   async findAllItemsPublic(branchId: string, query: CatalogueQueryDto) {
     const qb = this.itemRepository
       .createQueryBuilder('item')
-      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', { branchId })
+      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', {
+        branchId,
+      })
       .leftJoinAndSelect('item.category', 'category')
       .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
       .andWhere('item.isSuspended = :isSuspended', { isSuspended: false });
@@ -244,15 +264,22 @@ export class CatalogueService {
     if (query.search) {
       qb.andWhere(
         new Brackets((inner) => {
-          inner.where('item.name ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('item.shortDescription ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('item.description ILIKE :search', { search: `%${query.search}%` });
+          inner
+            .where('item.name ILIKE :search', { search: `%${query.search}%` })
+            .orWhere('item.shortDescription ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('item.description ILIKE :search', {
+              search: `%${query.search}%`,
+            });
         }),
       );
     }
 
     if (query.categoryId) {
-      qb.andWhere('item.categoryId = :categoryId', { categoryId: query.categoryId });
+      qb.andWhere('item.categoryId = :categoryId', {
+        categoryId: query.categoryId,
+      });
     }
 
     if (query.itemType) {
@@ -301,13 +328,15 @@ export class CatalogueService {
     const categories = await this.categoryRepository
       .createQueryBuilder('category')
       .innerJoin('category.items', 'item')
-      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', { branchId })
+      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', {
+        branchId,
+      })
       .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
       .andWhere('item.isSuspended = :isSuspended', { isSuspended: false })
       .select(['category.id', 'category.name'])
       .distinct(true)
       .getMany();
-    
+
     return categories;
   }
 
@@ -315,17 +344,20 @@ export class CatalogueService {
     const where: any = { id };
     const relations = ['category'];
     if (branchId) {
-        // Verification that it belongs to the branch
-        const item = await this.itemRepository.findOne({
-            where: { id },
-            relations: ['branches', 'category']
-        });
-        if (!item || !item.branches.some(b => b.id === branchId)) {
-            throw new NotFoundException('Item not found in this branch');
-        }
-        return item;
+      // Verification that it belongs to the branch
+      const item = await this.itemRepository.findOne({
+        where: { id },
+        relations: ['branches', 'category'],
+      });
+      if (!item || !item.branches.some((b) => b.id === branchId)) {
+        throw new NotFoundException('Item not found in this branch');
+      }
+      return item;
     }
-    return this.itemRepository.findOne({ where, relations: ['branches', 'category'] });
+    return this.itemRepository.findOne({
+      where,
+      relations: ['branches', 'category'],
+    });
   }
 
   async findAllItemsAdmin(businessId: string, branchId?: string) {
@@ -345,7 +377,9 @@ export class CatalogueService {
   async countItemsByType(branchId: string, itemType: CatalogueItemType) {
     return this.itemRepository
       .createQueryBuilder('item')
-      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', { branchId })
+      .innerJoin('item.branches', 'branch', 'branch.id = :branchId', {
+        branchId,
+      })
       .where('item.itemType = :itemType', { itemType })
       .andWhere('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
       .andWhere('item.isSuspended = :isSuspended', { isSuspended: false })

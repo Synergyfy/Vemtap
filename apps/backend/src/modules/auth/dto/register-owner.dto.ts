@@ -22,7 +22,8 @@ export class RegisterOwnerDto {
 
   @ApiPropertyOptional({
     example: 'SecurePass123!',
-    description: 'Password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol). Required for manual signup, optional for social logins.',
+    description:
+      'Password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol). Required for manual signup, optional for social logins.',
   })
   @IsOptional()
   @ValidateIf((o) => !!o.password)

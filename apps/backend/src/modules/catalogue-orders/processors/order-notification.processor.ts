@@ -50,26 +50,39 @@ export class OrderNotificationProcessor extends WorkerHost {
         const notificationType = 'order_status';
 
         // Save to database notification
-        await this.notificationsService.create(
-          order.customerId,
-          pushTitle,
-          pushBody,
-          notificationType,
-        ).catch(err => this.logger.error(`Failed to create database notification: ${err.message}`));
+        await this.notificationsService
+          .create(order.customerId, pushTitle, pushBody, notificationType)
+          .catch((err) =>
+            this.logger.error(
+              `Failed to create database notification: ${err.message}`,
+            ),
+          );
 
         // Send real-time push notification
-        await this.pushNotificationService.sendNotification(
-          order.customerId,
-          pushTitle,
-          pushBody,
-          { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
-          true,
-        ).catch(err => this.logger.error(`Failed to send push notification: ${err.message}`));
+        await this.pushNotificationService
+          .sendNotification(
+            order.customerId,
+            pushTitle,
+            pushBody,
+            { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
+            true,
+          )
+          .catch((err) =>
+            this.logger.error(
+              `Failed to send push notification: ${err.message}`,
+            ),
+          );
       }
 
       // 2. Handle Email
-      if (!order.customer || !order.customer.email || order.customer.email.includes('@vemtap.dummy')) {
-        this.logger.warn(`Order ${orderId} has no valid customer email, skipping email.`);
+      if (
+        !order.customer ||
+        !order.customer.email ||
+        order.customer.email.includes('@vemtap.dummy')
+      ) {
+        this.logger.warn(
+          `Order ${orderId} has no valid customer email, skipping email.`,
+        );
       } else {
         const branch = await this.branchRepository.findOne({
           where: { id: order.branchId },
@@ -77,7 +90,9 @@ export class OrderNotificationProcessor extends WorkerHost {
         });
 
         if (!branch) {
-          this.logger.error(`Branch ${order.branchId} not found for order ${orderId}`);
+          this.logger.error(
+            `Branch ${order.branchId} not found for order ${orderId}`,
+          );
         } else {
           const business = branch.business;
           if (!business) {
@@ -98,9 +113,14 @@ export class OrderNotificationProcessor extends WorkerHost {
         }
       }
 
-      this.logger.log(`Successfully processed all notifications for order ${orderId}`);
+      this.logger.log(
+        `Successfully processed all notifications for order ${orderId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to process order notification job: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to process order notification job: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

@@ -121,7 +121,9 @@ export class BusinessesService {
         branchId: savedBranch.id,
         status: UserStatus.ACTIVE,
       });
-      console.log(`[BUSINESS] Linked owner ${businessData.ownerId} to business ${savedBusiness.id} and branch ${savedBranch.id}`);
+      console.log(
+        `[BUSINESS] Linked owner ${businessData.ownerId} to business ${savedBusiness.id} and branch ${savedBranch.id}`,
+      );
     }
 
     // Automatically generate a device for the Main Branch

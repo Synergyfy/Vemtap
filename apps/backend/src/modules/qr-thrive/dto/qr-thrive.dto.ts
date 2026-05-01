@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsBoolean, IsObject } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsObject,
+} from 'class-validator';
 import { QRType } from '../enums';
 
 export class SyncUserDto {
@@ -132,7 +140,10 @@ export class UpdateFolderDto {
 }
 
 export class ToggleUblFeatureDto {
-  @ApiProperty({ example: true, description: 'Whether the QR code is featured on the branch UBL profile' })
+  @ApiProperty({
+    example: true,
+    description: 'Whether the QR code is featured on the branch UBL profile',
+  })
   @IsBoolean()
   @IsNotEmpty()
   isFeatured: boolean;

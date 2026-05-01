@@ -1,9 +1,21 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
-import { CatalogueOffer, CatalogueOfferPricingType, CatalogueOfferStatus } from './entities/catalogue-offer.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferPricingType,
+  CatalogueOfferStatus,
+} from './entities/catalogue-offer.entity';
 import { CatalogueItem } from './entities/catalogue-item.entity';
-import { CreateCatalogueOfferDto, UpdateCatalogueOfferDto, CatalogueOfferQueryDto } from './dto/offer.dto';
+import {
+  CreateCatalogueOfferDto,
+  UpdateCatalogueOfferDto,
+  CatalogueOfferQueryDto,
+} from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { ForbiddenException } from '@nestjs/common';
@@ -23,7 +35,9 @@ export class CatalogueOfferService {
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
     const caps = await this.subscriptionsService.getCapabilities(businessId);
     if (!caps.capabilities.catalogueOffers.enabled) {
-      throw new ForbiddenException('Catalogue feature is not enabled for your plan');
+      throw new ForbiddenException(
+        'Catalogue feature is not enabled for your plan',
+      );
     }
 
     if (
@@ -31,13 +45,16 @@ export class CatalogueOfferService {
       typeof caps.capabilities.catalogueOffers.remaining === 'number' &&
       caps.capabilities.catalogueOffers.remaining <= 0
     ) {
-      throw new ForbiddenException('You have reached the limit for catalogue offers');
+      throw new ForbiddenException(
+        'You have reached the limit for catalogue offers',
+      );
     }
 
     const branch = await this.branchRepository.findOne({
       where: { id: dto.branchId, businessId },
     });
-    if (!branch) throw new BadRequestException('Branch not found or unauthorized');
+    if (!branch)
+      throw new BadRequestException('Branch not found or unauthorized');
 
     const items = await this.itemRepository.find({
       where: { id: In(dto.itemIds), businessId },
@@ -50,8 +67,10 @@ export class CatalogueOfferService {
 
     // Verify items belong to the branch
     for (const item of items) {
-      if (!item.branches.some(b => b.id === dto.branchId)) {
-        throw new BadRequestException(`Item ${item.name} is not available in branch ${dto.branchId}`);
+      if (!item.branches.some((b) => b.id === dto.branchId)) {
+        throw new BadRequestException(
+          `Item ${item.name} is not available in branch ${dto.branchId}`,
+        );
       }
     }
 
@@ -66,7 +85,11 @@ export class CatalogueOfferService {
     return this.offerRepository.save(offer);
   }
 
-  async updateOffer(id: string, dto: UpdateCatalogueOfferDto, businessId: string) {
+  async updateOffer(
+    id: string,
+    dto: UpdateCatalogueOfferDto,
+    businessId: string,
+  ) {
     const offer = await this.offerRepository.findOne({
       where: { id, businessId },
       relations: ['items', 'items.branches'],
@@ -83,8 +106,10 @@ export class CatalogueOfferService {
       }
       // Verify items belong to the branch
       for (const item of items) {
-        if (!item.branches.some(b => b.id === offer.branchId)) {
-          throw new BadRequestException(`Item ${item.name} is not available in this branch`);
+        if (!item.branches.some((b) => b.id === offer.branchId)) {
+          throw new BadRequestException(
+            `Item ${item.name} is not available in this branch`,
+          );
         }
       }
       offer.items = items;
@@ -120,16 +145,19 @@ export class CatalogueOfferService {
   async findAllOffersPublic(branchId: string, query: CatalogueOfferQueryDto) {
     const { page = 1, limit = 10, search, sortBy = 'newest' } = query;
     const skip = (page - 1) * limit;
-  
-    const qb = this.offerRepository.createQueryBuilder('offer')
+
+    const qb = this.offerRepository
+      .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.items', 'item')
       .where('offer.branchId = :branchId', { branchId })
-      .andWhere('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE });
-  
+      .andWhere('offer.status = :status', {
+        status: CatalogueOfferStatus.ACTIVE,
+      });
+
     if (search) {
       qb.andWhere('offer.name ILIKE :search', { search: `%${search}%` });
     }
-  
+
     // Apply sorting
     switch (sortBy) {
       case 'price_asc':
@@ -143,12 +171,9 @@ export class CatalogueOfferService {
         qb.orderBy('offer.createdAt', 'DESC');
         break;
     }
-  
-    const [data, total] = await qb
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
-  
+
+    const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
+
     return { data, total, page, limit };
   }
 

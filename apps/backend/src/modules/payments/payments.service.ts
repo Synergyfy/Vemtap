@@ -29,7 +29,6 @@ export class PaymentsService {
     return hash === signature;
   }
 
-
   async verifyTransaction(reference: string): Promise<any> {
     try {
       const secretKey = process.env.PAYSTACK_SECRET_KEY;

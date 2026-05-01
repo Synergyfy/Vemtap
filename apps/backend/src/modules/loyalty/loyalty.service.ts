@@ -7,7 +7,15 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, Between, MoreThanOrEqual, FindOptionsWhere, ILike, FindOptionsOrder } from 'typeorm';
+import {
+  Repository,
+  DataSource,
+  Between,
+  MoreThanOrEqual,
+  FindOptionsWhere,
+  ILike,
+  FindOptionsOrder,
+} from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
@@ -344,7 +352,7 @@ export class LoyaltyService {
     ];
 
     if (search) {
-      finalWhere.forEach(w => w.name = ILike(`%${search}%`));
+      finalWhere.forEach((w) => (w.name = ILike(`%${search}%`)));
     }
 
     const order: FindOptionsOrder<Reward> = {};
@@ -514,7 +522,10 @@ export class LoyaltyService {
         throw new BadRequestException('Reward not found');
       }
 
-      if (lockedReward.totalQuantity !== -1 && lockedReward.remainingQuantity <= 0) {
+      if (
+        lockedReward.totalQuantity !== -1 &&
+        lockedReward.remainingQuantity <= 0
+      ) {
         throw new BadRequestException('Reward out of stock');
       }
 

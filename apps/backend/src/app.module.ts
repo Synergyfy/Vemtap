@@ -43,7 +43,6 @@ import { AffiliatesModule } from './modules/affiliates/affiliates.module';
 import { TrainingModule } from './modules/training/training.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 
-
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
 
@@ -54,7 +53,12 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
       envFilePath: [
         join(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
         join(process.cwd(), '.env'),
-        join(__dirname, '..', '..', `.env.${process.env.NODE_ENV || 'development'}`),
+        join(
+          __dirname,
+          '..',
+          '..',
+          `.env.${process.env.NODE_ENV || 'development'}`,
+        ),
         join(__dirname, '..', '..', '.env'),
       ],
     }),
@@ -177,4 +181,4 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

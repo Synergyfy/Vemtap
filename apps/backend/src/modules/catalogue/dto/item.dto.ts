@@ -11,7 +11,11 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CatalogueItemStatus, CatalogueItemType, DiscountType } from '../entities/catalogue-item.entity';
+import {
+  CatalogueItemStatus,
+  CatalogueItemType,
+  DiscountType,
+} from '../entities/catalogue-item.entity';
 
 export class CreateCatalogueItemDto {
   @ApiProperty({ example: 'Cheeseburger' })
@@ -57,7 +61,10 @@ export class CreateCatalogueItemDto {
   @IsString()
   sku?: string;
 
-  @ApiPropertyOptional({ enum: CatalogueItemType, default: CatalogueItemType.PRODUCT })
+  @ApiPropertyOptional({
+    enum: CatalogueItemType,
+    default: CatalogueItemType.PRODUCT,
+  })
   @IsOptional()
   @IsEnum(CatalogueItemType)
   itemType?: CatalogueItemType = CatalogueItemType.PRODUCT;
@@ -184,12 +191,16 @@ export class UpdateCatalogueItemDto {
   @Min(0)
   loyaltyPoints?: number;
 
-  @ApiPropertyOptional({ description: 'If provided, the edit will be isolated to this branch' })
+  @ApiPropertyOptional({
+    description: 'If provided, the edit will be isolated to this branch',
+  })
   @IsOptional()
   @IsUUID()
   branchId?: string;
 
-  @ApiPropertyOptional({ description: 'If true, updates will apply to all branches' })
+  @ApiPropertyOptional({
+    description: 'If true, updates will apply to all branches',
+  })
   @IsOptional()
   @IsBoolean()
   applyGlobally?: boolean = false;
@@ -246,7 +257,9 @@ export class CatalogueQueryDto {
   @Min(0)
   maxPrice?: number;
 
-  @ApiPropertyOptional({ enum: ['newest', 'oldest', 'most_popular', 'price_asc', 'price_desc'] })
+  @ApiPropertyOptional({
+    enum: ['newest', 'oldest', 'most_popular', 'price_asc', 'price_desc'],
+  })
   @IsOptional()
   @IsEnum(['newest', 'oldest', 'most_popular', 'price_asc', 'price_desc'])
   sortBy?: string = 'newest';

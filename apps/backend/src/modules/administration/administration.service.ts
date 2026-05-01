@@ -48,7 +48,16 @@ export class AdministrationService {
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
-      select: ['id', 'email', 'firstName', 'lastName', 'role', 'status', 'permissions', 'createdAt'],
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'role',
+        'status',
+        'permissions',
+        'createdAt',
+      ],
     });
 
     return {
@@ -106,7 +115,9 @@ export class AdministrationService {
     const MAX_HOURS = parseInt(process.env.MAX_IMPERSONATION_HOURS || '72', 10);
     const maxExpiry = new Date(Date.now() + MAX_HOURS * 60 * 60 * 1000);
     if (expiry > maxExpiry) {
-      throw new BadRequestException(`Token expiry cannot exceed ${MAX_HOURS} hours from now`);
+      throw new BadRequestException(
+        `Token expiry cannot exceed ${MAX_HOURS} hours from now`,
+      );
     }
 
     // Invalidate existing active tokens for this actor-target pair (optional, but cleaner)
@@ -151,7 +162,9 @@ export class AdministrationService {
     const actor = await this.userRepository.findOne({ where: { id: actorId } });
     if (!actor) throw new NotFoundException('Actor not found');
     if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.AGENT) {
-      throw new BadRequestException('Only admins and agents can impersonate customers');
+      throw new BadRequestException(
+        'Only admins and agents can impersonate customers',
+      );
     }
 
     const customer = await this.userRepository.findOne({
@@ -166,7 +179,9 @@ export class AdministrationService {
     const MAX_HOURS = parseInt(process.env.MAX_IMPERSONATION_HOURS || '72', 10);
     const maxExpiry = new Date(Date.now() + MAX_HOURS * 60 * 60 * 1000);
     if (expiry > maxExpiry) {
-      throw new BadRequestException(`Token expiry cannot exceed ${MAX_HOURS} hours from now`);
+      throw new BadRequestException(
+        `Token expiry cannot exceed ${MAX_HOURS} hours from now`,
+      );
     }
 
     // Invalidate existing active tokens for this actor-customer pair
@@ -186,7 +201,9 @@ export class AdministrationService {
     return this.customerTokenRepository.save(token);
   }
 
-  async validateCustomerToken(tokenStr: string): Promise<CustomerImpersonationToken> {
+  async validateCustomerToken(
+    tokenStr: string,
+  ): Promise<CustomerImpersonationToken> {
     const token = await this.customerTokenRepository.findOne({
       where: {
         token: tokenStr,
@@ -197,25 +214,38 @@ export class AdministrationService {
     });
 
     if (!token)
-      throw new BadRequestException('Invalid or expired customer impersonation token');
+      throw new BadRequestException(
+        'Invalid or expired customer impersonation token',
+      );
     return token;
   }
 
   async getActorPermissions(actorId: string) {
     const actor = await this.userRepository.findOne({
       where: { id: actorId },
-      select: ['id', 'email', 'firstName', 'lastName', 'role', 'permissions', 'status'],
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'role',
+        'permissions',
+        'status',
+      ],
     });
 
     if (!actor) throw new NotFoundException('Actor not found');
 
     if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.AGENT) {
-      throw new ForbiddenException('Only admins and agents can view impersonation permissions');
+      throw new ForbiddenException(
+        'Only admins and agents can view impersonation permissions',
+      );
     }
 
-    const permissions: string[] = actor.role === UserRole.ADMIN
-      ? Object.values(BackendModule)
-      : (actor.permissions || []);
+    const permissions: string[] =
+      actor.role === UserRole.ADMIN
+        ? Object.values(BackendModule)
+        : actor.permissions || [];
 
     return {
       id: actor.id,
@@ -225,20 +255,29 @@ export class AdministrationService {
       role: actor.role,
       status: actor.status,
       permissions,
-      hasFullAccess: actor.role === UserRole.ADMIN || permissions.includes(BackendModule.ALL),
+      hasFullAccess:
+        actor.role === UserRole.ADMIN ||
+        permissions.includes(BackendModule.ALL),
     };
   }
 
   async listActorTokens(actorId: string) {
     return this.tokenRepository.find({
-      where: { actorId, isActive: true, expiresAt: MoreThanOrEqual(new Date()) },
+      where: {
+        actorId,
+        isActive: true,
+        expiresAt: MoreThanOrEqual(new Date()),
+      },
       relations: ['targetBranch', 'targetBranch.business'],
       order: { createdAt: 'DESC' },
     });
   }
 
   async revokeToken(tokenId: string) {
-    const result = await this.tokenRepository.update({ id: tokenId }, { isActive: false });
+    const result = await this.tokenRepository.update(
+      { id: tokenId },
+      { isActive: false },
+    );
     if (result.affected === 0) throw new NotFoundException('Token not found');
     return { message: 'Token revoked successfully' };
   }
