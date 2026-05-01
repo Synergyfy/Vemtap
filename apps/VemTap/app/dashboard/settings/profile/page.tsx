@@ -450,15 +450,20 @@ export default function BusinessProfilePage() {
             // For socials, use engagement from branch or profile
             const engagement = source.engagement || profileSource?.engagement || {};
             
-            setFacebookUrl(engagement.facebook?.link || source.facebookUrl || '');
-            setInstagramUrl(engagement.instagram?.link || source.instagramUrl || '');
-            setTiktokUrl(engagement.tiktok?.link || source.tiktokUrl || '');
-            setXUrl(engagement.x?.link || source.xUrl || '');
-            setYoutubeUrl(engagement.youtube?.link || source.youtubeUrl || '');
-            setLinkedinUrl(engagement.linkedin?.link || source.linkedinUrl || '');
-            setCustomLink(engagement.custom?.link || source.customLink || '');
-            setReviewUrl(engagement.google?.link || source.reviewUrl || '');
-            setTrustpilotUrl(engagement.trustpilot?.link || source.trustpilotUrl || '');
+            const extractSocialLink = (val: any, fallback: string = '') => {
+                if (typeof val === 'string') return val || fallback;
+                return val?.link || fallback;
+            };
+            
+            setFacebookUrl(extractSocialLink(engagement.facebook, source.facebookUrl));
+            setInstagramUrl(extractSocialLink(engagement.instagram, source.instagramUrl));
+            setTiktokUrl(extractSocialLink(engagement.tiktok, source.tiktokUrl));
+            setXUrl(extractSocialLink(engagement.x, source.xUrl));
+            setYoutubeUrl(extractSocialLink(engagement.youtube, source.youtubeUrl));
+            setLinkedinUrl(extractSocialLink(engagement.linkedin, source.linkedinUrl));
+            setCustomLink(extractSocialLink(engagement.custom, source.customLink));
+            setReviewUrl(extractSocialLink(engagement.google || engagement.reviewUrl, source.reviewUrl));
+            setTrustpilotUrl(extractSocialLink(engagement.trustpilot, source.trustpilotUrl));
 
             setShowReview(source.showReview ?? true);
             setShowSocial(source.showSocial ?? true);
@@ -499,15 +504,21 @@ export default function BusinessProfilePage() {
             setRewardVisitThreshold(branch.rewardVisitThreshold || 5);
 
             const engagement = branch.engagement || {};
-            setFacebookUrl(engagement.facebook?.link || branch.facebookUrl || '');
-            setInstagramUrl(engagement.instagram?.link || branch.instagramUrl || '');
-            setTiktokUrl(engagement.tiktok?.link || branch.tiktokUrl || '');
-            setXUrl(engagement.x?.link || branch.xUrl || '');
-            setYoutubeUrl(engagement.youtube?.link || branch.youtubeUrl || '');
-            setLinkedinUrl(engagement.linkedin?.link || branch.linkedinUrl || '');
-            setCustomLink(engagement.custom?.link || branch.customLink || '');
-            setReviewUrl(engagement.google?.link || branch.reviewUrl || '');
-            setTrustpilotUrl(engagement.trustpilot?.link || branch.trustpilotUrl || '');
+
+            const extractSocialLink = (val: any, fallback: string = '') => {
+                if (typeof val === 'string') return val || fallback;
+                return val?.link || fallback;
+            };
+
+            setFacebookUrl(extractSocialLink(engagement.facebook, branch.facebookUrl));
+            setInstagramUrl(extractSocialLink(engagement.instagram, branch.instagramUrl));
+            setTiktokUrl(extractSocialLink(engagement.tiktok, branch.tiktokUrl));
+            setXUrl(extractSocialLink(engagement.x, branch.xUrl));
+            setYoutubeUrl(extractSocialLink(engagement.youtube, branch.youtubeUrl));
+            setLinkedinUrl(extractSocialLink(engagement.linkedin, branch.linkedinUrl));
+            setCustomLink(extractSocialLink(engagement.custom, branch.customLink));
+            setReviewUrl(extractSocialLink(engagement.google || engagement.reviewUrl, branch.reviewUrl));
+            setTrustpilotUrl(extractSocialLink(engagement.trustpilot, branch.trustpilotUrl));
 
             setShowReview(branch.showReview ?? true);
             setShowSocial(branch.showSocial ?? true);
