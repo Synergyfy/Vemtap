@@ -386,11 +386,11 @@ export default function GetStarted() {
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
                     engagement: {
-                        instagram: cleanData.instagramUrl || undefined,
-                        facebook: cleanData.facebookUrl || undefined,
-                        linkedin: cleanData.linkedinUrl || undefined,
-                        reviewUrl: cleanData.reviewUrl || undefined,
-                        trustpilot: cleanData.trustpilotUrl || undefined,
+                        instagram: cleanData.instagramUrl ? { link: cleanData.instagramUrl } : undefined,
+                        facebook: cleanData.facebookUrl ? { link: cleanData.facebookUrl } : undefined,
+                        linkedin: cleanData.linkedinUrl ? { link: cleanData.linkedinUrl } : undefined,
+                        google: cleanData.reviewUrl ? { link: cleanData.reviewUrl } : undefined,
+                        trustpilot: cleanData.trustpilotUrl ? { link: cleanData.trustpilotUrl } : undefined,
                     },
                 };
 
