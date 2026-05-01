@@ -106,7 +106,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Zap className="text-white w-5 h-5 fill-yellow-300" />
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight">QR-Thrive</span>
+              <span className="text-xl font-bold text-gray-900 tracking-tight">QRThrive</span>
             </div>
             <button 
               onClick={onClose}

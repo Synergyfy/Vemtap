@@ -46,7 +46,7 @@ export default function WhatsAppOverviewPage() {
     return (
         <div className="flex flex-col h-full bg-gray-50/30 overflow-hidden">
             {/* Header and Tabs */}
-            <div className="bg-white border-b border-gray-200 px-8 pt-6 pb-0 shrink-0">
+            <div className="bg-white border-b border-gray-200 px-4 md:px-8 pt-4 md:pt-6 pb-0 shrink-0">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-black text-text-main tracking-tight">WhatsApp Channel</h1>
@@ -54,7 +54,7 @@ export default function WhatsAppOverviewPage() {
                     </div>
                 </div>
 
-                <div className="flex gap-8">
+                <div className="flex gap-4 md:gap-8 overflow-x-auto custom-scrollbar shrink-0">
                     <button
                         onClick={() => setActiveTab('chat')}
                         className={`pb-4 px-2 text-sm font-bold transition-all relative ${activeTab === 'chat' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
@@ -120,7 +120,7 @@ export default function WhatsAppOverviewPage() {
 
                             {/* Search and List */}
                             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-                                <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="p-5 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div>
                                         <h3 className="text-xl font-display font-black text-text-main">Global Customer List</h3>
                                         <p className="text-sm text-text-secondary font-medium">Quickly start a WhatsApp conversation with any customer.</p>
@@ -154,27 +154,28 @@ export default function WhatsAppOverviewPage() {
                                     ) : (
                                         <div className="divide-y divide-gray-50">
                                             {visitors.map((visitor: any) => (
-                                                <div key={visitor.id} className="p-4 px-8 hover:bg-gray-50/50 transition-colors flex items-center justify-between group">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 font-bold text-sm group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                <div key={visitor.id} className="p-4 px-4 md:px-8 hover:bg-gray-50/50 transition-colors flex flex-row items-center justify-between gap-3 group">
+                                                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                                                        <div className="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 font-bold text-sm group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                                             {visitor.name?.charAt(0) || 'U'}
                                                         </div>
-                                                        <div>
-                                                            <h4 className="font-bold text-text-main truncate group-hover:text-primary transition-colors">{visitor.name}</h4>
-                                                            <p className="text-xs text-text-secondary font-medium">{visitor.phone || visitor.email || 'No contact info'}</p>
+                                                        <div className="min-w-0">
+                                                            <h4 className="font-bold text-text-main truncate group-hover:text-primary transition-colors text-sm md:text-base">{visitor.name}</h4>
+                                                            <p className="text-[10px] md:text-xs text-text-secondary font-medium truncate">{visitor.phone || visitor.email || 'No contact info'}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 shrink-0">
                                                         {visitor.phone ? (
                                                             <button
                                                                 onClick={() => setWhatsappModalVisitors([visitor])}
-                                                                className="flex items-center gap-2 px-5 py-2.5 bg-[#25d366] text-white font-bold rounded-xl hover:bg-[#1ebe57] transition-all text-xs shadow-lg shadow-emerald-500/20 active:scale-95"
+                                                                className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-[#25d366] text-white font-bold rounded-xl hover:bg-[#1ebe57] transition-all text-[11px] md:text-xs shadow-lg shadow-emerald-500/20 active:scale-95 whitespace-nowrap"
                                                             >
-                                                                <WhatsAppIcon size={16} />
-                                                                Click to Chat
+                                                                <WhatsAppIcon size={16} className="w-4 h-4" />
+                                                                <span className="hidden sm:inline">Click to Chat</span>
+                                                                <span className="sm:hidden">Chat</span>
                                                             </button>
                                                         ) : (
-                                                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-300 px-3 py-1 bg-gray-50 rounded-lg">No Number</span>
+                                                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider text-gray-300 px-2 py-1 md:px-3 bg-gray-50 rounded-lg whitespace-nowrap">No Number</span>
                                                         )}
                                                     </div>
                                                 </div>

@@ -7,6 +7,7 @@ import { useMessagingTemplates, useSendMessage } from '@/services/messaging/hook
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { generateWhatsAppLink, processTemplate, generateBridgeLink } from '@/lib/whatsapp-utils';
 import { toast } from 'react-hot-toast';
+import WhatsAppChatPreview from './WhatsAppChatPreview';
 
 // Inline WhatsApp SVG icon for consistent branding
 function WhatsAppIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
@@ -112,7 +113,7 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[95vh]">
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-emerald-500 to-emerald-600 sticky top-0 z-10">
+                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-emerald-500 to-emerald-600 sticky top-0 z-10 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="size-11 bg-white/20 backdrop-blur-sm text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-700/20">
                             <WhatsAppIcon size={22} />
@@ -133,7 +134,7 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
 
                 {currentIndex !== null ? (
                     /* Progress View for Bulk */
-                    <div className="p-12 flex flex-col items-center justify-center text-center space-y-8 bg-gradient-to-b from-emerald-50/50 to-white flex-1">
+                    <div className="p-12 flex flex-col items-center justify-center text-center space-y-8 bg-gradient-to-b from-emerald-50/50 to-white flex-1 overflow-y-auto">
                         <div className="relative">
                             <div className="size-36 rounded-full border-[6px] border-slate-100 border-t-emerald-500 animate-spin" />
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-white rounded-full m-5 shadow-inner">
@@ -155,124 +156,93 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
                     </div>
                 ) : (
                     /* Selection View */
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/30">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 h-full">
-                            {/* Templates List */}
-                            <div className="flex flex-col gap-4">
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 px-1">Choose a Template</p>
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                        <input 
-                                            type="text"
-                                            placeholder="Search templates..."
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar max-h-[500px]">
-                                    {isLoading ? (
-                                        <div className="py-12 text-center">
-                                            <div className="size-8 border-2 border-emerald-200 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
-                                            <p className="text-xs text-slate-400 font-medium">Loading templates...</p>
-                                        </div>
-                                    ) : filteredTemplates.length === 0 ? (
-                                        <div className="py-12 text-center">
-                                            <div className="size-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
-                                                <MessageSquare size={20} />
+                    <div className="flex-1 flex overflow-hidden bg-slate-50/30 min-h-0">
+                        <div className="flex-1 flex flex-col lg:flex-row w-full min-h-0 overflow-y-auto lg:overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200/60 custom-scrollbar">
+                            {/* Left Side: Templates & Controls */}
+                            <div className="order-2 lg:order-1 w-full lg:w-1/2 xl:w-[55%] flex flex-col lg:min-h-0 lg:h-full lg:overflow-hidden">
+                                <div className="flex-1 lg:overflow-y-auto custom-scrollbar p-6 lg:p-8 flex flex-col gap-8 lg:min-h-0">
+                                    <div className="flex flex-col gap-4 shrink-0">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 px-1">Choose a Template</p>
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Search templates..."
+                                                    value={searchQuery}
+                                                    onChange={e => setSearchQuery(e.target.value)}
+                                                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                />
                                             </div>
-                                            <p className="text-xs text-slate-400 font-medium">No templates found.</p>
-                                            <p className="text-[10px] text-slate-300 mt-1">Create templates in Chat Settings.</p>
                                         </div>
-                                    ) : (
-                                        filteredTemplates.map((t: any) => (
-                                            <button
-                                                key={t.id}
-                                                onClick={() => {
-                                                    setSelectedTemplateId(t.id);
-                                                    setCustomMessage('');
-                                                }}
-                                                className={`w-full p-4 border rounded-2xl text-left transition-all hover:shadow-md group ${selectedTemplateId === t.id ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-500/10 shadow-sm' : 'bg-white border-slate-100 shadow-sm hover:border-emerald-200'}`}
-                                            >
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${t.category === 'MARKETING' ? 'bg-orange-100 text-orange-600' : t.category === 'WELCOME' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                        {t.category}
-                                                    </span>
-                                                    {selectedTemplateId === t.id && (
-                                                        <div className="size-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
-                                                            <Check size={12} strokeWidth={3} />
-                                                        </div>
-                                                    )}
+
+                                        <div className="space-y-2">
+                                            {isLoading ? (
+                                                <div className="py-12 text-center">
+                                                    <div className="size-8 border-2 border-emerald-200 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
+                                                    <p className="text-xs text-slate-400 font-medium">Loading templates...</p>
                                                 </div>
-                                                <p className="text-sm font-bold text-slate-900 mb-1">{t.name}</p>
-                                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{t.content}</p>
-                                            </button>
-                                        ))
-                                    )}
-                                    
-                                    {!isBulk && (
-                                        <button
-                                            onClick={() => {
-                                                setSelectedTemplateId(null);
-                                                setCustomMessage('');
-                                            }}
-                                            className={`w-full p-4 border rounded-2xl text-left transition-all hover:shadow-md ${!selectedTemplateId ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-500/10 shadow-sm' : 'bg-white border-slate-100 shadow-sm hover:border-emerald-200'}`}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                                                    CUSTOM
-                                                </span>
-                                                {!selectedTemplateId && (
-                                                    <div className="size-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
-                                                        <Check size={12} strokeWidth={3} />
+                                            ) : filteredTemplates.length === 0 ? (
+                                                <div className="py-12 text-center">
+                                                    <div className="size-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
+                                                        <MessageSquare size={20} />
                                                     </div>
-                                                )}
-                                            </div>
-                                            <p className="text-sm font-bold text-slate-900 mb-1">Custom Message</p>
-                                            <p className="text-xs text-slate-500 leading-relaxed">Write your own personalized message.</p>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Preview & Edit Area */}
-                            <div className="flex flex-col gap-4">
-                                <div className="bg-white border border-slate-200/80 rounded-3xl shadow-xl flex flex-col h-full overflow-hidden">
-                                    {/* WhatsApp-style chat preview header */}
-                                    <div className="bg-[#075e54] px-5 py-3.5 flex items-center gap-3">
-                                        <div className="size-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs">
-                                            {(currentVisitor?.name || 'U').charAt(0).toUpperCase()}
+                                                    <p className="text-xs text-slate-400 font-medium">No templates found.</p>
+                                                    <p className="text-[10px] text-slate-300 mt-1">Create templates in Chat Settings.</p>
+                                                </div>
+                                            ) : (
+                                                filteredTemplates.map((t: any) => (
+                                                    <button
+                                                        key={t.id}
+                                                        onClick={() => {
+                                                            setSelectedTemplateId(t.id);
+                                                            setCustomMessage('');
+                                                        }}
+                                                        className={`w-full p-4 border rounded-2xl text-left transition-all hover:shadow-md group ${selectedTemplateId === t.id ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-500/10 shadow-sm' : 'bg-white border-slate-100 shadow-sm hover:border-emerald-200'}`}
+                                                    >
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${t.category === 'MARKETING' ? 'bg-orange-100 text-orange-600' : t.category === 'WELCOME' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                {t.category}
+                                                            </span>
+                                                            {selectedTemplateId === t.id && (
+                                                                <div className="size-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
+                                                                    <Check size={12} strokeWidth={3} />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm font-bold text-slate-900 mb-1">{t.name}</p>
+                                                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{t.content}</p>
+                                                    </button>
+                                                ))
+                                            )}
+                                            
+                                            {!isBulk && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedTemplateId(null);
+                                                        setCustomMessage('');
+                                                    }}
+                                                    className={`w-full p-4 border rounded-2xl text-left transition-all hover:shadow-md ${!selectedTemplateId ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-500/10 shadow-sm' : 'bg-white border-slate-100 shadow-sm hover:border-emerald-200'}`}
+                                                >
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                                            CUSTOM
+                                                        </span>
+                                                        {!selectedTemplateId && (
+                                                            <div className="size-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
+                                                                <Check size={12} strokeWidth={3} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-900 mb-1">Custom Message</p>
+                                                    <p className="text-xs text-slate-500 leading-relaxed">Write your own personalized message.</p>
+                                                </button>
+                                            )}
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-white">{previewName}</p>
-                                            <p className="text-[10px] text-emerald-200">Message Preview</p>
-                                        </div>
-                                        <WhatsAppIcon size={18} className="text-white/60" />
                                     </div>
 
-                                    {/* Chat bubble preview */}
-                                    <div className="flex-1 p-4 bg-[#ece5dd] space-y-4">
-                                        <div className="flex justify-end">
-                                            <div className="max-w-[85%] bg-[#dcf8c6] rounded-2xl rounded-tr-md px-4 py-3 shadow-sm">
-                                                {previewMessage.trim() ? (
-                                                    <p className="text-[13px] text-slate-800 leading-relaxed whitespace-pre-wrap break-words">{previewMessage}</p>
-                                                ) : (
-                                                    <p className="text-[13px] text-slate-400 italic">Your message will preview here...</p>
-                                                )}
-                                                <p className="text-[9px] text-slate-400 text-right mt-1.5">
-                                                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    <span className="ml-1 text-blue-400">✓✓</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Controls */}
-                                    <div className="p-5 bg-white border-t border-slate-100 space-y-4">
-                                        {/* Custom message input (only when no template selected) */}
+                                    {/* Bottom Controls inside Left Side */}
+                                    <div className="bg-white border border-slate-200/80 rounded-3xl shadow-md p-6 space-y-5 shrink-0 mt-auto">
                                         {!selectedTemplateId && (
                                             <div>
                                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 px-1">Your Message</label>
@@ -285,10 +255,9 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
                                             </div>
                                         )}
 
-                                        {/* VemTap Bridge Toggle */}
                                         <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-200/80">
                                             <div className="flex items-center gap-2.5">
-                                                <div className="size-7 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                                                <div className="size-7 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-600">
                                                     <LinkIcon size={14} />
                                                 </div>
                                                 <div>
@@ -304,7 +273,6 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
                                             </button>
                                         </div>
 
-                                        {/* Placeholder Tags */}
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest mr-1">Tags:</span>
                                             {PLACEHOLDERS.map(p => {
@@ -312,7 +280,7 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
                                                 return (
                                                     <div 
                                                         key={p.tag}
-                                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold transition-all ${isUsed ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-150 text-slate-400'}`}
+                                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold transition-all ${isUsed ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-100 text-slate-400'}`}
                                                     >
                                                         {p.icon}
                                                         {p.tag}
@@ -322,12 +290,11 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
                                             })}
                                         </div>
 
-                                        {/* Send Button */}
                                         {isBulk ? (
                                             <button
                                                 onClick={handleStartBulk}
                                                 disabled={!previewMessage.trim() || !selectedTemplateId}
-                                                className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-[#25d366] hover:bg-[#1ebe57] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:shadow-none transition-all active:scale-[0.97]"
+                                                className="w-full flex items-center justify-center gap-2.5 py-4 bg-[#25d366] hover:bg-[#1ebe57] text-white font-bold text-sm rounded-xl shadow-lg shadow-[#25d366]/20 disabled:opacity-40 disabled:shadow-none transition-all active:scale-[0.97]"
                                             >
                                                 <WhatsAppIcon size={18} />
                                                 <span>Start Bulk Sending ({visitors.length} contacts)</span>
@@ -336,13 +303,24 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
                                             <button
                                                 onClick={() => handleSendNext(0)}
                                                 disabled={!previewMessage.trim() || !visitors[0].phone}
-                                                className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-[#25d366] hover:bg-[#1ebe57] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:shadow-none transition-all active:scale-[0.97]"
+                                                className="w-full flex items-center justify-center gap-2.5 py-4 bg-[#25d366] hover:bg-[#1ebe57] text-white font-bold text-sm rounded-xl shadow-lg shadow-[#25d366]/20 disabled:opacity-40 disabled:shadow-none transition-all active:scale-[0.97]"
                                             >
                                                 <WhatsAppIcon size={18} />
                                                 <span>Send via WhatsApp</span>
                                             </button>
                                         )}
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Right Side: Phone Preview */}
+                            <div className="order-1 lg:order-2 w-full lg:w-1/2 xl:w-[45%] bg-slate-100/50 flex flex-col items-center justify-start p-6 pt-6 lg:p-8 lg:pt-4 lg:min-h-0 lg:overflow-y-auto custom-scrollbar">
+                                <div className="max-w-[360px] w-full transform origin-top lg:scale-[0.95] xl:scale-100 scale-[0.85] transition-transform shadow-2xl rounded-[3rem]">
+                                    <WhatsAppChatPreview 
+                                        name={previewName}
+                                        message={previewMessage}
+                                        isCustom={!selectedTemplateId}
+                                    />
                                 </div>
                             </div>
                         </div>

@@ -7,8 +7,8 @@ import { useProvisionQrThriveUser } from '@/services/qr-thrive/hooks';
 import { api } from '@/lib/api';
 
 /**
- * Hook to automatically handle QR-Thrive provisioning and sync
- * This ensures every VemTap user has a corresponding QR-Thrive account
+ * Hook to automatically handle QRThrive provisioning and sync
+ * This ensures every VemTap user has a corresponding QRThrive account
  */
 export function useQrThriveAuth() {
   const { user, isAuthenticated } = useAuthStore();
@@ -48,11 +48,11 @@ export function useQrThriveAuth() {
       syncAttempted.current = true;
 
       try {
-        console.log('[QR-THRIVE] Checking provisioning status for:', user.email);
+        console.log('[QRThrive] Checking provisioning status for:', user.email);
 
-        // 1. Check if the user already has a QR-Thrive ID in their VemTap profile
+        // 1. Check if the user already has a QRThrive ID in their VemTap profile
         if (user.qrThriveUserId) {
-          console.log('[QR-THRIVE] User already has ID in profile:', user.qrThriveUserId);
+          console.log('[QRThrive] User already has ID in profile:', user.qrThriveUserId);
           setQrThriveUser(user.qrThriveUserId, user.email);
           return;
         }
@@ -62,13 +62,13 @@ export function useQrThriveAuth() {
           // This endpoint should return the mapped ID if it exists in the DB
           const response = await api.get('/auth/qr-thrive/status');
           if (response?.qrThriveUserId) {
-            console.log('[QR-THRIVE] Found ID from status endpoint:', response.qrThriveUserId);
+            console.log('[QRThrive] Found ID from status endpoint:', response.qrThriveUserId);
             setQrThriveUser(response.qrThriveUserId, user.email);
             return;
           }
         } catch (e) {
           // Endpoint might not exist yet or return 404, proceed to provision
-          console.log('[QR-THRIVE] Status check failed or endpoint missing, attempting provisioning');
+          console.log('[QRThrive] Status check failed or endpoint missing, attempting provisioning');
         }
 
         // 3. Provision new user (the API handle deduplication by email)
@@ -78,14 +78,14 @@ export function useQrThriveAuth() {
         const oneHour = 1000 * 60 * 60;
 
         if (now - lastAttempt > oneHour) {
-          console.log('[QR-THRIVE] Provisioning user...');
+          console.log('[QRThrive] Provisioning user...');
           await provisionMutation.mutateAsync();
         } else {
-          console.warn('[QR-THRIVE] Skipping provision attempt - throttled (last attempt too recent)');
+          console.warn('[QRThrive] Skipping provision attempt - throttled (last attempt too recent)');
         }
 
       } catch (error) {
-        console.error('[QR-THRIVE] Provisioning auto-flow failed:', error);
+        console.error('[QRThrive] Provisioning auto-flow failed:', error);
         // We'll retry on next mount or session
         syncAttempted.current = false;
       }
