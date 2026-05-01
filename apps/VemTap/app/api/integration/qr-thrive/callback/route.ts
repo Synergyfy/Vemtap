@@ -12,7 +12,7 @@ const WEBHOOK_SECRET = process.env.QR_THRIVE_WEBHOOK_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
-    const signature = request.headers.get('x-qr-thrive-signature');
+    const signature = request.headers.get('x-QRThrive-signature');
     const body = await request.text();
 
     if (WEBHOOK_SECRET && signature) {
@@ -22,14 +22,14 @@ export async function POST(request: NextRequest) {
         .digest('hex');
 
       if (signature !== expectedSignature) {
-        console.error('[QR-THRIVE WEBHOOK] Invalid signature');
+        console.error('[QRThrive WEBHOOK] Invalid signature');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
     }
 
     const payload: QrThriveWebhookPayload = JSON.parse(body);
 
-    console.log('[QR-THRIVE WEBHOOK] Received:', payload.event, payload.userId);
+    console.log('[QRThrive WEBHOOK] Received:', payload.event, payload.userId);
 
     switch (payload.event) {
       case 'user.updated':
@@ -53,12 +53,12 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log('[QR-THRIVE WEBHOOK] Unknown event:', payload.event);
+        console.log('[QRThrive WEBHOOK] Unknown event:', payload.event);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[QR-THRIVE WEBHOOK] Error:', error);
+    console.error('[QRThrive WEBHOOK] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -68,27 +68,27 @@ export async function POST(request: NextRequest) {
 
 async function handleUserUpdate(payload: QrThriveWebhookPayload) {
   const { userId, data } = payload;
-  console.log('[QR-THRIVE WEBHOOK] User updated:', userId, data);
+  console.log('[QRThrive WEBHOOK] User updated:', userId, data);
 }
 
 async function handleSubscriptionUpdate(payload: QrThriveWebhookPayload) {
   const { userId, data } = payload;
-  console.log('[QR-THRIVE WEBHOOK] Subscription updated:', userId, data);
+  console.log('[QRThrive WEBHOOK] Subscription updated:', userId, data);
 }
 
 async function handleQRCreated(payload: QrThriveWebhookPayload) {
   const { userId, data } = payload;
-  console.log('[QR-THRIVE WEBHOOK] QR created:', userId, data.qrId);
+  console.log('[QRThrive WEBHOOK] QR created:', userId, data.qrId);
 }
 
 async function handleQRDeleted(payload: QrThriveWebhookPayload) {
   const { userId, data } = payload;
-  console.log('[QR-THRIVE WEBHOOK] QR deleted:', userId, data.qrId);
+  console.log('[QRThrive WEBHOOK] QR deleted:', userId, data.qrId);
 }
 
 async function handleScanMilestone(payload: QrThriveWebhookPayload) {
   const { userId, data } = payload;
-  console.log('[QR-THRIVE WEBHOOK] Scan milestone reached:', userId, {
+  console.log('[QRThrive WEBHOOK] Scan milestone reached:', userId, {
     qrId: data.qrId,
     scans: data.scans,
     milestone: data.milestone,
@@ -97,7 +97,7 @@ async function handleScanMilestone(payload: QrThriveWebhookPayload) {
 
 export async function GET() {
   return NextResponse.json({
-    status: 'QR-Thrive webhook endpoint',
+    status: 'QRThrive webhook endpoint',
     version: '1.0.0',
     events: [
       'user.updated',

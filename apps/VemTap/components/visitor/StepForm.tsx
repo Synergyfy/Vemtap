@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { cn } from '@/lib/utils';
 import { presets } from './presets';
 import { VisitorHeader } from './VisitorHeader';
 
@@ -31,6 +32,7 @@ interface StepFormProps {
     isSyncingReal?: boolean;
     isDeviceSynced?: boolean;
     isSubmitting?: boolean;
+    isPreview?: boolean;
     onBack: () => void;
     onSubmit: (data: StepFormData) => void;
 }
@@ -47,6 +49,7 @@ export const StepForm: React.FC<StepFormProps> = ({
     isSyncingReal,
     isDeviceSynced,
     isSubmitting = false,
+    isPreview = false,
     onBack,
     onSubmit
 }) => {
@@ -70,13 +73,21 @@ export const StepForm: React.FC<StepFormProps> = ({
     });
 
     const identificationView = (
-        <motion.div key="form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={presets.card}>
+        <motion.div 
+            key="form" 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className={cn(presets.card, isPreview && "p-6 md:p-6 rounded-[2rem]")}
+        >
             <button
                 onClick={onBack}
                 disabled={isSubmitting}
-                className="absolute top-8 right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50"
+                className={cn(
+                    "absolute top-8 right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50",
+                    isPreview && "top-4 right-4 size-6"
+                )}
             >
-                <span className="material-symbols-outlined text-gray-400 text-[18px] group-hover:text-primary transition-colors">close</span>
+                <span className={cn("material-symbols-outlined text-gray-400 text-[18px] group-hover:text-primary transition-colors", isPreview && "text-[14px]")}>close</span>
             </button>
 
             {isSyncingReal && (
@@ -95,14 +106,20 @@ export const StepForm: React.FC<StepFormProps> = ({
                 </div>
             )}
 
-            <VisitorHeader logoUrl={logoUrl} storeName={storeName} />
+            <VisitorHeader logoUrl={logoUrl} storeName={storeName} isPreview={isPreview} />
 
-            <div className="mb-6">
-                <span className={presets.tag}>{customWelcomeTag || "Quick Link"}</span>
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-2 text-left">
+            <div className={cn("mb-6", isPreview && "mb-4")}>
+                <span className={cn(presets.tag, isPreview && "mb-1.5")}>{customWelcomeTag || "Quick Link"}</span>
+                <h1 className={cn(
+                    "text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-2 text-left",
+                    isPreview && "text-xl md:text-xl mb-1"
+                )}>
                     {customWelcomeTitle || "Connect with us"}
                 </h1>
-                <p className="text-sm font-medium text-slate-500 leading-relaxed text-left">
+                <p className={cn(
+                    "text-sm font-medium text-slate-500 leading-relaxed text-left",
+                    isPreview && "text-[11px] leading-snug"
+                )}>
                     {customWelcomeMessage || "Leave your details to stay in touch and earn rewards."}
                 </p>
             </div>
@@ -140,16 +157,17 @@ export const StepForm: React.FC<StepFormProps> = ({
                             toast.success('Signed up successfully!');
                         }
                     }}
+                    className={cn(isPreview && "h-11 py-0")}
                 />
                 
-                <div className="relative my-8 border-t border-slate-100">
+                <div className={cn("relative my-8 border-t border-slate-100", isPreview && "my-5")}>
                     <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
                         OR CONTINUE MANUALLY
                     </div>
                 </div>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+            <form className={cn("space-y-4", isPreview && "space-y-2")} onSubmit={handleSubmit(onSubmit)}>
                 <div className="space-y-1">
                     <label htmlFor="name" className={presets.label}>Full Name</label>
                     <div className="relative group">
@@ -163,7 +181,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                             autoComplete="name"
                             disabled={isSubmitting}
                             placeholder="Enter your name"
-                            className={`${presets.input} ${errors.name ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}
+                            className={cn(presets.input, errors.name ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-11 pl-10")}
                         />
                     </div>
                     {errors.name && <p className={presets.error}>{errors.name.message}</p>}
@@ -182,7 +200,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                             autoComplete="tel"
                             disabled={isSubmitting}
                             placeholder="Phone number"
-                            className={`${presets.input} ${errors.phone ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}
+                            className={cn(presets.input, errors.phone ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-11 pl-10")}
                         />
                     </div>
                     {errors.phone && <p className={presets.error}>{errors.phone.message}</p>}
@@ -201,14 +219,17 @@ export const StepForm: React.FC<StepFormProps> = ({
                             autoComplete="email"
                             disabled={isSubmitting}
                             placeholder="Optional email"
-                            className={`${presets.input} ${errors.email ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}
+                            className={cn(presets.input, errors.email ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-11 pl-10")}
                         />
                     </div>
                     {errors.email && <p className={presets.error}>{errors.email.message}</p>}
                 </div>
 
-                <div className="pt-6 pb-2">
-                    <label className={`flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer group hover:bg-white hover:border-primary/20 transition-all text-left ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`}>
+                <div className={cn("pt-6 pb-2", isPreview && "pt-2 pb-1")}>
+                    <label className={cn(
+                        `flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer group hover:bg-white hover:border-primary/20 transition-all text-left ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`,
+                        isPreview && "p-2.5 gap-2"
+                    )}>
                         <input
                             type="checkbox"
                             checked={hasConsented}
@@ -225,7 +246,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                     </label>
                 </div>
 
-                <button type="submit" disabled={!hasConsented || !isValid || isSubmitting} className={presets.button}>
+                <button type="submit" disabled={!hasConsented || !isValid || isSubmitting} className={cn(presets.button, isPreview && "h-11")}>
                     {isSubmitting ? <Spinner size="sm" /> : (
                         <>
                             <span>{submitLabel || 'Submit & Get Reward'}</span>

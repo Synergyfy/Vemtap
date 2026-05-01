@@ -24,7 +24,7 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
       const qr = new QRCodeStyling({
         width: width,
         height: height,
-        data: data || 'https://qr-thrive.com',
+        data: data || 'https://qrthrive.com',
         image: logo,
         dotsOptions: {
           type: design.dots.type as any,
@@ -63,7 +63,7 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
       qrCode.append(ref.current);
       
       qrCode.update({
-        data: data || 'https://qr-thrive.com',
+        data: data || 'https://qrthrive.com',
         image: logo,
         dotsOptions: {
           type: design.dots.type as any,
@@ -91,7 +91,7 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
   const renderFrameWrapper = (children: React.ReactNode) => {
     if (frame.type === 'none') {
       return (
-        <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-blue-100/50 border border-slate-100 aspect-square flex items-center justify-center overflow-hidden transition-all duration-300">
+        <div className="bg-white p-12 sm:p-16 shadow-2xl shadow-blue-100/50 border border-slate-100 aspect-square flex items-center justify-center transition-all duration-300">
           {children}
         </div>
       );
@@ -108,7 +108,7 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
             <div className="px-8 py-5 w-full text-center flex items-center justify-center bg-gradient-to-r from-black/5 to-white/5" style={{ backgroundColor: fColor, color: tColor }}>
               <span className="font-black tracking-[0.2em] uppercase text-xs leading-none">{fText}</span>
             </div>
-            <div className="p-8 bg-white w-full flex items-center justify-center">
+            <div className="p-10 bg-white w-full flex items-center justify-center">
               {children}
             </div>
           </div>
@@ -186,7 +186,7 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
         );
       default:
         return (
-          <div className="bg-white p-10 rounded-[3.5rem] shadow-2xl border border-slate-50 flex items-center justify-center overflow-hidden">
+          <div className="bg-white p-12 shadow-2xl border border-slate-50 flex items-center justify-center">
             {children}
           </div>
         );
@@ -194,7 +194,7 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-4">
+    <div className="w-full h-full flex items-center justify-center p-8 sm:p-12">
       {renderFrameWrapper(
         <div ref={ref} className="qr-container [&>svg]:w-full [&>svg]:h-full object-contain" />
       )}
