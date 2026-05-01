@@ -153,10 +153,10 @@ export default function UserFormSettingsView({
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
                     { label: 'Default Form', href: '/dashboard/engagement/experience/default-form', active: mode === 'default' || mode === 'all' },
                     { label: 'Default Success', href: '/dashboard/engagement/experience/default-success', active: mode === 'success' },
-                    { label: 'Additional Forms', href: '/dashboard/engagement/experience/additional-forms' },
+                    { label: 'Additional Items', href: '/dashboard/engagement/experience/additional-forms' },
+                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
                 ]}
             />
 
@@ -311,7 +311,7 @@ export default function UserFormSettingsView({
                             </div>
                             <div style={brandVars}>
                                 <PhoneFrame title="Live User Form Preview">
-                                    <div className="p-6">
+                                    <div className="p-4 origin-top scale-[0.95]">
                                         {previewTab === 'form' && (
                                             <StepForm
                                                 storeName={previewStoreName}
@@ -321,6 +321,7 @@ export default function UserFormSettingsView({
                                                 customWelcomeTag={settings.welcomeTag}
                                                 customPrivacyMessage={settings.privacyMessage}
                                                 submitLabel={settings.submitLabel || 'Submit'}
+                                                isPreview={true}
                                                 onBack={() => { }}
                                                 onSubmit={() => { }}
                                             />

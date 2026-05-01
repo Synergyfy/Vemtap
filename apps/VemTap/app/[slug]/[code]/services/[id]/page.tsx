@@ -10,10 +10,6 @@ import {
     ShieldCheck, 
     Calendar,
     Loader2,
-    X,
-    ChevronLeft,
-    ChevronRight,
-    MapPin,
     CheckCircle2
 } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
@@ -27,6 +23,7 @@ import { toast } from 'react-hot-toast';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { api } from '@/lib/api';
 import { User } from '@/store/useAuthStore';
+import { BookingSystem } from '@/components/visitor/BookingSystem';
 
 export default function ServiceDetailPage() {
     const params = useParams();
@@ -38,10 +35,11 @@ export default function ServiceDetailPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [pendingBookingDetails, setPendingBookingDetails] = useState<{ date: string, time: string } | null>(null);
 
     const createOrderMutation = useCreateCatalogueOrder();
 
-    const handleBooking = async () => {
+    const handleConfirmBooking = async (date: string, time: string) => {
         if (!service) return;
 
         const executeBooking = async (currentUser: User) => {
@@ -54,7 +52,9 @@ export default function ServiceDetailPage() {
                     lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
                     email: currentUser.email || undefined,
                     phone: currentUser.phone || 'N/A',
-                    items: [{ itemId: service.id, quantity: 1 }]
+                    items: [{ itemId: service.id, quantity: 1 }],
+                    bookingDate: date,
+                    bookingTime: time
                 });
                 toast.success('Service booked successfully!', { icon: '📅' });
                 router.push(`/${params.slug}/${params.code}/success`);
@@ -66,6 +66,7 @@ export default function ServiceDetailPage() {
         };
 
         if (!isAuthenticated) {
+            setPendingBookingDetails({ date, time });
             setShowAuthForm(true);
         } else {
             executeBooking(user as User);
@@ -87,18 +88,23 @@ export default function ServiceDetailPage() {
                 setUserData(data);
                 setShowAuthForm(false);
                 
-                const currentUser = authResponse.user as User;
-                await createOrderMutation.mutateAsync({
-                    branchId: branchId!,
-                    deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
-                    firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
-                    lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
-                    email: currentUser.email || undefined,
-                    phone: currentUser.phone || 'N/A',
-                    items: [{ itemId: service!.id, quantity: 1 }]
-                });
-                toast.success('Service booked successfully!', { icon: '📅' });
-                router.push(`/${params.slug}/${params.code}/success`);
+                if (pendingBookingDetails) {
+                    const currentUser = authResponse.user as User;
+                    await createOrderMutation.mutateAsync({
+                        branchId: branchId!,
+                        deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                        firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
+                        lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
+                        email: currentUser.email || undefined,
+                        phone: currentUser.phone || 'N/A',
+                        items: [{ itemId: service!.id, quantity: 1 }],
+                        bookingDate: pendingBookingDetails.date,
+                        bookingTime: pendingBookingDetails.time
+                    });
+                    toast.success('Service booked successfully!', { icon: '📅' });
+                    setPendingBookingDetails(null);
+                    router.push(`/${params.slug}/${params.code}/success`);
+                }
             }
         } catch (err: any) {
             toast.error(err.response?.data?.message || 'Authentication failed');
@@ -204,76 +210,44 @@ export default function ServiceDetailPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-                        <div className="md:col-span-2 space-y-6">
-                            <h4 className="text-xs font-black uppercase tracking-[0.4em] text-outline">What to expect</h4>
-                            <p className="text-xl text-slate-600 font-medium leading-relaxed">
-                                {service.description}
-                            </p>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
-                                {[
-                                    'Professional Consultants',
-                                    'Same Day Service Available',
-                                    'Personalized Experience',
-                                    'Verified Provider'
-                                ].map((feature) => (
-                                    <div key={feature} className="flex items-center gap-3">
-                                        <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                            <CheckCircle2 size={14} />
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-12">
+                        <div className="space-y-12">
+                            <section className="space-y-6">
+                                <h4 className="text-xs font-black uppercase tracking-[0.4em] text-outline">What to expect</h4>
+                                <p className="text-xl text-slate-600 font-medium leading-relaxed">
+                                    {service.description}
+                                </p>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
+                                    {[
+                                        'Professional Consultants',
+                                        'Same Day Service Available',
+                                        'Personalized Experience',
+                                        'Verified Provider'
+                                    ].map((feature) => (
+                                        <div key={feature} className="flex items-center gap-3">
+                                            <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                <CheckCircle2 size={14} />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700">{feature}</span>
                                         </div>
-                                        <span className="text-sm font-bold text-slate-700">{feature}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-8">
-                            <div className="bg-slate-50 p-6 rounded-3xl space-y-4">
-                                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-outline">Provider Info</h5>
-                                <div className="flex items-center gap-3">
-                                    <div className="size-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary">
-                                        <MapPin size={20} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-black uppercase tracking-widest truncate">{storeName}</p>
-                                        <p className="text-[10px] font-bold text-outline">Active provider</p>
-                                    </div>
+                                    ))}
                                 </div>
-                            </div>
+                            </section>
 
-                            <button
-                                onClick={handleBooking}
-                                disabled={isSubmitting}
-                                className="group w-full h-16 bg-slate-900 text-white text-lg font-black rounded-2xl shadow-xl hover:bg-black hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 uppercase tracking-widest"
-                            >
-                                {isSubmitting ? <Loader2 className="animate-spin" /> : (
-                                    <>
-                                        <Calendar size={20} />
-                                        <span>Secure Booking</span>
-                                    </>
-                                )}
-                            </button>
+                            <hr className="border-slate-100" />
+
+                            <section className="pt-4">
+                                <BookingSystem 
+                                    service={service} 
+                                    onConfirm={handleConfirmBooking}
+                                    isSubmitting={isSubmitting}
+                                />
+                            </section>
                         </div>
                     </div>
                 </div>
             </main>
-
-            {/* Sticky Action Bar */}
-            <div className="fixed bottom-0 left-0 w-full p-6 bg-white/80 backdrop-blur-xl border-t border-slate-100 z-[100] md:hidden">
-                <button
-                    onClick={handleBooking}
-                    disabled={isSubmitting}
-                    className="w-full h-14 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-95 transition-all uppercase tracking-widest text-sm"
-                >
-                    {isSubmitting ? <Loader2 className="animate-spin" /> : (
-                        <>
-                            <Calendar size={18} />
-                            Book Now — {formatPrice(service.price)}
-                        </>
-                    )}
-                </button>
-            </div>
 
             {/* Auth Form Modal */}
             <AnimatePresence>
@@ -289,8 +263,8 @@ export default function ServiceDetailPage() {
                             <StepForm 
                                 storeName={storeName}
                                 logoUrl={logoUrl}
-                                customWelcomeTitle="Secure Your Spot"
-                                customWelcomeMessage="Share your contact info to confirm your booking instantly."
+                                customWelcomeTitle="Almost Booked"
+                                customWelcomeMessage="Please share your contact info to secure your spot for this service."
                                 isSubmitting={isSubmitting}
                                 onBack={() => setShowAuthForm(false)}
                                 onSubmit={onAuthComplete}

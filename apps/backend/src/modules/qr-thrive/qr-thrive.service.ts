@@ -6,7 +6,7 @@ import { Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
 import { QrThriveCodeMapping } from './entities/qr-thrive-code-mapping.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { CreateQRCodeDto, UpdateQRCodeDto, CreateFolderDto, UpdateFolderDto } from './dto/qr-thrive.dto';
 import { BranchesService } from '../branches/branches.service';
 
@@ -70,7 +70,11 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Ensures a user exists in QR-Thrive and stores the mapping.
    */
-  async syncUser(user: User): Promise<QrThriveUserMapping> {
+  async syncUser(user: User): Promise<QrThriveUserMapping | null> {
+    if (user.role === UserRole.CUSTOMER || user.role === UserRole.ADMIN) {
+      this.logger.warn(`Skipping QR-Thrive sync for restricted role (${user.role}): ${user.id}`);
+      return null;
+    }
     const existingMapping = await this.userMappingRepo.findOne({ where: { userId: user.id } });
     
     try {
@@ -196,6 +200,31 @@ export class QrThriveService implements OnModuleInit {
       return data;
     } catch (error) {
       return this.handleExternalError(error, 'Failed to fetch responses');
+    }
+  }
+
+  /**
+   * Fetches all leads (form submissions) for a user across all their QR codes.
+   */
+  async getLeads(user: User, branchId: string) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    if (!hasAccess) {
+      throw new HttpException('You do not have access to this branch', HttpStatus.FORBIDDEN);
+    }
+
+    const mapping = await this.userMappingRepo.findOne({ where: { userId: user.id } });
+    if (!mapping) throw new HttpException('User not synced with QR-Thrive. Please sync first.', HttpStatus.BAD_REQUEST);
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/leads`,
+          { headers: this.headers }
+        )
+      );
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to fetch leads from QR-Thrive');
     }
   }
 
@@ -404,6 +433,34 @@ export class QrThriveService implements OnModuleInit {
     } catch (error) {
       return this.handleExternalError(error, 'Failed to duplicate QR code');
     }
+  }
+
+  /**
+   * Toggles whether a QR code is featured on the branch's Unique Business Link (UBL).
+   */
+  async toggleUblFeature(user: User, branchId: string, qrCodeId: string, isFeatured: boolean) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    if (!hasAccess) {
+      throw new HttpException('You do not have access to this branch', HttpStatus.FORBIDDEN);
+    }
+
+    const mapping = await this.codeMappingRepo.findOne({
+      where: { shortId: qrCodeId, branchId }, // Allow by shortId or qrThriveCodeId. Actually, `qrCodeId` from frontend usually maps to `qrThriveCodeId` in QR-Thrive.
+    });
+    
+    let targetMapping = mapping;
+    if (!targetMapping) {
+      targetMapping = await this.codeMappingRepo.findOne({
+        where: { qrThriveCodeId: qrCodeId, branchId },
+      });
+    }
+
+    if (!targetMapping) {
+      throw new HttpException('QR code mapping not found for this branch', HttpStatus.NOT_FOUND);
+    }
+
+    targetMapping.isFeaturedOnUbl = isFeatured;
+    return await this.codeMappingRepo.save(targetMapping);
   }
 
   /**

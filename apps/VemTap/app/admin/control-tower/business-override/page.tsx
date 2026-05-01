@@ -22,7 +22,8 @@ import {
 import { 
     useControlTowerBusinesses, 
     useControlTowerCustomers, 
-    useExecuteBusinessSudoAction 
+    useExecuteBusinessSudoAction,
+    useExecuteCustomerSudoAction
 } from '@/services/control-tower/hooks';
 import { 
     ControlTowerSession, 
@@ -94,22 +95,25 @@ export default function BusinessOverridePage() {
 
     const { startSession } = useSudoStore();
     const sudoMutation = useExecuteBusinessSudoAction();
+    const customerSudoMutation = useExecuteCustomerSudoAction();
 
     const handleSudoLogin = async (biz: any) => {
         try {
-            await sudoMutation.mutateAsync({
+            const durationMs = parseInt(grantDuration) * 60 * 1000 || 15 * 60 * 1000; 
+            const response = await sudoMutation.mutateAsync({
                 businessUid: biz.uid,
                 actionKey: 'assume_session',
                 payload: {
                     businessName: biz.name,
-                    adminEntry: true
+                    adminEntry: true,
+                    expiresAt: Date.now() + durationMs,
                 }
             });
 
-            const durationMs = parseInt(grantDuration) * 60 * 1000 || 15 * 60 * 1000; 
             startSession({
                 type: 'business',
                 subjectId: biz.uid,
+                token: response.data.token,
                 expiresAt: Date.now() + durationMs,
                 permissions: [grantPermission]
             });
@@ -121,7 +125,7 @@ export default function BusinessOverridePage() {
         }
     };
 
-    const handleGrantAccess = () => {
+    const handleGrantAccess = async () => {
         if (!grantTargetId) {
             toast.error('Please select a target account');
             return;
@@ -129,34 +133,53 @@ export default function BusinessOverridePage() {
 
         const durationMs = parseInt(grantDuration) * 60 * 1000;
         
-        if (grantTargetType === 'business') {
-            const biz = allBusinesses.find(b => b.uid === grantTargetId || b.name === grantTargetId);
-            if (biz) {
-                handleSudoLogin(biz);
+        try {
+            if (grantTargetType === 'business') {
+                const biz = allBusinesses.find(b => b.uid === grantTargetId || b.name === grantTargetId);
+                if (biz) {
+                    await handleSudoLogin(biz);
+                } else {
+                    // Fallback for direct ID entry
+                    const response = await sudoMutation.mutateAsync({
+                        businessUid: grantTargetId,
+                        actionKey: 'assume_session',
+                        payload: { adminEntry: true, expiresAt: Date.now() + durationMs }
+                    });
+
+                    startSession({
+                        type: 'business',
+                        subjectId: grantTargetId,
+                        token: response.data.token,
+                        expiresAt: Date.now() + durationMs,
+                        permissions: [grantPermission]
+                    });
+                    toast.success('Session started for business ID: ' + grantTargetId);
+                    router.push('/dashboard');
+                }
             } else {
-                // Fallback for direct ID entry
+                // Customer session
+                const response = await customerSudoMutation.mutateAsync({
+                    customerUid: grantTargetId,
+                    businessUid: '', // customer sudo doesn't strictly need this on frontend if direct
+                    actionKey: 'assume_session',
+                    payload: { adminEntry: true, expiresAt: Date.now() + durationMs }
+                });
+
                 startSession({
-                    type: 'business',
+                    type: 'customer',
                     subjectId: grantTargetId,
+                    token: response.data.token,
                     expiresAt: Date.now() + durationMs,
                     permissions: [grantPermission]
                 });
-                toast.success('Session started for business ID: ' + grantTargetId);
-                router.push('/dashboard');
+                toast.success('Session started for customer ID: ' + grantTargetId);
+                router.push(`/customer/dashboard?admin_mode=1&customer_uid=${grantTargetId}`);
             }
-        } else {
-            // Customer session
-            startSession({
-                type: 'customer',
-                subjectId: grantTargetId,
-                expiresAt: Date.now() + durationMs,
-                permissions: [grantPermission]
-            });
-            toast.success('Session started for customer ID: ' + grantTargetId);
-            router.push(`/customer/dashboard?admin_mode=1&customer_uid=${grantTargetId}`);
+            
+            setIsGrantModalOpen(false);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to start sudo session');
         }
-        
-        setIsGrantModalOpen(false);
     };
 
     const handleMessageAgent = (agentName: string) => {

@@ -32,6 +32,7 @@ export interface QrThriveQRCode {
   createdAt: string;
   updatedAt: string;
   scans: number;
+  isFeaturedOnUbl?: boolean;
   form?: {
     _count: { submissions: number };
   };
@@ -256,6 +257,33 @@ export const QR_TYPE_LABELS: Record<QRType, { label: string; description: string
   tiktok: { label: 'TikTok', description: 'Share your TikTok', category: 'dynamic' },
   form: { label: 'Form', description: 'Collect form submissions', category: 'dynamic' },
 };
+
+export interface QrThriveLead {
+  id: string;
+  formId: string;
+  answers: Record<string, string>;
+  ip?: string;
+  createdAt: string;
+  form: {
+    id: string;
+    title: string;
+    qrCodeId: string;
+    fields: Array<{
+      id: string;
+      type: string;
+      label: string;
+      required: boolean;
+      options?: string[];
+      placeholder?: string;
+    }>;
+    qrCode: {
+      id: string;
+      name: string;
+      type: string;
+    };
+  };
+}
+
 
 export const DEFAULT_QR_DESIGN: QrThriveDesign = {
   dots: {

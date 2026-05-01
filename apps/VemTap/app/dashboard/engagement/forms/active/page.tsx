@@ -2,17 +2,20 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { Info, Loader2, AlertTriangle, X } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
+import { cn } from '@/lib/utils';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import DraggableButtonList from '@/components/dashboard/engagement/DraggableButtonList';
 import PhoneFrame from '@/components/shared/PhoneFrame';
-import { useBranches } from '@/services/branches/hooks';
+import { useBranches, useUpdateBranch } from '@/services/branches/hooks';
 import { useBusinessForms } from '@/services/business-forms/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useQrThriveCodes, useToggleUbl } from '@/services/qr-thrive/hooks';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { buildBrandCssVars } from '@/lib/brandColor';
 import type { BusinessForm } from '@/services/business-forms/types';
@@ -26,6 +29,28 @@ const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean
         <span className={`${active ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm`} />
     </button>
 );
+
+const SYSTEM_ACTIONS = [
+    { id: 'system:order', title: 'Place Order', subtitle: 'Default Action', icon: 'shopping_bag', color: 'text-orange-500', bg: 'bg-orange-50' },
+    { id: 'system:service', title: 'Book Service', subtitle: 'Default Action', icon: 'calendar_month', color: 'text-blue-500', bg: 'bg-blue-50' },
+    { id: 'system:offers', title: 'See Offers', subtitle: 'Default Action', icon: 'redeem', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { id: 'system:whatsapp', title: 'WhatsApp', subtitle: 'Default Action', icon: 'chat', color: 'text-green-500', bg: 'bg-green-50' },
+    { id: 'system:forms', title: 'Fill Feedback', subtitle: 'Default Action', icon: 'assignment', color: 'text-purple-500', bg: 'bg-purple-50' },
+    { id: 'system:engagement', title: 'Social Connect', subtitle: 'Default Action', icon: 'share', color: 'text-pink-500', bg: 'bg-pink-50' },
+];
+const DEFAULT_UBL_SEQUENCE = SYSTEM_ACTIONS.map(a => a.id);
+const SYSTEM_ACTION_MAP = new Map(SYSTEM_ACTIONS.map(a => [a.id, a]));
+
+const getQrIcon = (type: string) => {
+    switch (type) {
+        case 'url': return 'language';
+        case 'pdf': return 'description';
+        case 'menu': return 'restaurant_menu';
+        case 'image': return 'image';
+        case 'vcard': return 'contact_page';
+        default: return 'link';
+    }
+};
 
 export default function ActiveFormsPage() {
     const { data: branches = [] } = useBranches();
@@ -42,6 +67,9 @@ export default function ActiveFormsPage() {
     const activeFormIdsByBranch = useFormPreferencesStore((state) => state.activeFormIdsByBranch);
     const activeRewardIdsByBranch = useFormPreferencesStore((state) => state.activeRewardIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
+    const { data: qrCodes = [], isLoading: isQrLoading } = useQrThriveCodes(branchScope || userBranchId || undefined);
+    const toggleUblMutation = useToggleUbl();
+    const updateBranchMutation = useUpdateBranch();
     
     const brandColor = engagementSettings?.brandColor || '#2563eb';
     const brandVars = useMemo(
@@ -85,26 +113,42 @@ export default function ActiveFormsPage() {
         [branchKey, activeRewardIdsByBranch]
     );
 
-    const activeForms = useMemo(() => {
-        const formById = new Map(availableForms.map((form) => [form.id, form]));
-        return activeFormIds.map((id: string) => formById.get(id)).filter((form: any): form is NonNullable<typeof form> => !!form);
-    }, [activeFormIds, availableForms]);
+    const ublSequence = useMemo(
+        () => engagementSettings?.ublSequence || [],
+        [engagementSettings?.ublSequence]
+    );
 
-    const activeRewards = useMemo(() => {
-        const rewardById = new Map(availableRewards.map((reward) => [reward.id, reward]));
-        return activeRewardIds.map((id: string) => rewardById.get(id)).filter((reward: any): reward is NonNullable<typeof reward> => !!reward);
-    }, [activeRewardIds, availableRewards]);
+    const effectiveSequence = useMemo(() => {
+        if (ublSequence.length > 0) return ublSequence;
+        return [...DEFAULT_UBL_SEQUENCE];
+    }, [ublSequence]);
+
+    const activeItems = useMemo(() => {
+        const formMap = new Map(availableForms.map(f => [f.id, f]));
+        const rewardMap = new Map(availableRewards.map(r => [r.id, r]));
+        const qrMap = new Map(qrCodes.map(q => [q.id, q]));
+
+        return effectiveSequence.map(id => {
+            const systemAction = SYSTEM_ACTION_MAP.get(id);
+            if (systemAction) return { ...systemAction, type: 'system' };
+            const form = formMap.get(id);
+            if (form) return { id: form.id, title: form.title || 'Untitled Form', subtitle: 'Additional Form', icon: 'assignment', type: 'form' };
+            const reward = rewardMap.get(id);
+            if (reward) return { id: reward.id, title: reward.name || 'Untitled Reward', subtitle: 'Reward Strategy', icon: 'redeem', type: 'reward' };
+            const qr = qrMap.get(id);
+            if (qr) return { id: qr.id, title: qr.name || 'QR Code', subtitle: qr.type.toUpperCase(), icon: getQrIcon(qr.type), type: 'qr' };
+            return null;
+        }).filter(Boolean);
+    }, [effectiveSequence, availableForms, availableRewards, qrCodes]);
 
     const previewBusinessName =
         business?.name ||
         activeBranch?.name ||
-        activeForms.find((form) => form.businessName)?.businessName ||
         availableForms.find((form) => form.businessName)?.businessName ||
         'Your Business';
     const previewBusinessLogo =
         business?.logoUrl ||
         activeBranch?.logoUrl ||
-        activeForms.find((form) => form.businessLogo)?.businessLogo ||
         availableForms.find((form) => form.businessLogo)?.businessLogo ||
         '';
         
@@ -121,18 +165,51 @@ export default function ActiveFormsPage() {
     );
 
     const inactiveForms = useMemo(
-        () => availableForms.filter((form) => !activeFormIds.includes(form.id)),
-        [availableForms, activeFormIds]
+        () => availableForms.filter((form) => !effectiveSequence.includes(form.id)),
+        [availableForms, effectiveSequence]
     );
 
-    const reorderActiveFormsByIndex = (sourceIndex: number, targetIndex: number) => {
-        const currentIds = activeFormIds;
-        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex >= currentIds.length || targetIndex >= currentIds.length) return;
-        if (sourceIndex === targetIndex) return;
-        const next = [...currentIds];
+    const inactiveSystemActions = useMemo(
+        () => SYSTEM_ACTIONS.filter(a => !effectiveSequence.includes(a.id)),
+        [effectiveSequence]
+    );
+
+    const handleUpdateSequence = (newSequence: string[]) => {
+        if (!branchScope || branchScope === 'all') return;
+        updateBranchMutation.mutate({
+            id: branchScope,
+            updates: {
+                engagement: {
+                    ...engagementSettings,
+                    ublSequence: newSequence
+                }
+            }
+        });
+        updateEngagementSettings({ ublSequence: newSequence });
+    };
+
+    const reorderItems = (sourceIndex: number, targetIndex: number) => {
+        const next = [...effectiveSequence];
         const [moved] = next.splice(sourceIndex, 1);
         next.splice(targetIndex, 0, moved);
-        setActiveFormIds(branchKey, next);
+        handleUpdateSequence(next);
+    };
+
+    const toggleItem = async (id: string, type: 'form' | 'reward' | 'qr' | 'system') => {
+        const currentSequence = [...effectiveSequence];
+        const isPresent = currentSequence.includes(id);
+        const next = isPresent ? currentSequence.filter(itemId => itemId !== id) : [...currentSequence, id];
+        
+        if (type === 'qr') {
+            await toggleUblMutation.mutateAsync({ qrId: id, isFeatured: !isPresent });
+        } else if (type === 'form') {
+            toggleActiveForm(branchKey, id);
+        } else if (type === 'reward') {
+            toggleActiveReward(branchKey, id);
+        }
+        // system type: no additional side effects needed
+
+        handleUpdateSequence(next);
     };
 
     const getPublicFormUrl = (form: BusinessForm) => {
@@ -161,10 +238,10 @@ export default function ActiveFormsPage() {
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
                     { label: 'Default Form', href: '/dashboard/engagement/experience/default-form' },
                     { label: 'Default Success', href: '/dashboard/engagement/experience/default-success' },
-                    { label: additionalTabLabel, active: true },
+                    { label: 'Additional Items', active: true },
+                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
                 ]}
             />
 
@@ -195,77 +272,38 @@ export default function ActiveFormsPage() {
                             </p>
                         </div>
 
-                        {availableForms.length === 0 && availableRewards.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500">
-                                No published forms or rewards yet. Create them to activate them here.
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
+                        <div className="space-y-6">
                                 <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-900">Sequence Order</h3>
-                                        <p className="text-xs text-gray-500">Drag the buttons to reorder the forms.</p>
+                                        <p className="text-xs text-gray-500">Drag to reorder. This is exactly how your UBL page will look.</p>
                                     </div>
 
-                                    {activeForms.length === 0 && activeRewards.length === 0 ? (
+                                    {activeItems.length === 0 ? (
                                         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-xs text-gray-500 text-center">
-                                            No additional items selected yet. Activate a form or reward below to add it to the sequence.
+                                            No items in sequence. Add items below to build your UBL page.
                                         </div>
                                     ) : (
                                         <DraggableButtonList
-                                            items={[
-                                                ...activeForms.map(f => ({
-                                                    id: f.id,
-                                                    title: f.title || 'Untitled Form',
-                                                    subtitle: 'Additional Form',
-                                                    icon: 'assignment'
-                                                })),
-                                                ...activeRewards.map(r => ({
-                                                    id: r.id,
-                                                    title: r.name || 'Untitled Reward',
-                                                    subtitle: 'Reward Strategy',
-                                                    icon: 'redeem'
-                                                }))
-                                            ]}
-                                            onReorder={(source, target) => {
-                                                // Simplified: Since we have two lists, we can't easily interleave with simple index swap
-                                                // unless we combine lists in store. For now, reorder within each group or just warn.
-                                                // User might just expect them to be grouped.
-                                                // Actually, let's just support reordering within the combined list for display.
-                                                console.log('Reorder', source, target);
-                                            }}
+                                            items={activeItems.map(item => {
+                                                const sys = SYSTEM_ACTION_MAP.get(item!.id);
+                                                return {
+                                                    id: item!.id,
+                                                    title: item!.title,
+                                                    subtitle: item!.subtitle,
+                                                    icon: <span className={cn("material-symbols-outlined text-sm", sys?.color || '')}>{item!.icon}</span>
+                                                };
+                                            })}
+                                            onReorder={reorderItems}
                                             onRemove={(id) => {
-                                                const form = activeForms.find(f => f.id === id);
-                                                if (form) {
-                                                    setSequenceWarning({ formId: id, formTitle: form.title || 'Untitled Form' });
+                                                const item = activeItems.find(i => i!.id === id);
+                                                if (item?.type === 'form') {
+                                                    setSequenceWarning({ formId: id, formTitle: item.title });
                                                 } else {
-                                                    const isReward = activeRewards.some(r => r.id === id);
-                                                    if (isReward) {
-                                                        toggleActiveReward(branchKey, id);
-                                                    } else {
-                                                        toggleActiveForm(branchKey, id);
-                                                    }
+                                                    toggleItem(id, item!.type as any);
                                                 }
                                             }}
                                         />
-                                    )}
-
-                                    {showSocialStep && (
-                                        <div className="h-16 w-full rounded-xl bg-white border border-emerald-200 shadow-sm flex items-center px-4 gap-3 relative z-0 mt-2">
-                                            <div className="flex-shrink-0 size-7 rounded-full bg-emerald-100 flex items-center justify-center border border-emerald-200">
-                                                <span className="text-xs font-black text-emerald-600">★</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <span className="text-sm font-bold text-gray-900 truncate block">
-                                                    Social Media & Reviews
-                                                </span>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 block truncate">
-                                                        Final Step (Locked)
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
                                     )}
                                 </div>
 
@@ -275,11 +313,27 @@ export default function ActiveFormsPage() {
                                         <p className="text-xs text-gray-500">Click an item to add it to the sequence.</p>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                                        {inactiveSystemActions.map((action) => (
+                                            <button
+                                                key={action.id}
+                                                type="button"
+                                                onClick={() => toggleItem(action.id, 'system')}
+                                                className={cn("flex items-center gap-3 p-3 rounded-xl border bg-white hover:bg-slate-50 transition-all text-left shadow-sm group", action.id === 'system:whatsapp' ? 'border-green-200' : 'border-gray-200')}
+                                            >
+                                                <div className={cn("flex-shrink-0 size-8 rounded-lg flex items-center justify-center", action.bg)}>
+                                                    <span className={cn("material-symbols-outlined text-sm", action.color)}>{action.icon}</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="text-sm font-bold text-gray-900 truncate block">{action.title}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block truncate">{action.subtitle}</span>
+                                                </div>
+                                            </button>
+                                        ))}
                                         {inactiveForms.map((form) => (
                                             <button
                                                 key={form.id}
                                                 type="button"
-                                                onClick={() => toggleActiveForm(branchKey, form.id)}
+                                                onClick={() => toggleItem(form.id, 'form')}
                                                 className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/50 hover:bg-slate-50 transition-all text-left shadow-sm group"
                                             >
                                                 <div className="flex-shrink-0 size-8 rounded-lg flex items-center justify-center bg-gray-50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
@@ -291,11 +345,11 @@ export default function ActiveFormsPage() {
                                                 </div>
                                             </button>
                                         ))}
-                                        {availableRewards.filter(r => !activeRewardIds.includes(r.id)).map((reward) => (
+                                        {availableRewards.filter(r => !effectiveSequence.includes(r.id)).map((reward) => (
                                             <button
                                                 key={reward.id}
                                                 type="button"
-                                                onClick={() => toggleActiveReward(branchKey, reward.id)}
+                                                onClick={() => toggleItem(reward.id, 'reward')}
                                                 className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50/30 hover:bg-emerald-50 transition-all text-left shadow-sm group"
                                             >
                                                 <div className="flex-shrink-0 size-8 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-600">
@@ -307,10 +361,25 @@ export default function ActiveFormsPage() {
                                                 </div>
                                             </button>
                                         ))}
+                                        {qrCodes.filter(q => !effectiveSequence.includes(q.id)).map((qr) => (
+                                            <button
+                                                key={qr.id}
+                                                type="button"
+                                                onClick={() => toggleItem(qr.id, 'qr')}
+                                                className="flex items-center gap-3 p-3 rounded-xl border border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition-all text-left shadow-sm group"
+                                            >
+                                                <div className="flex-shrink-0 size-8 rounded-lg flex items-center justify-center bg-blue-100 text-blue-600">
+                                                    <span className="material-symbols-outlined text-sm">{getQrIcon(qr.type)}</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="text-sm font-bold text-gray-900 truncate block group-hover:text-blue-700">{qr.name || 'QR Code'}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500 block truncate">{qr.type.toUpperCase()}</span>
+                                                </div>
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
-                        )}
                     </div>
 
                     <div className="sticky top-6">
@@ -324,82 +393,65 @@ export default function ActiveFormsPage() {
                             </div>
                             <div className="p-5">
                                 <div className="flex justify-center" style={brandVars}>
-                                    <PhoneFrame title="Additional Forms">
-                                        <div className="min-h-full bg-slate-50 py-6 px-3 space-y-3">
-                                            <div className="bg-white border border-gray-200 rounded-2xl p-4 text-left shadow-sm">
-                                                <div className="flex items-center gap-2 mb-2.5">
-                                                    <div className="size-8 rounded-lg bg-white border border-gray-100 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
-                                                        {previewBusinessLogo ? (
-                                                            <img
-                                                                src={previewBusinessLogo}
-                                                                alt={previewBusinessName}
-                                                                className="w-full h-full object-contain"
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).src = '/VEMTAP_PNG.png';
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-xs font-black text-slate-500">
-                                                                {previewBusinessName.charAt(0)}
-                                                            </span>
-                                                        )}
+                                    <PhoneFrame title="UBL Preview">
+                                        <div className="min-h-full bg-slate-50 py-4 px-3 space-y-2">
+                                            <div className="flex items-center gap-2 mb-3 border-b border-slate-100/50 pb-3">
+                                                {previewBusinessLogo ? (
+                                                    <div className="size-8 rounded-full border border-white shadow-sm overflow-hidden bg-white shrink-0">
+                                                        <img src={previewBusinessLogo} alt={previewBusinessName} className="size-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/VEMTAP_PNG.png'; }} />
                                                     </div>
-                                                    <p className="text-[11px] font-black text-slate-900 tracking-tight leading-tight truncate uppercase">
-                                                        {previewBusinessName}
-                                                    </p>
+                                                ) : (
+                                                    <div className="size-8 rounded-full bg-primary flex items-center justify-center text-white shadow-sm shrink-0">
+                                                        <span className="text-[10px] font-black uppercase">{previewBusinessName.charAt(0)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-slate-900 truncate leading-tight">Welcome to {previewBusinessName}</p>
+                                                    <p className="text-[8px] text-slate-400 italic truncate">Select an option below</p>
                                                 </div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Additional Forms</p>
-                                                <p className="text-sm font-semibold text-slate-900">Tap a button to open a form.</p>
                                             </div>
 
-                                            {activeForms.length === 0 && activeRewards.length === 0 ? (
-                                                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-xs text-gray-500">
-                                                    No additional items yet.
+                                            {activeItems.length === 0 ? (
+                                                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-[9px] text-gray-400">
+                                                    No actions configured.
                                                 </div>
                                             ) : (
-                                                <div className="space-y-2">
-                                                    {activeForms.map((form: BusinessForm) => {
-                                                        const url = getPublicFormUrl(form);
-                                                        return url ? (
-                                                            <a
-                                                                key={form.id}
-                                                                href={url}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className="block h-10 rounded-xl px-3 text-sm font-semibold shadow-sm transition-all flex items-center justify-center text-center"
-                                                                style={{ backgroundColor: brandColor, color: '#fff' }}
+                                                <div className="grid grid-cols-2 gap-1.5">
+                                                    {activeItems.map((item) => {
+                                                        const sys = SYSTEM_ACTION_MAP.get(item!.id);
+                                                        return (
+                                                            <div
+                                                                key={item?.id}
+                                                                className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm"
                                                             >
-                                                                <span className="truncate block">{form.title || 'Untitled Form'}</span>
-                                                            </a>
-                                                        ) : (
-                                                            <span
-                                                                key={form.id}
-                                                                className="block h-10 rounded-xl px-3 text-sm font-semibold bg-gray-100 text-gray-400 flex items-center justify-center text-center"
-                                                            >
-                                                                <span className="truncate block">Link unavailable</span>
-                                                            </span>
+                                                                <div className={cn("size-7 rounded-lg flex items-center justify-center shrink-0", sys?.bg || (item?.type === 'form' ? 'bg-purple-50' : item?.type === 'qr' ? 'bg-blue-50' : 'bg-gray-50'))}>
+                                                                    {item?.id === 'system:whatsapp' ? (
+                                                                        <FaWhatsapp className={cn("text-[14px]", sys?.color || "text-green-500")} />
+                                                                    ) : (
+                                                                        <span className={cn("material-symbols-outlined !text-[14px]", sys?.color || (item?.type === 'form' ? 'text-purple-500' : item?.type === 'qr' ? 'text-blue-600' : 'text-gray-400'))}>{item?.icon}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <span 
+                                                                        className="text-[9px] font-bold truncate block leading-tight"
+                                                                        style={{ color: brandColor || '#0f172a' }}
+                                                                    >
+                                                                        {item?.title}
+                                                                    </span>
+                                                                    <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400 block truncate">{item?.subtitle}</span>
+                                                                </div>
+                                                            </div>
                                                         );
                                                     })}
-                                                    {activeRewards.map((reward) => (
-                                                        <div
-                                                            key={reward.id}
-                                                            className="h-10 rounded-xl px-3 text-sm font-semibold shadow-sm flex items-center justify-center text-center bg-white border border-gray-200 text-gray-700"
-                                                        >
-                                                            <span className="material-symbols-outlined text-sm mr-2">redeem</span>
-                                                            <span className="truncate block">{reward.name}</span>
-                                                        </div>
-                                                    ))}
                                                 </div>
                                             )}
 
-                                            {showSocialStep && (
-                                                <div className="h-10 rounded-xl px-3 text-sm font-semibold shadow-sm transition-all flex items-center justify-center text-center bg-emerald-500 text-white">
-                                                    Social Media & Reviews
-                                                </div>
-                                            )}
-
-                                            <p className="text-center text-[8px] font-medium text-slate-400">
-                                                Powered by <span className="font-bold" style={{ color: engagementSettings?.brandColor || '#2563eb' }}>VemTap</span>
+                                            <div className="flex justify-center gap-3 py-2 opacity-30">
+                                                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Verified</span>
+                                                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Instant Service</span>
+                                            </div>
+                                            <p className="text-center text-[7px] font-medium text-slate-400">
+                                                Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
                                             </p>
                                         </div>
                                     </PhoneFrame>
@@ -454,7 +506,7 @@ export default function ActiveFormsPage() {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        toggleActiveForm(branchKey, sequenceWarning.formId);
+                                        toggleItem(sequenceWarning.formId, 'form');
                                         setSequenceWarning(null);
                                     }}
                                     className="flex-1 h-11 rounded-xl bg-amber-600 text-white text-sm font-black hover:bg-amber-700 transition-shadow shadow-md"

@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProviderRouterService } from './provider-router.service';
-import { TermiiProvider } from '../providers/termii.provider';
 import { TwilioProvider } from '../providers/twilio.provider';
-import { AfricaTalkingProvider } from '../providers/africastalking.provider';
 import { BestBulkSmsProvider } from '../providers/bestbulksms.provider';
 import { EmailProvider } from '../providers/email.provider';
 import { InHouseProvider } from '../providers/inhouse.provider';
@@ -10,9 +8,7 @@ import { Channel } from '../enums/channel.enum';
 
 describe('ProviderRouterService', () => {
   let service: ProviderRouterService;
-  let termiiProvider: TermiiProvider;
   let twilioProvider: TwilioProvider;
-  let africaTalkingProvider: AfricaTalkingProvider;
   let bestBulkSmsProvider: BestBulkSmsProvider;
   let emailProvider: EmailProvider;
   let inHouseProvider: InHouseProvider;
@@ -22,15 +18,7 @@ describe('ProviderRouterService', () => {
       providers: [
         ProviderRouterService,
         {
-          provide: TermiiProvider,
-          useValue: { sendMessage: jest.fn(), estimateCost: jest.fn() },
-        },
-        {
           provide: TwilioProvider,
-          useValue: { sendMessage: jest.fn(), estimateCost: jest.fn() },
-        },
-        {
-          provide: AfricaTalkingProvider,
           useValue: { sendMessage: jest.fn(), estimateCost: jest.fn() },
         },
         {
@@ -49,11 +37,7 @@ describe('ProviderRouterService', () => {
     }).compile();
 
     service = module.get<ProviderRouterService>(ProviderRouterService);
-    termiiProvider = module.get<TermiiProvider>(TermiiProvider);
     twilioProvider = module.get<TwilioProvider>(TwilioProvider);
-    africaTalkingProvider = module.get<AfricaTalkingProvider>(
-      AfricaTalkingProvider,
-    );
     bestBulkSmsProvider = module.get<BestBulkSmsProvider>(BestBulkSmsProvider);
     emailProvider = module.get<EmailProvider>(EmailProvider);
     inHouseProvider = module.get<InHouseProvider>(InHouseProvider);

@@ -264,7 +264,7 @@ export const ContentForm: React.FC<ContentFormProps> = ({ type, data, onChange, 
             <div>
               <h4 className="font-bold text-slate-900">{type.toUpperCase()} Configuration</h4>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                This QR type configuration is available on the full QR-Thrive platform. 
+                This QR type configuration is available on the full QRThrive platform. 
                 For now, you can create URL QR codes here.
               </p>
             </div>

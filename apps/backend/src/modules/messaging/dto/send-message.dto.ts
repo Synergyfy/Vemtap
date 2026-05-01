@@ -67,4 +67,8 @@ export class SendMessageDto {
   @IsArray()
   @IsUUID('all', { each: true })
   customerIds?: string[];
+
+  @ApiPropertyOptional({ description: 'Additional metadata' })
+  @IsOptional()
+  metadata?: any;
 }

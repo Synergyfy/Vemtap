@@ -50,25 +50,29 @@ async function bootstrap() {
 
   console.log('Generating test emails...');
 
-  // Mock the transporter.sendMail to capture HTML
+  // Mock the Resend client to capture HTML instead of sending
   const resultsDir = path.join(process.cwd(), 'tmp', 'email-previews');
   if (!fs.existsSync(resultsDir)) {
     fs.mkdirSync(resultsDir, { recursive: true });
   }
 
-  // @ts-ignore - access private transporter for testing
-  const originalSendMail = mailService.transporter.sendMail;
+  // @ts-ignore - access private resend client for testing
+  const originalSend = mailService.resend.emails.send.bind(mailService.resend.emails);
   // @ts-ignore
-  mailService.transporter.sendMail = async (options) => {
-    const status = options.subject.toLowerCase().includes('confirmation') ? 'placed' : 
-                   options.subject.toLowerCase().includes('prepared') ? 'processing' :
-                   options.subject.toLowerCase().includes('delivered') ? 'completed' :
-                   options.subject.toLowerCase().includes('cancelled') ? 'cancelled' : 'rejected';
-    
-    const filePath = path.join(resultsDir, `${status}.html`);
-    fs.writeFileSync(filePath, options.html);
-    console.log(`Captured ${status} email to ${filePath}`);
-    return { messageId: 'mock-id' };
+  mailService.resend = {
+    emails: {
+      send: async (options: { from: string; to: string; subject: string; html: string }) => {
+        const status = options.subject.toLowerCase().includes('confirmation') ? 'placed' : 
+                       options.subject.toLowerCase().includes('prepared') ? 'processing' :
+                       options.subject.toLowerCase().includes('delivered') ? 'completed' :
+                       options.subject.toLowerCase().includes('cancelled') ? 'cancelled' : 'rejected';
+        
+        const filePath = path.join(resultsDir, `${status}.html`);
+        fs.writeFileSync(filePath, options.html);
+        console.log(`Captured ${status} email to ${filePath}`);
+        return { data: { id: 'mock-id' }, error: null };
+      },
+    },
   };
 
   for (const status of statuses) {

@@ -68,7 +68,7 @@ export const QrTypeSelector: React.FC<QrTypeSelectorProps> = ({ selectedType, on
           onMouseLeave={() => onHover?.(null)}
           onClick={() => onSelect(type.id)}
           className={cn(
-            "flex flex-col items-center text-center p-6 rounded-[2rem] border-2 transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden",
+            "flex flex-col items-center text-center p-4 sm:p-6 rounded-[2rem] border-2 transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden",
             selectedType === type.id 
               ? "border-blue-600 bg-blue-50/10 ring-4 ring-blue-50/30" 
               : "border-white bg-white hover:border-slate-100 shadow-sm shadow-slate-200/50"

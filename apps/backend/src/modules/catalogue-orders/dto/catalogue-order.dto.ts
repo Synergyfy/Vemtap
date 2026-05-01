@@ -111,6 +111,16 @@ export class CreateCatalogueOrderDto {
   @IsOptional()
   @IsUUID()
   sessionToken?: string;
+
+  @ApiPropertyOptional({ example: '2024-05-20' })
+  @IsOptional()
+  @IsString()
+  bookingDate?: string;
+
+  @ApiPropertyOptional({ example: '10:00 AM' })
+  @IsOptional()
+  @IsString()
+  bookingTime?: string;
 }
 
 export class BulkOrderDto {
@@ -134,6 +144,16 @@ export class BulkOrderDto {
   @IsOptional()
   @IsString()
   tableNumber?: string;
+
+  @ApiPropertyOptional({ example: '2024-05-20' })
+  @IsOptional()
+  @IsString()
+  bookingDate?: string;
+
+  @ApiPropertyOptional({ example: '10:00 AM' })
+  @IsOptional()
+  @IsString()
+  bookingTime?: string;
 }
 
 export class BulkCheckoutDto {
@@ -200,4 +220,9 @@ export class CatalogueOrderQueryDto {
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @ApiPropertyOptional({ example: 'booking', description: 'Filter by type: order or booking' })
+  @IsOptional()
+  @IsString()
+  type?: string;
 }

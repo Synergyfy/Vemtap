@@ -13,6 +13,7 @@ import type {
   MagicLinkResponse,
   QrThriveListParams,
   QrThriveErrorResponse,
+  QrThriveLead,
 } from './types';
 
 const QR_THRIVE_BASE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_API_URL || 'https://api.qrthrive.com/api/v1/integration';
@@ -202,6 +203,13 @@ export const qrThriveApi = {
     return api.patch(`/qr-thrive/branches/${branchId}/qr-codes/${qrId}`, { status });
   },
 
+  /**
+   * Toggle a QR code's featured status on UBL
+   */
+  toggleUbl: async (userId: string, qrId: string, isFeatured: boolean): Promise<QrThriveQRCode> => {
+    return api.patch(`/qr-thrive/branches/${userId}/qr-codes/${qrId}/ubl`, { isFeatured });
+  },
+
   // ============================================
   // ANALYTICS
   // ============================================
@@ -218,6 +226,13 @@ export const qrThriveApi = {
    */
   getResponses: async (branchId: string, qrId: string): Promise<Record<string, any>[]> => {
     return api.get(`/qr-thrive/branches/${branchId}/qr-codes/${qrId}/responses`);
+  },
+
+  /**
+   * Get all leads (form submissions) for a branch
+   */
+  getLeads: async (branchId: string): Promise<QrThriveLead[]> => {
+    return api.get(`/qr-thrive/branches/${branchId}/leads`);
   },
 
   /**
