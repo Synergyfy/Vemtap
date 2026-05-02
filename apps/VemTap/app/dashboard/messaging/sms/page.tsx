@@ -54,27 +54,27 @@ export default function SMSOverviewPage() {
                 </div>
 
                 <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                         <div>
-                            <h3 className="text-xl font-display font-black text-text-main">SMS Gateway</h3>
+                            <h3 className="text-xl sm:text-2xl font-display font-black text-text-main">SMS Gateway</h3>
                             <p className="text-sm text-text-secondary">Using Tier-1 Global SMS Carriers for maximum reliability.</p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm text-text-secondary">
+                        <div className="space-y-6">
+                            <div className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 text-sm text-text-secondary leading-relaxed">
                                 "Direct, fast, and effective. Use SMS for time-sensitive offers and verification codes."
                             </div>
-                            <div className="flex gap-4">
-                                <Link href="/dashboard/messaging/sms/send" className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center">
+                            <div className="flex flex-col gap-3">
+                                <Link href="/dashboard/messaging/sms/send" className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-[11px] rounded-full hover:bg-primary-hover transition-all flex items-center justify-center shadow-lg shadow-primary/25 active:scale-[0.97]">
                                     New Campaign
                                 </Link>
                                 <button
                                     onClick={() => setIsTopUpOpen(true)}
-                                    className="flex-1 h-12 bg-blue-50 text-blue-600 border border-blue-100 font-bold rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                                    className="w-full h-14 bg-blue-50/50 text-blue-600 border border-blue-100/50 font-black uppercase tracking-widest text-[11px] rounded-full hover:bg-blue-100 transition-all flex items-center justify-center gap-2 active:scale-[0.97]"
                                 >
-                                    <Plus size={18} />
+                                    <Plus size={16} />
                                     Top Up Wallet
                                 </button>
                             </div>
