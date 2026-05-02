@@ -26,6 +26,7 @@ import {
   CreateFolderDto,
   UpdateFolderDto,
   ToggleUblFeatureDto,
+  SpecializedLeadsQueryDto,
 } from './dto/qr-thrive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -247,6 +248,25 @@ export class QrThriveController {
     @Param('branchId') branchId: string,
   ) {
     return this.qrThriveService.getLeads(req.user, branchId);
+  }
+
+  @Get('branches/:branchId/specialized-leads')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Get specialized leads for a branch (bookings, menus)',
+    description:
+      'Fetches curated leads from QR-Thrive with support for filtering by type, QR code, and search.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of specialized leads returned successfully.',
+  })
+  async getSpecializedLeads(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Query() query: SpecializedLeadsQueryDto,
+  ) {
+    return this.qrThriveService.getSpecializedLeads(req.user, branchId, query);
   }
 
   @Get('sso')

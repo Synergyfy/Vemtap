@@ -148,3 +148,41 @@ export class ToggleUblFeatureDto {
   @IsNotEmpty()
   isFeatured: boolean;
 }
+
+export class SpecializedLeadsQueryDto {
+  @ApiPropertyOptional({
+    description: 'Filter by types (comma-separated): booking, menu, form',
+    example: 'booking,menu',
+  })
+  @IsString()
+  @IsOptional()
+  types?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by a specific QR code (UUID or shortId)',
+    example: 'qr-uuid-123',
+  })
+  @IsString()
+  @IsOptional()
+  qrCodeId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Search text for QR Name or Booking/Menu Title',
+    example: 'Christmas',
+  })
+  @IsString()
+  @IsOptional()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Page number for pagination', example: 1 })
+  @IsOptional()
+  page?: number;
+
+  @ApiPropertyOptional({
+    description: 'Items per page for pagination',
+    example: 10,
+  })
+  @IsOptional()
+  limit?: number;
+}
+

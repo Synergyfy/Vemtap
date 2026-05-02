@@ -20,6 +20,8 @@ import {
   UpdateQRCodeDto,
   CreateFolderDto,
   UpdateFolderDto,
+  ToggleUblFeatureDto,
+  SpecializedLeadsQueryDto,
 } from './dto/qr-thrive.dto';
 import { BranchesService } from '../branches/branches.service';
 
@@ -306,6 +308,60 @@ export class QrThriveService implements OnModuleInit {
       return this.handleExternalError(
         error,
         'Failed to fetch leads from QR-Thrive',
+      );
+    }
+  }
+
+  /**
+   * Fetches specialized leads (booking, menu, form) with pagination and filters.
+   */
+  async getSpecializedLeads(
+    user: User,
+    branchId: string,
+    query: SpecializedLeadsQueryDto,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess) {
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const mapping = await this.userMappingRepo.findOne({
+      where: { userId: user.id },
+    });
+    if (!mapping) {
+      throw new HttpException(
+        'User not synced with QR-Thrive. Please sync first.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (query.types) params.append('types', query.types);
+      if (query.qrCodeId) params.append('qrCodeId', query.qrCodeId);
+      if (query.search) params.append('search', query.search);
+      if (query.page) params.append('page', query.page.toString());
+      if (query.limit) params.append('limit', query.limit.toString());
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+
+      const { data } = await firstValueFrom(
+        this.httpService.get(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/specialized-leads${queryString}`,
+          { headers: this.headers },
+        ),
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(
+        error,
+        'Failed to fetch specialized leads from QR-Thrive',
       );
     }
   }
