@@ -65,6 +65,7 @@ export default function ExploreQRThrivePage() {
     const [qrName, setQrName] = useState('');
     const [sourceDeviceId, setSourceDeviceId] = useState<string | null>(null);
     const [isLocked, setIsLocked] = useState(false);
+    const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
     const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
     const provisionMutation = useProvisionQrThriveUser();
@@ -158,15 +159,57 @@ export default function ExploreQRThrivePage() {
                 frame: qrFrame,
                 logo: qrLogo,
             };
+            
+            // Show loading toast if files are being uploaded
+            const loadingToast = toast.loading('Processing and uploading files...');
+            setIsUploadingFiles(true);
+            
+            // This strips out raw File objects (in pendingFiles) which can't be JSON serialized,
+            // leaving behind only the base64 strings (e.g. data:image/png;base64,...)
+            let uploadedQrData = JSON.parse(JSON.stringify(qrData));
+            let finalQrLogo = qrLogo;
+            
+            try {
+                const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                
+                // 1. Upload the QR Logo if it's base64
+                if (finalQrLogo && finalQrLogo.startsWith('data:')) {
+                    finalQrLogo = await uploadToCloudinary(finalQrLogo);
+                }
+
+                // 2. Recursively upload all base64 media inside qrData
+                const uploadBase64Strings = async (obj: any) => {
+                    if (!obj || typeof obj !== 'object') return;
+                    for (const key of Object.keys(obj)) {
+                        const val = obj[key];
+                        if (typeof val === 'string' && val.startsWith('data:')) {
+                            obj[key] = await uploadToCloudinary(val);
+                        } else if (typeof val === 'object' && val !== null) {
+                            await uploadBase64Strings(val);
+                        }
+                    }
+                };
+                
+                await uploadBase64Strings(uploadedQrData);
+
+            } catch (uploadErr) {
+                console.error("Upload error:", uploadErr);
+                toast.dismiss(loadingToast);
+                toast.error('Failed to upload media files to Cloudinary.');
+                setIsUploadingFiles(false);
+                return;
+            }
+            
+            toast.dismiss(loadingToast);
 
             const newQr = await createMutation.mutateAsync({
                 data: {
                     name: qrName || `${selectedType} QR`,
                     type: selectedType!,
-                    data: qrData,
+                    data: uploadedQrData,
                     design: qrDesign,
                     frame: qrFrame,
-                    logo: qrLogo,
+                    logo: finalQrLogo,
                     isDynamic: true
                 },
                 branchId: activeBranchId || undefined
@@ -193,6 +236,8 @@ export default function ExploreQRThrivePage() {
             refetchCodes();
         } catch (error: any) {
             toast.error(error?.message || 'Failed to create QR Code');
+        } finally {
+            setIsUploadingFiles(false);
         }
     };
 
@@ -205,7 +250,7 @@ export default function ExploreQRThrivePage() {
         }
     };
 
-    const isSaving = createMutation.isPending;
+    const isSaving = createMutation.isPending || isUploadingFiles;
     const isError404 = (codesError as any)?.status === 404 || 
                        (statsError as any)?.status === 404 ||
                        (codesError as any)?.message?.includes('404') ||

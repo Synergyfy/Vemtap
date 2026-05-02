@@ -34,6 +34,8 @@ import {
 import { useAdminUsers } from '@/services/users/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSudoStore } from '@/store/useSudoStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import Modal from '@/components/ui/Modal';
 import { MessageSquare, AlertTriangle, ExternalLink } from 'lucide-react';
@@ -94,8 +96,10 @@ export default function BusinessOverridePage() {
     );
 
     const { startSession } = useSudoStore();
+    const { setActiveBranch } = useAuthStore();
     const sudoMutation = useExecuteBusinessSudoAction();
     const customerSudoMutation = useExecuteCustomerSudoAction();
+    const queryClient = useQueryClient();
 
     const handleSudoLogin = async (biz: any) => {
         try {
@@ -109,6 +113,10 @@ export default function BusinessOverridePage() {
                     expiresAt: Date.now() + durationMs,
                 }
             });
+
+            // Clear caches and state before entering new session
+            queryClient.clear();
+            setActiveBranch(null);
 
             startSession({
                 type: 'business',
@@ -146,6 +154,10 @@ export default function BusinessOverridePage() {
                         payload: { adminEntry: true, expiresAt: Date.now() + durationMs }
                     });
 
+                    // Clear caches and state
+                    queryClient.clear();
+                    setActiveBranch(null);
+
                     startSession({
                         type: 'business',
                         subjectId: grantTargetId,
@@ -164,6 +176,10 @@ export default function BusinessOverridePage() {
                     actionKey: 'assume_session',
                     payload: { adminEntry: true, expiresAt: Date.now() + durationMs }
                 });
+
+                // Clear caches and state
+                queryClient.clear();
+                setActiveBranch(null);
 
                 startSession({
                     type: 'customer',
