@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddConversationContextTimestamps1712558819000 implements MigrationInterface {
-  name = 'AddConversationContextTimestamps1712558819000';
+export class AddConversationContextTimestamps1777646744255 implements MigrationInterface {
+  name = 'AddConversationContextTimestamps1777646744255';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
