@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import DynamicView from '@/components/qr-thrive/DynamicView';
 import { qrThriveApi } from '@/services/qr-thrive/api';
 
-const QR_THRIVE_API_BASE = process.env.NEXT_PUBLIC_QR_THRIVE_API_URL || 'https://api.qrthrive.com/api/v1/integration';
+const QR_THRIVE_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.qrthrive.com/api/v1/integration';
 
 export default function QRShortLinkPage() {
   const params = useParams();
