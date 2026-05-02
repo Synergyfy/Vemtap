@@ -158,7 +158,7 @@ export class VisitorsService {
     const baseQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
+
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -389,7 +389,7 @@ export class VisitorsService {
     }
 
     // If branchId is provided, record visit and contact
-    if (branchId) {
+    if (branchId && user.role !== UserRole.ADMIN) {
       const branch = await this.branchRepository.findOne({
         where: { id: branchId },
       });
@@ -510,7 +510,7 @@ export class VisitorsService {
     const baseQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
+
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -660,7 +660,7 @@ export class VisitorsService {
     const baseQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
+
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -733,8 +733,7 @@ export class VisitorsService {
   ): Promise<VisitorStatsResponseDto> {
     const totalVisitorsQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       totalVisitorsQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -1058,6 +1057,12 @@ export class VisitorsService {
     const { customerId, deviceCode, sessionToken, ipAddress, userAgent } =
       params;
 
+    // --- Prevent Admins from being recorded as visitors ---
+    const user = await this.userRepository.findOne({ where: { id: customerId } });
+    if (user?.role === UserRole.ADMIN) {
+      return { visitId: 'admin-skip', sessionToken, isNewVisit: false };
+    }
+
     // ── 1. Idempotency: same token → return existing visit immediately ──
     const existing = await this.visitRepository.findOne({
       where: { sessionToken },
@@ -1213,6 +1218,11 @@ export class VisitorsService {
     sessionToken?: string;
   }): Promise<void> {
     const { user, branchId, businessId, deviceId, sessionToken } = params;
+
+    // --- Prevent Admins from being recorded as visitors ---
+    if (user.role === UserRole.ADMIN) {
+      return;
+    }
 
     // 1. Cooldown check (4 hours)
     const cooldownWindow = new Date(Date.now() - 4 * 60 * 60 * 1000);
