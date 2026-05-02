@@ -20,6 +20,8 @@ import {
   UpdateQRCodeDto,
   CreateFolderDto,
   UpdateFolderDto,
+  ToggleUblFeatureDto,
+  SpecializedLeadsQueryDto,
 } from './dto/qr-thrive.dto';
 import { BranchesService } from '../branches/branches.service';
 
@@ -306,6 +308,60 @@ export class QrThriveService implements OnModuleInit {
       return this.handleExternalError(
         error,
         'Failed to fetch leads from QR-Thrive',
+      );
+    }
+  }
+
+  /**
+   * Fetches specialized leads (booking, menu, form) with pagination and filters.
+   */
+  async getSpecializedLeads(
+    user: User,
+    branchId: string,
+    query: SpecializedLeadsQueryDto,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess) {
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const mapping = await this.userMappingRepo.findOne({
+      where: { userId: user.id },
+    });
+    if (!mapping) {
+      throw new HttpException(
+        'User not synced with QR-Thrive. Please sync first.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (query.types) params.append('types', query.types);
+      if (query.qrCodeId) params.append('qrCodeId', query.qrCodeId);
+      if (query.search) params.append('search', query.search);
+      if (query.page) params.append('page', query.page.toString());
+      if (query.limit) params.append('limit', query.limit.toString());
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+
+      const { data } = await firstValueFrom(
+        this.httpService.get(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/specialized-leads${queryString}`,
+          { headers: this.headers },
+        ),
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(
+        error,
+        'Failed to fetch specialized leads from QR-Thrive',
       );
     }
   }
@@ -804,6 +860,64 @@ export class QrThriveService implements OnModuleInit {
       this.logger.log(
         `Successfully reset QR-Thrive mapping for user ${userId}`,
       );
+    }
+  }
+
+  /**
+   * Fetches public details of a QR code from QR-Thrive.
+   */
+  async getPublicQRCode(shortId: string) {
+    try {
+      const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
+      const { data } = await firstValueFrom(
+        this.httpService.get(`${publicUrl}/public/${shortId}`),
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to fetch public QR code');
+    }
+  }
+
+  /**
+   * Records a scan in QR-Thrive and returns the destination URL.
+   */
+  async recordPublicScan(shortId: string, ip: string, userAgent: string) {
+    try {
+      const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
+      const { headers } = await firstValueFrom(
+        this.httpService.get(`${publicUrl}/scan/${shortId}`, {
+          headers: {
+            'x-forwarded-for': ip,
+            'user-agent': userAgent,
+          },
+          maxRedirects: 0,
+          validateStatus: (status) => status >= 200 && status < 400,
+        }),
+      );
+
+      // The QR-Thrive scan endpoint always redirects (302)
+      return headers.location || '/';
+    } catch (error) {
+      this.logger.error(
+        `Failed to record scan for ${shortId}: ${error.message}`,
+      );
+      // Fallback: try to get the QR data to determine destination if scan recording fails
+      try {
+        const qrCode = await this.getPublicQRCode(shortId);
+        const data = qrCode.data as any;
+        if (qrCode.type === 'url' && data.url) {
+          return data.url.startsWith('http') ? data.url : `https://${data.url}`;
+        }
+        if (qrCode.type === 'whatsapp' && data.phoneNumber) {
+          const message = data.message
+            ? `?text=${encodeURIComponent(data.message)}`
+            : '';
+          return `https://wa.me/${data.phoneNumber}${message}`;
+        }
+      } catch (e) {
+        this.logger.error(`Fallback failed for ${shortId}: ${e.message}`);
+      }
+      throw new HttpException('QR Code not found', HttpStatus.NOT_FOUND);
     }
   }
 }

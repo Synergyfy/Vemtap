@@ -9,8 +9,10 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
+  Req,
+  Res,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -24,11 +26,13 @@ import {
   CreateFolderDto,
   UpdateFolderDto,
   ToggleUblFeatureDto,
+  SpecializedLeadsQueryDto,
 } from './dto/qr-thrive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole, User } from '../users/entities/user.entity';
+import { Public } from '../../common/decorators/public.decorator';
 
 interface RequestWithUser extends Request {
   user: User;
@@ -44,7 +48,7 @@ export class QrThriveController {
   @Post('sync')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Sync current user with QR-Thrive' })
-  async syncUser(@Request() req: RequestWithUser) {
+  async syncUser(@Req() req: RequestWithUser) {
     return this.qrThriveService.syncUser(req.user);
   }
 
@@ -52,7 +56,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a new QR code for a branch' })
   async createQRCode(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Body() dto: CreateQRCodeDto,
   ) {
@@ -63,7 +67,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'List all QR codes for a branch' })
   async getQRCodes(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
   ) {
     return this.qrThriveService.getQRCodes(req.user, branchId);
@@ -73,7 +77,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get a single QR code detail' })
   async getQRCode(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
   ) {
@@ -84,7 +88,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update an existing QR code' })
   async updateQRCode(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
     @Body() dto: UpdateQRCodeDto,
@@ -96,7 +100,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Delete a QR code' })
   async deleteQRCode(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
   ) {
@@ -107,7 +111,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Duplicate an existing QR code' })
   async duplicateQRCode(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
   ) {
@@ -118,7 +122,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update QR code status (active/archived)' })
   async setStatus(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
     @Body() dto: { status: 'active' | 'archived' },
@@ -132,7 +136,7 @@ export class QrThriveController {
     summary: 'Toggle whether a QR code is featured on the branch UBL profile',
   })
   async toggleUblFeature(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
     @Body() dto: ToggleUblFeatureDto,
@@ -149,7 +153,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get QR-Thrive dashboard statistics' })
   async getStats(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -167,7 +171,7 @@ export class QrThriveController {
   @Get('branches/:branchId/folders')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   async getFolders(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
   ) {
     return this.qrThriveService.getFolders(req.user, branchId);
@@ -176,7 +180,7 @@ export class QrThriveController {
   @Post('branches/:branchId/folders')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   async createFolder(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Body() dto: CreateFolderDto,
   ) {
@@ -186,7 +190,7 @@ export class QrThriveController {
   @Delete('branches/:branchId/folders/:folderId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   async deleteFolder(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('folderId') folderId: string,
   ) {
@@ -196,7 +200,7 @@ export class QrThriveController {
   @Put('branches/:branchId/folders/:folderId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   async updateFolder(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('folderId') folderId: string,
     @Body() dto: UpdateFolderDto,
@@ -208,7 +212,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get scan analytics for a specific QR code' })
   async getScans(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
   ) {
@@ -219,7 +223,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get form responses for a specific QR code' })
   async getResponses(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
   ) {
@@ -240,16 +244,35 @@ export class QrThriveController {
   @ApiResponse({ status: 400, description: 'User not synced with QR-Thrive.' })
   @ApiResponse({ status: 403, description: 'No access to this branch.' })
   async getLeads(
-    @Request() req: RequestWithUser,
+    @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
   ) {
     return this.qrThriveService.getLeads(req.user, branchId);
   }
 
+  @Get('branches/:branchId/specialized-leads')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Get specialized leads for a branch (bookings, menus)',
+    description:
+      'Fetches curated leads from QR-Thrive with support for filtering by type, QR code, and search.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of specialized leads returned successfully.',
+  })
+  async getSpecializedLeads(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Query() query: SpecializedLeadsQueryDto,
+  ) {
+    return this.qrThriveService.getSpecializedLeads(req.user, branchId, query);
+  }
+
   @Get('sso')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get magic link for QR-Thrive dashboard SSO' })
-  async getMagicLink(@Request() req: RequestWithUser) {
+  async getMagicLink(@Req() req: RequestWithUser) {
     return this.qrThriveService.getMagicLink(req.user.id);
   }
 
@@ -263,7 +286,31 @@ export class QrThriveController {
   @Delete('me/mapping')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Reset QR-Thrive mapping for the current user' })
-  async resetMapping(@Request() req: RequestWithUser) {
+  async resetMapping(@Req() req: RequestWithUser) {
     return this.qrThriveService.resetMapping(req.user.id);
+  }
+
+  @Public()
+  @Get('public/:shortId')
+  @ApiOperation({ summary: 'Get public details of a QR code by short ID' })
+  async getPublicQRCode(@Param('shortId') shortId: string) {
+    return this.qrThriveService.getPublicQRCode(shortId);
+  }
+
+  @Public()
+  @Get('scan/:shortId')
+  @ApiOperation({ summary: 'Record a scan and redirect to destination' })
+  async recordPublicScan(
+    @Param('shortId') shortId: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    let ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+    if (ip.includes(',')) {
+      ip = ip.split(',')[0].trim();
+    }
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
+    return res.redirect(redirectUrl);
   }
 }
