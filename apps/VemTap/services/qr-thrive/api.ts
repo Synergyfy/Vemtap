@@ -206,8 +206,8 @@ export const qrThriveApi = {
   /**
    * Toggle a QR code's featured status on UBL
    */
-  toggleUbl: async (userId: string, qrId: string, isFeatured: boolean): Promise<QrThriveQRCode> => {
-    return api.patch(`/qr-thrive/branches/${userId}/qr-codes/${qrId}/ubl`, { isFeatured });
+  toggleUbl: async (branchId: string, qrId: string, isFeatured: boolean): Promise<QrThriveQRCode> => {
+    return api.patch(`/qr-thrive/branches/${branchId}/qr-codes/${qrId}/ubl`, { isFeatured });
   },
 
   // ============================================

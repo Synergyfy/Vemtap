@@ -119,6 +119,7 @@ export default function GetStarted() {
         trustpilotUrl: '',
         agreeToTerms: false,
         isGoogleUser: false,
+        referralCode: '',
     });
 
     // Social Media Selection State
@@ -361,6 +362,7 @@ export default function GetStarted() {
                     password: formData.password || undefined,
                     role: 'Manager',
                     businessId: cleanData.businessId || undefined,
+                    referralCode: cleanData.referralCode || undefined,
                 };
                 response = await registerUser(payload);
             } else {
@@ -392,6 +394,7 @@ export default function GetStarted() {
                         google: cleanData.reviewUrl ? { link: cleanData.reviewUrl } : undefined,
                         trustpilot: cleanData.trustpilotUrl ? { link: cleanData.trustpilotUrl } : undefined,
                     },
+                    referralCode: cleanData.referralCode || undefined,
                 };
 
                 response = await registerOwner(payload as any);
@@ -552,6 +555,16 @@ export default function GetStarted() {
                                             required
                                             tooltip="Required for identity verification and account recovery"
                                             error={fieldErrors.phone}
+                                        />
+                                        <SanitizedInput
+                                            label="Affiliate Referral Code"
+                                            type="text"
+                                            value={formData.referralCode}
+                                            onChange={(v) => setFormData({ ...formData, referralCode: v })}
+                                            icon="sell"
+                                            placeholder="e.g. VEM-12345"
+                                            optional
+                                            tooltip="If you were referred by an affiliate, enter their code here."
                                         />
 
                                         {!formData.isGoogleUser && (
