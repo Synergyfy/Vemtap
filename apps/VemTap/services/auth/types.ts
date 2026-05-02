@@ -24,6 +24,7 @@ export interface RegisterOwnerRequest {
     state?: string;
     city?: string;
     isRegistered?: boolean;
+    referralCode?: string;
 }
 
 import { User } from '../../store/useAuthStore';
@@ -51,6 +52,7 @@ export interface RegisterRequest {
     monthlyVisitors?: string;
     goal?: string;
     businessId?: string; // For joining an existing business (Manager flow)
+    referralCode?: string;
 }
 
 export interface ChangePasswordRequest {

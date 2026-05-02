@@ -201,7 +201,7 @@ export default function ActiveFormsPage() {
         const next = isPresent ? currentSequence.filter(itemId => itemId !== id) : [...currentSequence, id];
         
         if (type === 'qr') {
-            await toggleUblMutation.mutateAsync({ qrId: id, isFeatured: !isPresent });
+            await toggleUblMutation.mutateAsync({ qrId: id, isFeatured: !isPresent, branchId: branchScope! });
         } else if (type === 'form') {
             toggleActiveForm(branchKey, id);
         } else if (type === 'reward') {
