@@ -5,15 +5,29 @@ import { ShieldAlert, Clock, Fingerprint, User, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSudoStore } from '@/store/useSudoStore';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 export default function AdminViewerBanner() {
     const { user } = useAuthStore();
     const { activeSession, endSession } = useSudoStore();
+    const { setActiveBranch } = useAuthStore();
+    const queryClient = useQueryClient();
     const [secondsLeft, setSecondsLeft] = useState(0);
     const [isDismissed, setIsDismissed] = useState(false);
     const router = useRouter();
     const hasWarnedRef = useRef(false);
+    const prevSubjectId = useRef(activeSession?.subjectId);
+
+    // Step 21: Auto-cleanup on session change or expiry
+    useEffect(() => {
+        if (activeSession?.subjectId !== prevSubjectId.current) {
+            console.log('[SUDO] Session context changed. Clearing query cache.');
+            queryClient.clear();
+            setActiveBranch(null);
+            prevSubjectId.current = activeSession?.subjectId;
+        }
+    }, [activeSession?.subjectId, queryClient, setActiveBranch]);
 
     // Sync secondsLeft with the session's expiresAt
     useEffect(() => {
@@ -49,6 +63,10 @@ export default function AdminViewerBanner() {
 
     const handleEndSession = () => {
         const type = activeSession?.type;
+        
+        // Clear caches and state before ending session
+        queryClient.clear();
+        setActiveBranch(null);
         endSession();
         
         // Redirect back to control tower on end/expiry

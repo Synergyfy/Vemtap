@@ -7,6 +7,8 @@ import { useControlTowerCustomers, useExecuteCustomerSudoAction } from '@/servic
 import { CustomerControlRecord } from '@/services/control-tower/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSudoStore } from '@/store/useSudoStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
@@ -17,7 +19,9 @@ export default function CustomerOverridePage() {
     const debouncedQuery = useDebounce(query, 500);
 
     const { startSession } = useSudoStore();
+    const { setActiveBranch } = useAuthStore();
     const sudoMutation = useExecuteCustomerSudoAction();
+    const queryClient = useQueryClient();
 
     const handleSudoLogin = async (customer: CustomerControlRecord) => {
         try {
@@ -33,6 +37,10 @@ export default function CustomerOverridePage() {
                     expiresAt: Date.now() + durationMs,
                 }
             });
+
+            // Clear caches and state
+            queryClient.clear();
+            setActiveBranch(null);
 
             startSession({
                 type: 'customer',
