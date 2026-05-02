@@ -1,8 +1,16 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BusinessProfile, ProfilePriority, BusinessInsights, ProfileStatus } from './entities/business-profile.entity';
-import { CreateBusinessProfileDto, UpdateBusinessProfileDto } from './dto/business-profile.dto';
+import {
+  BusinessProfile,
+  ProfilePriority,
+  BusinessInsights,
+  ProfileStatus,
+} from './entities/business-profile.entity';
+import {
+  CreateBusinessProfileDto,
+  UpdateBusinessProfileDto,
+} from './dto/business-profile.dto';
 import { User } from '../users/entities/user.entity';
 import { ProfilingLogicHelper } from './profiling-logic.helper';
 import { GeminiService } from './gemini.service';
@@ -17,15 +25,26 @@ export class BusinessProfilingService {
     private readonly geminiService: GeminiService,
   ) {}
 
-  async create(user: User | null, dto: CreateBusinessProfileDto): Promise<BusinessProfile> {
-    const { score, priority, insights: expertInsights } = this.calculateProfiling(dto.businessType, dto.physicalSetup, dto.responses);
+  async create(
+    user: User | null,
+    dto: CreateBusinessProfileDto,
+  ): Promise<BusinessProfile> {
+    const {
+      score,
+      priority,
+      insights: expertInsights,
+    } = this.calculateProfiling(
+      dto.businessType,
+      dto.physicalSetup,
+      dto.responses,
+    );
 
     let finalInsights = expertInsights;
     try {
       const aiResult = await this.geminiService.generateInsights({
         ...dto,
         expertScore: score,
-        expertPriority: priority
+        expertPriority: priority,
       });
 
       finalInsights = {
@@ -34,7 +53,10 @@ export class BusinessProfilingService {
         pitchSummary: aiResult.salesPitch,
       } as any;
     } catch (error) {
-      this.logger.error('AI Insight generation failed, falling back to expert system', error);
+      this.logger.error(
+        'AI Insight generation failed, falling back to expert system',
+        error,
+      );
     }
 
     const profile = this.profileRepository.create({
@@ -48,8 +70,17 @@ export class BusinessProfilingService {
     return this.profileRepository.save(profile);
   }
 
-  async findAll(user: User, query: { search?: string; priority?: string; status?: string; type?: string }): Promise<BusinessProfile[]> {
-    const qb = this.profileRepository.createQueryBuilder('profile')
+  async findAll(
+    user: User,
+    query: {
+      search?: string;
+      priority?: string;
+      status?: string;
+      type?: string;
+    },
+  ): Promise<BusinessProfile[]> {
+    const qb = this.profileRepository
+      .createQueryBuilder('profile')
       .leftJoinAndSelect('profile.createdBy', 'createdBy');
 
     // Agents only see their own profiles
@@ -58,7 +89,9 @@ export class BusinessProfilingService {
     }
 
     if (query.search) {
-      qb.andWhere('profile.businessName ILIKE :search', { search: `%${query.search}%` });
+      qb.andWhere('profile.businessName ILIKE :search', {
+        search: `%${query.search}%`,
+      });
     }
 
     if (query.priority) {
@@ -91,7 +124,10 @@ export class BusinessProfilingService {
     return profile;
   }
 
-  async update(id: string, dto: UpdateBusinessProfileDto): Promise<BusinessProfile> {
+  async update(
+    id: string,
+    dto: UpdateBusinessProfileDto,
+  ): Promise<BusinessProfile> {
     const profile = await this.findOne(id);
 
     // If inputs change, re-calculate scoring and insights
@@ -99,15 +135,19 @@ export class BusinessProfilingService {
       const type = dto.businessType || profile.businessType;
       const setup = dto.physicalSetup || profile.physicalSetup;
       const responses = dto.responses || profile.responses;
-      const { score, priority, insights: expertInsights } = this.calculateProfiling(type, setup, responses);
-      
+      const {
+        score,
+        priority,
+        insights: expertInsights,
+      } = this.calculateProfiling(type, setup, responses);
+
       let finalInsights = expertInsights;
       try {
         const aiResult = await this.geminiService.generateInsights({
           ...profile,
           ...dto,
           expertScore: score,
-          expertPriority: priority
+          expertPriority: priority,
         });
 
         finalInsights = {
@@ -116,10 +156,18 @@ export class BusinessProfilingService {
           pitchSummary: aiResult.salesPitch,
         } as any;
       } catch (error) {
-        this.logger.error('AI Update failed, falling back to expert system', error);
+        this.logger.error(
+          'AI Update failed, falling back to expert system',
+          error,
+        );
       }
 
-      Object.assign(profile, { ...dto, score, priority, insights: finalInsights });
+      Object.assign(profile, {
+        ...dto,
+        score,
+        priority,
+        insights: finalInsights,
+      });
     } else {
       Object.assign(profile, dto);
     }
@@ -143,48 +191,82 @@ export class BusinessProfilingService {
     return {
       total: profiles.length,
       high: profiles.filter((p) => p.priority === ProfilePriority.HIGH).length,
-      medium: profiles.filter((p) => p.priority === ProfilePriority.MEDIUM).length,
+      medium: profiles.filter((p) => p.priority === ProfilePriority.MEDIUM)
+        .length,
       low: profiles.filter((p) => p.priority === ProfilePriority.LOW).length,
-      notContacted: profiles.filter((p) => p.status === ProfileStatus.NOT_CONTACTED).length,
-      contacted: profiles.filter((p) => p.status === ProfileStatus.CONTACTED).length,
-      interested: profiles.filter((p) => p.status === ProfileStatus.INTERESTED).length,
+      notContacted: profiles.filter(
+        (p) => p.status === ProfileStatus.NOT_CONTACTED,
+      ).length,
+      contacted: profiles.filter((p) => p.status === ProfileStatus.CONTACTED)
+        .length,
+      interested: profiles.filter((p) => p.status === ProfileStatus.INTERESTED)
+        .length,
       closed: profiles.filter((p) => p.status === ProfileStatus.CLOSED).length,
     };
   }
 
-  public calculateProfiling(type?: string, setup: Record<string, any> = {}, responses: Record<string, any> = {}): { score: number; priority: ProfilePriority; insights: BusinessInsights } {
-    const data: any = { ...setup, ...responses, businessName: setup.businessName || responses.businessName };
+  public calculateProfiling(
+    type?: string,
+    setup: Record<string, any> = {},
+    responses: Record<string, any> = {},
+  ): { score: number; priority: ProfilePriority; insights: BusinessInsights } {
+    const data: any = {
+      ...setup,
+      ...responses,
+      businessName: setup.businessName || responses.businessName,
+    };
 
     // Use specific logic if category is matched
     if (type === 'Retail & Shops' || data.businessType === 'Retail & Shops') {
       return ProfilingLogicHelper.calculateRetail(data);
     }
-    
-    if (type === 'Food & Hospitality' || data.businessType === 'Food & Hospitality') {
+
+    if (
+      type === 'Food & Hospitality' ||
+      data.businessType === 'Food & Hospitality'
+    ) {
       return ProfilingLogicHelper.calculateFood(data);
     }
 
-    if (type === 'Beauty & Personal Care' || data.businessType === 'Beauty & Personal Care') {
+    if (
+      type === 'Beauty & Personal Care' ||
+      data.businessType === 'Beauty & Personal Care'
+    ) {
       return ProfilingLogicHelper.calculateBeauty(data);
     }
 
-    if (type === 'Health & Medical' || data.businessType === 'Health & Medical') {
+    if (
+      type === 'Health & Medical' ||
+      data.businessType === 'Health & Medical'
+    ) {
       return ProfilingLogicHelper.calculateHealth(data);
     }
 
-    if (type === 'Professional Services' || data.businessType === 'Professional Services') {
+    if (
+      type === 'Professional Services' ||
+      data.businessType === 'Professional Services'
+    ) {
       return ProfilingLogicHelper.calculateProfessional(data);
     }
 
-    if (type === 'Education & Training' || data.businessType === 'Education & Training') {
+    if (
+      type === 'Education & Training' ||
+      data.businessType === 'Education & Training'
+    ) {
       return ProfilingLogicHelper.calculateEducation(data);
     }
 
-    if (type === 'Technology & Digital Service' || data.businessType === 'Technology & Digital Service') {
+    if (
+      type === 'Technology & Digital Service' ||
+      data.businessType === 'Technology & Digital Service'
+    ) {
       return ProfilingLogicHelper.calculateTech(data);
     }
 
-    if (type === 'Real Estate & Property' || data.businessType === 'Real Estate & Property') {
+    if (
+      type === 'Real Estate & Property' ||
+      data.businessType === 'Real Estate & Property'
+    ) {
       return ProfilingLogicHelper.calculateRealEstate(data);
     }
 
@@ -192,31 +274,56 @@ export class BusinessProfilingService {
       return ProfilingLogicHelper.calculateAutomotive(data);
     }
 
-    if (type === 'Logistics & Transportation' || data.businessType === 'Logistics & Transportation') {
+    if (
+      type === 'Logistics & Transportation' ||
+      data.businessType === 'Logistics & Transportation'
+    ) {
       return ProfilingLogicHelper.calculateLogistics(data);
     }
 
-    if (type === 'Construction & Home Service' || type === 'Construction & Home Services' || data.businessType === 'Construction & Home Service' || data.businessType === 'Construction & Home Services') {
+    if (
+      type === 'Construction & Home Service' ||
+      type === 'Construction & Home Services' ||
+      data.businessType === 'Construction & Home Service' ||
+      data.businessType === 'Construction & Home Services'
+    ) {
       return ProfilingLogicHelper.calculateConstruction(data);
     }
 
-    if (type === 'Event & Entertainment' || data.businessType === 'Event & Entertainment') {
+    if (
+      type === 'Event & Entertainment' ||
+      data.businessType === 'Event & Entertainment'
+    ) {
       return ProfilingLogicHelper.calculateEvents(data);
     }
 
-    if (type === 'Agriculture & Farming' || data.businessType === 'Agriculture & Farming') {
+    if (
+      type === 'Agriculture & Farming' ||
+      data.businessType === 'Agriculture & Farming'
+    ) {
       return ProfilingLogicHelper.calculateAgric(data);
     }
 
-    if (type === 'Finance & Financial Services' || data.businessType === 'Finance & Financial Services') {
+    if (
+      type === 'Finance & Financial Services' ||
+      data.businessType === 'Finance & Financial Services'
+    ) {
       return ProfilingLogicHelper.calculateFinance(data);
     }
 
-    if (type === 'Government & Public Service' || data.businessType === 'Government & Public Service') {
+    if (
+      type === 'Government & Public Service' ||
+      data.businessType === 'Government & Public Service'
+    ) {
       return ProfilingLogicHelper.calculateGov(data);
     }
 
-    if (type === 'Religious & Non-Profit Organizations' || data.businessType === 'Religious & Non-Profit Organizations' || type === 'Religion & NGO' || data.businessType === 'Religion & NGO') {
+    if (
+      type === 'Religious & Non-Profit Organizations' ||
+      data.businessType === 'Religious & Non-Profit Organizations' ||
+      type === 'Religion & NGO' ||
+      data.businessType === 'Religion & NGO'
+    ) {
       return ProfilingLogicHelper.calculateReligion(data);
     }
 
@@ -225,12 +332,25 @@ export class BusinessProfilingService {
     }
 
     // 1. Scoring Logic (1-20 Scale)
-    const rateFootTraffic = data.rateFootTraffic || (data.customerTraffic === 'High' ? 5 : data.customerTraffic === 'Medium' ? 3 : 1);
-    const rateNeed = data.rateNeed || (data.problemsNoticed?.length > 2 ? 5 : 3);
-    const rateAbilityToPay = data.rateAbilityToPay || (parseInt(data.numberOfBranches) > 1 ? 5 : 3);
-    const rateEaseOfAdoption = data.rateEaseOfAdoption || (data.isDeviceReady && data.isInternetReady ? 5 : 3);
+    const rateFootTraffic =
+      data.rateFootTraffic ||
+      (data.customerTraffic === 'High'
+        ? 5
+        : data.customerTraffic === 'Medium'
+          ? 3
+          : 1);
+    const rateNeed =
+      data.rateNeed || (data.problemsNoticed?.length > 2 ? 5 : 3);
+    const rateAbilityToPay =
+      data.rateAbilityToPay || (parseInt(data.numberOfBranches) > 1 ? 5 : 3);
+    const rateEaseOfAdoption =
+      data.rateEaseOfAdoption ||
+      (data.isDeviceReady && data.isInternetReady ? 5 : 3);
 
-    const score = Math.min(20, rateFootTraffic + rateNeed + rateAbilityToPay + rateEaseOfAdoption);
+    const score = Math.min(
+      20,
+      rateFootTraffic + rateNeed + rateAbilityToPay + rateEaseOfAdoption,
+    );
 
     // 2. Priority Logic
     let priority = ProfilePriority.LOW;
@@ -246,25 +366,38 @@ export class BusinessProfilingService {
     // 4. Recommendation Engine
     const recommendations: string[] = [];
     if (data.hasGlassDoor) {
-      recommendations.push(`Capitalize on the storefront glass with high-impact 'Scan & Win' QR stickers to capture ${data.outsideFootTraffic || 'passing'} traffic.`);
+      recommendations.push(
+        `Capitalize on the storefront glass with high-impact 'Scan & Win' QR stickers to capture ${data.outsideFootTraffic || 'passing'} traffic.`,
+      );
     } else {
-      recommendations.push(`Focus on 'Entrance Stand' QR placements to ensure 100% visitor visibility upon arrival.`);
+      recommendations.push(
+        `Focus on 'Entrance Stand' QR placements to ensure 100% visitor visibility upon arrival.`,
+      );
     }
 
     if (data.hasTables) {
-      recommendations.push(`Deploy permanent NFC/QR table anchors to bridge the gap between dining and digital loyalty.`);
+      recommendations.push(
+        `Deploy permanent NFC/QR table anchors to bridge the gap between dining and digital loyalty.`,
+      );
     } else if (data.hasCounterOrdering) {
-      recommendations.push(`Optimize the checkout counter with 'Vemtap Fast-Pass' QR codes to reduce queue friction.`);
+      recommendations.push(
+        `Optimize the checkout counter with 'Vemtap Fast-Pass' QR codes to reduce queue friction.`,
+      );
     }
 
     if (data.problemsNoticed?.includes('No database')) {
-      recommendations.push(`Prioritize 'Customer Capture' flow in the demo to show how ${name} can build a private database instantly.`);
+      recommendations.push(
+        `Prioritize 'Customer Capture' flow in the demo to show how ${name} can build a private database instantly.`,
+      );
     } else {
-      recommendations.push(`Use 'Automated Re-engagement' to show how to increase repeat visits for existing customers.`);
+      recommendations.push(
+        `Use 'Automated Re-engagement' to show how to increase repeat visits for existing customers.`,
+      );
     }
 
     // 5. Pitch Summary Logic
-    const mainProblem = data.problemsNoticed?.[0] || 'manual customer management';
+    const mainProblem =
+      data.problemsNoticed?.[0] || 'manual customer management';
     const pitchSummary = `POWER PITCH: "I noticed ${name} handles ${traffic} traffic primarily through ${mainProblem}. Vemtap can automate your customer database building at the ${data.hasCounterOrdering ? 'counter' : 'table'} level, turning walk-ins into trackable, loyal assets."`;
 
     // 6. Deep AI Analysis (Simulated Expert)
@@ -277,10 +410,18 @@ export class BusinessProfilingService {
     Growth Strategy: To maximize the conversion index (${score}/20), we recommend targeting the ${stakeholders} during ${data.bestTimeToApproach || 'peak hours'}. The focus should be on ${data.suggestedPackage} capabilities, specifically addressing the observed ${mainProblem}.`;
 
     const summary = `This is a ${bizType} that currently handles ${traffic} foot traffic. They are mostly facing issues with ${mainProblem}.`;
-    const problems = data.problemsNoticed || ['No structured customer database', 'Manual customer tracking'];
-    const suggestedPackage = data.suggestedPackage || (score >= 15 ? 'Platinum' : score >= 10 ? 'Gold' : 'Silver');
+    const problems = data.problemsNoticed || [
+      'No structured customer database',
+      'Manual customer tracking',
+    ];
+    const suggestedPackage =
+      data.suggestedPackage ||
+      (score >= 15 ? 'Platinum' : score >= 10 ? 'Gold' : 'Silver');
     const packageReason = `Recommended because the business has ${traffic} traffic and needs efficient tools to handle their volume.`;
-    const qrStrategy = data.qrStrategy || ['Menu/Catalog QR (for browsing)', 'Feedback QR (for engagement)'];
+    const qrStrategy = data.qrStrategy || [
+      'Menu/Catalog QR (for browsing)',
+      'Feedback QR (for engagement)',
+    ];
 
     return {
       score,

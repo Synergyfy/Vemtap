@@ -7,7 +7,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('catalogue_order_items')
 export class CatalogueOrderItem extends AbstractBaseEntity {
-  @ManyToOne(() => CatalogueOrder, (order) => order.items, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CatalogueOrder, (order) => order.items, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'orderId' })
   order: CatalogueOrder;
 

@@ -132,15 +132,22 @@ export class ControlTowerService {
 
       case 'assume_session': {
         if (!business.branches || business.branches.length === 0) {
-          throw new NotFoundException('Business has no branches to impersonate');
+          throw new NotFoundException(
+            'Business has no branches to impersonate',
+          );
         }
         const targetBranchId = business.branches[0].id;
-        const expiresAt = dto.payload?.expiresAt ? new Date(dto.payload.expiresAt) : new Date(Date.now() + 15 * 60 * 1000);
-        
-        const impersonationToken = await this.adminService.generateToken(actorId, {
-          targetBranchId,
-          expiresAt: expiresAt.toISOString(),
-        });
+        const expiresAt = dto.payload?.expiresAt
+          ? new Date(dto.payload.expiresAt)
+          : new Date(Date.now() + 15 * 60 * 1000);
+
+        const impersonationToken = await this.adminService.generateToken(
+          actorId,
+          {
+            targetBranchId,
+            expiresAt: expiresAt.toISOString(),
+          },
+        );
 
         return {
           success: true,
@@ -220,14 +227,12 @@ export class ControlTowerService {
           );
         }
 
-        const impersonationToken = await this.adminService.generateCustomerToken(
-          actorId,
-          {
+        const impersonationToken =
+          await this.adminService.generateCustomerToken(actorId, {
             targetCustomerId: customerUserId,
             targetBranchId: contact.branchId,
             expiresAt: expiresAt.toISOString(),
-          },
-        );
+          });
 
         return {
           success: true,

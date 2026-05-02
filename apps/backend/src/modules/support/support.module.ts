@@ -9,7 +9,10 @@ import { AgentSupportController } from './agent-support.controller';
 import { SupportTicket } from './entities/support-ticket.entity';
 import { TicketMessage } from './entities/ticket-message.entity';
 import { TicketActivity } from './entities/ticket-activity.entity';
-import { SupportKnowledge, BotInteraction } from './entities/support-bot.entity';
+import {
+  SupportKnowledge,
+  BotInteraction,
+} from './entities/support-bot.entity';
 import { BotConversationContext } from './entities/conversation-context.entity';
 import { User } from '../users/entities/user.entity';
 import { BusinessCreditWallet } from '../messaging/entities/business-credit-wallet.entity';
@@ -43,7 +46,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
   ],
   controllers: [SupportController, AgentSupportController],
-  providers: [SupportService, SupportBotService, BotContextService, ConversationContextService, SupportGateway],
-  exports: [SupportService, SupportBotService, BotContextService, ConversationContextService, SupportGateway],
+  providers: [
+    SupportService,
+    SupportBotService,
+    BotContextService,
+    ConversationContextService,
+    SupportGateway,
+  ],
+  exports: [
+    SupportService,
+    SupportBotService,
+    BotContextService,
+    ConversationContextService,
+    SupportGateway,
+  ],
 })
 export class SupportModule {}

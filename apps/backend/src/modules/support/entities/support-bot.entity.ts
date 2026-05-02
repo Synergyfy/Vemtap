@@ -5,10 +5,10 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ChatButton {
   @ApiProperty()
   label: string;
-  
+
   @ApiProperty({ enum: ['navigate', 'url', 'action'] })
   action: 'navigate' | 'url' | 'action';
-  
+
   @ApiProperty()
   value: string;
 }
@@ -19,7 +19,9 @@ export class SupportKnowledge extends AbstractBaseEntity {
   @Column()
   question: string;
 
-  @ApiProperty({ example: 'You can top up credits by going to Settings > Billing.' })
+  @ApiProperty({
+    example: 'You can top up credits by going to Settings > Billing.',
+  })
   @Column('text')
   answer: string;
 
@@ -60,7 +62,16 @@ export class SupportKnowledge extends AbstractBaseEntity {
   @Column({ nullable: true, type: 'varchar' })
   link: string | null;
 
-  @ApiProperty({ example: [{ label: 'View Pricing', action: 'navigate', value: '/dashboard/settings/billing' }], type: [ChatButton] })
+  @ApiProperty({
+    example: [
+      {
+        label: 'View Pricing',
+        action: 'navigate',
+        value: '/dashboard/settings/billing',
+      },
+    ],
+    type: [ChatButton],
+  })
   @Column('jsonb', { nullable: true })
   buttons: ChatButton[] | null;
 }
@@ -76,7 +87,10 @@ export class BotInteraction extends AbstractBaseEntity {
   @Column('text')
   response: string;
 
-  @Column({ enum: ['knowledge_base', 'ai', 'fallback'], default: 'knowledge_base' })
+  @Column({
+    enum: ['knowledge_base', 'ai', 'fallback'],
+    default: 'knowledge_base',
+  })
   source: string;
 
   @Column({ name: 'confidence', type: 'float', default: 0 })

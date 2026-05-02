@@ -21,7 +21,7 @@ export class UsersService {
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
     private readonly mailService: MailService,
-  ) { }
+  ) {}
 
   async inviteStaff(branchId: string, dto: InviteStaffDto): Promise<User> {
     const existingEmail = await this.findByEmail(dto.email);
@@ -233,11 +233,7 @@ export class UsersService {
     } else {
       // Default to team roles
       qb.andWhere('user.role IN (:...roles)', {
-        roles: [
-          UserRole.MANAGER,
-          UserRole.STAFF,
-
-        ],
+        roles: [UserRole.MANAGER, UserRole.STAFF],
       });
     }
 

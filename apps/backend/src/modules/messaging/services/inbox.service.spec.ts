@@ -90,7 +90,7 @@ describe('InboxService', () => {
       sendToBranchStaff: jest.fn().mockResolvedValue({ success: true }),
     };
 
-    automationMock = { 
+    automationMock = {
       handleEvent: jest.fn().mockResolvedValue({}),
       trigger: jest.fn().mockResolvedValue({}),
     };

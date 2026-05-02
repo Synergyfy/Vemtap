@@ -1,15 +1,36 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CatalogueCart } from './entities/catalogue-cart.entity';
 import { CatalogueCartItem } from './entities/catalogue-cart-item.entity';
-import { AddToCartDto, MergeGuestCartDto, CheckoutCartDto, GuestCartItemDto } from './dto/catalogue-cart.dto';
-import { CatalogueItem, CatalogueItemStatus } from '../catalogue/entities/catalogue-item.entity';
-import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
+import {
+  AddToCartDto,
+  MergeGuestCartDto,
+  CheckoutCartDto,
+  GuestCartItemDto,
+} from './dto/catalogue-cart.dto';
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+} from '../catalogue/entities/catalogue-item.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferStatus,
+} from '../catalogue/entities/catalogue-offer.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
-import { CreateCatalogueOrderDto, OrderItemDto } from '../catalogue-orders/dto/catalogue-order.dto';
+import {
+  CreateCatalogueOrderDto,
+  OrderItemDto,
+} from '../catalogue-orders/dto/catalogue-order.dto';
 
 @Injectable()
 export class CatalogueCartService {
@@ -28,14 +49,19 @@ export class CatalogueCartService {
     private readonly ordersService: CatalogueOrderService,
   ) {}
 
-  async getOrCreateCart(customerId: string, branchId: string): Promise<CatalogueCart> {
+  async getOrCreateCart(
+    customerId: string,
+    branchId: string,
+  ): Promise<CatalogueCart> {
     let cart = await this.cartRepository.findOne({
       where: { customerId, branchId },
       relations: ['items', 'items.item', 'items.offer'],
     });
 
     if (!cart) {
-      const branch = await this.branchRepository.findOne({ where: { id: branchId } });
+      const branch = await this.branchRepository.findOne({
+        where: { id: branchId },
+      });
       if (!branch) {
         throw new NotFoundException('Branch not found');
       }
@@ -58,7 +84,7 @@ export class CatalogueCartService {
     let total = 0;
     let itemCount = 0;
 
-    const enrichedItems = cart.items.map(item => {
+    const enrichedItems = cart.items.map((item) => {
       total += Number(item.snapshotPrice) * item.quantity;
       itemCount += item.quantity;
       return item;
@@ -84,7 +110,7 @@ export class CatalogueCartService {
 
     let total = 0;
     let itemCount = 0;
-    cart.items.forEach(item => {
+    cart.items.forEach((item) => {
       total += Number(item.snapshotPrice) * item.quantity;
       itemCount += item.quantity;
     });
@@ -92,12 +118,17 @@ export class CatalogueCartService {
     return { itemCount, total };
   }
 
-  async addItemToCart(customerId: string, dto: AddToCartDto | (GuestCartItemDto & { branchId: string })) {
+  async addItemToCart(
+    customerId: string,
+    dto: AddToCartDto | (GuestCartItemDto & { branchId: string }),
+  ) {
     if (!dto.itemId && !dto.offerId) {
-      throw new BadRequestException('Either itemId or offerId must be provided');
+      throw new BadRequestException(
+        'Either itemId or offerId must be provided',
+      );
     }
 
-    let branchId = (dto as any).branchId;
+    const branchId = (dto as any).branchId;
     if (!branchId) {
       throw new BadRequestException('branchId must be provided');
     }
@@ -109,14 +140,19 @@ export class CatalogueCartService {
     let image: string | null = null;
 
     if (dto.itemId) {
-      const item = await this.itemRepository.createQueryBuilder('item')
+      const item = await this.itemRepository
+        .createQueryBuilder('item')
         .innerJoin('item.branches', 'branch')
         .where('item.id = :itemId', { itemId: dto.itemId })
         .andWhere('branch.id = :branchId', { branchId })
         .getOne();
 
-      if (!item) throw new NotFoundException('Item not found or not available in this branch');
-      if (item.status !== CatalogueItemStatus.ACTIVE) throw new BadRequestException('Item is not active');
+      if (!item)
+        throw new NotFoundException(
+          'Item not found or not available in this branch',
+        );
+      if (item.status !== CatalogueItemStatus.ACTIVE)
+        throw new BadRequestException('Item is not active');
       price = Number(item.price);
       name = item.name;
       image = item.mainImage;
@@ -125,16 +161,21 @@ export class CatalogueCartService {
         where: { id: dto.offerId, branchId },
       });
 
-      if (!offer) throw new NotFoundException('Offer not found or not available in this branch');
-      if (offer.status !== CatalogueOfferStatus.ACTIVE) throw new BadRequestException('Offer is not active');
+      if (!offer)
+        throw new NotFoundException(
+          'Offer not found or not available in this branch',
+        );
+      if (offer.status !== CatalogueOfferStatus.ACTIVE)
+        throw new BadRequestException('Offer is not active');
       price = Number(offer.calculatedPrice);
       name = offer.name;
       image = offer.mainImage;
     }
 
-    let existingItem = cart.items?.find(i =>
-      (dto.itemId && i.itemId === dto.itemId) ||
-      (dto.offerId && i.offerId === dto.offerId)
+    let existingItem = cart.items?.find(
+      (i) =>
+        (dto.itemId && i.itemId === dto.itemId) ||
+        (dto.offerId && i.offerId === dto.offerId),
     );
 
     const qtyToAdd = dto.quantity || 1;
@@ -159,14 +200,19 @@ export class CatalogueCartService {
     return this.getCart(customerId, branchId);
   }
 
-  async updateCartItem(customerId: string, cartItemId: string, quantity: number) {
+  async updateCartItem(
+    customerId: string,
+    cartItemId: string,
+    quantity: number,
+  ) {
     const item = await this.cartItemRepository.findOne({
       where: { id: cartItemId },
       relations: ['cart'],
     });
 
     if (!item) throw new NotFoundException('Cart item not found');
-    if (item.cart.customerId !== customerId) throw new ForbiddenException('Not your cart item');
+    if (item.cart.customerId !== customerId)
+      throw new ForbiddenException('Not your cart item');
 
     if (quantity === 0) {
       await this.cartItemRepository.remove(item);
@@ -185,14 +231,17 @@ export class CatalogueCartService {
     });
 
     if (!item) throw new NotFoundException('Cart item not found');
-    if (item.cart.customerId !== customerId) throw new ForbiddenException('Not your cart item');
+    if (item.cart.customerId !== customerId)
+      throw new ForbiddenException('Not your cart item');
 
     await this.cartItemRepository.remove(item);
     return { success: true };
   }
 
   async clearCart(customerId: string, branchId: string) {
-    const cart = await this.cartRepository.findOne({ where: { customerId, branchId } });
+    const cart = await this.cartRepository.findOne({
+      where: { customerId, branchId },
+    });
     if (cart) {
       await this.cartItemRepository.delete({ cartId: cart.id });
     }
@@ -222,7 +271,7 @@ export class CatalogueCartService {
       throw new BadRequestException('Cart is empty');
     }
 
-    const orderItems: OrderItemDto[] = cart.items.map(item => ({
+    const orderItems: OrderItemDto[] = cart.items.map((item) => ({
       itemId: item.itemId || undefined,
       offerId: item.offerId || undefined,
       quantity: item.quantity,

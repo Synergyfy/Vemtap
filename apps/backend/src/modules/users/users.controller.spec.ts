@@ -95,7 +95,10 @@ describe('UsersController', () => {
         branchId: 'branch-1',
       });
       expect(result).toEqual(team);
-      expect(mockUsersService.findTeamMembers).toHaveBeenCalledWith({ branchId: 'branch-1', businessId: undefined });
+      expect(mockUsersService.findTeamMembers).toHaveBeenCalledWith({
+        branchId: 'branch-1',
+        businessId: undefined,
+      });
     });
   });
 

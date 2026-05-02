@@ -54,7 +54,8 @@ export class ImpersonationGuard implements CanActivate {
 
     // Override branchId and businessId in request for downstream logic
     request.user.branchId = token.targetBranchId;
-    request.user.businessId = token.targetBranch?.business?.id ?? token.targetBranch.businessId;
+    request.user.businessId =
+      token.targetBranch?.business?.id ?? token.targetBranch.businessId;
 
     // Also tag the request as impersonated
     request.isImpersonated = true;
@@ -65,13 +66,20 @@ export class ImpersonationGuard implements CanActivate {
 
   private getModuleFromUrl(url: string): BackendModule {
     if (url.includes('/loyalty')) return BackendModule.LOYALTY;
-    if (url.includes('/visitors') || url.includes('/contacts')) return BackendModule.VISITORS;
+    if (url.includes('/visitors') || url.includes('/contacts'))
+      return BackendModule.VISITORS;
     if (url.includes('/support') || url.includes('/tickets'))
       return BackendModule.TICKETS;
     if (url.includes('/messaging') || url.includes('/campaigns'))
       return BackendModule.MESSAGING;
     if (url.includes('/payments')) return BackendModule.PAYMENTS;
-    if (url.includes('/settings') || url.includes('/forms') || url.includes('/users') || url.includes('/devices')) return BackendModule.SETTINGS;
+    if (
+      url.includes('/settings') ||
+      url.includes('/forms') ||
+      url.includes('/users') ||
+      url.includes('/devices')
+    )
+      return BackendModule.SETTINGS;
     if (url.includes('/branches')) return BackendModule.BRANCHES;
     if (url.includes('/businesses')) return BackendModule.BUSINESSES;
     if (url.includes('/analytics') || url.includes('/reports'))

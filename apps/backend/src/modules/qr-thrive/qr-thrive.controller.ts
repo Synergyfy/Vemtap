@@ -18,12 +18,12 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { QrThriveService } from './qr-thrive.service';
-import { 
-  CreateQRCodeDto, 
-  UpdateQRCodeDto, 
-  CreateFolderDto, 
+import {
+  CreateQRCodeDto,
+  UpdateQRCodeDto,
+  CreateFolderDto,
   UpdateFolderDto,
-  ToggleUblFeatureDto
+  ToggleUblFeatureDto,
 } from './dto/qr-thrive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -128,14 +128,21 @@ export class QrThriveController {
 
   @Patch('branches/:branchId/qr-codes/:qrCodeId/ubl')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Toggle whether a QR code is featured on the branch UBL profile' })
+  @ApiOperation({
+    summary: 'Toggle whether a QR code is featured on the branch UBL profile',
+  })
   async toggleUblFeature(
     @Request() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
     @Body() dto: ToggleUblFeatureDto,
   ) {
-    return this.qrThriveService.toggleUblFeature(req.user, branchId, qrCodeId, dto.isFeatured);
+    return this.qrThriveService.toggleUblFeature(
+      req.user,
+      branchId,
+      qrCodeId,
+      dto.isFeatured,
+    );
   }
 
   @Get('branches/:branchId/stats')
@@ -147,29 +154,41 @@ export class QrThriveController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.qrThriveService.getStats(req.user, branchId, startDate, endDate);
+    return this.qrThriveService.getStats(
+      req.user,
+      branchId,
+      startDate,
+      endDate,
+    );
   }
 
   // --- Folder Management ---
 
   @Get('branches/:branchId/folders')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  async getFolders(@Request() req: RequestWithUser, @Param('branchId') branchId: string) {
+  async getFolders(
+    @Request() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+  ) {
     return this.qrThriveService.getFolders(req.user, branchId);
   }
 
   @Post('branches/:branchId/folders')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  async createFolder(@Request() req: RequestWithUser, @Param('branchId') branchId: string, @Body() dto: CreateFolderDto) {
+  async createFolder(
+    @Request() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Body() dto: CreateFolderDto,
+  ) {
     return this.qrThriveService.createFolder(req.user, branchId, dto);
   }
 
   @Delete('branches/:branchId/folders/:folderId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   async deleteFolder(
-    @Request() req: RequestWithUser, 
-    @Param('branchId') branchId: string, 
-    @Param('folderId') folderId: string
+    @Request() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Param('folderId') folderId: string,
   ) {
     return this.qrThriveService.deleteFolder(req.user, branchId, folderId);
   }
@@ -177,10 +196,10 @@ export class QrThriveController {
   @Put('branches/:branchId/folders/:folderId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   async updateFolder(
-    @Request() req: RequestWithUser, 
-    @Param('branchId') branchId: string, 
+    @Request() req: RequestWithUser,
+    @Param('branchId') branchId: string,
     @Param('folderId') folderId: string,
-    @Body() dto: UpdateFolderDto
+    @Body() dto: UpdateFolderDto,
   ) {
     return this.qrThriveService.updateFolder(req.user, branchId, folderId, dto);
   }
@@ -211,9 +230,13 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({
     summary: 'Get all leads for a branch',
-    description: 'Fetches all form submission leads across every QR code owned by the current user via QR-Thrive.',
+    description:
+      'Fetches all form submission leads across every QR code owned by the current user via QR-Thrive.',
   })
-  @ApiResponse({ status: 200, description: 'List of lead submissions returned successfully.' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of lead submissions returned successfully.',
+  })
   @ApiResponse({ status: 400, description: 'User not synced with QR-Thrive.' })
   @ApiResponse({ status: 403, description: 'No access to this branch.' })
   async getLeads(

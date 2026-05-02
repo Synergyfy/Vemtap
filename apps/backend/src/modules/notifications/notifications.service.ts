@@ -13,14 +13,21 @@ export class NotificationsService {
     private userRepository: Repository<User>,
   ) {}
 
-  async broadcastToRole(role: UserRole, title: string, message: string, type: string = 'broadcast') {
+  async broadcastToRole(
+    role: UserRole,
+    title: string,
+    message: string,
+    type: string = 'broadcast',
+  ) {
     const users = await this.userRepository.find({ where: { role } });
-    const notifications = users.map(user => this.notificationsRepository.create({
-      userId: user.id,
-      title,
-      message,
-      type,
-    }));
+    const notifications = users.map((user) =>
+      this.notificationsRepository.create({
+        userId: user.id,
+        title,
+        message,
+        type,
+      }),
+    );
     return this.notificationsRepository.save(notifications);
   }
 
@@ -64,7 +71,7 @@ export class NotificationsService {
   }
 
   async getBroadcastHistory() {
-    // This is a simplified implementation. In a real system, 
+    // This is a simplified implementation. In a real system,
     // we might have a dedicated Broadcast entity.
     // Here we find notifications of type 'broadcast' and group them by title/message.
     const rawHistory = await this.notificationsRepository
@@ -82,7 +89,7 @@ export class NotificationsService {
       .limit(10)
       .getRawMany();
 
-    return rawHistory.map(h => ({
+    return rawHistory.map((h) => ({
       id: `BRD-${Buffer.from(h.title).toString('hex').slice(0, 4)}`,
       title: h.title,
       message: h.message,

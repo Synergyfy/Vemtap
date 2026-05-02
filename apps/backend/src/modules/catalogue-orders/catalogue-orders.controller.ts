@@ -46,8 +46,13 @@ export class CatalogueOrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('bulk-checkout')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Place multiple orders across different branches (Customer only)' })
-  async bulkCheckout(@Body() dto: BulkCheckoutDto, @Req() req: RequestWithUser) {
+  @ApiOperation({
+    summary: 'Place multiple orders across different branches (Customer only)',
+  })
+  async bulkCheckout(
+    @Body() dto: BulkCheckoutDto,
+    @Req() req: RequestWithUser,
+  ) {
     return this.orderService.bulkCheckout(dto, req.user);
   }
 

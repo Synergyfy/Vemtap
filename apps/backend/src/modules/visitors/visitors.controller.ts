@@ -409,7 +409,8 @@ export class VisitorsController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Visit recorded (or existing visit returned if within cooldown)',
+    description:
+      'Visit recorded (or existing visit returned if within cooldown)',
     schema: {
       type: 'object',
       properties: {

@@ -120,7 +120,9 @@ describe('ControlTowerService', () => {
     });
 
     it('should show N/A for owner when business has no owner', async () => {
-      businessRepo.find.mockResolvedValue([{ ...mockBusiness, owner: null, branches: [] }]);
+      businessRepo.find.mockResolvedValue([
+        { ...mockBusiness, owner: null, branches: [] },
+      ]);
       const result = await service.searchBusinesses({});
       expect(result[0].owner).toBe('N/A');
     });
@@ -132,7 +134,9 @@ describe('ControlTowerService', () => {
     });
 
     it('should count 0 users when business has no branches', async () => {
-      businessRepo.find.mockResolvedValue([{ ...mockBusiness, branches: [], owner: null }]);
+      businessRepo.find.mockResolvedValue([
+        { ...mockBusiness, branches: [], owner: null },
+      ]);
       const result = await service.searchBusinesses({});
       expect(result[0].users).toBe(0);
     });
@@ -164,7 +168,9 @@ describe('ControlTowerService', () => {
     });
 
     it('should default name to "Anonymous" when contact has no name', async () => {
-      contactRepo.find.mockResolvedValue([{ ...mockContact, name: null, branch: null }]);
+      contactRepo.find.mockResolvedValue([
+        { ...mockContact, name: null, branch: null },
+      ]);
       const result = await service.searchCustomers({});
       expect(result[0].name).toBe('Anonymous');
     });
@@ -269,7 +275,9 @@ describe('ControlTowerService', () => {
         const dto: BusinessSudoActionDto = {
           businessUid: 'biz-1',
           actionKey: 'assume_session',
-          payload: { expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() },
+          payload: {
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          },
         };
 
         const result = await service.executeBusinessSudoAction(dto, ACTOR_ID);
@@ -300,7 +308,10 @@ describe('ControlTowerService', () => {
       });
 
       it('should throw NotFoundException when business has no branches', async () => {
-        businessRepo.findOne.mockResolvedValue({ ...mockBusiness, branches: [] });
+        businessRepo.findOne.mockResolvedValue({
+          ...mockBusiness,
+          branches: [],
+        });
 
         await expect(
           service.executeBusinessSudoAction(
@@ -335,7 +346,11 @@ describe('ControlTowerService', () => {
 
       await expect(
         service.executeCustomerSudoAction(
-          { customerUid: 'nonexistent', businessUid: 'biz-1', actionKey: 'award_points' },
+          {
+            customerUid: 'nonexistent',
+            businessUid: 'biz-1',
+            actionKey: 'award_points',
+          },
           ACTOR_ID,
         ),
       ).rejects.toThrow(NotFoundException);
@@ -346,7 +361,12 @@ describe('ControlTowerService', () => {
         contactRepo.findOne.mockResolvedValue(mockContact);
 
         const result = await service.executeCustomerSudoAction(
-          { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'award_points', payload: { points: 100 } },
+          {
+            customerUid: 'contact-1',
+            businessUid: 'biz-1',
+            actionKey: 'award_points',
+            payload: { points: 100 },
+          },
           ACTOR_ID,
         );
 
@@ -358,7 +378,11 @@ describe('ControlTowerService', () => {
         contactRepo.findOne.mockResolvedValue({ ...mockContact, name: null });
 
         const result = await service.executeCustomerSudoAction(
-          { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'award_points' },
+          {
+            customerUid: 'contact-1',
+            businessUid: 'biz-1',
+            actionKey: 'award_points',
+          },
           ACTOR_ID,
         );
 
@@ -412,7 +436,11 @@ describe('ControlTowerService', () => {
         contactRepo.findOne.mockResolvedValue(mockContact);
 
         const result = await service.executeCustomerSudoAction(
-          { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'close_issue' },
+          {
+            customerUid: 'contact-1',
+            businessUid: 'biz-1',
+            actionKey: 'close_issue',
+          },
           ACTOR_ID,
         );
 
@@ -431,7 +459,9 @@ describe('ControlTowerService', () => {
           customerUid: 'contact-1',
           businessUid: 'biz-1',
           actionKey: 'assume_session',
-          payload: { expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() },
+          payload: {
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          },
         };
 
         const result = await service.executeCustomerSudoAction(dto, ACTOR_ID);
@@ -440,7 +470,10 @@ describe('ControlTowerService', () => {
         expect(result.data?.token).toBe('real-customer-token-value');
         expect(adminService.generateCustomerToken).toHaveBeenCalledWith(
           ACTOR_ID,
-          expect.objectContaining({ targetCustomerId: 'user-customer-1', targetBranchId: 'branch-1' }),
+          expect.objectContaining({
+            targetCustomerId: 'user-customer-1',
+            targetBranchId: 'branch-1',
+          }),
         );
       });
 
@@ -450,7 +483,11 @@ describe('ControlTowerService', () => {
         userRepo.findOne.mockResolvedValueOnce({ id: 'user-customer-phone' });
 
         const result = await service.executeCustomerSudoAction(
-          { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'assume_session' },
+          {
+            customerUid: 'contact-1',
+            businessUid: 'biz-1',
+            actionKey: 'assume_session',
+          },
           ACTOR_ID,
         );
 
@@ -468,19 +505,30 @@ describe('ControlTowerService', () => {
 
         await expect(
           service.executeCustomerSudoAction(
-            { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'assume_session' },
+            {
+              customerUid: 'contact-1',
+              businessUid: 'biz-1',
+              actionKey: 'assume_session',
+            },
             ACTOR_ID,
           ),
         ).rejects.toThrow(BadRequestException);
       });
 
       it('should throw BadRequestException when contact has no branchId', async () => {
-        contactRepo.findOne.mockResolvedValue({ ...mockContact, branchId: null });
+        contactRepo.findOne.mockResolvedValue({
+          ...mockContact,
+          branchId: null,
+        });
         userRepo.findOne.mockResolvedValueOnce({ id: 'user-customer-1' });
 
         await expect(
           service.executeCustomerSudoAction(
-            { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'assume_session' },
+            {
+              customerUid: 'contact-1',
+              businessUid: 'biz-1',
+              actionKey: 'assume_session',
+            },
             ACTOR_ID,
           ),
         ).rejects.toThrow(BadRequestException);
@@ -493,11 +541,16 @@ describe('ControlTowerService', () => {
         jest.spyOn(Date, 'now').mockReturnValue(now);
 
         await service.executeCustomerSudoAction(
-          { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'assume_session' },
+          {
+            customerUid: 'contact-1',
+            businessUid: 'biz-1',
+            actionKey: 'assume_session',
+          },
           ACTOR_ID,
         );
 
-        const call = (adminService.generateCustomerToken as jest.Mock).mock.calls[0][1];
+        const call = (adminService.generateCustomerToken as jest.Mock).mock
+          .calls[0][1];
         const expiresAt = new Date(call.expiresAt).getTime();
         expect(expiresAt).toBeGreaterThanOrEqual(now + 15 * 60 * 1000 - 1000);
         expect(expiresAt).toBeLessThanOrEqual(now + 15 * 60 * 1000 + 1000);
@@ -509,7 +562,11 @@ describe('ControlTowerService', () => {
         contactRepo.findOne.mockResolvedValue(mockContact);
 
         const result = await service.executeCustomerSudoAction(
-          { customerUid: 'contact-1', businessUid: 'biz-1', actionKey: 'add_profile' },
+          {
+            customerUid: 'contact-1',
+            businessUid: 'biz-1',
+            actionKey: 'add_profile',
+          },
           ACTOR_ID,
         );
 

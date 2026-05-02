@@ -39,6 +39,7 @@ import {
 } from './dto/admin-user-management.dto';
 import { ParseUUIDPipe, Inject, forwardRef } from '@nestjs/common';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
+import { BusinessesService } from '../businesses/businesses.service';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -47,6 +48,7 @@ import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
+    private readonly businessesService: BusinessesService,
     @Inject(forwardRef(() => QrThriveService))
     private readonly qrThriveService: QrThriveService,
   ) {}
@@ -61,18 +63,34 @@ export class UsersController {
     return branchId;
   }
 
+  private async getTargetUserId(req: any): Promise<string> {
+    const actorId = req.user.id;
+    // If impersonating, target the business owner
+    if (req.isImpersonated && req.user.businessId) {
+      const business = await this.businessesService.findById(
+        req.user.businessId,
+      );
+      if (business && business.ownerId) {
+        return business.ownerId;
+      }
+    }
+    return actorId;
+  }
+
   @Get('profile')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, type: User })
   async getProfile(@Request() req) {
-    return this.usersService.findOne(req.user.id);
+    const targetUserId = await this.getTargetUserId(req);
+    return this.usersService.findOne(targetUserId);
   }
 
   @Patch('profile')
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, type: User })
   async updateProfile(@Request() req, @Body() updates: UpdateProfileDto) {
-    return this.usersService.updateProfile(req.user.id, updates);
+    const targetUserId = await this.getTargetUserId(req);
+    return this.usersService.updateProfile(targetUserId, updates);
   }
 
   // --- QR-Thrive Integration ---
@@ -84,7 +102,10 @@ export class UsersController {
     description: 'Returns the QR-Thrive user ID if mapped',
   })
   async getQrThriveMapping(@Request() req) {
-    if (req.user.role === UserRole.CUSTOMER || req.user.role === UserRole.ADMIN) {
+    if (
+      req.user.role === UserRole.CUSTOMER ||
+      req.user.role === UserRole.ADMIN
+    ) {
       return { qrThriveUserId: null };
     }
     const mapping = await this.qrThriveService.getMappingByUserId(req.user.id);
@@ -98,7 +119,10 @@ export class UsersController {
     description: 'Returns the newly created QR-Thrive user ID',
   })
   async provisionQrThrive(@Request() req) {
-    if (req.user.role === UserRole.CUSTOMER || req.user.role === UserRole.ADMIN) {
+    if (
+      req.user.role === UserRole.CUSTOMER ||
+      req.user.role === UserRole.ADMIN
+    ) {
       return { qrThriveUserId: null };
     }
     const mapping = await this.qrThriveService.syncUser(req.user);
@@ -131,7 +155,10 @@ export class UsersController {
   async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
     const businessId = req.user.businessId;
 
-    if (filter.allBranches && (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)) {
+    if (
+      filter.allBranches &&
+      (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)
+    ) {
       return this.usersService.findTeamMembers({ businessId });
     }
 

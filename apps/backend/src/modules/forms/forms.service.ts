@@ -352,7 +352,6 @@ export class FormsService {
     return this.formsRepository.save(form);
   }
 
-
   // Visitor actions
   async getFormsForVisitor(branchId: string): Promise<Form[]> {
     return this.formsRepository.find({

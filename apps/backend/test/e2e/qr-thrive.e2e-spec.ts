@@ -4,9 +4,16 @@ import { createTestApp } from '../utils/create-app';
 import { HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
 import { DataSource } from 'typeorm';
-import { User, UserRole, UserStatus } from '../../src/modules/users/entities/user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
-import { Business, BusinessStatus } from '../../src/modules/businesses/entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../../src/modules/businesses/entities/business.entity';
 import { QRType } from '../../src/modules/qr-thrive/enums';
 import * as bcrypt from 'bcrypt';
 
@@ -27,14 +34,18 @@ describe('QrThrive (e2e)', () => {
   beforeAll(async () => {
     app = await createTestApp((builder) => {
       builder.overrideProvider(HttpService).useValue(mockHttpService);
-      builder.overrideProvider(require('@nestjs/config').ConfigService).useValue({
-        get: jest.fn((key: string) => {
-          if (key === 'VEMTAP_INTEGRATION_KEY') return 'vemtap_test_key_xyz789';
-          if (key === 'QR_THRIVE_API_KEY') return 'qr_test_key_123';
-          if (key === 'QR_THRIVE_BASE_URL') return 'https://api.qrthrive.com/v1';
-          return process.env[key]; // Fallback to actual env for other keys
-        }),
-      });
+      builder
+        .overrideProvider(require('@nestjs/config').ConfigService)
+        .useValue({
+          get: jest.fn((key: string) => {
+            if (key === 'VEMTAP_INTEGRATION_KEY')
+              return 'vemtap_test_key_xyz789';
+            if (key === 'QR_THRIVE_API_KEY') return 'qr_test_key_123';
+            if (key === 'QR_THRIVE_BASE_URL')
+              return 'https://api.qrthrive.com/v1';
+            return process.env[key]; // Fallback to actual env for other keys
+          }),
+        });
     });
 
     dataSource = app.get(DataSource);
@@ -79,15 +90,15 @@ describe('QrThrive (e2e)', () => {
 
     // 2. Create another business and branch (Forbidden to the first user)
     const otherUser = await userRepo.save(
-        userRepo.create({
-          email: `other-${suffix}@example.com`,
-          password: hashedPassword,
-          firstName: 'Other',
-          lastName: 'User',
-          role: UserRole.OWNER,
-          status: UserStatus.ACTIVE,
-        }),
-      );
+      userRepo.create({
+        email: `other-${suffix}@example.com`,
+        password: hashedPassword,
+        firstName: 'Other',
+        lastName: 'User',
+        role: UserRole.OWNER,
+        status: UserStatus.ACTIVE,
+      }),
+    );
     const otherBusiness = await businessRepo.save(
       businessRepo.create({
         name: 'Other Business',
@@ -108,12 +119,19 @@ describe('QrThrive (e2e)', () => {
     // Login to get token
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ identifier: `qr-${suffix}@example.com`, password: 'Password123!' });
-    
+      .send({
+        identifier: `qr-${suffix}@example.com`,
+        password: 'Password123!',
+      });
+
     jwtToken = loginRes.body.access_token;
 
     // Create Admin user for plans test
-    const { token: adminToken } = await require('../utils/auth').createAuthenticatedUser(app, UserRole.ADMIN);
+    const { token: adminToken } =
+      await require('../utils/auth').createAuthenticatedUser(
+        app,
+        UserRole.ADMIN,
+      );
     (this as any).adminToken = adminToken;
   });
 
@@ -123,7 +141,9 @@ describe('QrThrive (e2e)', () => {
 
   describe('/qr-thrive/sync (POST)', () => {
     it('should sync user with QR-Thrive', async () => {
-      mockHttpService.post.mockReturnValue(of({ data: { id: `qr-u-${suffix}` } }));
+      mockHttpService.post.mockReturnValue(
+        of({ data: { id: `qr-u-${suffix}` } }),
+      );
 
       const res = await request(app.getHttpServer())
         .post('/api/v1/qr-thrive/sync')
@@ -136,17 +156,19 @@ describe('QrThrive (e2e)', () => {
 
   describe('/qr-thrive/branches/:id/qr-codes (POST)', () => {
     it('should create a QR code mapping for own branch', async () => {
-      mockHttpService.post.mockReturnValue(of({ 
-        data: { 
-          id: `qr-code-${suffix}`, 
-          shortId: `qr${suffix}`, 
-          name: 'Test QR', 
-          type: QRType.url,
-          design: {},
-          frame: {},
-          data: { url: 'https://test.com' }
-        } 
-      }));
+      mockHttpService.post.mockReturnValue(
+        of({
+          data: {
+            id: `qr-code-${suffix}`,
+            shortId: `qr${suffix}`,
+            name: 'Test QR',
+            type: QRType.url,
+            design: {},
+            frame: {},
+            data: { url: 'https://test.com' },
+          },
+        }),
+      );
 
       const res = await request(app.getHttpServer())
         .post(`/api/v1/qr-thrive/branches/${branchId}/qr-codes`)
@@ -154,7 +176,7 @@ describe('QrThrive (e2e)', () => {
         .send({
           name: 'Test QR',
           type: QRType.url,
-          data: { url: 'https://test.com' }
+          data: { url: 'https://test.com' },
         })
         .expect(201);
 
@@ -168,7 +190,7 @@ describe('QrThrive (e2e)', () => {
         .send({
           name: 'Hacker QR',
           type: QRType.url,
-          data: { url: 'https://evil.com' }
+          data: { url: 'https://evil.com' },
         })
         .expect(403);
     });
@@ -177,7 +199,9 @@ describe('QrThrive (e2e)', () => {
   describe('/qr-thrive/branches/:branchId/qr-codes/:qrCodeId/ubl (PATCH)', () => {
     it('should fail (400) with validation error if isFeatured is missing', async () => {
       await request(app.getHttpServer())
-        .patch(`/api/v1/qr-thrive/branches/${branchId}/qr-codes/qr-code-uuid/ubl`)
+        .patch(
+          `/api/v1/qr-thrive/branches/${branchId}/qr-codes/qr-code-uuid/ubl`,
+        )
         .set('Authorization', `Bearer ${jwtToken}`)
         .send({}) // Missing isFeatured
         .expect(400);
@@ -185,7 +209,9 @@ describe('QrThrive (e2e)', () => {
 
     it('should fail (403) when accessing forbidden branch', async () => {
       await request(app.getHttpServer())
-        .patch(`/api/v1/qr-thrive/branches/${forbiddenBranchId}/qr-codes/qr-code-uuid/ubl`)
+        .patch(
+          `/api/v1/qr-thrive/branches/${forbiddenBranchId}/qr-codes/qr-code-uuid/ubl`,
+        )
         .set('Authorization', `Bearer ${jwtToken}`)
         .send({ isFeatured: true })
         .expect(403);
@@ -193,7 +219,9 @@ describe('QrThrive (e2e)', () => {
 
     it('should fail (404) if the QR code mapping does not exist', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/qr-thrive/branches/${branchId}/qr-codes/non-existent-qr/ubl`)
+        .patch(
+          `/api/v1/qr-thrive/branches/${branchId}/qr-codes/non-existent-qr/ubl`,
+        )
         .set('Authorization', `Bearer ${jwtToken}`)
         .send({ isFeatured: true })
         .expect(404);
@@ -207,14 +235,18 @@ describe('QrThrive (e2e)', () => {
       mockHttpService.get.mockReturnValue(of({ data: [] }));
 
       await request(app.getHttpServer())
-        .get(`/api/v1/qr-thrive/branches/${branchId}/qr-codes/qr-code-uuid/scans`)
+        .get(
+          `/api/v1/qr-thrive/branches/${branchId}/qr-codes/qr-code-uuid/scans`,
+        )
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200);
     });
 
     it('should fail (403) when fetching scans for forbidden branch', async () => {
       await request(app.getHttpServer())
-        .get(`/api/v1/qr-thrive/branches/${forbiddenBranchId}/qr-codes/qr-code-uuid/scans`)
+        .get(
+          `/api/v1/qr-thrive/branches/${forbiddenBranchId}/qr-codes/qr-code-uuid/scans`,
+        )
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(403);
     });
@@ -222,7 +254,9 @@ describe('QrThrive (e2e)', () => {
 
   describe('/qr-thrive/sso (GET)', () => {
     it('should return magic link', async () => {
-      mockHttpService.post.mockReturnValue(of({ data: { url: 'https://api.qrthrive.com/magic' } }));
+      mockHttpService.post.mockReturnValue(
+        of({ data: { url: 'https://api.qrthrive.com/magic' } }),
+      );
 
       const res = await request(app.getHttpServer())
         .get('/api/v1/qr-thrive/sso')
@@ -237,7 +271,9 @@ describe('QrThrive (e2e)', () => {
     it('should fetch plans from QR-Thrive (Admin only)', async () => {
       const adminToken = (this as any).adminToken || jwtToken;
 
-      mockHttpService.get.mockReturnValue(of({ data: [{ id: 'p1', name: 'Plan 1' }] }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: [{ id: 'p1', name: 'Plan 1' }] }),
+      );
 
       const res = await request(app.getHttpServer())
         .get('/api/v1/qr-thrive/plans')

@@ -48,7 +48,9 @@ export class CreateRewardDto extends CreateRewardTemplateDto {
   @IsUUID()
   branchId: string;
 
-  @ApiProperty({ description: 'Total quantity available. Use -1 for infinity.' })
+  @ApiProperty({
+    description: 'Total quantity available. Use -1 for infinity.',
+  })
   @IsNumber()
   @Min(-1)
   @NotEquals(0)

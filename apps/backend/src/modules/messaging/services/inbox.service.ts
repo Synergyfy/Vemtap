@@ -447,7 +447,9 @@ export class InboxService {
 
     // --- Automation Triggers ---
     // 1. Check if first message for Welcome Message
-    const msgCount = await this.messageRepo.count({ where: { threadId: thread.id } });
+    const msgCount = await this.messageRepo.count({
+      where: { threadId: thread.id },
+    });
     if (msgCount === 1) {
       await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
         branchId: thread.branchId,

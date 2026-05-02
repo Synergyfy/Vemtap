@@ -17,6 +17,7 @@ import { AnalyticsLevelGuard } from './guards/analytics-level.guard';
 import { BranchesModule } from '../branches/branches.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
+import { ExternalAffiliateModule } from '../affiliates/external-affiliate.module';
 import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
 
 import { Branch } from '../branches/entities/branch.entity';
@@ -45,6 +46,7 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
     forwardRef(() => BranchesModule),
     forwardRef(() => MessagingModule),
     AffiliatesModule,
+    ExternalAffiliateModule,
     forwardRef(() => QrThriveModule),
   ],
   controllers: [PlansController, SubscriptionsController],

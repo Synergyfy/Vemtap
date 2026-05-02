@@ -65,8 +65,8 @@ describe('Affiliates System (e2e)', () => {
           bankAccountDetails: {
             bankName: 'Test Bank',
             accountNumber: '0123456789',
-            accountName: 'Test User'
-          }
+            accountName: 'Test User',
+          },
         })
         .expect(201);
 
@@ -83,9 +83,11 @@ describe('Affiliates System (e2e)', () => {
       // In a real scenario, this would come from referrals
       const { DataSource } = require('typeorm');
       const dataSource = app.get(DataSource);
-      const { AffiliateProfile } = require('../../src/modules/affiliates/entities/affiliate-profile.entity');
+      const {
+        AffiliateProfile,
+      } = require('../../src/modules/affiliates/entities/affiliate-profile.entity');
       const profileRepo = dataSource.getRepository(AffiliateProfile);
-      
+
       const profile = await profileRepo.findOne({ where: { userId: agentId } });
       profile.availableBalance = 10000;
       await profileRepo.save(profile);
@@ -110,12 +112,14 @@ describe('Affiliates System (e2e)', () => {
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.some(p => p.id === affiliateProfileId)).toBe(true);
+      expect(response.body.some((p) => p.id === affiliateProfileId)).toBe(true);
     });
 
     it('Admin should verify an affiliate KYC', async () => {
       await request(app.getHttpServer())
-        .post(`/api/v1/affiliates/admin/profiles/${affiliateProfileId}/verify-kyc`)
+        .post(
+          `/api/v1/affiliates/admin/profiles/${affiliateProfileId}/verify-kyc`,
+        )
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: KycStatus.VERIFIED })
         .expect(201);
@@ -132,9 +136,9 @@ describe('Affiliates System (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/api/v1/affiliates/admin/withdrawals/${withdrawalId}/process`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ 
+        .send({
           status: WithdrawalStatus.PAID,
-          note: 'Paid via bank transfer'
+          note: 'Paid via bank transfer',
         })
         .expect(201);
 
@@ -144,7 +148,7 @@ describe('Affiliates System (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      const updated = response.body.find(w => w.id === withdrawalId);
+      const updated = response.body.find((w) => w.id === withdrawalId);
       expect(updated.status).toBe(WithdrawalStatus.PAID);
     });
 
@@ -152,9 +156,9 @@ describe('Affiliates System (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/api/v1/affiliates/admin/profiles/${affiliateProfileId}/flag`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ 
+        .send({
           isFlagged: true,
-          reason: 'Suspicious activity'
+          reason: 'Suspicious activity',
         })
         .expect(201);
 
@@ -163,7 +167,7 @@ describe('Affiliates System (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body.some(p => p.id === affiliateProfileId)).toBe(true);
+      expect(response.body.some((p) => p.id === affiliateProfileId)).toBe(true);
     });
   });
 });

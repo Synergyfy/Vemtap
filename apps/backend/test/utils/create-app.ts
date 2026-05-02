@@ -85,7 +85,9 @@ export async function createTestApp(
 
   // Seed default free plan for e2e tests
   const dataSource = app.get(DataSource);
-  const planRepo = dataSource.getRepository(require('../../src/modules/subscriptions/entities/plan.entity').Plan);
+  const planRepo = dataSource.getRepository(
+    require('../../src/modules/subscriptions/entities/plan.entity').Plan,
+  );
   const freePlan = await planRepo.findOne({ where: { isFree: true } });
   if (!freePlan) {
     await planRepo.save(
