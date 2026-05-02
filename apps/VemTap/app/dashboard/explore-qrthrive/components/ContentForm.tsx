@@ -36,9 +36,9 @@ import {
 import { QRType } from '@/services/qr-thrive/types';
 type QRConfiguration = any;
 type QRData = any;
-const FormBuilder = ({ data, updateData }) => <div>FormBuilder</div>;
+const FormBuilder = ({ data, updateData, fields, onChange }: any) => <div>FormBuilder</div>;
 const countries = [{ code: 'US', dialCode: '+1', name: 'United States', flag: '🇺🇸' }];
-const ImageEditor = ({ onSave }) => <div>ImageEditor</div>;
+const ImageEditor = (props: any) => <div>ImageEditor</div>;
 
 const useQRCodes = () => ({ data: [] }); const useCurrentUser = () => ({ data: { user: null } });
 
@@ -1685,7 +1685,7 @@ export const ContentForm: React.FC<any> = ({
                 >
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                      {(data.socials?.images || []).map((img, idx) => (
+                      {(data.socials?.images || []).map((img: any, idx: number) => (
                         <div
                           key={idx}
                           className="relative group rounded-2xl overflow-hidden aspect-square border-2 border-gray-50 bg-gray-100"
@@ -2061,7 +2061,7 @@ export const ContentForm: React.FC<any> = ({
             {data.type === "image" && (
               <div className="space-y-6 animate-in zoom-in-95 duration-300">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {(data.images || []).map((img, idx) => (
+                  {(data.images || []).map((img: any, idx: number) => (
                     <div
                       key={idx}
                       className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden group border-2 border-white shadow-sm hover:shadow-md transition-all"
@@ -2781,7 +2781,7 @@ export const ContentForm: React.FC<any> = ({
                 <div className="pt-4 border-t border-slate-100">
                   <FormBuilder
                     fields={data.form?.fields || []}
-                    onChange={(fields) =>
+                    onChange={(fields: any) =>
                       updateData({
                         form: { ...(data.form || { title: "" }), fields },
                       })
@@ -3467,7 +3467,7 @@ export const ContentForm: React.FC<any> = ({
                   onToggle={toggleSection}
                 >
                   <div className="space-y-6">
-                    {(data.menu?.categories || []).map((cat, cIdx) => (
+                    {(data.menu?.categories || []).map((cat: any, cIdx: number) => (
                       <div
                         key={cIdx}
                         className="border-2 border-gray-50 rounded-xl p-4 space-y-4"
@@ -3513,7 +3513,7 @@ export const ContentForm: React.FC<any> = ({
                           </button>
                         </div>
                         <div className="pl-4 border-l-2 border-gray-50 space-y-3">
-                          {cat.items.map((item, iIdx) => (
+                          {cat.items.map((item: any, iIdx: number) => (
                             <div
                               key={iIdx}
                               className="flex flex-col gap-2 bg-gray-50 p-3 rounded-xl relative"
@@ -3527,7 +3527,7 @@ export const ContentForm: React.FC<any> = ({
                                   newCategories[cIdx] = {
                                     ...newCategories[cIdx],
                                     items: newCategories[cIdx].items.filter(
-                                      (_, i) => i !== iIdx,
+                                      (_: any, i: number) => i !== iIdx,
                                     ),
                                   };
                                   updateData({
@@ -3744,7 +3744,7 @@ export const ContentForm: React.FC<any> = ({
                       Customize what info you collect from customers at
                       checkout.
                     </p>
-                    {(data.menu?.customFields || []).map((field, fIdx) => (
+                    {(data.menu?.customFields || []).map((field: any, fIdx: number) => (
                       <div
                         key={fIdx}
                         className="flex items-center gap-2 bg-gray-50 p-3 rounded-xl"
@@ -4477,7 +4477,7 @@ export const ContentForm: React.FC<any> = ({
                       <div className="animate-in fade-in slide-in-from-top-4 duration-300">
                         <FormBuilder
                           fields={(data.booking?.customFormFields || []) as any}
-                          onChange={(fields) =>
+                          onChange={(fields: any) =>
                             updateData({
                               booking: {
                                 ...(data.booking || {}),
@@ -4913,7 +4913,7 @@ export const ContentForm: React.FC<any> = ({
                   onToggle={toggleSection}
                 >
                   <div className="space-y-4">
-                    {(data.linksList || []).map((link, lIdx) => (
+                    {(data.linksList || []).map((link: any, lIdx: number) => (
                       <div
                         key={lIdx}
                         className="flex items-center gap-2 bg-gray-50 p-3 rounded-xl"
@@ -5064,7 +5064,7 @@ export const ContentForm: React.FC<any> = ({
               Professional Tip
             </p>
             <p className="text-[13px] text-blue-900/80 font-bold leading-relaxed">
-              {config.isDynamic
+              {(config as any).isDynamic
                 ? "This is a Dynamic QR Code. You can change its destination content at any time—even after printing—without changing the QR image itself."
                 : "Static codes encode data directly. For long-term use, tracking, and the ability to edit content, we recommend using Dynamic Mode."}
             </p>
@@ -5075,7 +5075,7 @@ export const ContentForm: React.FC<any> = ({
       {editingImage && (
         <ImageEditor
           imageSrc={editingImage}
-          onSave={(editedImage) => {
+          onSave={(editedImage: any) => {
             updateData({ image: { url: editedImage } } as any);
             setEditingImage(null);
           }}
