@@ -15,8 +15,8 @@ import DeleteConfirmationModal from '@/components/dashboard/DeleteConfirmationMo
 const QR_THRIVE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_URL || 'http://localhost:5173';
 
 const getQrUrl = (qr: QrThriveQRCode): string => {
-  if (qr.shortUrl) return qr.shortUrl;
-  return `${QR_THRIVE_URL}/s/${qr.shortId}`;
+  // Always use VemTap's own /s/[id] route for previewing dynamic QR content
+  return `/s/${qr.shortId}`;
 };
 
 interface QrGridProps {
