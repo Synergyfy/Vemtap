@@ -9,6 +9,19 @@ import {
   IsObject,
 } from 'class-validator';
 import { QRType } from '../enums';
+import { ExternalLeadStatus } from '../entities/external-lead-status.entity';
+
+export class UpdateLeadStatusDto {
+  @ApiProperty({ enum: ExternalLeadStatus, example: ExternalLeadStatus.PROCESSING })
+  @IsEnum(ExternalLeadStatus)
+  @IsNotEmpty()
+  status: ExternalLeadStatus;
+
+  @ApiPropertyOptional({ example: 'Customer called to confirm' })
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
 
 export class SyncUserDto {
   @ApiProperty({ example: 'user@example.com' })

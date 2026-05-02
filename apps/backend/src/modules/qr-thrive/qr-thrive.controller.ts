@@ -27,6 +27,7 @@ import {
   UpdateFolderDto,
   ToggleUblFeatureDto,
   SpecializedLeadsQueryDto,
+  UpdateLeadStatusDto,
 } from './dto/qr-thrive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -267,6 +268,24 @@ export class QrThriveController {
     @Query() query: SpecializedLeadsQueryDto,
   ) {
     return this.qrThriveService.getSpecializedLeads(req.user, branchId, query);
+  }
+
+  @Patch('branches/:branchId/specialized-leads/:leadId/status')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Update the internal status of an external lead' })
+  async updateLeadStatus(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Param('leadId') leadId: string,
+    @Body() dto: UpdateLeadStatusDto,
+  ) {
+    return this.qrThriveService.updateLeadStatus(
+      req.user,
+      branchId,
+      leadId,
+      dto.status,
+      dto.notes,
+    );
   }
 
   @Get('sso')

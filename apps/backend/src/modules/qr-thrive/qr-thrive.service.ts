@@ -10,10 +10,14 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
 import { QrThriveCodeMapping } from './entities/qr-thrive-code-mapping.entity';
+import {
+  ExternalLeadStatusEntity,
+  ExternalLeadStatus,
+} from './entities/external-lead-status.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import {
   CreateQRCodeDto,
@@ -40,6 +44,8 @@ export class QrThriveService implements OnModuleInit {
     private readonly userMappingRepo: Repository<QrThriveUserMapping>,
     @InjectRepository(QrThriveCodeMapping)
     private readonly codeMappingRepo: Repository<QrThriveCodeMapping>,
+    @InjectRepository(ExternalLeadStatusEntity)
+    private readonly leadStatusRepo: Repository<ExternalLeadStatusEntity>,
   ) {
     this.apiKey = this.configService.get<string>('QR_THRIVE_API_KEY')!;
     this.baseUrl = this.configService.get<string>(
@@ -357,6 +363,44 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
+
+      // Backwards Compatibility: Merge local status from VemTap
+      try {
+        const leads = Array.isArray(data.data) ? data.data : [];
+        if (leads.length > 0) {
+          const leadIds = leads.map((l: any) => l.id);
+          const localStatuses = await this.leadStatusRepo.find({
+            where: {
+              externalLeadId: In(leadIds),
+              branchId,
+            },
+          });
+
+          const statusMap = new Map(
+            localStatuses.map((s) => [s.externalLeadId, s]),
+          );
+
+          data.data = leads.map((lead: any) => {
+            const local = statusMap.get(lead.id);
+            return {
+              ...lead,
+              status: local ? local.status : ExternalLeadStatus.NEW,
+              internalNotes: local ? local.notes : null,
+            };
+          });
+        }
+      } catch (dbError) {
+        this.logger.error(`Failed to merge local lead statuses: ${dbError.message}`);
+        // If DB fails, we still return the leads with default NEW status
+        // so the user doesn't see a 500 error.
+        const leads = Array.isArray(data.data) ? data.data : [];
+        data.data = leads.map((lead: any) => ({
+          ...lead,
+          status: ExternalLeadStatus.NEW,
+          internalNotes: null,
+        }));
+      }
+
       return data;
     } catch (error) {
       return this.handleExternalError(
@@ -685,6 +729,44 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Fetches dashboard statistics.
    */
+  async updateLeadStatus(
+    user: User,
+    branchId: string,
+    leadId: string,
+    status: ExternalLeadStatus,
+    notes?: string,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess) {
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    let leadStatus = await this.leadStatusRepo.findOne({
+      where: { externalLeadId: leadId, branchId },
+    });
+
+    if (leadStatus) {
+      leadStatus.status = status;
+      if (notes !== undefined) leadStatus.notes = notes;
+    } else {
+      leadStatus = this.leadStatusRepo.create({
+        externalLeadId: leadId,
+        status,
+        notes,
+        businessId: user.businessId,
+        branchId,
+      });
+    }
+
+    return await this.leadStatusRepo.save(leadStatus);
+  }
+
   async getStats(
     user: User,
     branchId: string,
