@@ -14,6 +14,7 @@ import type {
   QrThriveListParams,
   QrThriveErrorResponse,
   QrThriveLead,
+  SpecializedLeadsQuery,
 } from './types';
 
 const QR_THRIVE_BASE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_API_URL || 'https://api.qrthrive.com/api/v1/integration';
@@ -206,8 +207,8 @@ export const qrThriveApi = {
   /**
    * Toggle a QR code's featured status on UBL
    */
-  toggleUbl: async (userId: string, qrId: string, isFeatured: boolean): Promise<QrThriveQRCode> => {
-    return api.patch(`/qr-thrive/branches/${userId}/qr-codes/${qrId}/ubl`, { isFeatured });
+  toggleUbl: async (branchId: string, qrId: string, isFeatured: boolean): Promise<QrThriveQRCode> => {
+    return api.patch(`/qr-thrive/branches/${branchId}/qr-codes/${qrId}/ubl`, { isFeatured });
   },
 
   // ============================================
@@ -300,11 +301,25 @@ export const qrThriveApi = {
   // ============================================
 
   /**
-   * Get public QR code data (no auth required)
+   * Get all specialized leads (curated form submissions) for a branch
+   */
+  getSpecializedLeads: async (branchId: string, params?: SpecializedLeadsQuery): Promise<any> => {
+    return api.get(`/qr-thrive/branches/${branchId}/specialized-leads`, { params: params as any });
+  },
+
+  /**
+   * Update the internal status of an external lead
+   */
+  updateLeadStatus: async (branchId: string, leadId: string, status: string, notes?: string): Promise<any> => {
+    return api.patch(`/qr-thrive/branches/${branchId}/specialized-leads/${leadId}/status`, { status, notes });
+  },
+
+  /**
+   * Get public QR code data (via VemTap proxy)
    * Used for preview/scanning
    */
   getPublicQRCode: async (shortId: string): Promise<QrThriveQRCode> => {
-    return qrThriveRequest<QrThriveQRCode>(`/public/qr-codes/${shortId}`);
+    return api.get(`/qr-thrive/public/${shortId}`);
   },
 
   resetMapping: async (): Promise<void> => {

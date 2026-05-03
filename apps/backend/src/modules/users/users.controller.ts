@@ -102,13 +102,17 @@ export class UsersController {
     description: 'Returns the QR-Thrive user ID if mapped',
   })
   async getQrThriveMapping(@Request() req) {
+    const targetUserId = await this.getTargetUserId(req);
+    const targetUser = await this.usersService.findOne(targetUserId);
+
     if (
-      req.user.role === UserRole.CUSTOMER ||
-      req.user.role === UserRole.ADMIN
+      !targetUser ||
+      targetUser.role === UserRole.CUSTOMER ||
+      targetUser.role === UserRole.ADMIN
     ) {
       return { qrThriveUserId: null };
     }
-    const mapping = await this.qrThriveService.getMappingByUserId(req.user.id);
+    const mapping = await this.qrThriveService.getMappingByUserId(targetUserId);
     return { qrThriveUserId: mapping?.qrThriveUserId || null };
   }
 
@@ -119,13 +123,17 @@ export class UsersController {
     description: 'Returns the newly created QR-Thrive user ID',
   })
   async provisionQrThrive(@Request() req) {
+    const targetUserId = await this.getTargetUserId(req);
+    const targetUser = await this.usersService.findOne(targetUserId);
+
     if (
-      req.user.role === UserRole.CUSTOMER ||
-      req.user.role === UserRole.ADMIN
+      !targetUser ||
+      targetUser.role === UserRole.CUSTOMER ||
+      targetUser.role === UserRole.ADMIN
     ) {
       return { qrThriveUserId: null };
     }
-    const mapping = await this.qrThriveService.syncUser(req.user);
+    const mapping = await this.qrThriveService.syncUser(targetUser);
     return { qrThriveUserId: mapping?.qrThriveUserId || null };
   }
 

@@ -23,6 +23,7 @@
     "seed": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed.ts",
     "seed:staging": "cross-env NODE_ENV=staging dotenv -e .env.staging -- ts-node -r tsconfig-paths/register src/seed.ts",
     "seed:prod": "cross-env NODE_ENV=prod dotenv -e .env.prod -- ts-node -r tsconfig-paths/register src/seed.ts",
+    "seed:admin-plans": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed-admin-plans.ts",
     "typeorm": "dotenv -e .env -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts",
     "typeorm:staging": "cross-env NODE_ENV=staging dotenv -e .env.staging -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts",
     "typeorm:prod": "cross-env NODE_ENV=prod dotenv -e .env.prod -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts",

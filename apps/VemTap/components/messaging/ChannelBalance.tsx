@@ -50,21 +50,21 @@ export default function ChannelBalance({ channel, onTopUp, compact = false }: Ch
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-                        <Wallet size={20} />
+                    <div className="size-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+                        <Wallet size={24} />
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+                        <p className="text-[10px] sm:text-xs font-bold text-text-secondary uppercase tracking-wider">
                             {label} Balance
                         </p>
                         {isLoading ? (
                             <Loader2 className="animate-spin text-primary" size={20} />
                         ) : (
-                            <p className="text-xl font-display font-black text-text-main">
-                                {balance.toLocaleString()} <span className="text-sm font-bold text-primary">Points</span>
+                            <p className="text-xl sm:text-2xl font-display font-black text-text-main">
+                                {balance.toLocaleString()} <span className="text-xs sm:text-sm font-bold text-primary">Points</span>
                             </p>
                         )}
                     </div>
@@ -72,7 +72,7 @@ export default function ChannelBalance({ channel, onTopUp, compact = false }: Ch
                 {onTopUp && (
                     <button
                         onClick={onTopUp}
-                        className="px-4 py-2 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-colors"
+                        className="w-full sm:w-auto px-6 py-3 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all active:scale-95 shadow-lg shadow-primary/20"
                     >
                         Add Credits
                     </button>

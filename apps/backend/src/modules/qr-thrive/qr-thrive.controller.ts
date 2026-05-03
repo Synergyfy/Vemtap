@@ -27,6 +27,7 @@ import {
   UpdateFolderDto,
   ToggleUblFeatureDto,
   SpecializedLeadsQueryDto,
+  UpdateLeadStatusDto,
 } from './dto/qr-thrive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -269,11 +270,29 @@ export class QrThriveController {
     return this.qrThriveService.getSpecializedLeads(req.user, branchId, query);
   }
 
+  @Patch('branches/:branchId/specialized-leads/:leadId/status')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Update the internal status of an external lead' })
+  async updateLeadStatus(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Param('leadId') leadId: string,
+    @Body() dto: UpdateLeadStatusDto,
+  ) {
+    return this.qrThriveService.updateLeadStatus(
+      req.user,
+      branchId,
+      leadId,
+      dto.status,
+      dto.notes,
+    );
+  }
+
   @Get('sso')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get magic link for QR-Thrive dashboard SSO' })
   async getMagicLink(@Req() req: RequestWithUser) {
-    return this.qrThriveService.getMagicLink(req.user.id);
+    return this.qrThriveService.getMagicLink(req.user);
   }
 
   @Get('plans')
@@ -287,7 +306,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Reset QR-Thrive mapping for the current user' })
   async resetMapping(@Req() req: RequestWithUser) {
-    return this.qrThriveService.resetMapping(req.user.id);
+    return this.qrThriveService.resetMapping(req.user);
   }
 
   @Public()
@@ -312,5 +331,22 @@ export class QrThriveController {
     const userAgent = req.headers['user-agent'] || 'unknown';
     const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
     return res.redirect(redirectUrl);
+  }
+
+  @Public()
+  @Post('public/forms/:shortId/submit')
+  @ApiOperation({ summary: 'Submit a form response to QR-Thrive' })
+  async submitPublicForm(
+    @Param('shortId') shortId: string,
+    @Body() dto: { answers: Record<string, any> },
+  ) {
+    return this.qrThriveService.submitPublicForm(shortId, dto.answers);
+  }
+
+  @Public()
+  @Get('public/forms/:shortId')
+  @ApiOperation({ summary: 'Get public form structure from QR-Thrive' })
+  async getPublicForm(@Param('shortId') shortId: string) {
+    return this.qrThriveService.getPublicForm(shortId);
   }
 }
