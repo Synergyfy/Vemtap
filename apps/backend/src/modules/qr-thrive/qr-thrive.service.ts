@@ -366,7 +366,7 @@ export class QrThriveService implements OnModuleInit {
 
       // Backwards Compatibility: Merge local status from VemTap
       try {
-        const leads = Array.isArray(data.data) ? data.data : [];
+        const leads = Array.isArray(data.items) ? data.items : [];
         if (leads.length > 0) {
           const leadIds = leads.map((l: any) => l.id);
           const localStatuses = await this.leadStatusRepo.find({
@@ -380,12 +380,14 @@ export class QrThriveService implements OnModuleInit {
             localStatuses.map((s) => [s.externalLeadId, s]),
           );
 
-          data.data = leads.map((lead: any) => {
+          data.items = leads.map((lead: any) => {
             const local = statusMap.get(lead.id);
+            const status = local ? local.status : ExternalLeadStatus.NEW;
             return {
               ...lead,
-              status: local ? local.status : ExternalLeadStatus.NEW,
-              internalNotes: local ? local.notes : null,
+              status,
+              localStatus: status,
+              localNotes: local ? local.notes : null,
             };
           });
         }
@@ -393,11 +395,12 @@ export class QrThriveService implements OnModuleInit {
         this.logger.error(`Failed to merge local lead statuses: ${dbError.message}`);
         // If DB fails, we still return the leads with default NEW status
         // so the user doesn't see a 500 error.
-        const leads = Array.isArray(data.data) ? data.data : [];
-        data.data = leads.map((lead: any) => ({
+        const leads = Array.isArray(data.items) ? data.items : [];
+        data.items = leads.map((lead: any) => ({
           ...lead,
           status: ExternalLeadStatus.NEW,
-          internalNotes: null,
+          localStatus: ExternalLeadStatus.NEW,
+          localNotes: null,
         }));
       }
 
@@ -727,7 +730,7 @@ export class QrThriveService implements OnModuleInit {
   }
 
   /**
-   * Fetches dashboard statistics.
+   * Updates the local status of an external lead in VemTap.
    */
   async updateLeadStatus(
     user: User,
@@ -1002,4 +1005,35 @@ export class QrThriveService implements OnModuleInit {
       throw new HttpException('QR Code not found', HttpStatus.NOT_FOUND);
     }
   }
+
+  /**
+   * Submits a form response to QR-Thrive via VemTap.
+   */
+  async submitPublicForm(shortId: string, answers: Record<string, any>) {
+    try {
+      const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
+      const { data } = await firstValueFrom(
+        this.httpService.post(`${publicUrl}/${shortId}/submit`, { answers }),
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to submit form to QR-Thrive');
+    }
+  }
+
+  /**
+   * Fetches public form structure from QR-Thrive.
+   */
+  async getPublicForm(shortId: string) {
+    try {
+      const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
+      const { data } = await firstValueFrom(
+        this.httpService.get(`${publicUrl}/${shortId}`),
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to fetch public form structure');
+    }
+  }
 }
+

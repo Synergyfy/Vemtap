@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import DynamicView from '@/components/qr-thrive/DynamicView';
 import { qrThriveApi } from '@/services/qr-thrive/api';
 
-const QR_THRIVE_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.qrthrive.com/api/v1/integration';
 
 export default function QRShortLinkPage() {
   const params = useParams();
@@ -34,26 +33,18 @@ export default function QRShortLinkPage() {
         }
       }
 
-      // 2. Record scan & fetch from QR-Thrive API
+      // 2. Record scan & fetch from VemTap Proxy API
       try {
-        // First, hit the scan endpoint to record the scan
-        // This also returns the QR data
-        const scanUrl = `${QR_THRIVE_API_BASE.replace('/integration', '')}/qr-codes/scan/${shortId}`;
+        // Hit the scan endpoint on our backend to record the scan
+        const scanUrl = `${process.env.NEXT_PUBLIC_API_URL || '/api'}/qr-thrive/scan/${shortId}`;
         
         try {
-          const scanResponse = await fetch(scanUrl, { redirect: 'manual' });
-          
-          // If the scan endpoint redirects (302), it means the backend
-          // handled it — but we want the data, not the redirect.
-          // So we fetch the public endpoint instead.
-          if (scanResponse.type === 'opaqueredirect' || scanResponse.status === 302) {
-            // Backend recorded the scan, now fetch the actual data
-          }
+          await fetch(scanUrl, { redirect: 'manual' });
         } catch {
           // Scan recording failed silently — non-blocking
         }
 
-        // Fetch public QR code data
+        // Fetch public QR code data via proxy
         const fullQr = await qrThriveApi.getPublicQRCode(shortId);
         if (fullQr) {
           setQrCode(fullQr);

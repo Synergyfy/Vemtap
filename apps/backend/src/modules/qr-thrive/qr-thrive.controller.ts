@@ -332,4 +332,21 @@ export class QrThriveController {
     const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
     return res.redirect(redirectUrl);
   }
+
+  @Public()
+  @Post('public/forms/:shortId/submit')
+  @ApiOperation({ summary: 'Submit a form response to QR-Thrive' })
+  async submitPublicForm(
+    @Param('shortId') shortId: string,
+    @Body() dto: { answers: Record<string, any> },
+  ) {
+    return this.qrThriveService.submitPublicForm(shortId, dto.answers);
+  }
+
+  @Public()
+  @Get('public/forms/:shortId')
+  @ApiOperation({ summary: 'Get public form structure from QR-Thrive' })
+  async getPublicForm(@Param('shortId') shortId: string) {
+    return this.qrThriveService.getPublicForm(shortId);
+  }
 }

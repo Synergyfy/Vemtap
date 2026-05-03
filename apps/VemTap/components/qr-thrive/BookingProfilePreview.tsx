@@ -24,6 +24,8 @@ interface BookingProfilePreviewProps {
   customFormFields?: FormField[];
   whatsappEnabled?: boolean;
   whatsappNumber?: string;
+  onSubmit?: (data: any) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1544161515-4ae6b918af99?w=800&h=600&fit=crop";
@@ -56,7 +58,9 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
   customFormEnabled = false,
   customFormFields = [],
   whatsappEnabled = false,
-  whatsappNumber = ""
+  whatsappNumber = "",
+  onSubmit,
+  isSubmitting = false
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const today = useMemo(() => new Date(), []);
@@ -104,7 +108,35 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
     setSelectedTime(null);
   };
 
-  const handleBook = () => {
+  const submitBooking = async () => {
+    if (onSubmit) {
+      const bookingData = {
+        type: 'booking',
+        serviceTitle: title,
+        date: `${calYear}-${(calMonth + 1).toString().padStart(2, '0')}-${selectedDay?.toString().padStart(2, '0')}`,
+        time: selectedTime,
+        answers: formAnswers,
+        businessName,
+        price,
+        duration
+      };
+      
+      try {
+        await onSubmit(bookingData);
+        setShowingForm(false);
+        setBookingConfirmed(true);
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+      } catch (error) {
+        console.error('Failed to submit booking:', error);
+      }
+    } else {
+      setShowingForm(false);
+      setBookingConfirmed(true);
+      if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+    }
+  };
+
+  const handleBook = async () => {
     if (destinationMode === 'url') {
       return;
     }
@@ -116,15 +148,13 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
         setShowingForm(true);
         if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
       } else {
-        setBookingConfirmed(true);
+        await submitBooking();
       }
     }
   };
 
-  const handleFormSubmit = () => {
-    setShowingForm(false);
-    setBookingConfirmed(true);
-    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+  const handleFormSubmit = async () => {
+    await submitBooking();
   };
 
   const linkedQR = qrLinkId ? MOCK_QRS[qrLinkId] : null;
@@ -501,20 +531,22 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
            ) : destinationMode === 'calendar' ? (
              <button
                onClick={showingForm ? handleFormSubmit : handleBook}
-               disabled={(showingForm ? false : (!selectedDay || !selectedTime))}
+               disabled={isSubmitting || (showingForm ? false : (!selectedDay || !selectedTime))}
                className={`w-full py-4 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xl ${
-                 (!showingForm && (!selectedDay || !selectedTime)) ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-95'
+                 (isSubmitting || (!showingForm && (!selectedDay || !selectedTime))) ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-95'
                }`}
-               style={{ backgroundColor: themeColor, boxShadow: (showingForm || (selectedDay && selectedTime)) ? `0 10px 20px -5px ${themeColor}40` : 'none' }}
+               style={{ backgroundColor: themeColor, boxShadow: (isSubmitting || showingForm || (selectedDay && selectedTime)) ? `0 10px 20px -5px ${themeColor}40` : 'none' }}
              >
-                {showingForm 
-                  ? 'Complete Booking'
-                  : (selectedDay && selectedTime 
-                    ? <>{buttonText} — {MONTH_NAMES[calMonth].slice(0,3)} {selectedDay}, {selectedTime}</>
-                    : selectedDay 
-                      ? 'Select a time slot' 
-                      : 'Select a date first')}
-                {(showingForm || (selectedDay && selectedTime)) && <ArrowRight size={18} />}
+                {isSubmitting 
+                  ? 'Processing...' 
+                  : (showingForm 
+                    ? 'Complete Booking'
+                    : (selectedDay && selectedTime 
+                      ? <>{buttonText} — {MONTH_NAMES[calMonth].slice(0,3)} {selectedDay}, {selectedTime}</>
+                      : selectedDay 
+                        ? 'Select a time slot' 
+                        : 'Select a date first'))}
+                {!isSubmitting && (showingForm || (selectedDay && selectedTime)) && <ArrowRight size={18} />}
              </button>
            ) : (
              <button
