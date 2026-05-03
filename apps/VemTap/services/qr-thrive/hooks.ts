@@ -16,6 +16,7 @@ import type {
   ProvisionUserDto,
   MagicLinkResponse,
   QrThriveLead,
+  SpecializedLeadsQuery,
 } from './types';
 
 // ============================================
@@ -36,7 +37,7 @@ export const useProvisionQrThriveUser = () => {
         throw new Error('User not authenticated');
       }
 
-      if (user.role === 'customer' || user.role === 'admin') {
+      if (user.role === 'customer') {
         throw new Error('This role cannot be provisioned in QR-Thrive');
       }
 
@@ -85,7 +86,7 @@ export const useQrThriveMappingStatus = () => {
       }
       return response;
     },
-    enabled: isAuthenticated && user?.role !== 'customer' && user?.role !== 'admin',
+    enabled: isAuthenticated && user?.role !== 'customer',
     staleTime: 1000 * 60 * 30, // 30 minutes
   });
 };
@@ -364,6 +365,37 @@ export const useQrThriveLeads = (branchId: string | null) => {
     queryFn: () => qrThriveApi.getLeads(branchId!),
     enabled: !!branchId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+};
+
+/**
+ * Hook to fetch specialized leads (bookings, menus) for a branch
+ */
+export const useQrThriveSpecializedLeads = (branchId: string | null, params?: SpecializedLeadsQuery) => {
+  return useQuery({
+    queryKey: ['qr-thrive-specialized-leads', branchId, params],
+    queryFn: () => qrThriveApi.getSpecializedLeads(branchId!, params),
+    enabled: !!branchId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+};
+
+/**
+ * Hook to update the status of a lead
+ */
+export const useUpdateQrThriveLeadStatus = () => {
+  const queryClient = useQueryClient();
+  const { activeBranchId } = useActiveBranch();
+
+  return useMutation({
+    mutationFn: ({ leadId, status, notes, branchId }: { leadId: string; status: string; notes?: string; branchId?: string }) => {
+      const resolvedBranchId = branchId || activeBranchId;
+      if (!resolvedBranchId) throw new Error('Branch ID required');
+      return qrThriveApi.updateLeadStatus(resolvedBranchId, leadId, status, notes);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-thrive-specialized-leads'] });
+    },
   });
 };
 

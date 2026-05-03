@@ -197,6 +197,14 @@ export interface QrThriveListParams {
   limit?: number;
 }
 
+export interface SpecializedLeadsQuery {
+  types?: string;
+  qrCodeId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
 export type QRType = 
   | 'url' 
   | 'text' 
@@ -261,9 +269,11 @@ export const QR_TYPE_LABELS: Record<QRType, { label: string; description: string
 export interface QrThriveLead {
   id: string;
   formId: string;
-  answers: Record<string, string>;
+  answers: Record<string, any>;
   ip?: string;
   createdAt: string;
+  localStatus?: string;
+  localNotes?: string;
   form: {
     id: string;
     title: string;

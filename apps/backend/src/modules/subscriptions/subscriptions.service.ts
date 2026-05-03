@@ -499,7 +499,7 @@ export class SubscriptionsService {
 
       if (qrThrivePlanId) {
         await this.qrThriveService.syncSubscription(
-          business.ownerId,
+          business.owner,
           qrThrivePlanId,
         );
       }

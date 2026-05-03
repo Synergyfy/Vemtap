@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { api } from '@/lib/api';
 import type { Form, FormSubmission, CreateFormDto } from '../types/form';
 import toast from 'react-hot-toast';
 
@@ -19,12 +20,10 @@ export const formsApi = {
     return data;
   },
   getPublicForm: async (shortId: string): Promise<Form> => {
-    const { data } = await axios.get(`${API_URL}/public/forms/${shortId}`);
-    return data;
+    return api.get(`/qr-thrive/public/forms/${shortId}`);
   },
   submitForm: async (shortId: string, answers: Record<string, any>): Promise<any> => {
-    const { data } = await axios.post(`${API_URL}/public/forms/${shortId}/submit`, { answers });
-    return data;
+    return api.post(`/qr-thrive/public/forms/${shortId}/submit`, { answers });
   },
   deleteSubmission: async (qrCodeId: string, submissionId: string): Promise<any> => {
     const { data } = await axios.delete(`${API_URL}/forms/${qrCodeId}/submissions/${submissionId}`, { withCredentials: true });

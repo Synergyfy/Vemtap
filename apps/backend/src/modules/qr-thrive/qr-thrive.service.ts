@@ -10,10 +10,14 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
 import { QrThriveCodeMapping } from './entities/qr-thrive-code-mapping.entity';
+import {
+  ExternalLeadStatusEntity,
+  ExternalLeadStatus,
+} from './entities/external-lead-status.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import {
   CreateQRCodeDto,
@@ -40,6 +44,8 @@ export class QrThriveService implements OnModuleInit {
     private readonly userMappingRepo: Repository<QrThriveUserMapping>,
     @InjectRepository(QrThriveCodeMapping)
     private readonly codeMappingRepo: Repository<QrThriveCodeMapping>,
+    @InjectRepository(ExternalLeadStatusEntity)
+    private readonly leadStatusRepo: Repository<ExternalLeadStatusEntity>,
   ) {
     this.apiKey = this.configService.get<string>('QR_THRIVE_API_KEY')!;
     this.baseUrl = this.configService.get<string>(
@@ -88,6 +94,56 @@ export class QrThriveService implements OnModuleInit {
       'X-API-KEY': this.apiKey,
       'Content-Type': 'application/json',
     };
+  }
+
+  /**
+   * Helper to resolve the correct QR-Thrive mapping for a user.
+   * Handles Admin/Agent impersonation by resolving the target business owner.
+   */
+  private async getMapping(
+    user: User,
+    branchId?: string,
+  ): Promise<QrThriveUserMapping> {
+    let targetUserId = user.id;
+
+    // If Admin/Agent and impersonating, resolve the target owner's mapping
+    if (user.role === UserRole.ADMIN || user.role === UserRole.AGENT) {
+      let businessId = user.businessId;
+
+      // If we have a branchId but no businessId, resolve businessId from branch
+      if (!businessId && branchId) {
+        try {
+          businessId = await this.branchesService.getBusinessId(branchId);
+        } catch (e) {
+          this.logger.error(
+            `Failed to resolve businessId for branch ${branchId}: ${e.message}`,
+          );
+        }
+      }
+
+      if (businessId) {
+        const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
+        if (ownerId) {
+          targetUserId = ownerId;
+          this.logger.debug(
+            `Impersonation context: Using mapping for owner ${ownerId} (Business: ${businessId})`,
+          );
+        }
+      }
+    }
+
+    const mapping = await this.userMappingRepo.findOne({
+      where: { userId: targetUserId },
+    });
+
+    if (!mapping) {
+      throw new HttpException(
+        'User not synced with QR-Thrive. Please sync first.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return mapping;
   }
 
   /**
@@ -162,15 +218,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping) {
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -219,11 +267,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -232,7 +276,12 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
-      return data;
+      const scans = Array.isArray(data) ? data : [];
+      return scans.map((scan: any) => ({
+        ...scan,
+        ip: undefined,
+        userAgent: undefined,
+      }));
     } catch (error) {
       return this.handleExternalError(error, 'Failed to fetch scans');
     }
@@ -253,11 +302,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -266,7 +311,12 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
-      return data;
+      const responses = Array.isArray(data) ? data : [];
+      return responses.map((resp: any) => ({
+        ...resp,
+        ip: undefined,
+        userAgent: undefined,
+      }));
     } catch (error) {
       return this.handleExternalError(error, 'Failed to fetch responses');
     }
@@ -287,14 +337,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -303,7 +346,12 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
-      return Array.isArray(data) ? data : [];
+      const leads = Array.isArray(data) ? data : [];
+      return leads.map((lead: any) => ({
+        ...lead,
+        ip: undefined,
+        userAgent: undefined,
+      }));
     } catch (error) {
       return this.handleExternalError(
         error,
@@ -331,15 +379,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping) {
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const params = new URLSearchParams();
@@ -357,6 +397,51 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
+
+      // Backwards Compatibility: Merge local status from VemTap
+      try {
+        const leads = Array.isArray(data.items) ? data.items : [];
+        if (leads.length > 0) {
+          const leadIds = leads.map((l: any) => l.id);
+          const localStatuses = await this.leadStatusRepo.find({
+            where: {
+              externalLeadId: In(leadIds),
+              branchId,
+            },
+          });
+
+          const statusMap = new Map(
+            localStatuses.map((s) => [s.externalLeadId, s]),
+          );
+
+          data.items = leads.map((lead: any) => {
+            const local = statusMap.get(lead.id);
+            const status = local ? local.status : ExternalLeadStatus.NEW;
+            return {
+              ...lead,
+              ip: undefined,
+              userAgent: undefined,
+              status,
+              localStatus: status,
+              localNotes: local ? local.notes : null,
+            };
+          });
+        }
+      } catch (dbError) {
+        this.logger.error(`Failed to merge local lead statuses: ${dbError.message}`);
+        // If DB fails, we still return the leads with default NEW status
+        // so the user doesn't see a 500 error.
+        const leads = Array.isArray(data.items) ? data.items : [];
+        data.items = leads.map((lead: any) => ({
+          ...lead,
+          ip: undefined,
+          userAgent: undefined,
+          status: ExternalLeadStatus.NEW,
+          localStatus: ExternalLeadStatus.NEW,
+          localNotes: null,
+        }));
+      }
+
       return data;
     } catch (error) {
       return this.handleExternalError(
@@ -369,10 +454,8 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Generates a Magic Link for SSO.
    */
-  async getMagicLink(userId: string) {
-    const mapping = await this.userMappingRepo.findOne({ where: { userId } });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+  async getMagicLink(user: User) {
+    const mapping = await this.getMapping(user);
 
     try {
       const { data } = await firstValueFrom(
@@ -414,13 +497,12 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Syncs a user's subscription with QR-Thrive.
    */
-  async syncSubscription(userId: string, qrThrivePlanId: string) {
-    const mapping = await this.userMappingRepo.findOne({ where: { userId } });
+  async syncSubscription(user: User, qrThrivePlanId: string) {
+    const mapping = await this.getMapping(user);
     if (!mapping) {
       this.logger.warn(
-        `User ${userId} not synced with QR-Thrive. Syncing now...`,
+        `User ${user.id} not synced with QR-Thrive. Skipping subscription sync.`,
       );
-      // Optionally trigger syncUser if we have access to the full user object here
       return;
     }
 
@@ -433,7 +515,7 @@ export class QrThriveService implements OnModuleInit {
         ),
       );
       this.logger.log(
-        `Successfully synced subscription for user ${userId} with QR-Thrive plan ${qrThrivePlanId}`,
+        `Successfully synced subscription for user ${user.id} with QR-Thrive plan ${qrThrivePlanId}`,
       );
     } catch (error) {
       return this.handleExternalError(
@@ -458,15 +540,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping) {
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -504,11 +578,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -543,11 +613,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -578,11 +644,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     this.logger.log(
       `Deleting QR code ${qrCodeId} for user ${mapping.qrThriveUserId}`,
@@ -620,11 +682,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -683,8 +741,46 @@ export class QrThriveService implements OnModuleInit {
   }
 
   /**
-   * Fetches dashboard statistics.
+   * Updates the local status of an external lead in VemTap.
    */
+  async updateLeadStatus(
+    user: User,
+    branchId: string,
+    leadId: string,
+    status: ExternalLeadStatus,
+    notes?: string,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess) {
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    let leadStatus = await this.leadStatusRepo.findOne({
+      where: { externalLeadId: leadId, branchId },
+    });
+
+    if (leadStatus) {
+      leadStatus.status = status;
+      if (notes !== undefined) leadStatus.notes = notes;
+    } else {
+      leadStatus = this.leadStatusRepo.create({
+        externalLeadId: leadId,
+        status,
+        notes,
+        businessId: user.businessId,
+        branchId,
+      });
+    }
+
+    return await this.leadStatusRepo.save(leadStatus);
+  }
+
   async getStats(
     user: User,
     branchId: string,
@@ -702,11 +798,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const params = new URLSearchParams();
@@ -736,11 +828,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -762,11 +850,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -789,11 +873,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       await firstValueFrom(
@@ -820,11 +900,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -853,9 +929,10 @@ export class QrThriveService implements OnModuleInit {
    * Resets a user mapping by deleting it from the database.
    * This allows the user to re-provision their account if the mapping was corrupted.
    */
-  async resetMapping(userId: string): Promise<void> {
-    const mapping = await this.userMappingRepo.findOne({ where: { userId } });
+  async resetMapping(user: User): Promise<void> {
+    const mapping = await this.getMapping(user);
     if (mapping) {
+      const userId = mapping.userId;
       await this.userMappingRepo.remove(mapping);
       this.logger.log(
         `Successfully reset QR-Thrive mapping for user ${userId}`,
@@ -920,4 +997,35 @@ export class QrThriveService implements OnModuleInit {
       throw new HttpException('QR Code not found', HttpStatus.NOT_FOUND);
     }
   }
+
+  /**
+   * Submits a form response to QR-Thrive via VemTap.
+   */
+  async submitPublicForm(shortId: string, answers: Record<string, any>) {
+    try {
+      const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
+      const { data } = await firstValueFrom(
+        this.httpService.post(`${publicUrl}/${shortId}/submit`, { answers }),
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to submit form to QR-Thrive');
+    }
+  }
+
+  /**
+   * Fetches public form structure from QR-Thrive.
+   */
+  async getPublicForm(shortId: string) {
+    try {
+      const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
+      const { data } = await firstValueFrom(
+        this.httpService.get(`${publicUrl}/${shortId}`),
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to fetch public form structure');
+    }
+  }
 }
+

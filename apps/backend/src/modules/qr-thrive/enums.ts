@@ -26,6 +26,7 @@ export enum QRType {
   menu = 'menu',
   coupon = 'coupon',
   form = 'form',
+  booking = 'booking',
 }
 
 export enum QRStatus {

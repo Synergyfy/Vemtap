@@ -15,6 +15,7 @@ import {
   BusinessStatus,
 } from '../../src/modules/businesses/entities/business.entity';
 import { QRType } from '../../src/modules/qr-thrive/enums';
+import { ExternalLeadStatus } from '../../src/modules/qr-thrive/entities/external-lead-status.entity';
 import * as bcrypt from 'bcrypt';
 
 describe('QrThrive (e2e)', () => {
@@ -310,6 +311,59 @@ describe('QrThrive (e2e)', () => {
         .set('x-vemtap-api-key', integrationKey)
         .send({ event: 'test' })
         .expect(201);
+    });
+  });
+
+  describe('Lead Management Endpoints', () => {
+    const leadId = `lead-${suffix}`;
+
+    it('should update the status of an external lead', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/qr-thrive/branches/${branchId}/specialized-leads/${leadId}/status`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({
+          status: ExternalLeadStatus.PROCESSING,
+          notes: 'Customer is very interested',
+        })
+        .expect(200);
+
+      expect(res.body.status).toBe(ExternalLeadStatus.PROCESSING);
+      expect(res.body.notes).toBe('Customer is very interested');
+      expect(res.body.externalLeadId).toBe(leadId);
+    });
+
+    it('should merge the updated status when fetching specialized leads', async () => {
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            data: [
+              { id: leadId, type: 'booking', name: 'Dinner Booking' },
+              { id: 'untouched-lead', type: 'menu', name: 'Lunch Menu' },
+            ],
+            meta: { total: 2 },
+          },
+        }),
+      );
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/qr-thrive/branches/${branchId}/specialized-leads`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(200);
+
+      const updatedLead = res.body.data.find((l: any) => l.id === leadId);
+      const newLead = res.body.data.find((l: any) => l.id === 'untouched-lead');
+
+      expect(updatedLead.status).toBe(ExternalLeadStatus.PROCESSING);
+      expect(updatedLead.internalNotes).toBe('Customer is very interested');
+      expect(newLead.status).toBe(ExternalLeadStatus.NEW); // Default
+    });
+
+    it('should fail (403) when updating status for a forbidden branch', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/qr-thrive/branches/${forbiddenBranchId}/specialized-leads/${leadId}/status`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ status: ExternalLeadStatus.COMPLETED })
+        .expect(403);
     });
   });
 });
