@@ -97,6 +97,56 @@ export class QrThriveService implements OnModuleInit {
   }
 
   /**
+   * Helper to resolve the correct QR-Thrive mapping for a user.
+   * Handles Admin/Agent impersonation by resolving the target business owner.
+   */
+  private async getMapping(
+    user: User,
+    branchId?: string,
+  ): Promise<QrThriveUserMapping> {
+    let targetUserId = user.id;
+
+    // If Admin/Agent and impersonating, resolve the target owner's mapping
+    if (user.role === UserRole.ADMIN || user.role === UserRole.AGENT) {
+      let businessId = user.businessId;
+
+      // If we have a branchId but no businessId, resolve businessId from branch
+      if (!businessId && branchId) {
+        try {
+          businessId = await this.branchesService.getBusinessId(branchId);
+        } catch (e) {
+          this.logger.error(
+            `Failed to resolve businessId for branch ${branchId}: ${e.message}`,
+          );
+        }
+      }
+
+      if (businessId) {
+        const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
+        if (ownerId) {
+          targetUserId = ownerId;
+          this.logger.debug(
+            `Impersonation context: Using mapping for owner ${ownerId} (Business: ${businessId})`,
+          );
+        }
+      }
+    }
+
+    const mapping = await this.userMappingRepo.findOne({
+      where: { userId: targetUserId },
+    });
+
+    if (!mapping) {
+      throw new HttpException(
+        'User not synced with QR-Thrive. Please sync first.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return mapping;
+  }
+
+  /**
    * Ensures a user exists in QR-Thrive and stores the mapping.
    */
   async syncUser(user: User): Promise<QrThriveUserMapping | null> {
@@ -168,15 +218,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping) {
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -225,11 +267,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -264,11 +302,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -303,14 +337,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -352,15 +379,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping) {
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const params = new URLSearchParams();
@@ -435,10 +454,8 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Generates a Magic Link for SSO.
    */
-  async getMagicLink(userId: string) {
-    const mapping = await this.userMappingRepo.findOne({ where: { userId } });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+  async getMagicLink(user: User) {
+    const mapping = await this.getMapping(user);
 
     try {
       const { data } = await firstValueFrom(
@@ -480,13 +497,12 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Syncs a user's subscription with QR-Thrive.
    */
-  async syncSubscription(userId: string, qrThrivePlanId: string) {
-    const mapping = await this.userMappingRepo.findOne({ where: { userId } });
+  async syncSubscription(user: User, qrThrivePlanId: string) {
+    const mapping = await this.getMapping(user);
     if (!mapping) {
       this.logger.warn(
-        `User ${userId} not synced with QR-Thrive. Syncing now...`,
+        `User ${user.id} not synced with QR-Thrive. Skipping subscription sync.`,
       );
-      // Optionally trigger syncUser if we have access to the full user object here
       return;
     }
 
@@ -499,7 +515,7 @@ export class QrThriveService implements OnModuleInit {
         ),
       );
       this.logger.log(
-        `Successfully synced subscription for user ${userId} with QR-Thrive plan ${qrThrivePlanId}`,
+        `Successfully synced subscription for user ${user.id} with QR-Thrive plan ${qrThrivePlanId}`,
       );
     } catch (error) {
       return this.handleExternalError(
@@ -524,15 +540,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping) {
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -570,11 +578,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -609,11 +613,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -644,11 +644,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     this.logger.log(
       `Deleting QR code ${qrCodeId} for user ${mapping.qrThriveUserId}`,
@@ -686,11 +682,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -806,11 +798,7 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const params = new URLSearchParams();
@@ -840,11 +828,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -866,11 +850,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -893,11 +873,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       await firstValueFrom(
@@ -924,11 +900,7 @@ export class QrThriveService implements OnModuleInit {
     );
     if (!hasAccess) throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
 
-    const mapping = await this.userMappingRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!mapping)
-      throw new HttpException('User not synced', HttpStatus.BAD_REQUEST);
+    const mapping = await this.getMapping(user, branchId);
 
     try {
       const { data } = await firstValueFrom(
@@ -957,9 +929,10 @@ export class QrThriveService implements OnModuleInit {
    * Resets a user mapping by deleting it from the database.
    * This allows the user to re-provision their account if the mapping was corrupted.
    */
-  async resetMapping(userId: string): Promise<void> {
-    const mapping = await this.userMappingRepo.findOne({ where: { userId } });
+  async resetMapping(user: User): Promise<void> {
+    const mapping = await this.getMapping(user);
     if (mapping) {
+      const userId = mapping.userId;
       await this.userMappingRepo.remove(mapping);
       this.logger.log(
         `Successfully reset QR-Thrive mapping for user ${userId}`,

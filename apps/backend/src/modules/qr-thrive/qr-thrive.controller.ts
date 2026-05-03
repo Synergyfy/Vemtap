@@ -292,7 +292,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get magic link for QR-Thrive dashboard SSO' })
   async getMagicLink(@Req() req: RequestWithUser) {
-    return this.qrThriveService.getMagicLink(req.user.id);
+    return this.qrThriveService.getMagicLink(req.user);
   }
 
   @Get('plans')
@@ -306,7 +306,7 @@ export class QrThriveController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Reset QR-Thrive mapping for the current user' })
   async resetMapping(@Req() req: RequestWithUser) {
-    return this.qrThriveService.resetMapping(req.user.id);
+    return this.qrThriveService.resetMapping(req.user);
   }
 
   @Public()
