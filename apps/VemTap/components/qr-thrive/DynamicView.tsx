@@ -1044,7 +1044,14 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
       case 'menu':
         return (
-          <MenuPreview data={data.menu} />
+          <MenuPreview 
+            data={data.menu} 
+            onSubmit={async (orderData) => {
+              if (isWizardPreview) return;
+              await submitMutation.mutateAsync(orderData);
+            }}
+            isSubmitting={submitMutation.isPending}
+          />
         );
 
       case 'coupon':
@@ -1110,7 +1117,16 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
       case 'app':
         return <AppStorePreview {...data.app} />;
       case 'booking':
-        return <BookingProfilePreview {...data.booking} />;
+        return (
+          <BookingProfilePreview 
+            {...data.booking} 
+            onSubmit={async (bookingData) => {
+              if (isWizardPreview) return;
+              await submitMutation.mutateAsync(bookingData);
+            }}
+            isSubmitting={submitMutation.isPending}
+          />
+        );
       default:
         return (
           <div className="text-center space-y-6">

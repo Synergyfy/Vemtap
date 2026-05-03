@@ -4,15 +4,47 @@ import type { MenuData } from '../types/qr';
 
 interface MenuPreviewProps {
   data?: MenuData;
+  onSubmit?: (data: any) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
-const MenuPreview: React.FC<MenuPreviewProps> = ({ data }) => {
+const MenuPreview: React.FC<MenuPreviewProps> = ({ data, onSubmit, isSubmitting }) => {
   const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
   const [cart, setCart] = useState<Record<string, { item: any, quantity: number }>>({});
   const [view, setView] = useState<'menu' | 'checkout' | 'details' | 'success'>('menu');
   const [note, setNote] = useState('');
   const [tableNumber, setTableNumber] = useState('');
   const [details, setDetails] = useState({ name: '', email: '', phone: '', address: '' });
+
+  const handleConfirmOrder = async () => {
+    if (onSubmit) {
+      const orderData = {
+        type: 'menu_order',
+        details,
+        cart: Object.values(cart).map(c => ({
+          id: c.item.id,
+          name: c.item.name,
+          price: c.item.price,
+          quantity: c.quantity,
+          total: c.item.price * c.quantity
+        })),
+        note,
+        tableNumber,
+        totalPrice,
+        totalItems,
+        currency: data?.currency || '$'
+      };
+      
+      try {
+        await onSubmit(orderData);
+        setView('success');
+      } catch (error) {
+        console.error('Failed to submit order:', error);
+      }
+    } else {
+      setView('success');
+    }
+  };
 
   const addToCart = (item: any) => setCart(prev => ({ ...prev, [item.id]: { item, quantity: (prev[item.id]?.quantity || 0) + 1 } }));
   const removeFromCart = (item: any) => {
@@ -36,7 +68,7 @@ const MenuPreview: React.FC<MenuPreviewProps> = ({ data }) => {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">{data?.successTitle || 'Order Placed!'}</h2>
             <p className="text-gray-500 mb-8">{data?.successMessage || `Thank you, ${details.name}. Your order is on the way.`}</p>
             <div className="flex flex-col gap-3 w-full max-w-[260px]">
-              <button onClick={() => { setCart({}); setView('menu'); setSelectedCategory(null); }} className="w-full px-8 py-3 bg-blue-600 text-white font-bold rounded-2xl">Back to Menu</button>
+              <button onClick={() => { setCart({}); setView('menu'); setSelectedCategory(null); setDetails({ name: '', email: '', phone: '', address: '' }); setNote(''); setTableNumber(''); }} className="w-full px-8 py-3 bg-blue-600 text-white font-bold rounded-2xl">Back to Menu</button>
               {data?.showWhatsappCta && data?.whatsappNumber && (
                 <a
                   href={`https://wa.me/${data.whatsappNumber.replace(/[^0-9]/g, '')}`}
@@ -73,7 +105,13 @@ const MenuPreview: React.FC<MenuPreviewProps> = ({ data }) => {
                         )}
                     </div>
                 ))}
-                <button onClick={() => setView('success')} className="w-full max-w-[calc(100%-32px)] mx-auto block py-4 bg-gray-900 text-white font-bold rounded-2xl text-center">Confirm Order</button>
+                <button 
+                  onClick={handleConfirmOrder} 
+                  disabled={isSubmitting}
+                  className="w-full max-w-[calc(100%-32px)] mx-auto block py-4 bg-gray-900 text-white font-bold rounded-2xl text-center disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Processing...' : 'Confirm Order'}
+                </button>
             </div>
         </div>
       )

@@ -246,6 +246,16 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
+            id: 'business-leads',
+            label: 'Business Leads',
+            icon: QrCode,
+            roles: ['owner', 'manager'],
+            submenu: [
+                { label: 'Orders', href: '/dashboard/business-leads/orders' },
+                { label: 'Bookings', href: '/dashboard/business-leads/bookings' },
+            ]
+        },
+        {
             id: 'analytics',
             label: 'Advanced Analytics ',
             icon: BarChart,
