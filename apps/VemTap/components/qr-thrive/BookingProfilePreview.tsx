@@ -113,12 +113,15 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
       const bookingData = {
         type: 'booking',
         serviceTitle: title,
-        date: `${calYear}-${(calMonth + 1).toString().padStart(2, '0')}-${selectedDay?.toString().padStart(2, '0')}`,
-        time: selectedTime,
+        date: selectedDay ? `${calYear}-${(calMonth + 1).toString().padStart(2, '0')}-${selectedDay?.toString().padStart(2, '0')}` : undefined,
+        time: selectedTime || undefined,
         answers: formAnswers,
         businessName,
         price,
-        duration
+        duration,
+        // Include destination mode info for post-submit processing
+        destinationMode,
+        bookingUrl
       };
       
       try {
@@ -126,6 +129,13 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
         setShowingForm(false);
         setBookingConfirmed(true);
         if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+
+        // If it was a URL redirect, do it after recording the lead
+        if (destinationMode === 'url' && bookingUrl && bookingUrl !== '#') {
+           setTimeout(() => {
+             window.open(bookingUrl.startsWith('http') ? bookingUrl : `https://${bookingUrl}`, '_blank');
+           }, 1000);
+        }
       } catch (error) {
         console.error('Failed to submit booking:', error);
       }
@@ -137,23 +147,40 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
   };
 
   const handleBook = async () => {
+    // Priority 1: If form is enabled, show it first
+    if (customFormEnabled && customFormFields.length > 0 && !showingForm) {
+       // If mode is calendar, we need date/time selection first
+       if (destinationMode === 'calendar' && (!selectedDay || !selectedTime)) {
+          return;
+       }
+       setShowingForm(true);
+       if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+       return;
+    }
+
+    // Priority 2: Direct Actions (only if no form or form already handled)
     if (destinationMode === 'url') {
+      if (bookingUrl && bookingUrl !== '#') {
+        window.open(bookingUrl.startsWith('http') ? bookingUrl : `https://${bookingUrl}`, '_blank');
+      }
       return;
     }
     if (destinationMode === 'qr_link') {
+      // In dashboard preview, we just show a message or do nothing
       return;
     }
     if (destinationMode === 'calendar' && selectedDay && selectedTime) {
-      if (customFormEnabled && customFormFields.length > 0) {
-        setShowingForm(true);
-        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
-      } else {
-        await submitBooking();
-      }
+      await submitBooking();
     }
   };
 
   const handleFormSubmit = async () => {
+    // Basic validation
+    const missingFields = customFormFields.filter(f => f.required && !formAnswers[f.id]);
+    if (missingFields.length > 0) {
+       alert(`Please fill in required fields: ${missingFields.map(f => f.label).join(', ')}`);
+       return;
+    }
     await submitBooking();
   };
 
@@ -517,7 +544,7 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
       {/* CTA Footer */}
       {!bookingConfirmed && (
         <div className="p-6 bg-white border-t border-slate-100 rounded-t-[40px] shadow-[0_-10px_30px_rgba(0,0,0,0.02)] z-20">
-           {destinationMode === 'url' ? (
+           {(destinationMode === 'url' && !customFormEnabled) ? (
              <a 
                href={bookingUrl} 
                target="_blank" 
@@ -528,34 +555,27 @@ const BookingProfilePreview: React.FC<BookingProfilePreviewProps> = ({
                 {buttonText}
                 <ArrowRight size={18} />
              </a>
-           ) : destinationMode === 'calendar' ? (
+           ) : (
              <button
                onClick={showingForm ? handleFormSubmit : handleBook}
-               disabled={isSubmitting || (showingForm ? false : (!selectedDay || !selectedTime))}
+               disabled={isSubmitting || (destinationMode === 'calendar' && !showingForm && (!selectedDay || !selectedTime))}
                className={`w-full py-4 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xl ${
-                 (isSubmitting || (!showingForm && (!selectedDay || !selectedTime))) ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-95'
+                 (isSubmitting || (destinationMode === 'calendar' && !showingForm && (!selectedDay || !selectedTime))) ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-95'
                }`}
-               style={{ backgroundColor: themeColor, boxShadow: (isSubmitting || showingForm || (selectedDay && selectedTime)) ? `0 10px 20px -5px ${themeColor}40` : 'none' }}
+               style={{ backgroundColor: themeColor, boxShadow: (isSubmitting || showingForm || (destinationMode === 'calendar' && selectedDay && selectedTime) || destinationMode === 'url' || destinationMode === 'qr_link') ? `0 10px 20px -5px ${themeColor}40` : 'none' }}
              >
                 {isSubmitting 
                   ? 'Processing...' 
                   : (showingForm 
                     ? 'Complete Booking'
-                    : (selectedDay && selectedTime 
-                      ? <>{buttonText} — {MONTH_NAMES[calMonth].slice(0,3)} {selectedDay}, {selectedTime}</>
-                      : selectedDay 
-                        ? 'Select a time slot' 
-                        : 'Select a date first'))}
-                {!isSubmitting && (showingForm || (selectedDay && selectedTime)) && <ArrowRight size={18} />}
-             </button>
-           ) : (
-             <button
-               onClick={handleBook}
-               className="w-full py-4 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl"
-               style={{ backgroundColor: themeColor, boxShadow: `0 10px 20px -5px ${themeColor}40` }}
-             >
-                {buttonText}
-                <ArrowRight size={18} />
+                    : (destinationMode === 'calendar'
+                      ? (selectedDay && selectedTime 
+                        ? <>{buttonText} — {MONTH_NAMES[calMonth].slice(0,3)} {selectedDay}, {selectedTime}</>
+                        : selectedDay 
+                          ? 'Select a time slot' 
+                          : 'Select a date first')
+                      : buttonText))}
+                {!isSubmitting && (showingForm || destinationMode !== 'calendar' || (selectedDay && selectedTime)) && <ArrowRight size={18} />}
              </button>
            )}
         </div>

@@ -17,7 +17,7 @@ export default function OrdersLeadsPage() {
     const [selectedLead, setSelectedLead] = useState<QrThriveLead | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     
-    const { data: leads, isLoading } = useQrThriveSpecializedLeads(activeBranchId, { types: 'menu,form' });
+    const { data: leads, isLoading } = useQrThriveSpecializedLeads(activeBranchId, { types: 'menu,form,booking' });
 
     const handleViewDetails = (lead: QrThriveLead) => {
         setSelectedLead(lead);
@@ -51,29 +51,26 @@ export default function OrdersLeadsPage() {
                 const answers = item.answers || {};
                 const fields = item.form.fields || [];
                 const nameField = fields.find(f => f.label.toLowerCase().includes('name'))?.id;
-                const emailField = fields.find(f => f.label.toLowerCase().includes('email'))?.id;
                 
                 const getPrimaryText = () => {
-                    // 1. Try explicit name/email fields from form config
                     if (nameField && answers[nameField]) return String(answers[nameField]);
-                    if (emailField && answers[emailField]) return String(answers[emailField]);
+                    if (answers.details?.name) return String(answers.details.name);
                     
-                    // 2. Try specialized details object (common in menu/booking)
-                    const details = answers.details || {};
-                    if (details.name) return String(details.name);
-                    if (details.email) return String(details.email);
-                    
-                    // 3. Fallback to first string value in answers
-                    for (const value of Object.values(answers)) {
-                        if (typeof value === 'string' && value.length > 0) return value;
-                        if (typeof value === 'number') return String(value);
+                    const internalKeys = ['ip', 'mac', 'userAgent', 'fingerprint', 'browser', 'os', 'device', 'details', 'cart', 'type', 'totalPrice', 'currency', 'totalItems'];
+                    for (const [key, value] of Object.entries(answers)) {
+                        if (!internalKeys.includes(key) && typeof value === 'string' && value.length > 0) return value;
                     }
                     
-                    return 'Untitled Submission';
+                    return 'Untitled Order';
                 };
                 
                 const primaryText = getPrimaryText();
-                
+                const subText = item.answers.tableNumber 
+                    ? `Table #${item.answers.tableNumber}` 
+                    : (item.answers.cart?.length 
+                        ? `${item.answers.cart.length} items ordered` 
+                        : (item.answers.type?.replace('_', ' ') || 'Form Submission'));
+
                 return (
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
@@ -82,7 +79,7 @@ export default function OrdersLeadsPage() {
                         <div className="flex flex-col">
                             <span className="font-bold text-text-main truncate max-w-[200px]">{primaryText}</span>
                             <span className="text-[10px] text-text-secondary truncate max-w-[200px]">
-                                {item.answers.tableNumber ? `Table #${item.answers.tableNumber}` : (item.answers.type?.replace('_', ' ') || 'Form Submission')}
+                                {subText}
                             </span>
                         </div>
                     </div>

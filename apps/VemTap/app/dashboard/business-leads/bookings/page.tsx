@@ -51,28 +51,24 @@ export default function BookingsLeadsPage() {
                 const answers = item.answers || {};
                 const fields = item.form.fields || [];
                 const nameField = fields.find(f => f.label.toLowerCase().includes('name'))?.id;
-                const emailField = fields.find(f => f.label.toLowerCase().includes('email'))?.id;
                 
                 const getPrimaryText = () => {
-                    // 1. Try explicit name/email fields from form config
+                    // 1. Try explicit name from form
                     if (nameField && answers[nameField]) return String(answers[nameField]);
-                    if (emailField && answers[emailField]) return String(answers[emailField]);
                     
-                    // 2. Try specialized details object (common in menu/booking)
-                    const details = answers.details || {};
-                    if (details.name) return String(details.name);
-                    if (details.email) return String(details.email);
+                    // 2. Try specialized details object
+                    if (answers.details?.name) return String(answers.details.name);
                     
-                    // 3. Fallback to first string value in answers
-                    for (const value of Object.values(answers)) {
-                        if (typeof value === 'string' && value.length > 0) return value;
-                        if (typeof value === 'number') return String(value);
-                    }
+                    // 3. Fallback to Service Title
+                    if (answers.serviceTitle) return String(answers.serviceTitle);
                     
-                    return 'Untitled Submission';
+                    return 'Untitled Booking';
                 };
                 
                 const primaryText = getPrimaryText();
+                const subText = answers.serviceTitle && primaryText !== answers.serviceTitle 
+                    ? answers.serviceTitle 
+                    : (answers.date ? `${answers.date} ${answers.time || ''}` : (answers.details?.type || 'Booking Request'));
                 
                 return (
                     <div className="flex items-center gap-3">
@@ -82,7 +78,7 @@ export default function BookingsLeadsPage() {
                         <div className="flex flex-col">
                             <span className="font-bold text-text-main truncate max-w-[200px]">{primaryText}</span>
                             <span className="text-[10px] text-text-secondary truncate max-w-[200px]">
-                                {item.answers.details?.type || 'Booking Request'}
+                                {subText}
                             </span>
                         </div>
                     </div>

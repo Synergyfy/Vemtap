@@ -133,7 +133,31 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                             <div className="space-y-6">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Submission Data</h4>
                                 
-                                {/* 1. Customer Details (from specialized 'details' object) */}
+                                {/* 1. Specialized Booking Info (New) */}
+                                {lead.answers.type === 'booking' && (
+                                    <div className="bg-emerald-50/50 rounded-3xl p-6 border border-emerald-100/50 mb-6 shadow-sm">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                                            <Calendar size={12} />
+                                            Booking Request
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
+                                            {[
+                                                { label: 'Service', value: lead.answers.serviceTitle },
+                                                { label: 'Date', value: lead.answers.date },
+                                                { label: 'Time', value: lead.answers.time },
+                                                { label: 'Price', value: lead.answers.price },
+                                                { label: 'Duration', value: lead.answers.duration },
+                                            ].map((item, idx) => item.value ? (
+                                                <div key={idx}>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">{item.label}</p>
+                                                    <p className="text-sm font-bold text-slate-900">{String(item.value)}</p>
+                                                </div>
+                                            ) : null)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 2. Customer Details (from specialized 'details' object) */}
                                 {lead.answers.details && (
                                     <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100/50 mb-6">
                                         <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
@@ -141,17 +165,24 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                             Customer Information
                                         </p>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {Object.entries(lead.answers.details).map(([key, value]) => (
-                                                <div key={key}>
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">{key}</p>
-                                                    <p className="text-sm font-bold text-slate-900">{String(value)}</p>
-                                                </div>
-                                            ))}
+                                            {Object.entries(lead.answers.details).map(([key, value]) => {
+                                                const hiddenKeys = ['ip', 'mac', 'userAgent', 'fingerprint', 'ipAddress'];
+                                                if (hiddenKeys.includes(key.toLowerCase())) return null;
+                                                
+                                                return (
+                                                    <div key={key}>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                                                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                                        </p>
+                                                        <p className="text-sm font-bold text-slate-900">{String(value)}</p>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* 2. Cart / Order Items */}
+                                {/* 3. Cart / Order Items */}
                                 {lead.answers.cart && Array.isArray(lead.answers.cart) && (
                                     <div className="bg-slate-50/80 rounded-3xl p-6 border border-slate-100/50 mb-6">
                                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
@@ -182,7 +213,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                     </div>
                                 )}
 
-                                {/* 3. Standard Form Fields / Additional Answers */}
+                                {/* 4. Standard Form Fields / Additional Answers */}
                                 <div className="grid grid-cols-1 gap-3">
                                     {/* Map actual form fields first */}
                                     {lead.form.fields.map((field) => {
@@ -203,7 +234,14 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
 
                                     {/* Map any other key-value pairs in answers that aren't internal types or already shown */}
                                     {Object.entries(lead.answers).map(([key, value]) => {
-                                        const internalKeys = ['cart', 'details', 'type', 'currency', 'totalItems', 'totalPrice', 'note', 'tableNumber'];
+                                        const internalKeys = [
+                                            'cart', 'details', 'type', 'currency', 
+                                            'totalItems', 'totalPrice', 'note', 
+                                            'tableNumber', 'ip', 'userAgent', 
+                                            'fingerprint', 'browser', 'device', 'os',
+                                            'mac', 'ipAddress', 'serviceTitle', 'date', 'time',
+                                            'price', 'duration', 'businessName', 'destinationMode', 'bookingUrl'
+                                        ];
                                         const isFormField = lead.form.fields.some(f => f.id === key);
                                         
                                         if (internalKeys.includes(key) || isFormField || typeof value === 'object') return null;
@@ -212,7 +250,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                             <div key={key} className="bg-slate-50/80 rounded-2xl p-5 border border-slate-100/50">
                                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                                                     <ChevronRight size={10} />
-                                                    {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+                                                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                                                 </p>
                                                 <p className="text-sm font-bold text-slate-900">{String(value)}</p>
                                             </div>
@@ -238,7 +276,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                             <div className="flex items-center gap-3">
                                 {(lead.localStatus || lead.status || 'new') === 'new' && (
                                     <button 
-                                        className="flex-1 h-12 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" 
+                                        className="flex-1 h-12 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/25 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" 
                                         onClick={() => handleStatusUpdate('processing')}
                                         disabled={updateStatus.isPending}
                                     >
@@ -248,7 +286,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                 )}
                                 {(lead.localStatus || lead.status) === 'processing' && (
                                     <button 
-                                        className="flex-1 h-12 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" 
+                                        className="flex-1 h-12 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-600/25 hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" 
                                         onClick={() => handleStatusUpdate('completed')}
                                         disabled={updateStatus.isPending}
                                     >
@@ -258,7 +296,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                 )}
                                 {((lead.localStatus || lead.status || 'new') === 'new' || (lead.localStatus || lead.status) === 'processing') && (
                                     <button 
-                                        className="px-6 h-12 bg-white border border-red-100 text-red-600 font-bold rounded-2xl hover:bg-red-50 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                        className="px-6 h-12 bg-white border border-red-100 text-red-600 font-bold rounded-2xl hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                                         onClick={() => handleStatusUpdate('cancelled')}
                                         disabled={updateStatus.isPending}
                                     >

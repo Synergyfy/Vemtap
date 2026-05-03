@@ -238,7 +238,12 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
-      return data;
+      const scans = Array.isArray(data) ? data : [];
+      return scans.map((scan: any) => ({
+        ...scan,
+        ip: undefined,
+        userAgent: undefined,
+      }));
     } catch (error) {
       return this.handleExternalError(error, 'Failed to fetch scans');
     }
@@ -272,7 +277,12 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
-      return data;
+      const responses = Array.isArray(data) ? data : [];
+      return responses.map((resp: any) => ({
+        ...resp,
+        ip: undefined,
+        userAgent: undefined,
+      }));
     } catch (error) {
       return this.handleExternalError(error, 'Failed to fetch responses');
     }
@@ -309,7 +319,12 @@ export class QrThriveService implements OnModuleInit {
           { headers: this.headers },
         ),
       );
-      return Array.isArray(data) ? data : [];
+      const leads = Array.isArray(data) ? data : [];
+      return leads.map((lead: any) => ({
+        ...lead,
+        ip: undefined,
+        userAgent: undefined,
+      }));
     } catch (error) {
       return this.handleExternalError(
         error,
@@ -385,6 +400,8 @@ export class QrThriveService implements OnModuleInit {
             const status = local ? local.status : ExternalLeadStatus.NEW;
             return {
               ...lead,
+              ip: undefined,
+              userAgent: undefined,
               status,
               localStatus: status,
               localNotes: local ? local.notes : null,
@@ -398,6 +415,8 @@ export class QrThriveService implements OnModuleInit {
         const leads = Array.isArray(data.items) ? data.items : [];
         data.items = leads.map((lead: any) => ({
           ...lead,
+          ip: undefined,
+          userAgent: undefined,
           status: ExternalLeadStatus.NEW,
           localStatus: ExternalLeadStatus.NEW,
           localNotes: null,
