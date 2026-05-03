@@ -40,7 +40,7 @@ export default function OrdersLeadsPage() {
     };
 
     const filteredItems = (leads?.items || []).filter((item: any) => {
-        const currentStatus = item.localStatus || item.status || 'new';
+        const currentStatus = item.localStatus || 'new';
         return statusFilter === 'all' || currentStatus === statusFilter;
     });
 
@@ -110,7 +110,7 @@ export default function OrdersLeadsPage() {
         },
         {
             header: 'Status',
-            accessor: (item: QrThriveLead) => getStatusBadge(item.localStatus || item.status || 'new')
+            accessor: (item: QrThriveLead) => getStatusBadge(item.localStatus || 'new')
         },
         {
             header: 'Date & Time',

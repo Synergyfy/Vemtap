@@ -118,12 +118,12 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                         <div>
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Status</p>
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block mt-1 ${
-                                                (lead.localStatus || lead.status) === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                                (lead.localStatus || lead.status) === 'processing' ? 'bg-blue-100 text-blue-700' :
-                                                (lead.localStatus || lead.status) === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                lead.localStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                                lead.localStatus === 'processing' ? 'bg-blue-100 text-blue-700' :
+                                                lead.localStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
                                                 'bg-amber-100 text-amber-700'
                                             }`}>
-                                                {lead.localStatus || lead.status || 'new'}
+                                                {lead.localStatus || 'new'}
                                             </span>
                                         </div>
                                     </div>
@@ -274,7 +274,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                         {/* Modal Footer - Status Actions */}
                         <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
                             <div className="flex items-center gap-3">
-                                {(lead.localStatus || lead.status || 'new') === 'new' && (
+                                {(lead.localStatus || 'new') === 'new' && (
                                     <button 
                                         className="flex-1 h-12 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/25 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" 
                                         onClick={() => handleStatusUpdate('processing')}
@@ -284,7 +284,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                         Start Processing
                                     </button>
                                 )}
-                                {(lead.localStatus || lead.status) === 'processing' && (
+                                {lead.localStatus === 'processing' && (
                                     <button 
                                         className="flex-1 h-12 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-600/25 hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" 
                                         onClick={() => handleStatusUpdate('completed')}
@@ -294,7 +294,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                         Mark as Completed
                                     </button>
                                 )}
-                                {((lead.localStatus || lead.status || 'new') === 'new' || (lead.localStatus || lead.status) === 'processing') && (
+                                {((lead.localStatus || 'new') === 'new' || lead.localStatus === 'processing') && (
                                     <button 
                                         className="px-6 h-12 bg-white border border-red-100 text-red-600 font-bold rounded-2xl hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                                         onClick={() => handleStatusUpdate('cancelled')}
@@ -304,7 +304,7 @@ export default function QrThriveLeadModal({ isOpen, onClose, lead }: QrThriveLea
                                         Cancel
                                     </button>
                                 )}
-                                {(['completed', 'cancelled'].includes(lead.localStatus || lead.status || '')) && (
+                                {(['completed', 'cancelled'].includes(lead.localStatus || '')) && (
                                     <button 
                                         className="flex-1 h-12 bg-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-300 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                                         onClick={() => handleStatusUpdate('new')}
