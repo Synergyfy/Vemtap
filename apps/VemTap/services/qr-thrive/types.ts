@@ -32,7 +32,7 @@ export interface QrThriveQRCode {
   createdAt: string;
   updatedAt: string;
   scans: number;
-  isFeaturedOnUbl?: boolean;
+
   form?: {
     _count: { submissions: number };
   };

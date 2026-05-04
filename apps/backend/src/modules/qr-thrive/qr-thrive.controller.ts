@@ -25,7 +25,7 @@ import {
   UpdateQRCodeDto,
   CreateFolderDto,
   UpdateFolderDto,
-  ToggleUblFeatureDto,
+
   SpecializedLeadsQueryDto,
   UpdateLeadStatusDto,
 } from './dto/qr-thrive.dto';
@@ -131,24 +131,7 @@ export class QrThriveController {
     return this.qrThriveService.updateQRCode(req.user, branchId, qrCodeId, dto);
   }
 
-  @Patch('branches/:branchId/qr-codes/:qrCodeId/ubl')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({
-    summary: 'Toggle whether a QR code is featured on the branch UBL profile',
-  })
-  async toggleUblFeature(
-    @Req() req: RequestWithUser,
-    @Param('branchId') branchId: string,
-    @Param('qrCodeId') qrCodeId: string,
-    @Body() dto: ToggleUblFeatureDto,
-  ) {
-    return this.qrThriveService.toggleUblFeature(
-      req.user,
-      branchId,
-      qrCodeId,
-      dto.isFeatured,
-    );
-  }
+
 
   @Get('branches/:branchId/stats')
   @Roles(UserRole.OWNER, UserRole.MANAGER)

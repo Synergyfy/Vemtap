@@ -15,7 +15,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useQrThriveCodes, useToggleUbl } from '@/services/qr-thrive/hooks';
+import { useQrThriveCodes } from '@/services/qr-thrive/hooks';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { buildBrandCssVars } from '@/lib/brandColor';
 import type { BusinessForm } from '@/services/business-forms/types';
@@ -68,7 +68,7 @@ export default function ActiveFormsPage() {
     const activeRewardIdsByBranch = useFormPreferencesStore((state) => state.activeRewardIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
     const { data: qrCodes = [], isLoading: isQrLoading } = useQrThriveCodes(branchScope || userBranchId || undefined);
-    const toggleUblMutation = useToggleUbl();
+
     const updateBranchMutation = useUpdateBranch();
     
     const brandColor = engagementSettings?.brandColor || '#2563eb';
@@ -200,9 +200,7 @@ export default function ActiveFormsPage() {
         const isPresent = currentSequence.includes(id);
         const next = isPresent ? currentSequence.filter(itemId => itemId !== id) : [...currentSequence, id];
         
-        if (type === 'qr') {
-            await toggleUblMutation.mutateAsync({ qrId: id, isFeatured: !isPresent, branchId: branchScope! });
-        } else if (type === 'form') {
+        if (type === 'form') {
             toggleActiveForm(branchKey, id);
         } else if (type === 'reward') {
             toggleActiveReward(branchKey, id);

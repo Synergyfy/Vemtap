@@ -4,7 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
-import { QrThriveCodeMapping } from './entities/qr-thrive-code-mapping.entity';
+
 import { ExternalLeadStatusEntity, ExternalLeadStatus } from './entities/external-lead-status.entity';
 import { BranchesService } from '../branches/branches.service';
 import { of } from 'rxjs';
@@ -43,7 +43,7 @@ describe('QrThriveService - Lead Management', () => {
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('mock-key') } },
         { provide: BranchesService, useValue: branchesService },
         { provide: getRepositoryToken(QrThriveUserMapping), useValue: {} },
-        { provide: getRepositoryToken(QrThriveCodeMapping), useValue: {} },
+
         { provide: getRepositoryToken(ExternalLeadStatusEntity), useValue: leadStatusRepo },
       ],
     }).compile();
