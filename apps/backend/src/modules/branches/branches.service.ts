@@ -185,15 +185,8 @@ export class BranchesService {
   async findByCode(uniqueCode: string): Promise<Branch> {
     const branch = await this.branchesRepository.findOne({
       where: { uniqueCode, isActive: true },
-      relations: ['business', 'qrThriveCodes'],
+      relations: ['business'],
     });
-
-    if (branch && branch.qrThriveCodes) {
-      // Filter out non-featured codes from the result
-      branch.qrThriveCodes = branch.qrThriveCodes.filter(
-        (c) => c.isFeaturedOnUbl,
-      );
-    }
     if (!branch)
       throw new NotFoundException(`Branch with code ${uniqueCode} not found`);
     return branch;

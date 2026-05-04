@@ -17,7 +17,7 @@ export default function OrdersLeadsPage() {
     const [selectedLead, setSelectedLead] = useState<QrThriveLead | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     
-    const { data: leads, isLoading } = useQrThriveSpecializedLeads(activeBranchId, { types: 'menu,form,booking' });
+    const { data: leads, isLoading } = useQrThriveSpecializedLeads(activeBranchId, { types: 'menu' });
 
     const handleViewDetails = (lead: QrThriveLead) => {
         setSelectedLead(lead);
