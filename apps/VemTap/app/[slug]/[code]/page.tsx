@@ -19,6 +19,8 @@ import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { StepSocialConnect } from '@/components/visitor/StepSocialConnect';
 import { StepFormList } from '@/components/visitor/StepFormList';
 import { StepDynamicForm } from '@/components/visitor/StepDynamicForm';
+import { StepQrThriveContent } from '@/components/visitor/StepQrThriveContent';
+import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
 import {
     ShoppingBag,
     Calendar,
@@ -105,14 +107,13 @@ const PortalWelcome = ({
             if (qr) return {
                 id: `qr-${qr.shortId}`,
                 label: qr.name,
-                icon: qr.type === 'pdf' ? FileText : 
-                      qr.type === 'image' ? ImageIcon : 
-                      qr.type === 'vcard' ? Contact : Link2,
+                icon: getQrIcon(qr.type),
                 color: 'text-blue-600',
                 bg: 'bg-blue-50',
-                desc: qr.type.toUpperCase(),
-                isExternal: true,
-                url: `https://api.qrthrive.com/s/${qr.shortId}`,
+                desc: getQrDescription(qr.type),
+                isQr: true,
+                qrType: qr.type,
+                shortId: qr.shortId,
                 count: 1
             };
             return null;
@@ -265,6 +266,9 @@ const DynamicTapJourneyPage = () => {
         sessionToken, setSessionToken, whatsappNumber, qrThriveCodes
     } = useCustomerFlowStore();
 
+    const [selectedQrShortId, setSelectedQrShortId] = useState<string | null>(null);
+    const [selectedQrData, setSelectedQrData] = useState<any>(null);
+
     const { data: availableForms } = useQuery<any[]>({
         queryKey: ['visitor-forms', branchId],
         queryFn: async () => {
@@ -366,6 +370,24 @@ const DynamicTapJourneyPage = () => {
         }
     }, [currentStep, isAuthenticated, deviceCode, sessionToken, setSessionToken, recordPortalVisit]);
 
+    // Handle auto-opening QR codes from URL params
+    useEffect(() => {
+        if (!isMounted || !deviceContext || currentStep !== 'PORTAL_MENU') return;
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const qrId = urlParams.get('qr');
+        if (qrId) {
+            // Wait a bit for the UI to stabilize
+            const timer = setTimeout(() => {
+                handleAction(`qr-${qrId}`);
+                // Remove the param from URL to prevent re-triggering
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, '', newUrl);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isMounted, deviceContext, currentStep]);
+
     const handleAction = async (id: string) => {
         if (id === 'order') {
             router.push(`/${slug}/${deviceCode}/products`);
@@ -398,6 +420,21 @@ const DynamicTapJourneyPage = () => {
             if (whatsappNumber) {
                 const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
                 window.open(`https://wa.me/${cleanNumber}`, '_blank');
+            }
+        } else if (id.startsWith('qr-')) {
+            const shortId = id.replace('qr-', '');
+            try {
+                // Record scan locally and get full data via VemTap proxy
+                // This ensures we record stats on our end and QR-Thrive's end
+                const scanResponse = await api.post(`/qr-thrive/public/scan/${shortId}`, {});
+                
+                // Show content in-page using StepQrThriveContent
+                setSelectedQrShortId(shortId);
+                setSelectedQrData(scanResponse);
+                setStep('QR_THRIVE_CONTENT' as any);
+            } catch (error) {
+                console.error('Failed to handle QR action:', error);
+                toast.error('Could not load content. Please try again.');
             }
         } else {
             router.push(`/${slug}/${deviceCode}/${id}`);
@@ -590,6 +627,13 @@ const DynamicTapJourneyPage = () => {
                             onSuccess={() => {
                                 setStep('FORMS_LIST');
                             }}
+                        />
+                    )}
+                    {currentStep === 'QR_THRIVE_CONTENT' as any && selectedQrData && (
+                        <StepQrThriveContent
+                            key={`qr-thrive-content-${selectedQrShortId}`}
+                            qrCode={selectedQrData}
+                            onBack={() => setStep('PORTAL_MENU')}
                         />
                     )}
                 </AnimatePresence>

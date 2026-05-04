@@ -317,6 +317,30 @@ export class QrThriveController {
   }
 
   @Public()
+  @Post('public/scan/:shortId')
+  @ApiOperation({ summary: 'Record a scan and return destination metadata' })
+  async recordScanOnly(
+    @Param('shortId') shortId: string,
+    @Req() req: any,
+  ) {
+    let ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+    if (ip.includes(',')) {
+      ip = ip.split(',')[0].trim();
+    }
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const destinationUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
+    
+    // Fetch full QR details for in-app rendering
+    const qrCode = await this.qrThriveService.getPublicQRCode(shortId);
+    
+    return {
+      ...qrCode,
+      destinationUrl,
+      shortId
+    };
+  }
+
+  @Public()
   @Post('public/forms/:shortId/submit')
   @ApiOperation({ summary: 'Submit a form response to QR-Thrive' })
   async submitPublicForm(

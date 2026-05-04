@@ -11,6 +11,7 @@ import {
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
 
 export default function BusinessPublicPage() {
     const params = useParams();
@@ -401,13 +402,20 @@ export default function BusinessPublicPage() {
                                     // 2. Handle External QR Thrive Codes
                                     const qrCode = businessData?.qrThriveCodes?.find((q: any) => q.id === itemId);
                                     if (qrCode) {
+                                        const Icon = getQrIcon(qrCode.type);
                                         return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(qrCode.shortUrl, '_blank')}>
+                                            <div 
+                                                key={itemId} 
+                                                className="flex items-center gap-4 group cursor-pointer" 
+                                                onClick={() => router.push(`/${params.slug}/${businessData.device.code}?qr=${qrCode.shortId}`)}
+                                            >
                                                 <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <QrCode size={18} />
+                                                    <Icon size={18} />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">{qrCode.type}</p>
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+                                                        {getQrDescription(qrCode.type)}
+                                                    </p>
                                                     <p className="text-sm font-bold text-slate-900 truncate">{qrCode.name}</p>
                                                 </div>
                                             </div>
