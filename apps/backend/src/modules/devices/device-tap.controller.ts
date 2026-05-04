@@ -13,6 +13,7 @@ import { CatalogueService } from '../catalogue/catalogue.service';
 import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 import { CatalogueItemType } from '../catalogue/entities/catalogue-item.entity';
 import { FormsService } from '../forms/forms.service';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -26,6 +27,7 @@ export class DeviceTapController {
     private readonly catalogueService: CatalogueService,
     private readonly catalogueOfferService: CatalogueOfferService,
     private readonly formsService: FormsService,
+    private readonly qrThriveService: QrThriveService,
   ) {}
 
   @Public()
@@ -61,6 +63,25 @@ export class DeviceTapController {
       this.formsService.getFormsForVisitor(branchId),
     ]);
 
+    const branchData = {
+      productCount,
+      serviceCount,
+      offerCount,
+      formCount: forms.length,
+    };
+
+    // Fetch QR-Thrive metadata if ublSequence has external IDs
+    let qrThriveCodes: any[] = [];
+    const ublSequence = deviceWithRelations.branch.engagement?.ublSequence || [];
+    const externalQrIds = ublSequence.filter((id: string) => !id.startsWith('system:'));
+    
+    if (externalQrIds.length > 0) {
+      qrThriveCodes = await this.qrThriveService.getPublicQRCodesForBranch(
+        branchId,
+        externalQrIds,
+      );
+    }
+
     return {
       device: {
         id: deviceWithRelations.id,
@@ -69,6 +90,7 @@ export class DeviceTapController {
         location: deviceWithRelations.location,
       },
       branch: {
+        ...branchData,
         id: deviceWithRelations.branch.id,
         name: deviceWithRelations.branch.name,
         welcomeMessage: deviceWithRelations.branch.welcomeMessage,
@@ -76,11 +98,8 @@ export class DeviceTapController {
         whatsappNumber: deviceWithRelations.branch.whatsappNumber,
         logoUrl: deviceWithRelations.branch.logoUrl,
         engagement: deviceWithRelations.branch.engagement,
-        productCount,
-        serviceCount,
-        offerCount,
-        formCount: forms.length,
       },
+      qrThriveCodes,
       business: {
         id: deviceWithRelations.branch.business.id,
         name: deviceWithRelations.branch.business.name,

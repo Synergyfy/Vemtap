@@ -296,31 +296,7 @@ export const useSetQrThriveCodeStatus = () => {
   });
 };
 
-/**
- * Hook to toggle featured status on UBL
- */
-export const useToggleUbl = () => {
-  const queryClient = useQueryClient();
-  const { qrThriveUserId } = useQrThriveStore();
-  const { activeBranchId } = useActiveBranch();
 
-  return useMutation({
-    mutationFn: ({ qrId, isFeatured, branchId }: { qrId: string; isFeatured: boolean; branchId?: string }) => {
-      if (!qrThriveUserId) {
-        throw new Error('User not provisioned in QR-Thrive');
-      }
-      const resolvedBranchId = branchId || activeBranchId;
-      if (!resolvedBranchId || resolvedBranchId === 'all') {
-        throw new Error('Branch required to toggle UBL feature');
-      }
-      return qrThriveApi.toggleUbl(resolvedBranchId, qrId, isFeatured);
-    },
-    onSuccess: (_, { qrId }) => {
-      queryClient.invalidateQueries({ queryKey: ['qr-thrive-codes'] });
-      queryClient.invalidateQueries({ queryKey: ['qr-thrive-code', qrId] });
-    },
-  });
-};
 
 // ============================================
 // ANALYTICS HOOKS

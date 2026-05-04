@@ -152,15 +152,7 @@ export class UpdateFolderDto {
   color?: string;
 }
 
-export class ToggleUblFeatureDto {
-  @ApiProperty({
-    example: true,
-    description: 'Whether the QR code is featured on the branch UBL profile',
-  })
-  @IsBoolean()
-  @IsNotEmpty()
-  isFeatured: boolean;
-}
+
 
 export class SpecializedLeadsQueryDto {
   @ApiPropertyOptional({

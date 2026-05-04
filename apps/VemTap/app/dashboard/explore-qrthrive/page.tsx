@@ -37,7 +37,6 @@ import {
     useDeleteQrThriveCode,
     useDuplicateQrThriveCode,
     useSetQrThriveCodeStatus,
-    useToggleUbl,
     useResetQrThriveMapping
 } from '@/services/qr-thrive/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -101,7 +100,7 @@ export default function ExploreQRThrivePage() {
     const deleteMutation = useDeleteQrThriveCode();
     const duplicateMutation = useDuplicateQrThriveCode();
     const statusMutation = useSetQrThriveCodeStatus();
-    const toggleUblMutation = useToggleUbl();
+
     const createMutation = useCreateQrThriveCode();
     const resetMappingMutation = useResetQrThriveMapping();
 
@@ -491,14 +490,7 @@ export default function ExploreQRThrivePage() {
                                         toast.error(err?.message || 'Failed to update status');
                                     }
                                 }}
-                                onToggleUbl={async (id, isFeatured) => {
-                                    try {
-                                        await toggleUblMutation.mutateAsync({ qrId: id, isFeatured });
-                                        toast.success(isFeatured ? 'Added to UBL' : 'Removed from UBL');
-                                    } catch (err: any) {
-                                        toast.error(err?.message || 'Failed to update UBL status');
-                                    }
-                                }}
+
                                 onViewStats={(qr) => {
                                     toast.success(`Total scans: ${qr.scans}`);
                                 }}

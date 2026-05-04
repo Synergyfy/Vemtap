@@ -5,7 +5,7 @@ import { QrThriveService } from './qr-thrive.service';
 import { QrThriveController } from './qr-thrive.controller';
 import { QrThriveCallbackController } from './qr-thrive-callback.controller';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
-import { QrThriveCodeMapping } from './entities/qr-thrive-code-mapping.entity';
+
 import { ExternalLeadStatusEntity } from './entities/external-lead-status.entity';
 import { BranchesModule } from '../branches/branches.module';
 
@@ -13,7 +13,7 @@ import { BranchesModule } from '../branches/branches.module';
   imports: [
     TypeOrmModule.forFeature([
       QrThriveUserMapping,
-      QrThriveCodeMapping,
+
       ExternalLeadStatusEntity,
     ]),
     HttpModule.register({

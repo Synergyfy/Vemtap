@@ -74,10 +74,13 @@ function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 interface DynamicViewProps {
   data: QRData;
   isWizardPreview?: boolean;
+  embedded?: boolean;
+  shortId?: string;
 }
 
-const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPreview }) => {
-  const { id: shortId } = useParams<{ id: string }>();
+const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPreview, embedded, shortId: propShortId }) => {
+  const params = useParams<{ id: string }>();
+  const shortId = propShortId || params?.id;
 
   // Merge with demo data if in wizard preview
   const data = React.useMemo(() => {
@@ -1145,7 +1148,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
     }
   };
 
-  if (isWizardPreview) {
+  if (isWizardPreview || embedded) {
     if (data.type === 'whatsapp' || data.type === 'instagram' || data.type === 'facebook' || data.type === 'pdf' || data.type === 'video' || data.type === 'image' || data.type === 'mp3' || data.type === 'url' || data.type === 'wifi' || data.type === 'app' || data.type === 'booking') {
       return (
         <div className="w-full h-full">

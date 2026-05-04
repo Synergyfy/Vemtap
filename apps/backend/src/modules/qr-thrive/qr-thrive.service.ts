@@ -13,7 +13,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
-import { QrThriveCodeMapping } from './entities/qr-thrive-code-mapping.entity';
+
 import {
   ExternalLeadStatusEntity,
   ExternalLeadStatus,
@@ -24,7 +24,7 @@ import {
   UpdateQRCodeDto,
   CreateFolderDto,
   UpdateFolderDto,
-  ToggleUblFeatureDto,
+
   SpecializedLeadsQueryDto,
 } from './dto/qr-thrive.dto';
 import { BranchesService } from '../branches/branches.service';
@@ -42,8 +42,7 @@ export class QrThriveService implements OnModuleInit {
     private readonly branchesService: BranchesService,
     @InjectRepository(QrThriveUserMapping)
     private readonly userMappingRepo: Repository<QrThriveUserMapping>,
-    @InjectRepository(QrThriveCodeMapping)
-    private readonly codeMappingRepo: Repository<QrThriveCodeMapping>,
+
     @InjectRepository(ExternalLeadStatusEntity)
     private readonly leadStatusRepo: Repository<ExternalLeadStatusEntity>,
   ) {
@@ -229,21 +228,7 @@ export class QrThriveService implements OnModuleInit {
         ),
       );
 
-      const codeMapping = this.codeMappingRepo.create({
-        qrThriveCodeId: data.id,
-        shortId: data.shortId,
-        name: data.name,
-        type: data.type,
-        config: {
-          design: data.design,
-          frame: data.frame,
-          data: data.data,
-        },
-        branchId,
-        qrThriveUserId: mapping.qrThriveUserId,
-      });
-
-      return await this.codeMappingRepo.save(codeMapping);
+      return data;
     } catch (error) {
       return this.handleExternalError(
         error,
@@ -471,12 +456,7 @@ export class QrThriveService implements OnModuleInit {
     }
   }
 
-  /**
-   * Internal helper to find mapping by branch
-   */
-  async findCodesByBranch(branchId: string) {
-    return await this.codeMappingRepo.find({ where: { branchId } });
-  }
+
 
   /**
    * Fetches available plans from QR-Thrive.
@@ -560,6 +540,60 @@ export class QrThriveService implements OnModuleInit {
       }));
     } catch (error) {
       return this.handleExternalError(error, 'Failed to fetch QR codes');
+    }
+  }
+
+  /**
+   * Publicly fetches metadata for specific QR codes of a branch.
+   * Used for UBL rendering.
+   */
+  async getPublicQRCodesForBranch(branchId: string, qrCodeIds: string[]) {
+    if (!qrCodeIds || qrCodeIds.length === 0) return [];
+
+    try {
+      const businessId = await this.branchesService.getBusinessId(branchId);
+      const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
+      
+      if (!ownerId) {
+        this.logger.warn(`Could not resolve owner for branch ${branchId}`);
+        return [];
+      }
+
+      const mapping = await this.userMappingRepo.findOne({
+        where: { userId: ownerId },
+      });
+
+      if (!mapping) {
+        this.logger.warn(`No QR-Thrive mapping found for owner ${ownerId}`);
+        return [];
+      }
+
+      // Fetch all QR codes for this user and filter by IDs
+      // This is simpler than making multiple individual requests
+      const { data } = await firstValueFrom(
+        this.httpService.get(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes`,
+          { headers: this.headers },
+        ),
+      );
+
+      const allCodes = Array.isArray(data) ? data : [];
+      return allCodes
+        .filter((qr: any) => qrCodeIds.includes(qr.id))
+        .map((qr: any) => ({
+          id: qr.id,
+          name: qr.name,
+          type: qr.type,
+          shortId: qr.shortId,
+          shortUrl: qr.shortUrl || `/s/${qr.shortId}`,
+          data: qr.data,
+          design: qr.design,
+          frame: qr.frame,
+          logo: qr.logo,
+        }));
+    } catch (error) {
+      this.logger.error(`Failed to fetch public QR codes for branch ${branchId}: ${error.message}`);
+      return [];
     }
   }
 
@@ -698,47 +732,7 @@ export class QrThriveService implements OnModuleInit {
     }
   }
 
-  /**
-   * Toggles whether a QR code is featured on the branch's Unique Business Link (UBL).
-   */
-  async toggleUblFeature(
-    user: User,
-    branchId: string,
-    qrCodeId: string,
-    isFeatured: boolean,
-  ) {
-    const hasAccess = await this.branchesService.checkBranchAccess(
-      user,
-      branchId,
-    );
-    if (!hasAccess) {
-      throw new HttpException(
-        'You do not have access to this branch',
-        HttpStatus.FORBIDDEN,
-      );
-    }
 
-    const mapping = await this.codeMappingRepo.findOne({
-      where: { shortId: qrCodeId, branchId }, // Allow by shortId or qrThriveCodeId. Actually, `qrCodeId` from frontend usually maps to `qrThriveCodeId` in QR-Thrive.
-    });
-
-    let targetMapping = mapping;
-    if (!targetMapping) {
-      targetMapping = await this.codeMappingRepo.findOne({
-        where: { qrThriveCodeId: qrCodeId, branchId },
-      });
-    }
-
-    if (!targetMapping) {
-      throw new HttpException(
-        'QR code mapping not found for this branch',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    targetMapping.isFeaturedOnUbl = isFeatured;
-    return await this.codeMappingRepo.save(targetMapping);
-  }
 
   /**
    * Updates the local status of an external lead in VemTap.
