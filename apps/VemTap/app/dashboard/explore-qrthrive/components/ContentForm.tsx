@@ -688,34 +688,28 @@ export const ContentForm: React.FC<any> = ({
 
   const handleFileSelect = (file: File, type: "pdf" | "mp3" | "video") => {
     setUploading(type);
-    try {
-      const previewUrl = URL.createObjectURL(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const previewUrl = ev.target?.result as string;
+      const updates: any = {};
       if (type === "video") {
-        updateData({ video: { url: previewUrl, pendingFile: { file } } });
-      } else if (type === "pdf") {
-        updateData({
-          pdf: {
-            url: previewUrl,
-            name: file.name,
-            size: file.size,
-            pendingFile: { file },
-          } as any,
-        });
-      } else if (type === "mp3") {
-        updateData({
-          mp3: {
-            url: previewUrl,
-            name: file.name,
-            size: file.size,
-            pendingFile: { file },
-          } as any,
-        });
+        updates.video = { url: previewUrl, pendingFile: { file } };
+      } else {
+        updates[type] = {
+          url: previewUrl,
+          name: file.name,
+          size: file.size,
+          pendingFile: { file },
+        };
       }
-    } catch (err) {
-      console.error("Failed to handle file:", err);
-    } finally {
+      updateData(updates);
       setUploading(null);
-    }
+    };
+    reader.onerror = () => {
+      console.error(`Failed to read ${type} file`);
+      setUploading(null);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleMultipleImagesSelect = async (files: File[]) => {

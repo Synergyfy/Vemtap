@@ -35,6 +35,7 @@ import {
     useQrThriveProvisioningStatus,
     useProvisionQrThriveUser,
     useDeleteQrThriveCode,
+    useUpdateQrThriveCode,
     useDuplicateQrThriveCode,
     useSetQrThriveCodeStatus,
     useResetQrThriveMapping
@@ -64,6 +65,7 @@ export default function ExploreQRThrivePage() {
     const [qrName, setQrName] = useState('');
     const [sourceDeviceId, setSourceDeviceId] = useState<string | null>(null);
     const [isLocked, setIsLocked] = useState(false);
+    const [selectedQrId, setSelectedQrId] = useState<string | null>(null);
     const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
     const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
@@ -102,6 +104,7 @@ export default function ExploreQRThrivePage() {
     const statusMutation = useSetQrThriveCodeStatus();
 
     const createMutation = useCreateQrThriveCode();
+    const updateMutation = useUpdateQrThriveCode();
     const resetMappingMutation = useResetQrThriveMapping();
 
     const { 
@@ -124,6 +127,9 @@ export default function ExploreQRThrivePage() {
         setQrName('');
         setQrDesign(DEFAULT_QR_DESIGN);
         setQrFrame(DEFAULT_QR_FRAME);
+        setQrLogo(undefined);
+        setSelectedQrId(null);
+        setIsLocked(false);
     };
 
     const handleTypeSelect = (type: QRType) => {
@@ -201,40 +207,50 @@ export default function ExploreQRThrivePage() {
             
             toast.dismiss(loadingToast);
 
-            const newQr = await createMutation.mutateAsync({
-                data: {
-                    name: qrName || `${selectedType} QR`,
-                    type: selectedType!,
-                    data: uploadedQrData,
-                    design: qrDesign,
-                    frame: qrFrame,
-                    logo: finalQrLogo,
-                    isDynamic: true
-                },
-                branchId: activeBranchId || undefined
-            });
+            const payload = {
+                name: qrName || `${selectedType} QR`,
+                type: selectedType!,
+                data: uploadedQrData,
+                design: qrDesign,
+                frame: qrFrame,
+                logo: finalQrLogo,
+                isDynamic: true
+            };
 
-            // If we came from a device, update the device with this design config
-            if (sourceDeviceId) {
-                try {
-                    await updateDevice(sourceDeviceId, {
-                        // Assuming the backend can store design settings
-                        // We store the design metadata so the Business Link page can render it
-                        config: {
-                            ...config,
-                            qrThriveId: newQr.id
-                        }
-                    } as any);
-                } catch (deviceErr) {
-                    console.error('Failed to update source device:', deviceErr);
+            if (view === 'edit' && selectedQrId) {
+                await updateMutation.mutateAsync({
+                    qrId: selectedQrId,
+                    data: payload,
+                    branchId: activeBranchId || undefined
+                });
+                toast.success('QR Code updated successfully!');
+            } else {
+                const newQr = await createMutation.mutateAsync({
+                    data: payload,
+                    branchId: activeBranchId || undefined
+                });
+
+                // If we came from a device, update the device with this design config
+                if (sourceDeviceId) {
+                    try {
+                        await updateDevice(sourceDeviceId, {
+                            // Assuming the backend can store design settings
+                            // We store the design metadata so the Business Link page can render it
+                            config: {
+                                ...config,
+                                qrThriveId: newQr.id
+                            }
+                        } as any);
+                    } catch (deviceErr) {
+                        console.error('Failed to update source device:', deviceErr);
+                    }
                 }
+                toast.success('QR Code created successfully!');
             }
-
-            toast.success('QR Code created successfully!');
             setView('list');
             refetchCodes();
         } catch (error: any) {
-            toast.error(error?.message || 'Failed to create QR Code');
+            toast.error(error?.message || `Failed to ${view === 'edit' ? 'update' : 'create'} QR Code`);
         } finally {
             setIsUploadingFiles(false);
         }
@@ -249,7 +265,7 @@ export default function ExploreQRThrivePage() {
         }
     };
 
-    const isSaving = createMutation.isPending || isUploadingFiles;
+    const isSaving = createMutation.isPending || updateMutation.isPending || isUploadingFiles;
     const isError404 = (codesError as any)?.status === 404 || 
                        (statsError as any)?.status === 404 ||
                        (codesError as any)?.message?.includes('404') ||
@@ -460,10 +476,16 @@ export default function ExploreQRThrivePage() {
                             <QrGrid 
                                 codes={codes || []} 
                                 onEdit={(qr) => {
+                                    setSelectedQrId(qr.id);
                                     setSelectedType(qr.type as QRType);
                                     setQrData(qr.data);
                                     setQrName(qr.name);
+                                    setQrDesign(qr.design || DEFAULT_QR_DESIGN);
+                                    setQrFrame(qr.frame || DEFAULT_QR_FRAME);
+                                    setQrLogo(qr.logo);
                                     setView('edit');
+                                    setStep('content');
+                                    setIsLocked(true);
                                 }}
                                  onDelete={async (id) => {
                                     console.log('Page onDelete called with:', id);
