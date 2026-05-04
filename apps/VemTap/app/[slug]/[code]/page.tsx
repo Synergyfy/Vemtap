@@ -428,7 +428,13 @@ const DynamicTapJourneyPage = () => {
                 // This ensures we record stats on our end and QR-Thrive's end
                 const scanResponse = await api.post(`/qr-thrive/public/scan/${shortId}`, {});
                 
-                // Show content in-page using StepQrThriveContent
+                // If it's a URL type, open in new tab
+                if (scanResponse.type === 'url' && scanResponse.destinationUrl) {
+                    window.open(scanResponse.destinationUrl, '_blank');
+                    return;
+                }
+
+                // Show other content in-page using StepQrThriveContent
                 setSelectedQrShortId(shortId);
                 setSelectedQrData(scanResponse);
                 setStep('QR_THRIVE_CONTENT' as any);
