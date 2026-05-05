@@ -180,7 +180,7 @@ export const qrThriveApi = {
    * Update an existing QR code
    */
   updateQRCode: async (branchId: string, qrId: string, data: UpdateQrThriveQRDto): Promise<QrThriveQRCode> => {
-    return api.put(`/qr-thrive/branches/${branchId}/qr-codes/${qrId}`, data);
+    return api.patch(`/qr-thrive/branches/${branchId}/qr-codes/${qrId}`, data);
   },
 
   /**

@@ -85,7 +85,7 @@ export class QrThriveController {
     return this.qrThriveService.getQRCode(req.user, branchId, qrCodeId);
   }
 
-  @Put('branches/:branchId/qr-codes/:qrCodeId')
+  @Patch('branches/:branchId/qr-codes/:qrCodeId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update an existing QR code' })
   async updateQRCode(

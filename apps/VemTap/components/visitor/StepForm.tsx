@@ -83,7 +83,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                 onClick={onBack}
                 disabled={isSubmitting}
                 className={cn(
-                    "absolute top-8 right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50",
+                    "absolute top-6 right-6 md:top-8 md:right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50",
                     isPreview && "top-4 right-4 size-6"
                 )}
             >
@@ -108,16 +108,16 @@ export const StepForm: React.FC<StepFormProps> = ({
 
             <VisitorHeader logoUrl={logoUrl} storeName={storeName} isPreview={isPreview} />
 
-            <div className={cn("mb-6", isPreview && "mb-4")}>
+            <div className={cn("mb-5 md:mb-6", isPreview && "mb-4")}>
                 <span className={cn(presets.tag, isPreview && "mb-1.5")}>{customWelcomeTag || "Quick Link"}</span>
                 <h1 className={cn(
-                    "text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-2 text-left",
+                    "text-xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-1.5 md:mb-2 text-left",
                     isPreview && "text-xl md:text-xl mb-1"
                 )}>
                     {customWelcomeTitle || "Connect with us"}
                 </h1>
                 <p className={cn(
-                    "text-sm font-medium text-slate-500 leading-relaxed text-left",
+                    "text-xs md:text-sm font-medium text-slate-500 leading-relaxed text-left",
                     isPreview && "text-[11px] leading-snug"
                 )}>
                     {customWelcomeMessage || "Leave your details to stay in touch and earn rewards."}
@@ -139,7 +139,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                 </div>
             )}
 
-            <div className="mb-8">
+            <div className="mb-6 md:mb-8">
                 <GoogleAuthButton 
                     role="customer" 
                     onSuccess={(res) => {
@@ -160,7 +160,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                     className={cn(isPreview && "h-11 py-0")}
                 />
                 
-                <div className={cn("relative my-8 border-t border-slate-100", isPreview && "my-5")}>
+                <div className={cn("relative my-6 md:my-8 border-t border-slate-100", isPreview && "my-5")}>
                     <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
                         OR CONTINUE MANUALLY
                     </div>
@@ -264,7 +264,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                 <button
                     onClick={onBack}
                     disabled={isSubmitting}
-                    className="absolute top-8 right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50"
+                    className="absolute top-6 right-6 md:top-8 md:right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50"
                 >
                     <span className="material-symbols-outlined text-gray-400 text-[18px] group-hover:text-primary transition-colors">close</span>
                 </button>
