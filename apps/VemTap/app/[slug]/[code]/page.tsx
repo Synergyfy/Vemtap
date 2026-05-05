@@ -38,217 +38,7 @@ import {
 import { cn } from '@/lib/utils';
 import { FaWhatsapp } from 'react-icons/fa';
 
-// --- Sub-components for the Portal ---
-
-const PortalWelcome = ({
-    branchName,
-    logoUrl,
-    welcomeMessage,
-    onAction,
-    productCount,
-    serviceCount,
-    offerCount,
-    formCount,
-    isFirstTimeVisit,
-    isReturningUser,
-    engagement,
-    whatsappNumber,
-    qrThriveCodes,
-    availableForms,
-    availableRewards,
-    ublSequence,
-    brandColor
-}: {
-    branchName: string,
-    logoUrl?: string,
-    welcomeMessage?: string,
-    onAction: (id: string) => void,
-    productCount?: number,
-    serviceCount?: number,
-    offerCount?: number,
-    formCount?: number,
-    isFirstTimeVisit?: boolean,
-    isReturningUser?: boolean,
-    engagement?: any,
-    whatsappNumber?: string | null,
-    qrThriveCodes?: any[],
-    availableForms?: any[],
-    availableRewards?: any[],
-    ublSequence?: string[],
-    brandColor?: string
-}) => {
-    const isServiceOnly = serviceCount && serviceCount > 0 && (!productCount || productCount === 0);
-
-    const dynamicActions = useMemo(() => {
-        const sequenceToUse = ublSequence && ublSequence.length > 0 ? ublSequence : [];
-        if (sequenceToUse.length === 0) return null;
-
-        const formMap = new Map(availableForms?.map(f => [f.id, f]) || []);
-        const rewardMap = new Map(availableRewards?.map(r => [r.id, r]) || []);
-        const qrMap = new Map(qrThriveCodes?.map(q => [q.id, q]) || []);
-
-        return sequenceToUse.map(id => {
-            // System Actions
-            if (id === 'system:order') return { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount };
-            if (id === 'system:service') return { id: 'service', label: isServiceOnly ? 'Book Appointment' : 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: serviceCount };
-            if (id === 'system:offers') return { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount };
-            if (id === 'system:whatsapp') return { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 };
-            if (id === 'system:forms') return { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount };
-            if (id === 'system:engagement') return { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 };
-
-            // Custom Items
-            const form = formMap.get(id);
-            if (form) return { id: `form-${form.uniqueCode}`, label: form.title, icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Feedback Form', count: 1 };
-            
-            const reward = rewardMap.get(id);
-            if (reward) return { id: 'rewards', label: reward.name, icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Loyalty Reward', count: 1 };
-            
-            const qr = qrMap.get(id);
-            if (qr) return {
-                id: `qr-${qr.shortId}`,
-                label: qr.name,
-                icon: getQrIcon(qr.type),
-                color: 'text-blue-600',
-                bg: 'bg-blue-50',
-                desc: getQrDescription(qr.type),
-                isQr: true,
-                qrType: qr.type,
-                shortId: qr.shortId,
-                count: 1
-            };
-            return null;
-        }).filter(action => action && (action as any).count !== 0);
-    }, [ublSequence, availableForms, availableRewards, qrThriveCodes, productCount, serviceCount, isServiceOnly, offerCount, whatsappNumber, formCount, engagement]);
-
-    const actions = useMemo(() => {
-        if (dynamicActions) return dynamicActions;
-
-        // Fallback for legacy / no sequence defined
-        return [
-            { id: 'order', label: 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount },
-            { id: 'service', label: isServiceOnly ? 'Book Appointment' : 'Book Service', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: serviceCount },
-            { id: 'offers', label: 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount },
-            { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 },
-            { id: 'forms', label: 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount },
-            ...(qrThriveCodes || []).map((code: any) => ({
-                id: `qr-${code.shortId}`,
-                label: code.name,
-                icon: code.type === 'pdf' ? FileText : 
-                      code.type === 'image' ? ImageIcon : 
-                      code.type === 'vcard' ? Contact : Link2,
-                color: 'text-blue-600',
-                bg: 'bg-blue-50',
-                desc: code.type.toUpperCase(),
-                count: 1,
-                isExternal: true,
-                url: `https://api.qrthrive.com/s/${code.shortId}`
-            })),
-            { id: 'engagement', label: 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 },
-        ].filter(action => (action as any).count !== 0);
-    }, [dynamicActions, productCount, serviceCount, isServiceOnly, offerCount, whatsappNumber, formCount, qrThriveCodes, engagement]);
-
-    // If service only, and no custom sequence, sort to put it first
-    if (isServiceOnly && !ublSequence?.length) {
-        (actions as any[]).sort((a, b) => a.id === 'service' ? -1 : (b.id === 'service' ? 1 : 0));
-    }
-
-    const useGrid = actions.length >= 4;
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full space-y-4 md:space-y-6 pt-0 pb-6"
-        >
-            <div className="flex items-center gap-4 mb-4 border-b border-slate-100/50 pb-4">
-                {logoUrl ? (
-                    <div className="size-12 md:size-16 rounded-full border-2 border-white shadow-lg overflow-hidden bg-white shrink-0 transition-transform group-hover:scale-105">
-                        <img src={logoUrl} alt={branchName} className="size-full object-cover" />
-                    </div>
-                ) : (
-                    <div className="size-12 md:size-16 rounded-full bg-primary flex items-center justify-center text-white shadow-lg shrink-0">
-                        <span className="font-headline font-black text-lg md:text-xl uppercase tracking-tighter">
-                            {branchName.charAt(0)}
-                        </span>
-                    </div>
-                )}
-                <div className="space-y-0.5 flex-grow">
-                    <h1 className="text-sm md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight">
-                        Welcome to {branchName}
-                    </h1>
-                    <p className="text-on-surface-variant text-[7px] md:text-[10px] max-w-xs font-medium opacity-70 italic">
-                        {welcomeMessage || "Select an option below to get started"}
-                    </p>
-                </div>
-            </div>
-
-            <div className={cn(
-                "gap-3 md:gap-4",
-                useGrid ? "grid grid-cols-2" : "flex flex-col"
-            )}>
-                {actions.filter(item => item !== null).map((item, idx) => (
-                    <motion.button
-                        key={item!.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + (idx * 0.1) }}
-                        onClick={() => (item as any).isExternal ? window.open((item as any).url, '_blank') : onAction(item!.id)}
-                        className={cn(
-                            "group relative flex border border-slate-50 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all text-left overflow-hidden bg-white asymmetric-leaf",
-                            useGrid
-                                ? "flex-col gap-3 md:gap-5 p-5 md:p-8"
-                                : "flex-row items-center gap-4 md:gap-5 p-4 md:p-5 w-full"
-                        )}
-                    >
-                        <div className={cn(
-                            "rounded-lg md:rounded-xl flex items-center justify-center shadow-inner shrink-0 transition-transform group-hover:scale-105",
-                            item!.bg,
-                            item!.color,
-                            useGrid ? "size-12 md:size-16" : "size-11 md:size-13"
-                        )}>
-                            {React.createElement(item!.icon, { 
-                                size: useGrid ? 24 : 20, 
-                                className: useGrid ? "md:size-8" : "md:size-6", 
-                                strokeWidth: 2.5 
-                            })}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <h3 
-                                className={cn(
-                                    "font-headline font-bold tracking-tight leading-snug",
-                                    useGrid ? "text-sm md:text-xl" : "text-xs md:text-base"
-                                )}
-                                style={{ color: brandColor || '#0f172a' }}
-                            >{item!.label}</h3>
-                            <p className={cn(
-                                "text-slate-400 font-bold uppercase tracking-widest mt-0.5",
-                                useGrid ? "text-[8px] md:text-[10px]" : "text-[7px] md:text-[10px]"
-                            )}>{item!.desc}</p>
-                        </div>
-                        <div className={cn(
-                            "p-1 opacity-10 group-hover:opacity-100 transition-opacity",
-                            useGrid ? "absolute top-5 right-5 md:top-8 md:right-8" : "shrink-0"
-                        )}>
-                            <ChevronRight className="text-primary" size={useGrid ? 16 : 14} />
-                        </div>
-                    </motion.button>
-                ))}
-            </div>
-
-            <div className="flex justify-center gap-6 py-4 opacity-40 border-t border-slate-100/50">
-                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    <ShieldCheck size={12} />
-                    Verified
-                </div>
-                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    <Clock size={12} />
-                    Instant Service
-                </div>
-            </div>
-        </motion.div>
-    );
-};
+import { PortalWelcome } from '@/components/visitor/PortalWelcome';
 
 // --- Main Page Component ---
 
@@ -647,12 +437,16 @@ const DynamicTapJourneyPage = () => {
 
             <AnimatePresence>
                 {showInitialAuth && (
-                    <div className="fixed inset-0 z-[200] flex items-start justify-center p-4 overflow-y-auto pt-10 pb-10 md:items-center">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/5 backdrop-blur-sm"
+                            onClick={() => {
+                                setShowInitialAuth(false);
+                                setPendingAction(null);
+                            }}
+                            className="absolute inset-0 bg-black/20 backdrop-blur-md"
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -663,7 +457,6 @@ const DynamicTapJourneyPage = () => {
                             <StepForm
                                 storeName={storeName}
                                 logoUrl={logoUrl}
-                                customWelcomeTitle={pendingAction ? "Identification Required" : "One Last Step"}
                                 customWelcomeMessage={pendingAction ? "Please share your details to proceed with your submission." : "Please share your details to unlock our premium services and exclusive rewards."}
                                 submitLabel={pendingAction ? "Identify & Submit" : "Start My Experience"}
                                 isSubmitting={isSubmitting}

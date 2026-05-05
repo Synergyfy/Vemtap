@@ -1,15 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { presets } from './presets';
+import { cn } from '@/lib/utils';
 
-export const StepIdentifying: React.FC = () => {
+interface StepIdentifyingProps {
+    isPreview?: boolean;
+}
+
+export const StepIdentifying: React.FC<StepIdentifyingProps> = ({ isPreview = false }) => {
     return (
         <motion.div
             key="id"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={presets.card + " text-center"}
+            className={cn(presets.card, "text-center", isPreview && "p-0 shadow-none border-none bg-transparent")}
         >
             <div className="size-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-8 border border-primary/10 relative">
                 <span className="material-symbols-outlined text-primary animate-spin text-3xl">sync</span>
