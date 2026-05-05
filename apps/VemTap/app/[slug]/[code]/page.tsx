@@ -647,12 +647,16 @@ const DynamicTapJourneyPage = () => {
 
             <AnimatePresence>
                 {showInitialAuth && (
-                    <div className="fixed inset-0 z-[200] flex items-start justify-center p-4 overflow-y-auto pt-10 pb-10 md:items-center">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/5 backdrop-blur-sm"
+                            onClick={() => {
+                                setShowInitialAuth(false);
+                                setPendingAction(null);
+                            }}
+                            className="absolute inset-0 bg-black/20 backdrop-blur-md"
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -663,7 +667,6 @@ const DynamicTapJourneyPage = () => {
                             <StepForm
                                 storeName={storeName}
                                 logoUrl={logoUrl}
-                                customWelcomeTitle={pendingAction ? "Identification Required" : "One Last Step"}
                                 customWelcomeMessage={pendingAction ? "Please share your details to proceed with your submission." : "Please share your details to unlock our premium services and exclusive rewards."}
                                 submitLabel={pendingAction ? "Identify & Submit" : "Start My Experience"}
                                 isSubmitting={isSubmitting}
