@@ -651,7 +651,7 @@ export class QrThriveService implements OnModuleInit {
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.put(
+        this.httpService.patch(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
           dto,
           { headers: this.headers },

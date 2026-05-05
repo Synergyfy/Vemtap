@@ -647,7 +647,7 @@ const DynamicTapJourneyPage = () => {
 
             <AnimatePresence>
                 {showInitialAuth && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] flex items-start justify-center p-4 overflow-y-auto pt-10 pb-10 md:items-center">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

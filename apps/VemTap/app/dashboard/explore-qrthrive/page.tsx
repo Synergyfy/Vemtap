@@ -218,9 +218,12 @@ export default function ExploreQRThrivePage() {
             };
 
             if (view === 'edit' && selectedQrId) {
+                // Strip fields that are not allowed in UpdateQRCodeDto
+                const { type, isDynamic, ...updatePayload } = payload;
+                
                 await updateMutation.mutateAsync({
                     qrId: selectedQrId,
-                    data: payload,
+                    data: updatePayload as any,
                     branchId: activeBranchId || undefined
                 });
                 toast.success('QR Code updated successfully!');
