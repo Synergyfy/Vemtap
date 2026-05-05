@@ -12,7 +12,7 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode
+    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -20,6 +20,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import UpgradeModal from './UpgradeModal';
+import SubscriptionExpiredModal from './SubscriptionExpiredModal';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -55,7 +56,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
-    const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
+    const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription, isSubscriptionExpired } = useSubscriptionStore();
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
@@ -679,7 +680,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 <>
                                     {/* Desktop View: Full Badge */}
                                     <div className="hidden sm:flex items-center">
-                                        {isFree ? (
+                                        {isSubscriptionExpired ? (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-red-100 transition-colors shadow-sm shadow-red-100 animate-pulse"
+                                            >
+                                                Plan Expired
+                                            </Link>
+                                        ) : isFree ? (
                                             <Link
                                                 href={subscriptionLink}
                                                 className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
@@ -716,14 +724,18 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         <Link
                                             href={subscriptionLink}
                                             className={`size-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
-                                                isFree 
-                                                    ? 'bg-gray-50 border-gray-200 text-gray-400' 
-                                                    : isOnTrial 
-                                                        ? 'bg-amber-50 border-amber-200 text-amber-600' 
-                                                        : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                                isSubscriptionExpired
+                                                    ? 'bg-red-50 border-red-200 text-red-600 animate-pulse'
+                                                    : isFree 
+                                                        ? 'bg-gray-50 border-gray-200 text-gray-400' 
+                                                        : isOnTrial 
+                                                            ? 'bg-amber-50 border-amber-200 text-amber-600' 
+                                                            : 'bg-emerald-50 border-emerald-200 text-emerald-600'
                                             }`}
                                         >
-                                            {isFree ? (
+                                            {isSubscriptionExpired ? (
+                                                <AlertCircle size={18} />
+                                            ) : isFree ? (
                                                 <Zap size={18} className="opacity-40" />
                                             ) : isOnTrial ? (
                                                 <div className="relative">
@@ -907,6 +919,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 isOpen={upgradeModal.isOpen}
                 onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
                 featureName={upgradeModal.featureName}
+            />
+
+            <SubscriptionExpiredModal
+                isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')}
             />
         </div>
     );

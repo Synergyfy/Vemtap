@@ -8,6 +8,8 @@ interface SubscriptionState {
   activeSubscription: Subscription | null;
   isLoading: boolean;
   error: string | null;
+  isSubscriptionExpired: boolean;
+  setSubscriptionExpired: (expired: boolean) => void;
   fetchSubscriptionData: () => Promise<void>;
   fetchCapabilities: () => Promise<void>;
   hasFeature: (feature: string) => boolean;
@@ -20,6 +22,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     (set, get) => ({
       capabilities: null,
       activeSubscription: null,
+      isSubscriptionExpired: false,
+      setSubscriptionExpired: (expired: boolean) => set({ isSubscriptionExpired: expired }),
       isLoading: false,
       error: null,
 
@@ -35,9 +39,13 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const capabilities = capsRes.status === 'fulfilled' ? capsRes.value : get().capabilities;
           const activeSubscription = subRes.status === 'fulfilled' ? subRes.value : null;
           
+          // If we successfully fetch sub data, clear expired flag unless status says otherwise
+          const isExpired = activeSubscription?.status === 'expired' || activeSubscription?.status === 'cancelled';
+          
           set({ 
             capabilities, 
             activeSubscription, 
+            isSubscriptionExpired: isExpired,
             isLoading: false,
             error: capsRes.status === 'rejected' ? (capsRes.reason as Error).message : null 
           });
