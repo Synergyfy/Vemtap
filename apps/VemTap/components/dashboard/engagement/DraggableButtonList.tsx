@@ -14,13 +14,16 @@ interface DraggableButtonListProps {
     items: DraggableItem[];
     onReorder: (sourceIndex: number, targetIndex: number) => void;
     onRemove?: (id: string) => void;
+    onRename?: (id: string, newTitle: string) => void;
 }
 
 const DRAG_STEP = 72; // h-16 (64) + gap-2 (8)
 
-export default function DraggableButtonList({ items, onReorder, onRemove }: DraggableButtonListProps) {
+export default function DraggableButtonList({ items, onReorder, onRemove, onRename }: DraggableButtonListProps) {
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [dragEpoch, setDragEpoch] = useState(0);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState('');
     const dragRefs = useRef<Record<string, React.RefObject<HTMLDivElement>>>({});
 
     const getNodeRef = (id: string) => {
@@ -68,9 +71,48 @@ export default function DraggableButtonList({ items, onReorder, onRemove }: Drag
                             </div>
 
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                <span className="text-sm font-bold text-gray-900 truncate block">
-                                    {item.title}
-                                </span>
+                                {editingId === item.id ? (
+                                    <input 
+                                        type="text"
+                                        autoFocus
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        onBlur={() => {
+                                            if (onRename && editValue.trim() !== '') {
+                                                onRename(item.id, editValue.trim());
+                                            }
+                                            setEditingId(null);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                if (onRename && editValue.trim() !== '') {
+                                                    onRename(item.id, editValue.trim());
+                                                }
+                                                setEditingId(null);
+                                            }
+                                            if (e.key === 'Escape') {
+                                                setEditingId(null);
+                                            }
+                                        }}
+                                        className="text-sm font-bold text-gray-900 bg-white border-b border-primary outline-none px-1 py-0.5 w-full"
+                                    />
+                                ) : (
+                                    <span className="text-sm font-bold text-gray-900 truncate block group/title flex items-center gap-2">
+                                        {item.title}
+                                        {onRename && (
+                                            <button 
+                                                onClick={() => {
+                                                    setEditingId(item.id);
+                                                    setEditValue(item.title);
+                                                }}
+                                                className="text-gray-300 hover:text-primary transition-colors p-1 rounded hover:bg-gray-50 opacity-0 group-hover/title:opacity-100"
+                                                title="Rename item"
+                                            >
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                            </button>
+                                        )}
+                                    </span>
+                                )}
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     {item.icon || <FileText size={10} className="text-gray-400" />}
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block truncate">

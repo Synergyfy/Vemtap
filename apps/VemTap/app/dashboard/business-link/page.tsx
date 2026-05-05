@@ -224,8 +224,33 @@ export default function BusinessLinkPage() {
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
+            <div className="bg-linear-to-br from-indigo-600 to-primary rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-primary/20 group">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full w-fit">
+                            <Zap size={12} className="fill-white" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">New Experience</span>
+                        </div>
+                        <h2 className="text-2xl font-black tracking-tight leading-tight">Unified Customer Dashboard</h2>
+                        <p className="text-sm font-medium text-white/80 max-w-xl">
+                            We've consolidated hardware management and engagement sequences into a single powerful workflow. Try the new Customer Experience dashboard for a better setup journey.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => router.push('/dashboard/customer-experience')}
+                        className="h-14 px-8 bg-white text-primary font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap group-hover:bg-primary-dark group-hover:text-white"
+                    >
+                        Switch to New View
+                        <ArrowRight size={18} />
+                    </button>
+                </div>
+                {/* Decorative Elements */}
+                <div className="absolute -top-20 -right-20 size-64 bg-white/10 rounded-full blur-3xl" />
+                <div className="absolute -bottom-10 left-1/4 size-40 bg-indigo-400/20 rounded-full blur-2xl" />
+            </div>
+
             <PageHeader
-                title="Business Link"
+                title="Business Link (Legacy)"
                 description="Manage your physical business touchpoints and generate smart marketing tools."
             />
 

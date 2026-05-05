@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { presets } from './presets';
 import { EngagementTiles } from './EngagementTiles';
 import { SocialMediaModal } from '@/components/ui/SocialMediaModal';
@@ -24,6 +25,7 @@ interface StepOutcomeProps {
     customSuccessDescription?: string | null;
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
+    isPreview?: boolean;
 }
 
 export const StepOutcome: React.FC<StepOutcomeProps> = ({
@@ -43,7 +45,8 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     attachedRewards = [],
     completedFormIds = [],
     customSuccessTitle,
-    customSuccessDescription
+    customSuccessDescription,
+    isPreview = false
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
@@ -88,7 +91,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     const allFormsCompleted = attachedForms && attachedForms.length > 0 && attachedForms.every(f => completedFormIds.includes(f.id));
 
     return (
-        <motion.div key="outcome" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={presets.card}>
+        <motion.div key="outcome" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={cn(presets.card, isPreview && "p-0 shadow-none border-none bg-transparent")}>
             <div className="flex flex-col items-center text-center">
                 <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
                     <span className="material-symbols-outlined text-4xl">check_circle</span>

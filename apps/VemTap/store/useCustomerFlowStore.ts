@@ -164,7 +164,16 @@ interface CustomerFlowState {
         linkedin?: string;
         postSubmitFormIds?: string[];
         ublSequence?: string[];
+        ublSequenceLabels?: Record<string, string>;
         brandColor?: string;
+        customWelcomeTag?: string;
+        customWelcomeTitle?: string;
+        customWelcomeMessage?: string;
+        submitLabel?: string;
+        customPrivacyMessage?: string;
+        customSuccessTitle?: string;
+        customSuccessMessage?: string;
+        isPreview?: boolean;
     };
     surveyQuestions: Array<{
         id: string;
