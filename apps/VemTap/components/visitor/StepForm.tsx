@@ -77,10 +77,10 @@ export const StepForm: React.FC<StepFormProps> = ({
             key="form" 
             initial={{ opacity: 0, y: 10 }} 
             animate={{ opacity: 1, y: 0 }} 
-            className={cn(presets.card, "flex flex-col p-0 overflow-hidden max-h-[90vh]", isPreview && "p-0 rounded-[2rem]")}
+            className={cn(presets.card, "flex flex-col p-0 overflow-hidden max-h-[90vh]", isPreview && "p-0 rounded-[2rem] shadow-none border-none bg-transparent")}
         >
             {/* Fixed Header */}
-            <div className="shrink-0 p-6 md:p-8 border-b border-slate-50 bg-white relative">
+            <div className={cn("shrink-0 p-6 md:p-8 border-b border-slate-50 bg-white relative", isPreview && "p-4 pb-3")}>
                 <button
                     onClick={onBack}
                     disabled={isSubmitting}
@@ -120,7 +120,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                     </h1>
                     <p className={cn(
                         "text-xs md:text-sm font-medium text-slate-500 leading-relaxed text-left",
-                        isPreview && "text-[11px] leading-snug"
+                        isPreview && "text-[10px] leading-tight"
                     )}>
                         {customWelcomeMessage || "Leave your details to stay in touch and earn rewards."}
                     </p>
@@ -128,7 +128,7 @@ export const StepForm: React.FC<StepFormProps> = ({
             </div>
 
             {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide">
+            <div className={cn("flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide", isPreview && "p-4 pt-2")}>
                 {isDeviceSynced && (
                     <div className="mb-8 p-4 rounded-xl bg-blue-50/50 border border-blue-100/50 flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -166,16 +166,16 @@ export const StepForm: React.FC<StepFormProps> = ({
                         className={cn(isPreview && "h-11 py-0")}
                     />
                     
-                    <div className={cn("relative my-6 md:my-8 border-t border-slate-100", isPreview && "my-5")}>
+                    <div className={cn("relative my-6 md:my-8 border-t border-slate-100", isPreview && "my-3")}>
                         <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
                             OR CONTINUE MANUALLY
                         </div>
                     </div>
                 </div>
 
-                <div className={cn("space-y-4", isPreview && "space-y-2")}>
+                <div className={cn("space-y-4", isPreview && "space-y-1.5")}>
                     <div className="space-y-1">
-                        <label htmlFor="name" className={presets.label}>Full Name</label>
+                        <label htmlFor="name" className={cn(presets.label, isPreview && "mb-0")}>Full Name</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
                                 <span className="material-symbols-outlined text-[20px]">person</span>
@@ -194,7 +194,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label htmlFor="phone" className={presets.label}>Phone Number</label>
+                        <label htmlFor="phone" className={cn(presets.label, isPreview && "mb-0")}>Phone Number</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
                                 <span className="material-symbols-outlined text-[20px]">smartphone</span>
@@ -213,7 +213,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label htmlFor="email" className={presets.label}>Email Address</label>
+                        <label htmlFor="email" className={cn(presets.label, isPreview && "mb-0")}>Email Address</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
                                 <span className="material-symbols-outlined text-[20px]">mail</span>
@@ -255,7 +255,7 @@ export const StepForm: React.FC<StepFormProps> = ({
             </div>
 
             {/* Fixed Footer */}
-            <div className="shrink-0 p-6 md:p-8 border-t border-slate-50 bg-white">
+            <div className={cn("shrink-0 p-6 md:p-8 border-t border-slate-50 bg-white", isPreview && "p-4 py-3")}>
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <button type="submit" disabled={!hasConsented || !isValid || isSubmitting} className={cn(presets.button, isPreview && "h-11")}>
                         {isSubmitting ? <Spinner size="sm" /> : (

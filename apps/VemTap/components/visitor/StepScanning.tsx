@@ -1,19 +1,21 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { presets } from './presets';
+import { cn } from '@/lib/utils';
 
 interface StepScanningProps {
     storeName: string;
+    isPreview?: boolean;
 }
 
-export const StepScanning: React.FC<StepScanningProps> = ({ storeName }) => {
+export const StepScanning: React.FC<StepScanningProps> = ({ storeName, isPreview = false }) => {
     return (
         <motion.div
             key="scanning"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={presets.card}
+            className={cn(presets.card, isPreview && "p-0 shadow-none border-none bg-transparent")}
         >
             <span className={presets.tag}>Connection Hub</span>
             <h1 className={presets.title}>Locating...</h1>

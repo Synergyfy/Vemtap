@@ -222,12 +222,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'engagement',
-            label: 'Engagement',
+            id: 'customer-experience',
+            label: 'Customer Experience',
             icon: Zap,
+            href: '/dashboard/customer-experience',
+            roles: ['owner', 'manager', 'staff'],
             submenu: [
-                { label: 'User Experience', href: '/dashboard/engagement/experience' },
+                { label: 'Overview', href: '/dashboard/customer-experience' },
                 { label: 'Form Creator', href: '/dashboard/engagement/forms' },
+                { label: 'Legacy Flow', href: '/dashboard/engagement/experience' },
             ]
         },
         {
@@ -297,7 +300,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         },
         {
             id: 'devices',
-            label: 'Business Link',
+            label: 'Business Link (Legacy)',
             icon: Nfc,
             href: '/dashboard/business-link',
             roles: ['owner', 'manager', 'staff'],
