@@ -412,6 +412,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                         ublSequence: Array.isArray(branch.engagement?.ublSequence)
                             ? branch.engagement.ublSequence
                             : (Array.isArray(ownerEngagement.ublSequence) ? ownerEngagement.ublSequence : []),
+                        ublSequenceLabels: branch.engagement?.ublSequenceLabels || ownerEngagement.ublSequenceLabels || {},
                         brandColor: branch.formAppearanceColor || b.brandColor || ownerEngagement.brandColor || '#2563eb',
                     },
                     currentStep: finalSkipAnimation ? (['SELECT_TYPE', 'SCANNING', 'IDENTIFYING'].includes(state.currentStep) ? 'PORTAL_MENU' : state.currentStep) : 'SCANNING'
