@@ -34,6 +34,9 @@ import {
     ChevronDown,
     Eye,
     LayoutDashboard,
+    Gift,
+    Info,
+    Check,
 } from 'lucide-react';
 
 // New unified components
@@ -41,6 +44,7 @@ import { BuilderSectionCard } from './components/BuilderSectionCard';
 import { ExperienceLinkCard } from './components/ExperienceLinkCard';
 import { PublishBar } from './components/PublishBar';
 import { VisitorFormSection } from './components/VisitorFormSection';
+import { DefaultSuccessSection } from './components/DefaultSuccessSection';
 
 // Visitor Preview Components
 import { StepForm } from '@/components/visitor/StepForm';
@@ -52,21 +56,22 @@ import { PortalWelcome } from '@/components/visitor/PortalWelcome';
 const SYSTEM_ACTIONS = [
     { id: 'system:order', title: 'Products', subtitle: 'Showcase your product catalog', icon: <ShoppingBag size={18} /> },
     { id: 'system:service', title: 'Services', subtitle: 'List your service offerings', icon: <Wrench size={18} /> },
+    { id: 'system:offers', title: 'Offers', subtitle: 'Exclusive hot deals', icon: <Gift size={18} /> },
     { id: 'system:booking', title: 'Booking', subtitle: 'Let customers book appointments', icon: <CalendarDays size={18} /> },
     { id: 'system:whatsapp', title: 'WhatsApp Chat', subtitle: 'Direct messaging channel', icon: <MessageCircle size={18} /> },
     { id: 'system:forms', title: 'Feedback', subtitle: 'General feedback form', icon: <FileText size={18} /> },
     { id: 'system:engagement', title: 'Social Links', subtitle: 'Connect your social profiles', icon: <Share2 size={18} /> },
 ];
-const DEFAULT_UBL_SEQUENCE = ['system:order', 'system:service', 'system:booking', 'system:whatsapp', 'system:engagement'];
+const DEFAULT_UBL_SEQUENCE = ['system:order', 'system:service', 'system:offers', 'system:booking', 'system:whatsapp', 'system:engagement'];
 const SYSTEM_ACTION_MAP = new Map(SYSTEM_ACTIONS.map(a => [a.id, a]));
 
 const VISITOR_FORM_DEF = { id: 'visitor-form', title: 'Visitor Form', subtitle: 'Collect customer data before they start', icon: <Users size={18} />, expandable: true };
+const DEFAULT_SUCCESS_DEF = { id: 'default-success', title: 'Default Success', subtitle: 'Customize the goal screen after check-in', icon: <Check size={18} />, expandable: true };
 
 export default function CustomerExperiencePage() {
     const [previewMode, setPreviewMode] = useState<'mobile' | 'web'>('mobile');
     const [previewTab, setPreviewTab] = useState<'check-in' | 'returning' | 'outcome' | 'ubl'>('ubl');
     const [formAccess, setFormAccess] = useState<'required' | 'skip'>('required');
-    const [activeFields, setActiveFields] = useState(['Name', 'Phone', 'Email']);
     const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
 
     // Inline title editing state
@@ -85,6 +90,7 @@ export default function CustomerExperiencePage() {
     // Section enable/disable state for local un-synced items
     const [sectionStates, setSectionStates] = useState<Record<string, boolean>>({
         'visitor-form': true,
+        'default-success': true,
     });
 
     // Local reordering state to prevent jank during drag
@@ -98,7 +104,14 @@ export default function CustomerExperiencePage() {
     const { activeBranchId } = useActiveBranch();
     const { data: business } = useMyBusiness();
     const { data: branches = [] } = useBranches();
-    const { engagementSettings, getBusinessConfig, hasRewardSetup, updateEngagementSettings } = useCustomerFlowStore();
+    const { 
+        engagementSettings, 
+        getBusinessConfig, 
+        hasRewardSetup, 
+        updateEngagementSettings,
+        customSuccessTitle,
+        customSuccessMessage
+    } = useCustomerFlowStore();
     const updateBranchMutation = useUpdateBranch();
 
     const activeBranch = branches.find((b: any) => b.id === activeBranchId);
@@ -146,6 +159,40 @@ export default function CustomerExperiencePage() {
     const code = primaryDevice?.code || 'setup-pending';
     const publicUrl = `${origin}/${slug}/${code}`;
 
+    // Category Tooltip Component
+    const CategoryTooltip = ({ content }: { content: string }) => {
+        const [show, setShow] = useState(false);
+        return (
+            <div className="relative inline-flex items-center ml-1.5 group/tooltip">
+                <button
+                    type="button"
+                    onMouseEnter={() => setShow(true)}
+                    onMouseLeave={() => setShow(false)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShow(!show);
+                    }}
+                    className="text-gray-300 hover:text-primary transition-colors p-0.5"
+                >
+                    <Info size={13} />
+                </button>
+                <AnimatePresence>
+                    {show && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 5 }}
+                            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-900 text-white text-[10px] font-bold leading-relaxed rounded-xl shadow-2xl pointer-events-none text-center"
+                        >
+                            {content}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        );
+    };
+
     // Construct dynamic builder items
     const availableForms = useMemo(
         () => allForms.filter((form: any) => form.isPublished && form.isActive && form.showAfterLeadCapture),
@@ -158,7 +205,7 @@ export default function CustomerExperiencePage() {
     );
 
     const effectiveSequence = useMemo(() => {
-        if (ublSequence.length > 0) return ublSequence;
+        if (ublSequence && Array.isArray(ublSequence)) return ublSequence;
         return [...DEFAULT_UBL_SEQUENCE];
     }, [ublSequence]);
 
@@ -201,6 +248,12 @@ export default function CustomerExperiencePage() {
     const toggleSection = (id: string, enabled: boolean) => {
         if (id === 'visitor-form') {
             setSectionStates(prev => ({ ...prev, [id]: enabled }));
+            if (enabled) setPreviewTab('check-in');
+            return;
+        }
+        if (id === 'default-success') {
+            setSectionStates(prev => ({ ...prev, [id]: enabled }));
+            if (enabled) setPreviewTab('outcome');
             return;
         }
 
@@ -211,6 +264,7 @@ export default function CustomerExperiencePage() {
             newSequence = newSequence.filter(itemId => itemId !== id);
         }
         updateEngagementSettings({ ublSequence: newSequence });
+        if (enabled) setPreviewTab('ubl');
         setLocalOrder(null); // Reset local order to sync with new sequence
     };
 
@@ -309,9 +363,18 @@ export default function CustomerExperiencePage() {
                     editLabel="Rename"
                     defaultExpanded={false}
                     showDragHandle={isActiveGroup}
+                    onFocus={() => setPreviewTab('ubl')}
                 />
             </div>
         );
+    };
+
+    const categoryDescriptions: Record<string, string> = {
+        'active': 'Features currently visible on your link. Drag to change the order.',
+        'system': 'Core VemTap features like Product Catalogs and WhatsApp integration.',
+        'qrs': 'Dynamic QR codes for PDFs, Images, or Custom Links from QR Thrive.',
+        'forms': 'Custom feedback or data collection forms you have created.',
+        'rewards': 'Active loyalty programs and rewards for your customers.'
     };
 
     const renderCategory = (title: string, catId: string, items: any[], isActiveGroup = false) => {
@@ -336,6 +399,7 @@ export default function CustomerExperiencePage() {
                         )}>
                             {title}
                         </span>
+                        <CategoryTooltip content={categoryDescriptions[catId] || 'Section description'} />
                         {items.length > 0 && (
                             <span className={cn(
                                 "px-2 py-0.5 rounded-full text-[9px] font-black transition-colors",
@@ -435,21 +499,46 @@ export default function CustomerExperiencePage() {
                         <div className="mb-6">
                             <BuilderSectionCard
                                 id={VISITOR_FORM_DEF.id}
-                                title={VISITOR_FORM_DEF.title}
+                                title={
+                                    <div className="flex items-center">
+                                        {VISITOR_FORM_DEF.title}
+                                        <CategoryTooltip content="The check-in form customers fill out to identify themselves when they arrive." />
+                                    </div>
+                                }
                                 subtitle={VISITOR_FORM_DEF.subtitle}
                                 icon={VISITOR_FORM_DEF.icon}
                                 enabled={sectionStates['visitor-form'] ?? true}
                                 onToggle={(val) => toggleSection('visitor-form', val)}
                                 defaultExpanded={true}
                                 showDragHandle={false}
+                                onFocus={() => setPreviewTab('check-in')}
                             >
                                 <VisitorFormSection
                                     formAccess={formAccess}
                                     onFormAccessChange={setFormAccess}
-                                    activeFields={activeFields}
-                                    onRemoveField={(field) => setActiveFields(prev => prev.filter(f => f !== field))}
-                                    onAddField={() => toast('Add field dialog coming soon')}
                                 />
+                            </BuilderSectionCard>
+                        </div>
+
+                        {/* Static Default Success Section */}
+                        <div className="mb-6">
+                            <BuilderSectionCard
+                                id={DEFAULT_SUCCESS_DEF.id}
+                                title={
+                                    <div className="flex items-center">
+                                        {DEFAULT_SUCCESS_DEF.title}
+                                        <CategoryTooltip content="Customize the messages shown to customers when they successfully check in." />
+                                    </div>
+                                }
+                                subtitle={DEFAULT_SUCCESS_DEF.subtitle}
+                                icon={DEFAULT_SUCCESS_DEF.icon}
+                                enabled={sectionStates['default-success'] ?? true}
+                                onToggle={(val) => toggleSection('default-success', val)}
+                                defaultExpanded={false}
+                                showDragHandle={false}
+                                onFocus={() => setPreviewTab('outcome')}
+                            >
+                                <DefaultSuccessSection />
                             </BuilderSectionCard>
                         </div>
 
@@ -476,27 +565,6 @@ export default function CustomerExperiencePage() {
                                     Live Preview
                                 </p>
                             </div>
-                            <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 overflow-x-auto max-w-[200px] scrollbar-hide">
-                                {[
-                                    { id: 'ubl', label: 'Menu' },
-                                    { id: 'check-in', label: 'New' },
-                                    { id: 'returning', label: 'Back' },
-                                    { id: 'outcome', label: 'Goal' },
-                                ].map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setPreviewTab(tab.id as any)}
-                                        className={cn(
-                                            'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap',
-                                            previewTab === tab.id
-                                                ? 'bg-white text-primary shadow-sm'
-                                                : 'text-gray-400 hover:text-gray-600'
-                                        )}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
                         </div>
 
                         {/* Phone Frame */}
@@ -513,8 +581,16 @@ export default function CustomerExperiencePage() {
                                             customPrivacyMessage={(engagementSettings as any)?.customPrivacyMessage || undefined}
                                             submitLabel={(engagementSettings as any)?.submitLabel || undefined}
                                             isPreview={true}
-                                            onBack={() => {}}
-                                            onSubmit={() => {}}
+                                            onBack={() => setPreviewTab('ubl')}
+                                            onSubmit={() => {
+                                                const hasSuccessSection = sectionStates['default-success'] ?? true;
+                                                if (hasSuccessSection) {
+                                                    setPreviewTab('outcome');
+                                                    setTimeout(() => setPreviewTab('ubl'), 3000);
+                                                } else {
+                                                    setPreviewTab('ubl');
+                                                }
+                                            }}
                                         />
                                     )}
                                     {previewTab === 'returning' && (
@@ -537,9 +613,10 @@ export default function CustomerExperiencePage() {
                                             hasRewardSetup={hasRewardSetup}
                                             isDownloading={false}
                                             onDownload={() => {}}
-                                            onFinish={() => {}}
-                                            onRestart={() => {}}
-                                            engagementSettings={{ ...engagementSettings, isPreview: true }}
+                                            onFinish={() => setPreviewTab('ubl')}
+                                            onRestart={() => setPreviewTab('check-in')}
+                                            customSuccessTitle={engagementSettings?.customSuccessTitle || customSuccessTitle}
+                                            customSuccessDescription={engagementSettings?.customSuccessMessage || customSuccessMessage}
                                             isPreview={true}
                                         />
                                     )}
