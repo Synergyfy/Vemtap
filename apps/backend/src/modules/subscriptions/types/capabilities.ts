@@ -5,6 +5,16 @@ export interface CapabilityLimit {
   remaining: number | 'unlimited';
 }
 
+export interface AddOnCapabilityInfo {
+  id: string;
+  name: string;
+  type: 'RESOURCE' | 'SERVICE';
+  targetCapability?: string;
+  additionalLimit: number;
+  expiresAt: Date;
+  quantity: number;
+}
+
 export interface SubscriptionCapabilities {
   plan: string;
   isActive: boolean;
@@ -32,4 +42,5 @@ export interface SubscriptionCapabilities {
       whatsapp: number;
     };
   };
+  addOns: AddOnCapabilityInfo[];
 }
