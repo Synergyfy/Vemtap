@@ -12,19 +12,30 @@ import {
 import { Channel } from '../enums/channel.enum';
 
 interface BestBulkSmsResponse {
-  ok: boolean;
-  message: string;
-  reference?: string;
-  sms_message_id?: number;
-  total_cost?: number;
-  units?: number;
   status?: string;
+  ok?: boolean;
+  message: string | { original: string; final: string };
+  sms_message_id?: number;
+  wallet_debit_reference?: string;
+  reference?: string;
+  segments?: number;
+  units_billed?: number;
+  cost_billed?: number;
+  units?: number;
+  total_cost?: number;
+  gateway_ok?: boolean;
+  gateway_error?: string;
+  wallet?: {
+    available_before_send_check: number;
+    ledger_balance: number;
+  };
+  invalid_recipients?: string[];
 }
 
 @Injectable()
 export class BestBulkSmsProvider implements MessagingProvider {
   private readonly logger = new Logger(BestBulkSmsProvider.name);
-  private readonly baseUrl = 'https://bestbulksms.com.ng/api/sms/send';
+  private readonly baseUrl = 'https://www.bestbulksms.com.ng/api/sms/send';
 
   constructor(
     private readonly configService: ConfigService,
@@ -45,18 +56,18 @@ export class BestBulkSmsProvider implements MessagingProvider {
       );
     }
 
-    // BestBulkSMS parameters for v1/send: to, sender_id, message
-    // Forcing 'VEMTAP' as requested to test carrier delivery
+    // BestBulkSMS parameters: to, sender_id, message, route
     const senderId = 'VEMTAP';
 
     this.logger.log(
-      `Sending SMS to ${payload.to} using Sender ID: ${senderId}`,
+      `Sending SMS to ${Array.isArray(payload.to) ? payload.to.length : 1} recipient(s) using Sender ID: ${senderId} (Route: promotional)`,
     );
 
     const data = {
       sender_id: senderId,
       to: payload.to,
       message: payload.content,
+      route: 'promotional',
     };
 
     try {
@@ -65,22 +76,29 @@ export class BestBulkSmsProvider implements MessagingProvider {
           headers: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
+            Accept: 'application/json',
           },
         }),
       );
 
       const responseData = response.data;
+      const isSuccess =
+        responseData.status === 'success' || responseData.ok === true;
 
-      if (responseData.ok === true) {
+      if (isSuccess) {
+        if (responseData.gateway_ok === false) {
+          this.logger.warn(
+            `BestBulkSMS API reported success but gateway rejected: ${responseData.gateway_error || 'Unknown gateway error'}`,
+          );
+        }
+
         return {
-          messageId:
-            responseData.sms_message_id?.toString() ||
-            responseData.reference ||
-            null,
-          status: responseData.message === 'Queued' ? 'queued' : 'sent',
-          cost: responseData.total_cost,
-          units: responseData.units,
-          reference: responseData.reference,
+          messageId: responseData.sms_message_id?.toString() || null,
+          status: 'sent',
+          cost: responseData.cost_billed ?? responseData.total_cost,
+          units: responseData.units_billed ?? responseData.units,
+          reference:
+            responseData.wallet_debit_reference ?? responseData.reference,
           rawResponse: responseData,
         };
       } else {

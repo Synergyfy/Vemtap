@@ -10,8 +10,9 @@ import {
   Request,
   ForbiddenException,
   NotFoundException,
+  Get as GetMapping,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -68,6 +69,47 @@ export class BranchesController {
   async remove(@Request() req, @Param('id') id: string) {
     const businessId = await this.getBusinessId(req.user);
     return this.branchesService.remove(businessId, id);
+  }
+
+  @Get('check-username/:username')
+  @ApiOperation({
+    summary: 'Check username availability',
+    description:
+      'Checks if a username is available for use. ' +
+      'Validates format (3-30 chars, lowercase, alphanumeric + hyphens) and uniqueness. ' +
+      'Returns null if available, or error message if taken/invalid.',
+  })
+  @ApiParam({
+    name: 'username',
+    description: 'Username to check',
+    example: 'main-office',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Username availability check result',
+    schema: {
+      example: {
+        available: true,
+        message: null,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Username is not available',
+    schema: {
+      example: {
+        available: false,
+        message: 'Username "main-office" is already taken',
+      },
+    },
+  })
+  async checkUsernameAvailability(@Param('username') username: string) {
+    const error = await this.branchesService.validateUsername(username);
+    return {
+      available: !error,
+      message: error,
+    };
   }
 
   private async getBusinessId(user: any): Promise<string> {

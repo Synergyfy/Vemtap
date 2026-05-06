@@ -70,96 +70,157 @@ export class BatchSendProcessor extends WorkerHost {
         return { successCount: 0, failureCount: 0 };
       }
 
-      // Process in chunks of 20 to avoid overwhelming the database/providers, but faster than sequentially
-      const CHUNK_SIZE = 20;
+      // Determine if we can use bulk sending optimization (Generic SMS only)
+      const isGenericSms =
+        job.data.channel === Channel.SMS &&
+        !this.messagingEngine.hasPlaceholders(content || '');
+
+      const CHUNK_SIZE = isGenericSms ? 100 : 20;
+
       for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
         const chunk = customerIds.slice(i, i + CHUNK_SIZE);
 
-        await Promise.all(
-          chunk.map(async (customerId) => {
-            try {
-              const customer = await this.userRepo.findOne({
-                where: { id: customerId, role: UserRole.CUSTOMER },
-              });
+        if (isGenericSms) {
+          const bulkMessages: any[] = [];
 
-              if (!customer) {
-                this.logger.warn(
-                  `Customer ${customerId} not found or not a customer role`,
-                );
-                return;
-              }
+          await Promise.all(
+            chunk.map(async (customerId) => {
+              try {
+                const customer = await this.userRepo.findOne({
+                  where: { id: customerId, role: UserRole.CUSTOMER },
+                });
 
-              const customerName =
-                `${customer.firstName} ${customer.lastName}`.trim() ||
-                'Customer';
-              this.logger.log(
-                `🚀 Starting batch message for ${customerName} (${customer.phone || customer.email})`,
-              );
+                if (!customer || !customer.phone) return;
 
-              let from = jobFrom || '';
-              if (!from) {
-                if (job.data.channel === Channel.SMS) {
-                  from = 'VEMTAP';
-                } else if (job.data.channel === Channel.WHATSAPP) {
-                  from = branch.whatsappNumber || '';
-                }
-              }
-
-              // Instead of processing directly, we'll create the message record
-              // and queue it for the individual sender. This provides better
-              // retry granularity and staggering.
-
-              const resolvedContent =
-                await this.messagingEngine.resolvePlaceholders(
-                  content || '',
+                const thread = await this.messagingEngine.getOrCreateThread(
+                  branch.id,
                   customerId,
-                  branch,
+                  Channel.SMS,
                 );
 
-              // Find or create conversation thread
-              const thread = await this.messagingEngine.getOrCreateThread(
-                branch.id,
-                customerId,
-                job.data.channel,
+                const message = await this.messagingEngine.createMessage({
+                  branchId: branch.id,
+                  businessId: branch.businessId,
+                  customerId,
+                  threadId: thread.id,
+                  campaignId,
+                  content: content || '',
+                  channel: Channel.SMS,
+                  direction: MessageDirection.OUTBOUND,
+                  from: jobFrom || 'VEMTAP',
+                  to: formatPhoneNumber(customer.phone),
+                  metadata: {},
+                });
+
+                bulkMessages.push(message);
+              } catch (err: any) {
+                this.logger.error(
+                  `Failed to prepare bulk message for ${customerId}: ${err.message}`,
+                );
+                failureCount++;
+              }
+            }),
+          );
+
+          if (bulkMessages.length > 0) {
+            try {
+              await this.messagingEngine.sendBulkGenericSms(
+                bulkMessages,
+                content || '',
+                jobFrom || 'VEMTAP',
               );
-
-              const message = await this.messagingEngine.createMessage({
-                branchId: branch.id,
-                businessId: branch.businessId,
-                customerId,
-                threadId: thread.id,
-                campaignId,
-                content: resolvedContent,
-                channel: job.data.channel,
-                direction: MessageDirection.OUTBOUND,
-                from,
-                to:
-                  job.data.channel === Channel.EMAIL
-                    ? customer.email || ''
-                    : formatPhoneNumber(customer.phone || ''),
-                metadata: {},
-              });
-
-              await this.messagingEngine.queueIndividualSend({
-                branchId: branch.id,
-                customerId,
-                content: resolvedContent,
-                channel: job.data.channel,
-                from,
-                campaignId,
-                messageId: message.id,
-                delay: 0, // No extra delay here as we are already in a background job
-              });
-
-              successCount++;
+              successCount += bulkMessages.length;
             } catch (err: any) {
               this.logger.error(
-                `Failed to send message to customer ${customerId} in batch ${campaignId}: ${err.message}`,
+                `Bulk send failed for chunk: ${err.message}`,
+                err.stack,
               );
-              failureCount++;
+              failureCount += bulkMessages.length;
             }
-          }),
-        );
+          }
+        } else {
+          // Individual processing (Personalized or non-SMS)
+          await Promise.all(
+            chunk.map(async (customerId) => {
+              try {
+                const customer = await this.userRepo.findOne({
+                  where: { id: customerId, role: UserRole.CUSTOMER },
+                });
+
+                if (!customer) {
+                  this.logger.warn(
+                    `Customer ${customerId} not found or not a customer role`,
+                  );
+                  return;
+                }
+
+                const customerName =
+                  `${customer.firstName} ${customer.lastName}`.trim() ||
+                  'Customer';
+                this.logger.log(
+                  `🚀 Starting batch message for ${customerName} (${customer.phone || customer.email})`,
+                );
+
+                let from = jobFrom || '';
+                if (!from) {
+                  if (job.data.channel === Channel.SMS) {
+                    from = 'VEMTAP';
+                  } else if (job.data.channel === Channel.WHATSAPP) {
+                    from = branch.whatsappNumber || '';
+                  }
+                }
+
+                const resolvedContent =
+                  await this.messagingEngine.resolvePlaceholders(
+                    content || '',
+                    customerId,
+                    branch,
+                  );
+
+                const thread = await this.messagingEngine.getOrCreateThread(
+                  branch.id,
+                  customerId,
+                  job.data.channel,
+                );
+
+                const message = await this.messagingEngine.createMessage({
+                  branchId: branch.id,
+                  businessId: branch.businessId,
+                  customerId,
+                  threadId: thread.id,
+                  campaignId,
+                  content: resolvedContent,
+                  channel: job.data.channel,
+                  direction: MessageDirection.OUTBOUND,
+                  from,
+                  to:
+                    job.data.channel === Channel.EMAIL
+                      ? customer.email || ''
+                      : formatPhoneNumber(customer.phone || ''),
+                  metadata: {},
+                });
+
+                await this.messagingEngine.queueIndividualSend({
+                  branchId: branch.id,
+                  customerId,
+                  content: resolvedContent,
+                  channel: job.data.channel,
+                  from,
+                  campaignId,
+                  messageId: message.id,
+                  delay: 0,
+                });
+
+                successCount++;
+              } catch (err: any) {
+                this.logger.error(
+                  `Failed to send message to customer ${customerId} in batch ${campaignId}: ${err.message}`,
+                );
+                failureCount++;
+              }
+            }),
+          );
+        }
       }
 
       await this.campaignService.updateCampaign(campaignId, {

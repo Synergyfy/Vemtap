@@ -47,3 +47,10 @@ The Vemtap project is built as a TypeScript monorepo using **Turbo** and **PNPM*
 -   Asynchronous tasks (Email, SMS, WhatsApp) are handled via **BullMQ** with Redis.
 -   Real-time updates are pushed via **Socket.io**.
 -   **Twilio** and **WhatsApp API** are the primary external communication providers.
+
+### 4. Branch Username System
+-   Branches can have a unique `username` field (3-30 chars, lowercase, alphanumeric + hyphens).
+-   Access branch UBL page via `/b/[username]` instead of `/[slug]/[deviceCode]`.
+-   New endpoint: `GET /tap/context-by-username/:username` returns the same context as `/tap/context/:code`.
+-   Username validation includes reserved word checking and uniqueness enforcement.
+-   Auto-generation from branch name if not provided during creation.

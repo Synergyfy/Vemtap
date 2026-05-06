@@ -19,6 +19,11 @@ import { CatalogueCategory } from '../catalogue/entities/catalogue-category.enti
 import { Device } from '../devices/entities/device.entity';
 import { CreditService } from '../messaging/services/credit.service';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
+import { AddonsService } from './services/addons.service';
+import { AffiliatesService } from '../affiliates/affiliates.service';
+import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
+import { BranchesService } from '../branches/branches.service';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -112,6 +117,18 @@ describe('SubscriptionsService', () => {
     allocateSubscriptionCredits: jest.fn(),
   };
 
+  const mockAddonsService = {
+    getAddonCapabilities: jest.fn().mockResolvedValue({}),
+    getActiveBusinessAddons: jest.fn().mockResolvedValue([]),
+    validateAddons: jest.fn().mockResolvedValue([]),
+    purchasePlanWithAddons: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockAffiliatesService = { processSubscriptionCommission: jest.fn() };
+  const mockExternalAffiliateService = { recordReferral: jest.fn() };
+  const mockQrThriveService = { syncSubscription: jest.fn() };
+  const mockBranchesService = { findBusinessByOwner: jest.fn(), findById: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -131,6 +148,11 @@ describe('SubscriptionsService', () => {
         { provide: PlansService, useValue: mockPlansService },
         { provide: PaymentsService, useValue: mockPaymentsService },
         { provide: CreditService, useValue: mockCreditService },
+        { provide: AddonsService, useValue: mockAddonsService },
+        { provide: AffiliatesService, useValue: mockAffiliatesService },
+        { provide: ExternalAffiliateService, useValue: mockExternalAffiliateService },
+        { provide: QrThriveService, useValue: mockQrThriveService },
+        { provide: BranchesService, useValue: mockBranchesService },
         {
           provide: 'DataSource',
           useValue: { transaction: jest.fn() },
@@ -162,8 +184,8 @@ describe('SubscriptionsService', () => {
         isTrial: true,
       });
 
-      expect(result.status).toBe(SubscriptionStatus.TRIAL);
-      expect(result.trialEndDate).toBeDefined();
+      expect(result.subscription.status).toBe(SubscriptionStatus.TRIAL);
+      expect(result.subscription.trialEndDate).toBeDefined();
     });
 
     it('should throw BadRequest if isTrial=true but plan has no trial', async () => {

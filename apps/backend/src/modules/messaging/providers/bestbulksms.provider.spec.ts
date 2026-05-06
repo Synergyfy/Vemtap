@@ -53,12 +53,12 @@ describe('BestBulkSmsProvider', () => {
 
       const mockResponse: AxiosResponse = {
         data: {
-          ok: true,
+          status: 'success',
           message: 'Queued',
-          reference: 'REF123',
+          wallet_debit_reference: 'REF123',
           sms_message_id: 12345,
-          total_cost: 5.99,
-          units: 1,
+          cost_billed: 5.99,
+          units_billed: 1,
         },
         status: 200,
         statusText: 'OK',
@@ -72,22 +72,24 @@ describe('BestBulkSmsProvider', () => {
 
       expect(result).toEqual({
         messageId: '12345',
-        status: 'queued',
+        status: 'sent',
         cost: 5.99,
         units: 1,
         reference: 'REF123',
         rawResponse: mockResponse.data,
       });
       expect(httpService.post).toHaveBeenCalledWith(
-        'https://bestbulksms.com.ng/api/sms/send',
+        'https://www.bestbulksms.com.ng/api/sms/send',
         expect.objectContaining({
           sender_id: 'VEMTAP',
           to: '2348012345678',
           message: 'Hello World',
+          route: 'promotional',
         }),
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-api-key',
+            Accept: 'application/json',
           }),
         }),
       );
@@ -102,7 +104,7 @@ describe('BestBulkSmsProvider', () => {
 
       const mockResponse: AxiosResponse = {
         data: {
-          ok: false,
+          status: 'error',
           message: 'Insufficient units',
         },
         status: 200,
@@ -142,6 +144,51 @@ describe('BestBulkSmsProvider', () => {
 
       await expect(provider.sendMessage(payload)).rejects.toThrow(
         'BestBulkSMS API Key missing',
+      );
+    });
+
+    it('should send bulk SMS successfully', async () => {
+      const payload = {
+        to: ['2348012345678', '2348098765432'],
+        from: 'VEMTAP',
+        content: 'Hello Bulk',
+        channel: Channel.SMS,
+      };
+
+      const mockResponse: AxiosResponse = {
+        data: {
+          status: 'success',
+          message: 'Queued',
+          wallet_debit_reference: 'BULK123',
+          sms_message_id: 67890,
+          cost_billed: 10.0,
+          units_billed: 2,
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any,
+      };
+
+      jest.spyOn(httpService, 'post').mockReturnValue(of(mockResponse));
+
+      const result = await provider.sendMessage(payload);
+
+      expect(result).toEqual({
+        messageId: '67890',
+        status: 'sent',
+        cost: 10.0,
+        units: 2,
+        reference: 'BULK123',
+        rawResponse: mockResponse.data,
+      });
+      expect(httpService.post).toHaveBeenCalledWith(
+        'https://www.bestbulksms.com.ng/api/sms/send',
+        expect.objectContaining({
+          to: ['2348012345678', '2348098765432'],
+          message: 'Hello Bulk',
+        }),
+        expect.any(Object),
       );
     });
   });
