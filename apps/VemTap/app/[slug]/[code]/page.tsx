@@ -372,9 +372,10 @@ const DynamicTapJourneyPage = () => {
                             key="form-step"
                             storeName={storeName}
                             logoUrl={logoUrl}
-                            customWelcomeTitle="Join to Continue"
-                            customWelcomeMessage="Quickly share your details to proceed with your request."
-                            submitLabel="Complete Registration"
+                            customWelcomeTitle={(engagementSettings as any)?.customWelcomeTitle || "Join to Continue"}
+                            customWelcomeTag={(engagementSettings as any)?.customWelcomeTag || "Quickly share your details to proceed with your request."}
+                            customWelcomeMessage={(engagementSettings as any)?.customWelcomeMessage || undefined}
+                            submitLabel={(engagementSettings as any)?.submitLabel || "Complete Registration"}
                             isSubmitting={isSubmitting}
                             onBack={() => {
                                 setPendingAction(null);

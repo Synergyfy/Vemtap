@@ -72,12 +72,12 @@ export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
 
         return sequenceToUse.map(id => {
             const customTitle = customLabels[id];
-            if (id === 'system:order') return { id: 'order', label: customTitle || 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: productCount };
-            if (id === 'system:service') return { id: 'service', label: customTitle || (isServiceOnly ? 'Book Appointment' : 'Book Service'), icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: serviceCount };
-            if (id === 'system:offers') return { id: 'offers', label: customTitle || 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: offerCount };
-            if (id === 'system:whatsapp') return { id: 'whatsapp', label: customTitle || 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: whatsappNumber ? 1 : 0 };
-            if (id === 'system:forms') return { id: 'forms', label: customTitle || 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: formCount };
-            if (id === 'system:engagement') return { id: 'engagement', label: customTitle || 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: Object.keys(engagement || {}).length > 0 ? 1 : 0 };
+            if (id === 'system:order') return { id: 'order', label: customTitle || 'Place Order', icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-50', desc: 'Browse our Full Menu', count: isPreview ? 1 : productCount };
+            if (id === 'system:service') return { id: 'service', label: customTitle || (isServiceOnly ? 'Book Appointment' : 'Book Service'), icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', desc: isServiceOnly ? 'Secure Your Time Slot' : 'Reservations & Slots', count: isPreview ? 1 : serviceCount };
+            if (id === 'system:offers') return { id: 'offers', label: customTitle || 'See Offers', icon: Gift, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Exclusive Hot Deals', count: isPreview ? 1 : offerCount };
+            if (id === 'system:whatsapp') return { id: 'whatsapp', label: customTitle || 'WhatsApp', icon: FaWhatsapp, color: 'text-green-500', bg: 'bg-green-50', desc: 'Instant Support', count: isPreview ? 1 : (whatsappNumber ? 1 : 0) };
+            if (id === 'system:forms') return { id: 'forms', label: customTitle || 'Fill Feedback', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Share your thoughts', count: isPreview ? 1 : formCount };
+            if (id === 'system:engagement') return { id: 'engagement', label: customTitle || 'Social Connect', icon: Share2, color: 'text-pink-500', bg: 'bg-pink-50', desc: 'Follow us online', count: isPreview ? 1 : (Object.keys(engagement || {}).length > 0 ? 1 : 0) };
 
             const form = formMap.get(id);
             if (form) return { id: `form-${form.uniqueCode}`, label: customTitle || form.title, icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50', desc: 'Feedback Form', count: 1 };
@@ -100,7 +100,7 @@ export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
             };
             return null;
         }).filter(action => action && (action as any).count !== 0);
-    }, [ublSequence, availableForms, availableRewards, qrThriveCodes, productCount, serviceCount, isServiceOnly, offerCount, whatsappNumber, formCount, engagement]);
+    }, [ublSequence, availableForms, availableRewards, qrThriveCodes, productCount, serviceCount, isServiceOnly, offerCount, whatsappNumber, formCount, engagement, isPreview]);
 
     const actions = useMemo(() => {
         if (dynamicActions) return dynamicActions;
@@ -136,7 +136,7 @@ export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className={cn("w-full space-y-4 md:space-y-6 pt-0 pb-6", isPreview && "space-y-2 pb-0 px-3 shadow-none border-none bg-transparent")}
+            className={cn("w-full space-y-4 md:space-y-6 pt-6 md:pt-8 pb-6", isPreview && "space-y-2 pt-6 pb-0 px-3 shadow-none border-none bg-transparent")}
         >
             <div className={cn("flex items-center gap-4 mb-4 border-b border-slate-100/50 pb-4", isPreview && "mb-2 pb-2 gap-2")}>
                 {logoUrl ? (

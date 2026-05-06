@@ -230,7 +230,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Overview', href: '/dashboard/customer-experience' },
                 { label: 'Form Creator', href: '/dashboard/engagement/forms' },
-                { label: 'Legacy Flow', href: '/dashboard/engagement/experience' },
+                // { label: 'Legacy Flow', href: '/dashboard/engagement/experience' },
             ]
         },
         {
@@ -298,14 +298,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             href: '/admin/nfc-grants',
             roles: ['admin']
         },
-        {
-            id: 'devices',
-            label: 'Business Link (Legacy)',
-            icon: Nfc,
-            href: '/dashboard/business-link',
-            roles: ['owner', 'manager', 'staff'],
+        // {
+        //     id: 'devices',
+        //     label: 'Business Link (Legacy)',
+        //     icon: Nfc,
+        //     href: '/dashboard/business-link',
+        //     roles: ['owner', 'manager', 'staff'],
 
-        },
+        // },
         {
             id: 'explore-qrthrive',
             label: 'Explore QRThrive',
