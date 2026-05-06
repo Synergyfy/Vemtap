@@ -12,19 +12,24 @@ import {
 import { Channel } from '../enums/channel.enum';
 
 interface BestBulkSmsResponse {
-  ok: boolean;
-  message: string;
-  reference?: string;
+  status: string;
+  message: string | { original: string; final: string };
   sms_message_id?: number;
-  total_cost?: number;
-  units?: number;
-  status?: string;
+  wallet_debit_reference?: string;
+  segments?: number;
+  units_billed?: number;
+  cost_billed?: number;
+  wallet?: {
+    available_before_send_check: number;
+    ledger_balance: number;
+  };
+  invalid_recipients?: string[];
 }
 
 @Injectable()
 export class BestBulkSmsProvider implements MessagingProvider {
   private readonly logger = new Logger(BestBulkSmsProvider.name);
-  private readonly baseUrl = 'https://bestbulksms.com.ng/api/sms/send';
+  private readonly baseUrl = 'https://www.bestbulksms.com.ng/api/sms/send';
 
   constructor(
     private readonly configService: ConfigService,
@@ -45,18 +50,19 @@ export class BestBulkSmsProvider implements MessagingProvider {
       );
     }
 
-    // BestBulkSMS parameters for v1/send: to, sender_id, message
-    // Forcing 'VEMTAP' as requested to test carrier delivery
+    // BestBulkSMS parameters: to, sender_id, message, route
+    // Forcing 'VEMTAP' as requested, using 'promotional' route
     const senderId = 'VEMTAP';
 
     this.logger.log(
-      `Sending SMS to ${payload.to} using Sender ID: ${senderId}`,
+      `Sending SMS to ${payload.to} using Sender ID: ${senderId} (Route: promotional)`,
     );
 
     const data = {
       sender_id: senderId,
       to: payload.to,
       message: payload.content,
+      route: 'promotional',
     };
 
     try {
@@ -65,22 +71,20 @@ export class BestBulkSmsProvider implements MessagingProvider {
           headers: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
+            Accept: 'application/json',
           },
         }),
       );
 
       const responseData = response.data;
 
-      if (responseData.ok === true) {
+      if (responseData.status === 'success') {
         return {
-          messageId:
-            responseData.sms_message_id?.toString() ||
-            responseData.reference ||
-            null,
-          status: responseData.message === 'Queued' ? 'queued' : 'sent',
-          cost: responseData.total_cost,
-          units: responseData.units,
-          reference: responseData.reference,
+          messageId: responseData.sms_message_id?.toString() || null,
+          status: 'sent',
+          cost: responseData.cost_billed,
+          units: responseData.units_billed,
+          reference: responseData.wallet_debit_reference,
           rawResponse: responseData,
         };
       } else {

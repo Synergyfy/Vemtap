@@ -53,12 +53,12 @@ describe('BestBulkSmsProvider', () => {
 
       const mockResponse: AxiosResponse = {
         data: {
-          ok: true,
+          status: 'success',
           message: 'Queued',
-          reference: 'REF123',
+          wallet_debit_reference: 'REF123',
           sms_message_id: 12345,
-          total_cost: 5.99,
-          units: 1,
+          cost_billed: 5.99,
+          units_billed: 1,
         },
         status: 200,
         statusText: 'OK',
@@ -72,22 +72,24 @@ describe('BestBulkSmsProvider', () => {
 
       expect(result).toEqual({
         messageId: '12345',
-        status: 'queued',
+        status: 'sent',
         cost: 5.99,
         units: 1,
         reference: 'REF123',
         rawResponse: mockResponse.data,
       });
       expect(httpService.post).toHaveBeenCalledWith(
-        'https://bestbulksms.com.ng/api/sms/send',
+        'https://www.bestbulksms.com.ng/api/sms/send',
         expect.objectContaining({
           sender_id: 'VEMTAP',
           to: '2348012345678',
           message: 'Hello World',
+          route: 'promotional',
         }),
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-api-key',
+            Accept: 'application/json',
           }),
         }),
       );
@@ -102,7 +104,7 @@ describe('BestBulkSmsProvider', () => {
 
       const mockResponse: AxiosResponse = {
         data: {
-          ok: false,
+          status: 'error',
           message: 'Insufficient units',
         },
         status: 200,
