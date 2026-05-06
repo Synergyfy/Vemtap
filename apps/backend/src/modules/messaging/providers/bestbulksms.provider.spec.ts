@@ -146,6 +146,51 @@ describe('BestBulkSmsProvider', () => {
         'BestBulkSMS API Key missing',
       );
     });
+
+    it('should send bulk SMS successfully', async () => {
+      const payload = {
+        to: ['2348012345678', '2348098765432'],
+        from: 'VEMTAP',
+        content: 'Hello Bulk',
+        channel: Channel.SMS,
+      };
+
+      const mockResponse: AxiosResponse = {
+        data: {
+          status: 'success',
+          message: 'Queued',
+          wallet_debit_reference: 'BULK123',
+          sms_message_id: 67890,
+          cost_billed: 10.0,
+          units_billed: 2,
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any,
+      };
+
+      jest.spyOn(httpService, 'post').mockReturnValue(of(mockResponse));
+
+      const result = await provider.sendMessage(payload);
+
+      expect(result).toEqual({
+        messageId: '67890',
+        status: 'sent',
+        cost: 10.0,
+        units: 2,
+        reference: 'BULK123',
+        rawResponse: mockResponse.data,
+      });
+      expect(httpService.post).toHaveBeenCalledWith(
+        'https://www.bestbulksms.com.ng/api/sms/send',
+        expect.objectContaining({
+          to: ['2348012345678', '2348098765432'],
+          message: 'Hello Bulk',
+        }),
+        expect.any(Object),
+      );
+    });
   });
 
   describe('parseWebhook', () => {

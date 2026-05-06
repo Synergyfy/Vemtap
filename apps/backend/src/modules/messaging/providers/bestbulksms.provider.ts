@@ -12,13 +12,19 @@ import {
 import { Channel } from '../enums/channel.enum';
 
 interface BestBulkSmsResponse {
-  status: string;
+  status?: string;
+  ok?: boolean;
   message: string | { original: string; final: string };
   sms_message_id?: number;
   wallet_debit_reference?: string;
+  reference?: string;
   segments?: number;
   units_billed?: number;
   cost_billed?: number;
+  units?: number;
+  total_cost?: number;
+  gateway_ok?: boolean;
+  gateway_error?: string;
   wallet?: {
     available_before_send_check: number;
     ledger_balance: number;
@@ -51,11 +57,10 @@ export class BestBulkSmsProvider implements MessagingProvider {
     }
 
     // BestBulkSMS parameters: to, sender_id, message, route
-    // Forcing 'VEMTAP' as requested, using 'promotional' route
     const senderId = 'VEMTAP';
 
     this.logger.log(
-      `Sending SMS to ${payload.to} using Sender ID: ${senderId} (Route: promotional)`,
+      `Sending SMS to ${Array.isArray(payload.to) ? payload.to.length : 1} recipient(s) using Sender ID: ${senderId} (Route: promotional)`,
     );
 
     const data = {
@@ -77,14 +82,23 @@ export class BestBulkSmsProvider implements MessagingProvider {
       );
 
       const responseData = response.data;
+      const isSuccess =
+        responseData.status === 'success' || responseData.ok === true;
 
-      if (responseData.status === 'success') {
+      if (isSuccess) {
+        if (responseData.gateway_ok === false) {
+          this.logger.warn(
+            `BestBulkSMS API reported success but gateway rejected: ${responseData.gateway_error || 'Unknown gateway error'}`,
+          );
+        }
+
         return {
           messageId: responseData.sms_message_id?.toString() || null,
           status: 'sent',
-          cost: responseData.cost_billed,
-          units: responseData.units_billed,
-          reference: responseData.wallet_debit_reference,
+          cost: responseData.cost_billed ?? responseData.total_cost,
+          units: responseData.units_billed ?? responseData.units,
+          reference:
+            responseData.wallet_debit_reference ?? responseData.reference,
           rawResponse: responseData,
         };
       } else {

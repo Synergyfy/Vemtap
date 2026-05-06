@@ -64,9 +64,10 @@ export class TwilioProvider implements MessagingProvider {
       );
     }
 
-    const to = payload.to.startsWith('whatsapp:')
-      ? payload.to
-      : `whatsapp:${payload.to}`;
+    const targetTo = Array.isArray(payload.to) ? payload.to[0] : payload.to;
+    const to = targetTo.startsWith('whatsapp:')
+      ? targetTo
+      : `whatsapp:${targetTo}`;
     const from = payload.from
       ? payload.from.startsWith('whatsapp:')
         ? payload.from
