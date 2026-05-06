@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { AddOn } from './addon.entity';
 import { Business } from '../../businesses/entities/business.entity';
@@ -15,6 +15,7 @@ export class BusinessAddOn extends AbstractBaseEntity {
   @JoinColumn({ name: 'addonId' })
   addon: AddOn;
 
+  @Index('IDX_business_addons_addonId')
   @Column()
   addonId: string;
 
@@ -22,9 +23,11 @@ export class BusinessAddOn extends AbstractBaseEntity {
   @JoinColumn({ name: 'businessId' })
   business: Business;
 
+  @Index('IDX_business_addons_businessId')
   @Column()
   businessId: string;
 
+  @Index('IDX_business_addons_status')
   @Column({
     type: 'simple-enum',
     enum: BusinessAddOnStatus,
@@ -35,6 +38,7 @@ export class BusinessAddOn extends AbstractBaseEntity {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   purchasedAt: Date;
 
+  @Index('IDX_business_addons_expiresAt')
   @Column({ type: 'timestamp' })
   expiresAt: Date;
 

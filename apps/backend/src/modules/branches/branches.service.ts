@@ -315,7 +315,8 @@ export class BranchesService {
     }
 
     // Fallback to random
-    const random = generateUsernameFromName(branchName) + '-' + Math.floor(Math.random() * 1000);
-    return random.substring(0, 30);
+    const suffix = '-' + Math.floor(Math.random() * 1000);
+    const baseName = generateUsernameFromName(branchName).substring(0, 30 - suffix.length);
+    return baseName + suffix;
   }
 }

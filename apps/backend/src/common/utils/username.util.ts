@@ -3,13 +3,15 @@
  * Rules: lowercase, alphanumeric + hyphens, 3-30 chars
  */
 export function generateUsernameFromName(name: string): string {
-  return name
+  const sanitized = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '') // Remove special chars except hyphen
     .replace(/\s+/g, '-') // Spaces to hyphens
     .replace(/--+/g, '-') // Collapse multiple hyphens
     .replace(/^-|-$/g, '') // Trim hyphens
     .substring(0, 30); // Max length
+    
+  return sanitized || 'branch';
 }
 
 /**

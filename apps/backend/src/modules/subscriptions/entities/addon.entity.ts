@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { BusinessAddOn } from './business-addon.entity';
 
@@ -21,6 +21,7 @@ export class AddOn extends AbstractBaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Index('IDX_addons_type')
   @Column({ type: 'enum', enum: AddOnType })
   type: AddOnType;
 
@@ -33,6 +34,7 @@ export class AddOn extends AbstractBaseEntity {
   @Column({ type: 'varchar', default: 'NGN' })
   currency: string;
 
+  @Index('IDX_addons_isActive')
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
