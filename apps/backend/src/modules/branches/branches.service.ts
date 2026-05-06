@@ -4,6 +4,7 @@ import {
   NotFoundException,
   Inject,
   forwardRef,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +13,7 @@ import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DevicesService } from '../devices/devices.service';
+import { isValidUsername, RESERVED_USERNAMES, generateUsernameFromName } from '../../common/utils/username.util';
 
 import { User } from '../users/entities/user.entity';
 
@@ -116,6 +118,16 @@ export class BranchesService {
     const mainBranch = await this.branchesRepository.findOne({
       where: { businessId: business.id, isMainBranch: true },
     });
+
+    // Auto-generate username if not provided
+    if (!createBranchDto.username) {
+      createBranchDto.username = await this.generateUniqueUsername(createBranchDto.name);
+    } else {
+      const usernameError = await this.validateUsername(createBranchDto.username);
+      if (usernameError) {
+        throw new BadRequestException(usernameError);
+      }
+    }
 
     const branch = this.branchesRepository.create({
       ...createBranchDto,
@@ -228,6 +240,14 @@ export class BranchesService {
       );
     }
 
+    // Validate username if being updated
+    if (updateBranchDto.username && updateBranchDto.username !== branch.username) {
+      const usernameError = await this.validateUsername(updateBranchDto.username, id);
+      if (usernameError) {
+        throw new BadRequestException(usernameError);
+      }
+    }
+
     Object.assign(branch, updateBranchDto);
     return this.branchesRepository.save(branch);
   }
@@ -238,5 +258,64 @@ export class BranchesService {
       throw new ForbiddenException('The main branch cannot be deleted');
     }
     await this.branchesRepository.remove(branch);
+  }
+
+  async findByUsername(username: string): Promise<Branch | null> {
+    return this.branchesRepository.findOne({
+      where: { username, isActive: true },
+      relations: ['business'],
+    });
+  }
+
+  async validateUsername(username: string, excludeBranchId?: string): Promise<string | null> {
+    // Check format
+    if (!username || username.length < 3 || username.length > 30) {
+      return 'Username must be 3-30 characters';
+    }
+
+    const usernameRegex = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
+    if (!usernameRegex.test(username)) {
+      return 'Username must be lowercase, start and end with a letter or number, and contain only letters, numbers, and hyphens';
+    }
+
+    // Check reserved words
+    if (RESERVED_USERNAMES.includes(username)) {
+      return `Username "${username}" is reserved and cannot be used`;
+    }
+
+    // Check uniqueness
+    const query = this.branchesRepository.createQueryBuilder('branch')
+      .where('branch.username = :username', { username });
+
+    if (excludeBranchId) {
+      query.andWhere('branch.id != :excludeBranchId', { excludeBranchId });
+    }
+
+    const existing = await query.getOne();
+    if (existing) {
+      return `Username "${username}" is already taken`;
+    }
+
+    return null; // Valid
+  }
+
+  async generateUniqueUsername(branchName: string, attempt: number = 0): Promise<string> {
+    let base = generateUsernameFromName(branchName);
+
+    if (attempt > 0) {
+      base = `${base}-${attempt}`;
+    }
+
+    const error = await this.validateUsername(base);
+    if (!error) return base;
+
+    // Recursive retry with incremental suffix
+    if (attempt < 10) {
+      return this.generateUniqueUsername(branchName, attempt + 1);
+    }
+
+    // Fallback to random
+    const random = generateUsernameFromName(branchName) + '-' + Math.floor(Math.random() * 1000);
+    return random.substring(0, 30);
   }
 }
