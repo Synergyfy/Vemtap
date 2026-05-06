@@ -22,6 +22,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
 import { BranchesService } from '../branches/branches.service';
+import { SubscribeWithAddonsDto } from './dto/addons/subscribe-with-addons.dto';
 
 @ApiTags('Subscriptions (Owner / Capabilities)')
 @Controller('subscriptions')
@@ -64,10 +65,40 @@ export class SubscriptionsController {
   @Post('subscribe')
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Subscribe to a pricing plan' })
-  @ApiResponse({ status: 201, description: 'Successfully subscribed' })
-  async subscribe(@Request() req, @Body() subscribeDto: SubscribeDto) {
-    if (subscribeDto.isAdminOverride && req.user.role !== UserRole.ADMIN) {
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Subscribe to a pricing plan',
+    description:
+      'Subscribes the business to a pricing plan. Optionally include add-on IDs to purchase add-ons in the same transaction. Payment is verified via Paystack.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Subscription created successfully',
+    schema: {
+      example: {
+        subscription: {
+          id: 'uuid-subscription',
+          businessId: 'uuid-business',
+          planId: 'uuid-plan',
+          billingPeriod: 'monthly',
+          status: 'active',
+          startDate: '2026-05-06T10:00:00Z',
+          endDate: '2026-06-06T10:00:00Z',
+        },
+        addOns: [],
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid plan or payment failed' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async subscribe(
+    @Request() req,
+    @Body() subscribeDto: SubscribeWithAddonsDto,
+  ) {
+    if (
+      subscribeDto.isAdminOverride &&
+      req.user.role !== UserRole.ADMIN
+    ) {
       throw new BadRequestException('Only admins can override plans');
     }
     if (!subscribeDto.businessId) {

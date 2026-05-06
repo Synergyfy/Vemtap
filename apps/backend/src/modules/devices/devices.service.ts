@@ -432,4 +432,11 @@ export class DevicesService {
     if (!device) throw new NotFoundException('Device not found');
     await this.devicesRepository.remove(device);
   }
+
+  async findFirstByBranchId(branchId: string): Promise<Device | null> {
+    return this.devicesRepository.findOne({
+      where: { branchId, status: DeviceStatus.ACTIVE },
+      order: { createdAt: 'ASC' },
+    });
+  }
 }

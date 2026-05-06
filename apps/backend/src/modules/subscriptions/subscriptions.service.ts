@@ -26,7 +26,7 @@ import {
   PaymentPurpose,
   PaymentStatus,
 } from '../payments/entities/payment.entity';
-import { SubscriptionCapabilities } from './types/capabilities';
+import { SubscriptionCapabilities, AddOnCapabilityInfo } from './types/capabilities';
 import { CreditService } from '../messaging/services/credit.service';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
@@ -35,6 +35,8 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
+import { AddonsService } from './services/addons.service';
+import { AddOn } from './entities/addon.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -66,6 +68,7 @@ export class SubscriptionsService {
     private readonly externalAffiliateService: ExternalAffiliateService,
     @Inject(forwardRef(() => QrThriveService))
     private readonly qrThriveService: QrThriveService,
+    private readonly addonsService: AddonsService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -96,7 +99,7 @@ export class SubscriptionsService {
     return sub;
   }
 
-  async subscribeToFreePlan(businessId: string): Promise<Subscription | null> {
+  async subscribeToFreePlan(businessId: string): Promise<{ subscription: Subscription; addOns?: any[] } | null> {
     const freePlan = await this.plansService.findFreePlan();
     if (!freePlan) {
       this.logger.warn(
@@ -112,7 +115,7 @@ export class SubscriptionsService {
     });
   }
 
-  async subscribe(subscribeDto: SubscribeDto): Promise<Subscription> {
+  async subscribe(subscribeDto: SubscribeDto & { addonIds?: string[], addonQuantities?: number[] }): Promise<{ subscription: Subscription; addOns?: any[] }> {
     const {
       planId,
       businessId,
@@ -120,6 +123,8 @@ export class SubscriptionsService {
       paymentReference,
       isTrial = false,
       isAdminOverride = false,
+      addonIds,
+      addonQuantities,
     } = subscribeDto;
 
     const plan = await this.plansService.findOne(planId);
@@ -135,15 +140,20 @@ export class SubscriptionsService {
       throw new NotFoundException('Business not found');
     }
 
+    let addons: AddOn[] = [];
+    if (addonIds && addonIds.length > 0) {
+      addons = await this.addonsService.validateAddons(addonIds);
+    }
+
     let status = SubscriptionStatus.ACTIVE;
     let trialEndDate: Date | null = null;
     const startDate = new Date();
     let endDate = new Date(startDate);
     let authCode = null;
+    let paymentData: any = null;
 
     if (paymentReference) {
-      const paymentData =
-        await this.paymentsService.verifyTransaction(paymentReference);
+      paymentData = await this.paymentsService.verifyTransaction(paymentReference);
       if (!paymentData) {
         throw new BadRequestException('Payment verification failed');
       }
@@ -178,14 +188,13 @@ export class SubscriptionsService {
           await this.paymentsService.recordPayment({
             reference: paymentReference,
             amount: plan.monthlyPrice,
-            purpose: PaymentPurpose.SUBSCRIPTION,
+            purpose: addons.length > 0 ? PaymentPurpose.PLAN_WITH_ADDONS : PaymentPurpose.SUBSCRIPTION,
             status: PaymentStatus.SUCCESS,
-            metadata: { planId, billingPeriod },
+            metadata: { planId, billingPeriod, addonIds },
             businessId,
             userId: business.ownerId,
           });
 
-          // Trigger affiliate commission
           await this.reportCommission(business, plan, paymentReference);
         }
 
@@ -218,6 +227,21 @@ export class SubscriptionsService {
 
     const savedSub = await this.subscriptionRepository.save(newSub);
 
+    let purchasedAddOns: any[] = [];
+    if (
+      (status === SubscriptionStatus.ACTIVE || status === SubscriptionStatus.TRIAL) &&
+      addons.length > 0
+    ) {
+      purchasedAddOns = await this.addonsService.purchasePlanWithAddons(
+        addons,
+        addonQuantities,
+        business.id,
+        business.ownerId as string,
+        paymentReference as string,
+        paymentData,
+      );
+    }
+
     if (
       status === SubscriptionStatus.ACTIVE ||
       status === SubscriptionStatus.TRIAL
@@ -232,20 +256,17 @@ export class SubscriptionsService {
           { status: UserStatus.ACTIVE },
         );
       }
-      // Also update owner who might not be in a branch? (Actually they should be in Main Branch now)
       await this.userRepository.update(
         { id: business.ownerId },
         { status: UserStatus.ACTIVE },
       );
 
-      // Allocate messaging credits as per plan
       await this.creditService.allocateSubscriptionCredits(business.id, plan);
 
-      // Sync with QR-Thrive
       await this.syncUserSubscriptionToQrThrive(business.id);
     }
 
-    return savedSub;
+    return { subscription: savedSub, addOns: purchasedAddOns };
   }
 
   async getSubscriptionStatus(
@@ -558,6 +579,64 @@ export class SubscriptionsService {
 
     const usedLoyaltyPrograms = 0;
 
+    const addonCapabilities = await this.addonsService.getAddonCapabilities(businessId);
+    const activeBusinessAddOns = await this.addonsService.getActiveBusinessAddons(businessId);
+
+    const addOnsInfo: AddOnCapabilityInfo[] = activeBusinessAddOns.map((ba) => ({
+      id: ba.addon.id,
+      name: ba.addon.name,
+      type: ba.addon.type as 'RESOURCE' | 'SERVICE',
+      targetCapability: ba.metadata?.targetCapability ?? ba.addon.targetCapability ?? undefined,
+      additionalLimit: ba.metadata?.additionalLimit ?? ba.addon.additionalLimit ?? 0,
+      expiresAt: ba.expiresAt,
+      quantity: ba.quantity,
+    }));
+
+    const addonBranches = addonCapabilities['branches'] || 0;
+    const addonTeamMembers = addonCapabilities['teamMembers'] || 0;
+    const addonAutomations = addonCapabilities['automations'] || 0;
+    const addonCatalogueItems = addonCapabilities['catalogueItems'] || 0;
+    const addonCatalogueCategories = addonCapabilities['catalogueCategories'] || 0;
+    const addonCatalogueOffers = addonCapabilities['catalogueOffers'] || 0;
+
+    const baseBranchLimit = plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0);
+    const finalBranchLimit = typeof baseBranchLimit === 'number'
+      ? baseBranchLimit + addonBranches
+      : baseBranchLimit;
+
+    const baseTeamLimit = plan.teamMembersLimit === -1 ? 'unlimited' : (plan.teamMembersLimit ?? 0);
+    const finalTeamLimit = typeof baseTeamLimit === 'number'
+      ? baseTeamLimit + addonTeamMembers
+      : baseTeamLimit;
+
+    const baseAutomationsLimit = plan.maxAutomations === -1 || plan.maxAutomations === null
+      ? 'unlimited'
+      : plan.maxAutomations;
+    const finalAutomationsLimit = typeof baseAutomationsLimit === 'number'
+      ? baseAutomationsLimit + addonAutomations
+      : baseAutomationsLimit;
+
+    const baseCatalogueItemsLimit = plan.maxCatalogueItems === -1 || plan.maxCatalogueItems === null
+      ? 'unlimited'
+      : plan.maxCatalogueItems;
+    const finalCatalogueItemsLimit = typeof baseCatalogueItemsLimit === 'number'
+      ? baseCatalogueItemsLimit + addonCatalogueItems
+      : baseCatalogueItemsLimit;
+
+    const baseCatalogueCategoriesLimit = plan.maxCatalogueCategories === -1 || plan.maxCatalogueCategories === null
+      ? 'unlimited'
+      : plan.maxCatalogueCategories;
+    const finalCatalogueCategoriesLimit = typeof baseCatalogueCategoriesLimit === 'number'
+      ? baseCatalogueCategoriesLimit + addonCatalogueCategories
+      : baseCatalogueCategoriesLimit;
+
+    const baseCatalogueOffersLimit = plan.maxCatalogueOffers === -1 || plan.maxCatalogueOffers === null
+      ? 'unlimited'
+      : plan.maxCatalogueOffers;
+    const finalCatalogueOffersLimit = typeof baseCatalogueOffersLimit === 'number'
+      ? baseCatalogueOffersLimit + addonCatalogueOffers
+      : baseCatalogueOffersLimit;
+
     return {
       plan: plan.name,
       isActive:
@@ -567,19 +646,16 @@ export class SubscriptionsService {
       capabilities: {
         teamMembers: {
           enabled: plan.teamMembersEnabled,
-          limit:
-            plan.teamMembersLimit === -1
-              ? 'unlimited'
-              : (plan.teamMembersLimit ?? 0),
+          limit: finalTeamLimit,
           used: usedStaff,
           remaining: !plan.teamMembersEnabled
             ? 0
-            : plan.teamMembersLimit === -1
+            : finalTeamLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (plan.teamMembersLimit ?? 0) - usedStaff),
+              : Math.max(0, (finalTeamLimit as number) - usedStaff),
         },
         tags: {
-          enabled: true, // Tags are always enabled for now
+          enabled: true,
           limit: 'unlimited',
           used: usedTags,
           remaining: 'unlimited',
@@ -597,27 +673,23 @@ export class SubscriptionsService {
         },
         branches: {
           enabled: plan.branchesEnabled,
-          limit:
-            plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0),
+          limit: finalBranchLimit,
           used: usedBranches,
           remaining: !plan.branchesEnabled
             ? 0
-            : plan.branchLimit === -1
+            : finalBranchLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (plan.branchLimit ?? 0) - usedBranches),
+              : Math.max(0, (finalBranchLimit as number) - usedBranches),
         },
         automations: {
           enabled: plan.automationsEnabled,
-          limit:
-            plan.maxAutomations === -1 || plan.maxAutomations === null
-              ? 'unlimited'
-              : plan.maxAutomations,
+          limit: finalAutomationsLimit,
           used: usedAutomations,
           remaining: !plan.automationsEnabled
             ? 0
-            : plan.maxAutomations === -1 || plan.maxAutomations === null
+            : finalAutomationsLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, plan.maxAutomations - usedAutomations),
+              : Math.max(0, (finalAutomationsLimit as number) - usedAutomations),
         },
         analytics: {
           enabled: plan.analyticsEnabled,
@@ -628,47 +700,33 @@ export class SubscriptionsService {
         },
         catalogueItems: {
           enabled: plan.catalogueEnabled,
-          limit:
-            plan.maxCatalogueItems === -1 || plan.maxCatalogueItems === null
-              ? 'unlimited'
-              : plan.maxCatalogueItems,
+          limit: finalCatalogueItemsLimit,
           used: usedCatalogueItems,
           remaining: !plan.catalogueEnabled
             ? 0
-            : plan.maxCatalogueItems === -1 || plan.maxCatalogueItems === null
+            : finalCatalogueItemsLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, plan.maxCatalogueItems - usedCatalogueItems),
+              : Math.max(0, (finalCatalogueItemsLimit as number) - usedCatalogueItems),
         },
         catalogueCategories: {
           enabled: plan.catalogueEnabled,
-          limit:
-            plan.maxCatalogueCategories === -1 ||
-            plan.maxCatalogueCategories === null
-              ? 'unlimited'
-              : plan.maxCatalogueCategories,
+          limit: finalCatalogueCategoriesLimit,
           used: usedCatalogueCategories,
           remaining: !plan.catalogueEnabled
             ? 0
-            : plan.maxCatalogueCategories === -1 ||
-                plan.maxCatalogueCategories === null
+            : finalCatalogueCategoriesLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(
-                  0,
-                  plan.maxCatalogueCategories - usedCatalogueCategories,
-                ),
+              : Math.max(0, (finalCatalogueCategoriesLimit as number) - usedCatalogueCategories),
         },
         catalogueOffers: {
           enabled: plan.catalogueEnabled,
-          limit:
-            plan.maxCatalogueOffers === -1 || plan.maxCatalogueOffers === null
-              ? 'unlimited'
-              : plan.maxCatalogueOffers,
+          limit: finalCatalogueOffersLimit,
           used: usedCatalogueOffers,
           remaining: !plan.catalogueEnabled
             ? 0
-            : plan.maxCatalogueOffers === -1 || plan.maxCatalogueOffers === null
+            : finalCatalogueOffersLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, plan.maxCatalogueOffers - usedCatalogueOffers),
+              : Math.max(0, (finalCatalogueOffersLimit as number) - usedCatalogueOffers),
         },
         features: plan.features || [],
         credits: {
@@ -677,6 +735,7 @@ export class SubscriptionsService {
           whatsapp: plan.whatsappCredits || 0,
         },
       },
+      addOns: addOnsInfo,
     };
   }
 

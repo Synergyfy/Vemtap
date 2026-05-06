@@ -25,6 +25,13 @@ export class Branch extends AbstractBaseEntity {
   @Column({ unique: true })
   uniqueCode: string;
 
+  @ApiProperty({
+    example: 'main-office',
+    description: 'Unique username for the branch (used in /b/[username] URLs)',
+  })
+  @Column({ unique: true, nullable: true, length: 30 })
+  username?: string;
+
   @ApiProperty({ example: 'Main Office' })
   @Column()
   name: string;

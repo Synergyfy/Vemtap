@@ -2,14 +2,18 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Plan } from './entities/plan.entity';
 import { Subscription } from './entities/subscription.entity';
+import { AddOn } from './entities/addon.entity';
+import { BusinessAddOn } from './entities/business-addon.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { HttpModule } from '@nestjs/axios';
 import { PlansController } from './plans.controller';
 import { SubscriptionsController } from './subscriptions.controller';
+import { AddonsController } from './addons.controller';
 import { PlansService } from './plans.service';
 import { SubscriptionsService } from './subscriptions.service';
+import { AddonsService } from './services/addons.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
 import { CapabilityGuard } from './guards/capability.guard';
@@ -32,6 +36,8 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
     TypeOrmModule.forFeature([
       Plan,
       Subscription,
+      AddOn,
+      BusinessAddOn,
       Business,
       User,
       Branch,
@@ -49,10 +55,11 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
     ExternalAffiliateModule,
     forwardRef(() => QrThriveModule),
   ],
-  controllers: [PlansController, SubscriptionsController],
+  controllers: [PlansController, SubscriptionsController, AddonsController],
   providers: [
     PlansService,
     SubscriptionsService,
+    AddonsService,
     TrialRestrictionGuard,
     CapabilityGuard,
     AnalyticsLevelGuard,
@@ -61,6 +68,7 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
     TypeOrmModule,
     PlansService,
     SubscriptionsService,
+    AddonsService,
     TrialRestrictionGuard,
     CapabilityGuard,
     AnalyticsLevelGuard,

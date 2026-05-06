@@ -12,6 +12,15 @@ Quality is non-negotiable. Every feature must include relevant tests.
     pnpm test:e2e
     ```
 
+### Username Feature Tests
+
+-   **Unit Tests** (`username.util.spec.ts`): Test username validation, generation, and reserved words.
+-   **Service Tests** (`branches.service.spec.ts`): Test `findByUsername()`, `validateUsername()`, `generateUniqueUsername()`, and username handling in `create()` and `update()`.
+-   **E2E Tests** (`device-tap-username.e2e-spec.ts`): Test `GET /tap/context-by-username/:username` endpoint.
+    - Valid username returns 200 with context
+    - Invalid username returns 404
+    - Inactive branch username returns 404
+
 ## Frontend Testing (Playwright)
 
 -   **E2E Tests**: Located in the root `tests/` or `apps/VemTap/tests/`.
