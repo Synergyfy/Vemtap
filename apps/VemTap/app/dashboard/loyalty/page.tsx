@@ -53,39 +53,39 @@ const QUICK_LINKS = [
 
 export default function LoyaltyOverviewPage() {
     return (
-        <div className="p-8 space-y-10">
+        <div className="p-4 md:p-8 space-y-8 md:space-y-10">
             <PageHeader
                 title="Loyalty Overview"
                 description="Monitor and manage your business loyalty ecosystem"
             />
 
             {/* Analytics Section */}
-            <section className="space-y-6">
+            <section className="space-y-4 md:space-y-6">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-display font-bold text-slate-900 uppercase tracking-tight">System Performance</h2>
-                    <Link href="/dashboard/analytics" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                        View Detailed Reports
-                        <ExternalLink className="w-3 h-3" />
+                    <h2 className="text-lg md:text-xl font-display font-bold text-slate-900 uppercase tracking-tight">System Performance</h2>
+                    <Link href="/dashboard/analytics" className="text-[10px] md:text-xs font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-wider">
+                        Detailed Reports
+                        <ExternalLink className="size-3" />
                     </Link>
                 </div>
                 <LoyaltyAnalytics />
             </section>
 
             {/* Management Quick Links */}
-            <section className="space-y-6 pt-10 border-t border-slate-100">
-                <h2 className="text-xl font-display font-bold text-slate-900 uppercase tracking-tight">Management Suite</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <section className="space-y-4 md:space-y-6 pt-8 md:pt-10 border-t border-slate-100">
+                <h2 className="text-lg md:text-xl font-display font-bold text-slate-900 uppercase tracking-tight">Management Suite</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     {QUICK_LINKS.map((link) => (
                         <Link
                             key={link.title}
                             href={link.href}
-                            className="group p-6 bg-white border border-slate-200 hover:border-primary transition-all shadow-sm hover:shadow-md relative overflow-hidden rounded-2xl" 
+                            className="group p-5 md:p-6 bg-white border border-slate-200 hover:border-primary transition-all shadow-sm hover:shadow-md relative overflow-hidden rounded-2xl" 
                         >
-                            <div className={cn("w-12 h-12 flex items-center justify-center mb-4 transition-colors rounded-xl", link.bgColor, link.color, "group-hover:bg-primary group-hover:text-white")}>
-                                <link.icon size={24} />
+                            <div className={cn("size-10 md:size-12 flex items-center justify-center mb-3 md:mb-4 transition-colors rounded-xl", link.bgColor, link.color, "group-hover:bg-primary group-hover:text-white")}>
+                                <link.icon size={20} className="md:size-6" />
                             </div>
-                            <h3 className="font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors">{link.title}</h3>
-                            <p className="text-xs text-slate-500 leading-relaxed mb-6">{link.description}</p>
+                            <h3 className="font-bold text-sm md:text-base text-slate-900 mb-1.5 md:mb-2 group-hover:text-primary transition-colors">{link.title}</h3>
+                            <p className="text-[10px] md:text-xs text-slate-500 leading-relaxed mb-4 md:mb-6">{link.description}</p>
 
                             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
                                 Access Tool
@@ -93,7 +93,7 @@ export default function LoyaltyOverviewPage() {
                             </div>
 
                             {/* Background Decoration */}
-                            <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-slate-50 rounded-full opacity-50 group-hover:bg-primary/5 transition-colors" />
+                            <div className="absolute -bottom-4 -right-4 w-12 md:w-16 h-12 md:h-16 bg-slate-50 rounded-full opacity-50 group-hover:bg-primary/5 transition-colors" />
                         </Link>
                     ))}
                 </div>

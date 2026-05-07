@@ -37,7 +37,7 @@ const RedemptionsModal: React.FC<{
     const { data: redemptions, isLoading } = useRewardRedemptions(reward.id);
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8">
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -46,27 +46,27 @@ const RedemptionsModal: React.FC<{
                 className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                initial={{ opacity: 0, scale: 0.95, y: 100 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white w-full max-w-3xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]"
+                exit={{ opacity: 0, scale: 0.95, y: 100 }}
+                className="bg-white w-full max-w-3xl text-slate-900 relative shadow-2xl rounded-t-[2.5rem] md:rounded-2xl border border-slate-200 overflow-hidden flex flex-col h-[92vh] md:h-auto md:max-h-[85vh]"
             >
                 {/* Modal Header */}
-                <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 ring-4 ring-primary/5 shrink-0">
-                            <Users className="w-7 h-7 text-primary" />
+                <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-4 md:gap-5">
+                        <div className="w-12 h-12 md:w-14 md:h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 ring-4 ring-primary/5 shrink-0">
+                            <Users className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                         </div>
-                        <div>
-                            <h3 className="text-xl font-display font-bold text-slate-900">Reward Redemptions</h3>
-                            <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                Tracking customers for: <span className="text-primary font-bold uppercase">{reward.name}</span>
+                        <div className="min-w-0">
+                            <h3 className="text-lg md:text-xl font-display font-bold text-slate-900 truncate">Reward Redemptions</h3>
+                            <p className="text-[10px] md:text-xs text-slate-500 font-medium mt-0.5 truncate">
+                                For: <span className="text-primary font-bold uppercase">{reward.name}</span>
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-3 hover:bg-white hover:shadow-sm rounded-2xl transition-all border border-transparent hover:border-slate-200"
+                        className="p-2.5 md:p-3 hover:bg-white hover:shadow-sm rounded-xl md:rounded-2xl transition-all border border-transparent hover:border-slate-200"
                     >
                         <X size={20} className="text-slate-400" />
                     </button>
@@ -123,10 +123,10 @@ const RedemptionsModal: React.FC<{
                 </div>
 
                 {/* Modal Footer */}
-                <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
+                <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 shrink-0">
                     <button
                         onClick={onClose}
-                        className="w-full py-4 bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 transition-all"
+                        className="w-full h-12 bg-white border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 transition-all"
                     >
                         Close Overview
                     </button>
@@ -250,9 +250,9 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
     return (
         <div className={cn("space-y-8", className)}>
             {/* Header & Add Button */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div>
-                    <h3 className="text-xl font-display font-black text-slate-900">Reward Catalog</h3>
+                    <h3 className="text-2xl md:text-xl font-display font-black text-slate-900">Reward Catalog</h3>
                     <p className="text-sm text-slate-500 font-medium">Manage the rewards available to your customers</p>
                 </div>
                 <button
@@ -263,7 +263,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                             setIsAdding(true);
                         }
                     }}
-                    className="bg-primary text-white px-6 py-3 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center gap-2 rounded-2xl"
+                    className="w-full md:w-auto bg-primary text-white px-6 h-12 md:h-12 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center justify-center gap-2 rounded-2xl"
                 >
                     <Plus className="w-4 h-4" />
                     Create New Reward
@@ -431,7 +431,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
             {/* Template Selection Modal */}
             <AnimatePresence>
                 {showTemplateModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+                    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8">
                         {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -443,19 +443,19 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
 
                         {/* Modal Content */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.95, y: 100 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white w-full max-w-4xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+                            exit={{ opacity: 0, scale: 0.95, y: 100 }}
+                            className="bg-white w-full max-w-4xl text-slate-900 relative shadow-2xl rounded-t-[2.5rem] md:rounded-2xl border border-slate-200 overflow-hidden flex flex-col h-[92vh] md:h-auto md:max-h-[90vh]"
                         >
-                            <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
-                                <div>
-                                    <h3 className="text-2xl font-display font-bold text-slate-900">Add a New Reward</h3>
-                                    <p className="text-sm text-slate-500 font-medium mt-1">Choose a pre-made template to get started quickly, or create a new reward from scratch.</p>
+                            <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+                                <div className="min-w-0">
+                                    <h3 className="text-xl md:text-2xl font-display font-bold text-slate-900 truncate">Add a New Reward</h3>
+                                    <p className="text-[10px] md:text-sm text-slate-500 font-medium mt-1 line-clamp-1">Blueprint templates for quick creation.</p>
                                 </div>
                                 <button
                                     onClick={() => setShowTemplateModal(false)}
-                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                                    className="p-2.5 hover:bg-slate-100 rounded-full transition-colors"
                                 >
                                     <X className="w-5 h-5 text-slate-400" />
                                 </button>
@@ -536,7 +536,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                                     setIsAdding(true);
                                                                     setShowTemplateModal(false);
                                                                 }}
-                                                                className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10"
+                                                                className="w-full h-12 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10"
                                                             >
                                                                 Customize & Apply
                                                             </button>
@@ -555,15 +555,15 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                             </div>
 
                             <div className="p-6 bg-white border-t border-slate-100 flex flex-col items-center shrink-0">
-                                <p className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">Want full control?</p>
+                                <p className="text-xs font-black text-slate-400 mb-3 uppercase tracking-[0.2em]">Want full control?</p>
                                 <button
                                     onClick={() => {
                                         setShowTemplateModal(false);
                                         setIsAdding(true);
                                     }}
-                                    className="px-8 py-3 bg-white border-2 border-slate-200 hover:border-primary/40 hover:bg-slate-50 text-slate-700 font-bold text-xs uppercase tracking-widest rounded-xl transition-all"
+                                    className="w-full md:w-auto px-8 h-12 bg-white border-2 border-slate-200 hover:border-primary/40 hover:bg-slate-50 text-slate-700 font-black text-xs uppercase tracking-widest rounded-xl transition-all"
                                 >
-                                    Create a Reward from Scratch
+                                    Create from Scratch
                                 </button>
                             </div>
                         </motion.div>
