@@ -4,7 +4,7 @@ import { RedemptionVerifier } from '@/components/loyalty/admin/RedemptionVerifie
 
 export default function RedemptionVerifyPage() {
     return (
-        <div className="p-8 space-y-8">
+        <div className="p-4 md:p-8 space-y-8">
             <PageHeader
                 title="Terminal Verifier"
                 description="Scan or enter customer reward codes for instant validation"

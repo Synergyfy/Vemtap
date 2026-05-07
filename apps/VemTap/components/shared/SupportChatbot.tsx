@@ -42,6 +42,24 @@ export default function SupportChatbot() {
     const { data: userTicketsData } = useUserSupportTickets(1, 5);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatbotRef = useRef<HTMLDivElement>(null);
+    const floatingButtonRef = useRef<HTMLDivElement>(null);
+    
+    // Close on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isOpen && chatbotRef.current && !chatbotRef.current.contains(event.target as Node)) {
+                // Check if the click was not on the floating button either (to prevent double toggle)
+                if (floatingButtonRef.current && !floatingButtonRef.current.contains(event.target as Node)) {
+                    setIsOpen(false);
+                }
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
     
     // Initialize Session ID for Guests
     useEffect(() => {
@@ -299,12 +317,11 @@ export default function SupportChatbot() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-60"
+                        className="fixed inset-0 pointer-events-none z-60"
                     >
                         <Draggable 
-                            nodeRef={nodeRef}
-                            disabled={isMobile}
-                            cancel=".cancel-drag"
+                            nodeRef={floatingButtonRef}
+                            bounds="parent"
                             onStart={(e, data) => {
                                 setDragStartPos({ x: data.x, y: data.y });
                             }}
@@ -319,7 +336,10 @@ export default function SupportChatbot() {
                                 setTimeout(() => setIsDragging(false), 100); 
                             }}
                         >
-                            <div ref={nodeRef} className="group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing">
+                            <div 
+                                ref={floatingButtonRef} 
+                                className="pointer-events-auto absolute bottom-20 sm:bottom-6 right-4 sm:right-6 group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing"
+                            >
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); if (!isDragging) setIsVisible(false); }}
                                     className="cancel-drag bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -354,8 +374,8 @@ export default function SupportChatbot() {
                         exit={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(10px)' }}
                         className={`fixed z-60 pointer-events-none ${isFullScreen ? 'inset-0' : 'inset-x-0 bottom-0 sm:inset-auto sm:bottom-6 sm:right-6 flex items-end justify-end transition-all duration-500'}`}
                     >
-                        <Draggable nodeRef={windowRef} handle=".chat-header" cancel="button" disabled={isFullScreen || isMobile}>
-                            <div ref={windowRef} className={`bg-white shadow-3xl overflow-hidden flex flex-col pointer-events-auto border border-gray-100 transition-all duration-300 ${isFullScreen ? 'w-full h-full rounded-none' : 'w-full sm:w-[420px] h-[min(650px,calc(100dvh-0px))] sm:h-[min(650px,calc(100dvh-140px))] rounded-t-[2.5rem] sm:rounded-[2rem]'}`}
+                        <Draggable nodeRef={chatbotRef} handle=".chat-header" cancel="button" disabled={isFullScreen || isMobile} bounds="parent">
+                            <div ref={chatbotRef} className={`bg-white shadow-3xl overflow-hidden flex flex-col pointer-events-auto border border-gray-100 transition-all duration-300 ${isFullScreen ? 'w-full h-full rounded-none' : 'w-full sm:w-[420px] h-[min(650px,calc(100dvh-0px))] sm:h-[min(650px,calc(100dvh-140px))] rounded-t-[2.5rem] sm:rounded-[2rem]'}`}
                                 style={{
                                     maxWidth: isFullScreen ? '100%' : '100vw',
                                     maxHeight: isFullScreen ? '100%' : 'calc(100vh - 0px)'

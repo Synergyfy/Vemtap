@@ -21,6 +21,7 @@ import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
 interface PortalWelcomeProps {
     branchName: string;
     logoUrl?: string;
+    welcomeTitle?: string;
     welcomeMessage?: string;
     onAction: (id: string) => void;
     productCount?: number;
@@ -42,6 +43,7 @@ interface PortalWelcomeProps {
 export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
     branchName,
     logoUrl,
+    welcomeTitle,
     welcomeMessage,
     onAction,
     productCount,
@@ -151,10 +153,10 @@ export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
                     </div>
                 )}
                 <div className="space-y-0.5 flex-grow min-w-0">
-                    <h1 className={cn("text-sm md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight truncate", isPreview && "text-[10px] font-black")}>
-                        Welcome to {branchName}
+                    <h1 className={cn("text-sm md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight break-words", isPreview && "text-[10px] font-black")}>
+                        {welcomeTitle || `Welcome to ${branchName}`}
                     </h1>
-                    <p className={cn("text-on-surface-variant text-[7px] md:text-[10px] max-w-xs font-medium opacity-70 italic truncate", isPreview && "text-[8px]")}>
+                    <p className={cn("text-on-surface-variant text-[7px] md:text-[10px] max-w-xs font-medium opacity-70 italic break-words", isPreview && "text-[8px]")}>
                         {welcomeMessage || "Select an option below"}
                     </p>
                 </div>

@@ -96,14 +96,14 @@ export default function LoyaltyCustomersPage() {
 
     if (isLoading && !paginatedData) {
         return (
-            <div className="p-8 flex items-center justify-center min-h-[400px]">
+            <div className="p-4 md:p-8 flex items-center justify-center min-h-[400px]">
                 <Loader2 className="animate-spin text-primary" size={32} />
             </div>
         );
     }
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="p-4 md:p-8 space-y-8">
             <PageHeader
                 title="Customer Directory"
                 description="Manage and engage your loyal customer base"
@@ -114,15 +114,15 @@ export default function LoyaltyCustomersPage() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by name, email, or phone..."
+                        placeholder="Search customers..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-100 text-sm font-medium outline-none focus:border-primary transition-all"
+                        className="w-full h-12 pl-11 pr-4 bg-slate-50 border border-slate-100 text-sm font-medium outline-none focus:border-primary transition-all"
                     />
                 </div>
-                <button className="flex items-center gap-2 px-6 h-11 border border-slate-200 text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all">
+                <button className="flex items-center justify-center gap-2 w-full md:w-auto px-6 h-12 border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all shrink-0">
                     <Filter className="w-4 h-4" />
-                    More Filters
+                    Filters
                 </button>
             </div>
 
@@ -135,10 +135,10 @@ export default function LoyaltyCustomersPage() {
                 />
             </div>
 
-            <div className="mt-6 flex items-center justify-between px-2">
-                <p className="text-sm text-slate-500 font-medium">
-                    Showing {customers.length} of {paginatedData?.total || 0} customers
-                    {searchQuery && ` (filtered by "${searchQuery}")`}
+            <div className="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 px-2">
+                <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase tracking-widest text-center md:text-left">
+                    Displaying {customers.length} of {paginatedData?.total || 0} members
+                    {searchQuery && ` (match: "${searchQuery}")`}
                 </p>
             </div>
         </div>
