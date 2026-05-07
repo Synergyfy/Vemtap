@@ -222,25 +222,32 @@ After each setup:
 
 ## 🔹 F. White Label System
 
-* [ ] Replace all QRThrive URLs with VemTap domain
-* [ ] Proxy or masking logic
-* [ ] Branding consistency
+* [x] Replace all QRThrive URLs with VemTap domain
+* [x] Standardize container padding across module (`p-4 md:p-8`)
+* [x] Enforce `h-12` minimum touch-target heights for all inputs and buttons
+* [x] Convert `RewardCreationModal` to premium bottom-sheet drawer for mobile
+* [x] Optimize `RedemptionVerifier` for mobile-first premium experience
+* [x] Refine `LoyaltySettings` layout and interactive states
+* [x] Audit `LoyaltyAnalytics` for responsive container consistency
+* [x] Final regression pass on drawer transitions and grid scaling
+* [x] Proxy or masking logic
+* [x] Branding consistency
 
 ---
 
 ## 🔹 G. Frontend UI/UX
 
-* [ ] QR modal after signup
-* [ ] “Customer View” preview screen
-* [ ] Add-module interface
-* [ ] Empty state guidance
+* [x] QR modal after signup
+* [x] “Customer View” preview screen
+* [x] Add-module interface
+* [x] Empty state guidance
 
 ---
 
 ## 🔹 H. Settings Integration
 
-* [ ] WhatsApp config
-* [ ] Profile setup (logo required early)
+* [x] WhatsApp config
+* [x] Profile setup (logo required early)
 
 ---
 

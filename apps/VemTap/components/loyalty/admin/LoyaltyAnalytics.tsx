@@ -12,13 +12,18 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
 import { BusinessLoyaltyStats } from '@/services/loyalty/types';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import StatsCard from '@/components/dashboard/StatsCard';
 
 interface AnalyticsStat {
     label: string;
     value: string | number;
-    change: number;
+    change: string;
     icon: LucideIcon;
-    trend: 'up' | 'down';
+    trend: {
+        value: string;
+        isUp: boolean;
+    };
+    color: 'blue' | 'green' | 'purple' | 'yellow' | 'red';
 }
 
 interface TierData {
@@ -38,12 +43,17 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
         { label: 'Redemption Rate', value: '0%', change: 0, trend: 'up' },
     ]).map((s: BusinessLoyaltyStats['stats'][0], i: number) => {
         const icons = [Users, Zap, Gift, Activity];
+        const colors: ('blue' | 'green' | 'purple' | 'yellow' | 'red')[] = ['blue', 'yellow', 'green', 'purple'];
         return {
             label: s.label,
             value: s.value,
-            change: s.change,
-            trend: s.trend,
+            change: `${s.change}%`,
+            trend: {
+                value: `${Math.abs(s.change)}%`,
+                isUp: s.trend === 'up'
+            },
             icon: icons[i] || Activity,
+            color: colors[i] || 'blue'
         };
     });
 
@@ -59,45 +69,32 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
     return (
         <div className={cn("space-y-8", className)}>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {stats.map((stat, index) => (
                     <motion.div
                         key={stat.label}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className="p-6 bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all group relative"
                     >
-                        {isLoading && index === 0 && (
-                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
-                                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                            </div>
-                        )}
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                <stat.icon className="w-5 h-5" />
-                            </div>
-                            <div className={cn(
-                                "flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 border",
-                                stat.trend === 'up' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
-                            )}>
-                                {stat.trend === 'up' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                                {Math.abs(stat.change)}%
-                            </div>
-                        </div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">{stat.label}</p>
-                        <h4 className="text-2xl font-display font-black text-slate-900 group-hover:text-primary transition-colors">{stat.value}</h4>
+                        <StatsCard
+                            label={stat.label}
+                            value={stat.value.toString()}
+                            icon={stat.icon}
+                            trend={stat.trend}
+                            color={stat.color}
+                        />
                     </motion.div>
                 ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Main Chart */}
-                <div className="lg:col-span-12 bg-white border border-slate-100 p-8">
-                    <div className="flex items-center justify-between mb-10">
+                <div className="lg:col-span-12 bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-4 md:p-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-10">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Activity Overview</h3>
-                            <p className="text-xs text-slate-500 font-medium">Trends in points earning vs redemptions (Last 7 days)</p>
+                            <h3 className="text-base md:text-lg font-bold text-slate-900 uppercase tracking-tight">Activity Overview</h3>
+                            <p className="text-[10px] md:text-xs text-slate-500 font-medium">Trends in points earning vs redemptions (Last 7 days)</p>
                         </div>
                     </div>
 

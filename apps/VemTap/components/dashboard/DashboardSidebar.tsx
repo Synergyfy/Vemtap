@@ -12,7 +12,7 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle
+    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -222,18 +222,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'customer-experience',
-            label: 'Customer Experience',
-            icon: Zap,
-            href: '/dashboard/customer-experience',
-            roles: ['owner', 'manager', 'staff'],
-            submenu: [
-                { label: 'Overview', href: '/dashboard/customer-experience' },
-                { label: 'Form Creator', href: '/dashboard/engagement/forms' },
-                // { label: 'Legacy Flow', href: '/dashboard/engagement/experience' },
-            ]
-        },
-        {
             id: 'catalogue',
             label: 'Catalogue',
             icon: ShoppingBag,
@@ -242,21 +230,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             featureName: 'Catalogue',
             submenu: [
                 { label: 'Overview', href: '/dashboard/catalogue' },
-                { label: 'Items', href: '/dashboard/catalogue/products' },
+                { label: 'Products', href: '/dashboard/catalogue/products' },
                 { label: 'Offers', href: '/dashboard/catalogue/offers' },
                 { label: 'Categories', href: '/dashboard/catalogue/categories' },
                 { label: 'Orders', href: '/dashboard/catalogue/orders' },
                 { label: 'Bookings', href: '/dashboard/catalogue/bookings' },
-            ]
-        },
-        {
-            id: 'business-leads',
-            label: 'Business Leads',
-            icon: QrCode,
-            roles: ['owner', 'manager'],
-            submenu: [
-                { label: 'Orders', href: '/dashboard/business-leads/orders' },
-                { label: 'Bookings', href: '/dashboard/business-leads/bookings' },
             ]
         },
         {
@@ -271,11 +249,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'support',
-            label: 'Support',
-            icon: HelpCircle,
-            href: '/dashboard/support',
-            roles: ['owner', 'manager', 'staff']
+            id: 'manage-forms',
+            label: 'Manage Forms',
+            icon: FileText,
+            href: '/dashboard/engagement/forms',
+            roles: ['owner', 'manager', 'staff'],
         },
         {
             id: 'agent-desk',
@@ -285,27 +263,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['staff', 'manager']
         },
         {
-            id: 'staff',
-            label: 'Team',
-            icon: Users2,
-            href: '/dashboard/staff',
-            roles: ['owner']
-        },
-        {
             id: 'admin-nfc',
             label: 'Admin NFC Grants',
             icon: ShieldCheck,
             href: '/admin/nfc-grants',
             roles: ['admin']
         },
-        // {
-        //     id: 'devices',
-        //     label: 'Business Link (Legacy)',
-        //     icon: Nfc,
-        //     href: '/dashboard/business-link',
-        //     roles: ['owner', 'manager', 'staff'],
-
-        // },
         {
             id: 'explore-qrthrive',
             label: 'Explore QRThrive',
@@ -313,7 +276,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             href: '/dashboard/explore-qrthrive',
             roles: ['owner', 'manager', 'staff'],
         },
-
+        {
+            id: 'customer-experience',
+            label: 'Customer Experience',
+            icon: Zap,
+            href: '/dashboard/customer-experience',
+            roles: ['owner', 'manager', 'staff'],
+        },
         {
             id: 'settings',
             label: 'Settings',
@@ -323,9 +292,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
-
+                { label: 'Team', href: '/dashboard/staff' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
-                { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
+                { label: 'Support', href: '/dashboard/support' },
                 { label: 'Legal & Compliance', href: '/dashboard/compliance' },
             ]
         },

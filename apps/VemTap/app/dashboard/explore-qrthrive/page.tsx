@@ -42,6 +42,7 @@ import {
 } from '@/services/qr-thrive/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
+import StatsCard from '@/components/dashboard/StatsCard';
 
 
 const STEPS = [
@@ -406,34 +407,34 @@ export default function ExploreQRThrivePage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
             <div className="max-w-7xl mx-auto w-full p-4 lg:p-10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <PageHeader 
                         title="QR-Thrive Integration" 
                         description="Create and manage your dynamic QR codes"
                     />
                     
-                    <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         {view === 'list' && (
                             <button 
                                 onClick={() => router.push('/dashboard/explore-qrthrive/leads')}
-                                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-white border border-slate-100 text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm text-sm"
+                                className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
                             >
-                                <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5" /> View Leads
+                                <UsersIcon className="size-4" /> View Leads
                             </button>
                         )}
                         {view === 'list' ? (
                             <button 
                                 onClick={handleCreateNew}
-                                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 text-sm"
+                                className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
                             >
-                                <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Create New
+                                <Plus className="size-4" /> Create New
                             </button>
                         ) : (
                             <button 
                                 onClick={() => setView('list')}
-                                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-slate-50 text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 transition-all border border-slate-100 text-sm"
+                                className="px-6 py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-200 transition-all border border-slate-200"
                             >
-                                <List className="w-4 h-4 sm:w-5 sm:h-5" /> Back to List
+                                <List className="size-4" /> Back to List
                             </button>
                         )}
                     </div>
@@ -451,22 +452,20 @@ export default function ExploreQRThrivePage() {
                             </div>
                         )}
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                             {[
-                                { label: 'Total QR Codes', value: stats?.totalQRs || 0, icon: QrCode, color: 'text-blue-600', bg: 'bg-blue-50' },
-                                { label: 'Total Scans', value: stats?.totalScans || 0, icon: BarChart3, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                                { label: 'Unique Visitors', value: stats?.uniqueVisitors || 0, icon: UsersIcon, color: 'text-purple-600', bg: 'bg-purple-50' },
-                                { label: 'Scans (Last 24h)', value: stats?.scansLastHour || 0, icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
+                                { label: 'Total QR Codes', value: stats?.totalQRs || 0, icon: QrCode, color: 'blue' as const },
+                                { label: 'Total Scans', value: stats?.totalScans || 0, icon: BarChart3, color: 'green' as const },
+                                { label: 'Unique Visitors', value: stats?.uniqueVisitors || 0, icon: UsersIcon, color: 'purple' as const },
+                                { label: 'Scans (Last 24h)', value: stats?.scansLastHour || 0, icon: Zap, color: 'yellow' as const },
                             ].map((stat, i) => (
-                                <div key={i} className="bg-white p-6 rounded-[32px] border border-slate-100 flex items-center gap-4 shadow-sm">
-                                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", stat.bg)}>
-                                        <stat.icon className={cn("w-6 h-6", stat.color)} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                                        <p className="text-xl font-bold text-slate-900">{stat.value.toLocaleString()}</p>
-                                    </div>
-                                </div>
+                                <StatsCard
+                                    key={i}
+                                    label={stat.label}
+                                    value={stat.value.toLocaleString()}
+                                    icon={stat.icon}
+                                    color={stat.color}
+                                />
                             ))}
                         </div>
 
@@ -558,27 +557,26 @@ export default function ExploreQRThrivePage() {
                         {/* Left Side: Configuration */}
                         <div className="flex-1 w-full lg:pr-[500px] p-4 sm:p-8 lg:p-12 flex flex-col">
                             {/* Stepper */}
-                            <div className="flex items-center gap-4 mb-10">
+                            <div className="flex items-center gap-2 md:gap-4 mb-8 overflow-x-auto no-scrollbar py-2">
                                 {STEPS.filter(s => !isLocked || s.id !== 'type').map((s, idx) => (
                                     <React.Fragment key={s.id}>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <div className={cn(
-                                                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                                                "size-8 md:size-9 rounded-full flex items-center justify-center text-xs font-black transition-all",
                                                 step === s.id ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : 
                                                 STEPS.findIndex(x => x.id === step) > idx ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"
                                             )}>
                                                 {idx + 1}
                                             </div>
                                             <span className={cn(
-                                                "text-[10px] sm:text-xs font-bold tracking-tight whitespace-nowrap",
+                                                "text-[10px] md:text-xs font-black uppercase tracking-tight whitespace-nowrap transition-colors",
                                                 step === s.id ? "text-slate-900" : "text-slate-400"
                                             )}>
-                                                <span className="sm:inline hidden">{s.label}</span>
-                                                <span className="sm:hidden">{s.label.split(' ')[0]}</span>
+                                                {s.label}
                                             </span>
                                         </div>
-                                        {idx < STEPS.length - 1 && (
-                                            <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-slate-300" />
+                                        {idx < (isLocked ? 1 : 2) && (
+                                            <div className="w-4 h-px bg-slate-200 shrink-0" />
                                         )}
                                     </React.Fragment>
                                 ))}
@@ -601,32 +599,34 @@ export default function ExploreQRThrivePage() {
                                 )}
 
                                 {step === 'content' && (
-                                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                                        <div className="flex items-center justify-between">
+                                    <>
+                                        <div className="space-y-6">
                                             <div className="space-y-1">
-                                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
-                                                    2. {(selectedType as string)?.charAt(0).toUpperCase() + (selectedType as string)?.slice(1)}
+                                                <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight uppercase">
+                                                    {(selectedType as string)?.charAt(0).toUpperCase() + (selectedType as string)?.slice(1)} Content
                                                 </h1>
-                                                <p className="text-slate-400 font-medium text-sm sm:text-base">Complete the information for your QR Code.</p>
+                                                <p className="text-slate-400 font-medium text-xs md:text-sm">Complete the information for your QR Code.</p>
                                             </div>
                                         </div>
                                         <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">QR Name</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Friendly Name</label>
                                             <input 
                                                 type="text"
                                                 placeholder="e.g. My Website QR"
-                                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:border-blue-600 font-bold transition-all shadow-sm"
+                                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:border-blue-600 font-bold transition-all shadow-sm text-sm"
                                                 value={qrName}
                                                 onChange={(e) => setQrName(e.target.value)}
                                             />
                                         </div>
-                                        <ContentForm 
-                                            type={selectedType!} 
-                                            data={qrData} 
-                                            onChange={setQrData} 
-                                            isLocked={isLocked}
-                                        />
-                                    </div>
+                                        <div className="bg-white p-5 md:p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+                                            <ContentForm 
+                                                type={selectedType!} 
+                                                data={qrData} 
+                                                onChange={setQrData} 
+                                                isLocked={isLocked}
+                                            />
+                                        </div>
+                                    </>
                                 )}
 
                                 {step === 'design' && (

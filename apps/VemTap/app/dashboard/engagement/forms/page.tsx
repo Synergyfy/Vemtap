@@ -475,15 +475,15 @@ export default function EngagementFormsBuilderPage() {
       {/* Navigation handled in sidebar under Engagement */}
 
       {viewMode === 'forms' && (
-        <section className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <section className="space-y-6 md:space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">My Forms</h1>
-              <p className="text-sm text-gray-500 mt-1">Create and manage business forms from Engagement.</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight uppercase">My Forms</h1>
+              <p className="text-xs md:text-sm text-gray-500 mt-1">Create and manage business forms from Engagement.</p>
             </div>
             <button
               onClick={() => setViewMode('path')}
-              className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-primary text-white text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-primary text-white text-sm font-black uppercase tracking-widest shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-0.5 active:scale-95"
             >
               <Plus size={18} />
               Create New Form
@@ -491,14 +491,14 @@ export default function EngagementFormsBuilderPage() {
           </div>
 
           {/* How it works - Collapsed helper */}
-          <details className="group rounded-2xl border border-gray-200 bg-white overflow-hidden">
-            <summary className="flex items-center gap-3 px-5 py-4 cursor-pointer select-none hover:bg-gray-50 transition-colors">
-              <div className="size-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <details className="group rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+            <summary className="flex items-center gap-3 px-4 md:px-5 py-4 cursor-pointer select-none hover:bg-gray-50 transition-colors">
+              <div className="size-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <Info size={16} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">How to use Forms</p>
-                <p className="text-xs text-gray-500">Click to learn about the three ways to share your forms</p>
+                <p className="text-xs md:text-sm font-bold text-gray-900 uppercase tracking-tight">How to use Forms</p>
+                <p className="text-[10px] md:text-xs text-gray-500 font-medium">Click to learn about sharing your forms</p>
               </div>
               <svg className="size-5 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -598,24 +598,26 @@ export default function EngagementFormsBuilderPage() {
 
           {/* Grid View */}
           {!formsLoading && filteredForms.length > 0 && formsViewType === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredForms.map((f) => {
                 const status = statusBadgeOf(f);
                 const branchLabel = branchNameById.get(f.branchId) || 'Unknown';
                 const formUrl = getFormUrl(f.uniqueCode);
                 return (
-                  <div key={f.id} className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-lg">
+                  <div key={f.id} className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-xl shadow-sm">
                     {formUrl ? (
                       <QRCodeCanvas id={`form-qr-${f.id}`} value={formUrl} size={160} className="hidden" />
                     ) : null}
-                    <div className="h-1 bg-gradient-to-r from-primary to-primary/60" />
-                    <div className="p-5">
+                    <div className="h-1.5 bg-gradient-to-r from-primary to-primary/60" />
+                    <div className="p-5 md:p-6">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="size-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center shrink-0"><FileText size={20} /></div>
+                          <div className="size-11 rounded-xl bg-primary/8 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                            <FileText size={22} />
+                          </div>
                           <div className="min-w-0">
-                            <h3 className="text-sm font-semibold text-gray-900 truncate">{f.title}</h3>
-                            <p className="text-xs text-gray-500 truncate">{branchLabel}</p>
+                            <h3 className="text-sm md:text-base font-bold text-gray-900 truncate tracking-tight">{f.title}</h3>
+                            <p className="text-[10px] md:text-xs text-gray-500 truncate font-medium uppercase tracking-wider">{branchLabel}</p>
                           </div>
                         </div>
                         <div className="relative" data-form-menu>
@@ -641,21 +643,19 @@ export default function EngagementFormsBuilderPage() {
                           )}
                         </div>
                       </div>
-                      {f.description && <p className="text-xs text-gray-500 mt-3 line-clamp-2">{f.description}</p>}
-                      <div className="flex items-center justify-between mt-4">
+                      {f.description && <p className="text-xs text-gray-500 mt-4 line-clamp-2 leading-relaxed">{f.description}</p>}
+                      
+                      <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-100">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${status.color}`}
                         >
-                          <div className={`size-1.5 rounded-full ${status.dot}`} />
+                          <div className={`size-1.5 rounded-full ${status.dot} animate-pulse`} />
                           {status.label}
                         </span>
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <span className="inline-flex items-center gap-1 text-primary/80 font-semibold">
+                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400">
+                          <span className="inline-flex items-center gap-1 text-primary/80 uppercase tracking-tighter">
                             <CheckCircle2 size={12} />
                             {responseCountByFormId.get(f.id) || 0} responses
-                          </span>
-                          <span title={formatDateTime(f.createdAt)}>
-                            {f.createdAt ? timeAgo(f.createdAt) : '—'}
                           </span>
                         </div>
                       </div>
@@ -669,19 +669,19 @@ export default function EngagementFormsBuilderPage() {
                       </div>
 
                       {/* Default Submission Feature */}
-                      <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between gap-3">
+                      <div className="mt-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 overflow-hidden">
-                            <span className="text-[10px] font-bold text-gray-900 uppercase tracking-tight truncate">Show after basic info</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Automation</span>
                             <button
                               onClick={() => setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId })}
-                              className="shrink-0 size-4 rounded-full bg-gray-300 text-white hover:bg-gray-400 flex items-center justify-center transition-colors"
+                              className="shrink-0 size-4 rounded-full bg-gray-200 text-gray-500 hover:bg-primary hover:text-white flex items-center justify-center transition-all"
                             >
                               <Info size={10} />
                             </button>
                           </div>
-                          <p className="text-[9px] mt-0.5">
-                            Status: <span className={`font-bold ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
+                          <p className="text-[10px] mt-1 font-medium text-gray-500">
+                            Status: <span className={`font-black uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
                               {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
                             </span>
                           </p>
@@ -696,70 +696,68 @@ export default function EngagementFormsBuilderPage() {
                               setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                             }
                           }}
-                          className={`shrink-0 h-7 px-3 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
-                            ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100'
-                            : 'bg-primary text-white shadow-sm hover:bg-primary/90'
-                            } disabled:opacity-70`}
+                          className={`shrink-0 h-8 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
+                            ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 shadow-sm'
+                            : 'bg-white text-gray-900 border border-gray-200 shadow-sm hover:border-primary hover:text-primary'
+                            } disabled:opacity-70 active:scale-95`}
                         >
                           {updateMutation.isPending ? <Spinner size="sm" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
                         </button>
                       </div>
 
-                      {/* Date metadata */}
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4 text-xs text-gray-400">
-                        <span className="flex items-center gap-1" title={`Created: ${formatDateTime(f.createdAt)}`}>
-                          <Calendar size={12} />
-                          Created {formatDate(f.createdAt)}
-                        </span>
-                        {f.updatedAt && f.updatedAt !== f.createdAt && (
-                          <span title={`Updated: ${formatDateTime(f.updatedAt)}`}>
-                            · Updated {formatDate(f.updatedAt)}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Quick actions */}
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-1">
+                      {/* Quick actions - Adaptive Grid */}
+                      <div className="mt-5 grid grid-cols-3 sm:grid-cols-5 gap-2">
                         <button
                           onClick={() => openShareExplainer('link', f.id, f.title)}
-                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
                           title="Copy share link"
                         >
-                          <Link2 size={14} />
-                          Link
+                          <Link2 size={16} />
+                          <span>Link</span>
                         </button>
-                        <Link
-                          href={getResponsesUrl(f)}
-                          className="flex-1 h-8 rounded-lg text-xs font-bold text-white bg-primary hover:bg-primary/90 inline-flex items-center justify-center gap-1.5 transition-colors"
-                          title="View responses"
-                        >
-                          <BarChart3 size={14} />
-                          Responses
-                        </Link>
                         <button
                           onClick={() => openShareExplainer('qr', f.id, f.title)}
-                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-purple-50 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
                           title="Show QR code"
                         >
-                          <QrCode size={14} />
-                          QR
+                          <QrCode size={16} />
+                          <span>QR</span>
                         </button>
                         <button
                           onClick={() => openShareExplainer('messaging', f.id, f.title)}
-                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 transition-all border border-transparent hover:border-emerald-100"
                           title="Send via messaging"
                         >
-                          <Send size={14} />
-                          Send
+                          <Send size={16} />
+                          <span>Send</span>
                         </button>
                         <Link
+                          href={getResponsesUrl(f)}
+                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white bg-primary hover:bg-primary/90 transition-all shadow-md shadow-primary/10 active:scale-95"
+                          title="View responses"
+                        >
+                          <BarChart3 size={16} />
+                          <span>Stats</span>
+                        </Link>
+                        <Link
                           href={`/dashboard/engagement/forms/${f.id}`}
-                          className="flex-1 h-8 rounded-lg text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 transition-all border border-primary/10"
                           title="Preview form"
                         >
-                          <Eye size={14} />
-                          Preview
+                          <Eye size={16} />
+                          <span>View</span>
                         </Link>
+                      </div>
+
+                      {/* Date metadata */}
+                      <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400 font-medium uppercase tracking-tight">
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} />
+                          Created {formatDate(f.createdAt)}
+                        </span>
+                        <span className="font-bold text-gray-300">
+                          {f.createdAt ? timeAgo(f.createdAt) : '—'}
+                        </span>
                       </div>
                     </div>
                   </div>

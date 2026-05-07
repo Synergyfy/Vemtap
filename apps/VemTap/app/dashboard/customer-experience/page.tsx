@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { fetchDevices } from '@/lib/api/devices';
 import { useBusinessForms } from '@/services/business-forms/hooks';
+import { useCatalogueItems, useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
 import { toast } from 'react-hot-toast';
 import {
     Users,
@@ -37,6 +38,7 @@ import {
     Gift,
     Info,
     Check,
+    AlertCircle,
 } from 'lucide-react';
 
 // New unified components
@@ -45,6 +47,7 @@ import { ExperienceLinkCard } from './components/ExperienceLinkCard';
 import { PublishBar } from './components/PublishBar';
 import { VisitorFormSection } from './components/VisitorFormSection';
 import { DefaultSuccessSection } from './components/DefaultSuccessSection';
+import { EmptyContentModal } from './components/EmptyContentModal';
 
 // Visitor Preview Components
 import { StepForm } from '@/components/visitor/StepForm';
@@ -54,13 +57,13 @@ import { PortalWelcome } from '@/components/visitor/PortalWelcome';
 
 // === Dynamic System Actions for UBL ===
 const SYSTEM_ACTIONS = [
-    { id: 'system:order', title: 'Products', subtitle: 'Showcase your product catalog', icon: <ShoppingBag size={18} /> },
-    { id: 'system:service', title: 'Services', subtitle: 'List your service offerings', icon: <Wrench size={18} /> },
-    { id: 'system:offers', title: 'Offers', subtitle: 'Exclusive hot deals', icon: <Gift size={18} /> },
-    { id: 'system:booking', title: 'Booking', subtitle: 'Let customers book appointments', icon: <CalendarDays size={18} /> },
-    { id: 'system:whatsapp', title: 'WhatsApp Chat', subtitle: 'Direct messaging channel', icon: <MessageCircle size={18} /> },
-    { id: 'system:forms', title: 'Feedback', subtitle: 'General feedback form', icon: <FileText size={18} /> },
-    { id: 'system:engagement', title: 'Social Links', subtitle: 'Connect your social profiles', icon: <Share2 size={18} /> },
+    { id: 'system:order', title: 'Products', subtitle: 'Showcase your product catalog', icon: <ShoppingBag size={18} />, type: 'product' },
+    { id: 'system:service', title: 'Services', subtitle: 'List your service offerings', icon: <Wrench size={18} />, type: 'service' },
+    { id: 'system:offers', title: 'Offers', subtitle: 'Exclusive hot deals', icon: <Gift size={18} />, type: 'offer' },
+    { id: 'system:booking', title: 'Booking', subtitle: 'Let customers book appointments', icon: <CalendarDays size={18} />, type: 'booking' },
+    { id: 'system:whatsapp', title: 'WhatsApp Chat', subtitle: 'Direct messaging channel', icon: <MessageCircle size={18} />, type: 'whatsapp' },
+    { id: 'system:forms', title: 'Feedback', subtitle: 'General feedback form', icon: <FileText size={18} />, type: 'forms' },
+    { id: 'system:engagement', title: 'Social Links', subtitle: 'Connect your social profiles', icon: <Share2 size={18} />, type: 'social' },
 ];
 const DEFAULT_UBL_SEQUENCE = ['system:order', 'system:service', 'system:offers', 'system:booking', 'system:whatsapp', 'system:engagement'];
 const SYSTEM_ACTION_MAP = new Map(SYSTEM_ACTIONS.map(a => [a.id, a]));
@@ -78,9 +81,26 @@ export default function CustomerExperiencePage() {
     const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
     const [editLabelValue, setEditLabelValue] = useState('');
 
+    // Validation Modal State
+    const [validationModal, setValidationModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        description: string;
+        actionLabel: string;
+        actionHref: string;
+        icon: any;
+    }>({
+        isOpen: false,
+        title: '',
+        description: '',
+        actionLabel: '',
+        actionHref: '',
+        icon: AlertCircle
+    });
+
     // Category expansion state
     const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-        active: true,
+        active: false,
         system: false,
         forms: false,
         rewards: false,
@@ -119,7 +139,12 @@ export default function CustomerExperiencePage() {
     const brandVars = useMemo(() => buildBrandCssVars(brandColor), [brandColor]);
 
     const resolvedBranchId = activeBranchId || undefined;
+    
+    // Content Data Fetching for Validation
     const { data: allForms = [] } = useBusinessForms({ branchId: resolvedBranchId });
+    const { data: catalogueItems = [] } = useCatalogueItems({ branchId: resolvedBranchId });
+    const { data: catalogueOffers = [] } = useCatalogueOffersAdmin({ branchId: resolvedBranchId });
+    
     const { data: qrCodes = [] } = useQuery<any[]>({
         queryKey: ['qr-thrive-codes', resolvedBranchId],
         queryFn: async () => {
@@ -221,6 +246,8 @@ export default function CustomerExperiencePage() {
             if (form) return { id: form.id, title: form.title || 'Untitled Form', subtitle: 'Additional Form', icon: <FileText size={18} />, type: 'form' };
             const reward = rewardMap.get(id);
             if (reward) return { id: reward.id, title: reward.name || 'Untitled Reward', subtitle: 'Reward Strategy', icon: <Star size={18} />, type: 'reward' };
+            const rewardInSequence = rewards.find(r => r.id === id); // Fallback for rewards
+            if (rewardInSequence) return { id: rewardInSequence.id, title: rewardInSequence.name || 'Untitled Reward', subtitle: 'Reward Strategy', icon: <Star size={18} />, type: 'reward' };
             const qr = qrMap.get(id);
             if (qr) return { id: qr.id, title: qr.name || 'QR Code', subtitle: qr.type?.toUpperCase() || 'QR', icon: <QrCode size={18} />, type: 'qr' };
             return null;
@@ -244,6 +271,109 @@ export default function CustomerExperiencePage() {
 
     const displayOrder = localOrder || groupedItems.active.map(i => i.id);
 
+    // Feature Validation Logic
+    const validateFeature = (id: string): boolean => {
+        if (!id.startsWith('system:')) return true;
+
+        switch (id) {
+            case 'system:order':
+                if (catalogueItems.filter(i => i.itemType === 'product').length === 0) {
+                    setValidationModal({
+                        isOpen: true,
+                        title: 'No Products Found',
+                        description: 'You haven\'t added any products to your catalogue yet. Add your first product to enable this feature.',
+                        actionLabel: 'Add Your First Product',
+                        actionHref: '/dashboard/catalogue/products',
+                        icon: ShoppingBag
+                    });
+                    return false;
+                }
+                break;
+            case 'system:service':
+                if (catalogueItems.filter(i => i.itemType === 'service').length === 0) {
+                    setValidationModal({
+                        isOpen: true,
+                        title: 'No Services Found',
+                        description: 'You haven\'t added any services to your catalogue yet. Add your first service to enable this feature.',
+                        actionLabel: 'Add Your First Service',
+                        actionHref: '/dashboard/catalogue/products',
+                        icon: Wrench
+                    });
+                    return false;
+                }
+                break;
+            case 'system:offers':
+                if (catalogueOffers.length === 0) {
+                    setValidationModal({
+                        isOpen: true,
+                        title: 'No Offers Found',
+                        description: 'You haven\'t created any special offers yet. Create your first offer to enable this feature.',
+                        actionLabel: 'Create Your First Offer',
+                        actionHref: '/dashboard/catalogue/offers',
+                        icon: Gift
+                    });
+                    return false;
+                }
+                break;
+            case 'system:booking':
+                // Bookings are usually services that are bookable
+                if (catalogueItems.filter(i => i.itemType === 'service').length === 0) {
+                    setValidationModal({
+                        isOpen: true,
+                        title: 'No Booking Items',
+                        description: 'You haven\'t added any services for booking yet. Add your first service to enable this feature.',
+                        actionLabel: 'Go to Bookings',
+                        actionHref: '/dashboard/catalogue/bookings',
+                        icon: CalendarDays
+                    });
+                    return false;
+                }
+                break;
+            case 'system:whatsapp':
+                if (!(activeBranch as any)?.whatsappNumber && !(business as any)?.whatsappNumber) {
+                    setValidationModal({
+                        isOpen: true,
+                        title: 'WhatsApp Not Configured',
+                        description: 'You haven\'t added a WhatsApp number to your business profile yet. Add it now to enable direct messaging.',
+                        actionLabel: 'Add WhatsApp Number',
+                        actionHref: '/dashboard/settings/profile?tab=whatsapp',
+                        icon: MessageCircle
+                    });
+                    return false;
+                }
+                break;
+            case 'system:forms':
+                if (allForms.length === 0) {
+                    setValidationModal({
+                        isOpen: true,
+                        title: 'No Feedback Forms',
+                        description: 'You haven\'t created any feedback forms yet. Create your first form to enable this feature.',
+                        actionLabel: 'Create Your First Form',
+                        actionHref: '/dashboard/engagement/forms',
+                        icon: FileText
+                    });
+                    return false;
+                }
+                break;
+            case 'system:engagement':
+                const hasSocial = engagementSettings?.instagram || engagementSettings?.facebook || engagementSettings?.twitter || engagementSettings?.linkedin;
+                if (!hasSocial) {
+                    setValidationModal({
+                        isOpen: true,
+                        title: 'No Social Links',
+                        description: 'You haven\'t connected any social media profiles yet. Add your links to enable this feature.',
+                        actionLabel: 'Add Social Links',
+                        actionHref: '/dashboard/settings/profile?tab=socials',
+                        icon: Share2
+                    });
+                    return false;
+                }
+                break;
+        }
+
+        return true;
+    };
+
     // Section toggle handler
     const toggleSection = (id: string, enabled: boolean) => {
         if (id === 'visitor-form') {
@@ -254,6 +384,11 @@ export default function CustomerExperiencePage() {
         if (id === 'default-success') {
             setSectionStates(prev => ({ ...prev, [id]: enabled }));
             if (enabled) setPreviewTab('outcome');
+            return;
+        }
+
+        // Validate before enabling
+        if (enabled && !validateFeature(id)) {
             return;
         }
 
@@ -509,7 +644,7 @@ export default function CustomerExperiencePage() {
                                 icon={VISITOR_FORM_DEF.icon}
                                 enabled={sectionStates['visitor-form'] ?? true}
                                 onToggle={(val) => toggleSection('visitor-form', val)}
-                                defaultExpanded={true}
+                                defaultExpanded={false}
                                 showDragHandle={false}
                                 onFocus={() => setPreviewTab('check-in')}
                             >
@@ -543,7 +678,113 @@ export default function CustomerExperiencePage() {
                         </div>
 
                         {/* Categorized UBL Items */}
-                        {renderCategory('Active Display Items', 'active', groupedItems.active, true)}
+                        <div className="space-y-2">
+                            <button
+                                onClick={() => setExpandedCategories(p => ({ ...p, active: !p.active }))}
+                                className={cn(
+                                    "w-full flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-300",
+                                    expandedCategories.active 
+                                        ? "bg-primary/5 border-primary/20 shadow-sm" 
+                                        : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50/50"
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className={cn(
+                                        "text-[11px] font-black uppercase tracking-[0.15em] transition-colors",
+                                        expandedCategories.active ? "text-primary" : "text-gray-500"
+                                    )}>
+                                        Active Display Items
+                                    </span>
+                                    <CategoryTooltip content={categoryDescriptions['active']} />
+                                    {groupedItems.active.length > 0 && (
+                                        <span className={cn(
+                                            "px-2 py-0.5 rounded-full text-[9px] font-black transition-colors",
+                                            expandedCategories.active ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400"
+                                        )}>
+                                            {groupedItems.active.length}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className={cn(
+                                    "size-6 rounded-full flex items-center justify-center transition-all",
+                                    expandedCategories.active ? "bg-primary text-white rotate-180" : "bg-gray-50 text-gray-400"
+                                )}>
+                                    <ChevronDown size={14} />
+                                </div>
+                            </button>
+                            <AnimatePresence>
+                                {expandedCategories.active && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="space-y-4 pb-4 pt-1 px-1">
+                                            {/* Portal Header Configuration */}
+                                            <div className="bg-white border border-gray-200 rounded-[1.5rem] p-6 shadow-sm space-y-4">
+                                                <div className="flex items-center gap-2 mb-2 border-b border-gray-100 pb-3">
+                                                    <LayoutDashboard size={14} className="text-primary" />
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-text-main">Portal Header Configuration</h4>
+                                                </div>
+                                                <div className="grid sm:grid-cols-2 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-black uppercase tracking-[0.1em] text-gray-400 ml-1">Welcome Title</label>
+                                                        <div className="relative">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder={`Welcome to ${previewBusinessName}`}
+                                                                maxLength={35}
+                                                                value={engagementSettings?.customWelcomeTitle || ''}
+                                                                onChange={(e) => updateEngagementSettings({ customWelcomeTitle: e.target.value })}
+                                                                className="w-full h-11 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                                            />
+                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-gray-300">
+                                                                {(engagementSettings?.customWelcomeTitle || '').length}/35
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-black uppercase tracking-[0.1em] text-gray-400 ml-1">Welcome Subtitle</label>
+                                                        <div className="relative">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Select an option below"
+                                                                maxLength={60}
+                                                                value={engagementSettings?.customWelcomeMessage || ''}
+                                                                onChange={(e) => updateEngagementSettings({ customWelcomeMessage: e.target.value })}
+                                                                className="w-full h-11 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                                            />
+                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-gray-300">
+                                                                {(engagementSettings?.customWelcomeMessage || '').length}/60
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[9px] text-gray-400 italic font-medium px-1">
+                                                    * These fields customize the top section of your mobile portal preview.
+                                                </p>
+                                            </div>
+
+                                            {/* Draggable Active Items */}
+                                            <div className="space-y-3">
+                                                {displayOrder.map(id => {
+                                                    const d = groupedItems.active.find(i => i.id === id);
+                                                    return d ? renderItem(d, true) : null;
+                                                })}
+                                                {groupedItems.active.length === 0 && (
+                                                    <div className="py-8 px-4 border-2 border-dashed border-gray-100 rounded-2xl flex flex-col items-center justify-center text-center bg-gray-50/30">
+                                                        <p className="text-xs font-bold text-gray-400">No active UBL items</p>
+                                                        <p className="text-[10px] text-gray-300 mt-1 max-w-[180px]">Toggle items from the categories below to show them on your link.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
                         {renderCategory('System Features', 'system', groupedItems.system)}
                         {renderCategory('QR Thrive Codes', 'qrs', groupedItems.qrs)}
                         {renderCategory('Additional Forms', 'forms', groupedItems.forms)}
@@ -624,14 +865,15 @@ export default function CustomerExperiencePage() {
                                         <PortalWelcome
                                             branchName={previewBusinessName}
                                             logoUrl={previewBusinessLogo}
-                                            welcomeMessage={(engagementSettings as any)?.customWelcomeMessage || undefined}
+                                            welcomeTitle={engagementSettings?.customWelcomeTitle || undefined}
+                                            welcomeMessage={engagementSettings?.customWelcomeMessage || undefined}
                                             onAction={() => {}}
-                                            productCount={1}
-                                            serviceCount={1}
-                                            offerCount={1}
-                                            formCount={1}
+                                            productCount={catalogueItems.filter(i => i.itemType === 'product').length}
+                                            serviceCount={catalogueItems.filter(i => i.itemType === 'service').length}
+                                            offerCount={catalogueOffers.length}
+                                            formCount={allForms.length}
                                             engagement={engagementSettings}
-                                            whatsappNumber={'1234567890'}
+                                            whatsappNumber={(activeBranch as any)?.whatsappNumber || (business as any)?.whatsappNumber || '1234567890'}
                                             qrThriveCodes={qrCodes}
                                             availableForms={allForms}
                                             availableRewards={rewards}
@@ -693,6 +935,17 @@ export default function CustomerExperiencePage() {
                     }
                 />
             </div>
+
+            {/* Validation Modal */}
+            <EmptyContentModal
+                isOpen={validationModal.isOpen}
+                onClose={() => setValidationModal(prev => ({ ...prev, isOpen: false }))}
+                title={validationModal.title}
+                description={validationModal.description}
+                actionLabel={validationModal.actionLabel}
+                actionHref={validationModal.actionHref}
+                icon={validationModal.icon}
+            />
         </div>
     );
 }
