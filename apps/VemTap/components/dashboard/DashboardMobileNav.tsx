@@ -1,11 +1,8 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Users, MessageCircle, ShoppingBag, QrCode } from 'lucide-react';
+import { Home, Users, ShoppingBag, MessageCircle, MessageSquare } from 'lucide-react';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-
 import { useSudoStore } from '@/store/useSudoStore';
 
 export default function DashboardMobileNav() {
@@ -16,14 +13,14 @@ export default function DashboardMobileNav() {
 
     const navItems = [
         {
-            label: 'Visitors',
-            icon: Users,
-            href: '/dashboard/visitors/all'
+            label: 'Home',
+            icon: Home,
+            href: '/dashboard'
         },
         {
-            label: 'Chat',
-            icon: MessageCircle,
-            href: '/dashboard/messaging/chat'
+            label: 'Visitor',
+            icon: Users,
+            href: '/dashboard/visitors'
         },
         {
             label: 'Catalogue',
@@ -31,40 +28,53 @@ export default function DashboardMobileNav() {
             href: '/dashboard/catalogue'
         },
         {
-            label: 'QR',
-            icon: QrCode,
-            href: '/dashboard/business-link'
+            label: 'Chat',
+            icon: MessageCircle,
+            href: '/dashboard/messaging/chat'
+        },
+        {
+            label: 'Channels',
+            icon: MessageSquare,
+            href: '/dashboard/messaging'
         }
     ];
 
     return (
         <div
-            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]"
+            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.06)]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-            <div className="flex justify-around items-center h-16 px-2">
+            <div className="flex justify-around items-center h-20 px-2">
                 {navItems.map((item) => {
-                    const isActive = item.href === '/dashboard/visitors/all'
-                        ? pathname.startsWith('/dashboard/visitors')
-                        : pathname === item.href || pathname.startsWith(item.href + '/');
+                    const isActive = item.label === 'Home' 
+                        ? pathname === '/dashboard' || pathname === '/dashboard/'
+                        : pathname.startsWith(item.href);
                     const Icon = item.icon;
 
                     return (
                         <Link
                             key={item.href}
                             href={getLinkWithBranch(item.href)}
-                            className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors relative ${isActive ? 'text-primary' : 'text-text-secondary hover:text-text-main'
-                                }`}
+                            className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
+                                isActive ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'
+                            }`}
                         >
-                            {/* Active indicator bar at top */}
-                            {isActive && (
-                                <div className="absolute top-0 w-8 h-1 bg-primary rounded-b-full shadow-[0_2px_8px_rgba(var(--primary-rgb),0.5)]"></div>
-                            )}
-
-                            <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-primary/10 mt-1' : 'mt-1'}`}>
-                                <Icon size={20} className={isActive ? 'stroke-[2.5px]' : 'stroke-2'} />
+                            <div className={`relative p-2 rounded-2xl transition-all duration-300 ${
+                                isActive 
+                                    ? item.label === 'Home' 
+                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 scale-110' 
+                                        : 'bg-emerald-50 text-emerald-600 scale-110'
+                                    : 'bg-transparent'
+                            }`}>
+                                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                                
+                                {isActive && item.label !== 'Home' && (
+                                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white"></div>
+                                )}
                             </div>
-                            <span className={`text-[10px] font-black tracking-wide ${isActive ? 'text-primary' : 'font-semibold'}`}>
+                            <span className={`text-[10px] mt-1.5 font-bold tracking-tight transition-all ${
+                                isActive ? 'text-emerald-600 opacity-100' : 'text-gray-400 opacity-80'
+                            }`}>
                                 {item.label}
                             </span>
                         </Link>

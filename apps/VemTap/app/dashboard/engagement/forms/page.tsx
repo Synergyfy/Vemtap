@@ -596,250 +596,389 @@ export default function EngagementFormsBuilderPage() {
             </div>
           )}
 
-          {/* Grid View */}
-          {!formsLoading && filteredForms.length > 0 && formsViewType === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredForms.map((f) => {
+          {/* Mobile View */}
+          <div className="md:hidden space-y-4">
+            {!formsLoading && filteredForms.length > 0 && (
+              filteredForms.map((f) => {
                 const status = statusBadgeOf(f);
                 const branchLabel = branchNameById.get(f.branchId) || 'Unknown';
                 const formUrl = getFormUrl(f.uniqueCode);
+                const isExpanded = openMenuId === f.id;
+
                 return (
-                  <div key={f.id} className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-xl shadow-sm">
-                    {formUrl ? (
-                      <QRCodeCanvas id={`form-qr-${f.id}`} value={formUrl} size={160} className="hidden" />
-                    ) : null}
-                    <div className="h-1.5 bg-gradient-to-r from-primary to-primary/60" />
-                    <div className="p-5 md:p-6">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="size-11 rounded-xl bg-primary/8 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
-                            <FileText size={22} />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-sm md:text-base font-bold text-gray-900 truncate tracking-tight">{f.title}</h3>
-                            <p className="text-[10px] md:text-xs text-gray-500 truncate font-medium uppercase tracking-wider">{branchLabel}</p>
-                          </div>
+                  <div 
+                    key={f.id} 
+                    className={`bg-white rounded-2xl border transition-all overflow-hidden ${isExpanded ? 'border-primary ring-1 ring-primary/10 shadow-lg' : 'border-gray-200 shadow-sm'}`}
+                  >
+                    {/* Header - Always Visible */}
+                    <div 
+                      onClick={() => setOpenMenuId(isExpanded ? null : f.id)}
+                      className="p-4 flex items-center justify-between gap-3 active:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isExpanded ? 'bg-primary text-white' : 'bg-primary/8 text-primary'}`}>
+                          <FileText size={20} />
                         </div>
-                        <div className="relative" data-form-menu>
-                          <button
-                            onClick={() => setOpenMenuId((prev) => prev === f.id ? null : f.id)}
-                            className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"
-                          >
-                            <MoreVertical size={16} />
-                          </button>
-                          {openMenuId === f.id && (
-                            <div className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-gray-200 bg-white shadow-xl z-30 py-1">
-                              <button onClick={() => openShareExplainer('link', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Link2 size={14} className="text-gray-400" /> Copy share link</button>
-                              <button onClick={() => openShareExplainer('qr', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><QrCode size={14} className="text-gray-400" /> Generate QR code</button>
-                              <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Send size={14} className="text-gray-400" /> Messaging</button>
-                              <Link href={getResponsesUrl(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                <BarChart3 size={14} className="text-gray-400" />
-                                View responses
-                              </Link>
-                              <div className="h-px bg-gray-100 my-1" />
-                              <button onClick={() => openEdit(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Pencil size={14} className="text-gray-400" /> Edit form</button>
-                              <button onClick={() => { setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId }); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} /> Delete</button>
-                            </div>
-                          )}
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-bold text-gray-900 truncate tracking-tight">{f.title}</h3>
+                          <p className="text-[10px] text-gray-500 truncate font-medium uppercase tracking-wider">{branchLabel}</p>
                         </div>
                       </div>
-                      {f.description && <p className="text-xs text-gray-500 mt-4 line-clamp-2 leading-relaxed">{f.description}</p>}
-                      
-                      <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-100">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${status.color}`}
-                        >
-                          <div className={`size-1.5 rounded-full ${status.dot} animate-pulse`} />
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${status.color}`}>
                           {status.label}
                         </span>
-                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400">
-                          <span className="inline-flex items-center gap-1 text-primary/80 uppercase tracking-tighter">
-                            <CheckCircle2 size={12} />
+                        <svg 
+                          className={`size-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 space-y-4 border-t border-gray-100 bg-gray-50/30 animate-in slide-in-from-top-2 duration-200">
+                        {f.description && (
+                          <p className="text-xs text-gray-500 leading-relaxed mt-3">{f.description}</p>
+                        )}
+
+                        <div className="flex items-center gap-4 py-2 border-y border-gray-100">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-primary/80">
+                            <CheckCircle2 size={13} />
                             {responseCountByFormId.get(f.id) || 0} responses
+                          </div>
+                          <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tight flex items-center gap-1">
+                            <Calendar size={12} />
+                            {formatDate(f.createdAt)}
+                          </div>
+                        </div>
+
+                        {/* Automation */}
+                        <div className="p-3 bg-white rounded-xl border border-gray-100 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest">Auto-Sequence</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId }); }}
+                                className="size-3.5 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center"
+                              >
+                                <Info size={8} />
+                              </button>
+                            </div>
+                            <p className={`text-[9px] mt-0.5 font-bold uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
+                              {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
+                            </p>
+                          </div>
+                          <button
+                            disabled={updateMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (f.showAfterLeadCapture) {
+                                setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
+                              } else {
+                                setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
+                              }
+                            }}
+                            className={`h-7 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${f.showAfterLeadCapture ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-gray-100 text-gray-900 border border-gray-200 hover:border-primary hover:text-primary'}`}
+                          >
+                            {updateMutation.isPending ? <Spinner size="sm" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
+                          </button>
+                        </div>
+
+                        {/* Quick actions */}
+                        <div className="grid grid-cols-4 gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openShareExplainer('link', f.id, f.title); }}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-white border border-gray-100"
+                          >
+                            <Link2 size={14} />
+                            <span>Link</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openShareExplainer('qr', f.id, f.title); }}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-white border border-gray-100"
+                          >
+                            <QrCode size={14} />
+                            <span>QR</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); router.push(getMessagingUrl(f.id)); }}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-white border border-gray-100"
+                          >
+                            <Send size={14} />
+                            <span>Send</span>
+                          </button>
+                          <Link
+                            href={getResponsesUrl(f)}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white bg-primary shadow-sm"
+                          >
+                            <BarChart3 size={14} />
+                            <span>Stats</span>
+                          </Link>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); openEdit(f); }}
+                            className="flex-1 h-9 bg-gray-100 text-gray-900 rounded-xl text-[10px] font-black uppercase tracking-widest border border-gray-200 flex items-center justify-center gap-2"
+                          >
+                            <Pencil size={14} />
+                            Edit
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId }); }}
+                            className="flex-1 h-9 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-100 flex items-center justify-center gap-2"
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Grid View */}
+          <div className="hidden md:block">
+            {!formsLoading && filteredForms.length > 0 && formsViewType === 'grid' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredForms.map((f) => {
+                  const status = statusBadgeOf(f);
+                  const branchLabel = branchNameById.get(f.branchId) || 'Unknown';
+                  const formUrl = getFormUrl(f.uniqueCode);
+                  return (
+                    <div key={f.id} className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-xl shadow-sm">
+                      {formUrl ? (
+                        <QRCodeCanvas id={`form-qr-${f.id}`} value={formUrl} size={160} className="hidden" />
+                      ) : null}
+                      <div className="h-1.5 bg-gradient-to-r from-primary to-primary/60" />
+                      <div className="p-5 md:p-6">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="size-11 rounded-xl bg-primary/8 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                              <FileText size={22} />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-sm md:text-base font-bold text-gray-900 truncate tracking-tight">{f.title}</h3>
+                              <p className="text-[10px] md:text-xs text-gray-500 truncate font-medium uppercase tracking-wider">{branchLabel}</p>
+                            </div>
+                          </div>
+                          <div className="relative" data-form-menu>
+                            <button
+                              onClick={() => setOpenMenuId((prev) => prev === f.id ? null : f.id)}
+                              className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                            {openMenuId === f.id && (
+                              <div className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-gray-200 bg-white shadow-xl z-30 py-1">
+                                <button onClick={() => openShareExplainer('link', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Link2 size={14} className="text-gray-400" /> Copy share link</button>
+                                <button onClick={() => openShareExplainer('qr', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><QrCode size={14} className="text-gray-400" /> Generate QR code</button>
+                                <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Send size={14} className="text-gray-400" /> Messaging</button>
+                                <Link href={getResponsesUrl(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                  <BarChart3 size={14} className="text-gray-400" />
+                                  View responses
+                                </Link>
+                                <div className="h-px bg-gray-100 my-1" />
+                                <button onClick={() => openEdit(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Pencil size={14} className="text-gray-400" /> Edit form</button>
+                                <button onClick={() => { setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId }); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} /> Delete</button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {f.description && <p className="text-xs text-gray-500 mt-4 line-clamp-2 leading-relaxed">{f.description}</p>}
+                        
+                        <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-100">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${status.color}`}
+                          >
+                            <div className={`size-1.5 rounded-full ${status.dot} animate-pulse`} />
+                            {status.label}
+                          </span>
+                          <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400">
+                            <span className="inline-flex items-center gap-1 text-primary/80 uppercase tracking-tighter">
+                              <CheckCircle2 size={12} />
+                              {responseCountByFormId.get(f.id) || 0} responses
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Automation */}
+                        <div className="mt-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Automation</span>
+                              <button
+                                onClick={() => setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId })}
+                                className="shrink-0 size-4 rounded-full bg-gray-200 text-gray-500 hover:bg-primary hover:text-white flex items-center justify-center transition-all"
+                              >
+                                <Info size={10} />
+                              </button>
+                            </div>
+                            <p className="text-[10px] mt-1 font-medium text-gray-500">
+                              Status: <span className={`font-black uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
+                              </span>
+                            </p>
+                          </div>
+                          <button
+                            disabled={updateMutation.isPending}
+                            onClick={() => {
+                              if (f.showAfterLeadCapture) {
+                                setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
+                              } else {
+                                setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
+                              }
+                            }}
+                            className={`shrink-0 h-8 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
+                              ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 shadow-sm'
+                              : 'bg-white text-gray-900 border border-gray-200 shadow-sm hover:border-primary hover:text-primary'
+                              } disabled:opacity-70 active:scale-95`}
+                          >
+                            {updateMutation.isPending ? <Spinner size="sm" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
+                          </button>
+                        </div>
+
+                        {/* Quick actions */}
+                        <div className="mt-5 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                          <button
+                            onClick={() => openShareExplainer('link', f.id, f.title)}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
+                            title="Copy share link"
+                          >
+                            <Link2 size={16} />
+                            <span>Link</span>
+                          </button>
+                          <button
+                            onClick={() => openShareExplainer('qr', f.id, f.title)}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-purple-50 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
+                            title="Show QR code"
+                          >
+                            <QrCode size={16} />
+                            <span>QR</span>
+                          </button>
+                          <button
+                            onClick={() => { router.push(getMessagingUrl(f.id)); }}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 transition-all border border-transparent hover:border-emerald-100"
+                            title="Send via messaging"
+                          >
+                            <Send size={16} />
+                            <span>Send</span>
+                          </button>
+                          <Link
+                            href={getResponsesUrl(f)}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white bg-primary hover:bg-primary/90 transition-all shadow-md shadow-primary/10 active:scale-95"
+                            title="View responses"
+                          >
+                            <BarChart3 size={16} />
+                            <span>Stats</span>
+                          </Link>
+                          <Link
+                            href={`/dashboard/engagement/forms/${f.id}`}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 transition-all border border-primary/10"
+                            title="Preview form"
+                          >
+                            <Eye size={16} />
+                            <span>View</span>
+                          </Link>
+                        </div>
+
+                        {/* Date metadata */}
+                        <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400 font-medium uppercase tracking-tight">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={12} />
+                            Created {formatDate(f.createdAt)}
+                          </span>
+                          <span className="font-bold text-gray-300">
+                            {f.createdAt ? timeAgo(f.createdAt) : '—'}
                           </span>
                         </div>
                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-                      {/* Engagement & Automation */}
-                      <div className="flex items-center gap-4 mt-2 mb-1 px-1">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-primary/80" title="Engagement metrics: number of people who have filled this form">
-                          <CheckCircle2 size={13} />
-                          {responseCountByFormId.get(f.id) || 0} responses
-                        </div>
+            {/* Desktop List View */}
+            {!formsLoading && filteredForms.length > 0 && formsViewType === 'list' && (
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="col-span-3">Form</div>
+                  <div className="col-span-2">Branch</div>
+                  <div className="col-span-1">Status</div>
+                  <div className="col-span-2">Engagement</div>
+                  <div className="col-span-1">Created</div>
+                  <div className="col-span-1">Updated</div>
+                  <div className="col-span-2 text-right">Actions</div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {filteredForms.map((f) => (
+                    <div key={f.id} className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-gray-50 transition-colors">
+                      <div className="sm:col-span-3 flex items-center gap-3 min-w-0">
+                        <div className="size-9 rounded-lg bg-primary/8 text-primary flex items-center justify-center shrink-0"><FileText size={18} /></div>
+                        <div className="min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{f.title}</p></div>
                       </div>
-
-                      {/* Default Submission Feature */}
-                      <div className="mt-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Automation</span>
-                            <button
-                              onClick={() => setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId })}
-                              className="shrink-0 size-4 rounded-full bg-gray-200 text-gray-500 hover:bg-primary hover:text-white flex items-center justify-center transition-all"
-                            >
-                              <Info size={10} />
-                            </button>
-                          </div>
-                          <p className="text-[10px] mt-1 font-medium text-gray-500">
-                            Status: <span className={`font-black uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
-                              {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
-                            </span>
-                          </p>
-                        </div>
+                      <div className="sm:col-span-2 text-xs text-gray-600 truncate">{branchNameById.get(f.branchId) || 'Unknown'}</div>
+                      <div className="sm:col-span-1">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${statusBadgeOf(f).color}`}>
+                          <div className={`size-1.5 rounded-full ${statusBadgeOf(f).dot}`} />
+                          {statusBadgeOf(f).label}
+                        </span>
+                      </div>
+                      <div className="sm:col-span-2 text-xs text-primary/80 font-bold flex items-center gap-1.5">
+                        <CheckCircle2 size={13} />
+                        {responseCountByFormId.get(f.id) || 0} <span className="font-normal text-gray-400">responses</span>
+                      </div>
+                      <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
+                      <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>
+                      <div className="sm:col-span-2 flex justify-end items-center gap-1">
                         <button
                           disabled={updateMutation.isPending}
                           onClick={() => {
-                            const isCurrentlyDefault = !!f.showAfterLeadCapture;
-                            if (isCurrentlyDefault) {
+                            if (f.showAfterLeadCapture) {
                               setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
                             } else {
                               setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                             }
                           }}
-                          className={`shrink-0 h-8 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
-                            ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 shadow-sm'
-                            : 'bg-white text-gray-900 border border-gray-200 shadow-sm hover:border-primary hover:text-primary'
-                            } disabled:opacity-70 active:scale-95`}
+                          className={`size-8 rounded-lg flex items-center justify-center transition-colors ${f.showAfterLeadCapture
+                            ? 'bg-primary/10 text-primary shadow-inner'
+                            : 'text-gray-400 hover:bg-gray-100'
+                            }`}
+                          title={f.showAfterLeadCapture ? 'Disable Sequence' : 'Enable Sequence'}
                         >
-                          {updateMutation.isPending ? <Spinner size="sm" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
-                        </button>
-                      </div>
-
-                      {/* Quick actions - Adaptive Grid */}
-                      <div className="mt-5 grid grid-cols-3 sm:grid-cols-5 gap-2">
-                        <button
-                          onClick={() => openShareExplainer('link', f.id, f.title)}
-                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
-                          title="Copy share link"
-                        >
-                          <Link2 size={16} />
-                          <span>Link</span>
-                        </button>
-                        <button
-                          onClick={() => openShareExplainer('qr', f.id, f.title)}
-                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-purple-50 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
-                          title="Show QR code"
-                        >
-                          <QrCode size={16} />
-                          <span>QR</span>
-                        </button>
-                        <button
-                          onClick={() => openShareExplainer('messaging', f.id, f.title)}
-                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 transition-all border border-transparent hover:border-emerald-100"
-                          title="Send via messaging"
-                        >
-                          <Send size={16} />
-                          <span>Send</span>
+                          {updateMutation.isPending ? <Spinner size="sm" /> : <CheckCircle2 size={14} />}
                         </button>
                         <Link
                           href={getResponsesUrl(f)}
-                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white bg-primary hover:bg-primary/90 transition-all shadow-md shadow-primary/10 active:scale-95"
+                          className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 inline-flex items-center gap-1.5"
                           title="View responses"
                         >
-                          <BarChart3 size={16} />
-                          <span>Stats</span>
+                          <BarChart3 size={14} />
+                          Responses ({responseCountByFormId.get(f.id) || 0})
                         </Link>
-                        <Link
-                          href={`/dashboard/engagement/forms/${f.id}`}
-                          className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 transition-all border border-primary/10"
-                          title="Preview form"
+                        <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
+                        <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
+                        <button
+                          onClick={() => setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId })}
+                          className="size-8 rounded-lg text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors"
+                          title="Delete form"
                         >
-                          <Eye size={16} />
-                          <span>View</span>
-                        </Link>
-                      </div>
-
-                      {/* Date metadata */}
-                      <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400 font-medium uppercase tracking-tight">
-                        <span className="flex items-center gap-1">
-                          <Calendar size={12} />
-                          Created {formatDate(f.createdAt)}
-                        </span>
-                        <span className="font-bold text-gray-300">
-                          {f.createdAt ? timeAgo(f.createdAt) : '—'}
-                        </span>
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* List View */}
-          {!formsLoading && filteredForms.length > 0 && formsViewType === 'list' && (
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div className="col-span-3">Form</div>
-                <div className="col-span-2">Branch</div>
-                <div className="col-span-1">Status</div>
-                <div className="col-span-2">Engagement</div>
-                <div className="col-span-1">Created</div>
-                <div className="col-span-1">Updated</div>
-                <div className="col-span-2 text-right">Actions</div>
+                  ))}
+                </div>
               </div>
-              <div className="divide-y divide-gray-100">
-                {filteredForms.map((f) => (
-                  <div key={f.id} className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-gray-50 transition-colors">
-                    <div className="sm:col-span-3 flex items-center gap-3 min-w-0">
-                      <div className="size-9 rounded-lg bg-primary/8 text-primary flex items-center justify-center shrink-0"><FileText size={18} /></div>
-                      <div className="min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{f.title}</p></div>
-                    </div>
-                    <div className="sm:col-span-2 text-xs text-gray-600 truncate">{branchNameById.get(f.branchId) || 'Unknown'}</div>
-                    <div className="sm:col-span-1">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${statusBadgeOf(f).color}`}>
-                        <div className={`size-1.5 rounded-full ${statusBadgeOf(f).dot}`} />
-                        {statusBadgeOf(f).label}
-                      </span>
-                    </div>
-                    <div className="sm:col-span-2 text-xs text-primary/80 font-bold flex items-center gap-1.5">
-                      <CheckCircle2 size={13} />
-                      {responseCountByFormId.get(f.id) || 0} <span className="font-normal text-gray-400">responses</span>
-                    </div>
-                    <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
-                    <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>
-                    <div className="sm:col-span-2 flex justify-end items-center gap-1">
-                      <button
-                        disabled={updateMutation.isPending}
-                        onClick={() => {
-                          const isCurrentlyDefault = !!f.showAfterLeadCapture;
-                          if (isCurrentlyDefault) {
-                            setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
-                          } else {
-                            setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
-                          }
-                        }}
-                        className={`size-8 rounded-lg flex items-center justify-center transition-colors ${f.showAfterLeadCapture
-                          ? 'bg-primary/10 text-primary shadow-inner'
-                          : 'text-gray-400 hover:bg-gray-100'
-                          }`}
-                        title={f.showAfterLeadCapture ? 'Disable Sequence' : 'Enable Sequence'}
-                      >
-                        {updateMutation.isPending ? <Spinner size="sm" /> : <CheckCircle2 size={14} />}
-                      </button>
-                      <Link
-                        href={getResponsesUrl(f)}
-                        className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 inline-flex items-center gap-1.5"
-                        title="View responses"
-                      >
-                        <BarChart3 size={14} />
-                        Responses ({responseCountByFormId.get(f.id) || 0})
-                      </Link>
-                      <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
-                      <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
-                      <button
-                        onClick={() => setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId })}
-                        className="size-8 rounded-lg text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors"
-                        title="Delete form"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       )}
 

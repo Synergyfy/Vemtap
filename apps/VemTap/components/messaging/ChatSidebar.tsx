@@ -765,7 +765,7 @@ function ConversationItem({
             isActive ? 'bg-primary/10 border-primary' : 'hover:bg-slate-50 border-transparent'
         }`}>
             {/* Selection Checkbox */}
-            <div className="pl-4">
+            <div className="pl-2 md:pl-4">
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
@@ -789,7 +789,7 @@ function ConversationItem({
                         onClick();
                     }
                 }}
-                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group cursor-pointer"
+                className="flex-1 flex items-center gap-3 p-3 md:p-4 pl-2 md:pl-3 transition-colors text-left overflow-hidden relative group cursor-pointer"
             >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
