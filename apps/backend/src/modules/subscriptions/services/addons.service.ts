@@ -301,24 +301,6 @@ export class AddonsService {
       results.push(saved);
     }
 
-    const totalAmount = results.reduce(
-      (sum, b) => sum + Number(b.totalPaid),
-      0,
-    );
-    await this.paymentsService.recordPayment({
-      reference: paymentReference,
-      amount: totalAmount,
-      purpose: PaymentPurpose.PLAN_WITH_ADDONS,
-      status: PaymentStatus.SUCCESS,
-      metadata: {
-        addonIds: addons.map((a) => a.id),
-        businessAddonIds: results.map((r) => r.id),
-        quantities: addonQuantities || addons.map(() => 1),
-      },
-      businessId,
-      userId,
-    });
-
     return results;
   }
 

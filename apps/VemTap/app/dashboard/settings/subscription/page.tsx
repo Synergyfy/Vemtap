@@ -557,65 +557,80 @@ export default function DashboardPricingPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {myActiveAddons.map((ba) => {
-                            const addon = ba.addon;
-                            const totalLimit = (addon.additionalLimit || 0) * (ba.quantity || 1);
-                            const capability = addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units';
-                            
-                            return (
-                                <div 
-                                    key={ba.id}
-                                    className="group relative flex flex-col p-6 rounded-[2rem] bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden"
-                                >
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <TrendingUp size={64} className="text-emerald-500" />
-                                    </div>
+                        {(() => {
+                            const groupedAddons = (myActiveAddons || []).reduce((acc: any[], ba: any) => {
+                                const existing = acc.find((a: any) => a.addon.id === ba.addon.id);
+                                if (existing) {
+                                    existing.quantity = (existing.quantity || 1) + (ba.quantity || 1);
+                                    if (ba.expiresAt && existing.expiresAt && new Date(ba.expiresAt).getTime() > new Date(existing.expiresAt).getTime()) {
+                                        existing.expiresAt = ba.expiresAt;
+                                    }
+                                } else {
+                                    acc.push({ ...ba, quantity: ba.quantity || 1 });
+                                }
+                                return acc;
+                            }, [] as any[]);
 
-                                    <div className="mb-6">
-                                        <div className="flex items-center justify-between gap-2 mb-4">
-                                            <div className="size-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                                {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
-                                            </div>
-                                            <div className="flex flex-col items-end">
-                                                <span className="px-2 py-1 bg-emerald-500 text-white text-[8px] font-black rounded-full uppercase tracking-widest shadow-sm">
-                                                    x{ba.quantity || 1} Active
-                                                </span>
-                                                <span className="text-[9px] font-bold text-emerald-600 mt-1">
-                                                    {ba.addon.isRecurring ? 'Auto-renewing' : 'One-time'}
-                                                </span>
-                                            </div>
+                            return groupedAddons.map((ba) => {
+                                const addon = ba.addon;
+                                const totalLimit = (addon.additionalLimit || 0) * (ba.quantity || 1);
+                                const capability = addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units';
+                                
+                                return (
+                                    <div 
+                                        key={ba.id}
+                                        className="group relative flex flex-col p-6 rounded-[2rem] bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                            <TrendingUp size={64} className="text-emerald-500" />
                                         </div>
-                                        <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
-                                        {addon.type === 'RESOURCE' && addon.additionalLimit && (
-                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-lg mt-2">
-                                                <TrendingUp size={12} strokeWidth={3} />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">
-                                                    +{totalLimit} {capability}s Total Boost
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
 
-                                    <div className="mt-auto pt-4 border-t border-emerald-100/50 flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                                {ba.addon.isRecurring ? 'Next Billing' : 'Expires On'}
-                                            </span>
-                                            <span className="text-xs font-black text-slate-700">
-                                                {new Date(ba.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                            </span>
+                                        <div className="mb-6">
+                                            <div className="flex items-center justify-between gap-2 mb-4">
+                                                <div className="size-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                    {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
+                                                </div>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="px-2 py-1 bg-emerald-500 text-white text-[8px] font-black rounded-full uppercase tracking-widest shadow-sm">
+                                                        x{ba.quantity || 1} Active
+                                                    </span>
+                                                    <span className="text-[9px] font-bold text-emerald-600 mt-1">
+                                                        {ba.addon.isRecurring ? 'Auto-renewing' : 'One-time'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                            {addon.type === 'RESOURCE' && addon.additionalLimit && (
+                                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-lg mt-2">
+                                                    <TrendingUp size={12} strokeWidth={3} />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                                        +{totalLimit} {capability}s Total Boost
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="text-right">
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Investment</span>
-                                            <span className="text-xs font-black text-emerald-600">
-                                                ₦{(addon.price * (ba.quantity || 1)).toLocaleString()}
-                                                <span className="text-[9px] opacity-60 ml-0.5">/{addon.isRecurring ? 'mo' : 'once'}</span>
-                                            </span>
+
+                                        <div className="mt-auto pt-4 border-t border-emerald-100/50 flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    {ba.addon.isRecurring ? 'Next Billing' : 'Expires On'}
+                                                </span>
+                                                <span className="text-xs font-black text-slate-700">
+                                                    {new Date(ba.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Investment</span>
+                                                <span className="text-xs font-black text-emerald-600">
+                                                    ₦{(addon.price * (ba.quantity || 1)).toLocaleString()}
+                                                    <span className="text-[9px] opacity-60 ml-0.5">/{addon.isRecurring ? 'mo' : 'once'}</span>
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
             )}
