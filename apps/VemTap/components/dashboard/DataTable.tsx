@@ -73,23 +73,42 @@ export default function DataTable<T extends { id: string | number }>({
             </div>
 
             {/* Mobile Card View */}
-            <div className="md:hidden space-y-3">
+            <div className="md:hidden space-y-4">
                 {data.map((item) => (
-                    <div 
+                    <div
                         key={item.id}
                         onClick={() => onRowClick?.(item)}
-                        className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3"
+                        className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden active:scale-[0.98] transition-transform"
                     >
-                        {columns.map((column, index) => (
-                            <div key={index} className="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0 last:pb-0">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{column.header}</span>
-                                <span className="text-sm font-semibold text-gray-800">
-                                    {typeof column.accessor === 'function'
-                                        ? column.accessor(item)
-                                        : (item[column.accessor] as React.ReactNode)}
-                                </span>
-                            </div>
-                        ))}
+                        {/* Header Section (First Column) */}
+                        <div className="p-4 bg-gray-50/50 border-b border-gray-100">
+                            {typeof columns[0].accessor === 'function'
+                                ? columns[0].accessor(item)
+                                : (item[columns[0].accessor as keyof T] as React.ReactNode)}
+                        </div>
+
+                        {/* Body Section (Remaining Columns) */}
+                        <div className="p-4 space-y-3">
+                            {columns.slice(1).map((column, index) => {
+                                const content = typeof column.accessor === 'function'
+                                    ? column.accessor(item)
+                                    : (item[column.accessor as keyof T] as React.ReactNode);
+
+                                // Skip if content is null/undefined or it's an action button (often Send/Send message)
+                                if (content === null || content === undefined) return null;
+
+                                return (
+                                    <div key={index} className="flex justify-between items-start gap-4">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1 shrink-0">
+                                            {column.header}
+                                        </span>
+                                        <div className="text-xs font-bold text-text-main text-right break-words">
+                                            {content}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 ))}
             </div>

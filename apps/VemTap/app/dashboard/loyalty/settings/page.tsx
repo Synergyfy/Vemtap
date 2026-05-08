@@ -20,7 +20,7 @@ export default function LoyaltySettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="p-8 flex items-center justify-center min-h-[400px]">
+            <div className="p-4 md:p-8 flex items-center justify-center min-h-[400px]">
                 <Loader2 className="animate-spin text-primary" size={32} />
             </div>
         );
@@ -28,14 +28,14 @@ export default function LoyaltySettingsPage() {
 
     if (!rules) {
         return (
-            <div className="p-8 flex items-center justify-center min-h-[400px]">
+            <div className="p-4 md:p-8 flex items-center justify-center min-h-[400px]">
                 <p className="text-slate-500">No loyalty rules configured for this branch.</p>
             </div>
         );
     }
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="p-4 md:p-8 space-y-8">
             <PageHeader
                 title="Program Settings"
                 description="Configure how your loyalty program operates"

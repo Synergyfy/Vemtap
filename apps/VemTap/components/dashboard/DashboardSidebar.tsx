@@ -12,7 +12,7 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode
+    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -20,6 +20,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import UpgradeModal from './UpgradeModal';
+import SubscriptionExpiredModal from './SubscriptionExpiredModal';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -55,7 +56,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
-    const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
+    const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription, isSubscriptionExpired } = useSubscriptionStore();
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
@@ -221,15 +222,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'engagement',
-            label: 'Engagement',
-            icon: Zap,
-            submenu: [
-                { label: 'User Experience', href: '/dashboard/engagement/experience' },
-                { label: 'Form Creator', href: '/dashboard/engagement/forms' },
-            ]
-        },
-        {
             id: 'catalogue',
             label: 'Catalogue',
             icon: ShoppingBag,
@@ -238,21 +230,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             featureName: 'Catalogue',
             submenu: [
                 { label: 'Overview', href: '/dashboard/catalogue' },
-                { label: 'Items', href: '/dashboard/catalogue/products' },
+                { label: 'Products', href: '/dashboard/catalogue/products' },
                 { label: 'Offers', href: '/dashboard/catalogue/offers' },
                 { label: 'Categories', href: '/dashboard/catalogue/categories' },
                 { label: 'Orders', href: '/dashboard/catalogue/orders' },
                 { label: 'Bookings', href: '/dashboard/catalogue/bookings' },
-            ]
-        },
-        {
-            id: 'business-leads',
-            label: 'Business Leads',
-            icon: QrCode,
-            roles: ['owner', 'manager'],
-            submenu: [
-                { label: 'Orders', href: '/dashboard/business-leads/orders' },
-                { label: 'Bookings', href: '/dashboard/business-leads/bookings' },
             ]
         },
         {
@@ -267,11 +249,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'support',
-            label: 'Support',
-            icon: HelpCircle,
-            href: '/dashboard/support',
-            roles: ['owner', 'manager', 'staff']
+            id: 'manage-forms',
+            label: 'Manage Forms',
+            icon: FileText,
+            href: '/dashboard/engagement/forms',
+            roles: ['owner', 'manager', 'staff'],
         },
         {
             id: 'agent-desk',
@@ -281,26 +263,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['staff', 'manager']
         },
         {
-            id: 'staff',
-            label: 'Team',
-            icon: Users2,
-            href: '/dashboard/staff',
-            roles: ['owner']
-        },
-        {
             id: 'admin-nfc',
             label: 'Admin NFC Grants',
             icon: ShieldCheck,
             href: '/admin/nfc-grants',
             roles: ['admin']
-        },
-        {
-            id: 'devices',
-            label: 'Business Link',
-            icon: Nfc,
-            href: '/dashboard/business-link',
-            roles: ['owner', 'manager', 'staff'],
-
         },
         {
             id: 'explore-qrthrive',
@@ -309,7 +276,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             href: '/dashboard/explore-qrthrive',
             roles: ['owner', 'manager', 'staff'],
         },
-
+        {
+            id: 'customer-experience',
+            label: 'Customer Experience',
+            icon: Zap,
+            href: '/dashboard/customer-experience',
+            roles: ['owner', 'manager', 'staff'],
+        },
         {
             id: 'settings',
             label: 'Settings',
@@ -319,9 +292,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
-
+                { label: 'Team', href: '/dashboard/staff' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
-                { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
+                { label: 'Support', href: '/dashboard/support' },
                 { label: 'Legal & Compliance', href: '/dashboard/compliance' },
             ]
         },
@@ -679,7 +652,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 <>
                                     {/* Desktop View: Full Badge */}
                                     <div className="hidden sm:flex items-center">
-                                        {isFree ? (
+                                        {isSubscriptionExpired ? (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-red-100 transition-colors shadow-sm shadow-red-100 animate-pulse"
+                                            >
+                                                Plan Expired
+                                            </Link>
+                                        ) : isFree ? (
                                             <Link
                                                 href={subscriptionLink}
                                                 className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
@@ -716,14 +696,18 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         <Link
                                             href={subscriptionLink}
                                             className={`size-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
-                                                isFree 
-                                                    ? 'bg-gray-50 border-gray-200 text-gray-400' 
-                                                    : isOnTrial 
-                                                        ? 'bg-amber-50 border-amber-200 text-amber-600' 
-                                                        : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                                isSubscriptionExpired
+                                                    ? 'bg-red-50 border-red-200 text-red-600 animate-pulse'
+                                                    : isFree 
+                                                        ? 'bg-gray-50 border-gray-200 text-gray-400' 
+                                                        : isOnTrial 
+                                                            ? 'bg-amber-50 border-amber-200 text-amber-600' 
+                                                            : 'bg-emerald-50 border-emerald-200 text-emerald-600'
                                             }`}
                                         >
-                                            {isFree ? (
+                                            {isSubscriptionExpired ? (
+                                                <AlertCircle size={18} />
+                                            ) : isFree ? (
                                                 <Zap size={18} className="opacity-40" />
                                             ) : isOnTrial ? (
                                                 <div className="relative">
@@ -901,12 +885,16 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             {/* Only show Mobile Nav if NOT on a chat route */}
-            {!isChatRoute && <DashboardMobileNav />}
+            <DashboardMobileNav />
             
             <UpgradeModal
                 isOpen={upgradeModal.isOpen}
                 onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
                 featureName={upgradeModal.featureName}
+            />
+
+            <SubscriptionExpiredModal
+                isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')}
             />
         </div>
     );

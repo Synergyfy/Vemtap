@@ -165,6 +165,16 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
             errorData = { message: `API Error: ${response.status}` };
         }
 
+        // Global Subscription Expiry Handling
+        if (response.status === 403 && (errorData.message?.toLowerCase().includes('subscription expired') || errorData.message?.toLowerCase().includes('renew to continue'))) {
+            try {
+                const { useSubscriptionStore } = await import('@/store/useSubscriptionStore');
+                useSubscriptionStore.getState().setSubscriptionExpired(true);
+            } catch (e) {
+                console.error('Failed to trigger subscription expiry state', e);
+            }
+        }
+
         throw new Error(errorData.message || `API Error: ${response.status}`);
     }
 

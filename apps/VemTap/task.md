@@ -222,25 +222,43 @@ After each setup:
 
 ## 🔹 F. White Label System
 
-* [ ] Replace all QRThrive URLs with VemTap domain
-* [ ] Proxy or masking logic
-* [ ] Branding consistency
+* [x] Replace all QRThrive URLs with VemTap domain
+* [x] Create `CatalogueMobileHub`
+    - [x] Items: Overview, Items, Offers, Categories, Orders, Bookings
+* [x] Create `LoyaltyMobileHub`
+    - [x] Items: Overview, Customers, Rewards, Verify, Settings
+* [x] Create `MessagingMobileHub`
+    - [x] Items: In-App Chat, WhatsApp, SMS, Email
+* [x] Create `SettingsMobileHub`
+    - [x] Items: Profile, Security, Billing, API Access
+* [x] Integrate hubs into their respective pages
+    - [x] `app/dashboard/catalogue/page.tsx`
+    - [x] `app/dashboard/loyalty/page.tsx`
+    - [x] `app/dashboard/messaging/page.tsx`
+    - [x] `app/dashboard/settings/page.tsx`
+* [x] Restore mobile nav on Chat routes
+* [x] Optimize Chat list avatar alignment for mobile
+* [x] Condense Catalogue Product list on mobile
+* [x] Condense Manage Forms list on mobile (Expandable Cards)
+* [x] Verify all routes across all device types
+* [x] Proxy or masking logic
+* [x] Branding consistency
 
 ---
 
 ## 🔹 G. Frontend UI/UX
 
-* [ ] QR modal after signup
-* [ ] “Customer View” preview screen
-* [ ] Add-module interface
-* [ ] Empty state guidance
+* [x] QR modal after signup
+* [x] “Customer View” preview screen
+* [x] Add-module interface
+* [x] Empty state guidance
 
 ---
 
 ## 🔹 H. Settings Integration
 
-* [ ] WhatsApp config
-* [ ] Profile setup (logo required early)
+* [x] WhatsApp config
+* [x] Profile setup (logo required early)
 
 ---
 

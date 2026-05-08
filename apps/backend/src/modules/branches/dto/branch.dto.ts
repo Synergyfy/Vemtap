@@ -77,6 +77,11 @@ export class CreateBranchDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiProperty({ example: 'main-office', required: false })
+  @IsString()
+  @IsOptional()
+  username?: string;
+
   @ApiProperty({ example: '123 Street, City', required: false })
   @IsString()
   @IsOptional()
@@ -117,6 +122,11 @@ export class UpdateBranchDto {
   @IsString()
   @IsOptional()
   name?: string;
+
+  @ApiPropertyOptional({ example: 'updated-branch' })
+  @IsString()
+  @IsOptional()
+  username?: string;
 
   @ApiPropertyOptional({ example: '456 New Ave, City' })
   @IsString()

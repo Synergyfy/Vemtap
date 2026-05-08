@@ -18,6 +18,7 @@ import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { exportToCSV } from '@/lib/utils/export';
 import { useDebounce } from '@/hooks/useDebounce';
 import SudoActionGuard from '@/components/shared/SudoActionGuard';
+import VisitorMobileHub from '@/components/dashboard/VisitorMobileHub';
 
 export default function VisitorsOverviewPage() {
     const router = useRouter();
@@ -116,12 +117,12 @@ export default function VisitorsOverviewPage() {
                 const displayName = getVisitorDisplayName(item);
                 return (
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase">
+                        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase border border-primary/10">
                             {displayName.split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
                         </div>
-                        <div>
-                            <p className="font-bold text-text-main">{displayName}</p>
-                            <p className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">ID: {(item.id || '      ').substr(0, 6)}</p>
+                        <div className="min-w-0">
+                            <p className="font-bold text-text-main truncate">{displayName}</p>
+                            <p className="text-[10px] text-text-secondary font-black tracking-tight uppercase">ID: {(item.id || '      ').substr(0, 6)}</p>
                         </div>
                     </div>
                 );
@@ -132,12 +133,19 @@ export default function VisitorsOverviewPage() {
         { header: 'Last Visit', accessor: (item: Visitor) => resolveDisplayDate(item) },
         {
             header: 'Status',
-            accessor: (item: Visitor) => (
-                <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${item.status?.toLowerCase() === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                    }`}>
-                    {item.status || 'Active'}
-                </span>
-            )
+            accessor: (item: Visitor) => {
+                const status = (item.status || 'Active').toLowerCase();
+                const statusStyles: Record<string, string> = {
+                    'new': 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                    'returning': 'bg-blue-50 text-blue-600 border-blue-100',
+                    'vip': 'bg-purple-50 text-purple-600 border-purple-100',
+                };
+                return (
+                    <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${statusStyles[status] || 'bg-gray-50 text-gray-600 border-gray-100'}`}>
+                        {item.status || 'Active'}
+                    </span>
+                );
+            }
         },
         {
             header: 'Actions',
@@ -149,7 +157,7 @@ export default function VisitorsOverviewPage() {
                             setSelectedVisitorForMsg(item);
                             setShowChannelSelector(true);
                         }}
-                        className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                        className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
                         title="Quick Message"
                     >
                         <Send size={16} />
@@ -160,67 +168,70 @@ export default function VisitorsOverviewPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8">
-            <PageHeader
-                title="Visitors Overview"
-                description="Monitor your customer footfall and engagement levels"
-                actions={
-                    <div className="flex items-center gap-3">
-                        <SudoActionGuard action="Exporting visitor data">
-                            <button
-                                onClick={handleExportCSV}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm"
-                            >
-                                <Download size={18} />
-                                Export
-                            </button>
-                        </SudoActionGuard>
-                    </div>
-                }
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="p-4 md:p-8 space-y-8 md:space-y-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <PageHeader
+                    title="Visitors Overview"
+                    description="Monitor your customer footfall and engagement levels"
+                />
+                <SudoActionGuard action="Exporting visitor data">
+                    <button
+                        onClick={handleExportCSV}
+                        className="flex items-center justify-center gap-2 px-6 py-3.5 bg-white border border-gray-200 text-text-main font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 sm:w-auto w-full"
+                    >
+                        <Download size={16} />
+                        Export Data
+                    </button>
+                </SudoActionGuard>
+            </div>
+            
+            {/* Mobile Hub View */}
+            <VisitorMobileHub />
+            
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {stats.map((stat, index) => (
                     <StatsCard key={index} {...(stat as any)} />
                 ))}
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6 flex flex-col md:flex-row gap-4">
+            <div className="hidden md:flex bg-white rounded-2xl p-4 md:p-6 border border-gray-200 flex-col md:flex-row gap-4 shadow-sm">
                 <div className="flex-1 relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
                         type="text"
-                        placeholder="Search visitors..."
-                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-5 font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm"
+                        placeholder="Search by name, phone or email..."
+                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-5 text-sm font-bold text-text-main outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder:text-gray-400 placeholder:font-medium"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
                 <select
-                    className="h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-text-main outline-none focus:ring-2 focus:ring-primary/20"
+                    className="h-12 px-5 bg-gray-50 border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-main outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all min-w-[160px]"
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
                 >
-                    <option value="all">All Status</option>
-                    <option value="new">New</option>
+                    <option value="all">All Visitors</option>
+                    <option value="new">New Customers</option>
                     <option value="returning">Returning</option>
                     <option value="vip">VIP Only</option>
                 </select>
             </div>
 
-            <DataTable
-                columns={columns}
-                data={filteredVisitors}
-                isLoading={isLoading}
-                onRowClick={(visitor) => setSelectedVisitorForDetails(visitor)}
-                emptyState={
-                    <EmptyState
-                        icon="people"
-                        title="No visitors activity"
-                        description="Visitor activity will appear here after customers tap your live NFC devices."
-                    />
-                }
-            />
+            <div className="hidden md:block">
+                <DataTable
+                    columns={columns}
+                    data={filteredVisitors}
+                    isLoading={isLoading}
+                    onRowClick={(visitor) => setSelectedVisitorForDetails(visitor)}
+                    emptyState={
+                        <EmptyState
+                            icon="people"
+                            title="No visitors activity"
+                            description="Visitor activity will appear here after customers tap your live NFC devices."
+                        />
+                    }
+                />
+            </div>
 
             <MessagingChannelSelectorModal
                 isOpen={showChannelSelector}

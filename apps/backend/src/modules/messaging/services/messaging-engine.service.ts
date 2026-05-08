@@ -599,6 +599,15 @@ export class MessagingEngineService {
     return resolved;
   }
 
+  /**
+   * Checks if a string contains any personalization placeholders like {Name}, {FirstName}, etc.
+   */
+  public hasPlaceholders(content: string): boolean {
+    if (!content) return false;
+    const placeholderRegex = /{[a-zA-Z0-9]+}/;
+    return placeholderRegex.test(content);
+  }
+
   private mapProviderStatus(status: string): MessageStatus {
     switch (status) {
       case 'queued':
@@ -876,6 +885,52 @@ export class MessagingEngineService {
         return MessageStatus.REJECTED;
       default:
         return MessageStatus.SENT;
+    }
+  }
+
+  async sendBulkGenericSms(
+    messages: Message[],
+    content: string,
+    from: string,
+  ): Promise<void> {
+    if (!messages.length) return;
+
+    const to = messages.map((m) => m.to);
+
+    try {
+      const providerResult = await this.providerRouter.sendMessage({
+        channel: Channel.SMS,
+        to,
+        content,
+        from,
+      });
+
+      const status = this.mapProviderStatus(providerResult.status);
+      const providerMessageId = providerResult.messageId || '';
+
+      await Promise.all(
+        messages.map((msg) => {
+          msg.status = status;
+          msg.providerMessageId = providerMessageId;
+          msg.cost = providerResult.cost
+            ? providerResult.cost / messages.length
+            : undefined;
+          msg.units = providerResult.units
+            ? providerResult.units / messages.length
+            : undefined;
+          msg.reference = providerResult.reference;
+          return this.messageRepo.save(msg);
+        }),
+      );
+    } catch (err: any) {
+      this.logger.error(`❌ ERROR: Bulk delivery failed: ${err.message}`);
+      await Promise.all(
+        messages.map((msg) => {
+          msg.status = MessageStatus.FAILED;
+          return this.messageRepo.save(msg);
+        }),
+      );
+      throw err;
     }
   }
 }

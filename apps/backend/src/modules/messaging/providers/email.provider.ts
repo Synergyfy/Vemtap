@@ -16,7 +16,7 @@ export class EmailProvider implements MessagingProvider {
 
   async sendMessage(payload: SendMessagePayload): Promise<ProviderResponse> {
     const success = await this.mailService.sendGenericEmail(
-      payload.to,
+      Array.isArray(payload.to) ? payload.to[0] : payload.to,
       payload.from || 'VemTap',
       payload.content,
     );

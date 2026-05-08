@@ -1,5 +1,5 @@
-import React from 'react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 import Spinner from '@/components/ui/Spinner';
 
@@ -48,8 +48,10 @@ interface EngagementTilesProps {
         linkedin?: string;
         socialUrl?: string;
         brandColor?: string;
+        isPreview?: boolean;
     };
 }
+
 
 export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
@@ -59,6 +61,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     completedFormIds = [],
     settings = {}
 }) => {
+    const isPreview = settings?.isPreview || false;
     const brandColor = settings?.brandColor || '#2563eb';
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
     const hasReview = !!settings.reviewUrl;
@@ -66,7 +69,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     const formButtonBase = "w-full h-11 rounded-xl border px-4 text-left text-sm font-semibold flex items-center justify-between transition-all";
 
     return (
-        <div className="w-full space-y-3 mt-8">
+        <div className={cn("w-full space-y-3 mt-8", isPreview && "mt-4")}>
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-left ml-1 mb-4">
                 Boost Your Experience
             </h3>

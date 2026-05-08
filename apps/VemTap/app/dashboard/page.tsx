@@ -7,6 +7,7 @@ import {
     Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
     ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap
 } from 'lucide-react';
+import StatsCard from '@/components/dashboard/StatsCard';
 import Tooltip from '@/components/ui/Tooltip';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
@@ -22,6 +23,8 @@ import { useBranches, useUpdateBranch } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
 import { Phone, Loader2 as LoaderIcon } from 'lucide-react';
 import { useSudoStore } from '@/store/useSudoStore';
+import MobileDashboardHub from '@/components/dashboard/MobileDashboardHub';
+import { useSearchParams } from 'next/navigation';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -29,6 +32,8 @@ export default function DashboardPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
+    const searchParams = useSearchParams();
+    const showStats = searchParams.get('show_stats') === '1';
     
     // We use the store now instead of URL params for sudo state
     const { activeSession } = useSudoStore();
@@ -228,7 +233,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="p-4 md:p-8 space-y-6">
+        <div className="p-4 md:p-8 space-y-8 md:space-y-10">
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
@@ -254,42 +259,35 @@ export default function DashboardPage() {
                     )}
                 </div>
             </div>
+            
+            {/* Mobile Navigation Hub - Hidden when showing stats on mobile */}
+            {!showStats && <MobileDashboardHub />}
 
-            {/* Stats Grid — compact 4 columns */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat, index) => {
-                    const IconComponent = stat.icon;
-                    const TrendIcon = stat.trend === 'up' ? TrendingUp : TrendingDown;
-
-                    return (
-                        <Tooltip key={index} content={stat.label === 'Avg. Frequency' ? 'Total visits divided by total visitors' : `View ${stat.label} details`}>
-                            <div className="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-shadow cursor-default">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                        <IconComponent className="text-primary" size={18} />
-                                    </div>
-                                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                        <TrendIcon size={10} />
-                                        {stat.change}
-                                    </div>
-                                </div>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-0.5">{stat.label}</p>
-                                <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
-                            </div>
-                        </Tooltip>
-                    );
-                })}
+            {/* Stats Grid — Hidden on mobile unless show_stats=1 is present */}
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 ${!showStats ? 'hidden md:grid' : 'grid'}`}>
+                {stats.map((stat, index) => (
+                    <StatsCard
+                        key={index}
+                        label={stat.label}
+                        value={stat.value}
+                        icon={stat.icon}
+                        color={stat.color as any}
+                        trend={stat.change ? { value: stat.change, isUp: stat.trend === 'up' } : undefined}
+                    />
+                ))}
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                <div className="flex items-center justify-between gap-4 mb-4">
+            {/* Main Content Sections - Hidden on mobile unless show_stats=1 is present */}
+            <div className={`space-y-8 md:space-y-10 ${!showStats ? 'hidden md:block' : 'block'}`}>
+                <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div>
                         <h2 className="text-base font-display font-bold text-text-main">Tutorial Center</h2>
                         <p className="text-[11px] text-text-secondary">Learn how to run core workflows with step-by-step docs.</p>
                     </div>
                     <button
                         onClick={() => router.push('/bussinesss')}
-                        className="px-4 py-2 text-xs font-black rounded-xl border border-primary/20 text-primary hover:bg-primary/5"
+                        className="w-full sm:w-auto px-4 py-2 text-xs font-black rounded-xl border border-primary/20 text-primary hover:bg-primary/5"
                     >
                         Open Tutorial
                     </button>
@@ -316,59 +314,54 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
                 {/* Visitor Activity Chart — spans 7 cols */}
-                <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="lg:col-span-7 bg-white rounded-2xl p-4 md:p-5 border border-gray-100 overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                         <div>
                             <h2 className="text-base font-display font-bold text-text-main">Visitor Activity</h2>
                             <p className="text-[10px] text-text-secondary">Today's hourly breakdown</p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-between sm:justify-end gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 bg-primary rounded-full"></div>
-                                    <span className="text-[9px] font-bold text-text-secondary uppercase">All</span>
+                                    <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                    <span className="text-[8px] md:text-[9px] font-bold text-text-secondary uppercase">All</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
-                                    <span className="text-[9px] font-bold text-text-secondary uppercase">New</span>
+                                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                                    <span className="text-[8px] md:text-[9px] font-bold text-text-secondary uppercase">New</span>
                                 </div>
                             </div>
                             <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
-                                <span>This Week</span>
-                                <ChevronDown size={14} />
+                                <span>Week</span>
+                                <ChevronDown size={12} />
                             </button>
                         </div>
                     </div>
 
-                    {/* Bar Chart */}
-                    <div className="flex items-end justify-between gap-2 h-48">
+                    {/* Bar Chart — scrollable on very small screens if needed, but here we use flex-1 */}
+                    <div className="flex items-end justify-between gap-1 md:gap-2 h-40 md:h-48 overflow-x-auto no-scrollbar pb-1">
                         {peakTimes.map((d: any, index: number) => {
                             const newVisits = d.new || 0;
                             const totalPct = maxVisits > 0 ? (d.value / maxVisits) * 100 : 0;
                             const newPctBar = d.value > 0 ? (newVisits / d.value) * 100 : 0;
                             return (
-                                <div key={index} className="flex-1 flex flex-col items-center gap-1.5 group relative">
-                                    <div className="w-full rounded-t-md relative flex flex-col justify-end" style={{ height: '100%' }}>
-                                        {/* Tooltip */}
-                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">
-                                            {d.value} ({newVisits} new)
-                                        </div>
-
+                                <div key={index} className="flex-1 min-w-[20px] flex flex-col items-center gap-1.5 group relative">
+                                    <div className="w-full rounded-t-sm md:rounded-t-md relative flex flex-col justify-end" style={{ height: '100%' }}>
                                         {/* Total Bar */}
                                         <div
-                                            className="w-full bg-primary/15 rounded-t-md transition-all relative overflow-hidden"
-                                            style={{ height: `${totalPct}%`, minHeight: d.value > 0 ? '4px' : '0' }}
+                                            className="w-full bg-primary/15 rounded-t-sm md:rounded-t-md transition-all relative overflow-hidden"
+                                            style={{ height: `${totalPct}%`, minHeight: d.value > 0 ? '2px' : '0' }}
                                         >
                                             {/* New Visitor portion */}
                                             <div
-                                                className="w-full bg-emerald-500/80 rounded-t-md absolute bottom-0 left-0"
+                                                className="w-full bg-emerald-500/80 rounded-t-sm md:rounded-t-md absolute bottom-0 left-0"
                                                 style={{ height: `${newPctBar}%` }}
                                             />
                                         </div>
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-[9px] font-bold text-text-main">{d.value}</p>
-                                        <p className="text-[8px] text-text-secondary font-medium uppercase tracking-tighter">{d.hour}</p>
+                                        <p className="text-[8px] md:text-[9px] font-bold text-text-main">{d.value}</p>
+                                        <p className="text-[7px] md:text-[8px] text-text-secondary font-black uppercase tracking-tighter">{d.hour}</p>
                                     </div>
                                 </div>
                             )
@@ -379,10 +372,10 @@ export default function DashboardPage() {
                 {/* Audience Breakdown — spans 5 cols, split into 2 rows */}
                 <div className="lg:col-span-5 flex flex-col gap-4">
                     {/* Audience Growth Donut */}
-                    <div className="bg-white rounded-2xl p-5 border border-gray-100 flex-1">
+                    <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100 flex-1">
                         <h2 className="text-base font-display font-bold text-text-main mb-4">Audience Growth</h2>
-                        <div className="flex items-center gap-6">
-                            <div className="relative size-28 shrink-0">
+                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                            <div className="relative size-24 md:size-28 shrink-0">
                                 <svg className="size-full" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f3f4f6" strokeWidth="10" />
                                     {/* Returning = primary, New = emerald */}
@@ -390,30 +383,30 @@ export default function DashboardPage() {
                                     <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" strokeWidth="10" strokeDasharray={`${(newPct / 100) * 251.2} 251.2`} strokeDashoffset={`${-(returningPct / 100) * 251.2}`} strokeLinecap="round" transform="rotate(-90 50 50)" />
                                 </svg>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <p className="text-lg font-black text-slate-900">{totalVisitors}</p>
-                                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Total</p>
+                                    <p className="text-base md:text-lg font-black text-slate-900">{totalVisitors}</p>
+                                    <p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest">Total</p>
                                 </div>
                             </div>
 
-                            <div className="flex-1 space-y-3">
-                                <div className="flex items-center justify-between p-2.5 bg-primary/5 rounded-xl border border-primary/10">
+                            <div className="w-full flex-1 space-y-2 md:space-y-3">
+                                <div className="flex items-center justify-between p-2 md:p-2.5 bg-primary/5 rounded-xl border border-primary/10">
                                     <div className="flex items-center gap-2">
                                         <div className="size-2 bg-primary rounded-full" />
-                                        <span className="text-[10px] font-black uppercase text-slate-500">Returning</span>
+                                        <span className="text-[9px] md:text-[10px] font-black uppercase text-slate-500">Returning</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-sm font-black text-slate-900">{repeatVisitors}</span>
-                                        <span className="text-[9px] font-bold text-slate-400 ml-1">({returningPct}%)</span>
+                                        <span className="text-xs md:text-sm font-black text-slate-900">{repeatVisitors}</span>
+                                        <span className="text-[8px] md:text-[9px] font-bold text-slate-400 ml-1">({returningPct}%)</span>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between p-2.5 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                                <div className="flex items-center justify-between p-2 md:p-2.5 bg-emerald-50/50 rounded-xl border border-emerald-100">
                                     <div className="flex items-center gap-2">
                                         <div className="size-2 bg-emerald-500 rounded-full" />
-                                        <span className="text-[10px] font-black uppercase text-slate-500">New</span>
+                                        <span className="text-[9px] md:text-[10px] font-black uppercase text-slate-500">New</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-sm font-black text-slate-900">{newVisitorsCount}</span>
-                                        <span className="text-[9px] font-bold text-slate-400 ml-1">({newPct}%)</span>
+                                        <span className="text-xs md:text-sm font-black text-slate-900">{newVisitorsCount}</span>
+                                        <span className="text-[8px] md:text-[9px] font-bold text-slate-400 ml-1">({newPct}%)</span>
                                     </div>
                                 </div>
                             </div>
@@ -421,9 +414,9 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Quick Actions — compact */}
-                    <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                    <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
                         <h2 className="text-base font-display font-bold text-text-main mb-3">Quick Actions</h2>
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
                             {[
                                 { label: 'New Message', icon: MessageSquare, route: '/dashboard/messaging', color: 'bg-indigo-50 text-indigo-600' },
                                 { label: 'Add Device', icon: LogoIcon, route: '/dashboard/settings/devices', color: 'bg-blue-50 text-blue-600' },
@@ -435,10 +428,10 @@ export default function DashboardPage() {
                                     className="w-full flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl transition-all group hover:border-gray-200"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-9 h-9 rounded-lg ${action.color} flex items-center justify-center`}>
-                                            <action.icon size={16} />
+                                        <div className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${action.color} flex items-center justify-center`}>
+                                            <action.icon size={14} />
                                         </div>
-                                        <p className="font-bold text-xs text-text-main">{action.label}</p>
+                                        <p className="font-bold text-[11px] md:text-xs text-text-main">{action.label}</p>
                                     </div>
                                     <ArrowRight size={14} className="text-gray-300 group-hover:text-primary transition-colors group-hover:translate-x-1" />
                                 </button>
@@ -449,8 +442,8 @@ export default function DashboardPage() {
             </div>
 
             {/* Recent Visitors */}
-            <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
+            <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
+                <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="text-base font-display font-bold text-text-main mb-0.5">Recent Visitors</h2>
                         <p className="text-[10px] text-text-secondary">Latest customer check-ins</p>
@@ -462,7 +455,9 @@ export default function DashboardPage() {
                         View All
                     </button>
                 </div>
-                <div className="overflow-x-auto">
+
+                {/* Table for Desktop */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-100">
@@ -539,9 +534,70 @@ export default function DashboardPage() {
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            <SendMessageModal
+                {/* Card View for Mobile */}
+                <div className="md:hidden space-y-3">
+                    {(() => {
+                        const recentVisitors = Array.isArray((data as any)?.recentVisitors) ? (data as any).recentVisitors : [];
+                        if (recentVisitors.length === 0) {
+                            return (
+                                <div className="py-8 text-center text-text-secondary text-xs">
+                                    No recent visitors found.
+                                </div>
+                            );
+                        }
+                        return recentVisitors.slice(0, 5).map((visitor: Visitor) => {
+                            const fallbackFirstName = (visitor as any).firstName;
+                            const fallbackLastName = (visitor as any).lastName;
+                            const displayName = visitor.name?.trim()
+                                || [fallbackFirstName, fallbackLastName].filter(Boolean).join(' ').trim()
+                                || 'Unknown Visitor';
+                            const initials = displayName
+                                .split(' ')
+                                .filter(Boolean)
+                                .map((n) => n[0])
+                                .join('')
+                                .slice(0, 2);
+
+                            return (
+                                <div
+                                    key={visitor.id}
+                                    className="p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center justify-between"
+                                    onClick={() => setSelectedVisitorForDetails(visitor)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">
+                                            {initials}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-text-main">{displayName}</p>
+                                            <p className="text-[10px] text-text-secondary font-medium">{visitor.phone}</p>
+                                            <p className="text-[9px] text-text-secondary font-bold uppercase tracking-tighter mt-0.5">{visitor.time}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${visitor.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {visitor.status}
+                                        </span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedVisitorForMsg({ visitor, type: 'welcome' });
+                                            }}
+                                            className="p-2 bg-white text-text-secondary hover:text-primary rounded-xl border border-gray-100 shadow-sm"
+                                        >
+                                            <Send size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        });
+                    })()}
+                </div>
+            </div>
+        </div>
+
+        <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg?.visitor.name || ''}

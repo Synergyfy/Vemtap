@@ -5,11 +5,14 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     MapPin, Phone, Mail, Globe, ShieldCheck, Instagram,
     Twitter, Facebook, Share2, Building2, Linkedin, ExternalLink,
-    ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon
+    ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon,
+    QrCode, ShoppingBag, Briefcase, Tag, FileJson
 } from 'lucide-react';
-import { fetchDeviceByCode, Device } from '@/lib/api/devices';
+import { fetchDeviceByCode, fetchContextByUsername, Device } from '@/lib/api/devices';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
+import { TapJourneyContainer } from '@/components/visitor/TapJourneyContainer';
 
 export default function BusinessPublicPage() {
     const params = useParams();
@@ -30,20 +33,38 @@ export default function BusinessPublicPage() {
 
     const [businessData, setBusinessData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isUsernameMode, setIsUsernameMode] = useState(false);
 
     useEffect(() => {
-        if (!isAuthenticated && deviceCode) {
-            router.replace(`/${params.slug}/${deviceCode}`);
-        }
-    }, [deviceCode, isAuthenticated, params.slug, router]);
+        const loadPageData = async () => {
+            const slug = params.slug as string;
+            
+            // 1. Try treating slug as a username first
+            try {
+                const usernameContext = await fetchContextByUsername(slug);
+                if (usernameContext) {
+                    setBusinessData(usernameContext);
+                    setIsUsernameMode(true);
+                    setIsLoading(false);
+                    return;
+                }
+            } catch (err) {
+                // Not a valid username or error, proceed to check device code
+                console.log('Not a username context, checking for device code');
+            }
 
-    useEffect(() => {
-        const loadBusiness = async () => {
+            // 2. If not a username, check if we have a device code for the redirect/loading
             if (!deviceCode) {
-                // No code available — cannot look up business
                 setIsLoading(false);
                 return;
             }
+
+            // 3. Normal redirect logic for device-based visits if not authenticated
+            if (!isAuthenticated && deviceCode) {
+                router.replace(`/${params.slug}/${deviceCode}`);
+                return;
+            }
+
             try {
                 const data = await fetchDeviceByCode(deviceCode);
                 setBusinessData(data);
@@ -53,8 +74,8 @@ export default function BusinessPublicPage() {
                 setIsLoading(false);
             }
         };
-        loadBusiness();
-    }, [deviceCode]);
+        loadPageData();
+    }, [deviceCode, params.slug, isAuthenticated, router]);
 
     if (isLoading) {
         return (
@@ -62,6 +83,10 @@ export default function BusinessPublicPage() {
                 <Loader2 className="size-10 text-primary animate-spin" />
             </div>
         );
+    }
+
+    if (isUsernameMode && businessData) {
+        return <TapJourneyContainer username={params.slug as string} />;
     }
 
     if (!businessData?.business) {
@@ -234,103 +259,195 @@ export default function BusinessPublicPage() {
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Contact Sidebar (Light) */}
+                    </div>                    {/* Contact Sidebar (Dynamic based on UBL Sequence) */}
                     <div className="md:col-span-4 space-y-6">
                         <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-slate-200/40 border border-white/50">
                             <h3 className="text-sm font-black text-slate-900 mb-8 tracking-tight">Direct Connect</h3>
                             <div className="space-y-6">
-                                {business.whatsappNumber && (
-                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`https://wa.me/${business.whatsappNumber}`, '_blank')}>
-                                        <div className="size-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <Phone size={18} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">WhatsApp</p>
-                                            <p className="text-sm font-bold text-slate-900 truncate">{business.whatsappNumber}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {business.officialEmail && (
-                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`mailto:${business.officialEmail}`, '_blank')}>
-                                        <div className="size-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <Mail size={18} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Email</p>
-                                            <p className="text-sm font-bold text-slate-900 truncate">{business.officialEmail}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {business.website && (
-                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => {
-                                        const url = business.website?.startsWith('http') ? business.website : `https://${business.website}`;
-                                        window.open(url, '_blank');
-                                    }}>
-                                        <div className="size-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <Globe size={18} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Website</p>
-                                            <p className="text-sm font-bold text-slate-900 truncate">{business.website}</p>
-                                        </div>
-                                    </div>
-                                )}
+                                {(business.engagement?.ublSequence || [
+                                    'system:order', 'system:service', 'system:offers', 'system:whatsapp', 'system:forms', 'system:engagement'
+                                ]).map((itemId: string) => {
+                                    // 1. Handle System Items
+                                    if (itemId === 'system:whatsapp' && business.whatsappNumber) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`https://wa.me/${business.whatsappNumber}`, '_blank')}>
+                                                <div className="size-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Phone size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">WhatsApp</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.whatsappNumber}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:email' && business.officialEmail) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`mailto:${business.officialEmail}`, '_blank')}>
+                                                <div className="size-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Mail size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Email</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.officialEmail}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:website' && business.website) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => {
+                                                const url = business.website?.startsWith('http') ? business.website : `https://${business.website}`;
+                                                window.open(url, '_blank');
+                                            }}>
+                                                <div className="size-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Globe size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Website</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.website}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:review' && business.reviewUrl && business.showReview) {
+                                        return (
+                                            <div key={itemId} className="pt-4">
+                                                <button
+                                                    onClick={() => window.open(business.reviewUrl, '_blank')}
+                                                    className="w-full h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors text-xs font-black uppercase tracking-widest"
+                                                >
+                                                    <Star size={16} fill="currentColor" />
+                                                    Google Review
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+
+                                    // System Actions (Internal/Catalog)
+                                    if (itemId === 'system:order' && (business.productCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${params.slug}/catalog`)}>
+                                                <div className="size-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <ShoppingBag size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Shop</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Browse Products</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:service' && (business.serviceCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${params.slug}/services`)}>
+                                                <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Briefcase size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Services</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Book a Service</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:offers' && (business.offerCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${params.slug}/offers`)}>
+                                                <div className="size-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Tag size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Deals</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Exclusive Offers</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:forms' && (business.formCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${params.slug}/forms`)}>
+                                                <div className="size-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <FileJson size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Forms</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Submit Request</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    if (itemId === 'system:engagement' && business.showSocial) {
+                                        const hasSocial = business.instagramUrl || business.xUrl || business.facebookUrl || business.linkedinUrl || business.tiktokUrl || business.youtubeUrl || business.customLink;
+                                        if (!hasSocial) return null;
+                                        return (
+                                            <div key={itemId} className="mt-6 pt-6 border-t border-slate-50 flex flex-wrap gap-2">
+                                                {business.facebookUrl && (
+                                                    <button onClick={() => window.open(business.facebookUrl, '_blank')} className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                                        <Facebook size={18} />
+                                                    </button>
+                                                )}
+                                                {business.instagramUrl && (
+                                                    <button onClick={() => window.open(business.instagramUrl, '_blank')} className="size-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-100 transition-colors">
+                                                        <Instagram size={18} />
+                                                    </button>
+                                                )}
+                                                {business.tiktokUrl && (
+                                                    <button onClick={() => window.open(business.tiktokUrl, '_blank')} className="size-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-colors">
+                                                        <span className="text-xs font-black">TT</span>
+                                                    </button>
+                                                )}
+                                                {business.xUrl && (
+                                                    <button onClick={() => window.open(business.xUrl, '_blank')} className="size-10 rounded-xl bg-slate-50 text-slate-900 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                                                        <Twitter size={18} />
+                                                    </button>
+                                                )}
+                                                {business.youtubeUrl && (
+                                                    <button onClick={() => window.open(business.youtubeUrl, '_blank')} className="size-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                                        <Youtube size={18} />
+                                                    </button>
+                                                )}
+                                                {business.linkedinUrl && (
+                                                    <button onClick={() => window.open(business.linkedinUrl, '_blank')} className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center hover:bg-sky-100 transition-colors">
+                                                        <Linkedin size={18} />
+                                                    </button>
+                                                )}
+                                                {business.customLink && (
+                                                    <button onClick={() => window.open(business.customLink, '_blank')} className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-colors">
+                                                        <LinkIcon size={18} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    // 2. Handle External QR Thrive Codes
+                                    const qrCode = businessData?.qrThriveCodes?.find((q: any) => q.id === itemId);
+                                    if (qrCode) {
+                                        const Icon = getQrIcon(qrCode.type);
+                                        return (
+                                            <div 
+                                                key={itemId} 
+                                                className="flex items-center gap-4 group cursor-pointer" 
+                                                onClick={() => router.push(`/${params.slug}/${businessData.device.code}?qr=${qrCode.shortId}`)}
+                                            >
+                                                <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Icon size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+                                                        {getQrDescription(qrCode.type)}
+                                                    </p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{qrCode.name}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return null;
+                                })}
                             </div>
-
-                            {/* Small Social Row */}
-                            {business.showSocial && (business.instagramUrl || business.xUrl || business.facebookUrl || business.linkedinUrl || business.tiktokUrl || business.youtubeUrl || business.customLink) ? (
-                                <div className="mt-10 pt-8 border-t border-slate-50 flex flex-wrap gap-2">
-                                    {business.facebookUrl && (
-                                        <button onClick={() => window.open(business.facebookUrl, '_blank')} className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                                            <Facebook size={18} />
-                                        </button>
-                                    )}
-                                    {business.instagramUrl && (
-                                        <button onClick={() => window.open(business.instagramUrl, '_blank')} className="size-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-100 transition-colors">
-                                            <Instagram size={18} />
-                                        </button>
-                                    )}
-                                    {business.tiktokUrl && (
-                                        <button onClick={() => window.open(business.tiktokUrl, '_blank')} className="size-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-colors">
-                                            <span className="text-xs font-black">TT</span>
-                                        </button>
-                                    )}
-                                    {business.xUrl && (
-                                        <button onClick={() => window.open(business.xUrl, '_blank')} className="size-10 rounded-xl bg-slate-50 text-slate-900 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                                            <Twitter size={18} />
-                                        </button>
-                                    )}
-                                    {business.youtubeUrl && (
-                                        <button onClick={() => window.open(business.youtubeUrl, '_blank')} className="size-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
-                                            <Youtube size={18} />
-                                        </button>
-                                    )}
-                                    {business.linkedinUrl && (
-                                        <button onClick={() => window.open(business.linkedinUrl, '_blank')} className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center hover:bg-sky-100 transition-colors">
-                                            <Linkedin size={18} />
-                                        </button>
-                                    )}
-                                    {business.customLink && (
-                                        <button onClick={() => window.open(business.customLink, '_blank')} className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-colors">
-                                            <LinkIcon size={18} />
-                                        </button>
-                                    )}
-                                </div>
-                            ) : null}
-
-                            {business.showReview && business.reviewUrl && (
-                                <div className="mt-4">
-                                    <button
-                                        onClick={() => window.open(business.reviewUrl, '_blank')}
-                                    className="w-full h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors text-xs font-black uppercase tracking-widest"
-                                    >
-                                        <Star size={16} fill="currentColor" />
-                                        Google Review
-                                    </button>
-                                </div>
-                            )}
                         </div>
 
                         {owner && (

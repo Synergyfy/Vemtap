@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { presets } from './presets';
 import { VisitorHeader } from './VisitorHeader';
+import { cn } from '@/lib/utils';
 
 interface StepWelcomeBackProps {
     storeName: string;
@@ -19,6 +20,7 @@ interface StepWelcomeBackProps {
     showConsent?: boolean;
     isCustomer?: boolean;
     visitSource?: string | null;
+    isPreview?: boolean;
     onRedeem: () => void;
     onContinue: () => void;
     onClear: () => void;
@@ -40,6 +42,7 @@ export const StepWelcomeBack: React.FC<StepWelcomeBackProps> = ({
     showConsent = false,
     isCustomer = false,
     visitSource,
+    isPreview = false,
     onRedeem,
     onContinue,
     onClear
@@ -53,13 +56,14 @@ export const StepWelcomeBack: React.FC<StepWelcomeBackProps> = ({
         }
     }, [showConsent]);
 
+
     return (
         <motion.div
             key="welcome-back"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className={presets.card}
+            className={cn(presets.card, isPreview && "p-0 shadow-none border-none bg-transparent")}
         >
             <VisitorHeader logoUrl={logoUrl} storeName={storeName} tag="Returning Guest" />
 

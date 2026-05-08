@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { presets } from './presets';
 import { EngagementTiles } from './EngagementTiles';
 import { SocialMediaModal } from '@/components/ui/SocialMediaModal';
+import { cn } from '@/lib/utils';
 
 interface StepFinalSuccessProps {
     finalSuccessMessage?: string | null;
@@ -16,6 +17,7 @@ interface StepFinalSuccessProps {
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
     attachedRewards?: Array<{ id: string; name: string; pointCost?: number }>;
     isFormsLoading?: boolean;
+    isPreview?: boolean;
 }
 
 export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
@@ -29,6 +31,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     attachedForms,
     attachedRewards = [],
     isFormsLoading = false,
+    isPreview = false,
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
@@ -47,7 +50,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     };
 
     return (
-        <motion.div key="final-success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={presets.card + " text-center"}>
+        <motion.div key="final-success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={cn(presets.card, "text-center", isPreview && "p-0 shadow-none border-none bg-transparent")}>
             <div className="size-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/20">
                 <span className="material-symbols-outlined text-white text-4xl">check_circle</span>
             </div>

@@ -57,8 +57,8 @@ export function configureApp(app: INestApplication) {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('ElizTap API')
-    .setDescription('The ElizTap (EntryConnect) Backend API documentation')
+    .setTitle('Vemtap API')
+    .setDescription('The Vemtap Backend API documentation')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

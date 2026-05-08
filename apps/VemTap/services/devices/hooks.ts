@@ -113,3 +113,13 @@ export const useRecordDeviceVisit = (code: string) => {
         },
     });
 };
+export const useDeviceTapContextByUsername = (username: string) => {
+    return useQuery<any, Error>({
+        queryKey: ['device-tap-context-username', username],
+        queryFn: async () => {
+            return await api.get(`/tap/context-by-username/${username}`);
+        },
+        enabled: !!username,
+        retry: 1,
+    });
+};

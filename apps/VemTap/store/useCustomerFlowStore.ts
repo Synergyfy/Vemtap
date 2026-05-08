@@ -164,7 +164,16 @@ interface CustomerFlowState {
         linkedin?: string;
         postSubmitFormIds?: string[];
         ublSequence?: string[];
+        ublSequenceLabels?: Record<string, string>;
         brandColor?: string;
+        customWelcomeTag?: string;
+        customWelcomeTitle?: string;
+        customWelcomeMessage?: string;
+        submitLabel?: string;
+        customPrivacyMessage?: string;
+        customSuccessTitle?: string;
+        customSuccessMessage?: string;
+        isPreview?: boolean;
     };
     surveyQuestions: Array<{
         id: string;
@@ -340,7 +349,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 // 2. Returning visitor according to backend
                 // 3. User is already on this device and at a portal step
                 const isReturning = !(device.isFirstTimeVisit ?? true);
-                const isAlreadyActiveOnThisDevice = state.deviceCode === device.code && 
+                const isAlreadyActiveOnThisDevice = state.deviceCode === device.device?.code && 
                     ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM'].includes(state.currentStep);
                 
                 const finalSkipAnimation = skipAnimation || isReturning || isAlreadyActiveOnThisDevice;
@@ -352,9 +361,9 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
 
                 set({
                     businessId: b.id || device.businessId,
-                    deviceCode: device.code,
+                    deviceCode: device.device?.code || device.code,
                     branchId: device.branchId || branch.id || b.primaryBranchId || (b.branches && b.branches.length > 0 ? b.branches[0].id : '') || '',
-                    storeName: branch.name || b.name || device.name,
+                    storeName: branch.name || b.name || device.device?.name || device.name,
                     businessType: b.type || 'RETAIL',
                     customWelcomeMessage: branch.welcomeMessage || b.welcomeMessage,
                     customWelcomeTitle: branch.welcomeTitle || b.welcomeTitle,
@@ -403,6 +412,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                         ublSequence: Array.isArray(branch.engagement?.ublSequence)
                             ? branch.engagement.ublSequence
                             : (Array.isArray(ownerEngagement.ublSequence) ? ownerEngagement.ublSequence : []),
+                        ublSequenceLabels: branch.engagement?.ublSequenceLabels || ownerEngagement.ublSequenceLabels || {},
                         brandColor: branch.formAppearanceColor || b.brandColor || ownerEngagement.brandColor || '#2563eb',
                     },
                     currentStep: finalSkipAnimation ? (['SELECT_TYPE', 'SCANNING', 'IDENTIFYING'].includes(state.currentStep) ? 'PORTAL_MENU' : state.currentStep) : 'SCANNING'

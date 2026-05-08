@@ -1,7 +1,7 @@
 import { Channel } from '../enums/channel.enum';
 
 export interface SendMessagePayload {
-  to: string;
+  to: string | string[];
   from?: string; // sender ID or business name
   content: string;
   channel: Channel;

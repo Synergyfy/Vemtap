@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import PageHeader from '@/components/dashboard/PageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QrCode, Keyboard, ScanLine, Search, CheckCircle2, Ticket, Gift, ArrowRight, ShieldCheck, AlertCircle, Loader2, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -108,12 +109,11 @@ export default function RedeemRewardPage() {
     };
 
     return (
-        <div className="p-4 md:p-8 space-y-8 max-w-5xl mx-auto">
-            {/* Header */}
-            <div>
-                <h2 className="text-2xl font-display font-black text-slate-900 tracking-tight uppercase">Loyalty Operations</h2>
-                <p className="text-sm text-slate-500 font-medium mt-1">Generate promo codes or verify customer redemptions.</p>
-            </div>
+        <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
+            <PageHeader
+                title="Loyalty Operations"
+                description="Generate promo codes or verify customer redemptions."
+            />
 
             <AnimatePresence mode="wait">
                 {/* STATE 1: SELECTION */}

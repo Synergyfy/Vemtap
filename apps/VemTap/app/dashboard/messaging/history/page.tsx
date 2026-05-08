@@ -52,19 +52,19 @@ export default function MessageHistoryPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8">
+        <div className="p-4 md:p-8 space-y-8 md:space-y-10">
             <PageHeader
                 title="Message History"
                 description="View all previous broadcasts sent to your customers"
             />
 
-            <div className="mt-8">
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 <DataTable
                     columns={columns}
                     data={broadcasts}
                     isLoading={isLoading}
                     emptyState={
-                        <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
+                        <div className="text-center py-20">
                             <Clock size={48} className="mx-auto text-gray-300 mb-4" />
                             <h3 className="text-lg font-bold text-text-main">No history yet</h3>
                             <p className="text-text-secondary text-sm">Your sent messages will appear here.</p>

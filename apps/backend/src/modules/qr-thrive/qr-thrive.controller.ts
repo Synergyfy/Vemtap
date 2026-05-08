@@ -25,7 +25,7 @@ import {
   UpdateQRCodeDto,
   CreateFolderDto,
   UpdateFolderDto,
-  ToggleUblFeatureDto,
+
   SpecializedLeadsQueryDto,
   UpdateLeadStatusDto,
 } from './dto/qr-thrive.dto';
@@ -85,7 +85,7 @@ export class QrThriveController {
     return this.qrThriveService.getQRCode(req.user, branchId, qrCodeId);
   }
 
-  @Put('branches/:branchId/qr-codes/:qrCodeId')
+  @Patch('branches/:branchId/qr-codes/:qrCodeId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update an existing QR code' })
   async updateQRCode(
@@ -131,24 +131,7 @@ export class QrThriveController {
     return this.qrThriveService.updateQRCode(req.user, branchId, qrCodeId, dto);
   }
 
-  @Patch('branches/:branchId/qr-codes/:qrCodeId/ubl')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({
-    summary: 'Toggle whether a QR code is featured on the branch UBL profile',
-  })
-  async toggleUblFeature(
-    @Req() req: RequestWithUser,
-    @Param('branchId') branchId: string,
-    @Param('qrCodeId') qrCodeId: string,
-    @Body() dto: ToggleUblFeatureDto,
-  ) {
-    return this.qrThriveService.toggleUblFeature(
-      req.user,
-      branchId,
-      qrCodeId,
-      dto.isFeatured,
-    );
-  }
+
 
   @Get('branches/:branchId/stats')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
@@ -331,6 +314,30 @@ export class QrThriveController {
     const userAgent = req.headers['user-agent'] || 'unknown';
     const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
     return res.redirect(redirectUrl);
+  }
+
+  @Public()
+  @Post('public/scan/:shortId')
+  @ApiOperation({ summary: 'Record a scan and return destination metadata' })
+  async recordScanOnly(
+    @Param('shortId') shortId: string,
+    @Req() req: any,
+  ) {
+    let ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+    if (ip.includes(',')) {
+      ip = ip.split(',')[0].trim();
+    }
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const destinationUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
+    
+    // Fetch full QR details for in-app rendering
+    const qrCode = await this.qrThriveService.getPublicQRCode(shortId);
+    
+    return {
+      ...qrCode,
+      destinationUrl,
+      shortId
+    };
   }
 
   @Public()

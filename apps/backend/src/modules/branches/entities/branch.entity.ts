@@ -12,7 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Campaign } from '../../campaigns/entities/campaign.entity';
 import type { MessageCampaign } from '../../messaging/entities/message-campaign.entity';
-import type { QrThriveCodeMapping } from '../../qr-thrive/entities/qr-thrive-code-mapping.entity';
+
 import { ApiProperty } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
 
@@ -24,6 +24,13 @@ export class Branch extends AbstractBaseEntity {
   })
   @Column({ unique: true })
   uniqueCode: string;
+
+  @ApiProperty({
+    example: 'main-office',
+    description: 'Unique username for the branch (used in /b/[username] URLs)',
+  })
+  @Column({ unique: true, nullable: true, length: 30 })
+  username?: string;
 
   @ApiProperty({ example: 'Main Office' })
   @Column()
@@ -173,8 +180,7 @@ export class Branch extends AbstractBaseEntity {
   @OneToMany('MessageCampaign', 'branch')
   messageCampaigns: MessageCampaign[];
 
-  @OneToMany('QrThriveCodeMapping', 'branch')
-  qrThriveCodes: QrThriveCodeMapping[];
+
 
   @BeforeInsert()
   generateUniqueCode() {
