@@ -8,7 +8,8 @@ import { usePricingPlans } from '@/services/pricing/hooks';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { X, Mail, Phone, MessageSquare, Loader2 } from 'lucide-react';
+import { X, Mail, Phone, MessageSquare, Loader2, Sparkles, Box, Zap, TrendingUp } from 'lucide-react';
+import { useAddOns } from '@/services/addons/hooks';
 
 export default function Pricing() {
     const router = useRouter();
@@ -20,6 +21,7 @@ export default function Pricing() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { data: plans = [], isLoading } = usePricingPlans();
+    const { data: addons = [] } = useAddOns();
 
     const handleSubscription = async (plan: any, useTrial: boolean = false) => {
         const params = new URLSearchParams({
@@ -328,6 +330,56 @@ export default function Pricing() {
                         </div>
                     );
                 })()}
+
+                {/* Add-ons Preview */}
+                {addons.length > 0 && (
+                    <div className="mt-24">
+                        <div className="text-center max-w-2xl mx-auto mb-12">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+                                <Sparkles size={12} />
+                                Power-Ups
+                            </div>
+                            <h3 className="text-2xl md:text-4xl font-display font-bold text-text-main mb-4">Modular <span className="text-primary">Add-ons</span></h3>
+                            <p className="text-sm text-text-secondary font-medium px-4">Need more? Scale your business with specialized add-ons that plug directly into your base plan.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {addons.filter(a => a.isActive).map((addon) => (
+                                <div 
+                                    key={addon.id}
+                                    className="group p-6 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:border-primary/20 hover:shadow-xl transition-all duration-300"
+                                >
+                                    <div className={`size-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${
+                                        addon.type === 'RESOURCE' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
+                                    }`}>
+                                        {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                        {addon.type === 'RESOURCE' && addon.additionalLimit && (
+                                            <span className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] rounded-full font-black shadow-lg shadow-emerald-500/20 flex items-center gap-1 animate-in slide-in-from-right duration-500">
+                                                <TrendingUp size={10} strokeWidth={3} />
+                                                +{addon.additionalLimit} Boost
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs font-medium text-slate-500 leading-relaxed mb-6 line-clamp-2">
+                                        {addon.description}
+                                    </p>
+                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-200/50">
+                                        <span className="text-sm font-black text-slate-900">₦{addon.price.toLocaleString()}<span className="text-[10px] text-slate-400 font-bold ml-1">/mo</span></span>
+                                        <button 
+                                            onClick={() => router.push('/get-started')}
+                                            className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                                        >
+                                            Learn More
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {isContactModalOpen && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">

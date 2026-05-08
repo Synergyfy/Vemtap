@@ -47,7 +47,7 @@ export class UpdateAddonDto extends PartialType(CreateAddonDto) {
   })
   @IsNumber()
   @IsOptional()
-  @Min(0)
+  @Min(1)
   price?: number;
 
   @ApiPropertyOptional({
