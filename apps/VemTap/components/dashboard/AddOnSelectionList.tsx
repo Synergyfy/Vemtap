@@ -12,10 +12,11 @@ interface Props {
 }
 
 export default function AddOnSelectionList({ addons, selectedIds, onToggle, billingPeriod }: Props) {
-    const formatPrice = (price: number) => {
-        let displayPrice = price;
-        if (billingPeriod === 'yearly') displayPrice = price * 12;
-        if (billingPeriod === 'quarterly') displayPrice = price * 3;
+    const formatPrice = (price: any) => {
+        const numPrice = Number(price || 0);
+        let displayPrice = numPrice;
+        if (billingPeriod === 'yearly') displayPrice = numPrice * 12;
+        if (billingPeriod === 'quarterly') displayPrice = numPrice * 3;
         
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(displayPrice);
     };

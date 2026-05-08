@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useRouter } from 'next/navigation';
 import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info, ShoppingCart } from 'lucide-react';
@@ -29,6 +29,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
     const { data: addons = [] } = useAddOns();
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
+    const paymentSuccessful = useRef(false);
 
     const toggleAddon = (id: string) => {
         setSelectedAddonIds(prev => 
@@ -67,11 +68,12 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 }, {
                     onSuccess: () => {
                         toast.success(`Welcome to the ${plan.name} plan!`);
+                        setIsProcessing(false);
+                        
                         if (onSuccess) {
                             onSuccess();
                         } else {
                             router.push('/dashboard/business-link');
-                            setIsProcessing(false);
                             onClose();
                         }
                     },
@@ -85,6 +87,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         }
 
         const amountToCharge = isTrial ? 50 : (breakdown?.total || 0); // Charge NGN 50 for trial verification
+        paymentSuccessful.current = false;
 
         // @ts-ignore
         const handler = window.PaystackPop.setup({
@@ -94,12 +97,17 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             currency: 'NGN',
             ref: `SUB-${resolvedBusinessId || 'anon'}-${Date.now()}`,
             onClose: () => {
-                setIsProcessing(false);
-                onClose(); // Ensure modal closes when paystack window is closed
-                toast.error('Payment window closed');
+                // Only treat as error/cancellation if payment wasn't successful
+                if (!paymentSuccessful.current) {
+                    setIsProcessing(false);
+                    onClose(); 
+                    toast.error('Payment window closed');
+                }
             },
             callback: (response: any) => {
-                // Payment successful
+                // Payment successful - mark it immediately to prevent onClose error
+                paymentSuccessful.current = true;
+                
                 subscribeMutation.mutate({
                     businessId: resolvedBusinessId,
                     planId: plan.id,
@@ -112,6 +120,9 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     onSuccess: () => {
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
                         
+                        // Local cleanup before calling parent onSuccess
+                        setIsProcessing(false);
+
                         if (onSuccess) {
                             onSuccess();
                         } else {
@@ -119,12 +130,12 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                             setTimeout(() => {
                                 router.push('/dashboard/business-link');
                                 onClose();
-                                setIsProcessing(false);
                             }, 100);
                         }
                     },
                     onError: (error) => {
                         setIsProcessing(false);
+                        paymentSuccessful.current = false; // Reset on error so user can retry
                         toast.error(error instanceof Error ? error.message : 'Payment verified but subscription sync failed. Please contact support.');
                     }
                 });
@@ -143,9 +154,9 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
     };
 
     const getPriceByCycle = () => {
-        if (billingPeriod === 'yearly') return plan.yearlyPrice;
-        if (billingPeriod === 'quarterly') return plan.quarterlyPrice;
-        return plan.monthlyPrice;
+        if (billingPeriod === 'yearly') return Number(plan.yearlyPrice || 0);
+        if (billingPeriod === 'quarterly') return Number(plan.quarterlyPrice || 0);
+        return Number(plan.monthlyPrice || 0);
     };
 
     const formatPrice = (price: number) => {
@@ -159,9 +170,10 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         const addonCost = selectedAddonIds.reduce((sum, id) => {
             const addon = addons.find(a => a.id === id);
             if (!addon) return sum;
-            if (billingPeriod === 'yearly') return sum + (addon.price * 12);
-            if (billingPeriod === 'quarterly') return sum + (addon.price * 3);
-            return sum + addon.price;
+            const price = Number(addon.price || 0);
+            if (billingPeriod === 'yearly') return sum + (price * 12);
+            if (billingPeriod === 'quarterly') return sum + (price * 3);
+            return sum + price;
         }, 0);
 
         const total = base + addonCost;
@@ -221,7 +233,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                                 ))}
                             </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end max-w-[50%]">
                             {isTrial ? (
                                 <>
                                     <p className="text-2xl font-black text-primary tracking-tighter">₦50</p>
@@ -229,12 +241,16 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                                 </>
                             ) : breakdown ? (
                                 <>
-                                    <p className="text-2xl font-black text-primary tracking-tighter">₦{breakdown.total.toLocaleString()}</p>
+                                    <p className="text-xl md:text-2xl font-black text-primary tracking-tighter break-all">
+                                        ₦{Number(breakdown.total).toLocaleString()}
+                                    </p>
                                     <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">{breakdown.label}</p>
                                 </>
                             ) : (
                                 <>
-                                    <p className="text-2xl font-black text-primary tracking-tighter">{formatPrice(plan.monthlyPrice)}</p>
+                                    <p className="text-xl md:text-2xl font-black text-primary tracking-tighter break-all">
+                                        {formatPrice(Number(plan.monthlyPrice || 0))}
+                                    </p>
                                     <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">/mo</p>
                                 </>
                             )}
@@ -315,13 +331,21 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                             Securing {isTrial ? 'Trial' : 'Transaction'}...
                         </>
                     ) : (
-                        <>
-                            {isTrial
-                                ? `Start ${plan.trialDurationDays}-Day Trial`
-                                : `Pay ${breakdown ? `₦${breakdown.total.toLocaleString()}` : formatPrice(plan.monthlyPrice)} & Activate`
-                            }
-                            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </>
+                        <div className="flex items-center justify-center gap-2 px-2 w-full overflow-hidden">
+                            <span className="shrink-0">
+                                {isTrial ? 'Start' : 'Pay'}
+                            </span>
+                            <span className="font-black truncate max-w-[150px] md:max-w-none">
+                                {isTrial 
+                                    ? `${plan.trialDurationDays}-Day Trial`
+                                    : breakdown 
+                                        ? `₦${Number(breakdown.total).toLocaleString()}` 
+                                        : formatPrice(Number(plan.monthlyPrice || 0))
+                                }
+                            </span>
+                            {!isTrial && <span className="shrink-0">& Activate</span>}
+                            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform shrink-0" />
+                        </div>
                     )}
                 </button>
 

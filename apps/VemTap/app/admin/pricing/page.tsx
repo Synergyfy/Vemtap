@@ -8,6 +8,7 @@ import {
     Layers, Package, Users, GitBranch, Info, 
     Activity, ShoppingCart, TrendingUp, BarChart3, Clock, Layout
 } from 'lucide-react';
+import Tooltip from '@/components/ui/Tooltip';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PricingPlan } from '@/types/pricing';
@@ -909,7 +910,12 @@ export default function AdminPricingPage() {
 
                         <div className="flex-1 overflow-y-auto p-8 space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Plan Name</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                    Plan Name
+                                    <Tooltip content="Internal name for this subscription tier.">
+                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                    </Tooltip>
+                                </label>
                                 <input
                                     type="text"
                                     value={currentPlan.name}
@@ -920,7 +926,12 @@ export default function AdminPricingPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Monthly Price</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                        Monthly Price
+                                        <Tooltip content="Base price charged every month for this plan.">
+                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-main">₦</span>
                                         <FormattedNumberInput
@@ -940,7 +951,12 @@ export default function AdminPricingPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">QR Thrive Plan Integration</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                    QR Thrive Plan Integration
+                                    <Tooltip content="Link this plan to a corresponding QR Thrive subscription for automatic synchronization.">
+                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                    </Tooltip>
+                                </label>
                                 <select
                                     value={currentPlan.qrThrivePlanId}
                                     onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, qrThrivePlanId: e.target.value } : prev))}
@@ -976,7 +992,12 @@ export default function AdminPricingPage() {
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.messagingEnabled ? 'translate-x-6' : ''}`} />
                                             </div>
-                                            <label className="text-sm font-bold text-text-main">Messaging Feature</label>
+                                            <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                                Messaging Feature
+                                                <Tooltip content="Enable SMS, WhatsApp, and Email messaging capabilities for this plan.">
+                                                    <Info size={12} className="text-slate-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                         </div>
                                     </div>
 
@@ -987,7 +1008,12 @@ export default function AdminPricingPage() {
                                             className="grid grid-cols-3 gap-4 pt-2 border-t border-slate-200"
                                         >
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">SMS Credits</label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1 flex items-center gap-1">
+                                                    SMS Credits
+                                                    <Tooltip content="Number of SMS messages included per month. Use -1 for unlimited.">
+                                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                                    </Tooltip>
+                                                </label>
                                                 {currentPlan.smsCredits === '-1' ? (
                                                     <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
                                                         Unlimited
@@ -1013,7 +1039,12 @@ export default function AdminPricingPage() {
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">WhatsApp</label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1 flex items-center gap-1">
+                                                    WhatsApp
+                                                    <Tooltip content="Number of WhatsApp messages included per month. Use -1 for unlimited.">
+                                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                                    </Tooltip>
+                                                </label>
                                                 {currentPlan.whatsappCredits === '-1' ? (
                                                     <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
                                                         Unlimited
@@ -1039,7 +1070,12 @@ export default function AdminPricingPage() {
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">Email</label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1 flex items-center gap-1">
+                                                    Email
+                                                    <Tooltip content="Number of emails included per month. Use -1 for unlimited.">
+                                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                                    </Tooltip>
+                                                </label>
                                                 {currentPlan.emailCredits === '-1' ? (
                                                     <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
                                                         Unlimited
@@ -1085,19 +1121,27 @@ export default function AdminPricingPage() {
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.teamMembersEnabled ? 'translate-x-6' : ''}`} />
                                             </div>
-                                            <label className="text-sm font-bold text-text-main">Team Members Feature</label>
+                                            <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                                Team Members Feature
+                                                <Tooltip content="Allow businesses to add staff members to their account.">
+                                                    <Info size={12} className="text-slate-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                         </div>
                                     </div>
 
                                     {currentPlan.teamMembersEnabled && (
                                         <motion.div 
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: 'auto' }}
                                             className="grid grid-cols-1 gap-4 pt-2 border-t border-slate-200"
                                         >
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between ml-1">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Staff Limit</label>
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block flex items-center gap-1">
+                                                        Staff Limit
+                                                        <Tooltip content="Maximum number of staff members allowed for this business.">
+                                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                                        </Tooltip>
+                                                    </label>
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
@@ -1142,7 +1186,12 @@ export default function AdminPricingPage() {
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.loyaltyEnabled ? 'translate-x-6' : ''}`} />
                                             </div>
-                                            <label className="text-sm font-bold text-text-main">Loyalty Feature</label>
+                                            <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                                Loyalty Feature
+                                                <Tooltip content="Enable loyalty programs and customer rewards.">
+                                                    <Info size={12} className="text-slate-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                         </div>
                                     </div>
 
@@ -1154,7 +1203,12 @@ export default function AdminPricingPage() {
                                         >
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between ml-1">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Loyalty Programs Limit</label>
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block flex items-center gap-1">
+                                                        Loyalty Programs Limit
+                                                        <Tooltip content="Maximum number of active loyalty programs allowed.">
+                                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                                        </Tooltip>
+                                                    </label>
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
@@ -1199,7 +1253,12 @@ export default function AdminPricingPage() {
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.branchesEnabled ? 'translate-x-6' : ''}`} />
                                             </div>
-                                            <label className="text-sm font-bold text-text-main">Branches Feature</label>
+                                            <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                                Branches Feature
+                                                <Tooltip content="Allow businesses to manage multiple physical or virtual locations.">
+                                                    <Info size={12} className="text-slate-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                         </div>
                                     </div>
 
@@ -1211,7 +1270,12 @@ export default function AdminPricingPage() {
                                         >
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between ml-1">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Branch Limit</label>
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block flex items-center gap-1">
+                                                        Branch Limit
+                                                        <Tooltip content="Maximum number of physical or virtual locations allowed.">
+                                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                                        </Tooltip>
+                                                    </label>
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
@@ -1248,7 +1312,12 @@ export default function AdminPricingPage() {
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.analyticsEnabled ? 'translate-x-6' : ''}`} />
                                             </div>
-                                            <label className="text-sm font-bold text-text-main">Analytics Feature</label>
+                                            <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                                Analytics Feature
+                                                <Tooltip content="Provide data insights and performance tracking.">
+                                                    <Info size={12} className="text-slate-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                         </div>
                                     </div>
 
@@ -1292,7 +1361,12 @@ export default function AdminPricingPage() {
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.catalogueEnabled ? 'translate-x-6' : ''}`} />
                                             </div>
-                                            <label className="text-sm font-bold text-text-main">Catalogue Feature</label>
+                                            <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                                Catalogue Feature
+                                                <Tooltip content="Enable the digital product catalogue/menu.">
+                                                    <Info size={12} className="text-slate-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                         </div>
                                     </div>
 
@@ -1305,7 +1379,12 @@ export default function AdminPricingPage() {
                                             <div className="grid grid-cols-1 gap-4">
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between ml-1">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Items</label>
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block flex items-center gap-1">
+                                                            Max Items
+                                                            <Tooltip content="Maximum number of products allowed in the catalogue.">
+                                                                <Info size={10} className="text-slate-400 cursor-help" />
+                                                            </Tooltip>
+                                                        </label>
                                                         <label className="flex items-center gap-1 cursor-pointer">
                                                             <input 
                                                                 type="checkbox" 
@@ -1332,7 +1411,12 @@ export default function AdminPricingPage() {
 
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between ml-1">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Categories</label>
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block flex items-center gap-1">
+                                                            Max Categories
+                                                            <Tooltip content="Maximum number of product categories allowed.">
+                                                                <Info size={10} className="text-slate-400 cursor-help" />
+                                                            </Tooltip>
+                                                        </label>
                                                         <label className="flex items-center gap-1 cursor-pointer">
                                                             <input 
                                                                 type="checkbox" 
@@ -1359,7 +1443,12 @@ export default function AdminPricingPage() {
 
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between ml-1">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Offers</label>
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block flex items-center gap-1">
+                                                            Max Offers
+                                                            <Tooltip content="Maximum number of active promotional offers allowed.">
+                                                                <Info size={10} className="text-slate-400 cursor-help" />
+                                                            </Tooltip>
+                                                        </label>
                                                         <label className="flex items-center gap-1 cursor-pointer">
                                                             <input 
                                                                 type="checkbox" 
@@ -1405,7 +1494,12 @@ export default function AdminPricingPage() {
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.automationsEnabled ? 'translate-x-6' : ''}`} />
                                             </div>
-                                            <label className="text-sm font-bold text-text-main">Automations Feature</label>
+                                            <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                                Automations Feature
+                                                <Tooltip content="Enable automated workflows and customer engagement triggers.">
+                                                    <Info size={12} className="text-slate-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                         </div>
                                     </div>
 
@@ -1417,7 +1511,12 @@ export default function AdminPricingPage() {
                                         >
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between ml-1">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Max Automations</label>
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block flex items-center gap-1">
+                                                        Max Automations
+                                                        <Tooltip content="Maximum number of active automated workflows allowed.">
+                                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                                        </Tooltip>
+                                                    </label>
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
@@ -1448,7 +1547,12 @@ export default function AdminPricingPage() {
 
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Trial Duration (Days)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                        Trial Duration (Days)
+                                        <Tooltip content="Number of free trial days offered to new subscribers.">
+                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
                                     <FormattedNumberInput 
                                         value={currentPlan.trialDurationDays === '0' ? '' : currentPlan.trialDurationDays} 
                                         onChange={(value) => setNumericField('trialDurationDays', value)} 
@@ -1531,7 +1635,12 @@ export default function AdminPricingPage() {
                                         onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, isFree: e.target.checked } : prev))}
                                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <label className="text-sm font-bold text-text-main">Free Plan</label>
+                                    <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                        Free Plan
+                                        <Tooltip content="Mark this as a zero-cost entry-level plan.">
+                                            <Info size={12} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <input
@@ -1540,7 +1649,12 @@ export default function AdminPricingPage() {
                                         onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, isPopular: e.target.checked } : prev))}
                                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <label className="text-sm font-bold text-text-main">Most Popular</label>
+                                    <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                        Most Popular
+                                        <Tooltip content="Highlight this plan as the recommended choice with a 'Popular' badge.">
+                                            <Info size={12} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <input
@@ -1549,13 +1663,23 @@ export default function AdminPricingPage() {
                                         onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, isActive: e.target.checked } : prev))}
                                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <label className="text-sm font-bold text-text-main">Active Status</label>
+                                    <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                        Active Status
+                                        <Tooltip content="Only active plans are visible to businesses during signup or upgrade.">
+                                            <Info size={12} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
                                 </div>
                             </div>
 
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Description</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                    Description
+                                    <Tooltip content="Brief summary of the plan's value proposition.">
+                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                    </Tooltip>
+                                </label>
                                 <textarea
                                     rows={3}
                                     value={currentPlan.description}
@@ -1615,7 +1739,12 @@ export default function AdminPricingPage() {
 
                         <div className="flex-1 overflow-y-auto p-8 space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Template Name</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                    Template Name
+                                    <Tooltip content="Enter a descriptive name for this add-on template (e.g., '10 Staff Members Pack').">
+                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                    </Tooltip>
+                                </label>
                                 <input
                                     type="text"
                                     value={editingAddOn.name}
@@ -1627,7 +1756,12 @@ export default function AdminPricingPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Type</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                        Type
+                                        <Tooltip content="Resource Packs increase limits on existing features; Managed Services provide professional assistance.">
+                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
                                     <select
                                         value={editingAddOn.type}
                                         onChange={(e) => setEditingAddOn(prev => prev ? { ...prev, type: e.target.value as AddOnType } : null)}
@@ -1638,7 +1772,12 @@ export default function AdminPricingPage() {
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Price</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                        Price
+                                        <Tooltip content="The cost businesses will pay to purchase this add-on.">
+                                            <Info size={10} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-main">₦</span>
                                         <FormattedNumberInput
@@ -1652,7 +1791,12 @@ export default function AdminPricingPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Duration (Days)</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                    Duration (Days)
+                                    <Tooltip content="How long the add-on remains active after purchase (e.g., 30 days for monthly).">
+                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                    </Tooltip>
+                                </label>
                                 <div className="relative">
                                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <FormattedNumberInput
@@ -1671,7 +1815,12 @@ export default function AdminPricingPage() {
                                         <span className="text-xs font-black uppercase tracking-widest">Resource Config</span>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Target Capability</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                            Target Capability
+                                            <Tooltip content="The specific feature limit that this add-on will increase.">
+                                                <Info size={10} className="text-slate-400 cursor-help" />
+                                            </Tooltip>
+                                        </label>
                                         <select
                                             value={editingAddOn.targetCapability}
                                             onChange={(e) => setEditingAddOn(prev => prev ? { ...prev, targetCapability: e.target.value } : null)}
@@ -1681,7 +1830,12 @@ export default function AdminPricingPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Additional Limit</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                            Additional Limit
+                                            <Tooltip content="The number of units to add to the selected capability's limit.">
+                                                <Info size={10} className="text-slate-400 cursor-help" />
+                                            </Tooltip>
+                                        </label>
                                         <FormattedNumberInput
                                             value={editingAddOn.additionalLimit}
                                             onChange={(val) => setAddOnNumericField('additionalLimit', val)}
@@ -1697,7 +1851,12 @@ export default function AdminPricingPage() {
                                         <span className="text-xs font-black uppercase tracking-widest">Service Config</span>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Agent Role</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                            Agent Role
+                                            <Tooltip content="The type of professional agent assigned to handle this service.">
+                                                <Info size={10} className="text-slate-400 cursor-help" />
+                                            </Tooltip>
+                                        </label>
                                         <select
                                             value={editingAddOn.serviceDetails.agentType}
                                             onChange={(e) => setEditingAddOn(prev => prev ? { ...prev, serviceDetails: { ...prev.serviceDetails, agentType: e.target.value } } : null)}
@@ -1710,7 +1869,12 @@ export default function AdminPricingPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Deliverables</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                            Deliverables
+                                            <Tooltip content="List of specific items or outcomes the business will receive from this service.">
+                                                <Info size={10} className="text-slate-400 cursor-help" />
+                                            </Tooltip>
+                                        </label>
                                         <div className="flex gap-2">
                                             <input
                                                 type="text"
@@ -1754,7 +1918,12 @@ export default function AdminPricingPage() {
                             )}
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Template Description</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1">
+                                    Template Description
+                                    <Tooltip content="A clear explanation of what the business gets when they purchase this add-on.">
+                                        <Info size={10} className="text-slate-400 cursor-help" />
+                                    </Tooltip>
+                                </label>
                                 <textarea
                                     rows={3}
                                     value={editingAddOn.description}
