@@ -179,10 +179,17 @@ export default function CustomerExperiencePage() {
         if (typeof window !== 'undefined') setOrigin(window.location.origin);
     }, []);
     const currentBranch = branches.find((b: any) => b.id === activeBranchId) || branches.find((b: any) => b.isMainBranch);
-    const slug = (currentBranch as any)?.slug || (business as any)?.slug || (user as any)?.business?.slug || (previewBusinessName !== 'Your Business' ? previewBusinessName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'your-business');
     const primaryDevice = devices?.[0];
     const code = primaryDevice?.code || 'setup-pending';
-    const publicUrl = `${origin}/${slug}/${code}`;
+    
+    // If branch has a username, use it for a clean vanity URL: vemtap.com/username
+    // Otherwise, fallback to the traditional: vemtap.com/business-slug/device-code
+    const username = (currentBranch as any)?.username;
+    const slug = (currentBranch as any)?.slug || (business as any)?.slug || (user as any)?.business?.slug || (previewBusinessName !== 'Your Business' ? previewBusinessName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'your-business');
+    
+    const publicUrl = username 
+        ? `${origin}/${username}` 
+        : `${origin}/${slug}/${code}`;
 
     // Category Tooltip Component
     const CategoryTooltip = ({ content }: { content: string }) => {

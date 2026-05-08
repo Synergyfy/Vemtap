@@ -257,19 +257,93 @@ export default function ProductsPage() {
                 </select>
             </div>
 
-            <DataTable
-                columns={columns}
-                data={items}
-                isLoading={isLoading}
-                onRowClick={handleRowClick}
-                emptyState={
-                    <EmptyState
-                        icon="layout"
-                        title="No products found"
-                        description="Start by adding items to your menu."
-                    />
-                }
-            />
+            {/* Custom Mobile View */}
+            <div className="md:hidden space-y-4">
+                {items.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <EmptyState
+                            icon="layout"
+                            title="No products found"
+                            description="Start by adding items to your menu."
+                        />
+                    </div>
+                ) : (
+                    items.map((item: CatalogueItem) => {
+                        const discountedPrice = calculateDiscountedPrice(item);
+                        return (
+                            <div 
+                                key={item.id}
+                                onClick={() => handleRowClick(item)}
+                                className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm active:scale-[0.98] transition-transform"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="size-16 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 border border-gray-100">
+                                        {item.mainImage ? (
+                                            <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <ImageIcon size={24} className="text-gray-400" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <h3 className="font-bold text-text-main truncate text-base">{item.name}</h3>
+                                            {getStatusBadge(item.status)}
+                                        </div>
+                                        <div className="flex items-center justify-between items-end">
+                                            <div>
+                                                <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-0.5">
+                                                    {item.category?.name || 'Uncategorized'}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    {discountedPrice ? (
+                                                        <>
+                                                            <span className="text-sm font-black text-primary">₦{discountedPrice.toLocaleString()}</span>
+                                                            <span className="text-[10px] text-text-secondary line-through">₦{Number(item.price).toLocaleString()}</span>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-sm font-black text-text-main">₦{Number(item.price).toLocaleString()}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={(e) => handleEdit(e, item)}
+                                                    className="p-2 bg-gray-50 text-text-secondary rounded-lg"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDelete(e, item.id)}
+                                                    className="p-2 bg-red-50 text-red-500 rounded-lg"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+                <DataTable
+                    columns={columns}
+                    data={items}
+                    isLoading={isLoading}
+                    onRowClick={handleRowClick}
+                    emptyState={
+                        <EmptyState
+                            icon="layout"
+                            title="No products found"
+                            description="Start by adding items to your menu."
+                        />
+                    }
+                />
+            </div>
 
             <ProductModal
                 isOpen={isModalOpen}

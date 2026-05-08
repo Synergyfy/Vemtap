@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Store, Bell, Users, Puzzle, Shield, ArrowRight, Star } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useAuthStore } from '@/store/useAuthStore';
+import SettingsMobileHub from '@/components/dashboard/SettingsMobileHub';
 
 export default function SettingsPage() {
     const { user } = useAuthStore();
@@ -31,7 +32,10 @@ export default function SettingsPage() {
                 description="Configure and manage your VemTap account preferences"
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {/* Mobile Hub View */}
+            <SettingsMobileHub />
+
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {filteredCategories.map((item, i) => (
                     <Link
                         key={i}

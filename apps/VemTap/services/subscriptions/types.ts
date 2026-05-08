@@ -10,4 +10,6 @@ export interface SubscribeRequest {
     billingPeriod: 'monthly' | 'quarterly' | 'yearly';
     paymentReference?: string;
     isTrial?: boolean;
+    addonIds?: string[];
+    addonQuantities?: number[];
 }

@@ -8,10 +8,11 @@ import {
     ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon,
     QrCode, ShoppingBag, Briefcase, Tag, FileJson
 } from 'lucide-react';
-import { fetchDeviceByCode, Device } from '@/lib/api/devices';
+import { fetchDeviceByCode, fetchContextByUsername, Device } from '@/lib/api/devices';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
+import { TapJourneyContainer } from '@/components/visitor/TapJourneyContainer';
 
 export default function BusinessPublicPage() {
     const params = useParams();
@@ -32,20 +33,38 @@ export default function BusinessPublicPage() {
 
     const [businessData, setBusinessData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isUsernameMode, setIsUsernameMode] = useState(false);
 
     useEffect(() => {
-        if (!isAuthenticated && deviceCode) {
-            router.replace(`/${params.slug}/${deviceCode}`);
-        }
-    }, [deviceCode, isAuthenticated, params.slug, router]);
+        const loadPageData = async () => {
+            const slug = params.slug as string;
+            
+            // 1. Try treating slug as a username first
+            try {
+                const usernameContext = await fetchContextByUsername(slug);
+                if (usernameContext) {
+                    setBusinessData(usernameContext);
+                    setIsUsernameMode(true);
+                    setIsLoading(false);
+                    return;
+                }
+            } catch (err) {
+                // Not a valid username or error, proceed to check device code
+                console.log('Not a username context, checking for device code');
+            }
 
-    useEffect(() => {
-        const loadBusiness = async () => {
+            // 2. If not a username, check if we have a device code for the redirect/loading
             if (!deviceCode) {
-                // No code available — cannot look up business
                 setIsLoading(false);
                 return;
             }
+
+            // 3. Normal redirect logic for device-based visits if not authenticated
+            if (!isAuthenticated && deviceCode) {
+                router.replace(`/${params.slug}/${deviceCode}`);
+                return;
+            }
+
             try {
                 const data = await fetchDeviceByCode(deviceCode);
                 setBusinessData(data);
@@ -55,8 +74,8 @@ export default function BusinessPublicPage() {
                 setIsLoading(false);
             }
         };
-        loadBusiness();
-    }, [deviceCode]);
+        loadPageData();
+    }, [deviceCode, params.slug, isAuthenticated, router]);
 
     if (isLoading) {
         return (
@@ -64,6 +83,10 @@ export default function BusinessPublicPage() {
                 <Loader2 className="size-10 text-primary animate-spin" />
             </div>
         );
+    }
+
+    if (isUsernameMode && businessData) {
+        return <TapJourneyContainer username={params.slug as string} />;
     }
 
     if (!businessData?.business) {

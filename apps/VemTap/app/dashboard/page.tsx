@@ -23,6 +23,8 @@ import { useBranches, useUpdateBranch } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
 import { Phone, Loader2 as LoaderIcon } from 'lucide-react';
 import { useSudoStore } from '@/store/useSudoStore';
+import MobileDashboardHub from '@/components/dashboard/MobileDashboardHub';
+import { useSearchParams } from 'next/navigation';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -30,6 +32,8 @@ export default function DashboardPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
+    const searchParams = useSearchParams();
+    const showStats = searchParams.get('show_stats') === '1';
     
     // We use the store now instead of URL params for sudo state
     const { activeSession } = useSudoStore();
@@ -255,9 +259,12 @@ export default function DashboardPage() {
                     )}
                 </div>
             </div>
+            
+            {/* Mobile Navigation Hub - Hidden when showing stats on mobile */}
+            {!showStats && <MobileDashboardHub />}
 
-            {/* Stats Grid — compact 4 columns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {/* Stats Grid — Hidden on mobile unless show_stats=1 is present */}
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 ${!showStats ? 'hidden md:grid' : 'grid'}`}>
                 {stats.map((stat, index) => (
                     <StatsCard
                         key={index}
@@ -270,7 +277,9 @@ export default function DashboardPage() {
                 ))}
             </div>
 
-            <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
+            {/* Main Content Sections - Hidden on mobile unless show_stats=1 is present */}
+            <div className={`space-y-8 md:space-y-10 ${!showStats ? 'hidden md:block' : 'block'}`}>
+                <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div>
                         <h2 className="text-base font-display font-bold text-text-main">Tutorial Center</h2>
@@ -586,8 +595,9 @@ export default function DashboardPage() {
                     })()}
                 </div>
             </div>
+        </div>
 
-            <SendMessageModal
+        <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg?.visitor.name || ''}

@@ -18,6 +18,7 @@ import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { exportToCSV } from '@/lib/utils/export';
 import { useDebounce } from '@/hooks/useDebounce';
 import SudoActionGuard from '@/components/shared/SudoActionGuard';
+import VisitorMobileHub from '@/components/dashboard/VisitorMobileHub';
 
 export default function VisitorsOverviewPage() {
     const router = useRouter();
@@ -183,14 +184,17 @@ export default function VisitorsOverviewPage() {
                     </button>
                 </SudoActionGuard>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            
+            {/* Mobile Hub View */}
+            <VisitorMobileHub />
+            
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {stats.map((stat, index) => (
                     <StatsCard key={index} {...(stat as any)} />
                 ))}
             </div>
 
-            <div className="bg-white rounded-2xl p-4 md:p-6 border border-gray-200 flex flex-col md:flex-row gap-4 shadow-sm">
+            <div className="hidden md:flex bg-white rounded-2xl p-4 md:p-6 border border-gray-200 flex-col md:flex-row gap-4 shadow-sm">
                 <div className="flex-1 relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
@@ -213,19 +217,21 @@ export default function VisitorsOverviewPage() {
                 </select>
             </div>
 
-            <DataTable
-                columns={columns}
-                data={filteredVisitors}
-                isLoading={isLoading}
-                onRowClick={(visitor) => setSelectedVisitorForDetails(visitor)}
-                emptyState={
-                    <EmptyState
-                        icon="people"
-                        title="No visitors activity"
-                        description="Visitor activity will appear here after customers tap your live NFC devices."
-                    />
-                }
-            />
+            <div className="hidden md:block">
+                <DataTable
+                    columns={columns}
+                    data={filteredVisitors}
+                    isLoading={isLoading}
+                    onRowClick={(visitor) => setSelectedVisitorForDetails(visitor)}
+                    emptyState={
+                        <EmptyState
+                            icon="people"
+                            title="No visitors activity"
+                            description="Visitor activity will appear here after customers tap your live NFC devices."
+                        />
+                    }
+                />
+            </div>
 
             <MessagingChannelSelectorModal
                 isOpen={showChannelSelector}

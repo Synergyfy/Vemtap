@@ -3,10 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { AddOn, AddOnType } from '../entities/addon.entity';
 import { BusinessAddOn, BusinessAddOnStatus } from '../entities/business-addon.entity';
 import { Business } from '../../businesses/entities/business.entity';
@@ -32,6 +35,10 @@ export interface AddOnCapabilityMap {
   [capability: string]: number;
 }
 
+const CACHE_KEY_ADDONS_PUBLIC = 'addons:public:list';
+const CACHE_KEY_ADDONS_ADMIN = 'addons:admin:list';
+const CACHE_TTL = 3600000; // 1 hour
+
 @Injectable()
 export class AddonsService {
   private readonly logger = new Logger(AddonsService.name);
@@ -44,9 +51,19 @@ export class AddonsService {
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
     private readonly paymentsService: PaymentsService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
+  private async invalidateCache() {
+    await this.cacheManager.del(CACHE_KEY_ADDONS_PUBLIC);
+    await this.cacheManager.del(CACHE_KEY_ADDONS_ADMIN);
+  }
+
   async create(createAddonDto: CreateAddonDto): Promise<AddOn> {
+    if (createAddonDto.price <= 0) {
+      throw new BadRequestException('Price must be greater than 0');
+    }
+
     const addon = new AddOn();
     addon.name = createAddonDto.name;
     addon.description = createAddonDto.description ?? '';
@@ -61,15 +78,29 @@ export class AddonsService {
     addon.isOneTime = createAddonDto.isOneTime ?? false;
     addon.isRecurring = createAddonDto.isRecurring ?? false;
     addon.imageUrl = createAddonDto.imageUrl ?? '';
-    return this.addonRepository.save(addon);
+    
+    const saved = await this.addonRepository.save(addon);
+    await this.invalidateCache();
+    return saved;
   }
 
   async findAll(onlyActive: boolean = false): Promise<AddOn[]> {
+    if (onlyActive) {
+      const cached = await this.cacheManager.get<AddOn[]>(CACHE_KEY_ADDONS_PUBLIC);
+      if (cached) return cached;
+    }
+
     const where = onlyActive ? { isActive: true } : {};
-    return this.addonRepository.find({
+    const addons = await this.addonRepository.find({
       where,
       order: { price: 'ASC' },
     });
+
+    if (onlyActive) {
+      await this.cacheManager.set(CACHE_KEY_ADDONS_PUBLIC, addons, CACHE_TTL);
+    }
+
+    return addons;
   }
 
   async findOne(id: string): Promise<AddOn> {
@@ -81,21 +112,34 @@ export class AddonsService {
   }
 
   async update(id: string, updateAddonDto: UpdateAddonDto): Promise<AddOn> {
+    if (updateAddonDto.price !== undefined && updateAddonDto.price <= 0) {
+      throw new BadRequestException('Price must be greater than 0');
+    }
+
     const addon = await this.findOne(id);
     Object.assign(addon, updateAddonDto);
-    return this.addonRepository.save(addon);
+    const saved = await this.addonRepository.save(addon);
+    await this.invalidateCache();
+    return saved;
   }
 
   async remove(id: string): Promise<void> {
     const addon = await this.findOne(id);
     addon.isActive = false;
     await this.addonRepository.save(addon);
+    await this.invalidateCache();
   }
 
   async findAllAdmin(): Promise<AddOn[]> {
-    return this.addonRepository.find({
+    const cached = await this.cacheManager.get<AddOn[]>(CACHE_KEY_ADDONS_ADMIN);
+    if (cached) return cached;
+
+    const addons = await this.addonRepository.find({
       order: { createdAt: 'DESC' },
     });
+
+    await this.cacheManager.set(CACHE_KEY_ADDONS_ADMIN, addons, CACHE_TTL);
+    return addons;
   }
 
   async getAdminStats(): Promise<{
@@ -309,10 +353,14 @@ export class AddonsService {
       const targetCapability = ba.metadata?.targetCapability ?? ba.addon.targetCapability;
       const additionalLimit = ba.metadata?.additionalLimit ?? ba.addon.additionalLimit ?? 0;
       
-      if (ba.addon.type === AddOnType.RESOURCE && targetCapability) {
-        const key = targetCapability;
-        const addonLimit = additionalLimit * ba.quantity;
-        map[key] = (map[key] || 0) + addonLimit;
+      if (targetCapability) {
+        if (ba.addon.type === AddOnType.RESOURCE) {
+          const addonLimit = additionalLimit * ba.quantity;
+          map[targetCapability] = (map[targetCapability] || 0) + addonLimit;
+        } else if (ba.addon.type === AddOnType.SERVICE) {
+          // Service add-ons act as boolean toggles (if you have it, you have it)
+          map[targetCapability] = (map[targetCapability] || 0) + 1;
+        }
       }
     }
     return map;
