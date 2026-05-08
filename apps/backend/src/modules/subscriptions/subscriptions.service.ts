@@ -185,12 +185,29 @@ export class SubscriptionsService {
         }
 
         if (paymentReference) {
+          // Calculate total price: Plan price (for cycle) + Add-ons
+          let planPrice = Number(plan.monthlyPrice || 0);
+          if (billingPeriod === BillingPeriod.QUARTERLY)
+            planPrice = Number(plan.quarterlyPrice || 0);
+          else if (billingPeriod === BillingPeriod.YEARLY)
+            planPrice = Number(plan.yearlyPrice || 0);
+
+          const addonsTotal = addons.reduce((sum, addon, index) => {
+            const qty = addonQuantities?.[index] ?? 1;
+            return sum + Number(addon.price) * qty;
+          }, 0);
+
+          const totalAmount = planPrice + addonsTotal;
+
           await this.paymentsService.recordPayment({
             reference: paymentReference,
-            amount: plan.monthlyPrice,
-            purpose: addons.length > 0 ? PaymentPurpose.PLAN_WITH_ADDONS : PaymentPurpose.SUBSCRIPTION,
+            amount: totalAmount,
+            purpose:
+              addons.length > 0
+                ? PaymentPurpose.PLAN_WITH_ADDONS
+                : PaymentPurpose.SUBSCRIPTION,
             status: PaymentStatus.SUCCESS,
-            metadata: { planId, billingPeriod, addonIds },
+            metadata: { planId, billingPeriod, addonIds, addonQuantities },
             businessId,
             userId: business.ownerId,
           });
