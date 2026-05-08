@@ -247,6 +247,12 @@ export class DeviceTapController {
         whatsappNumber: deviceWithRelations.branch.whatsappNumber,
         logoUrl: deviceWithRelations.branch.logoUrl,
         engagement: deviceWithRelations.branch.engagement,
+        showReview: deviceWithRelations.branch.showReview,
+        showSocial: deviceWithRelations.branch.showSocial,
+        showFeedback: deviceWithRelations.branch.showFeedback,
+        welcomeTitle: deviceWithRelations.branch.welcomeTitle,
+        welcomeTag: deviceWithRelations.branch.welcomeTag,
+        formAppearanceColor: deviceWithRelations.branch.formAppearanceColor,
       },
       qrThriveCodes,
       business: {

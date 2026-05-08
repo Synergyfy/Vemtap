@@ -115,6 +115,7 @@ export default function BusinessProfilePage() {
     const [localRewardVisibility, setLocalRewardVisibility] = useState<Record<string, boolean>>({});
 
     const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
     const [logo, setLogo] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [subcategoryId, setSubcategoryId] = useState('');
@@ -411,6 +412,7 @@ export default function BusinessProfilePage() {
 
         if (source) {
             setName(myBusiness?.name || source.name || '');
+            setUsername((source as any).username || '');
             setLogo(myBusiness?.logoUrl || source.logoUrl || '');
             
             setCategoryId(myBusiness?.categoryId || '');
@@ -476,6 +478,7 @@ export default function BusinessProfilePage() {
             }
         } else if (branch) {
             setName(myBusiness?.name || branch.name || '');
+            setUsername((branch as any).username || '');
             setLogo(myBusiness?.logoUrl || branch.logoUrl || '');
             setState(myBusiness?.state || branch.state || '');
             setCity(myBusiness?.city || branch.city || '');
@@ -691,7 +694,8 @@ export default function BusinessProfilePage() {
                 // Specific branch mode: Update general info and socials via /branches/{id}
                 const branchUpdates: any = {};
                 
-                if (hasChanged(name, branch.name)) branchUpdates.name = name;
+                if (hasChanged(name, branch.name) && !isAllBranches) branchUpdates.name = name;
+                if (hasChanged(username, (branch as any).username)) branchUpdates.username = username;
                 if (hasChanged(finalLogoUrl, branch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
 
                 if (hasChanged(supportEmail, branch.officialEmail)) branchUpdates.officialEmail = supportEmail;
@@ -1011,6 +1015,38 @@ export default function BusinessProfilePage() {
                                                 />
                                                 {isAllBranches && isEditingGeneral && (
                                                     <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit name</p>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1.5">
+                                                    Branch Username / Vanity URL
+                                                    <div className="group relative">
+                                                        <Info size={12} className="text-gray-400" />
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                                            Setting a username creates a clean link like vemtap.com/yourname
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none overflow-hidden">
+                                                        <span className="text-xs font-bold text-gray-400 whitespace-nowrap">{origin.replace('https://', '').replace('http://', '')}/</span>
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        value={username}
+                                                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                                        readOnly={!isEditingGeneral}
+                                                        placeholder="my-branch-name"
+                                                        className={`w-full h-12 rounded-xl pl-[140px] pr-4 text-sm font-bold transition-all outline-none ${
+                                                            isEditingGeneral
+                                                            ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                            : 'bg-transparent border-transparent cursor-default pl-0'
+                                                        }`}
+                                                    />
+                                                </div>
+                                                {isEditingGeneral && (
+                                                    <p className="text-[10px] text-gray-400 mt-1">Only lowercase letters, numbers, and hyphens allowed.</p>
                                                 )}
                                             </div>
                                         </div>
