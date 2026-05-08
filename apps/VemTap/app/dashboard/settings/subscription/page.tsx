@@ -15,7 +15,7 @@ import TrialCountdown from '@/components/dashboard/TrialCountdown';
 import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
 import { Crown, ShieldCheck, CheckCircle2, Loader2, Sparkles, Box, Zap, ShoppingCart, Plus, TrendingUp } from 'lucide-react';
-import { useAddOns, usePurchaseAddOn } from '@/services/addons/hooks';
+import { useAddOns, usePurchaseAddOn, useMyActiveAddOns } from '@/services/addons/hooks';
 
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
@@ -45,6 +45,7 @@ export default function DashboardPricingPage() {
     const { activeSubscription: subscription, fetchSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
     const subscribeMutation = useSubscribe();
     const { data: addons = [], isLoading: addonsLoading } = useAddOns();
+    const { data: myActiveAddons = [], isLoading: myAddonsLoading } = useMyActiveAddOns();
     const purchaseAddOnMutation = usePurchaseAddOn();
 
     const isLoading = plansLoading || subLoading || addonsLoading;
@@ -541,6 +542,83 @@ export default function DashboardPricingPage() {
                     </div>
                 );
             })()}
+
+            {/* Active Add-ons Section */}
+            {myActiveAddons.length > 0 && (
+                <div className="mt-20">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                                <ShieldCheck className="text-emerald-500" />
+                                My Active Power-Ups
+                            </h3>
+                            <p className="text-sm font-medium text-slate-500 mt-1">Currently active benefits and extra capabilities.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {myActiveAddons.map((ba) => {
+                            const addon = ba.addon;
+                            const totalLimit = (addon.additionalLimit || 0) * (ba.quantity || 1);
+                            const capability = addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units';
+                            
+                            return (
+                                <div 
+                                    key={ba.id}
+                                    className="group relative flex flex-col p-6 rounded-[2rem] bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <TrendingUp size={64} className="text-emerald-500" />
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <div className="flex items-center justify-between gap-2 mb-4">
+                                            <div className="size-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <span className="px-2 py-1 bg-emerald-500 text-white text-[8px] font-black rounded-full uppercase tracking-widest shadow-sm">
+                                                    x{ba.quantity || 1} Active
+                                                </span>
+                                                <span className="text-[9px] font-bold text-emerald-600 mt-1">
+                                                    {ba.addon.isRecurring ? 'Auto-renewing' : 'One-time'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                        {addon.type === 'RESOURCE' && addon.additionalLimit && (
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-lg mt-2">
+                                                <TrendingUp size={12} strokeWidth={3} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                                    +{totalLimit} {capability}s Total Boost
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-auto pt-4 border-t border-emerald-100/50 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                {ba.addon.isRecurring ? 'Next Billing' : 'Expires On'}
+                                            </span>
+                                            <span className="text-xs font-black text-slate-700">
+                                                {new Date(ba.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Investment</span>
+                                            <span className="text-xs font-black text-emerald-600">
+                                                ₦{(addon.price * (ba.quantity || 1)).toLocaleString()}
+                                                <span className="text-[9px] opacity-60 ml-0.5">/{addon.isRecurring ? 'mo' : 'once'}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Add-ons Section */}
             <div className="mt-20">

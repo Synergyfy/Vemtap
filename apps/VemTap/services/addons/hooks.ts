@@ -21,6 +21,15 @@ export const useAddOns = () => {
     });
 };
 
+export const useMyActiveAddOns = () => {
+    return useQuery<any[], Error>({
+        queryKey: ['addons', 'my', 'active'],
+        queryFn: async () => {
+            return await api.get('/addons/my/active');
+        },
+    });
+};
+
 export const usePurchaseAddOn = () => {
     const queryClient = useQueryClient();
     return useMutation<any, Error, { addonIds: string[]; paymentReference?: string; quantities?: number[] }>({

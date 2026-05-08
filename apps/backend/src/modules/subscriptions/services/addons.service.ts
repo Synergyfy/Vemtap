@@ -353,10 +353,14 @@ export class AddonsService {
       const targetCapability = ba.metadata?.targetCapability ?? ba.addon.targetCapability;
       const additionalLimit = ba.metadata?.additionalLimit ?? ba.addon.additionalLimit ?? 0;
       
-      if (ba.addon.type === AddOnType.RESOURCE && targetCapability) {
-        const key = targetCapability;
-        const addonLimit = additionalLimit * ba.quantity;
-        map[key] = (map[key] || 0) + addonLimit;
+      if (targetCapability) {
+        if (ba.addon.type === AddOnType.RESOURCE) {
+          const addonLimit = additionalLimit * ba.quantity;
+          map[targetCapability] = (map[targetCapability] || 0) + addonLimit;
+        } else if (ba.addon.type === AddOnType.SERVICE) {
+          // Service add-ons act as boolean toggles (if you have it, you have it)
+          map[targetCapability] = (map[targetCapability] || 0) + 1;
+        }
       }
     }
     return map;

@@ -123,6 +123,25 @@ export class AddonsController {
     return this.addonsService.getBusinessAddons(businessId);
   }
 
+  @Get('my/active')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @ApiBearerAuth()
+  @SkipSubscriptionCheck()
+  @ApiOperation({
+    summary: 'Get active purchased add-ons for the current business',
+    description:
+      'Returns only the currently active and non-expired add-ons purchased by the authenticated user\'s business.',
+  })
+  @ApiOkResponse({
+    description: 'List of active purchased add-ons with add-on details',
+    type: [BusinessAddOn],
+  })
+  async getMyActiveAddons(@Request() req: RequestWithUser) {
+    const businessId = req.user.businessId;
+    return this.addonsService.getActiveBusinessAddons(businessId);
+  }
+
   @Post('purchase')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OWNER, UserRole.ADMIN)
