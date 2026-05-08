@@ -172,6 +172,9 @@ export default function BusinessProfilePage() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+    
+    // Mobile Collapsible Sections State
+    const [expandedSection, setExpandedSection] = useState<string | null>('health');
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -863,161 +866,157 @@ export default function BusinessProfilePage() {
                     <div className="space-y-8">
                         {/* Health Check Progress UI */}
                         {(isAllBranches || branches.length <= 1) && (
-                            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 overflow-hidden relative">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-display font-bold text-text-main">Health Check Progress</h3>
-                                            {progress === 100 && (
-                                                <span className="material-icons-round text-green-500 text-xl">verified</span>
-                                            )}
+                            <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative transition-all ${expandedSection === 'health' ? 'ring-1 ring-primary/20 shadow-md' : ''}`}>
+                                {/* Mobile Header Toggle */}
+                                <div 
+                                    onClick={() => setExpandedSection(expandedSection === 'health' ? null : 'health')}
+                                    className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                            <span className="material-icons-round text-lg">health_and_safety</span>
                                         </div>
-                                        <p className="text-sm text-text-secondary font-normal">Verify your business to establish trust and unlock all features.</p>
+                                        <h3 className="font-display font-bold text-text-main text-base tracking-tight">Health Check Progress</h3>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-normal">Health Score</span></div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1">{completedCount} of {totalCount} tasks completed</div>
-                                    </div>
+                                    <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'health' ? 'rotate-180' : ''}`} />
                                 </div>
-                                
-                                <div className="mt-8 flex flex-col gap-6">
-                                    <div className="relative pt-1">
-                                        <div className="overflow-hidden h-3 text-xs flex rounded-full bg-gray-100">
-                                            <div 
-                                                style={{ width: `${progress}%` }}
-                                                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000 ease-in-out relative"
-                                            >
-                                                <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
+
+                                <div className={`${expandedSection === 'health' ? 'block' : 'hidden'} md:block p-8`}>
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-xl font-display font-bold text-text-main hidden md:block">Health Check Progress</h3>
+                                                {progress === 100 && (
+                                                    <span className="material-icons-round text-green-500 text-xl">verified</span>
+                                                )}
                                             </div>
+                                            <p className="text-sm text-text-secondary font-normal">Verify your business to establish trust and unlock all features.</p>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-normal">Health Score</span></div>
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1">{completedCount} of {totalCount} tasks completed</div>
                                         </div>
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        {healthTasks.map((task, i) => (
-                                            <button 
-                                                key={i} 
-                                                onClick={() => {
-                                                    if (task.id === 'general') {
-                                                        setIsEditingGeneral(true);
-                                                    } else {
-                                                        setActiveTab(task.id);
-                                                    }
-                                                }}
-                                                className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all text-left group ${
-                                                    task.completed 
-                                                    ? 'bg-green-50 border-green-100 text-green-700' 
-                                                    : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60 hover:opacity-100 hover:border-primary/20 hover:bg-primary/5'
-                                                }`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`material-icons-round text-lg transition-transform ${!task.completed ? 'group-hover:scale-110 group-hover:text-primary' : ''}`}>{task.icon}</span>
-                                                    {task.completed ? (
-                                                        <span className="material-icons-round text-xs">check_circle</span>
-                                                    ) : (
-                                                        <span className="material-icons-round text-[10px] opacity-0 group-hover:opacity-100 text-primary">arrow_forward</span>
-                                                    )}
+                                    <div className="mt-8 flex flex-col gap-6">
+                                        <div className="relative pt-1">
+                                            <div className="overflow-hidden h-3 text-xs flex rounded-full bg-gray-100">
+                                                <div 
+                                                    style={{ width: `${progress}%` }}
+                                                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000 ease-in-out relative"
+                                                >
+                                                    <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
                                                 </div>
-                                                <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
-                                            </button>
-                                        ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                            {healthTasks.map((task, i) => (
+                                                <button 
+                                                    key={i} 
+                                                    onClick={() => {
+                                                        if (task.id === 'general') {
+                                                            setIsEditingGeneral(true);
+                                                        } else {
+                                                            setActiveTab(task.id);
+                                                        }
+                                                    }}
+                                                    className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all text-left group ${
+                                                        task.completed 
+                                                        ? 'bg-green-50 border-green-100 text-green-700' 
+                                                        : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60 hover:opacity-100 hover:border-primary/20 hover:bg-primary/5'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`material-icons-round text-lg transition-transform ${!task.completed ? 'group-hover:scale-110 group-hover:text-primary' : ''}`}>{task.icon}</span>
+                                                        {task.completed ? (
+                                                            <span className="material-icons-round text-xs">check_circle</span>
+                                                        ) : (
+                                                            <span className="material-icons-round text-[10px] opacity-0 group-hover:opacity-100 text-primary">arrow_forward</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Branding & Identity</h3>
+                        <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${expandedSection === 'branding' ? 'ring-1 ring-primary/20 shadow-md' : ''}`}>
+                            {/* Mobile Header Toggle */}
+                            <div 
+                                onClick={() => setExpandedSection(expandedSection === 'branding' ? null : 'branding')}
+                                className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                            >
                                 <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => setIsEditingGeneral(!isEditingGeneral)}
-                                        className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                                            isEditingGeneral 
-                                            ? 'bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100' 
-                                            : 'bg-white text-primary border border-primary/20 hover:bg-primary/5'
-                                        }`}
-                                    >
-                                        <span className="material-icons-round text-sm">{isEditingGeneral ? 'close' : 'edit'}</span>
-                                        {isEditingGeneral ? 'Cancel' : 'Edit Profile'}
-                                    </button>
-                                    <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-full border border-green-100">Verified Business</span>
-                                </div>
-                            </div>
-                            <div className="p-8 space-y-8">
-                                <div className="flex flex-col md:flex-row items-center md:items-start gap-10">
-                                    <div className="flex flex-col items-center space-y-4">
-                                        <div className={`size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative shadow-inner group ${!isEditingGeneral ? 'border-transparent bg-transparent shadow-none' : ''}`}>
-                                            {logo ? (
-                                                <>
-                                                    <img src={logo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-110" />
-                                                    {isEditingGeneral && (
-                                                        <button
-                                                            onClick={() => setLogo('')}
-                                                            className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            <span className="material-icons-round text-sm">delete</span>
-                                                        </button>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <div className="flex flex-col items-center gap-2 text-gray-400">
-                                                    <span className="material-icons-round text-4xl">add_a_photo</span>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-center px-2">No Logo</span>
-                                                </div>
-                                            )}
-                                            {isEditingGeneral && (
-                                                <input
-                                                    type="file"
-                                                    id="logo-upload"
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => setLogo(reader.result as string);
-                                                            reader.readAsDataURL(file);
-                                                        }
-                                                    }}
-                                                />
-                                            )}
-                                        </div>
-                                        {isEditingGeneral && (
-                                            <div className="w-full max-w-[200px] space-y-3">
-                                                <button
-                                                    onClick={() => document.getElementById('logo-upload')?.click()}
-                                                    className="w-full h-10 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <span className="material-icons-round text-sm">upload</span>
-                                                    Upload Logo
-                                                </button>
-                                            </div>
-                                        )}
+                                    <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <span className="material-icons-round text-lg">palette</span>
                                     </div>
+                                    <h3 className="font-display font-bold text-text-main text-base tracking-tight">Branding & Identity</h3>
+                                </div>
+                                <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'branding' ? 'rotate-180' : ''}`} />
+                            </div>
 
-                                    <div className="flex-1 space-y-6 w-full">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
-                                                    {isAllBranches ? 'Business Name' : 'Branch Name'}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={name}
-                                                    onChange={(e) => setName(e.target.value)}
-                                                    readOnly={!isEditingGeneral || isAllBranches}
-                                                    className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
-                                                        isEditingGeneral && !isAllBranches
-                                                        ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
-                                                        : 'bg-transparent border-transparent cursor-default px-0'
-                                                    }`}
-                                                />
-                                                {isAllBranches && isEditingGeneral && (
-                                                    <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit name</p>
+                            <div className={`${expandedSection === 'branding' ? 'block' : 'hidden'} md:block`}>
+                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">Branding & Identity</h3>
+                                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
+                                        <button
+                                            onClick={() => setIsEditingGeneral(!isEditingGeneral)}
+                                            className={`flex-1 md:flex-none px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                                isEditingGeneral 
+                                                ? 'bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100' 
+                                                : 'bg-white text-primary border border-primary/20 hover:bg-primary/5'
+                                            }`}
+                                        >
+                                            <span className="material-icons-round text-sm">{isEditingGeneral ? 'close' : 'edit'}</span>
+                                            {isEditingGeneral ? 'Cancel' : 'Edit Profile'}
+                                        </button>
+                                        <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-full border border-green-100">Verified</span>
+                                    </div>
+                                </div>
+                                <div className="p-8 space-y-8">
+                                    <div className="flex flex-col md:flex-row items-center md:items-start gap-10">
+                                        <div className="flex flex-col items-center space-y-4">
+                                            <div className={`size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative shadow-inner group ${!isEditingGeneral ? 'border-transparent bg-transparent shadow-none' : ''}`}>
+                                                {logo ? (
+                                                    <>
+                                                        <img src={logo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-110" />
+                                                        {isEditingGeneral && (
+                                                            <button
+                                                                onClick={() => setLogo('')}
+                                                                className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                                            >
+                                                                <span className="material-icons-round text-sm">delete</span>
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                                                        <span className="material-icons-round text-4xl">add_a_photo</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-center px-2">No Logo</span>
+                                                    </div>
+                                                )}
+                                                {isEditingGeneral && (
+                                                    <input
+                                                        type="file"
+                                                        id="logo-upload"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onloadend = () => setLogo(reader.result as string);
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }}
+                                                    />
                                                 )}
                                             </div>
-
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1.5">
                                                     Branch Username / Vanity URL
@@ -1049,209 +1048,277 @@ export default function BusinessProfilePage() {
                                                     <p className="text-[10px] text-gray-400 mt-1">Only lowercase letters, numbers, and hyphens allowed.</p>
                                                 )}
                                             </div>
+
+                                            {isEditingGeneral && (
+                                                <div className="w-full max-w-[200px] space-y-3">
+                                                    <button
+                                                        onClick={() => document.getElementById('logo-upload')?.click()}
+                                                        className="w-full h-10 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                                                    >
+                                                        <span className="material-icons-round text-sm">upload</span>
+                                                        Upload Logo
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Only show Category & Subcategory for specific branch, not for "All Locations" */}
-                                        {!isAllBranches && branches.length > 0 && (
-                                            <>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Category</label>
-                                                        {isCategoriesLoading ? (
-                                                            <div className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center">
-                                                                <Loader2 size={16} className="animate-spin text-primary" />
-                                                            </div>
-                                                        ) : !isEditingGeneral ? (
-                                                            <div className="w-full h-12 flex items-center text-sm font-bold">
-                                                                {categories.find((c: any) => c.id === categoryId)?.name || 'Not specified'}
-                                                            </div>
-                                                        ) : (
-                                                            <select
-                                                                value={categoryId}
-                                                                onChange={(e) => {
-                                                                    setCategoryId(e.target.value);
-                                                                    setSubcategoryId('');
-                                                                }}
-                                                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
-                                                            >
-                                                                <option value="">Select Category</option>
-                                                                {categories.map((cat: any) => (
-                                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Sub-Category</label>
-                                                        {!isEditingGeneral ? (
-                                                            <div className="w-full h-12 flex items-center text-sm font-bold">
-                                                                {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find((s: any) => s.id === subcategoryId)?.name || 'Not specified')}
-                                                            </div>
-                                                        ) : (
-                                                            <select
-                                                                value={subcategoryId}
-                                                                onChange={(e) => setSubcategoryId(e.target.value)}
-                                                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
-                                                                disabled={!categoryId}
-                                                            >
-                                                                <option value="">Select Sub-Category</option>
-                                                                {subcategories.map((sub: any) => (
-                                                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                                                ))}
-                                                                <option value="other">Other</option>
-                                                            </select>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {subcategoryId === 'other' && isEditingGeneral && (
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Other Subcategory Name</label>
-                                                        <input
-                                                            type="text"
-                                                            value={otherSubcategoryName}
-                                                            onChange={(e) => setOtherSubcategoryName(e.target.value)}
-                                                            placeholder="Specify your subcategory"
-                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-
-                                        {/* Only show State & City for specific branch, not for "All Locations" */}
-                                        {!isAllBranches && (
+                                        <div className="flex-1 space-y-6 w-full">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
-                                                {!isEditingGeneral ? (
-                                                    <div className="w-full h-12 flex items-center text-sm font-bold">
-                                                        {state || 'Not specified'}
-                                                    </div>
-                                                ) : (
-                                                    <select
-                                                        value={state}
-                                                        onChange={(e) => {
-                                                            setState(e.target.value);
-                                                            setCity('');
-                                                        }}
-                                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                    >
-                                                        <option value="">Select State</option>
-                                                        {Object.keys(statesData).sort().map(s => (
-                                                            <option key={s} value={s}>{s}</option>
-                                                        ))}
-                                                    </select>
-                                                )}
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
-                                                {!isEditingGeneral ? (
-                                                    <div className="w-full h-12 flex items-center text-sm font-bold">
-                                                        {city || 'Not specified'}
-                                                    </div>
-                                                ) : (
-                                                    <select
-                                                        value={city}
-                                                        onChange={(e) => setCity(e.target.value)}
-                                                        disabled={!state}
-                                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none disabled:opacity-50"
-                                                    >
-                                                        <option value="">Select City</option>
-                                                        {state && statesData[state]?.sort().map(c => (
-                                                            <option key={c} value={c}>{c}</option>
-                                                        ))}
-                                                    </select>
-                                                )}
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                                                        {isAllBranches ? 'Business Name' : 'Branch Name'}
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={name}
+                                                        onChange={(e) => setName(e.target.value)}
+                                                        readOnly={!isEditingGeneral || isAllBranches}
+                                                        className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                                            isEditingGeneral && !isAllBranches
+                                                            ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                            : 'bg-transparent border-transparent cursor-default px-0'
+                                                        }`}
+                                                    />
+                                                    {isAllBranches && isEditingGeneral && (
+                                                        <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit name</p>
+                                                    )}
                                                 </div>
                                             </div>
-                                        )}
+
+                                            {/* Only show Category & Subcategory for specific branch, not for "All Locations" */}
+                                            {!isAllBranches && branches.length > 0 && (
+                                                <>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Category</label>
+                                                            {isCategoriesLoading ? (
+                                                                <div className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center">
+                                                                    <Loader2 size={16} className="animate-spin text-primary" />
+                                                                </div>
+                                                            ) : !isEditingGeneral ? (
+                                                                <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                                    {categories.find((c: any) => c.id === categoryId)?.name || 'Not specified'}
+                                                                </div>
+                                                            ) : (
+                                                                <select
+                                                                    value={categoryId}
+                                                                    onChange={(e) => {
+                                                                        setCategoryId(e.target.value);
+                                                                        setSubcategoryId('');
+                                                                    }}
+                                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
+                                                                >
+                                                                    <option value="">Select Category</option>
+                                                                    {categories.map((cat: any) => (
+                                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            )}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Sub-Category</label>
+                                                            {!isEditingGeneral ? (
+                                                                <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                                    {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find((s: any) => s.id === subcategoryId)?.name || 'Not specified')}
+                                                                </div>
+                                                            ) : (
+                                                                <select
+                                                                    value={subcategoryId}
+                                                                    onChange={(e) => setSubcategoryId(e.target.value)}
+                                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
+                                                                    disabled={!categoryId}
+                                                                >
+                                                                    <option value="">Select Sub-Category</option>
+                                                                    {subcategories.map((sub: any) => (
+                                                                        <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                                                    ))}
+                                                                    <option value="other">Other</option>
+                                                                </select>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {subcategoryId === 'other' && isEditingGeneral && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Other Subcategory Name</label>
+                                                            <input
+                                                                type="text"
+                                                                value={otherSubcategoryName}
+                                                                onChange={(e) => setOtherSubcategoryName(e.target.value)}
+                                                                placeholder="Specify your subcategory"
+                                                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+
+                                            {/* Only show State & City for specific branch, not for "All Locations" */}
+                                            {!isAllBranches && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
+                                                    {!isEditingGeneral ? (
+                                                        <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                            {state || 'Not specified'}
+                                                        </div>
+                                                    ) : (
+                                                        <select
+                                                            value={state}
+                                                            onChange={(e) => {
+                                                                setState(e.target.value);
+                                                                setCity('');
+                                                            }}
+                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        >
+                                                            <option value="">Select State</option>
+                                                            {Object.keys(statesData).sort().map(s => (
+                                                                <option key={s} value={s}>{s}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
+                                                    {!isEditingGeneral ? (
+                                                        <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                            {city || 'Not specified'}
+                                                        </div>
+                                                    ) : (
+                                                        <select
+                                                            value={city}
+                                                            onChange={(e) => setCity(e.target.value)}
+                                                            disabled={!state}
+                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none disabled:opacity-50"
+                                                        >
+                                                            <option value="">Select City</option>
+                                                            {state && statesData[state]?.sort().map(c => (
+                                                                <option key={c} value={c}>{c}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Show Contact & Location section, but make it partially editable in All Locations mode */}
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Contact & Location</h3>
-                            </div>
-                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Email</label>
-                                    <input 
-                                        type="email" 
-                                        value={supportEmail} 
-                                        onChange={e => setSupportEmail(e.target.value)} 
-                                        placeholder="hello@vemtap.com" 
-                                        readOnly={!isEditingGeneral || isAllBranches}
-                                        className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
-                                            isEditingGeneral && !isAllBranches
-                                            ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
-                                            : 'bg-transparent border-transparent cursor-default px-0'
-                                        }`}
-                                    />
-                                    {isAllBranches && isEditingGeneral && (
-                                        <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit email</p>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
-                                    <input 
-                                        type="tel" 
-                                        value={supportPhone} 
-                                        onChange={e => setSupportPhone(e.target.value)} 
-                                        placeholder="+234 801 234 5678" 
-                                            readOnly={!isEditingGeneral}
-                                            className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
-                                                isEditingGeneral 
-                                                ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
-                                                : 'bg-transparent border-transparent cursor-default px-0'
-                                            }`}
-                                        />
+                        <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${expandedSection === 'contact' ? 'ring-1 ring-primary/20 shadow-md' : ''}`}>
+                            {/* Mobile Header Toggle */}
+                            <div 
+                                onClick={() => setExpandedSection(expandedSection === 'contact' ? null : 'contact')}
+                                className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <span className="material-icons-round text-lg">contact_mail</span>
                                     </div>
-                                    <div className="col-span-1 md:col-span-2 space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Detailed Address</label>
-                                        <textarea 
-                                            value={address} 
-                                            onChange={e => setAddress(e.target.value)} 
-                                            placeholder="Address..." 
-                                            rows={3} 
+                                    <h3 className="font-display font-bold text-text-main text-base tracking-tight">Contact & Location</h3>
+                                </div>
+                                <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'contact' ? 'rotate-180' : ''}`} />
+                            </div>
+
+                            <div className={`${expandedSection === 'contact' ? 'block' : 'hidden'} md:block`}>
+                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">Contact & Location</h3>
+                                </div>
+                                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Email</label>
+                                        <input 
+                                            type="email" 
+                                            value={supportEmail} 
+                                            onChange={e => setSupportEmail(e.target.value)} 
+                                            placeholder="hello@vemtap.com" 
                                             readOnly={!isEditingGeneral || isAllBranches}
-                                            className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
+                                            className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
                                                 isEditingGeneral && !isAllBranches
                                                 ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                 : 'bg-transparent border-transparent cursor-default px-0'
                                             }`}
                                         />
-                                    {isAllBranches && isEditingGeneral && (
-                                        <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit address</p>
-                                    )}
+                                        {isAllBranches && isEditingGeneral && (
+                                            <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit email</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
+                                        <input 
+                                            type="tel" 
+                                            value={supportPhone} 
+                                            onChange={e => setSupportPhone(e.target.value)} 
+                                            placeholder="+234 801 234 5678" 
+                                                readOnly={!isEditingGeneral}
+                                                className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                                    isEditingGeneral 
+                                                    ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                    : 'bg-transparent border-transparent cursor-default px-0'
+                                                }`}
+                                            />
+                                        </div>
+                                        <div className="col-span-1 md:col-span-2 space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Detailed Address</label>
+                                            <textarea 
+                                                value={address} 
+                                                onChange={e => setAddress(e.target.value)} 
+                                                placeholder="Address..." 
+                                                rows={3} 
+                                                readOnly={!isEditingGeneral || isAllBranches}
+                                                className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
+                                                    isEditingGeneral && !isAllBranches
+                                                    ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                    : 'bg-transparent border-transparent cursor-default px-0'
+                                                }`}
+                                            />
+                                        {isAllBranches && isEditingGeneral && (
+                                            <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit address</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {!isAllBranches && (
-                            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">About Your Business</h3>
-                                    <p className="text-xs text-text-secondary font-medium">Tell customers more about your business</p>
+                            <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${expandedSection === 'about' ? 'ring-1 ring-primary/20 shadow-md' : ''}`}>
+                                {/* Mobile Header Toggle */}
+                                <div 
+                                    onClick={() => setExpandedSection(expandedSection === 'about' ? null : 'about')}
+                                    className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                            <span className="material-icons-round text-lg">info</span>
+                                        </div>
+                                        <h3 className="font-display font-bold text-text-main text-base tracking-tight">About Your Business</h3>
+                                    </div>
+                                    <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'about' ? 'rotate-180' : ''}`} />
                                 </div>
-                                <div className="p-8 space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">About</label>
-                                        <textarea
-                                            value={about}
-                                            onChange={(e) => setAbout(e.target.value)}
-                                            placeholder="About info..."
-                                            rows={4}
-                                            readOnly={!isEditingGeneral}
-                                            className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
-                                                isEditingGeneral 
-                                                ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
-                                                : 'bg-transparent border-transparent cursor-default px-0'
-                                            }`}
-                                        />
+
+                                <div className={`${expandedSection === 'about' ? 'block' : 'hidden'} md:block`}>
+                                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">About Your Business</h3>
+                                        <p className="text-xs text-text-secondary font-medium">Tell customers more about your business</p>
+                                    </div>
+                                    <div className="p-8 space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">About</label>
+                                            <textarea
+                                                value={about}
+                                                onChange={(e) => setAbout(e.target.value)}
+                                                placeholder="About info..."
+                                                rows={4}
+                                                readOnly={!isEditingGeneral}
+                                                className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
+                                                    isEditingGeneral 
+                                                    ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                    : 'bg-transparent border-transparent cursor-default px-0'
+                                                }`}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1259,89 +1326,105 @@ export default function BusinessProfilePage() {
 
                         {/* Account Security Section */}
                         {!isAdminMode && (
-                            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                            <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${expandedSection === 'security' ? 'ring-1 ring-primary/20 shadow-md' : ''}`}>
+                                {/* Mobile Header Toggle */}
+                                <div 
+                                    onClick={() => setExpandedSection(expandedSection === 'security' ? null : 'security')}
+                                    className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                                             <ShieldCheck size={20} />
                                         </div>
-                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Account Security</h3>
+                                        <h3 className="font-display font-bold text-text-main text-base tracking-tight">Account Security</h3>
                                     </div>
+                                    <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'security' ? 'rotate-180' : ''}`} />
                                 </div>
-                                <form onSubmit={handleUpdatePassword} className="p-8 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Password</label>
-                                            <div className="relative">
-                                                <input
-                                                    type={showCurrentPassword ? "text" : "password"}
-                                                    value={currentPassword}
-                                                    onChange={(e) => setCurrentPassword(e.target.value)}
-                                                    placeholder="••••••••"
-                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                    required
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
-                                                >
-                                                    {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                                </button>
+
+                                <div className={`${expandedSection === 'security' ? 'block' : 'hidden'} md:block`}>
+                                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-10 rounded-xl bg-primary/10 items-center justify-center text-primary hidden md:flex">
+                                                <ShieldCheck size={20} />
                                             </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">New Password</label>
-                                            <div className="relative">
-                                                <input
-                                                    type={showNewPassword ? "text" : "password"}
-                                                    value={newPassword}
-                                                    onChange={(e) => setNewPassword(e.target.value)}
-                                                    placeholder="••••••••"
-                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                    required
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowNewPassword(!showNewPassword)}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
-                                                >
-                                                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm New Password</label>
-                                            <div className="relative">
-                                                <input
-                                                    type={showConfirmNewPassword ? "text" : "password"}
-                                                    value={confirmNewPassword}
-                                                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                                                    placeholder="••••••••"
-                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                    required
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
-                                                >
-                                                    {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                                </button>
-                                            </div>
+                                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">Account Security</h3>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end">
-                                        <button
-                                            type="submit"
-                                            disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
-                                            className="h-11 px-8 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                        >
-                                            {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-                                            Update Password
-                                        </button>
-                                    </div>
-                                </form>
+                                    <form onSubmit={handleUpdatePassword} className="p-8 space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Password</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={showCurrentPassword ? "text" : "password"}
+                                                        value={currentPassword}
+                                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                                        placeholder="••••••••"
+                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        required
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                                    >
+                                                        {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">New Password</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={showNewPassword ? "text" : "password"}
+                                                        value={newPassword}
+                                                        onChange={(e) => setNewPassword(e.target.value)}
+                                                        placeholder="••••••••"
+                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        required
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowNewPassword(!showNewPassword)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                                    >
+                                                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm New Password</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={showConfirmNewPassword ? "text" : "password"}
+                                                        value={confirmNewPassword}
+                                                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                                        placeholder="••••••••"
+                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        required
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                                    >
+                                                        {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="submit"
+                                                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
+                                                className="h-11 px-8 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                            >
+                                                {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+                                                Update Password
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         )}
                     </div>

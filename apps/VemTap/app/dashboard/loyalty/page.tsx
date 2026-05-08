@@ -7,6 +7,7 @@ import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { LoyaltyAnalytics } from '@/components/loyalty/admin/LoyaltyAnalytics';
 import { Gift, Users, Settings, Smartphone, ArrowRight, ExternalLink, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import LoyaltyMobileHub from '@/components/dashboard/LoyaltyMobileHub';
 
 const QUICK_LINKS = [
     {
@@ -59,8 +60,11 @@ export default function LoyaltyOverviewPage() {
                 description="Monitor and manage your business loyalty ecosystem"
             />
 
+            {/* Mobile Hub View */}
+            <LoyaltyMobileHub />
+
             {/* Analytics Section */}
-            <section className="space-y-4 md:space-y-6">
+            <section className="hidden md:block space-y-4 md:space-y-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg md:text-xl font-display font-bold text-slate-900 uppercase tracking-tight">System Performance</h2>
                     <Link href="/dashboard/analytics" className="text-[10px] md:text-xs font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-wider">
@@ -72,7 +76,7 @@ export default function LoyaltyOverviewPage() {
             </section>
 
             {/* Management Quick Links */}
-            <section className="space-y-4 md:space-y-6 pt-8 md:pt-10 border-t border-slate-100">
+            <section className="hidden md:block space-y-4 md:space-y-6 pt-8 md:pt-10 border-t border-slate-100">
                 <h2 className="text-lg md:text-xl font-display font-bold text-slate-900 uppercase tracking-tight">Management Suite</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     {QUICK_LINKS.map((link) => (

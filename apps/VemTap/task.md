@@ -223,13 +223,24 @@ After each setup:
 ## 🔹 F. White Label System
 
 * [x] Replace all QRThrive URLs with VemTap domain
-* [x] Standardize container padding across module (`p-4 md:p-8`)
-* [x] Enforce `h-12` minimum touch-target heights for all inputs and buttons
-* [x] Convert `RewardCreationModal` to premium bottom-sheet drawer for mobile
-* [x] Optimize `RedemptionVerifier` for mobile-first premium experience
-* [x] Refine `LoyaltySettings` layout and interactive states
-* [x] Audit `LoyaltyAnalytics` for responsive container consistency
-* [x] Final regression pass on drawer transitions and grid scaling
+* [x] Create `CatalogueMobileHub`
+    - [x] Items: Overview, Items, Offers, Categories, Orders, Bookings
+* [x] Create `LoyaltyMobileHub`
+    - [x] Items: Overview, Customers, Rewards, Verify, Settings
+* [x] Create `MessagingMobileHub`
+    - [x] Items: In-App Chat, WhatsApp, SMS, Email
+* [x] Create `SettingsMobileHub`
+    - [x] Items: Profile, Security, Billing, API Access
+* [x] Integrate hubs into their respective pages
+    - [x] `app/dashboard/catalogue/page.tsx`
+    - [x] `app/dashboard/loyalty/page.tsx`
+    - [x] `app/dashboard/messaging/page.tsx`
+    - [x] `app/dashboard/settings/page.tsx`
+* [x] Restore mobile nav on Chat routes
+* [x] Optimize Chat list avatar alignment for mobile
+* [x] Condense Catalogue Product list on mobile
+* [x] Condense Manage Forms list on mobile (Expandable Cards)
+* [x] Verify all routes across all device types
 * [x] Proxy or masking logic
 * [x] Branding consistency
 

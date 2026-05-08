@@ -885,7 +885,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             {/* Only show Mobile Nav if NOT on a chat route */}
-            {!isChatRoute && <DashboardMobileNav />}
+            <DashboardMobileNav />
             
             <UpgradeModal
                 isOpen={upgradeModal.isOpen}
