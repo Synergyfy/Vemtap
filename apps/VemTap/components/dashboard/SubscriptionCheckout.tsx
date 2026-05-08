@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useRouter } from 'next/navigation';
-import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info } from 'lucide-react';
+import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info, ShoppingCart } from 'lucide-react';
 import { useSubscribe } from '@/services/subscriptions/hooks';
+import { useAddOns } from '@/services/addons/hooks';
+import AddOnSelectionList from './AddOnSelectionList';
 import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
@@ -17,13 +19,22 @@ interface Props {
     billingPeriod?: 'monthly' | 'quarterly' | 'yearly';
     onBillingPeriodChange?: (cycle: 'monthly' | 'quarterly' | 'yearly') => void;
     businessId?: string;
+    onSuccess?: () => void;
 }
 
-export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', onBillingPeriodChange, businessId, isTrial = false }: Props) {
+export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', onBillingPeriodChange, businessId, isTrial = false, onSuccess }: Props) {
     const router = useRouter();
     const { user } = useAuthStore();
     const subscribeMutation = useSubscribe();
+    const { data: addons = [] } = useAddOns();
     const [isProcessing, setIsProcessing] = useState(false);
+    const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
+
+    const toggleAddon = (id: string) => {
+        setSelectedAddonIds(prev => 
+            prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+        );
+    };
 
     const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,13 +61,19 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     businessId: resolvedBusinessId,
                     planId: plan.id,
                     billingPeriod,
-                    paymentReference: `mock-ref-${Date.now()}`
+                    paymentReference: `mock-ref-${Date.now()}`,
+                    addonIds: selectedAddonIds,
+                    addonQuantities: selectedAddonIds.map(() => 1)
                 }, {
                     onSuccess: () => {
                         toast.success(`Welcome to the ${plan.name} plan!`);
-                        router.push('/dashboard/business-link');
-                        setIsProcessing(false);
-                        onClose();
+                        if (onSuccess) {
+                            onSuccess();
+                        } else {
+                            router.push('/dashboard/business-link');
+                            setIsProcessing(false);
+                            onClose();
+                        }
                     },
                     onError: (error) => {
                         setIsProcessing(false);
@@ -88,19 +105,23 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     planId: plan.id,
                     billingPeriod,
                     paymentReference: response.reference,
-                    isTrial: isTrial
+                    isTrial: isTrial,
+                    addonIds: selectedAddonIds,
+                    addonQuantities: selectedAddonIds.map(() => 1)
                 }, {
                     onSuccess: () => {
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
                         
-                        // Force a small delay to ensure toast is seen and router is ready
-                        setTimeout(() => {
-                            router.push('/dashboard/business-link');
-                            // We don't necessarily need to onClose if we are redirecting,
-                            // but it helps if the redirect is slow.
-                            onClose();
-                            setIsProcessing(false);
-                        }, 100);
+                        if (onSuccess) {
+                            onSuccess();
+                        } else {
+                            // Fallback if no onSuccess provided
+                            setTimeout(() => {
+                                router.push('/dashboard/business-link');
+                                onClose();
+                                setIsProcessing(false);
+                            }, 100);
+                        }
                     },
                     onError: (error) => {
                         setIsProcessing(false);
@@ -135,9 +156,18 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         const base = getPriceByCycle();
         if (base === undefined) return null;
 
+        const addonCost = selectedAddonIds.reduce((sum, id) => {
+            const addon = addons.find(a => a.id === id);
+            if (!addon) return sum;
+            if (billingPeriod === 'yearly') return sum + (addon.price * 12);
+            if (billingPeriod === 'quarterly') return sum + (addon.price * 3);
+            return sum + addon.price;
+        }, 0);
+
+        const total = base + addonCost;
+
         if (billingPeriod === 'quarterly') {
-            const perMonth = Math.floor(base / 3);
-            const total = base;
+            const perMonth = Math.floor(total / 3);
             return {
                 perMonth,
                 total,
@@ -147,8 +177,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             };
         }
         if (billingPeriod === 'yearly') {
-            const perMonth = Math.floor(base / 12);
-            const total = base;
+            const perMonth = Math.floor(total / 12);
             return {
                 perMonth,
                 total,
@@ -157,7 +186,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 months: 12,
             };
         }
-        return { perMonth: base, total: base, label: 'Charged monthly', savings: 0, months: 1 };
+        return { perMonth: total, total, label: 'Charged monthly', savings: 0, months: 1 };
     };
 
     const breakdown = getChargeBreakdown();
@@ -223,6 +252,18 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         </div>
                     )}
                 </div>
+
+                {/* Add-on Selection */}
+                {!isTrial && addons.length > 0 && (
+                    <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6">
+                        <AddOnSelectionList 
+                            addons={addons.filter(a => a.isActive)}
+                            selectedIds={selectedAddonIds}
+                            onToggle={toggleAddon}
+                            billingPeriod={billingPeriod}
+                        />
+                    </div>
+                )}
 
                 {/* Secure Info */}
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex gap-4">

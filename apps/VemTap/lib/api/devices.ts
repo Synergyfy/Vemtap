@@ -137,3 +137,20 @@ export const fetchDeviceByCode = async (code: string): Promise<{
 }> => {
     return await api.get(`/tap/context/${code}`);
 };
+export const fetchContextByUsername = async (username: string): Promise<{ 
+    business: BusinessData & { id: string }; 
+    branch: { 
+        id: string; 
+        name: string; 
+        welcomeMessage?: string; 
+        logoUrl?: string; 
+        productCount?: number; 
+        serviceCount?: number; 
+        offerCount?: number;
+        engagement?: any;
+    }; 
+    device: Device;
+    qrThriveCodes?: any[];
+}> => {
+    return await api.get(`/tap/context-by-username/${username}`);
+};

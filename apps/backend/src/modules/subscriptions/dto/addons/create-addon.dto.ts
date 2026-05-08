@@ -75,7 +75,7 @@ export class CreateAddonDto {
     example: 15000,
   })
   @IsNumber()
-  @Min(0)
+  @Min(1)
   price: number;
 
   @ApiPropertyOptional({

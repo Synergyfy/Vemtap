@@ -9,10 +9,13 @@ import { useQuery } from '@tanstack/react-query';
 import { usePricingPlans } from '@/services/pricing/hooks';
 import { useActiveSubscription, useSubscribe } from '@/services/subscriptions/hooks';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
+import AddOnPurchaseModal from '@/components/dashboard/AddOnPurchaseModal';
+import SuccessModal from '@/components/dashboard/SuccessModal';
 import TrialCountdown from '@/components/dashboard/TrialCountdown';
 import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
-import { Crown, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
+import { Crown, ShieldCheck, CheckCircle2, Loader2, Sparkles, Box, Zap, ShoppingCart, Plus, TrendingUp } from 'lucide-react';
+import { useAddOns, usePurchaseAddOn, useMyActiveAddOns } from '@/services/addons/hooks';
 
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
@@ -21,7 +24,9 @@ export default function DashboardPricingPage() {
     const { user } = useAuthStore();
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
+    const [selectedAddon, setSelectedAddon] = useState<any>(null);
     const [isTrialSelection, setIsTrialSelection] = useState(false);
+    const [successData, setSuccessData] = useState<{ title: string; message: string } | null>(null);
 
     const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
 
@@ -39,8 +44,11 @@ export default function DashboardPricingPage() {
 
     const { activeSubscription: subscription, fetchSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
     const subscribeMutation = useSubscribe();
+    const { data: addons = [], isLoading: addonsLoading } = useAddOns();
+    const { data: myActiveAddons = [], isLoading: myAddonsLoading } = useMyActiveAddOns();
+    const purchaseAddOnMutation = usePurchaseAddOn();
 
-    const isLoading = plansLoading || subLoading;
+    const isLoading = plansLoading || subLoading || addonsLoading;
     const freePlan = plans.find((p: PricingPlan) => p.isFree);
     
     // Robust active plan detection
@@ -535,6 +543,166 @@ export default function DashboardPricingPage() {
                 );
             })()}
 
+            {/* Active Add-ons Section */}
+            {myActiveAddons.length > 0 && (
+                <div className="mt-20">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                                <ShieldCheck className="text-emerald-500" />
+                                My Active Power-Ups
+                            </h3>
+                            <p className="text-sm font-medium text-slate-500 mt-1">Currently active benefits and extra capabilities.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {myActiveAddons.map((ba) => {
+                            const addon = ba.addon;
+                            const totalLimit = (addon.additionalLimit || 0) * (ba.quantity || 1);
+                            const capability = addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units';
+                            
+                            return (
+                                <div 
+                                    key={ba.id}
+                                    className="group relative flex flex-col p-6 rounded-[2rem] bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <TrendingUp size={64} className="text-emerald-500" />
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <div className="flex items-center justify-between gap-2 mb-4">
+                                            <div className="size-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <span className="px-2 py-1 bg-emerald-500 text-white text-[8px] font-black rounded-full uppercase tracking-widest shadow-sm">
+                                                    x{ba.quantity || 1} Active
+                                                </span>
+                                                <span className="text-[9px] font-bold text-emerald-600 mt-1">
+                                                    {ba.addon.isRecurring ? 'Auto-renewing' : 'One-time'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                        {addon.type === 'RESOURCE' && addon.additionalLimit && (
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-lg mt-2">
+                                                <TrendingUp size={12} strokeWidth={3} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                                    +{totalLimit} {capability}s Total Boost
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-auto pt-4 border-t border-emerald-100/50 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                {ba.addon.isRecurring ? 'Next Billing' : 'Expires On'}
+                                            </span>
+                                            <span className="text-xs font-black text-slate-700">
+                                                {new Date(ba.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Investment</span>
+                                            <span className="text-xs font-black text-emerald-600">
+                                                ₦{(addon.price * (ba.quantity || 1)).toLocaleString()}
+                                                <span className="text-[9px] opacity-60 ml-0.5">/{addon.isRecurring ? 'mo' : 'once'}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Add-ons Section */}
+            <div className="mt-20">
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                            <Sparkles className="text-primary" />
+                            Business Power-Ups
+                        </h3>
+                        <p className="text-sm font-medium text-slate-500 mt-1">Supercharge your business with targeted add-ons.</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {addons.filter(a => a.isActive).map((addon) => (
+                        <div 
+                            key={addon.id}
+                            className="group relative flex flex-col p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                {addon.type === 'RESOURCE' ? <Box size={64} /> : <Zap size={64} />}
+                            </div>
+
+                            <div className="mb-6">
+                                <div className={`size-12 rounded-2xl flex items-center justify-center mb-4 ${
+                                    addon.type === 'RESOURCE' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
+                                }`}>
+                                    {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
+                                </div>
+                                <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                {addon.type === 'RESOURCE' && addon.additionalLimit && (
+                                   <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full mt-3 border border-emerald-100 shadow-sm transition-transform group-hover:scale-105">
+                                       <TrendingUp size={10} strokeWidth={3} />
+                                       <span className="text-[10px] font-black uppercase tracking-widest">
+                                           + {addon.additionalLimit} {addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units'}s Boost
+                                       </span>
+                                   </div>
+                                )}
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    {addon.type === 'RESOURCE' ? 'Resource Pack' : 'Premium Service'}
+                                </p>
+                            </div>
+
+                            <p className="text-xs font-medium text-slate-500 leading-relaxed mb-6 flex-1">
+                                {addon.description}
+                            </p>
+
+                            <div className="mt-auto">
+                                <div className="flex items-end gap-1 mb-6">
+                                    <span className="text-2xl font-black text-slate-900">₦{addon.price.toLocaleString()}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 mb-1">/mo</span>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        if (!isOwner) {
+                                            toast.error('Only business owners can purchase add-ons');
+                                            return;
+                                        }
+                                        if (!subscription) {
+                                            toast.error('Please subscribe to a plan first');
+                                            return;
+                                        }
+                                        
+                                        setSelectedAddon(addon);
+                                    }}
+                                    disabled={purchaseAddOnMutation.isPending || !isOwner}
+                                    className="w-full h-11 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {purchaseAddOnMutation.isPending ? (
+                                        <Loader2 className="animate-spin" size={14} />
+                                    ) : (
+                                        <>
+                                            <ShoppingCart size={14} />
+                                            Purchase Now
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             {checkoutPlan && (
                 <SubscriptionCheckout
                     isOpen={!!checkoutPlan}
@@ -546,6 +714,43 @@ export default function DashboardPricingPage() {
                     isTrial={isTrialSelection}
                     billingPeriod={checkoutPlan.billingPeriod}
                     onBillingPeriodChange={(cycle) => setCheckoutPlan((prev: any) => ({ ...prev, billingPeriod: cycle }))}
+                    onSuccess={() => {
+                        setCheckoutPlan(null);
+                        setSuccessData({
+                            title: "Subscription Active!",
+                            message: `You have successfully subscribed to the ${checkoutPlan.name} plan. Your business is now powered up!`
+                        });
+                        fetchSubscriptionData();
+                    }}
+                />
+            )}
+
+            {selectedAddon && (
+                <AddOnPurchaseModal
+                    isOpen={!!selectedAddon}
+                    onClose={() => setSelectedAddon(null)}
+                    addon={selectedAddon}
+                    onSuccess={() => {
+                        setSelectedAddon(null);
+                        setSuccessData({
+                            title: "Power-Up Activated!",
+                            message: `The ${selectedAddon.name} add-on has been successfully added to your account.`
+                        });
+                        fetchSubscriptionData();
+                    }}
+                />
+            )}
+
+            {successData && (
+                <SuccessModal
+                    isOpen={!!successData}
+                    onClose={() => setSuccessData(null)}
+                    title={successData.title}
+                    message={successData.message}
+                    onAction={() => {
+                        setSuccessData(null);
+                        router.push('/dashboard');
+                    }}
                 />
             )}
         </div>

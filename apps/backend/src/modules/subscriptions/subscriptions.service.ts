@@ -592,12 +592,15 @@ export class SubscriptionsService {
       quantity: ba.quantity,
     }));
 
-    const addonBranches = addonCapabilities['branches'] || 0;
-    const addonTeamMembers = addonCapabilities['teamMembers'] || 0;
-    const addonAutomations = addonCapabilities['automations'] || 0;
-    const addonCatalogueItems = addonCapabilities['catalogueItems'] || 0;
-    const addonCatalogueCategories = addonCapabilities['catalogueCategories'] || 0;
-    const addonCatalogueOffers = addonCapabilities['catalogueOffers'] || 0;
+    const addonBranches = addonCapabilities['branches'] || addonCapabilities['branchLimit'] || 0;
+    const addonTeamMembers = addonCapabilities['teamMembers'] || addonCapabilities['teamMembersLimit'] || 0;
+    const addonAutomations = addonCapabilities['automations'] || addonCapabilities['automationsLimit'] || 0;
+    const addonCatalogueItems = addonCapabilities['catalogueItems'] || addonCapabilities['maxCatalogueItems'] || 0;
+    const addonCatalogueCategories = addonCapabilities['catalogueCategories'] || addonCapabilities['maxCatalogueCategories'] || 0;
+    const addonCatalogueOffers = addonCapabilities['catalogueOffers'] || addonCapabilities['maxCatalogueOffers'] || 0;
+    const addonLoyalty = addonCapabilities['loyalty'] || addonCapabilities['loyaltyPrograms'] || addonCapabilities['loyaltyLimit'] || 0;
+    const addonAnalytics = addonCapabilities['analytics'] || 0;
+    const addonMessaging = addonCapabilities['messaging'] || 0;
 
     const baseBranchLimit = plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0);
     const finalBranchLimit = typeof baseBranchLimit === 'number'
@@ -637,6 +640,15 @@ export class SubscriptionsService {
       ? baseCatalogueOffersLimit + addonCatalogueOffers
       : baseCatalogueOffersLimit;
 
+    // Pre-calculate final enabled states to use consistently for remaining checks
+    const teamMembersEnabled = plan.teamMembersEnabled || addonTeamMembers > 0;
+    const loyaltyEnabled = plan.loyaltyEnabled || addonLoyalty > 0;
+    const branchesEnabled = plan.branchesEnabled || addonBranches > 0;
+    const automationsEnabled = plan.automationsEnabled || addonAutomations > 0;
+    const catalogueEnabled = plan.catalogueEnabled || addonCatalogueItems > 0 || addonCatalogueCategories > 0 || addonCatalogueOffers > 0;
+    const analyticsEnabled = plan.analyticsEnabled || addonAnalytics > 0;
+    const messagingEnabled = plan.messagingEnabled || addonMessaging > 0;
+
     return {
       plan: plan.name,
       isActive:
@@ -645,10 +657,10 @@ export class SubscriptionsService {
       isTrial: sub?.status === SubscriptionStatus.TRIAL,
       capabilities: {
         teamMembers: {
-          enabled: plan.teamMembersEnabled,
+          enabled: teamMembersEnabled,
           limit: finalTeamLimit,
           used: usedStaff,
-          remaining: !plan.teamMembersEnabled
+          remaining: !teamMembersEnabled
             ? 0
             : finalTeamLimit === 'unlimited'
               ? 'unlimited'
@@ -661,68 +673,70 @@ export class SubscriptionsService {
           remaining: 'unlimited',
         },
         loyaltyPrograms: {
-          enabled: plan.loyaltyEnabled,
+          enabled: loyaltyEnabled,
           limit:
             plan.loyaltyLimit === -1 ? 'unlimited' : (plan.loyaltyLimit ?? 0),
           used: usedLoyaltyPrograms,
-          remaining: !plan.loyaltyEnabled
+          remaining: !loyaltyEnabled
             ? 0
             : plan.loyaltyLimit === -1
               ? 'unlimited'
               : Math.max(0, (plan.loyaltyLimit ?? 0) - usedLoyaltyPrograms),
         },
         branches: {
-          enabled: plan.branchesEnabled,
+          enabled: branchesEnabled,
           limit: finalBranchLimit,
           used: usedBranches,
-          remaining: !plan.branchesEnabled
+          remaining: !branchesEnabled
             ? 0
             : finalBranchLimit === 'unlimited'
               ? 'unlimited'
               : Math.max(0, (finalBranchLimit as number) - usedBranches),
         },
         automations: {
-          enabled: plan.automationsEnabled,
+          enabled: automationsEnabled,
           limit: finalAutomationsLimit,
           used: usedAutomations,
-          remaining: !plan.automationsEnabled
+          remaining: !automationsEnabled
             ? 0
             : finalAutomationsLimit === 'unlimited'
               ? 'unlimited'
               : Math.max(0, (finalAutomationsLimit as number) - usedAutomations),
         },
         analytics: {
-          enabled: plan.analyticsEnabled,
-          level: plan.analyticsLevel as 'basic' | 'advanced' | 'none',
+          enabled: analyticsEnabled,
+          level: analyticsEnabled 
+            ? (plan.analyticsLevel === 'none' ? 'basic' : plan.analyticsLevel as 'basic' | 'advanced') 
+            : 'none',
         },
         messaging: {
-          enabled: plan.messagingEnabled,
+          enabled: messagingEnabled,
         },
         catalogueItems: {
-          enabled: plan.catalogueEnabled,
+          enabled: catalogueEnabled,
           limit: finalCatalogueItemsLimit,
           used: usedCatalogueItems,
-          remaining: !plan.catalogueEnabled
+          remaining: !catalogueEnabled
             ? 0
             : finalCatalogueItemsLimit === 'unlimited'
               ? 'unlimited'
               : Math.max(0, (finalCatalogueItemsLimit as number) - usedCatalogueItems),
         },
         catalogueCategories: {
-          enabled: plan.catalogueEnabled,
+          enabled: catalogueEnabled,
           limit: finalCatalogueCategoriesLimit,
           used: usedCatalogueCategories,
-          remaining: !plan.catalogueEnabled
+          remaining: !catalogueEnabled
             ? 0
             : finalCatalogueCategoriesLimit === 'unlimited'
               ? 'unlimited'
               : Math.max(0, (finalCatalogueCategoriesLimit as number) - usedCatalogueCategories),
         },
         catalogueOffers: {
-          enabled: plan.catalogueEnabled,
+          enabled: catalogueEnabled,
           limit: finalCatalogueOffersLimit,
           used: usedCatalogueOffers,
-          remaining: !plan.catalogueEnabled
+          remaining: !catalogueEnabled
             ? 0
             : finalCatalogueOffersLimit === 'unlimited'
               ? 'unlimited'
