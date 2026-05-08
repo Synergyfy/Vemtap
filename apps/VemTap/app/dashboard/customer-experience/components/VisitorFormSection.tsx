@@ -7,17 +7,11 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 interface VisitorFormSectionProps {
     formAccess: 'required' | 'skip';
     onFormAccessChange: (val: 'required' | 'skip') => void;
-    activeFields: string[];
-    onRemoveField: (field: string) => void;
-    onAddField: () => void;
 }
 
 export function VisitorFormSection({
     formAccess,
     onFormAccessChange,
-    activeFields,
-    onRemoveField,
-    onAddField,
 }: VisitorFormSectionProps) {
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
 
@@ -61,18 +55,6 @@ export function VisitorFormSection({
                         className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-medium text-gray-800 outline-none focus:ring-2 ring-primary/20 focus:border-primary/30 transition-all"
                     />
                 </div>
-                <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">
-                        Success Message
-                    </label>
-                    <input
-                        type="text"
-                        value={engagementSettings.customSuccessMessage || ''}
-                        onChange={(e) => updateEngagementSettings({ customSuccessMessage: e.target.value })}
-                        placeholder="Thank you for visiting our store"
-                        className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-medium text-gray-800 outline-none focus:ring-2 ring-primary/20 focus:border-primary/30 transition-all"
-                    />
-                </div>
             </div>
 
             {/* Form Access */}
@@ -108,33 +90,23 @@ export function VisitorFormSection({
                 </div>
             </div>
 
-            {/* Active Fields */}
+            {/* Standard Fields (Read-only) */}
             <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">
-                    Active Fields
-                </label>
-                <div className="flex flex-wrap gap-2">
-                    {activeFields.map((field) => (
-                        <div
-                            key={field}
-                            className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200 group"
-                        >
-                            <span className="text-sm font-medium text-gray-700">{field}</span>
-                            <button
-                                onClick={() => onRemoveField(field)}
-                                className="text-gray-300 hover:text-red-400 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
+                <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">
+                        Standard Data Collection
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                        <div className="size-1.5 rounded-full bg-gray-300" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Locked</span>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {['Name', 'Phone Number', 'Email Address'].map((field) => (
+                        <div key={field} className="h-10 rounded-xl bg-gray-100/50 border border-gray-100 px-3 flex items-center">
+                            <span className="text-xs font-bold text-gray-400">{field}</span>
                         </div>
                     ))}
-                    <button
-                        onClick={onAddField}
-                        className="text-primary text-sm font-bold flex items-center gap-1 hover:underline px-2"
-                    >
-                        <Plus size={14} />
-                        Add Field
-                    </button>
                 </div>
             </div>
         </div>

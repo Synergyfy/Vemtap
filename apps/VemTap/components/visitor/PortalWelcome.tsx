@@ -21,6 +21,7 @@ import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
 interface PortalWelcomeProps {
     branchName: string;
     logoUrl?: string;
+    welcomeTitle?: string;
     welcomeMessage?: string;
     onAction: (id: string) => void;
     productCount?: number;
@@ -42,6 +43,7 @@ interface PortalWelcomeProps {
 export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
     branchName,
     logoUrl,
+    welcomeTitle,
     welcomeMessage,
     onAction,
     productCount,
@@ -62,8 +64,8 @@ export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
     const isServiceOnly = serviceCount && serviceCount > 0 && (!productCount || productCount === 0);
 
     const dynamicActions = useMemo(() => {
-        const sequenceToUse = ublSequence && ublSequence.length > 0 ? ublSequence : [];
-        if (sequenceToUse.length === 0) return null;
+        if (!ublSequence) return null;
+        const sequenceToUse = ublSequence;
 
         const formMap = new Map(availableForms?.map(f => [f.id, f]) || []);
         const rewardMap = new Map(availableRewards?.map(r => [r.id, r]) || []);
@@ -151,10 +153,10 @@ export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
                     </div>
                 )}
                 <div className="space-y-0.5 flex-grow min-w-0">
-                    <h1 className={cn("text-sm md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight truncate", isPreview && "text-xs font-black")}>
-                        Welcome to {branchName}
+                    <h1 className={cn("text-sm md:text-2xl font-headline font-bold text-on-surface leading-tight tracking-tight break-words", isPreview && "text-[10px] font-black")}>
+                        {welcomeTitle || `Welcome to ${branchName}`}
                     </h1>
-                    <p className={cn("text-on-surface-variant text-[7px] md:text-[10px] max-w-xs font-medium opacity-70 italic truncate", isPreview && "text-[8px]")}>
+                    <p className={cn("text-on-surface-variant text-[7px] md:text-[10px] max-w-xs font-medium opacity-70 italic break-words", isPreview && "text-[8px]")}>
                         {welcomeMessage || "Select an option below"}
                     </p>
                 </div>

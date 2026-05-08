@@ -79,7 +79,7 @@ export default function RewardManagementPage() {
     };
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="p-4 md:p-8 space-y-8">
             {isLoading && !rewards ? (
                 <div className="flex items-center justify-center p-24">
                     <Loader2 className="animate-spin text-primary" size={48} />

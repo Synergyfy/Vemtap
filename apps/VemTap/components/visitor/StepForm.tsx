@@ -77,10 +77,13 @@ export const StepForm: React.FC<StepFormProps> = ({
             key="form" 
             initial={{ opacity: 0, y: 10 }} 
             animate={{ opacity: 1, y: 0 }} 
-            className={cn(presets.card, "flex flex-col p-0 overflow-hidden max-h-[90vh]", isPreview && "p-0 rounded-[2rem] shadow-none border-none bg-transparent")}
+            className={cn(
+                "flex flex-col p-0 overflow-hidden", 
+                isPreview ? "w-full h-full bg-white" : cn(presets.card, "max-h-[90vh]")
+            )}
         >
             {/* Fixed Header */}
-            <div className={cn("shrink-0 p-6 md:p-8 border-b border-slate-50 bg-white relative", isPreview && "p-4 pb-3")}>
+            <div className={cn("shrink-0 p-6 md:p-8 border-b border-slate-50 bg-white relative", isPreview && "p-4 pb-2")}>
                 <button
                     onClick={onBack}
                     disabled={isSubmitting}
@@ -110,7 +113,7 @@ export const StepForm: React.FC<StepFormProps> = ({
 
                 <VisitorHeader logoUrl={logoUrl} storeName={storeName} isPreview={isPreview} />
 
-                <div className={cn("mt-4", isPreview && "mt-2")}>
+                <div className={cn("mt-3", isPreview && "mt-1.5")}>
                     <span className={cn(presets.tag, isPreview && "mb-1.5")}>{customWelcomeTag || "Quick Link"}</span>
                     <h1 className={cn(
                         "text-xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-1.5 md:mb-2 text-left",
@@ -128,7 +131,7 @@ export const StepForm: React.FC<StepFormProps> = ({
             </div>
 
             {/* Scrollable Body */}
-            <div className={cn("flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide", isPreview && "p-4 pt-2")}>
+            <div className={cn("flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide", isPreview && "px-3 pt-1 pb-4")}>
                 {isDeviceSynced && (
                     <div className="mb-8 p-4 rounded-xl bg-blue-50/50 border border-blue-100/50 flex items-center justify-between">
                         <div className="flex items-center gap-3">

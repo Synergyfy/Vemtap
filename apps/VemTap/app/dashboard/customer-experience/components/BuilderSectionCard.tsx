@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface BuilderSectionCardProps {
     id: string;
-    title: string;
+    title: React.ReactNode;
     subtitle?: string;
     icon: React.ReactNode;
     enabled: boolean;
@@ -24,6 +24,7 @@ interface BuilderSectionCardProps {
     accentColor?: string;
     dragHandleProps?: any;
     showDragHandle?: boolean;
+    onFocus?: () => void;
 }
 
 export function BuilderSectionCard({
@@ -45,12 +46,14 @@ export function BuilderSectionCard({
     accentColor = 'primary',
     dragHandleProps,
     showDragHandle = true,
+    onFocus,
 }: BuilderSectionCardProps) {
     const [expanded, setExpanded] = useState(defaultExpanded);
     const hasContent = !!children;
 
     return (
         <div
+            onClick={onFocus}
             className={cn(
                 'bg-white rounded-2xl border-2 shadow-sm overflow-hidden transition-all duration-200',
                 expanded && hasContent ? 'border-primary/40 shadow-md' : 'border-gray-100 hover:border-gray-200'
