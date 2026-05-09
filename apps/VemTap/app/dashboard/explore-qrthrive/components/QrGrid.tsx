@@ -11,6 +11,8 @@ import { QrThriveQRCode } from '@/services/qr-thrive/types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import DeleteConfirmationModal from '@/components/dashboard/DeleteConfirmationModal';
+import { QrPreview } from './QrPreview';
+import QrViewModal from './QrViewModal';
 
 const QR_THRIVE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_URL || 'http://localhost:5173';
 
@@ -43,6 +45,9 @@ export const QrGrid: React.FC<QrGridProps> = ({
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedQr, setSelectedQr] = useState<QrThriveQRCode | null>(null);
+  const qrRefs = useRef<Record<string, any>>({});
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +63,12 @@ export const QrGrid: React.FC<QrGridProps> = ({
   const handleDeleteClick = (id: string) => {
     setDeletingId(id);
     setDeleteModalOpen(true);
+    setMenuOpen(null);
+  };
+
+  const handlePreviewClick = (qr: QrThriveQRCode) => {
+    setSelectedQr(qr);
+    setViewModalOpen(true);
     setMenuOpen(null);
   };
 
@@ -94,14 +105,18 @@ export const QrGrid: React.FC<QrGridProps> = ({
 
   const handleDownloadInternal = (id: string, format: 'png' | 'svg' | 'jpeg') => {
     const qr = codes.find(c => c.id === id);
-    if (qr && onDownload) {
-      onDownload(qr, format);
-    } else if (qr) {
-      const link = document.createElement('a');
-      link.href = getQrUrl(qr);
-      link.download = `${qr.name}.${format}`;
-      link.click();
+    const qrInstance = qrRefs.current[id];
+
+    if (qrInstance) {
+      qrInstance.download({
+        name: qr?.name || 'qrcode',
+        extension: format === 'jpeg' ? 'jpg' : format
+      });
       toast.success('Download started');
+    } else if (qr && onDownload) {
+      onDownload(qr, format);
+    } else {
+      toast.error('QR code not ready for download');
     }
     setMenuOpen(null);
   };
@@ -196,6 +211,13 @@ export const QrGrid: React.FC<QrGridProps> = ({
                     <Archive className="w-4 h-4" /> {qr.status === 'archived' ? 'Restore' : 'Archive'}
                   </button>
 
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handlePreviewClick(qr); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Preview
+                  </button>
+
                   <div className="border-t border-slate-100 my-1" />
                   <div className="px-4 py-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Download</p>
@@ -230,16 +252,24 @@ export const QrGrid: React.FC<QrGridProps> = ({
           </div>
 
           <div className="flex-1 bg-slate-50 rounded-2xl p-4 mb-6 flex items-center gap-4 border border-slate-100">
-            <div className="w-20 h-20 bg-white rounded-xl shadow-inner flex items-center justify-center p-3 relative group/qr">
-               <QrCode className="w-full h-full text-slate-900" />
-               <a 
-                href={getQrUrl(qr)}
-                target="_blank"
-                rel="noreferrer"
-                className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover/qr:opacity-100 transition-opacity rounded-xl flex items-center justify-center"
-              >
-                <ExternalLink className="w-6 h-6 text-blue-600" />
-               </a>
+            <div 
+              className="w-20 h-20 bg-white rounded-xl shadow-inner flex items-center justify-center relative group/qr overflow-hidden cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); handlePreviewClick(qr); }}
+            >
+               <div className="scale-[0.4] transform-gpu">
+                  <QrPreview 
+                    data={qr.shortUrl}
+                    design={qr.design}
+                    frame={{ type: 'none' }}
+                    logo={qr.logo}
+                    width={180}
+                    height={180}
+                    onReady={(inst) => { qrRefs.current[qr.id] = inst; }}
+                  />
+               </div>
+               <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover/qr:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                <ExternalLink className="w-5 h-5 text-blue-600" />
+               </div>
             </div>
             <div className="flex-1 min-w-0 space-y-2">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Last Updated</p>
@@ -281,6 +311,15 @@ export const QrGrid: React.FC<QrGridProps> = ({
       onConfirm={handleDeleteConfirm}
       title="Delete QR Code"
       description="Are you sure you want to delete this QR code? This action cannot be undone."
+    />
+
+    <QrViewModal
+      isOpen={viewModalOpen}
+      onClose={() => {
+        setViewModalOpen(false);
+        setSelectedQr(null);
+      }}
+      qr={selectedQr}
     />
   </>
   );
