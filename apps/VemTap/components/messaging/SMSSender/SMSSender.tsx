@@ -189,14 +189,14 @@ export default function SMSSender() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-6 space-y-6 animate-in fade-in duration-500 pb-32">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 animate-in fade-in duration-500 pb-40 md:pb-32">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                 
                 {/* Left Side: Configuration */}
                 <div className="lg:col-span-2 space-y-6">
                     
                     {/* Recipient Selection Card */}
-                    <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 p-5 md:p-8 shadow-sm transition-all hover:shadow-md">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recipient Selection</h3>
                             <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
@@ -204,7 +204,7 @@ export default function SMSSender() {
                                     <button
                                         key={mode}
                                         onClick={() => setRecipientMode(mode)}
-                                        className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${
+                                        className={`px-3 md:px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${
                                             recipientMode === mode 
                                             ? 'bg-white text-primary shadow-sm' 
                                             : 'text-slate-400 hover:text-slate-600'
@@ -217,17 +217,17 @@ export default function SMSSender() {
                         </div>
 
                         {recipientMode === 'All' && (
-                            <div className="bg-slate-50 border border-slate-100 p-6 rounded-2xl flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary">
-                                        <Users size={24} />
+                            <div className="bg-slate-50 border border-slate-100 p-4 md:p-6 rounded-2xl flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 md:gap-4">
+                                    <div className="size-10 md:size-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary shrink-0">
+                                        <Users size={20} />
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-800">All Contacts</p>
-                                        <p className="text-xs text-slate-400 font-medium">{visitors.length.toLocaleString()} total visitors will receive this message.</p>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-bold text-slate-800 leading-tight">All Contacts</p>
+                                        <p className="text-[11px] md:text-xs text-slate-400 font-medium mt-0.5 truncate">{visitors.length.toLocaleString()} visitors will receive this.</p>
                                     </div>
                                 </div>
-                                <CheckCircle className="text-primary" size={24} />
+                                <CheckCircle className="text-primary shrink-0" size={24} />
                             </div>
                         )}
 
@@ -245,16 +245,16 @@ export default function SMSSender() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-1">
                                         {selectedContacts.map(contact => (
                                             <div key={contact.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-8 rounded-full bg-slate-50 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="size-8 rounded-full bg-slate-50 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase shrink-0">
                                                         {contact.name?.[0] || contact.phone?.[0]}
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[11px] font-bold text-slate-800">{contact.name || 'Unknown'}</p>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[11px] font-bold text-slate-800 truncate">{contact.name || 'Unknown'}</p>
                                                         <p className="text-[9px] text-slate-400 font-medium">{contact.phone}</p>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => toggleContact(contact.id)} className="text-slate-300 hover:text-red-500 transition-colors">
+                                                <button onClick={() => toggleContact(contact.id)} className="text-slate-300 hover:text-red-500 transition-colors shrink-0">
                                                     <X size={14} />
                                                 </button>
                                             </div>
@@ -267,15 +267,15 @@ export default function SMSSender() {
                     </div>
 
                     {/* SMS Composer Card */}
-                    <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 p-5 md:p-8 shadow-sm transition-all hover:shadow-md">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">SMS Composer</h3>
                             
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 md:gap-3">
                                 {/* Form Attachment */}
-                                <div className="relative">
+                                <div className="relative flex-1 md:flex-none">
                                     <select 
-                                        className="appearance-none bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 pr-10 text-[10px] font-bold text-blue-600 outline-none focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer"
+                                        className="w-full md:w-auto appearance-none bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 pr-10 text-[10px] font-bold text-blue-600 outline-none focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer"
                                         value={selectedFormId}
                                         onChange={(e) => setSelectedFormId(e.target.value)}
                                     >
@@ -288,9 +288,9 @@ export default function SMSSender() {
                                 </div>
 
                                 {/* Template Selection */}
-                                <div className="relative">
+                                <div className="relative flex-1 md:flex-none">
                                     <select 
-                                        className="appearance-none bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 pr-10 text-[10px] font-bold text-slate-600 outline-none focus:border-primary/20 transition-all cursor-pointer"
+                                        className="w-full md:w-auto appearance-none bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 pr-10 text-[10px] font-bold text-slate-600 outline-none focus:border-primary/20 transition-all cursor-pointer"
                                         value={selectedTemplateId}
                                         onChange={(e) => {
                                             const tpl = templates.find(t => t.id === e.target.value);
@@ -317,9 +317,9 @@ export default function SMSSender() {
                                 value={customContent}
                                 onChange={(e) => setCustomContent(e.target.value)}
                                 placeholder="Type your message here..."
-                                className="w-full h-48 p-6 bg-gray-50 border border-gray-100 rounded-[2rem] text-sm font-medium leading-relaxed resize-none outline-none focus:bg-white focus:border-primary/20 transition-all"
+                                className="w-full h-40 md:h-48 p-5 md:p-6 bg-gray-50 border border-gray-100 rounded-[1.5rem] md:rounded-[2rem] text-sm font-medium leading-relaxed resize-none outline-none focus:bg-white focus:border-primary/20 transition-all"
                             />
-                            <div className="absolute bottom-6 right-6 flex items-center gap-3">
+                            <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex items-center gap-3">
                                 <div className="relative">
                                     <button 
                                         type="button"
@@ -332,15 +332,17 @@ export default function SMSSender() {
                                     {showEmojiPicker && (
                                         <div className="absolute bottom-full right-0 mb-4 z-50 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
                                             <div className="fixed inset-0 z-[-1]" onClick={() => setShowEmojiPicker(false)} />
-                                            <EmojiPicker 
-                                                onEmojiClick={(emojiData: EmojiClickData) => {
-                                                    setCustomContent(prev => prev + emojiData.emoji);
-                                                    setShowEmojiPicker(false);
-                                                }}
-                                                autoFocusSearch={false}
-                                                width={320}
-                                                height={400}
-                                            />
+                                            <div className="max-w-[calc(100vw-2rem)]">
+                                                <EmojiPicker 
+                                                    onEmojiClick={(emojiData: EmojiClickData) => {
+                                                        setCustomContent(prev => prev + emojiData.emoji);
+                                                        setShowEmojiPicker(false);
+                                                    }}
+                                                    autoFocusSearch={false}
+                                                    width="100%"
+                                                    height={350}
+                                                />
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -359,7 +361,7 @@ export default function SMSSender() {
                                     key={variable.value}
                                     type="button"
                                     onClick={() => setCustomContent(prev => prev + variable.value)}
-                                    className="px-3 py-1.5 bg-white border border-gray-100 text-slate-600 rounded-lg text-[10px] font-bold hover:border-primary/30 hover:text-primary transition-all shadow-sm active:scale-95"
+                                    className="px-2.5 py-1.5 bg-white border border-gray-100 text-slate-600 rounded-lg text-[9px] md:text-[10px] font-bold hover:border-primary/30 hover:text-primary transition-all shadow-sm active:scale-95"
                                 >
                                     + {variable.label}
                                 </button>
@@ -367,33 +369,33 @@ export default function SMSSender() {
                         </div>
 
                         {/* Metrics Grid */}
-                        <div className="grid grid-cols-3 gap-4 mt-6">
-                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Characters</p>
-                                <p className="text-sm font-bold text-slate-700">
-                                    <span className={charCount > 160 ? 'text-amber-500' : 'text-slate-700'}>{charCount}</span> / 160
+                        <div className="grid grid-cols-3 gap-2 md:gap-4 mt-6">
+                            <div className="bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 text-center">
+                                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">Chars</p>
+                                <p className="text-xs md:text-sm font-bold text-slate-700 leading-none">
+                                    <span className={charCount > 160 ? 'text-amber-500' : 'text-slate-700'}>{charCount}</span>/160
                                 </p>
                             </div>
-                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Units</p>
-                                <p className="text-sm font-bold text-slate-700">{smsTokens} SMS</p>
+                            <div className="bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 text-center">
+                                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">Units</p>
+                                <p className="text-xs md:text-sm font-bold text-slate-700 leading-none">{smsTokens}</p>
                             </div>
-                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Estimated Credit</p>
-                            <p className="text-sm font-bold text-primary">₦{totalCost}</p>
+                            <div className="bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 text-center">
+                                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">Credit</p>
+                                <p className="text-xs md:text-sm font-bold text-primary leading-none">₦{totalCost}</p>
                             </div>
                         </div>
 
                         {/* High Risk Alert */}
                         {hasHighRiskWords && (
-                            <div className="mt-6 bg-red-50 border border-red-100 p-5 rounded-2xl flex gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="size-10 bg-white rounded-xl flex items-center justify-center text-red-500 shrink-0 shadow-sm">
-                                    <AlertTriangle size={20} />
+                            <div className="mt-6 bg-red-50 border border-red-100 p-4 md:p-5 rounded-2xl flex gap-3 md:gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="size-8 md:size-10 bg-white rounded-xl flex items-center justify-center text-red-500 shrink-0 shadow-sm">
+                                    <AlertTriangle size={18} />
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-black text-red-700 uppercase tracking-wide">High Risk Words Detected</h4>
-                                    <p className="text-[11px] text-red-600/80 leading-relaxed mt-1">
-                                        Your message contains suspicious links or urgent phrases. This may trigger carrier spam filters or be flagged as phishing.
+                                    <h4 className="text-[10px] md:text-xs font-black text-red-700 uppercase tracking-wide">High Risk Words</h4>
+                                    <p className="text-[10px] md:text-[11px] text-red-600/80 leading-relaxed mt-1">
+                                        Suspicious links or phrases detected. May trigger spam filters.
                                     </p>
                                 </div>
                             </div>
@@ -405,48 +407,48 @@ export default function SMSSender() {
                 <div className="space-y-6">
                     
                     {/* Phone Preview */}
-                    <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm flex flex-col items-center">
-                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 w-full">Live Preview</h3>
-                        <div className="relative w-[280px] h-[560px] bg-slate-950 rounded-[3.5rem] border-[10px] border-slate-900 shadow-2xl overflow-hidden ring-1 ring-white/10">
+                    <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 p-5 md:p-8 shadow-sm flex flex-col items-center">
+                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 w-full text-center md:text-left">Live Preview</h3>
+                        <div className="relative w-full max-w-[260px] md:max-w-[280px] aspect-[1/2] md:h-[560px] bg-slate-950 rounded-[2.5rem] md:rounded-[3.5rem] border-[8px] md:border-[10px] border-slate-900 shadow-2xl overflow-hidden ring-1 ring-white/10 mx-auto">
                             {/* Reflection effect */}
                             <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-20" />
                             
                             {/* Notch */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-7 bg-slate-900 rounded-b-3xl z-30 flex items-center justify-center">
-                                <div className="w-10 h-1 bg-slate-800 rounded-full" />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 md:w-28 h-5 md:h-7 bg-slate-900 rounded-b-2xl md:rounded-b-3xl z-30 flex items-center justify-center">
+                                <div className="w-8 md:w-10 h-0.5 md:h-1 bg-slate-800 rounded-full" />
                             </div>
                             
-                            <div className="h-full bg-slate-50 pt-10 flex flex-col relative">
+                            <div className="h-full bg-slate-50 pt-8 md:pt-10 flex flex-col relative">
                                 {/* iOS style header */}
-                                <div className="px-5 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center gap-3 z-10">
+                                <div className="px-4 py-3 md:px-5 md:py-4 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center gap-2 md:gap-3 z-10">
                                     {businessLogo ? (
-                                        <div className="size-9 rounded-full overflow-hidden border border-gray-100 relative bg-white">
+                                        <div className="size-7 md:size-9 rounded-full overflow-hidden border border-gray-100 relative bg-white shrink-0">
                                             <Image src={businessLogo} alt={businessName} fill className="object-cover" />
                                         </div>
                                     ) : (
-                                        <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                        <div className="size-7 md:size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] md:text-xs shrink-0">
                                             {businessName[0]}
                                         </div>
                                     )}
-                                    <div>
-                                        <p className="text-[11px] font-black text-slate-800 leading-none">{businessName}</p>
-                                        <p className="text-[8px] text-emerald-500 font-bold mt-1 flex items-center gap-1">
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] md:text-[11px] font-black text-slate-800 leading-none truncate">{businessName}</p>
+                                        <p className="text-[7px] md:text-[8px] text-emerald-500 font-bold mt-1 flex items-center gap-1">
                                             <div className="size-1 bg-emerald-500 rounded-full animate-pulse" />
                                             Active Now
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4">
+                                <div className="flex-1 p-3 md:p-4 overflow-y-auto custom-scrollbar space-y-4">
                                     <div className="text-center">
-                                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-full">Today</span>
+                                        <span className="text-[8px] md:text-[9px] font-bold text-slate-300 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-full">Today</span>
                                     </div>
                                     
                                     {finalContent && (
-                                        <div className="bg-primary text-white p-4 rounded-2xl rounded-tr-none text-[11px] leading-relaxed shadow-lg shadow-primary/10 animate-in zoom-in-95 slide-in-from-bottom-2 duration-300">
+                                        <div className="bg-primary text-white p-3 md:p-4 rounded-2xl rounded-tr-none text-[10px] md:text-[11px] leading-relaxed shadow-lg shadow-primary/10 animate-in zoom-in-95 slide-in-from-bottom-2 duration-300">
                                             {finalContent}
                                             <div className="flex items-center justify-end gap-1 mt-2">
-                                                <p className="text-[8px] text-white/60">Now · SMS</p>
+                                                <p className="text-[7px] md:text-[8px] text-white/60">Now · SMS</p>
                                                 <Check size={8} className="text-white/60" />
                                             </div>
                                         </div>
@@ -454,10 +456,10 @@ export default function SMSSender() {
                                 </div>
 
                                 {/* Mock Keyboard Area */}
-                                <div className="h-20 bg-gray-100/50 border-t border-gray-100 flex items-center px-4 gap-2">
-                                    <div className="flex-1 h-9 bg-white rounded-full border border-gray-200" />
-                                    <div className="size-9 rounded-full bg-primary flex items-center justify-center text-white">
-                                        <Send size={14} />
+                                <div className="h-14 md:h-20 bg-gray-100/50 border-t border-gray-100 flex items-center px-4 gap-2">
+                                    <div className="flex-1 h-7 md:h-9 bg-white rounded-full border border-gray-200" />
+                                    <div className="size-7 md:size-9 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
+                                        <Send size={12} className="md:w-[14px] md:h-[14px]" />
                                     </div>
                                 </div>
                             </div>
@@ -465,7 +467,7 @@ export default function SMSSender() {
                     </div>
 
                     {/* Delivery Speed Card */}
-                    <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 p-5 md:p-8 shadow-sm transition-all hover:shadow-md">
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Estimated Delivery</h3>
                         
                         <div className="space-y-6">
@@ -476,7 +478,7 @@ export default function SMSSender() {
                                     </div>
                                     <span className="text-xs font-bold text-slate-600">Avg. Speed</span>
                                 </div>
-                                <span className="text-sm font-black text-slate-800">2.4 seconds</span>
+                                <span className="text-sm font-black text-slate-800">2.4s</span>
                             </div>
 
                             <div className="relative h-1.5 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
@@ -487,45 +489,36 @@ export default function SMSSender() {
                                 <span className="text-[10px] font-bold text-slate-400 uppercase">Success Rate</span>
                                 <span className="text-sm font-black text-emerald-500">98.2%</span>
                             </div>
-
-                            <div className="bg-slate-50 rounded-2xl p-4 flex gap-3 border border-slate-100">
-                                <div className="size-6 shrink-0 flex items-center justify-center text-slate-400">
-                                    <Info size={14} />
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                                    Global routing optimized for delivery. High traffic expected in the UK region.
-                                </p>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Bottom Sticky Action Bar */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-5xl px-6 z-50">
-                <div className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl p-4 shadow-2xl flex items-center justify-between gap-6 ring-1 ring-black/5">
-                    <div className="flex gap-8 pl-4">
+            <div className="fixed bottom-0 md:bottom-6 left-0 md:left-1/2 md:-translate-x-1/2 w-full md:max-w-5xl px-0 md:px-6 z-50">
+                <div className="bg-white/95 md:bg-white/80 backdrop-blur-xl border-t md:border border-gray-100 md:border-white/20 md:rounded-3xl p-4 md:p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] md:shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-6 ring-1 ring-black/5">
+                    <div className="flex justify-between md:justify-start md:gap-8 px-4 md:pl-4">
                         <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Recipients</p>
-                            <p className="text-xl font-black text-slate-800">
+                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Recipients</p>
+                            <p className="text-lg md:text-xl font-black text-slate-800 leading-none mt-1">
                                 {totalRecipients.toLocaleString()}
                             </p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Cost</p>
-                            <p className="text-xl font-black text-primary">₦{totalCost}</p>
+                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest text-right md:text-left">Total Cost</p>
+                            <p className="text-lg md:text-xl font-black text-primary leading-none mt-1 text-right md:text-left">₦{totalCost}</p>
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
-                        <button className="h-14 px-8 rounded-2xl border border-gray-100 font-bold text-slate-600 hover:bg-gray-50 transition-all flex items-center gap-3">
+                    <div className="flex gap-2 md:gap-3 px-4 md:px-0 pb-2 md:pb-0">
+                        <button className="flex-1 md:flex-none h-12 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border border-gray-100 font-bold text-slate-600 hover:bg-gray-50 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base">
                             <Clock size={18} />
                             Schedule
                         </button>
                         <button 
                             onClick={handleSend}
                             disabled={isSending || !customContent.trim()}
-                            className="h-14 px-10 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all flex items-center gap-3"
+                            className="flex-[1.5] md:flex-none h-12 md:h-14 px-6 md:px-10 bg-primary text-white font-black rounded-xl md:rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base"
                         >
                             {isSending ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -540,141 +533,138 @@ export default function SMSSender() {
 
             {/* Modal for Manual Selection */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center md:p-4 animate-in fade-in duration-200">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="relative w-full max-w-4xl bg-white rounded-[1.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="relative w-full h-full md:h-auto md:max-w-4xl bg-white md:rounded-[1.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col md:max-h-[90vh]">
                         
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100 bg-white sticky top-0 z-10">
+                            <div>
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Select Visitors</h3>
+                                <p className="text-[10px] text-slate-400 font-bold mt-0.5">{tempSelectedIds.length} selected</p>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-50 rounded-full transition-colors md:hidden">
+                                <X size={20} className="text-slate-400" />
+                            </button>
+                        </div>
+
                         {/* Header Filters */}
-                        <div className="p-6 border-b border-gray-100 space-y-6">
-                            <div className="flex flex-col md:flex-row gap-4">
+                        <div className="p-4 md:p-6 border-b border-gray-100 space-y-4 bg-gray-50/30">
+                            <div className="flex flex-col md:flex-row gap-3">
                                 <div className="flex-1 relative">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Search size={18} />
+                                        <Search size={16} />
                                     </div>
                                     <input 
                                         type="text"
-                                        placeholder="Search by name or phone..."
+                                        placeholder="Search name or phone..."
                                         value={modalSearch}
                                         onChange={(e) => setModalSearch(e.target.value)}
-                                        className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-xl text-sm font-medium outline-none focus:border-primary transition-all"
+                                        className="w-full h-11 pl-11 pr-4 bg-white border border-gray-200 rounded-xl text-sm font-medium outline-none focus:border-primary transition-all shadow-sm"
                                     />
                                 </div>
-                                <div className="flex gap-3">
-                                    <div className="relative">
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1 md:flex-none">
                                         <select 
                                             value={modalTagFilter}
                                             onChange={(e) => setModalTagFilter(e.target.value as TagFilter)}
-                                            className="appearance-none h-12 px-10 border border-gray-200 rounded-xl text-slate-600 text-sm font-bold outline-none hover:bg-gray-50 transition-all cursor-pointer"
+                                            className="appearance-none w-full h-11 pl-10 pr-10 border border-gray-200 rounded-xl text-slate-600 text-[11px] md:text-sm font-bold outline-none bg-white hover:bg-gray-50 transition-all cursor-pointer shadow-sm"
                                         >
                                             <option value="all">All Visitors</option>
-                                            <option value="new">New Visitors (1 visit)</option>
-                                            <option value="returning">Returning Visitors (1+ visits)</option>
+                                            <option value="new">New</option>
+                                            <option value="returning">Returning</option>
                                         </select>
-                                        <Tag size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
+                                    <button 
+                                        onClick={toggleAllModalContacts}
+                                        className="h-11 px-4 bg-white border border-gray-200 rounded-xl text-[11px] font-bold text-slate-600 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2 shrink-0"
+                                    >
+                                        <Check size={14} className={tempSelectedIds.length === filteredModalContacts.length ? 'text-primary' : 'text-slate-400'} />
+                                        {tempSelectedIds.length === filteredModalContacts.length ? 'Deselect' : 'Select All'}
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Table Content */}
-                        <div className="flex-1 overflow-x-auto custom-scrollbar">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="border-b border-gray-100">
-                                        <th className="p-4 text-left w-14">
-                                            <div 
-                                                onClick={toggleAllModalContacts}
-                                                className={`size-5 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${
-                                                    tempSelectedIds.length === filteredModalContacts.length 
-                                                    ? 'bg-primary border-primary' 
-                                                    : 'border-gray-200 bg-white'
-                                                }`}
-                                            >
-                                                {tempSelectedIds.length === filteredModalContacts.length && <Check size={12} className="text-white" strokeWidth={4} />}
+                        {/* List Content */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="divide-y divide-gray-50">
+                                {filteredModalContacts.map(contact => {
+                                    const isSelected = tempSelectedIds.includes(contact.id);
+                                    const isReturning = (Number(contact.visits) || 0) > 1;
+                                    return (
+                                        <div 
+                                            key={contact.id}
+                                            onClick={() => toggleModalContact(contact.id)}
+                                            className={`flex items-center gap-3 p-4 transition-all cursor-pointer ${isSelected ? 'bg-primary/5' : 'hover:bg-gray-50'}`}
+                                        >
+                                            <div className={`size-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                                                isSelected ? 'bg-primary border-primary' : 'border-gray-200 bg-white'
+                                            }`}>
+                                                {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
                                             </div>
-                                        </th>
-                                        <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-wider">Contact Name</th>
-                                        <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-wider">Phone Number</th>
-                                        <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-wider">Tags</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredModalContacts.map(contact => {
-                                        const isSelected = tempSelectedIds.includes(contact.id);
-                                        const isReturning = (Number(contact.visits) || 0) > 1;
-                                        return (
-                                            <tr 
-                                                key={contact.id} 
-                                                className={`border-b border-gray-50 transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-gray-50'}`}
-                                            >
-                                                <td className="p-4">
-                                                    <div 
-                                                        onClick={() => toggleModalContact(contact.id)}
-                                                        className={`size-5 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${
-                                                            isSelected ? 'bg-primary border-primary' : 'border-gray-200 bg-white'
-                                                        }`}
-                                                    >
-                                                        {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-primary uppercase">
-                                                            {contact.name?.[0] || contact.phone?.[0]}
-                                                        </div>
-                                                        <span className="text-sm font-bold text-slate-800">{contact.name || 'Unknown'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="p-4 text-sm text-slate-500 font-medium">{contact.phone}</td>
-                                                <td className="p-4">
-                                                    <div className="flex gap-1">
-                                                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
-                                                            isReturning 
-                                                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                                            : 'bg-blue-50 text-blue-600 border border-blue-100'
-                                                        }`}>
-                                                            {isReturning ? 'Returning' : 'New'}
-                                                        </span>
-                                                        {isReturning && (
-                                                            <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[10px] font-bold rounded-md">Loyal</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                            
+                                            <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-primary uppercase shrink-0">
+                                                {contact.name?.[0] || contact.phone?.[0]}
+                                            </div>
+                                            
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-bold text-slate-800 truncate">{contact.name || 'Unknown'}</span>
+                                                    <span className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-md shrink-0 ${
+                                                        isReturning 
+                                                        ? 'bg-emerald-50 text-emerald-600' 
+                                                        : 'bg-blue-50 text-blue-600'
+                                                    }`}>
+                                                        {isReturning ? 'Returning' : 'New'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500 font-medium mt-0.5">{contact.phone}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                
+                                {filteredModalContacts.length === 0 && (
+                                    <div className="p-12 text-center">
+                                        <div className="size-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Users size={24} className="text-slate-300" />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-400">No visitors found</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Footer Controls */}
-                        <div className="p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="flex items-center gap-6">
-                                <div className="bg-primary/10 text-primary px-4 py-2 rounded-xl text-sm font-black border border-primary/20">
+                        {/* Modal Footer */}
+                        <div className="p-4 md:p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 sticky bottom-0">
+                            <div className="flex items-center justify-between w-full md:w-auto md:gap-6">
+                                <div className="bg-primary/10 text-primary px-4 py-2 rounded-xl text-xs font-black border border-primary/20">
                                     {tempSelectedIds.length.toLocaleString()} selected
                                 </div>
                                 <button 
                                     onClick={() => setTempSelectedIds([])}
-                                    className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-sm font-bold transition-colors"
+                                    className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-xs font-bold transition-colors"
                                 >
-                                    <Trash2 size={18} />
-                                    Clear Selection
+                                    <Trash2 size={16} />
+                                    Clear
                                 </button>
                             </div>
                             
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 w-full md:w-auto">
                                 <button 
                                     onClick={() => setIsModalOpen(false)}
-                                    className="h-12 px-10 border border-gray-200 text-slate-600 font-bold rounded-xl hover:bg-gray-50 transition-all"
+                                    className="flex-1 md:flex-none h-11 px-6 border border-gray-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     onClick={handleConfirmSelection}
-                                    className="h-12 px-10 bg-primary text-white font-black rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
+                                    className="flex-[1.5] md:flex-none h-11 px-8 bg-primary text-white text-sm font-black rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
-                                    Confirm Selection
+                                    Confirm
                                     <ChevronRight size={18} />
                                 </button>
                             </div>
