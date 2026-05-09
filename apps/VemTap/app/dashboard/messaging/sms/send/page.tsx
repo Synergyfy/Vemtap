@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import MessageBuilder from '@/components/messaging/MessageBuilder';
+import SMSSender from '@/components/messaging/SMSSender/SMSSender';
 
 export default function SMSSendPage() {
-    return <MessageBuilder defaultChannel="SMS" />;
+    return <SMSSender />;
 }
