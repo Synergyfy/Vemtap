@@ -66,6 +66,8 @@ export interface LoyaltyTemplate {
     updatedAt?: string;
     deletedAt?: string | null;
     createdById?: string;
+    pointsRule?: string;
+    rewardType?: RewardType;
 }
 
 export interface VerifyRedemptionResponse {

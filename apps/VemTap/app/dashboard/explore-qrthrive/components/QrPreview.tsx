@@ -11,10 +11,11 @@ interface QrPreviewProps {
   logo?: string;
   width?: number;
   height?: number;
+  onReady?: (qr: QRCodeStyling) => void;
 }
 
 export const QrPreview: React.FC<QrPreviewProps> = ({ 
-  data, design, frame, logo, width = 400, height = 400 
+  data, design, frame, logo, width = 400, height = 400, onReady
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [qrCode, setQrCode] = useState<QRCodeStyling | null>(null);
@@ -54,6 +55,7 @@ export const QrPreview: React.FC<QrPreviewProps> = ({
         },
       });
       setQrCode(qr);
+      if (onReady) onReady(qr);
     }
   }, []);
 
