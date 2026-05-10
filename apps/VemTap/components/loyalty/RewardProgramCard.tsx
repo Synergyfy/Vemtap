@@ -52,7 +52,7 @@ export default function RewardProgramCard({
                         className="data-[state=checked]:bg-primary"
                     />
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger>
                             <Button variant="ghost" size="icon" className="rounded-xl">
                                 <MoreVertical size={20} className="text-gray-400" />
                             </Button>

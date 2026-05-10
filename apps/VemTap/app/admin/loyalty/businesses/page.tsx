@@ -82,7 +82,7 @@ export default function AdminBusinessesLoyaltyPage() {
                                 </TableCell>
                                 <TableCell className="py-4 px-6 text-right">
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
+                                        <DropdownMenuTrigger>
                                             <Button variant="ghost" size="icon" className="rounded-xl">
                                                 <MoreVertical size={20} className="text-gray-400" />
                                             </Button>
