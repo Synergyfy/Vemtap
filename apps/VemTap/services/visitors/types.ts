@@ -35,6 +35,11 @@ export interface Visitor {
     branchId?: string;
     joinedDate?: string;
     tags?: string[];
+    loyaltyProfile?: {
+        pointsBalance: number;
+        totalPointsEarned: number;
+        tierLevel: string;
+    };
 }
 
 export interface PaginatedVisitorResponse {
