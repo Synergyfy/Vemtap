@@ -210,16 +210,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             id: 'loyalty',
             label: 'Loyalty',
             icon: Gift,
+            href: '/dashboard/loyalty',
             roles: ['owner', 'manager', 'staff'],
             feature: 'loyalty',
             featureName: 'Loyalty Programs',
-            submenu: [
-                { label: 'Overview', href: '/dashboard/loyalty' },
-                { label: 'Rewards', href: '/dashboard/loyalty/rewards' },
-                { label: 'Redeem Reward', href: '/dashboard/loyalty/redeem' },
-                { label: 'Settings', href: '/dashboard/loyalty/settings' },
-                { label: 'Customers', href: '/dashboard/loyalty/customers' },
-            ]
         },
         {
             id: 'catalogue',
