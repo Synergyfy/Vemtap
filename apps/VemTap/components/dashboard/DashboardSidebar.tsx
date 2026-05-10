@@ -290,6 +290,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
                 { label: 'Team', href: '/dashboard/staff' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
+                { label: 'Banner Management', href: '/dashboard/settings/banners' },
                 { label: 'Support', href: '/dashboard/support' },
                 { label: 'Legal & Compliance', href: '/dashboard/compliance' },
             ]
