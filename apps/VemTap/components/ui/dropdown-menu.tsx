@@ -66,9 +66,10 @@ export function DropdownMenuContent({ children, onClose, className, align = "end
     >
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, {
+          const element = child as React.ReactElement<any>;
+          return React.cloneElement(element, {
             onClick: (e: React.MouseEvent) => {
-              if (child.props.onClick) child.props.onClick(e)
+              if (element.props.onClick) element.props.onClick(e)
               if (onClose) onClose()
             }
           })

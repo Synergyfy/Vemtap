@@ -36,6 +36,7 @@ export interface Visitor {
     joinedDate?: string;
     tags?: string[];
     loyaltyProfile?: {
+        id: string;
         pointsBalance: number;
         totalPointsEarned: number;
         tierLevel: string;
