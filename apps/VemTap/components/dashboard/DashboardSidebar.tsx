@@ -19,6 +19,7 @@ import BranchSwitcher from './BranchSwitcher';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
+import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
 import SubscriptionExpiredModal from './SubscriptionExpiredModal';
 
@@ -60,6 +61,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
+    const activeConversationId = useChatStore(s => s.activeConversationId);
     const mainRef = useRef<HTMLElement | null>(null);
 
     // Close upgrade modal and mobile sidebar on navigation
@@ -878,8 +880,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 </main>
             </div>
 
-            {/* Only show Mobile Nav if NOT on a chat route */}
-            <DashboardMobileNav />
+            {/* Only show Mobile Nav if NOT on an active chat conversation */}
+            {!(isChatRoute && activeConversationId) && <DashboardMobileNav />}
             
             <UpgradeModal
                 isOpen={upgradeModal.isOpen}
