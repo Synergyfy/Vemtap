@@ -78,7 +78,7 @@ export default function AdminLoyaltyTemplatesPage() {
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
                                     <h3 className="text-lg font-bold text-gray-900">{template.name}</h3>
-                                    {template.isActive && <Badge variant="success">Active</Badge>}
+                                    {template.status === 'published' && <Badge className="bg-green-50 text-green-600 border-none">Active</Badge>}
                                 </div>
                                 <p className="text-sm text-gray-500 line-clamp-2">{template.description}</p>
                             </div>
@@ -90,7 +90,7 @@ export default function AdminLoyaltyTemplatesPage() {
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</p>
-                                    <p className="text-sm font-semibold text-primary uppercase">{template.rewardType.replace('_', ' ')}</p>
+                                    <p className="text-sm font-semibold text-primary uppercase">{(template.rewardType || 'custom').replace('_', ' ')}</p>
                                 </div>
                             </div>
                         </motion.div>
