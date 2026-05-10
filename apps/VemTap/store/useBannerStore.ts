@@ -27,7 +27,7 @@ const DEFAULT_SLIDES: BannerSlide[] = [
         description: 'Manage your visitors, loyalty programs, and messaging all in one place. Explore our new features to grow your business.',
         iconName: 'Sparkles',
         actionLabel: 'Get Started',
-        actionUrl: '/dashboard/engagement/forms',
+        actionUrl: '/dashboard/visitors/all',
         color: 'bg-gradient-to-r from-emerald-600 to-teal-500'
     },
     {

@@ -107,6 +107,16 @@ export default function BannerManagementPage() {
                                             className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                         />
                                     </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Action URL (Optional)</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.actionUrl || ''}
+                                            onChange={(e) => setEditForm({ ...editForm, actionUrl: e.target.value })}
+                                            placeholder="e.g. /dashboard/visitors/all"
+                                            className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                    </div>
                                     <div className="md:col-span-2 space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Description</label>
                                         <textarea
