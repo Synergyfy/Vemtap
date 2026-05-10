@@ -19,6 +19,7 @@ import BranchSwitcher from './BranchSwitcher';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
+import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
 import SubscriptionExpiredModal from './SubscriptionExpiredModal';
 
@@ -60,6 +61,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
+    const activeConversationId = useChatStore(s => s.activeConversationId);
     const mainRef = useRef<HTMLElement | null>(null);
 
     // Close upgrade modal and mobile sidebar on navigation
@@ -210,16 +212,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             id: 'loyalty',
             label: 'Loyalty',
             icon: Gift,
+            href: '/dashboard/loyalty',
             roles: ['owner', 'manager', 'staff'],
             feature: 'loyalty',
             featureName: 'Loyalty Programs',
-            submenu: [
-                { label: 'Overview', href: '/dashboard/loyalty' },
-                { label: 'Rewards', href: '/dashboard/loyalty/rewards' },
-                { label: 'Redeem Reward', href: '/dashboard/loyalty/redeem' },
-                { label: 'Settings', href: '/dashboard/loyalty/settings' },
-                { label: 'Customers', href: '/dashboard/loyalty/customers' },
-            ]
         },
         {
             id: 'catalogue',
@@ -294,6 +290,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
                 { label: 'Team', href: '/dashboard/staff' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
+                { label: 'Banner Management', href: '/dashboard/settings/banners' },
                 { label: 'Support', href: '/dashboard/support' },
                 { label: 'Legal & Compliance', href: '/dashboard/compliance' },
             ]
@@ -884,8 +881,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 </main>
             </div>
 
-            {/* Only show Mobile Nav if NOT on a chat route */}
-            <DashboardMobileNav />
+            {/* Only show Mobile Nav if NOT on an active chat conversation */}
+            {!(isChatRoute && activeConversationId) && <DashboardMobileNav />}
             
             <UpgradeModal
                 isOpen={upgradeModal.isOpen}

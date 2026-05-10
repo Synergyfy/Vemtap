@@ -30,7 +30,13 @@ import {
 import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import dynamic from 'next/dynamic';
+import type { EmojiClickData } from 'emoji-picker-react';
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), {
+    ssr: false,
+    loading: () => <div className="h-[350px] w-full bg-gray-50 animate-pulse rounded-2xl flex items-center justify-center text-slate-400 font-bold">Loading Picker...</div>
+});
 
 type RecipientMode = 'All' | 'Groups' | 'Selected' | 'Manual';
 type TagFilter = 'all' | 'new' | 'returning';

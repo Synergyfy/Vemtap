@@ -359,7 +359,10 @@ export default function ChatWindow() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="md:shrink-0 bg-white fixed md:relative bottom-0 left-0 right-0 w-full z-20 md:z-10 safe-area-bottom border-t border-slate-200">
+                <div 
+                    className="md:shrink-0 bg-white fixed md:relative bottom-0 left-0 right-0 w-full z-20 md:z-10 border-t border-slate-200"
+                    style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+                >
                     <ChatInput
                         conversationId={activeConversationId || undefined}
                         replyTo={replyToMessage}
