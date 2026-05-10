@@ -22,6 +22,7 @@ import CustomerSelector from '@/components/loyalty/CustomerSelector';
 import AwardPointsConfirmation from '@/components/loyalty/AwardPointsConfirmation';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from "@/lib/utils";
 
 export default function AwardPointsPage() {
     const router = useRouter();
