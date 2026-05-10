@@ -46,9 +46,13 @@ export default function DashboardMobileNav() {
         >
             <div className="flex justify-around items-center h-20 px-2">
                 {navItems.map((item) => {
-                    const isActive = item.label === 'Home' 
-                        ? pathname === '/dashboard' || pathname === '/dashboard/'
-                        : pathname.startsWith(item.href);
+                    const isActive = (() => {
+                        if (item.label === 'Home') return pathname === '/dashboard' || pathname === '/dashboard/';
+                        if (item.label === 'Channels') {
+                            return pathname.startsWith('/dashboard/messaging') && !pathname.startsWith('/dashboard/messaging/chat');
+                        }
+                        return pathname.startsWith(item.href);
+                    })();
                     const Icon = item.icon;
 
                     return (
