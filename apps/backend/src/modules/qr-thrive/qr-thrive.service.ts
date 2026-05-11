@@ -221,10 +221,9 @@ export class QrThriveService implements OnModuleInit {
         lastName: user.lastName,
       };
 
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
-        this.httpService.post(`${this.baseUrl}/users`, payload, {
-          headers: this.headers,
-        }),
+        this.httpService.post(`${this.baseUrl}/users`, payload, { headers }),
       );
 
       this.logger.log(
@@ -275,11 +274,12 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes`,
           dto,
-          { headers: this.headers },
+          { headers },
         ),
       );
 
@@ -310,10 +310,11 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}/scans`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       const scans = Array.isArray(data) ? data : [];
@@ -345,10 +346,11 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}/responses`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       const responses = Array.isArray(data) ? data : [];
@@ -380,10 +382,11 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/leads`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       const leads = Array.isArray(data) ? data : [];
@@ -431,10 +434,11 @@ export class QrThriveService implements OnModuleInit {
 
       const queryString = params.toString() ? `?${params.toString()}` : '';
 
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/specialized-leads${queryString}`,
-          { headers: this.headers },
+          { headers },
         ),
       );
 
@@ -498,11 +502,12 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/magic-link`,
           {},
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;
@@ -559,6 +564,7 @@ export class QrThriveService implements OnModuleInit {
         status: 'active',
       });
 
+      const headers = await this.getHeadersWithSubscription(user);
       await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/subscription`,
@@ -567,7 +573,7 @@ export class QrThriveService implements OnModuleInit {
             status: 'active',
             managedSubscriptionToken,
           },
-          { headers: this.headers },
+          { headers },
         ),
       );
       this.logger.log(
@@ -599,10 +605,11 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes`,
-          { headers: this.headers },
+          { headers },
         ),
       );
 
@@ -691,10 +698,11 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;
@@ -726,11 +734,12 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.patch(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
           dto,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;
@@ -761,10 +770,11 @@ export class QrThriveService implements OnModuleInit {
     );
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       await firstValueFrom(
         this.httpService.delete(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return { success: true };
@@ -795,11 +805,12 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}/duplicate`,
           {},
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;
@@ -876,10 +887,11 @@ export class QrThriveService implements OnModuleInit {
       if (endDate) params.append('endDate', endDate);
       const queryString = params.toString() ? `?${params.toString()}` : '';
 
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/stats${queryString}`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;
@@ -901,10 +913,11 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.get(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/folders`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;
@@ -923,11 +936,12 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/folders`,
           dto,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;
@@ -946,10 +960,11 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       await firstValueFrom(
         this.httpService.delete(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/folders/${folderId}`,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return { success: true };
@@ -973,11 +988,12 @@ export class QrThriveService implements OnModuleInit {
     const mapping = await this.getMapping(user, branchId);
 
     try {
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
         this.httpService.put(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/folders/${folderId}`,
           dto,
-          { headers: this.headers },
+          { headers },
         ),
       );
       return data;

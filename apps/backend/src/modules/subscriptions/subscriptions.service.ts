@@ -504,9 +504,37 @@ export class SubscriptionsService {
     }
   }
 
+  private async retrySyncToQrThrive(
+    businessId: string,
+    owner: User,
+    qrThrivePlanId: string,
+    maxRetries: number = 3,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.qrThriveService.syncSubscription(owner, qrThrivePlanId);
+        return;
+      } catch (error: any) {
+        const isLastAttempt = attempt === maxRetries;
+        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        this.logger.warn(
+          `QR-Thrive sync attempt ${attempt}/${maxRetries} failed for business ${businessId}: ${error.message}${isLastAttempt ? '. No more retries.' : `, retrying in ${delayMs}ms...`}`,
+        );
+        if (isLastAttempt) {
+          this.logger.error(
+            `Failed to sync subscription to QR-Thrive for business ${businessId} after ${maxRetries} attempts`,
+          );
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
   /**
    * Syncs the current effective subscription plan to QR-Thrive.
    * Fallbacks to the free plan if no active subscription exists.
+   * Retries with exponential backoff on failure (max 3 attempts).
    */
   async syncUserSubscriptionToQrThrive(businessId: string) {
     try {
@@ -525,15 +553,12 @@ export class SubscriptionsService {
         qrThrivePlanId = freePlan?.qrThrivePlanId;
       }
 
-      if (qrThrivePlanId) {
-        await this.qrThriveService.syncSubscription(
-          business.owner,
-          qrThrivePlanId,
-        );
+      if (qrThrivePlanId && business.owner) {
+        await this.retrySyncToQrThrive(businessId, business.owner, qrThrivePlanId);
       }
     } catch (error: any) {
       this.logger.error(
-        `Failed to sync subscription to QR-Thrive for business ${businessId}: ${error.message}`,
+        `Failed to resolve business/owner for QR-Thrive sync for business ${businessId}: ${error.message}`,
       );
     }
   }
