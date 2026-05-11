@@ -13,6 +13,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
+import { QrThriveEncryptionService } from './qr-thrive-encryption.service';
 
 import {
   ExternalLeadStatusEntity,
@@ -45,6 +46,7 @@ export class QrThriveService implements OnModuleInit {
 
     @InjectRepository(ExternalLeadStatusEntity)
     private readonly leadStatusRepo: Repository<ExternalLeadStatusEntity>,
+    private readonly encryptionService: QrThriveEncryptionService,
   ) {
     this.apiKey = this.configService.get<string>('QR_THRIVE_API_KEY')!;
     this.baseUrl = this.configService.get<string>(
@@ -487,10 +489,19 @@ export class QrThriveService implements OnModuleInit {
     }
 
     try {
+      const managedSubscriptionToken = this.encryptionService.signSubscriptionAssertion({
+        planId: qrThrivePlanId,
+        status: 'active',
+      });
+
       await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/subscription`,
-          { planId: qrThrivePlanId, status: 'active' },
+          { 
+            planId: qrThrivePlanId, 
+            status: 'active',
+            managedSubscriptionToken,
+          },
           { headers: this.headers },
         ),
       );

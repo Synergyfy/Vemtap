@@ -278,7 +278,7 @@ export const qrThriveApi = {
    * Get available QR-Thrive plans
    */
   getPlans: async (): Promise<QrThrivePlan[]> => {
-    return qrThriveRequest<QrThrivePlan[]>('/plans');
+    return api.get('/qr-thrive/plans');
   },
 
   /**
