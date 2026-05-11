@@ -16,6 +16,7 @@ import type {
   QrThriveLead,
   SpecializedLeadsQuery,
 } from './types';
+import { BASE_URL } from '@/lib/api';
 
 const QR_THRIVE_BASE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_API_URL || 'https://api.qrthrive.com/api/v1/integration';
 const QR_THRIVE_API_KEY = process.env.NEXT_PUBLIC_QR_THRIVE_API_KEY || '';
@@ -81,7 +82,7 @@ async function qrThriveRequest<T>(
     // Generate VemTap subscription token for QR-Thrive requests
     // This token carries the user's active subscription status from VemTap
     try {
-      const tokenResponse = await fetch('/api/v1/qr-thrive/subscription-token', {
+      const tokenResponse = await fetch(`${BASE_URL}/qr-thrive/subscription-token`, {
         headers: {
           'Authorization': headers.get('Authorization') || '',
         },
@@ -311,9 +312,20 @@ export const qrThriveApi = {
     qrThrivePlanId: string;
   }> => {
     try {
-      const response = await fetch('/api/v1/qr-thrive/subscription-token', {
+      let authToken = '';
+      if (typeof window !== 'undefined') {
+        const authStorage = localStorage.getItem('auth-storage-v2');
+        if (authStorage) {
+          try {
+            const state = JSON.parse(authStorage).state;
+            authToken = state?.access_token || state?.token || '';
+          } catch { /* ignore */ }
+        }
+      }
+      const response = await fetch(`${BASE_URL}/qr-thrive/subscription-token`, {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
         credentials: 'include',
       });
