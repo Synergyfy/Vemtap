@@ -357,11 +357,6 @@ export class SubscriptionsService {
         this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
-
-        // Sync with QR-Thrive (will fallback to free plan)
-        if (sub.businessId) {
-          await this.syncUserSubscriptionToQrThrive(sub.businessId);
-        }
       }
     }
   }
@@ -443,11 +438,6 @@ export class SubscriptionsService {
         this.logger.error(`Failed to renew subscription ${sub.id}. Expiring.`);
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
-
-        // Sync with QR-Thrive (will fallback to free plan)
-        if (sub.businessId) {
-          await this.syncUserSubscriptionToQrThrive(sub.businessId);
-        }
       }
     }
   }
