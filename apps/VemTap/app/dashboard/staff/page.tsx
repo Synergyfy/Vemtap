@@ -21,6 +21,7 @@ import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
 import UpgradeModal from '@/components/dashboard/UpgradeModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
+import SudoActionGuard from '@/components/shared/SudoActionGuard';
 
 const PERMISSIONS = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -204,13 +205,15 @@ export default function StaffManagementPage() {
                         >
                             <Edit3 size={18} />
                         </button>
-                        <button
-                            onClick={() => setStaffToDelete({ id: item.id, name: `${item.firstName} ${item.lastName}` })}
-                            className="p-2 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            title="Remove Staff"
-                        >
-                            <Trash2 size={18} />
-                        </button>
+                        <SudoActionGuard action="Delete Staff">
+                            <button
+                                onClick={() => setStaffToDelete({ id: item.id, name: `${item.firstName} ${item.lastName}` })}
+                                className="p-2 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                title="Remove Staff"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        </SudoActionGuard>
                     </div>
                 ) : (
                     <span className="text-xs text-text-secondary font-medium">View Only</span>

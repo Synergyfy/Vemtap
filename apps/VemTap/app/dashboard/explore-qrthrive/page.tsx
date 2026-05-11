@@ -40,6 +40,7 @@ import {
     useSetQrThriveCodeStatus,
     useResetQrThriveMapping
 } from '@/services/qr-thrive/hooks';
+import { useActionPermission } from '@/hooks/useActionPermission';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -52,6 +53,7 @@ const STEPS = [
 ];
 
 export default function ExploreQRThrivePage() {
+    const { canPerformAction } = useActionPermission();
     const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
     const [step, setStep] = useState<'type' | 'content' | 'design'>('type');
     const [designTab, setDesignTab] = useState<'shape' | 'frame' | 'logo'>('shape');
@@ -302,20 +304,26 @@ export default function ExploreQRThrivePage() {
                     </p>
 
                     <div className="space-y-4">
-                        <button 
-                            onClick={isError404 ? () => resetMappingMutation.mutate() : handleProvision}
-                            disabled={resetMappingMutation.isPending || provisionMutation.isPending}
-                            className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:pointer-events-none"
-                        >
-                            {(resetMappingMutation.isPending || provisionMutation.isPending) ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <>
-                                    {isError404 ? 'Repair Integration' : 'Try Again'}
-                                    <RefreshCw className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
+                        {isError404 && !canPerformAction('delete') ? (
+                             <div className="p-6 bg-amber-50 rounded-2xl border border-amber-100 text-amber-700 text-xs font-bold text-center">
+                                Repairing integration is restricted during impersonation for agents.
+                             </div>
+                        ) : (
+                            <button 
+                                onClick={isError404 ? () => resetMappingMutation.mutate() : handleProvision}
+                                disabled={resetMappingMutation.isPending || provisionMutation.isPending}
+                                className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                                {(resetMappingMutation.isPending || provisionMutation.isPending) ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <>
+                                        {isError404 ? 'Repair Integration' : 'Try Again'}
+                                        <RefreshCw className="w-5 h-5" />
+                                    </>
+                                )}
+                            </button>
+                        )}
 
                         <button 
                             onClick={() => {

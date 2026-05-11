@@ -13,7 +13,7 @@ const clearAuthCookie = () => {
   document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
 };
 
-export type UserRole = 'owner' | 'manager' | 'staff' | 'admin' | 'customer' | null;
+export type UserRole = 'owner' | 'manager' | 'staff' | 'admin' | 'customer' | 'agent' | null;
 export type SubscriptionPlan = 'free' | 'pro' | 'enterprise' | string;
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing' | string;
 
