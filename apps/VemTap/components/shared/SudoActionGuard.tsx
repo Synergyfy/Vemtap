@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useSudoStore } from '@/store/useSudoStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
 
 interface SudoActionGuardProps {
@@ -23,21 +24,34 @@ export default function SudoActionGuard({
     requiredPermission 
 }: SudoActionGuardProps) {
     const activeSession = useSudoStore(state => state.activeSession);
+    const user = useAuthStore(state => state.user);
     const isSudo = activeSession !== null;
+    const isAdmin = user?.role === 'admin';
 
     if (!isSudo) return <>{children}</>;
 
-    // Step 8: No export/download unless explicitly allowed (default: restricted)
-    const isExportOrDownload = action.toLowerCase().includes('export') || action.toLowerCase().includes('download');
-    
-    if (isExportOrDownload || hideInSudo) {
-        return null; // Restricted by specification Step 8
+    // Admins are allowed to perform all actions during impersonation as per requirement.
+    // Agents are restricted from destructive actions like deletions, or if explicitly requested via hideInSudo.
+    if (isAdmin) {
+        // Even for admins, we might want to hide certain things if specifically requested (like download buttons if mandated by security policy)
+        // However, the current requirement is to allow admins to delete.
+        // We still respect hideInSudo if it's explicitly set.
+        if (hideInSudo) return null;
+        return <>{children}</>;
     }
 
-    // Step 7: Permission Enforcement
+    // Agent Restrictions (Step 8: No export/download unless explicitly allowed)
+    const isExportOrDownload = action.toLowerCase().includes('export') || action.toLowerCase().includes('download');
+    const isDelete = action.toLowerCase().includes('delete');
+    
+    if (isExportOrDownload || (isDelete && !isAdmin) || hideInSudo) {
+        return null; // Restricted for agents
+    }
+
+    // Step 7: Permission Enforcement for Agents
     if (requiredPermission && activeSession.permissions) {
         const hasPermission = activeSession.permissions.includes(requiredPermission) || 
-                             activeSession.permissions.includes('VIEW_EDIT'); // VIEW_EDIT usually implies others
+                             activeSession.permissions.includes('VIEW_EDIT');
         
         if (!hasPermission) {
             if (disableInSudo) {
@@ -58,7 +72,7 @@ export default function SudoActionGuard({
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    toast.error(`${action} is restricted during impersonation sessions.`);
+                    toast.error(`${action} is restricted for agents during impersonation sessions.`);
                 }}
             >
                 <div className="pointer-events-none">

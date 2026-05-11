@@ -70,6 +70,13 @@ const getSocialConfig = (platform: string) => {
 
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
+const ensureAbsoluteUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:') || url.startsWith('tel:')) {
+    return url;
+  }
+  return `https://${url}`;
+};
 
 interface DynamicViewProps {
   data: QRData;
@@ -225,13 +232,16 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
       case 'socials': {
         const { name, bio, images, ...socialLinks } = data.socials || {};
+        const absoluteSocials = Object.fromEntries(
+          Object.entries(socialLinks).map(([platform, url]) => [platform, ensureAbsoluteUrl(url as string)])
+        );
         return (
           <div className="w-full h-full rounded-none overflow-hidden">
             <SocialsProfilePreview 
               name={name}
               bio={bio}
               images={images?.map(i => i.url)}
-              socials={socialLinks as any}
+              socials={absoluteSocials as any}
             />
           </div>
         );
@@ -262,7 +272,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
       case 'vcard':
         return (
-          <div className="flex-1 flex flex-col relative bg-white -mx-6 -mt-6 rounded-t-[44px]">
+          <div className="flex-1 flex flex-col relative bg-white">
              {/* Banner with Content Inside */}
              <div 
                className="h-60 rounded-b-[48px] relative overflow-hidden flex flex-col items-center justify-start text-center px-6 pt-10"
@@ -313,7 +323,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
                     )}
                     {data.vcard?.website && (
                        <a 
-                         href={data.vcard.website} 
+                         href={ensureAbsoluteUrl(data.vcard.website)} 
                          target="_blank" 
                          rel="noopener noreferrer" 
                          className="w-16 h-16 rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] border border-gray-50"
@@ -328,7 +338,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
                   {[
                     { icon: Phone, label: 'Mobile', value: data.vcard?.mobile, href: `tel:${data.vcard?.mobile}` },
                     { icon: Mail, label: 'Email', value: data.vcard?.email, href: `mailto:${data.vcard?.email}` },
-                    { icon: Globe, label: 'Website', value: data.vcard?.website, href: data.vcard?.website },
+                    { icon: Globe, label: 'Website', value: data.vcard?.website, href: ensureAbsoluteUrl(data.vcard?.website) },
                     { icon: Building2, label: 'Company', value: data.vcard?.company },
                     { icon: User, label: 'Profession', value: data.vcard?.jobTitle },
                     { icon: MapPin, label: 'Address', value: data.vcard?.address, href: `https://maps.google.com/?q=${encodeURIComponent(data.vcard?.address || '')}` },
@@ -392,7 +402,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
        case 'text':
         return (
-          <div className="space-y-6">
+          <div className="space-y-6 p-8 sm:p-12">
             <div className="text-center">
               <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-amber-100">
                 <Type className="w-10 h-10" />
@@ -427,7 +437,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
       case 'email':
         return (
-          <div className="space-y-8">
+          <div className="space-y-8 p-8 sm:p-12">
             <div className="text-center">
               <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-100">
                 <Mail className="w-10 h-10" />
@@ -461,7 +471,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
       case 'phone':
         return (
-          <div className="space-y-8 text-center">
+          <div className="space-y-8 text-center p-8 sm:p-12">
             <div className="w-24 h-24 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-50">
                <Phone className="w-12 h-12" />
             </div>
@@ -481,7 +491,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
       case 'sms':
         return (
-          <div className="space-y-8">
+          <div className="space-y-8 p-8 sm:p-12">
             <div className="text-center">
               <div className="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-100">
                 <MessageSquare className="w-10 h-10" />
@@ -521,7 +531,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
            </div>
          );      case 'links':
          return (
-           <div className="flex-1 flex flex-col relative bg-white -mx-6 -mt-6 rounded-t-[44px]">
+           <div className="flex-1 flex flex-col relative bg-white">
               {/* Banner with Content Inside */}
               <div 
                 className="h-60 rounded-b-[48px] relative overflow-hidden flex flex-col items-center justify-start text-center px-6 pt-10"
@@ -574,7 +584,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
                     )}
                     {data.linksInfo?.website && (
                        <a 
-                         href={data.linksInfo.website} 
+                         href={ensureAbsoluteUrl(data.linksInfo.website)} 
                          target="_blank" 
                          rel="noopener noreferrer" 
                          className="w-16 h-16 rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] border border-gray-50"
@@ -589,7 +599,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
                     {data.linksList?.map((link: any, idx: number) => (
                        <a 
                          key={idx}
-                         href={link.url || '#'}
+                         href={ensureAbsoluteUrl(link.url) || '#'}
                          target="_blank"
                          rel="noopener noreferrer"
                          className="flex items-center gap-4 p-4 bg-white border border-gray-50 rounded-2xl hover:scale-[1.01] active:scale-95 transition-all shadow-sm group"
@@ -726,7 +736,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
         }
 
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-8 sm:p-12">
              <div className="text-center">
                 <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-100">
                    <ClipboardList className="w-10 h-10" />
@@ -917,7 +927,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
         );
       case 'business':
         return (
-          <div className="flex-1 flex flex-col relative bg-white -mx-6 -mt-6 rounded-t-[44px]">
+          <div className="flex-1 flex flex-col relative bg-white">
              {/* Banner with Content Inside */}
              <div 
                className="h-60 rounded-b-[48px] relative overflow-hidden flex flex-col items-center justify-start text-center px-6 pt-10"
@@ -971,7 +981,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
                     )}
                     {data.business?.contact?.website && (
                        <a 
-                         href={data.business.contact.website} 
+                         href={ensureAbsoluteUrl(data.business.contact.website)} 
                          target="_blank" 
                          rel="noopener noreferrer" 
                          className="w-16 h-16 rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] border border-gray-50"
@@ -1059,7 +1069,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
       case 'coupon':
         return (
-          <div className="space-y-8">
+          <div className="space-y-8 p-8 sm:p-12">
              <div className="text-center">
                 <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-[40px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-200">
                    <Ticket className="w-12 h-12" />
@@ -1132,7 +1142,7 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
         );
       default:
         return (
-          <div className="text-center space-y-6">
+          <div className="text-center space-y-6 p-8 sm:p-12">
             <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-3xl flex items-center justify-center mx-auto">
               <ShieldCheck className="w-10 h-10" />
             </div>
@@ -1165,19 +1175,13 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-8 flex items-center justify-center font-walsheim">
-      <div className="w-full max-w-[480px] bg-white rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.06)] border border-gray-50 p-8 sm:p-12 relative overflow-hidden">
-        {/* Branding Header */}
-        <div className="flex items-center justify-center gap-2 mb-12">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
-               <ShieldCheck className="text-white w-5 h-5" />
-            </div>
-            <span className="text-lg font-normal text-gray-900">QR Thrive</span>
-        </div>
+      <div className="w-full max-w-[480px] bg-white rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.06)] border border-gray-50 relative overflow-hidden">
+
 
         {renderContent()}
 
         {/* Footer info */}
-        <div className="mt-16 text-center">
+        <div className="mt-16 text-center px-8 sm:px-12 pb-12">
             <p className="text-[10px] font-normal text-gray-300 uppercase tracking-widest mb-4">Powered by QR Thrive Enterprise</p>
             <div className="flex justify-center gap-6 opacity-30">
                <Globe className="w-4 h-4" />

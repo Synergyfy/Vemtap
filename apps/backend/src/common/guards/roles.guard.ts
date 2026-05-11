@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { User, UserRole } from '../../modules/users/entities/user.entity';
 import { ROLES_KEY } from '../decorators/roles.decorator';
@@ -34,20 +39,40 @@ export class RolesGuard implements CanActivate {
     }
     const request = context
       .switchToHttp()
-      .getRequest<{ user: User; headers: any }>();
+      .getRequest<{ user: User; headers: any; method: string }>();
     const user = request.user;
-    const userRole = this.normalizeRole(user?.role);
 
-    // If the user is an Admin or Agent and has an impersonation token,
-    // we allow them past the initial role check. The ImpersonationGuard
-    // will further validate their specific module permissions.
+    // AMIS / SUDO Mode Security:
+    // If the user is impersonating, we check the actor's role.
     const isImpersonating = !!(request as any).isImpersonated;
-    if (
-      isImpersonating &&
-      (user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT)
-    ) {
-      return true;
+    const isCustomerImpersonated = !!(request as any).isCustomerImpersonated;
+
+    if (isImpersonating || isCustomerImpersonated) {
+      const originalActor = isCustomerImpersonated
+        ? (request as any).originalActor
+        : user;
+
+      // Restriction: Agents cannot perform deletions while in SUDO mode
+      if (
+        originalActor?.role === UserRole.AGENT &&
+        request.method?.toUpperCase() === 'DELETE'
+      ) {
+        throw new ForbiddenException(
+          'Agents are not allowed to perform deletions while impersonating.',
+        );
+      }
+
+      // If business impersonation, allow Admin/Agent past the initial role check.
+      // Customer impersonation continues to the normal role matching against the Customer role.
+      if (
+        isImpersonating &&
+        (user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT)
+      ) {
+        return true;
+      }
     }
+
+    const userRole = this.normalizeRole(user?.role);
 
     return requiredRoles.some(
       (role) => this.normalizeRole(String(role)) === userRole,
