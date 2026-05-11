@@ -5,6 +5,7 @@ import { createAuthenticatedUser } from '../utils/auth';
 import { UserRole, User } from '../../src/modules/users/entities/user.entity';
 import { BackendModule } from '../../src/common/enums/backend-module.enum';
 import { DataSource } from 'typeorm';
+import { AffiliatesService } from '../../src/modules/affiliates/affiliates.service';
 
 describe('Administration & Impersonation (e2e)', () => {
   let app: INestApplication;
@@ -48,6 +49,10 @@ describe('Administration & Impersonation (e2e)', () => {
     agentId = response.body.id;
     expect(agentId).toBeDefined();
     expect(response.body.permissions).toContain(BackendModule.TICKETS);
+
+    // Ensure the agent has an affiliate profile so they can login (the login response generates stats)
+    const affiliatesService = app.get(AffiliatesService);
+    await affiliatesService.createProfile(agentId);
   });
 
   it('Admin generates an impersonation token for the agent', async () => {
@@ -115,5 +120,54 @@ describe('Administration & Impersonation (e2e)', () => {
     const log = response.body.data.find((l: any) => l.actorId === agentId);
     expect(log).toBeDefined();
     expect(log.module).toBe(BackendModule.TICKETS);
+  });
+ 
+  it('Agent is restricted from DELETE actions while impersonating', async () => {
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: agentEmail,
+        password: 'Password123!',
+      })
+      .expect(200);
+
+    const activeAgentToken = loginRes.body.access_token;
+
+    // Agent attempts to DELETE something while impersonating
+    await request(app.getHttpServer())
+      .delete('/api/v1/support/bot/context')
+      .set('Authorization', `Bearer ${activeAgentToken}`)
+      .set('x-impersonation-token', impersonationToken)
+      .expect(403)
+      .then((res) => {
+        expect(res.body.message).toBe(
+          'Agents are not allowed to perform deletions while impersonating.',
+        );
+      });
+  });
+
+  it('Admin is NOT restricted from DELETE actions while impersonating', async () => {
+    // Generate an impersonation token for the Admin themselves to test the logic
+    const tokenRes = await request(app.getHttpServer())
+      .post('/api/v1/administration/impersonation/token')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        actorId: (await request(app.getHttpServer())
+          .get('/api/v1/auth/me')
+          .set('Authorization', `Bearer ${adminToken}`)
+        ).body.id,
+        targetBranchId: branchId,
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      })
+      .expect(201);
+
+    const adminImpersonationToken = tokenRes.body.token;
+
+    // Admin attempts to DELETE something while impersonating
+    await request(app.getHttpServer())
+      .delete('/api/v1/support/bot/context')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-impersonation-token', adminImpersonationToken)
+      .expect(200);
   });
 });
