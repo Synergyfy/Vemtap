@@ -54,7 +54,7 @@ const toPlanPayload = (plan: Partial<PricingPlan>) => {
         'analyticsEnabled', 'analyticsLevel', 'catalogueEnabled',
         'maxCatalogueItems', 'maxCatalogueCategories', 'maxCatalogueOffers',
         'automationsEnabled', 'maxAutomations',
-        'isActive', 'description', 'isPopular'
+        'isActive', 'description', 'isPopular', 'qrThrivePlanId'
     ];
 
     fields.forEach(field => {
@@ -64,7 +64,7 @@ const toPlanPayload = (plan: Partial<PricingPlan>) => {
                 payload[field] = val;
             } else if (typeof val === 'boolean') {
                 payload[field] = val;
-            } else if (field === 'analyticsLevel' || field === 'name' || field === 'currency' || field === 'description') {
+            } else if (field === 'analyticsLevel' || field === 'name' || field === 'currency' || field === 'description' || field === 'qrThrivePlanId') {
                 payload[field] = val;
             } else {
                 payload[field] = toNumber(val);
