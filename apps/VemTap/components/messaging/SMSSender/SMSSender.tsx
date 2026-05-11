@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useMessagingTemplates, useSendMessage } from '@/services/messaging/hooks';
+import { useMessagingTemplates, useSendMessage, useMyCredits } from '@/services/messaging/hooks';
 import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
 import { useBusinessForms } from '@/services/business-forms/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
@@ -30,12 +30,15 @@ import {
     BookOpen,
     ExternalLink,
     AlertOctagon,
-    Eye
+    Eye,
+    CreditCard,
+    Calendar
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import TopUpModal from '@/components/messaging/TopUpModal';
 
 type RecipientMode = 'All' | 'Groups' | 'Selected' | 'Manual';
 type TagFilter = 'all' | 'new' | 'returning';
@@ -58,6 +61,9 @@ export default function SMSSender() {
     const { data: visitors = [] } = useMessagingVisitorsByBranch();
     const { data: businessForms = [] } = useBusinessForms();
     const { data: templates = [] } = useMessagingTemplates('SMS');
+    const { data: credits } = useMyCredits();
+
+    const smsBalance = credits?.smsCredits ?? 0;
 
     const businessName = business?.name || user?.businessName || 'Your Business';
     const businessLogo = business?.logoUrl;
@@ -73,6 +79,9 @@ export default function SMSSender() {
     const [isSending, setIsSending] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isWordListModalOpen, setIsWordListModalOpen] = useState(false);
+    const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+    const [scheduleDateTime, setScheduleDateTime] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [modalSearch, setModalSearch] = useState('');
     const [modalTagFilter, setModalTagFilter] = useState<TagFilter>('all');
@@ -117,6 +126,8 @@ export default function SMSSender() {
         return 0;
     }, [recipientMode, visitors.length, selectedContactIds.length]);
 
+    const requiredUnits = smsTokens * totalRecipients;
+    const isInsufficientBalance = smsBalance < requiredUnits;
     const totalCost = (smsTokens * estimatedCostPerSms * totalRecipients).toLocaleString(undefined, { minimumFractionDigits: 2 });
 
     const hasHighRiskWords = useMemo(() => {
@@ -166,6 +177,40 @@ export default function SMSSender() {
     const handleConfirmSelection = () => {
         setSelectedContactIds(tempSelectedIds);
         setIsModalOpen(false);
+    };
+
+    const handleSchedule = async () => {
+        if (!scheduleDateTime) {
+            toast.error('Please select a date and time');
+            return;
+        }
+
+        const scheduledDate = new Date(scheduleDateTime);
+        if (scheduledDate <= new Date()) {
+            toast.error('Schedule time must be in the future');
+            return;
+        }
+
+        setIsSending(true);
+        try {
+            await sendMessage.mutateAsync({
+                channel: 'SMS',
+                audienceType: recipientMode === 'All' ? 'ALL' : 'TAGGED',
+                content: finalContent,
+                from: businessName,
+                customerIds: (recipientMode === 'Manual' || recipientMode === 'Selected') ? selectedContactIds : undefined,
+                templateId: selectedTemplateId || undefined,
+                scheduledAt: scheduledDate.toISOString(),
+            });
+
+            toast.success('Message scheduled successfully!');
+            setIsScheduleModalOpen(false);
+            router.push('/dashboard/messaging/history');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to schedule message');
+        } finally {
+            setIsSending(false);
+        }
     };
 
     const handleSend = async () => {
@@ -571,16 +616,36 @@ export default function SMSSender() {
                                 {(smsTokens * totalRecipients).toLocaleString()}
                             </p>
                         </div>
+                        <div className="hidden md:block">
+                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Unit Balance</p>
+                            <p className={`text-lg md:text-xl font-black leading-none mt-1 ${smsBalance < (smsTokens * totalRecipients) ? 'text-red-500' : 'text-slate-800'}`}>
+                                {smsBalance.toLocaleString()}
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex gap-2 md:gap-3 px-4 md:px-0 pb-2 md:pb-0">
-                        <button className="flex-1 md:flex-none h-12 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border border-gray-100 font-bold text-slate-600 hover:bg-gray-50 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base">
-                            <Clock size={18} />
-                            Schedule
-                        </button>
+                        {isInsufficientBalance ? (
+                            <button 
+                                onClick={() => setIsTopUpOpen(true)}
+                                className="flex-1 md:flex-none h-12 md:h-14 px-6 md:px-8 bg-amber-500 text-white font-black rounded-xl md:rounded-2xl shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base"
+                            >
+                                <CreditCard size={18} />
+                                Top Up Now
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={() => setIsScheduleModalOpen(true)}
+                                className="flex-1 md:flex-none h-12 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border border-gray-100 font-bold text-slate-600 hover:bg-gray-50 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base"
+                            >
+                                <Clock size={18} />
+                                Schedule
+                            </button>
+                        )}
+                        
                         <button 
                             onClick={handleSend}
-                            disabled={isSending || !customContent.trim()}
+                            disabled={isSending || !customContent.trim() || isInsufficientBalance}
                             className="flex-[1.5] md:flex-none h-12 md:h-14 px-6 md:px-10 bg-primary text-white font-black rounded-xl md:rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base"
                         >
                             {isSending ? (
@@ -588,7 +653,7 @@ export default function SMSSender() {
                             ) : (
                                 <Send size={18} />
                             )}
-                            {isSending ? 'Launching...' : 'Send Now'}
+                            {isInsufficientBalance ? 'Insufficient Balance' : (isSending ? 'Launching...' : 'Send Now')}
                         </button>
                     </div>
                 </div>
@@ -788,6 +853,76 @@ export default function SMSSender() {
                                 className="w-full h-12 bg-slate-900 text-white font-black rounded-xl shadow-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
                                 Understood
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <TopUpModal 
+                isOpen={isTopUpOpen} 
+                onClose={() => setIsTopUpOpen(false)} 
+            />
+
+            {/* Schedule Modal */}
+            {isScheduleModalOpen && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsScheduleModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        
+                        <div className="p-6 md:p-8 border-b border-gray-100 relative overflow-hidden">
+                            <div className="absolute top-4 right-4 bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/20">
+                                Coming Soon
+                            </div>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center">
+                                        <Calendar size={20} />
+                                    </div>
+                                    <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">Schedule Message</h3>
+                                </div>
+                                <button onClick={() => setIsScheduleModalOpen(false)} className="size-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors">
+                                    <X size={20} className="text-slate-400" />
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                Pick a future date and time to launch your message automatically.
+                            </p>
+                        </div>
+
+                        <div className="p-6 md:p-8 space-y-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Select Date & Time</label>
+                                <input 
+                                    type="datetime-local" 
+                                    value={scheduleDateTime}
+                                    onChange={(e) => setScheduleDateTime(e.target.value)}
+                                    min={new Date().toISOString().slice(0, 16)}
+                                    className="w-full h-14 px-5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-primary/20 transition-all cursor-pointer"
+                                />
+                            </div>
+
+                            <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-3">
+                                <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-amber-700/80 font-medium leading-relaxed">
+                                    Scheduled messages will be sent according to your local timezone. Make sure you have enough unit balance at the time of delivery.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 md:p-8 bg-gray-50/50 border-t border-gray-100 flex gap-3">
+                            <button 
+                                onClick={() => setIsScheduleModalOpen(false)}
+                                className="flex-1 h-12 bg-white border border-gray-200 text-slate-600 font-bold rounded-xl hover:bg-gray-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                disabled
+                                className="flex-[2] h-12 bg-slate-50 border-2 border-dashed border-slate-200 text-slate-400 font-black rounded-xl cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+                            >
+                                <Clock size={16} className="opacity-50" />
+                                <span className="uppercase tracking-tight text-[11px]">Confirm Schedule (Coming Soon)</span>
                             </button>
                         </div>
                     </div>
