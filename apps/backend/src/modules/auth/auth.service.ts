@@ -200,8 +200,8 @@ export class AuthService {
     };
     delete user.password;
     // Background sync subscription to QR-Thrive
-    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
-      this.subscriptionsService.syncUserSubscriptionToQrThrive(user.id as string).catch(err => {
+    if (businessId && (user.role === UserRole.OWNER || user.role === UserRole.MANAGER)) {
+      this.subscriptionsService.syncUserSubscriptionToQrThrive(businessId).catch(err => {
         console.error('Background QR-Thrive sync failed on login:', err);
       });
     }

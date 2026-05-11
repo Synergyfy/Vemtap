@@ -104,6 +104,7 @@ export class QrThriveService implements OnModuleInit {
   private async getMapping(
     user: User,
     branchId?: string,
+    throwIfNotFound: boolean = true,
   ): Promise<QrThriveUserMapping> {
     let targetUserId = user.id;
 
@@ -138,10 +139,13 @@ export class QrThriveService implements OnModuleInit {
     });
 
     if (!mapping) {
-      throw new HttpException(
-        'User not synced with QR-Thrive. Please sync first.',
-        HttpStatus.BAD_REQUEST,
-      );
+      if (throwIfNotFound) {
+        throw new HttpException(
+          'User not synced with QR-Thrive. Please sync first.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      return null as any; // Caller handles null
     }
 
     return mapping;
@@ -480,14 +484,15 @@ export class QrThriveService implements OnModuleInit {
    * Syncs a user's subscription with QR-Thrive.
    */
   async syncSubscription(user: User, qrThrivePlanId: string) {
-    let mapping = await this.getMapping(user);
+    let mapping = await this.getMapping(user, undefined, false);
     if (!mapping) {
-      this.logger.log(`User ${user.id} not synced with QR-Thrive. Attempting auto-sync...`);
+      console.log(`[QrThriveService] User ${user.id} not synced with QR-Thrive. Attempting auto-sync...`);
       try {
         await this.syncUser(user);
         mapping = await this.getMapping(user);
+        console.log(`[QrThriveService] Auto-sync result for ${user.id}: ${mapping ? 'Success' : 'Still no mapping'}`);
       } catch (error) {
-        this.logger.error(`Failed to auto-sync user ${user.id} to QR-Thrive: ${error.message}`);
+        console.error(`[QrThriveService] Failed to auto-sync user ${user.id} to QR-Thrive: ${error.message}`);
         return;
       }
     }
