@@ -10,7 +10,7 @@ import {
     Palette, Frame, Image as ImageIcon, CheckCircle2, Phone,
     FileText, Image, Video, User, SmartphoneNfc, Music, 
     Building2, UtensilsCrossed, Link2, Ticket, Wifi,
-    Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download
+    Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download, Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -38,7 +38,8 @@ import {
     useUpdateQrThriveCode,
     useDuplicateQrThriveCode,
     useSetQrThriveCodeStatus,
-    useResetQrThriveMapping
+    useResetQrThriveMapping,
+    useSubscriptionIncludesQrThrive
 } from '@/services/qr-thrive/hooks';
 import { useActionPermission } from '@/hooks/useActionPermission';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -73,6 +74,7 @@ export default function ExploreQRThrivePage() {
 
     const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
     const provisionMutation = useProvisionQrThriveUser();
+    const { data: subscriptionData, isLoading: isCheckingSubscription } = useSubscriptionIncludesQrThrive();
     
     const { activeBranchId } = useActiveBranch();
     const searchParams = useSearchParams();
@@ -101,6 +103,41 @@ export default function ExploreQRThrivePage() {
             router.replace(cleanPath);
         }
     }, [prefillUrl, prefillName, prefillDeviceId, router, searchParams]);
+
+    // Check if subscription includes QR-Thrive and render locked UI if not
+    const isSubscriptionLocked = !isCheckingSubscription && 
+        subscriptionData && 
+        !subscriptionData.includesQrThrive && 
+        subscriptionData.subscriptionStatus !== 'active' &&
+        subscriptionData.subscriptionStatus !== 'trial';
+
+    if (isSubscriptionLocked) {
+        return (
+            <div className="min-h-[calc(100vh-4rem)] bg-gray-50/50 flex flex-col items-center justify-center p-8">
+                <div className="text-center max-w-md">
+                    <div className="size-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-primary mx-auto mb-6 border border-gray-100">
+                        <Lock size={40} />
+                    </div>
+                    <h2 className="text-3xl font-display font-bold text-text-main mb-3">QR-Thrive Not Included</h2>
+                    <p className="text-text-secondary font-medium mb-4">
+                        Your current subscription does not include QR-Thrive. 
+                        Upgrade your plan to unlock QR code generation and management.
+                    </p>
+                    {subscriptionData.subscriptionStatus === 'expired' && (
+                        <p className="text-orange-600 font-medium mb-6">
+                            Your subscription has expired. Please renew to continue using QR-Thrive.
+                        </p>
+                    )}
+                    <button
+                        onClick={() => router.push('/dashboard/settings/subscription')}
+                        className="inline-flex items-center justify-center gap-2 h-12 px-8 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
+                    >
+                        View Subscription Plans
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const deleteMutation = useDeleteQrThriveCode();
     const duplicateMutation = useDuplicateQrThriveCode();

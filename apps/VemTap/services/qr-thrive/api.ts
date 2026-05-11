@@ -302,6 +302,46 @@ export const qrThriveApi = {
   },
 
   /**
+   * Check if user's subscription includes QR-Thrive
+   * Returns subscription status, plan ID, and whether QR-Thrive is included
+   */
+  checkSubscriptionIncludesQrThrive: async (): Promise<{
+    includesQrThrive: boolean;
+    subscriptionStatus: string;
+    qrThrivePlanId: string;
+  }> => {
+    try {
+      const response = await fetch('/api/v1/qr-thrive/subscription-token', {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          includesQrThrive: !!data.token && data.qrThrivePlanId !== '',
+          subscriptionStatus: data.subscriptionStatus || 'inactive',
+          qrThrivePlanId: data.qrThrivePlanId || '',
+        };
+      }
+      
+      return {
+        includesQrThrive: false,
+        subscriptionStatus: 'inactive',
+        qrThrivePlanId: '',
+      };
+    } catch {
+      return {
+        includesQrThrive: false,
+        subscriptionStatus: 'error',
+        qrThrivePlanId: '',
+      };
+    }
+  },
+
+  /**
    * Sync subscription status with QR-Thrive
    */
   syncSubscription: async (userId: string, data: SubscriptionSyncDto): Promise<void> => {

@@ -298,10 +298,24 @@ export class QrThriveController {
   async getSubscriptionToken(@Req() req: RequestWithUser) {
     const user = req.user;
     if (!user.businessId) {
-      return { token: null };
+      return { token: null, qrThrivePlanId: '', subscriptionStatus: 'inactive' };
     }
     const token = await this.qrThriveService.generateSubscriptionToken(user, user.businessId);
-    return { token };
+    
+    // Extract the payload to get plan info for the frontend
+    let qrThrivePlanId = '';
+    let subscriptionStatus = 'inactive';
+    if (token) {
+      try {
+        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        qrThrivePlanId = payload.qrThrivePlanId || '';
+        subscriptionStatus = payload.subscriptionStatus || 'inactive';
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    
+    return { token, qrThrivePlanId, subscriptionStatus };
   }
 
   @Public()

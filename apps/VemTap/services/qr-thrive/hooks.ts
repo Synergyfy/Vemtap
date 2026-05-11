@@ -111,6 +111,26 @@ export const useQrThriveProvisioningStatus = () => {
     needsProvision: needsProvision(),
   };
 };
+
+/**
+ * Hook to check if user's subscription includes QR-Thrive
+ */
+export const useSubscriptionIncludesQrThrive = () => {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['subscription-includes-qrthrive'],
+    queryFn: async () => {
+      if (!isAuthenticated) {
+        return { includesQrThrive: false, subscriptionStatus: 'not_authenticated', qrThrivePlanId: '' };
+      }
+      return qrThriveApi.checkSubscriptionIncludesQrThrive();
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false,
+  });
+};
+
 /**
  * Hook to generate a magic link for SSO into QR-Thrive
  */
