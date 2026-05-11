@@ -28,6 +28,7 @@ import {
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
 import { useDebounce } from '@/hooks/useDebounce';
+import SudoActionGuard from '@/components/shared/SudoActionGuard';
 
 export default function AllVisitorsPage() {
     const router = useRouter();
@@ -251,16 +252,18 @@ export default function AllVisitorsPage() {
                     >
                         <Send size={18} />
                     </button>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteVisitorId(item.id);
-                        }}
-                        className="p-1.5 text-text-secondary hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete visitor"
-                    >
-                        <Trash2 size={18} />
-                    </button>
+                    <SudoActionGuard action="Delete Visitor">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteVisitorId(item.id);
+                            }}
+                            className="p-1.5 text-text-secondary hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete visitor"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </SudoActionGuard>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
