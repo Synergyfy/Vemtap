@@ -111,6 +111,14 @@ export default function ExploreQRThrivePage() {
         subscriptionData.subscriptionStatus !== 'active' &&
         subscriptionData.subscriptionStatus !== 'trial';
 
+    const deleteMutation = useDeleteQrThriveCode();
+    const duplicateMutation = useDuplicateQrThriveCode();
+    const statusMutation = useSetQrThriveCodeStatus();
+
+    const createMutation = useCreateQrThriveCode();
+    const updateMutation = useUpdateQrThriveCode();
+    const resetMappingMutation = useResetQrThriveMapping();
+
     if (isSubscriptionLocked) {
         return (
             <div className="min-h-[calc(100vh-4rem)] bg-gray-50/50 flex flex-col items-center justify-center p-8">
@@ -138,14 +146,6 @@ export default function ExploreQRThrivePage() {
             </div>
         );
     }
-
-    const deleteMutation = useDeleteQrThriveCode();
-    const duplicateMutation = useDuplicateQrThriveCode();
-    const statusMutation = useSetQrThriveCodeStatus();
-
-    const createMutation = useCreateQrThriveCode();
-    const updateMutation = useUpdateQrThriveCode();
-    const resetMappingMutation = useResetQrThriveMapping();
 
     const { 
         data: codes, 

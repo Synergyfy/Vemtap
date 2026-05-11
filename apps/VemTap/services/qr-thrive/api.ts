@@ -79,13 +79,31 @@ async function qrThriveRequest<T>(
       }
     }
 
+    // Get impersonation token if admin is impersonating a business owner
+    const sudoStorage = localStorage.getItem('vemtap-sudo-storage');
+    if (sudoStorage) {
+      try {
+        const { state } = JSON.parse(sudoStorage);
+        if (state?.activeSession?.token && state.activeSession.type === 'business') {
+          headers.set('x-impersonation-token', state.activeSession.token);
+        }
+      } catch {
+        // Silent fail
+      }
+    }
+
     // Generate VemTap subscription token for QR-Thrive requests
     // This token carries the user's active subscription status from VemTap
     try {
+      const tokenHeaders = new Headers({
+        'Authorization': headers.get('Authorization') || '',
+      });
+      // Also include impersonation token if present
+      if (headers.has('x-impersonation-token')) {
+        tokenHeaders.set('x-impersonation-token', headers.get('x-impersonation-token') || '');
+      }
       const tokenResponse = await fetch(`${BASE_URL}/qr-thrive/subscription-token`, {
-        headers: {
-          'Authorization': headers.get('Authorization') || '',
-        },
+        headers: tokenHeaders,
       });
       if (tokenResponse.ok) {
         const tokenData = await tokenResponse.json();
@@ -313,6 +331,7 @@ export const qrThriveApi = {
   }> => {
     try {
       let authToken = '';
+      let impersonationToken = '';
       if (typeof window !== 'undefined') {
         const authStorage = localStorage.getItem('auth-storage-v2');
         if (authStorage) {
@@ -321,12 +340,25 @@ export const qrThriveApi = {
             authToken = state?.access_token || state?.token || '';
           } catch { /* ignore */ }
         }
+        const sudoStorage = localStorage.getItem('vemtap-sudo-storage');
+        if (sudoStorage) {
+          try {
+            const { state } = JSON.parse(sudoStorage);
+            if (state?.activeSession?.token && state.activeSession.type === 'business') {
+              impersonationToken = state.activeSession.token;
+            }
+          } catch { /* ignore */ }
+        }
+      }
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      };
+      if (impersonationToken) {
+        headers['x-impersonation-token'] = impersonationToken;
       }
       const response = await fetch(`${BASE_URL}/qr-thrive/subscription-token`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
+        headers,
         credentials: 'include',
       });
       
