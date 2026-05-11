@@ -25,7 +25,12 @@ import {
     Check,
     Tag,
     Trash2,
-    ChevronRight
+    ChevronRight,
+    Shield,
+    BookOpen,
+    ExternalLink,
+    AlertOctagon,
+    Eye
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -34,6 +39,13 @@ import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
 type RecipientMode = 'All' | 'Groups' | 'Selected' | 'Manual';
 type TagFilter = 'all' | 'new' | 'returning';
+
+const HIGH_RISK_WORDS = [
+    'immediate action', 'verify', 'account', 'secure-login', 'verify-now', 
+    'urgent', 'winner', 'prize', 'bank', 'password', 'urgent response needed', 
+    'you have won', 'congratulations winner', 'click below', 'identity verification', 
+    'crypto giveaway', 'failed delivery', 'free gift', 'action required', 'bank account'
+];
 
 export default function SMSSender() {
     const router = useRouter();
@@ -60,6 +72,7 @@ export default function SMSSender() {
     const [selectedFormId, setSelectedFormId] = useState(searchParams.get('formId') || '');
     const [isSending, setIsSending] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isWordListModalOpen, setIsWordListModalOpen] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [modalSearch, setModalSearch] = useState('');
     const [modalTagFilter, setModalTagFilter] = useState<TagFilter>('all');
@@ -107,8 +120,7 @@ export default function SMSSender() {
     const totalCost = (smsTokens * estimatedCostPerSms * totalRecipients).toLocaleString(undefined, { minimumFractionDigits: 2 });
 
     const hasHighRiskWords = useMemo(() => {
-        const highRisk = ['immediate action', 'verify', 'account', 'secure-login', 'verify-now', 'urgent', 'winner', 'prize', 'bank', 'password', 'urgent response needed', 'you have won', 'congratulations winner', 'click below', 'identity verification', 'crypto giveaway', 'failed delivery'];
-        return highRisk.some(word => customContent.toLowerCase().includes(word));
+        return HIGH_RISK_WORDS.some(word => customContent.toLowerCase().includes(word));
     }, [customContent]);
 
     const eligibleForms = businessForms.filter(f => f.isPublished && f.isActive);
@@ -369,7 +381,7 @@ export default function SMSSender() {
                         </div>
 
                         {/* Metrics Grid */}
-                        <div className="grid grid-cols-3 gap-2 md:gap-4 mt-6">
+                        <div className="grid grid-cols-2 gap-2 md:gap-4 mt-6">
                             <div className="bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 text-center">
                                 <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">Chars</p>
                                 <p className="text-xs md:text-sm font-bold text-slate-700 leading-none">
@@ -379,10 +391,6 @@ export default function SMSSender() {
                             <div className="bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 text-center">
                                 <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">Units</p>
                                 <p className="text-xs md:text-sm font-bold text-slate-700 leading-none">{smsTokens}</p>
-                            </div>
-                            <div className="bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 text-center">
-                                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">Credit</p>
-                                <p className="text-xs md:text-sm font-bold text-primary leading-none">₦{totalCost}</p>
                             </div>
                         </div>
 
@@ -400,6 +408,59 @@ export default function SMSSender() {
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Safety & Compliance Card */}
+                    <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 p-5 md:p-8 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="size-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
+                                    <Shield size={18} />
+                                </div>
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Message Safety & Compliance</h3>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* High Risk Words Info */}
+                            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col h-full">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <AlertOctagon size={16} className="text-amber-500" />
+                                    <span className="text-xs font-bold text-slate-700">Restricted Content</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed mb-4 flex-1">
+                                    Certain words and phrases are classified as high-risk. Using them may cause your messages to be flagged as phishing or spam by carriers.
+                                </p>
+                                <button 
+                                    onClick={() => setIsWordListModalOpen(true)}
+                                    className="w-full h-10 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 hover:bg-slate-50 hover:text-primary hover:border-primary/20 transition-all shadow-sm flex items-center justify-center gap-2"
+                                >
+                                    <Eye size={14} />
+                                    View Word List
+                                </button>
+                            </div>
+
+                            {/* Manual Guide */}
+                            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <BookOpen size={16} className="text-primary" />
+                                    <span className="text-xs font-bold text-slate-700">Optimization Guide</span>
+                                </div>
+                                <ul className="space-y-2">
+                                    {[
+                                        'Use variables like {FirstName} to increase engagement.',
+                                        'Keep messages under 160 characters for single unit billing.',
+                                        'Always include a clear opt-out or call-to-action.',
+                                        'Avoid excessive capitalization and multiple exclamation marks.'
+                                    ].map((tip, i) => (
+                                        <li key={i} className="flex gap-2">
+                                            <div className="size-1.5 bg-primary/40 rounded-full mt-1.5 shrink-0" />
+                                            <span className="text-[10px] text-slate-500 font-medium leading-tight">{tip}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -505,8 +566,10 @@ export default function SMSSender() {
                             </p>
                         </div>
                         <div>
-                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest text-right md:text-left">Total Cost</p>
-                            <p className="text-lg md:text-xl font-black text-primary leading-none mt-1 text-right md:text-left">₦{totalCost}</p>
+                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest text-right md:text-left">Total Units</p>
+                            <p className="text-lg md:text-xl font-black text-primary leading-none mt-1 text-right md:text-left">
+                                {(smsTokens * totalRecipients).toLocaleString()}
+                            </p>
                         </div>
                     </div>
 
@@ -668,6 +731,64 @@ export default function SMSSender() {
                                     <ChevronRight size={18} />
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Word List Modal */}
+            {isWordListModalOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsWordListModalOpen(false)} />
+                    <div className="relative w-full max-w-lg bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+                        
+                        <div className="p-6 md:p-8 border-b border-gray-100">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center">
+                                        <AlertTriangle size={20} />
+                                    </div>
+                                    <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">High-Risk Words</h3>
+                                </div>
+                                <button onClick={() => setIsWordListModalOpen(false)} className="size-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors">
+                                    <X size={20} className="text-slate-400" />
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                Messages containing these words are highly likely to be blocked or filtered by mobile network operators.
+                            </p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+                            <div className="grid grid-cols-2 gap-2">
+                                {HIGH_RISK_WORDS.map((word, i) => (
+                                    <div key={i} className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-bold text-slate-600 flex items-center gap-2">
+                                        <div className="size-1 bg-red-400 rounded-full" />
+                                        {word}
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <div className="mt-8 bg-blue-50 border border-blue-100 p-4 rounded-2xl">
+                                <div className="flex gap-3">
+                                    <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="text-[11px] font-black text-blue-700 uppercase mb-1">Pro Tip</h4>
+                                        <p className="text-[10px] text-blue-600/80 leading-relaxed font-medium">
+                                            Instead of "Verify", try "Confirm". Instead of "Immediate Action", try "Update Required". Softening your language improves delivery rates.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 md:p-8 bg-gray-50/50 border-t border-gray-100">
+                            <button 
+                                onClick={() => setIsWordListModalOpen(false)}
+                                className="w-full h-12 bg-slate-900 text-white font-black rounded-xl shadow-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                Understood
+                            </button>
                         </div>
                     </div>
                 </div>
