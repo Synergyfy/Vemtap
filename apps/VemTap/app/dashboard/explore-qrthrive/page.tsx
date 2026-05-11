@@ -104,13 +104,6 @@ export default function ExploreQRThrivePage() {
         }
     }, [prefillUrl, prefillName, prefillDeviceId, router, searchParams]);
 
-    // Check if subscription includes QR-Thrive and render locked UI if not
-    const isSubscriptionLocked = !isCheckingSubscription && 
-        subscriptionData && 
-        !subscriptionData.includesQrThrive && 
-        subscriptionData.subscriptionStatus !== 'active' &&
-        subscriptionData.subscriptionStatus !== 'trial';
-
     const deleteMutation = useDeleteQrThriveCode();
     const duplicateMutation = useDuplicateQrThriveCode();
     const statusMutation = useSetQrThriveCodeStatus();
@@ -118,6 +111,31 @@ export default function ExploreQRThrivePage() {
     const createMutation = useCreateQrThriveCode();
     const updateMutation = useUpdateQrThriveCode();
     const resetMappingMutation = useResetQrThriveMapping();
+
+    const {
+        data: codes,
+        isLoading: isLoadingCodes,
+        error: codesError,
+        refetch: refetchCodes
+    } = useQrThriveCodes();
+
+    const {
+        data: stats,
+        error: statsError
+    } = useQrThriveStats();
+
+    const isSaving = createMutation.isPending || updateMutation.isPending || isUploadingFiles;
+    const isError404 = (codesError as any)?.status === 404 ||
+        (statsError as any)?.status === 404 ||
+        (codesError as any)?.message?.includes('404') ||
+        (statsError as any)?.message?.includes('404');
+
+    // Check if subscription includes QR-Thrive and render locked UI if not
+    const isSubscriptionLocked = !isCheckingSubscription &&
+        subscriptionData &&
+        !subscriptionData.includesQrThrive &&
+        subscriptionData.subscriptionStatus !== 'active' &&
+        subscriptionData.subscriptionStatus !== 'trial';
 
     if (isSubscriptionLocked) {
         return (
@@ -128,7 +146,7 @@ export default function ExploreQRThrivePage() {
                     </div>
                     <h2 className="text-3xl font-display font-bold text-text-main mb-3">QR-Thrive Not Included</h2>
                     <p className="text-text-secondary font-medium mb-4">
-                        Your current subscription does not include QR-Thrive. 
+                        Your current subscription does not include QR-Thrive.
                         Upgrade your plan to unlock QR code generation and management.
                     </p>
                     {subscriptionData.subscriptionStatus === 'expired' && (
@@ -146,18 +164,6 @@ export default function ExploreQRThrivePage() {
             </div>
         );
     }
-
-    const { 
-        data: codes, 
-        isLoading: isLoadingCodes, 
-        error: codesError,
-        refetch: refetchCodes 
-    } = useQrThriveCodes();
-    
-    const { 
-        data: stats, 
-        error: statsError 
-    } = useQrThriveStats();
 
     const handleCreateNew = () => {
         setView('create');
@@ -307,12 +313,6 @@ export default function ExploreQRThrivePage() {
             toast.error(error?.message || 'Failed to activate QRThrive');
         }
     };
-
-    const isSaving = createMutation.isPending || updateMutation.isPending || isUploadingFiles;
-    const isError404 = (codesError as any)?.status === 404 || 
-                       (statsError as any)?.status === 404 ||
-                       (codesError as any)?.message?.includes('404') ||
-                       (statsError as any)?.message?.includes('404');
 
     if (isProvisioning || provisionMutation.isPending) {
         return (
