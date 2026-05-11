@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import DeleteConfirmationModal from '@/components/dashboard/DeleteConfirmationModal';
 import { QrPreview } from './QrPreview';
 import QrViewModal from './QrViewModal';
+import { useActionPermission } from '@/hooks/useActionPermission';
 
 const QR_THRIVE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_URL || 'http://localhost:5173';
 
@@ -84,6 +85,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
   onViewStats,
   onDownload
 }) => {
+  const { canPerformAction } = useActionPermission();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -103,6 +105,10 @@ export const QrGrid: React.FC<QrGridProps> = ({
   }, []);
 
   const handleDeleteClick = (id: string) => {
+    if (!canPerformAction('delete')) {
+      toast.error('Agents are not allowed to delete while impersonating');
+      return;
+    }
     setDeletingId(id);
     setDeleteModalOpen(true);
     setMenuOpen(null);
@@ -278,16 +284,20 @@ export const QrGrid: React.FC<QrGridProps> = ({
                       </button>
                     </div>
                   </div>
-                  <div className="border-t border-slate-100 my-1" />
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteClick(qr.id);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" /> Delete
-                  </button>
+                  {canPerformAction('delete') && (
+                    <>
+                      <div className="border-t border-slate-100 my-1" />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(qr.id);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" /> Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
