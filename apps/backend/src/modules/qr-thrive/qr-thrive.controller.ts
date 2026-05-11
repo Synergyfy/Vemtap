@@ -292,11 +292,27 @@ export class QrThriveController {
     return this.qrThriveService.resetMapping(req.user);
   }
 
+  @Get('subscription-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get VemTap subscription token for QR-Thrive' })
+  async getSubscriptionToken(@Req() req: RequestWithUser) {
+    const user = req.user;
+    if (!user.businessId) {
+      return { token: null };
+    }
+    const token = await this.qrThriveService.generateSubscriptionToken(user, user.businessId);
+    return { token };
+  }
+
   @Public()
   @Get('public/:shortId')
   @ApiOperation({ summary: 'Get public details of a QR code by short ID' })
-  async getPublicQRCode(@Param('shortId') shortId: string) {
-    return this.qrThriveService.getPublicQRCode(shortId);
+  async getPublicQRCode(
+    @Param('shortId') shortId: string,
+    @Req() req: any,
+  ) {
+    const user = req.user;
+    return this.qrThriveService.getPublicQRCode(shortId, user);
   }
 
   @Public()
@@ -312,7 +328,8 @@ export class QrThriveController {
       ip = ip.split(',')[0].trim();
     }
     const userAgent = req.headers['user-agent'] || 'unknown';
-    const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
+    const user = req.user;
+    const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
     return res.redirect(redirectUrl);
   }
 
@@ -328,10 +345,11 @@ export class QrThriveController {
       ip = ip.split(',')[0].trim();
     }
     const userAgent = req.headers['user-agent'] || 'unknown';
-    const destinationUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent);
+    const user = req.user;
+    const destinationUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
     
     // Fetch full QR details for in-app rendering
-    const qrCode = await this.qrThriveService.getPublicQRCode(shortId);
+    const qrCode = await this.qrThriveService.getPublicQRCode(shortId, user);
     
     return {
       ...qrCode,

@@ -51,6 +51,7 @@ async function qrThriveRequest<T>(
   }
 
   if (typeof window !== 'undefined') {
+    // Get VemTap auth token
     const authStorage = localStorage.getItem('auth-storage-v2');
     if (authStorage) {
       try {
@@ -64,6 +65,7 @@ async function qrThriveRequest<T>(
       }
     }
 
+    // Get QR-Thrive storage
     const qrThriveStorage = localStorage.getItem('qr-thrive-storage');
     if (qrThriveStorage) {
       try {
@@ -74,6 +76,24 @@ async function qrThriveRequest<T>(
       } catch {
         // Silent fail
       }
+    }
+
+    // Generate VemTap subscription token for QR-Thrive requests
+    // This token carries the user's active subscription status from VemTap
+    try {
+      const tokenResponse = await fetch('/api/v1/qr-thrive/subscription-token', {
+        headers: {
+          'Authorization': headers.get('Authorization') || '',
+        },
+      });
+      if (tokenResponse.ok) {
+        const tokenData = await tokenResponse.json();
+        if (tokenData.token) {
+          headers.set('X-VemTap-Subscription-Token', tokenData.token);
+        }
+      }
+    } catch {
+      // Silent fail - subscription token is optional, QR-Thrive will fall back to native auth
     }
   }
 

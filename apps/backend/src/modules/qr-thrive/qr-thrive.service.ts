@@ -14,6 +14,7 @@ import { Repository, In } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
 import { QrThriveEncryptionService } from './qr-thrive-encryption.service';
+import { SubscriptionTokenService } from './subscription-token.service';
 
 import {
   ExternalLeadStatusEntity,
@@ -47,6 +48,7 @@ export class QrThriveService implements OnModuleInit {
     @InjectRepository(ExternalLeadStatusEntity)
     private readonly leadStatusRepo: Repository<ExternalLeadStatusEntity>,
     private readonly encryptionService: QrThriveEncryptionService,
+    private readonly subscriptionTokenService: SubscriptionTokenService,
   ) {
     this.apiKey = this.configService.get<string>('QR_THRIVE_API_KEY')!;
     this.baseUrl = this.configService.get<string>(
@@ -95,6 +97,53 @@ export class QrThriveService implements OnModuleInit {
       'X-API-KEY': this.apiKey,
       'Content-Type': 'application/json',
     };
+  }
+
+  private async getHeadersWithSubscription(user?: User): Promise<Record<string, string>> {
+    const baseHeaders = this.headers;
+    
+    if (!user?.businessId) {
+      return baseHeaders;
+    }
+
+    try {
+      const token = await this.subscriptionTokenService.generateToken(user, user.businessId);
+      return {
+        ...baseHeaders,
+        'X-VemTap-Subscription-Token': token,
+      };
+    } catch (error) {
+      this.logger.warn(`Failed to generate subscription token: ${error.message}`);
+      return baseHeaders;
+    }
+  }
+
+  async generateSubscriptionToken(user: User, businessId: string): Promise<string> {
+    try {
+      return await this.subscriptionTokenService.generateToken(user, businessId);
+    } catch (error) {
+      this.logger.error(`Failed to generate subscription token: ${error.message}`);
+      return '';
+    }
+  }
+
+  private async makeRequestWithRetry<T>(
+    requestFn: (headers: Record<string, string>) => Promise<T>,
+    user?: User,
+    maxRetries: number = 1,
+  ): Promise<T> {
+    let headers = await this.getHeadersWithSubscription(user);
+    
+    try {
+      return await requestFn(headers);
+    } catch (error) {
+      if (error.response?.status === 401 && maxRetries > 0) {
+        this.logger.warn('Received 401, refreshing token and retrying...');
+        headers = await this.getHeadersWithSubscription(user);
+        return await requestFn(headers);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -964,11 +1013,12 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Fetches public details of a QR code from QR-Thrive.
    */
-  async getPublicQRCode(shortId: string) {
+  async getPublicQRCode(shortId: string, user?: User) {
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
+      const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
-        this.httpService.get(`${publicUrl}/public/${shortId}`),
+        this.httpService.get(`${publicUrl}/public/${shortId}`, { headers }),
       );
       return data;
     } catch (error) {
@@ -979,12 +1029,14 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Records a scan in QR-Thrive and returns the destination URL.
    */
-  async recordPublicScan(shortId: string, ip: string, userAgent: string) {
+  async recordPublicScan(shortId: string, ip: string, userAgent: string, user?: User) {
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
-      const { headers } = await firstValueFrom(
+      const headers = await this.getHeadersWithSubscription(user);
+      const { headers: responseHeaders } = await firstValueFrom(
         this.httpService.get(`${publicUrl}/scan/${shortId}`, {
           headers: {
+            ...headers,
             'x-forwarded-for': ip,
             'user-agent': userAgent,
           },
@@ -994,7 +1046,7 @@ export class QrThriveService implements OnModuleInit {
       );
 
       // The QR-Thrive scan endpoint always redirects (302)
-      return headers.location || '/';
+      return responseHeaders.location || '/';
     } catch (error) {
       this.logger.error(
         `Failed to record scan for ${shortId}: ${error.message}`,
