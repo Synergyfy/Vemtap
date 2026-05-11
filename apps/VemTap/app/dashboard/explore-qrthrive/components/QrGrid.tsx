@@ -4,7 +4,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   QrCode, MoreVertical, ExternalLink, BarChart3, 
   Trash2, Edit2, Globe, Copy, Archive, Loader2, Download,
-  X, Check, Star, StarOff
+  X, Check, Star, StarOff,
+  FileText, Link2, User, Building2, Video, Image as ImageIcon,
+  Users, Phone, Music, UtensilsCrossed, SmartphoneNfc, Ticket, Calendar,
+  Wifi, Mail, MessageSquare, LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { QrThriveQRCode } from '@/services/qr-thrive/types';
@@ -19,6 +22,45 @@ const QR_THRIVE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_URL || 'http://localhost
 const getQrUrl = (qr: QrThriveQRCode): string => {
   // Always use VemTap's own /s/[id] route for previewing dynamic QR content
   return `/s/${qr.shortId}`;
+};
+
+const FacebookIcon = (props: any) => (
+  <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+);
+
+const InstagramIcon = (props: any) => (
+  <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+  </svg>
+);
+
+const getQrIcon = (type: string) => {
+  switch (type) {
+    case 'url': return Globe;
+    case 'pdf': return FileText;
+    case 'links': return Link2;
+    case 'vcard': return User;
+    case 'business': return Building2;
+    case 'video': return Video;
+    case 'image': return ImageIcon;
+    case 'facebook': return FacebookIcon;
+    case 'instagram': return InstagramIcon;
+    case 'socials': return Users;
+    case 'whatsapp': return Phone;
+    case 'mp3': return Music;
+    case 'menu': return UtensilsCrossed;
+    case 'app': return SmartphoneNfc;
+    case 'coupon': return Ticket;
+    case 'booking': return Calendar;
+    case 'wifi': return Wifi;
+    case 'email': return Mail;
+    case 'sms': return MessageSquare;
+    default: return QrCode;
+  }
 };
 
 interface QrGridProps {
@@ -164,7 +206,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Globe className="w-6 h-6" />
+                {React.createElement(getQrIcon(qr.type), { className: "w-6 h-6" })}
               </div>
               <div>
                 <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate max-w-[160px]">

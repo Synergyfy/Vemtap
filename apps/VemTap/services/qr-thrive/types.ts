@@ -142,10 +142,10 @@ export interface CreateQrThriveFolderDto {
 }
 
 export interface QrThriveStats {
-  totalQRs: number;
+  totalQrCodes: number;
   totalScans: number;
   uniqueVisitors: number;
-  scansLastHour: number;
+  scansLast24h: number;
   deviceDist: Record<string, number>;
   osDist: Record<string, number>;
   browserDist: Record<string, number>;
