@@ -60,6 +60,7 @@ export interface SendMessageRequest {
     segmentId?: string;
     branchId?: string;
     from?: string;
+    scheduledAt?: string | Date;
 }
 
 // Keep legacy interfaces for compatibility
