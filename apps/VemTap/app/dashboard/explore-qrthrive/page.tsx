@@ -462,10 +462,10 @@ export default function ExploreQRThrivePage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                             {[
-                                { label: 'Total QR Codes', value: stats?.totalQRs || 0, icon: QrCode, color: 'blue' as const },
+                                { label: 'Total QR Codes', value: stats?.totalQrCodes || 0, icon: QrCode, color: 'blue' as const },
                                 { label: 'Total Scans', value: stats?.totalScans || 0, icon: BarChart3, color: 'green' as const },
                                 { label: 'Unique Visitors', value: stats?.uniqueVisitors || 0, icon: UsersIcon, color: 'purple' as const },
-                                { label: 'Scans (Last 24h)', value: stats?.scansLastHour || 0, icon: Zap, color: 'yellow' as const },
+                                { label: 'Scans (Last 24h)', value: stats?.scansLast24h || 0, icon: Zap, color: 'yellow' as const },
                             ].map((stat, i) => (
                                 <StatsCard
                                     key={i}
