@@ -199,6 +199,13 @@ export class AuthService {
       referralCode,
     };
     delete user.password;
+    // Background sync subscription to QR-Thrive
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      this.subscriptionsService.syncUserSubscriptionToQrThrive(user.id as string).catch(err => {
+        console.error('Background QR-Thrive sync failed on login:', err);
+      });
+    }
+
     return {
       access_token: this.jwtService.sign(payload),
       user: {

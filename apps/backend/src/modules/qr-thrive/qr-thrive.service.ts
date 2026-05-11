@@ -480,10 +480,21 @@ export class QrThriveService implements OnModuleInit {
    * Syncs a user's subscription with QR-Thrive.
    */
   async syncSubscription(user: User, qrThrivePlanId: string) {
-    const mapping = await this.getMapping(user);
+    let mapping = await this.getMapping(user);
+    if (!mapping) {
+      this.logger.log(`User ${user.id} not synced with QR-Thrive. Attempting auto-sync...`);
+      try {
+        await this.syncUser(user);
+        mapping = await this.getMapping(user);
+      } catch (error) {
+        this.logger.error(`Failed to auto-sync user ${user.id} to QR-Thrive: ${error.message}`);
+        return;
+      }
+    }
+
     if (!mapping) {
       this.logger.warn(
-        `User ${user.id} not synced with QR-Thrive. Skipping subscription sync.`,
+        `User ${user.id} still has no mapping after auto-sync attempt. Skipping subscription sync.`,
       );
       return;
     }

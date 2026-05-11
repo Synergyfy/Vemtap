@@ -20,10 +20,10 @@ export class QrThriveEncryptionService {
       return null;
     }
 
-    // Assertion valid for 30 days. It will be refreshed on every sync.
+    // Assertion valid for 365 days. It will be refreshed on every sync.
     return this.jwtService.sign(payload, {
       secret: this.secret,
-      expiresIn: '30d',
+      expiresIn: '365d',
     });
   }
 }
