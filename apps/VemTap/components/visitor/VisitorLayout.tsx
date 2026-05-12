@@ -13,7 +13,7 @@ interface VisitorLayoutProps {
 export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset, onCredentialResponse, brandColor }) => {
     const brandVars = buildBrandCssVars(brandColor || undefined);
     return (
-        <div style={brandVars} className="min-h-screen bg-[#fafbfc] font-body flex flex-col items-center pt-2 pb-12 px-5 antialiased">
+        <div style={brandVars} className="min-h-screen bg-[#fafbfc] font-body flex flex-col items-center pt-1 pb-6 px-5 antialiased">
             <Script
                 src="https://accounts.google.com/gsi/client"
                 strategy="afterInteractive"
@@ -39,7 +39,7 @@ export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset,
                 {children}
             </main>
 
-            <footer className="mt-12 flex flex-col items-center gap-4">
+            <footer className="mt-6 flex flex-col items-center gap-4">
                 <div className="flex items-center gap-2 opacity-10 grayscale saturate-0 pointer-events-none">
                     <span className="material-symbols-outlined text-sm">verified</span>
                     <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-900">Transaction Verified</span>

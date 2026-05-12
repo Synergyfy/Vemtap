@@ -11,13 +11,13 @@ export default function CustomerLoyaltyLayout({ children }: { children: React.Re
     ];
 
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-8 max-w-2xl mx-auto w-full pb-24">
+        <div className="flex flex-col gap-6 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24">
             <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Your Rewards</h1>
                 <p className="text-sm text-gray-500">Track your points and unlock exclusive rewards.</p>
             </div>
             
-            <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md py-2 -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="py-2">
                 <LoyaltyTabs tabs={tabs} />
             </div>
             

@@ -7,8 +7,9 @@ import Link from 'next/link';
 import {
     History, Star, PiggyBank, Coffee, Smartphone, Dumbbell,
     QrCode, Scan, X, ExternalLink, ArrowRight, ChevronRight,
-    Loader2
+    Loader2, Gift, CheckCircle2
 } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -33,6 +34,10 @@ export default function CustomerDashboardPage() {
     const [isBusinessLoading, setIsBusinessLoading] = useState(false);
     const [showIdModal, setShowIdModal] = useState(false);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+    const [showRedeemModal, setShowRedeemModal] = useState(false);
+    const [selectedReward, setSelectedReward] = useState<{ id: string; name: string; points: number } | null>(null);
+    const [redemptionCodeInput, setRedemptionCodeInput] = useState('');
+    const [isSubmittingCode, setIsSubmittingCode] = useState(false);
     const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
 
     const router = useRouter();
@@ -105,17 +110,31 @@ export default function CustomerDashboardPage() {
     const businessLogo = businessInfo?.business?.logoUrl || '/icon.png';
     const businessAddress = businessInfo?.business?.address || '';
 
-    const handleRedeem = async (rewardId: string, name: string, points: number, icon?: React.ReactNode) => {
+    const handleRedeem = (rewardId: string, name: string, points: number, icon?: React.ReactNode) => {
         if (points > userPoints) {
             notify.error(`Insufficient points to redeem ${name}`);
             return;
         }
+        setSelectedReward({ id: rewardId, name, points });
+        setShowRedeemModal(true);
+    };
 
+    const submitRedemption = async () => {
+        if (!redemptionCodeInput || redemptionCodeInput.length < 3) {
+            notify.error('Please enter a valid redemption code');
+            return;
+        }
+
+        setIsSubmittingCode(true);
         try {
-            const result = await redeemMutation.mutateAsync({ rewardId, businessId });
+            const result = await redeemMutation.mutateAsync({ code: redemptionCodeInput });
             if (result?.success) {
-                setCurrentReward({ name, points, icon });
+                setCurrentReward({ name: selectedReward?.name || '', points: selectedReward?.points || 0 });
                 setShowRewardAnimation(true);
+                setShowRedeemModal(false);
+                setRedemptionCodeInput('');
+                setSelectedReward(null);
+                
                 setTimeout(() => {
                     setShowRewardAnimation(false);
                     setCurrentReward(null);
@@ -123,8 +142,10 @@ export default function CustomerDashboardPage() {
             } else {
                 notify.error(result?.error || 'Redemption failed');
             }
-        } catch (error) {
-            notify.error('An error occurred during redemption');
+        } catch (error: any) {
+            notify.error(error?.response?.data?.message || 'Invalid or expired redemption code');
+        } finally {
+            setIsSubmittingCode(false);
         }
     };
 
@@ -182,11 +203,24 @@ export default function CustomerDashboardPage() {
                         </div>
                         <div
                             onClick={() => setShowIdModal(true)}
-                            className="bg-white p-8 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-500 cursor-pointer"
+                            className="bg-white p-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-500 cursor-pointer flex items-center justify-center min-w-[160px] min-h-[160px]"
                         >
                             <div className="relative">
-                                <QrCode size={160} className="text-text-main" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-white/0 hover:bg-white/5 transition-colors"></div>
+                                {user?.id ? (
+                                    <QRCodeCanvas
+                                        value={user.id}
+                                        size={140}
+                                        level="H"
+                                        includeMargin={true}
+                                        className="bg-white"
+                                    />
+                                ) : (
+                                    <div className="w-[140px] h-[140px] flex flex-col items-center justify-center text-gray-300 gap-2">
+                                        <QrCode size={48} className="animate-pulse" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Generating...</span>
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/0 hover:bg-white/5 transition-colors rounded-lg"></div>
                             </div>
                         </div>
                     </div>
@@ -340,7 +374,19 @@ export default function CustomerDashboardPage() {
                 <div className="space-y-8 p-4">
                     <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100 text-center relative group">
                         <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
-                        <QrCode size={180} className="mx-auto text-slate-900 relative z-10" />
+                        <div className="relative z-10 flex justify-center">
+                            {user?.id ? (
+                                <QRCodeCanvas
+                                    value={user.id}
+                                    size={180}
+                                    level="H"
+                                    includeMargin={true}
+                                    className="bg-white"
+                                />
+                            ) : (
+                                <QrCode size={180} className="mx-auto text-slate-200 animate-pulse" />
+                            )}
+                        </div>
                         <div className="mt-6">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Scan at Terminal</p>
                             <p className="text-sm font-bold text-slate-900">LP-{profile?.id ? profile.id.substring(0, 8).toUpperCase() : '....'}</p>
@@ -365,6 +411,65 @@ export default function CustomerDashboardPage() {
                 rewardIcon={currentReward?.icon}
                 points={currentReward?.points || 0}
             />
+            {/* Redemption Code Modal */}
+            <Modal
+                isOpen={showRedeemModal}
+                onClose={() => {
+                    setShowRedeemModal(false);
+                    setRedemptionCodeInput('');
+                }}
+                title="Enter Redemption Code"
+                size="md"
+            >
+                <div className="space-y-6">
+                    <div className="text-center p-4 bg-primary/5 rounded-xl border border-primary/10">
+                        <Gift className="mx-auto text-primary mb-3" size={40} />
+                        <h3 className="text-lg font-bold text-text-main uppercase tracking-tight">
+                            Redeeming {selectedReward?.name}
+                        </h3>
+                        <p className="text-xs text-text-secondary font-medium mt-1">
+                            Ask the merchant for the 9-digit redemption code
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                            9-Digit Code
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="123-456-789"
+                            value={redemptionCodeInput}
+                            onChange={(e) => setRedemptionCodeInput(e.target.value)}
+                            className="w-full h-16 text-center text-2xl font-display font-bold tracking-[0.2em] bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            maxLength={11}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button
+                            onClick={submitRedemption}
+                            disabled={isSubmittingCode || !redemptionCodeInput}
+                            className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
+                        >
+                            {isSubmittingCode ? (
+                                <Loader2 className="animate-spin" size={20} />
+                            ) : (
+                                <>
+                                    Confirm Redemption
+                                    <CheckCircle2 size={20} />
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setShowRedeemModal(false)}
+                            className="w-full h-12 text-text-secondary text-xs font-bold uppercase tracking-widest hover:text-text-main transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
