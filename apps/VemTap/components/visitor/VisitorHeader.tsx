@@ -15,8 +15,8 @@ export const VisitorHeader: React.FC<VisitorHeaderProps> = ({ logoUrl, storeName
     const fallbackInitial = storeName?.trim()?.charAt(0)?.toUpperCase();
 
     return (
-        <div className={cn("flex items-center gap-3 mb-6", isPreview && "mb-2 gap-2")}>
-            <div className={cn("size-10 rounded-xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-sm transition-transform hover:scale-105", isPreview && "size-8")}>
+        <div className={cn("flex items-center gap-2 mb-1", isPreview && "mb-0.5 gap-1")}>
+            <div className={cn("size-8 rounded-lg bg-white border border-slate-100 overflow-hidden flex items-center justify-center p-0.5 shrink-0 shadow-sm", isPreview && "size-7")}>
                 {displayLogo ? (
                     <img
                         src={displayLogo}
@@ -29,7 +29,7 @@ export const VisitorHeader: React.FC<VisitorHeaderProps> = ({ logoUrl, storeName
                 )}
             </div>
             <div className="text-left min-w-0 flex-1">
-                <h2 className={cn("text-base font-black text-slate-900 tracking-tight leading-tight truncate", isPreview && "text-sm")}>
+                <h2 className={cn("text-xs font-black text-slate-900 tracking-tight leading-tight truncate", isPreview && "text-[11px]")}>
                     {storeName}
                 </h2>
                 {tag && (

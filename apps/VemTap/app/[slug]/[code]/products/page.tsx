@@ -169,19 +169,23 @@ export default function ProductsPage() {
         const executeOrder = async (currentUser: User) => {
             setIsSubmitting(true);
             try {
-                await createOrderMutation.mutateAsync({
+                const payload = {
                     branchId: branchId!,
-                    deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                    deviceId: useCustomerFlowStore.getState().deviceId || undefined,
+                    sessionToken: useCustomerFlowStore.getState().sessionToken || undefined,
                     firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
                     lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
                     email: currentUser.email || undefined,
                     phone: currentUser.phone || 'N/A',
                     items: [{ itemId: product.id, quantity: qty }]
-                });
+                };
+                console.log('Placing order with payload:', payload);
+                await createOrderMutation.mutateAsync(payload);
                 toast.success('Order placed successfully!', { icon: '🎉' });
                 setSelectedProduct(null);
                 router.push(`/${params.slug}/${params.code}/success`);
             } catch (err: any) {
+                console.error('Order error:', err);
                 toast.error(err.response?.data?.message || 'Failed to place order');
             } finally {
                 setIsSubmitting(false);
@@ -216,6 +220,7 @@ export default function ProductsPage() {
                 }
             }
         } catch (err: any) {
+            console.error('Auth error:', err);
             toast.error(err.response?.data?.message || 'Authentication failed');
         } finally {
             setIsSubmitting(false);

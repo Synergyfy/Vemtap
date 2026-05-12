@@ -105,7 +105,7 @@ export default function OffersPage() {
             try {
                 await createOrderMutation.mutateAsync({
                     branchId: branchId!,
-                    deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                    deviceId: useCustomerFlowStore.getState().deviceId || undefined,
                     firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
                     lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
                     email: currentUser.email || undefined,
