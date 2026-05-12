@@ -233,6 +233,17 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
                     return;
                 }
 
+                if (scanResponse.type === 'whatsapp') {
+                    const qrData = scanResponse.data;
+                    const number = qrData?.whatsapp?.phoneNumber || qrData?.whatsapp?.number;
+                    const message = qrData?.whatsapp?.message || '';
+                    if (number) {
+                        const cleanNumber = number.replace(/[^0-9]/g, '');
+                        window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                        return;
+                    }
+                }
+
                 setSelectedQrShortId(shortId);
                 setSelectedQrData(scanResponse);
                 setStep('QR_THRIVE_CONTENT' as any);
