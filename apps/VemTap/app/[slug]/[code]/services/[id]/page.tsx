@@ -45,9 +45,10 @@ export default function ServiceDetailPage() {
         const executeBooking = async (currentUser: User) => {
             setIsSubmitting(true);
             try {
-                await createOrderMutation.mutateAsync({
+                const payload = {
                     branchId: branchId!,
-                    deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                    deviceId: useCustomerFlowStore.getState().deviceId || undefined,
+                    sessionToken: useCustomerFlowStore.getState().sessionToken || undefined,
                     firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
                     lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
                     email: currentUser.email || undefined,
@@ -55,10 +56,13 @@ export default function ServiceDetailPage() {
                     items: [{ itemId: service.id, quantity: 1 }],
                     bookingDate: date,
                     bookingTime: time
-                });
+                };
+                console.log('Booking service with payload:', payload);
+                await createOrderMutation.mutateAsync(payload);
                 toast.success('Service booked successfully!', { icon: '📅' });
                 router.push(`/${params.slug}/${params.code}/success`);
             } catch (err: any) {
+                console.error('Booking error:', err);
                 toast.error(err.response?.data?.message || 'Failed to book service');
             } finally {
                 setIsSubmitting(false);
@@ -90,9 +94,10 @@ export default function ServiceDetailPage() {
                 
                 if (pendingBookingDetails) {
                     const currentUser = authResponse.user as User;
-                    await createOrderMutation.mutateAsync({
+                    const payload = {
                         branchId: branchId!,
-                        deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                        deviceId: useCustomerFlowStore.getState().deviceId || undefined,
+                        sessionToken: useCustomerFlowStore.getState().sessionToken || undefined,
                         firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
                         lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
                         email: currentUser.email || undefined,
@@ -100,13 +105,16 @@ export default function ServiceDetailPage() {
                         items: [{ itemId: service!.id, quantity: 1 }],
                         bookingDate: pendingBookingDetails.date,
                         bookingTime: pendingBookingDetails.time
-                    });
+                    };
+                    console.log('Booking service after auth with payload:', payload);
+                    await createOrderMutation.mutateAsync(payload);
                     toast.success('Service booked successfully!', { icon: '📅' });
                     setPendingBookingDetails(null);
                     router.push(`/${params.slug}/${params.code}/success`);
                 }
             }
         } catch (err: any) {
+            console.error('Auth/Booking error:', err);
             toast.error(err.response?.data?.message || 'Authentication failed');
         } finally {
             setIsSubmitting(false);

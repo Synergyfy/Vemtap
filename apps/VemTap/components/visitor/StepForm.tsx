@@ -54,7 +54,7 @@ export const StepForm: React.FC<StepFormProps> = ({
     onSubmit
 }) => {
     const [hasConsented, setHasConsented] = React.useState(false);
-    const [view, setView] = React.useState<'initial' | 'success-phone'>('initial');
+    const [view, setView] = React.useState<'initial' | 'manual' | 'success-phone'>('initial');
     const [googleUser, setGoogleUser] = React.useState<any>(null);
 
     const {
@@ -79,20 +79,33 @@ export const StepForm: React.FC<StepFormProps> = ({
             animate={{ opacity: 1, y: 0 }} 
             className={cn(
                 "flex flex-col p-0 overflow-hidden", 
-                isPreview ? "w-full h-full bg-white" : cn(presets.card, "max-h-[90vh]")
+                isPreview ? "w-full h-full bg-white" : cn(presets.card, "max-h-[98vh] md:max-h-[90vh]")
             )}
         >
             {/* Fixed Header */}
-            <div className={cn("shrink-0 p-6 md:p-8 border-b border-slate-50 bg-white relative", isPreview && "p-4 pb-2")}>
+            <div className={cn("shrink-0 p-3 md:p-5 border-b border-slate-50 bg-white relative", isPreview && "p-2 pb-0.5")}>
+                {view !== 'initial' && (
+                    <button
+                        onClick={() => setView('initial')}
+                        disabled={isSubmitting}
+                        className={cn(
+                            "absolute top-5 left-5 md:top-6 md:left-6 size-8 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors group disabled:opacity-50",
+                            isPreview && "top-4 left-4 size-6"
+                        )}
+                    >
+                        <span className={cn("material-symbols-outlined text-slate-400 text-[18px] group-hover:text-primary transition-colors", isPreview && "text-[14px]")}>arrow_back</span>
+                    </button>
+                )}
+
                 <button
                     onClick={onBack}
                     disabled={isSubmitting}
                     className={cn(
-                        "absolute top-6 right-6 md:top-8 md:right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50",
+                        "absolute top-5 right-5 md:top-6 md:right-6 size-8 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors group disabled:opacity-50",
                         isPreview && "top-4 right-4 size-6"
                     )}
                 >
-                    <span className={cn("material-symbols-outlined text-gray-400 text-[18px] group-hover:text-primary transition-colors", isPreview && "text-[14px]")}>close</span>
+                    <span className={cn("material-symbols-outlined text-slate-400 text-[18px] group-hover:text-primary transition-colors", isPreview && "text-[14px]")}>close</span>
                 </button>
 
                 {isSyncingReal && (
@@ -111,77 +124,87 @@ export const StepForm: React.FC<StepFormProps> = ({
                     </div>
                 )}
 
-                <VisitorHeader logoUrl={logoUrl} storeName={storeName} isPreview={isPreview} />
+                <div className={cn("transition-all duration-300", view !== 'initial' && "pl-10 md:pl-12")}>
+                    <VisitorHeader logoUrl={logoUrl} storeName={storeName} isPreview={isPreview} />
 
-                <div className={cn("mt-3", isPreview && "mt-1.5")}>
-                    <span className={cn(presets.tag, isPreview && "mb-1.5")}>{customWelcomeTag || "Quick Link"}</span>
-                    <h1 className={cn(
-                        "text-xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-1.5 md:mb-2 text-left",
-                        isPreview && "text-xl md:text-xl mb-1"
-                    )}>
-                        {customWelcomeTitle || "Connect with us"}
-                    </h1>
-                    <p className={cn(
-                        "text-xs md:text-sm font-medium text-slate-500 leading-relaxed text-left",
-                        isPreview && "text-[10px] leading-tight"
-                    )}>
-                        {customWelcomeMessage || "Leave your details to stay in touch and earn rewards."}
-                    </p>
+                    <div className={cn("mt-0.5", isPreview && "mt-0")}>
+                        <h1 className={cn(
+                            "text-sm md:text-lg font-black text-slate-900 tracking-tight leading-tight mb-0 text-left",
+                            isPreview && "text-xs"
+                        )}>
+                            {customWelcomeTitle || "Connect with us"}
+                        </h1>
+                        <p className={cn(
+                            "text-xs md:text-sm font-medium text-slate-500 leading-relaxed text-left",
+                            isPreview && "text-[10px]"
+                        )}>
+                            {customWelcomeMessage || "Leave your details to stay in touch and earn rewards."}
+                        </p>
+                    </div>
                 </div>
             </div>
 
             {/* Scrollable Body */}
-            <div className={cn("flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide", isPreview && "px-3 pt-1 pb-4")}>
-                {isDeviceSynced && (
-                    <div className="mb-8 p-4 rounded-xl bg-blue-50/50 border border-blue-100/50 flex items-center justify-between">
+            <div className={cn("flex-1 overflow-y-auto p-2.5 md:p-4 scrollbar-hide", isPreview && "px-3 pt-0.5 pb-2")}>
+                {isDeviceSynced && view !== 'initial' && (
+                    <div className="mb-4 p-3 rounded-xl bg-blue-50/50 border border-blue-100/50 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="size-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                <span className="material-symbols-outlined text-blue-500 text-xl">devices</span>
+                            <div className="size-8 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                <span className="material-symbols-outlined text-blue-500 text-lg">devices</span>
                             </div>
                             <div className="text-left">
-                                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest leading-none mb-1">Device Recognized</p>
-                                <p className="text-[10px] font-bold text-gray-400">Synced from local memory</p>
+                                <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest leading-none mb-1">Device Recognized</p>
+                                <p className="text-[9px] font-bold text-gray-400">Synced from local memory</p>
                             </div>
                         </div>
-                        <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>
+                        <span className="material-symbols-outlined text-green-500 text-xs">check_circle</span>
                     </div>
                 )}
 
-
-                <div className="mb-6 md:mb-8">
-                    <GoogleAuthButton 
-                        role="customer" 
-                        onSuccess={(res) => {
-                            if (res.user.phone) {
-                                onSubmit({
-                                    name: `${res.user.firstName} ${res.user.lastName}`,
-                                    email: res.user.email || '',
-                                    phone: res.user.phone
-                                });
-                            } else {
-                                setValue('name', `${res.user.firstName} ${res.user.lastName}`, { shouldValidate: true });
-                                setValue('email', res.user.email || '', { shouldValidate: true });
-                                setGoogleUser(res.user);
-                                setView('success-phone');
-                                toast.success('Signed up successfully!');
-                            }
-                        }}
-                        className={cn(isPreview && "h-11 py-0")}
-                    />
-                    
-                    <div className={cn("relative my-6 md:my-8 border-t border-slate-100", isPreview && "my-3")}>
-                        <div className="absolute left-1/2 -top-3 -translate-x-1/2 px-4 bg-white text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
-                            OR CONTINUE MANUALLY
+                {view === 'initial' ? (
+                    <div className="flex flex-col items-center justify-center py-8 space-y-6">
+                        <div className="w-full">
+                            <GoogleAuthButton 
+                                role="customer" 
+                                onSuccess={(res) => {
+                                    if (res.user.phone) {
+                                        onSubmit({
+                                            name: `${res.user.firstName} ${res.user.lastName}`,
+                                            email: res.user.email || '',
+                                            phone: res.user.phone
+                                        });
+                                    } else {
+                                        setValue('name', `${res.user.firstName} ${res.user.lastName}`, { shouldValidate: true });
+                                        setValue('email', res.user.email || '', { shouldValidate: true });
+                                        setGoogleUser(res.user);
+                                        setView('success-phone');
+                                        toast.success('Signed up successfully!');
+                                    }
+                                }}
+                                className={cn("h-12 w-full shadow-lg hover:shadow-xl transition-all", isPreview && "h-10")}
+                            />
+                        </div>
+                        
+                        <div className="text-center">
+                            <p className="text-xs md:text-sm font-medium text-slate-500">
+                                Don't have a Google account?{' '}
+                                <button 
+                                    type="button"
+                                    onClick={() => setView('manual')}
+                                    className="text-primary font-black hover:underline underline-offset-4"
+                                >
+                                    Signup with Email
+                                </button>
+                            </p>
                         </div>
                     </div>
-                </div>
-
-                <div className={cn("space-y-4", isPreview && "space-y-1.5")}>
-                    <div className="space-y-1">
-                        <label htmlFor="name" className={cn(presets.label, isPreview && "mb-0")}>Full Name</label>
+                ) : (
+                    <div className={cn("space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300", isPreview && "space-y-2")}>
+                    <div className="space-y-1.5">
+                        <label htmlFor="name" className={cn(presets.label, "mb-0")}>Full Name</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">person</span>
+                                <span className={cn("material-symbols-outlined text-[20px]", isPreview && "text-[16px]")}>person</span>
                             </div>
                             <input
                                 id="name"
@@ -189,18 +212,18 @@ export const StepForm: React.FC<StepFormProps> = ({
                                 {...register('name')}
                                 autoComplete="name"
                                 disabled={isSubmitting}
-                                placeholder="Enter your name"
-                                className={cn(presets.input, errors.name ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-11 pl-10")}
+                                placeholder="Enter your full name"
+                                className={cn(presets.input, errors.name ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-10 pl-10 text-[10px]")}
                             />
                         </div>
                         {errors.name && <p className={presets.error}>{errors.name.message}</p>}
                     </div>
 
-                    <div className="space-y-1">
-                        <label htmlFor="phone" className={cn(presets.label, isPreview && "mb-0")}>Phone Number</label>
+                    <div className="space-y-1.5">
+                        <label htmlFor="phone" className={cn(presets.label, "mb-0")}>Phone Number</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">smartphone</span>
+                                <span className={cn("material-symbols-outlined text-[20px]", isPreview && "text-[16px]")}>smartphone</span>
                             </div>
                             <input
                                 id="phone"
@@ -209,17 +232,17 @@ export const StepForm: React.FC<StepFormProps> = ({
                                 autoComplete="tel"
                                 disabled={isSubmitting}
                                 placeholder="Phone number"
-                                className={cn(presets.input, errors.phone ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-11 pl-10")}
+                                className={cn(presets.input, errors.phone ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-10 pl-10 text-[10px]")}
                             />
                         </div>
                         {errors.phone && <p className={presets.error}>{errors.phone.message}</p>}
                     </div>
 
-                    <div className="space-y-1">
-                        <label htmlFor="email" className={cn(presets.label, isPreview && "mb-0")}>Email Address</label>
+                    <div className="space-y-1.5">
+                        <label htmlFor="email" className={cn(presets.label, "mb-0")}>Email Address</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">mail</span>
+                                <span className={cn("material-symbols-outlined text-[20px]", isPreview && "text-[16px]")}>mail</span>
                             </div>
                             <input
                                 id="email"
@@ -227,49 +250,52 @@ export const StepForm: React.FC<StepFormProps> = ({
                                 {...register('email')}
                                 autoComplete="email"
                                 disabled={isSubmitting}
-                                placeholder="Optional email"
-                                className={cn(presets.input, errors.email ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-11 pl-10")}
+                                placeholder="Email"
+                                className={cn(presets.input, errors.email ? 'border-red-500 ring-2 ring-red-500/10' : '', isPreview && "h-10 pl-10 text-[10px]")}
                             />
                         </div>
                         {errors.email && <p className={presets.error}>{errors.email.message}</p>}
                     </div>
 
-                    <div className={cn("pt-6 pb-2", isPreview && "pt-2 pb-1")}>
+                    <div className="pt-2">
                         <label className={cn(
-                            `flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer group hover:bg-white hover:border-primary/20 transition-all text-left ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`,
-                            isPreview && "p-2.5 gap-2"
+                            `flex items-start gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 cursor-pointer group hover:bg-white hover:border-primary/20 hover:shadow-md transition-all text-left ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`,
+                            isPreview && "p-2 gap-2 rounded-xl"
                         )}>
                             <input
                                 type="checkbox"
                                 checked={hasConsented}
                                 onChange={(e) => setHasConsented(e.target.checked)}
                                 disabled={isSubmitting}
-                                className="size-4 accent-primary mt-1"
+                                className="size-4 accent-primary mt-0.5"
                             />
                             <div>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 group-hover:text-primary">I Accept Privacy Terms</p>
-                                <p className="text-[10px] text-gray-400 font-medium leading-tight mt-1">
-                                    {customPrivacyMessage || "I agree to have my visits securely tracked and data collected just for feedback and loyalty rewards."}
+                                <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-900 group-hover:text-primary leading-none mb-1">I Accept Privacy Terms</p>
+                                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                                    {customPrivacyMessage || "I agree to have my visits securely tracked and data collected."}
                                 </p>
                             </div>
                         </label>
                     </div>
                 </div>
+            )}
             </div>
 
             {/* Fixed Footer */}
-            <div className={cn("shrink-0 p-6 md:p-8 border-t border-slate-50 bg-white", isPreview && "p-4 py-3")}>
-                <form onSubmit={handleSubmit(onSubmit)}>
-                    <button type="submit" disabled={!hasConsented || !isValid || isSubmitting} className={cn(presets.button, isPreview && "h-11")}>
-                        {isSubmitting ? <Spinner size="sm" /> : (
-                            <>
-                                <span>{submitLabel || 'Submit & Get Reward'}</span>
-                                <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                            </>
-                        )}
-                    </button>
-                </form>
-            </div>
+            {view !== 'initial' && (
+                <div className={cn("shrink-0 p-6 border-t border-slate-50 bg-white", isPreview && "p-3")}>
+                    <form onSubmit={handleSubmit(onSubmit)}>
+                        <button type="submit" disabled={!hasConsented || !isValid || isSubmitting} className={cn(presets.button, isPreview && "h-10 text-[10px]")}>
+                            {isSubmitting ? <Spinner size="sm" /> : (
+                                <>
+                                    <span>{submitLabel || 'Submit & Get Reward'}</span>
+                                    <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                </>
+                            )}
+                        </button>
+                    </form>
+                </div>
+            )}
         </motion.div>
     );
 
@@ -343,7 +369,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                             phone: ''
                         })}
                         disabled={isSubmitting}
-                        className="w-full h-10 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
+                        className="w-full h-12 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary transition-all active:scale-95"
                     >
                         Skip & Finish
                     </button>

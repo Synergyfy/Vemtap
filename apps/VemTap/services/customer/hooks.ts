@@ -41,7 +41,7 @@ export const useCustomerLoyaltyRewards = (branchId?: string | null) =>
 export const useRedeemCustomerReward = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: { rewardId: string; businessId?: string }) => customerApi.redeemReward(data),
+        mutationFn: (data: { code: string }) => customerApi.redeemReward(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customer', 'loyalty'] });
             queryClient.invalidateQueries({ queryKey: ['customer', 'loyalty', 'history', 'global'] });
