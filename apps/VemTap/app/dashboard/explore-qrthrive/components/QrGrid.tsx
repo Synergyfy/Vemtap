@@ -20,9 +20,15 @@ import { useActionPermission } from '@/hooks/useActionPermission';
 
 const QR_THRIVE_URL = process.env.NEXT_PUBLIC_QR_THRIVE_URL || 'http://localhost:5173';
 
+const toAbsoluteUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 const getQrUrl = (qr: QrThriveQRCode): string => {
-  // Always use VemTap's own /s/[id] route for previewing dynamic QR content
-  return `/s/${qr.shortId}`;
+  return toAbsoluteUrl(`/s/${qr.shortId}`);
 };
 
 const FacebookIcon = (props: any) => (
@@ -158,7 +164,9 @@ export const QrGrid: React.FC<QrGridProps> = ({
     if (qrInstance) {
       qrInstance.download({
         name: qr?.name || 'qrcode',
-        extension: format === 'jpeg' ? 'jpg' : format
+        extension: format === 'jpeg' ? 'jpg' : format,
+        width: 2000,
+        height: 2000
       });
       toast.success('Download started');
     } else if (qr && onDownload) {
@@ -310,7 +318,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
             >
                <div className="scale-[0.4] transform-gpu">
                   <QrPreview 
-                    data={qr.shortUrl}
+                    data={toAbsoluteUrl(qr.shortUrl)}
                     design={qr.design}
                     frame={{ type: 'none' }}
                     logo={qr.logo}
@@ -327,12 +335,12 @@ export const QrGrid: React.FC<QrGridProps> = ({
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Last Updated</p>
               <p className="text-xs font-bold text-slate-600">{format(new Date(qr.updatedAt), 'MMM d, yyyy')}</p>
               <a 
-                href={getQrUrl(qr)} 
+                href={toAbsoluteUrl(qr.shortUrl)} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="text-[10px] font-bold text-blue-600 hover:underline truncate block"
               >
-                {getQrUrl(qr).replace(/^https?:\/\//, '')}
+                {toAbsoluteUrl(qr.shortUrl).replace(/^https?:\/\//, '')}
               </a>
             </div>
           </div>

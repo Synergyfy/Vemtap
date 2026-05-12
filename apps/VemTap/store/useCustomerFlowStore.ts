@@ -116,6 +116,7 @@ interface CustomerFlowState {
     // Dynamic Customization
     businessId: string | null;
     deviceCode: string | null;
+    deviceId: string | null;
     branchId: string | null;
     customWelcomeMessage: string | null;
     customWelcomeTitle: string | null;
@@ -246,6 +247,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
 
             businessId: null,
             deviceCode: null,
+            deviceId: null,
             branchId: null,
             customWelcomeMessage: null,
             customWelcomeTitle: null,
@@ -362,6 +364,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 set({
                     businessId: b.id || device.businessId,
                     deviceCode: device.device?.code || device.code,
+                    deviceId: device.device?.id || null,
                     branchId: device.branchId || branch.id || b.primaryBranchId || (b.branches && b.branches.length > 0 ? b.branches[0].id : '') || '',
                     storeName: branch.name || b.name || device.device?.name || device.name,
                     businessType: b.type || 'RETAIL',

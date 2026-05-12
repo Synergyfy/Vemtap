@@ -16,6 +16,9 @@ export default function CustomerRewardsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+    const [showRedeemModal, setShowRedeemModal] = useState(false);
+    const [redemptionCodeInput, setRedemptionCodeInput] = useState('');
+    const [isSubmittingCode, setIsSubmittingCode] = useState(false);
     const [redemptionCode, setRedemptionCode] = useState<string | undefined>();
     const { branchId: flowBranchId } = useCustomerFlowStore();
     const searchParams = useSearchParams();
@@ -28,6 +31,17 @@ export default function CustomerRewardsPage() {
     const availableRewards = Array.isArray(rewardsResponse) ? rewardsResponse : (rewardsResponse?.data || []);
     const userPoints = profile?.currentPointsBalance || 0;
 
+    // Auto-select reward from URL
+    React.useEffect(() => {
+        const rewardId = searchParams?.get('rewardId');
+        if (rewardId && availableRewards.length > 0 && !selectedReward) {
+            const reward = availableRewards.find((r: Reward) => r.id === rewardId);
+            if (reward) {
+                setSelectedReward(reward);
+            }
+        }
+    }, [searchParams, availableRewards, selectedReward]);
+
     const getRewardIcon = (name: string, size = 24) => {
         const n = name.toLowerCase();
         if (n.includes('gym') || n.includes('fitness')) return <Dumbbell size={size} />;
@@ -37,23 +51,36 @@ export default function CustomerRewardsPage() {
         return <Gift size={size} />;
     };
 
-    const handleRedeem = async (reward: Reward) => {
+    const handleRedeem = (reward: Reward) => {
         if (!profile) {
             notify.error('Loyalty profile not found');
             return;
         }
+        setSelectedReward(reward);
+        setShowRedeemModal(true);
+    };
 
+    const submitRedemption = async () => {
+        if (!redemptionCodeInput || redemptionCodeInput.length < 3) {
+            notify.error('Please enter a valid redemption code');
+            return;
+        }
+
+        setIsSubmittingCode(true);
         try {
-            const result = await redeemMutation.mutateAsync({ rewardId: reward.id, businessId });
+            const result = await redeemMutation.mutateAsync({ code: redemptionCodeInput });
             if (result.success) {
-                setRedemptionCode(result.redemption?.redemptionCode);
-                setSelectedReward(null);
+                setRedemptionCode(redemptionCodeInput);
+                setShowRedeemModal(false);
+                setRedemptionCodeInput('');
                 setShowRewardAnimation(true);
             } else {
                 notify.error(result.error || 'Redemption failed');
             }
-        } catch {
-            notify.error('Server error during redemption');
+        } catch (error: any) {
+            notify.error(error?.response?.data?.message || 'Invalid or expired redemption code');
+        } finally {
+            setIsSubmittingCode(false);
         }
     };
 
@@ -120,7 +147,7 @@ export default function CustomerRewardsPage() {
 
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center text-xs font-black uppercase tracking-tighter">
-                                                <span className="text-primary">{reward.pointCost.toLocaleString()} Points</span>
+                                                <span className="text-primary">{(reward?.pointCost || 0).toLocaleString()} Points</span>
                                                 <span className="text-green-600 flex items-center gap-1">
                                                     <CheckCircle2 size={12} />
                                                     Unlocked
@@ -148,7 +175,7 @@ export default function CustomerRewardsPage() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {lockedRewards.map((reward: Reward) => {
-                                    const progress = Math.min(100, Math.floor((userPoints / reward.pointCost) * 100));
+                                    const progress = Math.min(100, Math.floor((userPoints / (reward?.pointCost || 1)) * 100));
                                     return (
                                         <div
                                             key={reward.id}
@@ -163,7 +190,7 @@ export default function CustomerRewardsPage() {
                                             <div className="mt-4 space-y-2">
                                                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
                                                     <span className="text-text-secondary">{progress}% Earned</span>
-                                                    <span className="text-primary">{reward.pointCost} PTS</span>
+                                                    <span className="text-primary">{reward?.pointCost || 0} PTS</span>
                                                 </div>
                                                 <div className="w-full bg-gray-100 h-1 rounded-full overflow-hidden">
                                                     <div className="bg-primary h-full" style={{ width: `${progress}%` }} />
@@ -207,7 +234,7 @@ export default function CustomerRewardsPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Cost</p>
-                                    <p className="text-lg font-display font-bold text-slate-900">{selectedReward.pointCost.toLocaleString()} pts</p>
+                                    <p className="text-lg font-display font-bold text-slate-900">{(selectedReward?.pointCost || 0).toLocaleString()} pts</p>
                                 </div>
                             </div>
 
@@ -227,14 +254,14 @@ export default function CustomerRewardsPage() {
                                 </div>
                             </div>
 
-                            {userPoints >= selectedReward.pointCost ? (
+                            {userPoints >= (selectedReward?.pointCost || 0) ? (
                                 <div className="space-y-6">
                                     <div className="bg-slate-50 rounded-lg p-6 border-2 border-dashed border-slate-200 text-center flex flex-col items-center">
                                         <QrCode size={80} className="text-slate-300 mb-3" />
                                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-tight">Secure Activation</p>
                                     </div>
                                     <button
-                                        onClick={() => handleRedeem(selectedReward)}
+                                        onClick={() => handleRedeem(selectedReward!)}
                                         className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-lg hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3"
                                     >
                                         Redeem Now
@@ -243,7 +270,7 @@ export default function CustomerRewardsPage() {
                             ) : (
                                 <div className="p-6 bg-slate-50 rounded-lg text-center border border-slate-100">
                                     <p className="text-sm font-bold text-slate-900 mb-1">More points needed</p>
-                                    <p className="text-xs text-slate-500 font-medium mb-4">You need {selectedReward.pointCost - userPoints} more pts to unlock this.</p>
+                                    <p className="text-xs text-slate-500 font-medium mb-4">You need {(selectedReward?.pointCost || 0) - userPoints} more pts to unlock this.</p>
                                     <button
                                         onClick={() => setSelectedReward(null)}
                                         className="w-full h-12 bg-white border border-slate-200 text-slate-600 font-bold rounded-lg hover:bg-slate-100 transition-all text-sm"
@@ -259,12 +286,75 @@ export default function CustomerRewardsPage() {
 
             <AnimatedRewardModal
                 isOpen={showRewardAnimation}
-                onClose={() => setShowRewardAnimation(false)}
+                onClose={() => {
+                    setShowRewardAnimation(false);
+                    setSelectedReward(null);
+                }}
                 rewardName={selectedReward?.name ?? ''}
                 rewardIcon={<Gift size={64} />}
                 points={selectedReward?.pointCost ?? 0}
                 redemptionCode={redemptionCode}
             />
+
+            {/* Redemption Code Modal */}
+            <Modal
+                isOpen={showRedeemModal}
+                onClose={() => {
+                    setShowRedeemModal(false);
+                    setRedemptionCodeInput('');
+                }}
+                title="Enter Redemption Code"
+                size="md"
+            >
+                <div className="space-y-6">
+                    <div className="text-center p-4 bg-primary/5 rounded-xl border border-primary/10">
+                        <Gift className="mx-auto text-primary mb-3" size={40} />
+                        <h3 className="text-lg font-bold text-text-main uppercase tracking-tight">
+                            Redeeming {selectedReward?.name}
+                        </h3>
+                        <p className="text-xs text-text-secondary font-medium mt-1">
+                            Ask the merchant for the 9-digit redemption code
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                            9-Digit Code
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="123-456-789"
+                            value={redemptionCodeInput}
+                            onChange={(e) => setRedemptionCodeInput(e.target.value)}
+                            className="w-full h-16 text-center text-2xl font-display font-bold tracking-[0.2em] bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            maxLength={11}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button
+                            onClick={submitRedemption}
+                            disabled={isSubmittingCode || !redemptionCodeInput}
+                            className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
+                        >
+                            {isSubmittingCode ? (
+                                <Loader2 className="animate-spin" size={20} />
+                            ) : (
+                                <>
+                                    Confirm Redemption
+                                    <CheckCircle2 size={20} />
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setShowRedeemModal(false)}
+                            className="w-full h-12 text-text-secondary text-xs font-bold uppercase tracking-widest hover:text-text-main transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

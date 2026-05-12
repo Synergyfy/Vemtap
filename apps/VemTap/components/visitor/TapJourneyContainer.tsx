@@ -269,6 +269,8 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
 
                 setUserData(data);
                 setShowInitialAuth(false);
+                
+                console.log('Registration complete for authenticated user:', updatedUser.email);
 
                 if (pendingAction) {
                     await pendingAction();
