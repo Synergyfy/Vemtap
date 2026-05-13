@@ -53,6 +53,6 @@ test.describe('Dashboard Greeting', () => {
     await page.reload();
 
     await expect(page.locator('h1')).toHaveText('Dashboard');
-    await expect(page.locator('p').filter({ hasText: "Welcome back! Here's what's happening today." })).toBeVisible();
+    await expect(page.locator('p').filter({ hasText: "Welcome back Veteran! Here's what's happening today." })).toBeVisible();
   });
 });

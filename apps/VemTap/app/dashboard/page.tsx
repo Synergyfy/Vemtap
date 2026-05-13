@@ -252,7 +252,7 @@ export default function DashboardPage() {
                         <p className="text-sm text-text-secondary font-medium">
                             {isNewUser
                                 ? "We're excited to have you here. Let's get your business started."
-                                : "Welcome back! Here's what's happening today."}
+                                : `Welcome back ${user?.firstName || 'there'}! Here's what's happening today.`}
                         </p>
                     </div>
 
