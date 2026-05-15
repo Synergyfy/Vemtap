@@ -32,11 +32,12 @@ import WifiProfilePreview from './WifiProfilePreview';
 import AppStorePreview from './AppStorePreview';
 import BookingProfilePreview from './BookingProfilePreview';
 import type { QRData } from '../types/qr';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useSubmitForm } from '../hooks/useForms';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DEMO_DATA } from '../constants/demoData';
+import { qrThriveApi } from '@/services/qr-thrive/api';
 
 const getSocialConfig = (platform: string) => {
   switch (platform) {
@@ -83,9 +84,42 @@ interface DynamicViewProps {
   isWizardPreview?: boolean;
   embedded?: boolean;
   shortId?: string;
+  linkedQRCode?: any;
 }
 
-const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPreview, embedded, shortId: propShortId }) => {
+const LinkedQRCard = ({ qr }: { qr: any }) => {
+  const router = useRouter();
+  if (!qr) return null;
+
+  return (
+    <div className="px-6 mt-8">
+      <div
+        className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 cursor-pointer hover:shadow-md transition-all"
+        onClick={() => router.push(`/s/${qr.shortId}`)}
+      >
+        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">
+          Discover More
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+            <Globe className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-900 truncate">
+              {qr.name || qr.type}
+            </p>
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+              {qr.type} QR
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPreview, embedded, shortId: propShortId, linkedQRCode }) => {
   const params = useParams<{ id: string }>();
   const shortId = propShortId || params?.id;
 
@@ -1179,6 +1213,10 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
 
 
         {renderContent()}
+
+        {!isWizardPreview && linkedQRCode && (
+          <LinkedQRCard qr={linkedQRCode} />
+        )}
 
         {/* Footer info */}
         <div className="mt-16 text-center px-8 sm:px-12 pb-12">

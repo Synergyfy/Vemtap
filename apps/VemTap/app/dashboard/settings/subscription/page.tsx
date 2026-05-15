@@ -15,7 +15,7 @@ import TrialCountdown from '@/components/dashboard/TrialCountdown';
 import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
 import { Crown, ShieldCheck, CheckCircle2, Loader2, Sparkles, Box, Zap, ShoppingCart, Plus, TrendingUp } from 'lucide-react';
-import { useAddOns, usePurchaseAddOn, useMyActiveAddOns } from '@/services/addons/hooks';
+import { useAddOns, usePurchaseAddOn, useMyActiveAddOns, useBundleDiscounts } from '@/services/addons/hooks';
 
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
@@ -24,8 +24,9 @@ export default function DashboardPricingPage() {
     const { user } = useAuthStore();
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
-    const [selectedAddon, setSelectedAddon] = useState<any>(null);
+    const [selectedAddons, setSelectedAddons] = useState<any[]>([]);
     const [isTrialSelection, setIsTrialSelection] = useState(false);
+    const [isAddonModalOpen, setIsAddonModalOpen] = useState(false);
     const [successData, setSuccessData] = useState<{ title: string; message: string } | null>(null);
 
     const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
@@ -46,6 +47,7 @@ export default function DashboardPricingPage() {
     const subscribeMutation = useSubscribe();
     const { data: addons = [], isLoading: addonsLoading } = useAddOns();
     const { data: myActiveAddons = [], isLoading: myAddonsLoading } = useMyActiveAddOns();
+    const { data: discountRules = [] } = useBundleDiscounts();
     const purchaseAddOnMutation = usePurchaseAddOn();
 
     const isLoading = plansLoading || subLoading || addonsLoading;
@@ -648,74 +650,160 @@ export default function DashboardPricingPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {addons.filter(a => a.isActive).map((addon) => (
-                        <div 
-                            key={addon.id}
-                            className="group relative flex flex-col p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                {addon.type === 'RESOURCE' ? <Box size={64} /> : <Zap size={64} />}
-                            </div>
-
-                            <div className="mb-6">
-                                <div className={`size-12 rounded-2xl flex items-center justify-center mb-4 ${
-                                    addon.type === 'RESOURCE' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
+                    {addons.filter(a => a.isActive).map((addon) => {
+                        const isSelected = selectedAddons.some(a => a.id === addon.id);
+                        return (
+                            <div 
+                                key={addon.id}
+                                onClick={() => {
+                                    if (isSelected) {
+                                        setSelectedAddons(prev => prev.filter(a => a.id !== addon.id));
+                                    } else {
+                                        setSelectedAddons(prev => [...prev, addon]);
+                                    }
+                                }}
+                                className={`group relative flex flex-col p-6 rounded-[2rem] border transition-all duration-300 overflow-hidden cursor-pointer ${
+                                    isSelected 
+                                        ? 'bg-primary/5 border-primary shadow-2xl shadow-primary/10 ring-2 ring-primary ring-offset-2' 
+                                        : 'bg-white border-slate-200 shadow-xl hover:shadow-2xl'
+                                }`}
+                            >
+                                <div className={`absolute top-4 right-4 z-10 size-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    isSelected ? 'bg-primary border-primary text-white' : 'border-slate-200 bg-white'
                                 }`}>
-                                    {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
+                                    {isSelected && <CheckCircle2 size={14} />}
                                 </div>
-                                <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
-                                {addon.type === 'RESOURCE' && addon.additionalLimit && (
-                                   <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full mt-3 border border-emerald-100 shadow-sm transition-transform group-hover:scale-105">
-                                       <TrendingUp size={10} strokeWidth={3} />
-                                       <span className="text-[10px] font-black uppercase tracking-widest">
-                                           + {addon.additionalLimit} {addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units'}s Boost
-                                       </span>
-                                   </div>
-                                )}
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                    {addon.type === 'RESOURCE' ? 'Resource Pack' : 'Premium Service'}
+
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    {addon.type === 'RESOURCE' ? <Box size={64} /> : <Zap size={64} />}
+                                </div>
+
+                                <div className="mb-6">
+                                    <div className={`size-12 rounded-2xl flex items-center justify-center mb-4 ${
+                                        addon.type === 'RESOURCE' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
+                                    }`}>
+                                        {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
+                                    </div>
+                                    <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                    {addon.type === 'RESOURCE' && addon.additionalLimit && (
+                                       <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full mt-3 border border-emerald-100 shadow-sm transition-transform group-hover:scale-105">
+                                           <TrendingUp size={10} strokeWidth={3} />
+                                           <span className="text-[10px] font-black uppercase tracking-widest">
+                                               + {addon.additionalLimit} {addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units'}s Boost
+                                           </span>
+                                       </div>
+                                    )}
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        {addon.type === 'RESOURCE' ? 'Resource Pack' : 'Premium Service'}
+                                    </p>
+                                </div>
+
+                                <p className="text-xs font-medium text-slate-500 leading-relaxed mb-6 flex-1">
+                                    {addon.description}
                                 </p>
-                            </div>
 
-                            <p className="text-xs font-medium text-slate-500 leading-relaxed mb-6 flex-1">
-                                {addon.description}
-                            </p>
+                                <div className="mt-auto">
+                                    <div className="flex items-end gap-1 mb-6">
+                                        <span className="text-2xl font-black text-slate-900">₦{addon.price.toLocaleString()}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 mb-1">/mo</span>
+                                    </div>
 
-                            <div className="mt-auto">
-                                <div className="flex items-end gap-1 mb-6">
-                                    <span className="text-2xl font-black text-slate-900">₦{addon.price.toLocaleString()}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mb-1">/mo</span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isOwner) {
+                                                toast.error('Only business owners can purchase add-ons');
+                                                return;
+                                            }
+                                            if (!subscription) {
+                                                toast.error('Please subscribe to a plan first');
+                                                return;
+                                            }
+                                            
+                                            if (isSelected) {
+                                                setSelectedAddons(prev => prev.filter(a => a.id !== addon.id));
+                                            } else {
+                                                setSelectedAddons(prev => [...prev, addon]);
+                                            }
+                                        }}
+                                        className={`w-full h-11 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                                            isSelected 
+                                                ? 'bg-primary text-white hover:bg-primary-hover' 
+                                                : 'bg-slate-900 text-white hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        {isSelected ? (
+                                            <>
+                                                <CheckCircle2 size={14} />
+                                                Selected
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ShoppingCart size={14} />
+                                                Select Power-Up
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
+                            </div>
+                        );
+                    })}
+                </div>
 
+                {selectedAddons.length > 0 && (() => {
+                    const rawTotal = selectedAddons.reduce((sum, a) => sum + Number(a.price || 0), 0);
+                    const count = selectedAddons.length;
+                    const rule = discountRules
+                        .filter(r => r.isActive && count >= r.minQuantity && (!r.maxQuantity || count <= r.maxQuantity))
+                        .sort((a, b) => b.minQuantity - a.minQuantity)[0];
+                    const discountPercent = rule ? rule.discountPercent : 0;
+                    const savings = rawTotal * (discountPercent / 100);
+                    const finalTotal = rawTotal - savings;
+
+                    return (
+                        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-8 duration-500">
+                            <div className="bg-slate-900 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-8 border border-white/10 backdrop-blur-xl">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                                        {count} Power-Up{count > 1 ? 's' : ''} Selected
+                                    </p>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-lg font-black tracking-tight text-white">
+                                            ₦{finalTotal.toLocaleString()}
+                                        </p>
+                                        {savings > 0 && (
+                                            <span className="text-[10px] font-bold text-emerald-400">
+                                                Saved ₦{savings.toLocaleString()}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="w-px h-8 bg-white/10" />
                                 <button
                                     onClick={() => {
-                                        if (!isOwner) {
-                                            toast.error('Only business owners can purchase add-ons');
-                                            return;
-                                        }
-                                        if (!subscription) {
-                                            toast.error('Please subscribe to a plan first');
-                                            return;
-                                        }
-                                        
-                                        setSelectedAddon(addon);
+                                        if (!isOwner) return;
+                                        setIsAddonModalOpen(true);
                                     }}
-                                    disabled={purchaseAddOnMutation.isPending || !isOwner}
-                                    className="w-full h-11 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                                    className="h-12 px-8 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all flex items-center gap-2 shadow-xl shadow-primary/20"
                                 >
-                                    {purchaseAddOnMutation.isPending ? (
-                                        <Loader2 className="animate-spin" size={14} />
-                                    ) : (
-                                        <>
-                                            <ShoppingCart size={14} />
-                                            Purchase Now
-                                        </>
+                                    <ShoppingCart size={16} />
+                                    Checkout Bundle
+                                    {discountPercent > 0 && (
+                                        <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[8px]">
+                                            -{discountPercent}%
+                                        </span>
                                     )}
+                                </button>
+                                <button
+                                    onClick={() => setSelectedAddons([])}
+                                    className="size-12 rounded-2xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                                >
+                                    <Plus size={20} className="rotate-45" />
                                 </button>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    );
+                })()}
             </div>
 
             {checkoutPlan && (
@@ -740,16 +828,20 @@ export default function DashboardPricingPage() {
                 />
             )}
 
-            {selectedAddon && (
+            {isAddonModalOpen && (
                 <AddOnPurchaseModal
-                    isOpen={!!selectedAddon}
-                    onClose={() => setSelectedAddon(null)}
-                    addon={selectedAddon}
+                    isOpen={isAddonModalOpen}
+                    onClose={() => {
+                        setIsAddonModalOpen(false);
+                        setSelectedAddons([]);
+                    }}
+                    addons={selectedAddons}
                     onSuccess={() => {
-                        setSelectedAddon(null);
+                        setIsAddonModalOpen(false);
+                        setSelectedAddons([]);
                         setSuccessData({
                             title: "Power-Up Activated!",
-                            message: `The ${selectedAddon.name} add-on has been successfully added to your account.`
+                            message: `Your selected Power-Ups have been successfully added to your account and are now active.`
                         });
                         fetchSubscriptionData();
                     }}

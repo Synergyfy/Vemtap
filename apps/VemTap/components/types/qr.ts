@@ -74,6 +74,7 @@ export interface QRData {
   type: QRType;
   name?: string;
   url?: string;
+  linkedQRCodeId?: string;
 
   urlPreview?: {
     title?: string;

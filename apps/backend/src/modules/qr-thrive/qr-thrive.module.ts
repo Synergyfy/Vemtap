@@ -11,6 +11,7 @@ import { QrThriveCallbackController } from './qr-thrive-callback.controller';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
 
 import { ExternalLeadStatusEntity } from './entities/external-lead-status.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { BranchesModule } from '../branches/branches.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
@@ -20,6 +21,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
       QrThriveUserMapping,
 
       ExternalLeadStatusEntity,
+      Branch,
     ]),
     HttpModule.register({
       timeout: 5000,

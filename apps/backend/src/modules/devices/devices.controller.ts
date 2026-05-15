@@ -162,7 +162,7 @@ export class DevicesController {
   }
 
   @Get()
-  @Permissions('nfc')
+  @Permissions('settings')
   @ApiOperation({ summary: 'Get all devices for the branch or business' })
   @ApiResponse({ status: 200, description: 'List of devices', type: [Device] })
   async findAll(
@@ -177,7 +177,7 @@ export class DevicesController {
   }
 
   @Get('stats')
-  @Permissions('nfc')
+  @Permissions('settings')
   @ApiOperation({
     summary: 'Get summary stats for all devices in the branch or business',
   })
@@ -191,7 +191,7 @@ export class DevicesController {
   }
 
   @Patch('names')
-  @Permissions('nfc')
+  @Permissions('settings')
   @ApiOperation({ summary: 'Update names for generated assets' })
   @ApiResponse({
     status: 200,
@@ -206,7 +206,7 @@ export class DevicesController {
     return this.devicesService.updateAssetNames(branchId, dto);
   }
   @Post('generate')
-  @Permissions('nfc')
+  @Permissions('settings')
   @ApiOperation({
     summary: 'Generate devices for ready orders (Business Owner)',
   })
@@ -228,7 +228,7 @@ export class DevicesController {
   }
 
   @Patch(':id')
-  @Permissions('nfc')
+  @Permissions('settings')
   @ApiOperation({ summary: 'Update device configuration' })
   @ApiResponse({ status: 200, description: 'Device updated', type: Device })
   async update(
@@ -244,7 +244,7 @@ export class DevicesController {
   }
 
   @Delete(':id')
-  @Permissions('nfc')
+  @Permissions('settings')
   @ApiOperation({ summary: 'Remove/Unlink a device' })
   @ApiResponse({ status: 200, description: 'Device removed' })
   async remove(

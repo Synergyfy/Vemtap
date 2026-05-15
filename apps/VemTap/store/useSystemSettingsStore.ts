@@ -6,6 +6,13 @@ export interface MessagingCosts {
   whatsapp: number;
 }
 
+export interface BundleDiscountTier {
+  min: number;
+  max: number | null;
+  discountPercent: number;
+  label: string;
+}
+
 export interface SystemSettingsState {
   messagingCosts: MessagingCosts;
   platformName: string;
@@ -14,6 +21,7 @@ export interface SystemSettingsState {
   timezone: string;
   enforce2FA: boolean;
   passwordExpiry: boolean;
+  addOnBundleDiscounts: BundleDiscountTier[];
 
   setMessagingCosts: (costs: MessagingCosts) => void;
   updateSettings: (updates: Partial<SystemSettingsState>) => void;
@@ -33,12 +41,32 @@ export const useSystemSettingsStore = create<SystemSettingsState>()(
       timezone: 'Africa/Lagos',
       enforce2FA: true,
       passwordExpiry: false,
+      addOnBundleDiscounts: [],
 
       setMessagingCosts: (costs) => set({ messagingCosts: costs }),
       updateSettings: (updates) => set((state) => ({ ...state, ...updates })),
       fetchSettings: async () => {
-        // In a real app, fetch from /admin/settings
-        // For now, we rely on persistence
+        try {
+          const { adminSystemSettingsApi } = await import('@/lib/api/admin');
+          const settings = await adminSystemSettingsApi.get();
+          if (settings) {
+            set({
+              platformName: settings.platformName,
+              supportEmail: settings.supportEmail,
+              currency: settings.defaultCurrency,
+              timezone: settings.timezone,
+              enforce2FA: settings.enforce2FA,
+              passwordExpiry: settings.passwordExpiry,
+              messagingCosts: {
+                sms: Number(settings.messagingCostSms),
+                whatsapp: Number(settings.messagingCostWhatsapp)
+              },
+              addOnBundleDiscounts: settings.addOnBundleDiscounts || []
+            });
+          }
+        } catch (error) {
+          console.error('Failed to fetch settings:', error);
+        }
       }
     }),
     {

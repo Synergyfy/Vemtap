@@ -424,6 +424,24 @@ export const qrThriveApi = {
   resetMapping: async (): Promise<void> => {
     return api.delete('/qr-thrive/me/mapping');
   },
+
+  // ============================================
+  // MAIN QR CODE
+  // ============================================
+
+  /**
+   * Get or create the main business link QR code for a branch.
+   */
+  getMainQRCode: async (branchId: string): Promise<{ qrCode: QrThriveQRCode | null; isNew: boolean }> => {
+    return api.get(`/qr-thrive/branches/${branchId}/main-qr`);
+  },
+
+  /**
+   * Recreate the main QR code (e.g., after user edited the old one away from the UBL URL).
+   */
+  recreateMainQRCode: async (branchId: string): Promise<QrThriveQRCode | null> => {
+    return api.post(`/qr-thrive/branches/${branchId}/main-qr/recreate`, {});
+  },
 };
 
 export { QrThriveApiError };

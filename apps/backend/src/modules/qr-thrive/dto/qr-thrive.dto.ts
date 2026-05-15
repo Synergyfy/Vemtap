@@ -102,6 +102,11 @@ export class UpdateQRCodeDto {
   @IsOptional()
   folderId?: string;
 
+  @ApiPropertyOptional({ enum: QRType, example: QRType.url })
+  @IsEnum(QRType)
+  @IsOptional()
+  type?: QRType;
+
   @ApiPropertyOptional({ example: { url: 'https://new-example.com' } })
   @IsObject()
   @IsOptional()

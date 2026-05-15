@@ -73,6 +73,7 @@ const getQrIcon = (type: string) => {
 interface QrGridProps {
   codes: QrThriveQRCode[];
   isLoading?: boolean;
+  mainQrCodeId?: string | null;
   onEdit: (qr: QrThriveQRCode) => void;
   onDelete: (id: string) => Promise<void>;
   onDuplicate: (id: string) => void;
@@ -84,6 +85,7 @@ interface QrGridProps {
 export const QrGrid: React.FC<QrGridProps> = ({ 
   codes, 
   isLoading, 
+  mainQrCodeId, 
   onEdit, 
   onDelete, 
   onDuplicate, 
@@ -115,6 +117,46 @@ export const QrGrid: React.FC<QrGridProps> = ({
       toast.error('Agents are not allowed to delete while impersonating');
       return;
     }
+
+    if (mainQrCodeId && id === mainQrCodeId) {
+      toast((t) => (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-slate-900 text-sm">Delete Main QR Code?</p>
+              <p className="text-xs text-slate-500 mt-1">
+                This is your main business link QR code. Deleting it will not break your business link, 
+                but a new main QR code will be automatically created on your next visit.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 justify-end border-t border-slate-100 pt-3">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                setDeletingId(id);
+                setDeleteModalOpen(true);
+              }}
+              className="px-4 py-2 text-xs font-bold text-white bg-red-500 rounded-lg hover:bg-red-600"
+            >
+              Delete Anyway
+            </button>
+          </div>
+        </div>
+      ), { duration: 8000 });
+      setMenuOpen(null);
+      return;
+    }
+
     setDeletingId(id);
     setDeleteModalOpen(true);
     setMenuOpen(null);
@@ -215,6 +257,11 @@ export const QrGrid: React.FC<QrGridProps> = ({
             </div>
           )}
           
+          {mainQrCodeId && qr.id === mainQrCodeId && qr.status !== 'archived' && (
+            <div className="absolute top-4 left-4 px-3 py-1 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full flex items-center gap-1 shadow-lg shadow-blue-200">
+              <Star className="w-3 h-3 fill-white" /> Main
+            </div>
+          )}
 
 
           <div className="flex items-start justify-between mb-6">

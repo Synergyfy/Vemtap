@@ -156,7 +156,7 @@ export default function QRShortLinkPage() {
     return (
       <div className="min-h-screen bg-white">
         <div className="max-w-lg mx-auto">
-          <DynamicView data={data} />
+          <DynamicView data={data} linkedQRCode={qrCode?.linkedQRCode} />
         </div>
       </div>
     );
