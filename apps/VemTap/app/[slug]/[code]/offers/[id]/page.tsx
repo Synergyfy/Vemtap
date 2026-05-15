@@ -50,18 +50,22 @@ export default function OfferDetailPage() {
         const executeClaim = async (currentUser: User) => {
             setIsSubmitting(true);
             try {
-                await createOrderMutation.mutateAsync({
+                const payload = {
                     branchId: branchId!,
-                    deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                    deviceId: useCustomerFlowStore.getState().deviceId || undefined,
+                    sessionToken: useCustomerFlowStore.getState().sessionToken || undefined,
                     firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
                     lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
                     email: currentUser.email || undefined,
                     phone: currentUser.phone || 'N/A',
                     items: [{ offerId: offer.id, quantity: 1 }]
-                });
+                };
+                console.log('Claiming offer with payload:', payload);
+                await createOrderMutation.mutateAsync(payload);
                 toast.success('Offer claimed successfully!', { icon: '🎁' });
                 router.push(`/${params.slug}/${params.code}/success`);
             } catch (err: any) {
+                console.error('Claim error:', err);
                 toast.error(err.response?.data?.message || 'Failed to claim offer');
             } finally {
                 setIsSubmitting(false);
@@ -91,19 +95,23 @@ export default function OfferDetailPage() {
                 setShowAuthForm(false);
                 
                 const currentUser = authResponse.user as User;
-                await createOrderMutation.mutateAsync({
+                const payload = {
                     branchId: branchId!,
-                    deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                    deviceId: useCustomerFlowStore.getState().deviceId || undefined,
+                    sessionToken: useCustomerFlowStore.getState().sessionToken || undefined,
                     firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || 'Guest',
                     lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || ' ',
                     email: currentUser.email || undefined,
                     phone: currentUser.phone || 'N/A',
                     items: [{ offerId: offer!.id, quantity: 1 }]
-                });
+                };
+                console.log('Claiming offer after auth with payload:', payload);
+                await createOrderMutation.mutateAsync(payload);
                 toast.success('Offer claimed successfully!', { icon: '🎁' });
                 router.push(`/${params.slug}/${params.code}/success`);
             }
         } catch (err: any) {
+            console.error('Auth/Claim error:', err);
             toast.error(err.response?.data?.message || 'Authentication failed');
         } finally {
             setIsSubmitting(false);

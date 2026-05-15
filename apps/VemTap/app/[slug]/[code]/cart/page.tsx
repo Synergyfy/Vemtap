@@ -97,7 +97,7 @@ export default function CartPage() {
                 branchId: branchId!,
                 notes: notes || undefined,
                 tableNumber: tableNumber || undefined,
-                deviceId: useCustomerFlowStore.getState().deviceCode || undefined,
+                deviceId: useCustomerFlowStore.getState().deviceId || undefined,
             });
             toast.success('Order placed successfully! 🎉');
             router.push(`/${params.slug}/${params.code}/success`);

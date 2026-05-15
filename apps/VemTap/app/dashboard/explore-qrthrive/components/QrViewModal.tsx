@@ -11,6 +11,13 @@ interface QrViewModalProps {
   qr: QrThriveQRCode | null;
 }
 
+const toAbsoluteUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 export default function QrViewModal({ isOpen, onClose, qr }: QrViewModalProps) {
   if (!qr) return null;
 
@@ -20,7 +27,9 @@ export default function QrViewModal({ isOpen, onClose, qr }: QrViewModalProps) {
     if (qrRef.current) {
       qrRef.current.download({
         name: qr.name,
-        extension: format
+        extension: format,
+        width: 2000,
+        height: 2000
       });
       toast.success(`${format.toUpperCase()} download started`);
     } else {
@@ -39,7 +48,7 @@ export default function QrViewModal({ isOpen, onClose, qr }: QrViewModalProps) {
       <div className="flex flex-col items-center gap-8">
         <div className="w-full aspect-square max-w-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden shadow-inner flex items-center justify-center p-4">
           <QrPreview
-            data={qr.shortUrl}
+            data={toAbsoluteUrl(qr.shortUrl)}
             design={qr.design}
             frame={qr.frame}
             logo={qr.logo}
@@ -56,10 +65,10 @@ export default function QrViewModal({ isOpen, onClose, qr }: QrViewModalProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destination URL</p>
-                    <p className="text-sm font-bold text-slate-900 truncate">{qr.shortUrl}</p>
+                    <p className="text-sm font-bold text-slate-900 truncate">{toAbsoluteUrl(qr.shortUrl)}</p>
                 </div>
                 <a 
-                    href={qr.shortUrl} 
+                    href={toAbsoluteUrl(qr.shortUrl)} 
                     target="_blank" 
                     rel="noreferrer"
                     className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-blue-600 transition-all shadow-sm"
