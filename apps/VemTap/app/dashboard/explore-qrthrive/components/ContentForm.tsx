@@ -42,6 +42,8 @@ import {
   Search,
 } from "lucide-react";
 import { QRType } from '@/services/qr-thrive/types';
+import { useQrThriveCodes } from '@/services/qr-thrive/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
 type QRConfiguration = any;
 type QRData = any;
 const FormBuilder: React.FC<{
@@ -519,7 +521,7 @@ const CountrySelector = ({ value, onChange }: { value: string, onChange: (val: s
 };
 const ImageEditor = (props: any) => <div>ImageEditor</div>;
 
-const useQRCodes = () => ({ data: [] }); const useCurrentUser = () => ({ data: { user: null } });
+
 
 interface ContentPanelProps {
   config: QRConfiguration;
@@ -596,7 +598,7 @@ const CollapsibleSection = ({
 };
 
 const QRPickerDropdown = ({ currentData, updateData, typeKey }: any) => {
-  const { data: qrCodes = [] } = useQRCodes();
+  const { data: qrCodes = [] } = useQrThriveCodes();
   return (
     <div className="space-y-2 animate-in fade-in duration-300">
       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
@@ -627,7 +629,7 @@ const QRPickerDropdown = ({ currentData, updateData, typeKey }: any) => {
 };
 
 const QROptionsList = () => {
-  const { data: qrCodes = [] } = useQRCodes();
+  const { data: qrCodes = [] } = useQrThriveCodes();
   return (
     <>
       {qrCodes.map((qr: any) => (
@@ -993,8 +995,7 @@ export const ContentForm: React.FC<any> = ({
   const updateData = (updates: any) => onChange({ ...propsData, ...updates });
   const hideTypeSelector = true;
   const data = config.data;
-  const { data: userData } = useCurrentUser();
-  const user = userData?.user;
+  const { user } = useAuthStore();
   const [uploading, setUploading] = useState<string | null>(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<
@@ -5460,56 +5461,27 @@ export const ContentForm: React.FC<any> = ({
               onToggle={toggleSection}
             >
               <div className="space-y-4 animate-in fade-in duration-300">
-                {!user ? (
-                  <div className="bg-blue-50/50 rounded-2xl p-6 border-2 border-dashed border-blue-100 flex flex-col items-center justify-center text-center">
-                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600 mb-3">
-                      <Zap className="w-6 h-6 fill-yellow-400 text-yellow-400" />
-                    </div>
-                    <h4 className="text-sm font-bold text-gray-900 mb-1">
-                      Unlock QR Chaining
-                    </h4>
-                    <p className="text-[10px] text-gray-500 font-medium mb-4 leading-relaxed max-w-[250px]">
-                      Sign in or register to chain multiple QR codes together.
-                      Automatically redirect users after they interact with this
-                      code.
-                    </p>
-                    <button
-                      onClick={() => {
-                        const authModalBtn = document.querySelector(
-                          "[data-auth-trigger]",
-                        ) as HTMLElement;
-                        if (authModalBtn) authModalBtn.click();
-                      }}
-                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-200/50 hover:bg-blue-700 transition-all active:scale-95"
-                    >
-                      Sign in to connect
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
-                        Connect to another QR Code
-                      </p>
-                      <select
-                        className="w-full px-4 py-3 border-2 border-gray-50 rounded-xl outline-none font-bold text-gray-900 bg-gray-50/30 text-sm appearance-none cursor-pointer"
-                        value={data.linkedQRCodeId || ""}
-                        onChange={(e) =>
-                          updateData({ linkedQRCodeId: e.target.value })
-                        }
-                      >
-                        <option value="">None (Don't connect)</option>
-                        <QROptionsList />
-                      </select>
-                    </div>
-                    <p className="text-[9px] text-gray-400 font-medium leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      When visitors complete the interaction for this QR code
-                      (like submitting a form or clicking a CTA button), they
-                      will be automatically redirected to the connected
-                      experience you select here.
-                    </p>
-                  </>
-                )}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
+                    Connect to another QR Code
+                  </p>
+                  <select
+                    className="w-full px-4 py-3 border-2 border-gray-50 rounded-xl outline-none font-bold text-gray-900 bg-gray-50/30 text-sm appearance-none cursor-pointer"
+                    value={data.linkedQRCodeId || ""}
+                    onChange={(e) =>
+                      updateData({ linkedQRCodeId: e.target.value })
+                    }
+                  >
+                    <option value="">None (Don't connect)</option>
+                    <QROptionsList />
+                  </select>
+                </div>
+                <p className="text-[9px] text-gray-400 font-medium leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  When visitors complete the interaction for this QR code
+                  (like submitting a form or clicking a CTA button), they
+                  will be automatically redirected to the connected
+                  experience you select here.
+                </p>
               </div>
             </CollapsibleSection>
           </div>

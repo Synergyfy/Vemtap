@@ -43,15 +43,16 @@ export class UsersService {
       .getRepository('branches')
       .findOne({ where: { id: branchId } });
 
-    const hashedPassword = await bcrypt.hash(dto.firstName.toLowerCase(), 10);
+    const trimmedFirstName = dto.firstName.trim();
+    const hashedPassword = await bcrypt.hash(trimmedFirstName.toLowerCase(), 10);
     const user = this.usersRepository.create({
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      email: dto.email.toLowerCase(),
-      phone: dto.phone,
+      firstName: trimmedFirstName,
+      lastName: dto.lastName.trim(),
+      email: dto.email.trim().toLowerCase(),
+      phone: dto.phone?.trim(),
       password: hashedPassword,
       role: dto.role,
-      jobTitle: dto.jobTitle,
+      jobTitle: dto.jobTitle?.trim(),
       permissions: dto.permissions,
       branchId: branchId,
       businessId: (branch as any)?.businessId,
@@ -64,7 +65,7 @@ export class UsersService {
       await this.mailService.sendWelcomeEmail(
         savedUser.email,
         savedUser.firstName,
-        dto.firstName.toLowerCase(),
+        trimmedFirstName.toLowerCase(),
       );
     } catch (error) {
       console.error('Failed to send invitation email:', error);
@@ -120,8 +121,9 @@ export class UsersService {
 
   async findByIdentifier(identifier: string): Promise<User | null> {
     if (!identifier) return null;
+    const trimmed = identifier.trim();
     return this.usersRepository.findOne({
-      where: [{ email: identifier.toLowerCase() }, { phone: identifier }],
+      where: [{ email: trimmed.toLowerCase() }, { phone: trimmed }],
     });
   }
 

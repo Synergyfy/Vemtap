@@ -13,7 +13,7 @@ import {
     UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, 
     BarChart3, Users as UsersIcon, Settings as SettingsIcon, 
     Building2, Loader2, Lock, Home, MessageCircle, Gift, Zap, Nfc, HelpCircle,
-    Cpu, Bell, BookOpen, Wand2, Smartphone
+    Cpu, Bell, BookOpen, Wand2, Smartphone, ShoppingBag, QrCode
 } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
@@ -33,10 +33,27 @@ const PERMISSIONS = [
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'staff', label: 'Team', icon: UsersIcon },
     { id: 'nfc', label: 'NFC Manager', icon: Nfc },
+    { id: 'catalogue', label: 'Catalogue', icon: ShoppingBag },
+    { id: 'qrthrive', label: 'QRThrive', icon: QrCode },
+    { id: 'customer-experience', label: 'Customer Experience', icon: Wand2 },
+    { id: 'automations', label: 'Automations', icon: Cpu },
     { id: 'support', label: 'Support', icon: HelpCircle },
     { id: 'tutorial', label: 'Tutorial', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
+
+const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
+    Manager: [
+        'dashboard', 'visitors', 'chat', 'messages', 'loyalty',
+        'engagement', 'analytics', 'staff', 'nfc', 'catalogue',
+        'qrthrive', 'customer-experience', 'automations',
+        'support', 'tutorial', 'settings',
+    ],
+    Staff: [
+        'dashboard', 'visitors', 'chat', 'loyalty',
+        'support', 'tutorial',
+    ],
+};
 
 export default function StaffManagementPage() {
     const router = useRouter();
@@ -48,7 +65,8 @@ export default function StaffManagementPage() {
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
     const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
-    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
+    const [selectedRole, setSelectedRole] = useState<string>('Staff');
+    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(ROLE_DEFAULT_PERMISSIONS['Staff']);
 
     const teamLimitReached = isLimitReached('teamMembers');
 
@@ -90,11 +108,11 @@ export default function StaffManagementPage() {
         const branchId = formData.get('branchId') as string;
 
         const staffData = {
-            firstName: formData.get('firstName') as string,
-            lastName: formData.get('lastName') as string,
-            email: formData.get('email') as string,
-            phone: formData.get('phone') as string || undefined,
-            jobTitle: formData.get('jobTitle') as string || undefined,
+            firstName: (formData.get('firstName') as string).trim(),
+            lastName: (formData.get('lastName') as string).trim(),
+            email: (formData.get('email') as string).trim(),
+            phone: (formData.get('phone') as string)?.trim() || undefined,
+            jobTitle: (formData.get('jobTitle') as string)?.trim() || undefined,
             role: roleValue as UserRole,
             branchId: branchId || activeBranchId || user?.branchId || '',
             permissions: selectedPermissions,
@@ -108,7 +126,8 @@ export default function StaffManagementPage() {
         inviteMutation.mutate(staffData, {
             onSuccess: () => {
                 setIsInviteModalOpen(false);
-                setSelectedPermissions(['dashboard', 'visitors']);
+                setSelectedRole('Staff');
+                setSelectedPermissions(ROLE_DEFAULT_PERMISSIONS['Staff']);
                 toast.success('Staff member invited successfully');
             },
             onError: (error: any) => {
@@ -235,6 +254,8 @@ export default function StaffManagementPage() {
                                     if (teamLimitReached) {
                                         setShowUpgradeModal(true);
                                     } else {
+                                        setSelectedRole('Staff');
+                                        setSelectedPermissions(ROLE_DEFAULT_PERMISSIONS['Staff']);
                                         setIsInviteModalOpen(true);
                                     }
                                 }}
@@ -329,7 +350,7 @@ export default function StaffManagementPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
-                            <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
+                            <select name="role" value={selectedRole} onChange={(e) => { setSelectedRole(e.target.value); setSelectedPermissions(ROLE_DEFAULT_PERMISSIONS[e.target.value] || []); }} className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
                                 <option value="Staff">Staff Member (Limited Access)</option>
                                 <option value="Manager">Manager (Full Dashboard)</option>
                             </select>
