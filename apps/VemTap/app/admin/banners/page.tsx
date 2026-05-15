@@ -55,19 +55,22 @@ export default function AdminBannerManagementPage() {
         fetchBanners();
     }, [fetchBanners]);
 
-    const handleAdd = async () => {
-        try {
-            const newSlide = await adminBannersApi.create({
-                title: 'New Announcement',
-                description: 'Provide a brief description of this announcement here.',
-                iconName: 'Megaphone',
-                color: 'bg-gradient-to-r from-emerald-600 to-teal-500'
-            });
-            toast.success('New slide added!');
-            await fetchBanners();
-        } catch {
-            toast.error('Failed to add slide');
-        }
+    const isTempId = (id: string) => id.startsWith('new-');
+
+    const handleAdd = () => {
+        const tempId = `new-${Date.now()}`;
+        const newSlide: BannerSlide = {
+            id: tempId,
+            title: '',
+            description: '',
+            iconName: 'Megaphone',
+            color: 'bg-gradient-to-r from-emerald-600 to-teal-500',
+            sortOrder: slides.length,
+            isActive: true,
+        };
+        setSlides(prev => [...prev, newSlide]);
+        setEditingId(tempId);
+        setEditForm(newSlide);
     };
 
     const handleEdit = (slide: BannerSlide) => {
@@ -75,22 +78,41 @@ export default function AdminBannerManagementPage() {
         setEditForm(slide);
     };
 
+    const handleCancel = () => {
+        if (editingId && isTempId(editingId)) {
+            setSlides(prev => prev.filter(s => s.id !== editingId));
+        }
+        setEditingId(null);
+    };
+
     const handleSave = async () => {
         if (!editingId || !editForm) return;
         try {
-            await adminBannersApi.update(editingId, {
-                title: editForm.title,
-                description: editForm.description,
-                iconName: editForm.iconName,
-                actionLabel: editForm.actionLabel,
-                actionUrl: editForm.actionUrl,
-                color: editForm.color,
-            });
+            if (isTempId(editingId)) {
+                await adminBannersApi.create({
+                    title: editForm.title || 'New Announcement',
+                    description: editForm.description || '',
+                    iconName: editForm.iconName || 'Megaphone',
+                    actionLabel: editForm.actionLabel,
+                    actionUrl: editForm.actionUrl,
+                    color: editForm.color || 'bg-gradient-to-r from-emerald-600 to-teal-500',
+                });
+                toast.success('Slide created!');
+            } else {
+                await adminBannersApi.update(editingId, {
+                    title: editForm.title,
+                    description: editForm.description,
+                    iconName: editForm.iconName,
+                    actionLabel: editForm.actionLabel,
+                    actionUrl: editForm.actionUrl,
+                    color: editForm.color,
+                });
+                toast.success('Slide updated!');
+            }
             setEditingId(null);
-            toast.success('Slide updated!');
             await fetchBanners();
         } catch {
-            toast.error('Failed to update slide');
+            toast.error('Failed to save slide');
         }
     };
 
@@ -112,6 +134,12 @@ export default function AdminBannerManagementPage() {
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Are you sure you want to delete this slide?')) return;
+        if (isTempId(id)) {
+            setSlides(prev => prev.filter(s => s.id !== id));
+            if (editingId === id) setEditingId(null);
+            toast.success('Slide discarded');
+            return;
+        }
         try {
             await adminBannersApi.delete(id);
             toast.success('Slide deleted');
@@ -236,7 +264,7 @@ export default function AdminBannerManagementPage() {
                                 </div>
                                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-50">
                                     <button
-                                        onClick={() => setEditingId(null)}
+                                        onClick={handleCancel}
                                         className="px-6 py-2.5 text-xs font-black uppercase tracking-widest text-text-secondary hover:bg-gray-50 rounded-xl transition-all"
                                     >
                                         Cancel

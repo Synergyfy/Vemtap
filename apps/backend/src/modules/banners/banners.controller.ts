@@ -63,6 +63,14 @@ export class AdminBannersController {
     return this.bannersService.create(dto);
   }
 
+  @Patch('reorder')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Reorder banners' })
+  @ApiResponse({ status: 200, description: 'Banners reordered', type: [Banner] })
+  async reorder(@Body() dto: ReorderBannersDto) {
+    return this.bannersService.reorder(dto);
+  }
+
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update a banner' })
@@ -78,13 +86,5 @@ export class AdminBannersController {
   async remove(@Param('id') id: string) {
     await this.bannersService.remove(id);
     return { ok: true };
-  }
-
-  @Patch('reorder')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Reorder banners' })
-  @ApiResponse({ status: 200, description: 'Banners reordered', type: [Banner] })
-  async reorder(@Body() dto: ReorderBannersDto) {
-    return this.bannersService.reorder(dto);
   }
 }
