@@ -5,7 +5,7 @@ import Modal from '@/components/ui/Modal';
 import { useRouter } from 'next/navigation';
 import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info, ShoppingCart } from 'lucide-react';
 import { useSubscribe } from '@/services/subscriptions/hooks';
-import { useAddOns } from '@/services/addons/hooks';
+import { useAddOns, useBundleDiscounts } from '@/services/addons/hooks';
 import AddOnSelectionList from './AddOnSelectionList';
 import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
@@ -27,6 +27,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
     const { user } = useAuthStore();
     const subscribeMutation = useSubscribe();
     const { data: addons = [] } = useAddOns();
+    const { data: discountRules = [] } = useBundleDiscounts();
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
     const paymentSuccessful = useRef(false);
@@ -167,38 +168,44 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         const base = getPriceByCycle();
         if (base === undefined) return null;
 
-        const addonCost = selectedAddonIds.reduce((sum, id) => {
+        const rawAddonCost = selectedAddonIds.reduce((sum, id) => {
             const addon = addons.find(a => a.id === id);
             if (!addon) return sum;
             const price = Number(addon.price || 0);
-            if (billingPeriod === 'yearly') return sum + (price * 12);
-            if (billingPeriod === 'quarterly') return sum + (price * 3);
             return sum + price;
         }, 0);
 
-        const total = base + addonCost;
+        // Apply bundle discount
+        const count = selectedAddonIds.length;
+        let discountPercent = 0;
+        
+        const rule = discountRules
+            .filter(r => r.isActive && count >= r.minQuantity && (!r.maxQuantity || count <= r.maxQuantity))
+            .sort((a, b) => b.minQuantity - a.minQuantity)[0];
+            
+        if (rule) {
+            discountPercent = rule.discountPercent;
+        }
 
-        if (billingPeriod === 'quarterly') {
-            const perMonth = Math.floor(total / 3);
-            return {
-                perMonth,
-                total,
-                label: 'Charged every 3 months',
-                savings: 0,
-                months: 3,
-            };
-        }
-        if (billingPeriod === 'yearly') {
-            const perMonth = Math.floor(total / 12);
-            return {
-                perMonth,
-                total,
-                label: 'Charged annually',
-                savings: 0,
-                months: 12,
-            };
-        }
-        return { perMonth: total, total, label: 'Charged monthly', savings: 0, months: 1 };
+        const discountedAddonCost = rawAddonCost * (1 - discountPercent / 100);
+        const bundleSavings = rawAddonCost - discountedAddonCost;
+
+        // Multiply by billing period
+        const periodMultiplier = billingPeriod === 'yearly' ? 12 : billingPeriod === 'quarterly' ? 3 : 1;
+        const addonTotal = discountedAddonCost * periodMultiplier;
+        const savingsTotal = bundleSavings * periodMultiplier;
+
+        const total = base + addonTotal;
+
+        return {
+            perMonth: Math.floor(total / periodMultiplier),
+            total,
+            label: billingPeriod === 'yearly' ? 'Charged annually' : billingPeriod === 'quarterly' ? 'Charged every 3 months' : 'Charged monthly',
+            savings: savingsTotal,
+            months: periodMultiplier,
+            bundleDiscountPercent: discountPercent,
+            rawAddonCost: rawAddonCost * periodMultiplier
+        };
     };
 
     const breakdown = getChargeBreakdown();
@@ -260,10 +267,10 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     {breakdown && breakdown.savings > 0 && (
                         <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 mt-4">
                             <div className="size-6 bg-emerald-500 text-white rounded-lg flex items-center justify-center shrink-0">
-                                <ShieldCheck size={14} />
+                                <Zap size={14} />
                             </div>
                             <p className="text-xs font-bold text-emerald-800">
-                                You save <span className="underline decoration-emerald-500 decoration-2 underline-offset-2">₦{breakdown.savings.toLocaleString()}</span> with {billingPeriod} billing.
+                                Bundle Discount Applied! You save <span className="underline decoration-emerald-500 decoration-2 underline-offset-2">₦{breakdown.savings.toLocaleString()}</span> ({breakdown.bundleDiscountPercent}% off).
                             </p>
                         </div>
                     )}

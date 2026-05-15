@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { notify } from '@/lib/notify';
 import {
-    Tag, Plus, Trash2, Edit3, Save, X,
+    Tag, Plus, Trash2, Edit3, Save, X, Check,
     Zap, Shield, Globe, Crown, ChevronUp, ChevronDown, Loader2,
-    Layers, Package, Users, GitBranch, Info, 
+    Layers, Package, Users, GitBranch, Info, Percent,
     Activity, ShoppingCart, TrendingUp, BarChart3, Clock, Layout
 } from 'lucide-react';
 import Tooltip from '@/components/ui/Tooltip';
@@ -18,6 +18,14 @@ import { useQrThrivePlans } from '@/services/qr-thrive/hooks';
 import { useAdminAddOns, useAddOnStats, useAddAddOn, useUpdateAddOn, useDeleteAddOn } from '@/services/addons/hooks';
 import { AddOnType, AddOn } from '@/services/addons/types';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
+import { useAdminSettings, useUpdateAdminSettings } from '@/services/administration/settings.hooks';
+import { 
+    useAdminBundleDiscounts, 
+    useAddBundleDiscount, 
+    useUpdateBundleDiscount, 
+    useDeleteBundleDiscount 
+} from '@/services/administration/bundle-discounts.hooks';
+import { BundleDiscountTier } from '@/store/useSystemSettingsStore';
 
 type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit' | 'maxCatalogueItems' | 'maxCatalogueCategories' | 'maxCatalogueOffers' | 'maxAutomations'> & {
     id?: string;
@@ -174,6 +182,208 @@ const toEditableAddOn = (addon: AddOn): EditableAddOnForm => ({
     },
 });
 
+const BundleDiscountsTab = () => {
+    const { data: discounts = [], isLoading } = useAdminBundleDiscounts();
+    const addMutation = useAddBundleDiscount();
+    const updateMutation = useUpdateBundleDiscount();
+    const deleteMutation = useDeleteBundleDiscount();
+
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [localTiers, setLocalTiers] = useState<any[]>([]);
+    const [initialized, setInitialized] = useState(false);
+
+    useEffect(() => {
+        if (!isLoading && !initialized) {
+            setLocalTiers(discounts);
+            setInitialized(true);
+        } else if (discounts.length !== localTiers.filter(t => !t.isDraft).length) {
+            // Sync if the number of saved tiers changed (e.g. after a delete or save)
+            const drafts = localTiers.filter(t => t.isDraft);
+            setLocalTiers([...drafts, ...discounts]);
+        }
+    }, [discounts, isLoading]);
+
+    const handleAddTier = () => {
+        const tempId = `temp-${Date.now()}`;
+        const newTier = {
+            id: tempId,
+            label: 'New Tier',
+            minQuantity: 1,
+            maxQuantity: null,
+            discountPercent: 0,
+            isActive: true,
+            isDraft: true
+        };
+        setLocalTiers(prev => [newTier, ...prev]);
+        setEditingId(tempId);
+    };
+
+    const handleUpdateField = (id: string, field: string, value: any) => {
+        setLocalTiers(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
+    };
+
+    const handleSaveRow = (id: string) => {
+        const tier = localTiers.find(t => t.id === id);
+        if (!tier) return;
+        
+        const { id: _, isDraft, createdAt, updatedAt, ...data } = tier;
+        
+        if (isDraft || id.startsWith('temp-')) {
+            addMutation.mutate(data, {
+                onSuccess: () => {
+                    setEditingId(null);
+                    setLocalTiers(prev => prev.filter(t => t.id !== id));
+                }
+            });
+        } else {
+            updateMutation.mutate({ id, data }, {
+                onSuccess: () => setEditingId(null)
+            });
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        if (id.startsWith('temp-')) {
+            setLocalTiers(prev => prev.filter(t => t.id !== id));
+            setEditingId(null);
+            return;
+        }
+        if (window.confirm('Are you sure you want to delete this discount rule?')) {
+            deleteMutation.mutate(id);
+        }
+    };
+
+    if (isLoading) return <div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
+
+    return (
+        <div className="bg-slate-50/50 rounded-3xl border border-slate-100 overflow-hidden mb-12">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <Percent size={16} />
+                        </div>
+                        <h2 className="text-xl font-bold text-text-main">Bundle Discount Rules</h2>
+                    </div>
+                    <p className="text-xs text-text-secondary font-medium">Define automated price reductions when customers purchase multiple add-ons together.</p>
+                </div>
+                <button 
+                    onClick={handleAddTier}
+                    disabled={addMutation.isPending}
+                    className="h-10 px-4 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                    <Plus size={14} /> Add New Rule
+                </button>
+            </div>
+
+            <div className="p-8">
+                {localTiers.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {localTiers.map((tier) => (
+                            <motion.div 
+                                key={tier.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className={`bg-white p-5 rounded-2xl border transition-all relative group ${editingId === tier.id ? 'border-primary shadow-lg ring-4 ring-primary/5' : 'border-slate-100 hover:border-primary/20 shadow-sm'}`}
+                            >
+                                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+                                    {editingId === tier.id ? (
+                                        <button 
+                                            onClick={() => handleSaveRow(tier.id)}
+                                            className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center hover:bg-green-600 hover:text-white transition-all"
+                                        >
+                                            <Check size={14} />
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={() => setEditingId(tier.id)}
+                                            className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center hover:bg-primary hover:text-white transition-all"
+                                        >
+                                            <Edit3 size={14} />
+                                        </button>
+                                    )}
+                                    <button 
+                                        onClick={() => handleDelete(tier.id)}
+                                        className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Rule Label</label>
+                                        <input 
+                                            type="text"
+                                            disabled={editingId !== tier.id}
+                                            value={tier.label}
+                                            onChange={(e) => handleUpdateField(tier.id, 'label', e.target.value)}
+                                            placeholder="e.g. Volume Starter Pack"
+                                            className="w-full h-10 px-4 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs focus:ring-2 focus:ring-primary/10 outline-none transition-all focus:bg-white focus:border-primary/20 disabled:opacity-50"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Min Items</label>
+                                            <input 
+                                                type="number"
+                                                disabled={editingId !== tier.id}
+                                                value={tier.minQuantity}
+                                                onChange={(e) => handleUpdateField(tier.id, 'minQuantity', parseInt(e.target.value) || 0)}
+                                                className="w-full h-10 px-4 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs focus:ring-2 focus:ring-primary/10 outline-none transition-all focus:bg-white focus:border-primary/20 disabled:opacity-50"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Max Items</label>
+                                            <input 
+                                                type="number"
+                                                disabled={editingId !== tier.id}
+                                                value={tier.maxQuantity || ''}
+                                                onChange={(e) => handleUpdateField(tier.id, 'maxQuantity', e.target.value ? parseInt(e.target.value) : null)}
+                                                placeholder="∞"
+                                                className="w-full h-10 px-4 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs focus:ring-2 focus:ring-primary/10 outline-none transition-all focus:bg-white focus:border-primary/20 disabled:opacity-50"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Discount %</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type="number"
+                                                    disabled={editingId !== tier.id}
+                                                    value={tier.discountPercent}
+                                                    onChange={(e) => handleUpdateField(tier.id, 'discountPercent', parseInt(e.target.value) || 0)}
+                                                    className="w-full h-10 px-4 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs focus:ring-2 focus:ring-primary/10 outline-none transition-all focus:bg-white focus:border-primary/20 pr-8 disabled:opacity-50"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="py-12 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white/50">
+                        <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                            <Percent size={32} className="opacity-20 text-slate-900" />
+                        </div>
+                        <p className="font-bold text-sm text-text-main">No discount rules configured</p>
+                        <p className="text-xs mb-6">Create multiple rules to encourage bulk add-on purchases.</p>
+                        <button 
+                            onClick={handleAddTier}
+                            className="h-10 px-6 bg-white border border-slate-200 rounded-xl font-bold text-xs hover:border-primary hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                        >
+                            <Plus size={14} /> Add Your First Discount Rule
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export default function AdminPricingPage() {
     const [activeTab, setActiveTab] = useState<'plans' | 'addons'>('plans');
     
@@ -195,6 +405,8 @@ export default function AdminPricingPage() {
     const { data: qrThrivePlans = [], isLoading: qrPlansLoading } = useQrThrivePlans();
     const { data: addons = [], isLoading: addonsLoading } = useAdminAddOns();
     const { data: addonStats } = useAddOnStats();
+    const { data: systemSettings, isLoading: settingsLoading } = useAdminSettings();
+    const updateSettingsMutation = useUpdateAdminSettings();
 
     const [orderedPlans, setOrderedPlans] = useState<PricingPlan[]>([]);
     const [originalOrderIds, setOriginalOrderIds] = useState<string[]>([]);
@@ -566,7 +778,7 @@ export default function AdminPricingPage() {
                             <span className="text-xs font-black uppercase tracking-widest">Pricing Management</span>
                         </div>
                         <h1 className="text-4xl font-display font-bold text-text-main">
-                            {activeTab === 'plans' ? 'Subscription Plans' : 'Add-ons Templates'}
+                            {activeTab === 'plans' ? 'Subscription Plans' : 'Add-ons & Discounts'}
                         </h1>
                     </div>
                     <div className="flex flex-wrap gap-3">
@@ -649,7 +861,7 @@ export default function AdminPricingPage() {
                     </motion.div>
                 )}
 
-                {((activeTab === 'plans' && plansLoading) || (activeTab === 'addons' && addonsLoading)) ? (
+                {((activeTab === 'plans' && plansLoading) || (activeTab === 'addons' && (addonsLoading || settingsLoading))) ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
                     </div>
@@ -792,104 +1004,123 @@ export default function AdminPricingPage() {
                         </AnimatePresence>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <AnimatePresence mode="popLayout">
-                            {addons.map((addon) => (
-                                <motion.div
-                                    key={addon.id}
-                                    layout
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    className={`bg-white rounded-2xl border-2 transition-all overflow-hidden group ${editingAddOn?.id === addon.id ? 'border-primary shadow-xl ring-4 ring-primary/5' : 'border-gray-100 hover:border-primary/20 hover:shadow-lg'}`}
+                    <div className="space-y-12">
+                        <BundleDiscountsTab />
+
+                        <div className="pt-12 border-t-2 border-dashed border-slate-100">
+                            <div className="flex items-center justify-between mb-8">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-text-main">Add-on Templates</h2>
+                                    <p className="text-sm text-text-secondary font-medium">Manage individual service and resource modules available for purchase.</p>
+                                </div>
+                                <button
+                                    onClick={openCreateAddOn}
+                                    className="h-11 px-5 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all flex items-center gap-2"
                                 >
-                                    <div className="p-8">
-                                        <div className="flex items-start justify-between mb-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${addon.type === AddOnType.RESOURCE ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
-                                                    {addon.type === AddOnType.RESOURCE ? <Layers size={28} /> : <Users size={28} />}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-bold text-text-main text-lg">{addon.name}</h3>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${addon.type === AddOnType.RESOURCE ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                            {addon.type}
-                                                        </span>
-                                                        {!addon.isActive && (
-                                                            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-red-100 text-red-600">
-                                                                Inactive
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => openEditAddOn(addon)}
-                                                    className="p-2.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-primary transition-all"
-                                                >
-                                                    <Edit3 size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteAddOn(addon.id)}
-                                                    className="p-2.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-all"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        </div>
+                                    <Plus size={16} /> Create New Template
+                                </button>
+                            </div>
 
-                                        <div className="space-y-4 mb-6">
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-3xl font-display font-black text-text-main">{formatPrice(addon.price, addon.currency)}</span>
-                                                <span className="text-sm font-bold text-text-secondary">/{addon.durationDays}d</span>
-                                            </div>
-                                            <p className="text-sm text-text-secondary font-medium leading-relaxed">
-                                                {addon.description}
-                                            </p>
-                                        </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <AnimatePresence mode="popLayout">
+                                    {addons.map((addon) => (
+                                        <motion.div
+                                            key={addon.id}
+                                            layout
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.9 }}
+                                            className={`bg-white rounded-2xl border-2 transition-all overflow-hidden group ${editingAddOn?.id === addon.id ? 'border-primary shadow-xl ring-4 ring-primary/5' : 'border-gray-100 hover:border-primary/20 hover:shadow-lg'}`}
+                                        >
+                                            <div className="p-8">
+                                                <div className="flex items-start justify-between mb-6">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${addon.type === AddOnType.RESOURCE ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                            {addon.type === AddOnType.RESOURCE ? <Layers size={28} /> : <Users size={28} />}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-text-main text-lg">{addon.name}</h3>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${addon.type === AddOnType.RESOURCE ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                    {addon.type}
+                                                                </span>
+                                                                {!addon.isActive && (
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-red-100 text-red-600">
+                                                                        Inactive
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => openEditAddOn(addon)}
+                                                            className="p-2.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-primary transition-all"
+                                                        >
+                                                            <Edit3 size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteAddOn(addon.id)}
+                                                            className="p-2.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-all"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </div>
 
-                                        <div className="pt-6 border-t border-gray-50 grid grid-cols-2 gap-6">
-                                            {addon.type === AddOnType.RESOURCE ? (
-                                                <>
-                                                    <div className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target</span>
-                                                        <p className="text-sm font-bold text-text-main flex items-center gap-2 capitalize">
-                                                            <GitBranch size={14} className="text-purple-500" />
-                                                            {addon.targetCapability}
-                                                        </p>
+                                                <div className="space-y-4 mb-6">
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-3xl font-display font-black text-text-main">{formatPrice(addon.price, addon.currency)}</span>
+                                                        <span className="text-sm font-bold text-text-secondary">/{addon.durationDays}d</span>
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Limit Increase</span>
-                                                        <p className="text-sm font-bold text-text-main flex items-center gap-2">
-                                                            <Plus size={14} className="text-green-500" />
-                                                            {addon.additionalLimit} Units
-                                                        </p>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Agent Type</span>
-                                                        <p className="text-sm font-bold text-text-main flex items-center gap-2 capitalize">
-                                                            <Layout size={14} className="text-blue-500" />
-                                                            {addon.serviceDetails?.agentType?.replace('_', ' ')}
-                                                        </p>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Deliverables</span>
-                                                        <p className="text-sm font-bold text-text-main flex items-center gap-2">
-                                                            <Package size={14} className="text-orange-500" />
-                                                            {addon.serviceDetails?.deliverables?.length || 0} Items
-                                                        </p>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                                                    <p className="text-sm text-text-secondary font-medium leading-relaxed">
+                                                        {addon.description}
+                                                    </p>
+                                                </div>
+
+                                                <div className="pt-6 border-t border-gray-50 grid grid-cols-2 gap-6">
+                                                    {addon.type === AddOnType.RESOURCE ? (
+                                                        <>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target</span>
+                                                                <p className="text-sm font-bold text-text-main flex items-center gap-2 capitalize">
+                                                                    <GitBranch size={14} className="text-purple-500" />
+                                                                    {addon.targetCapability}
+                                                                </p>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Limit Increase</span>
+                                                                <p className="text-sm font-bold text-text-main flex items-center gap-2">
+                                                                    <Plus size={14} className="text-green-500" />
+                                                                    {addon.additionalLimit} Units
+                                                                </p>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Agent Type</span>
+                                                                <p className="text-sm font-bold text-text-main flex items-center gap-2 capitalize">
+                                                                    <Layout size={14} className="text-blue-500" />
+                                                                    {addon.serviceDetails?.agentType?.replace('_', ' ')}
+                                                                </p>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Deliverables</span>
+                                                                <p className="text-sm font-bold text-text-main flex items-center gap-2">
+                                                                    <Package size={14} className="text-orange-500" />
+                                                                    {addon.serviceDetails?.deliverables?.length || 0} Items
+                                                                </p>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

@@ -25,8 +25,7 @@ import { Phone, Loader2 as LoaderIcon } from 'lucide-react';
 import { useSudoStore } from '@/store/useSudoStore';
 import MobileDashboardHub from '@/components/dashboard/MobileDashboardHub';
 import { useSearchParams } from 'next/navigation';
-import DashboardBanner from '@/components/dashboard/DashboardBanner';
-import { useBannerStore, getIconByName } from '@/store/useBannerStore';
+import DashboardBannerWrapper from '@/components/dashboard/DashboardBannerWrapper';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -59,12 +58,6 @@ export default function DashboardPage() {
     const { data, isLoading } = useDashboardAnalytics();
     const { data: visitorStatsData } = useVisitorStats();
     const resetDashboardMutation = useResetDashboard();
-    const { slides } = useBannerStore();
-
-    const bannerSlides = useMemo(() => slides.map(s => ({
-        ...s,
-        icon: getIconByName(s.iconName)
-    })), [slides]);
 
     const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
@@ -270,7 +263,7 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Dashboard Banner */}
-                <DashboardBanner slides={bannerSlides} />
+                <DashboardBannerWrapper />
                 
                 {/* Mobile Navigation Hub - Hidden when showing stats on mobile */}
                 {!showStats && <MobileDashboardHub />}

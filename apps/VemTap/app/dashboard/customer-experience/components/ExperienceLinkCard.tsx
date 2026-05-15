@@ -1,17 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Copy, Download, Link2, CheckCircle2 } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Copy, Download, Link2, CheckCircle2, Loader2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-hot-toast';
+import { useMainQrCode } from '@/services/qr-thrive/hooks';
+import { QrPreview } from '@/app/dashboard/explore-qrthrive/components/QrPreview';
+import { DEFAULT_QR_DESIGN } from '@/services/qr-thrive/types';
 
 interface ExperienceLinkCardProps {
     publicUrl: string;
     businessLogo?: string;
+    branchId?: string;
 }
 
-export function ExperienceLinkCard({ publicUrl, businessLogo }: ExperienceLinkCardProps) {
-    const [copied, setCopied] = useState(false);
+export function ExperienceLinkCard({ publicUrl, businessLogo, branchId }: ExperienceLinkCardProps) {
+    const [copied, setCopied] = React.useState(false);
+    const qrRef = useRef<any>(null);
+
+    const { data: mainQrData, isLoading: isLoadingMainQr } = useMainQrCode(
+        branchId && branchId !== 'all' ? branchId : null
+    );
+
+    const mainQrCode = mainQrData?.qrCode;
+    const hasMainQr = !!mainQrCode;
 
     const handleCopy = () => {
         navigator.clipboard.writeText(publicUrl);
@@ -21,9 +33,20 @@ export function ExperienceLinkCard({ publicUrl, businessLogo }: ExperienceLinkCa
     };
 
     const handleDownloadQR = () => {
+        if (hasMainQr && qrRef.current) {
+            qrRef.current.download({
+                name: 'business-experience-qr',
+                extension: 'png',
+                width: 2000,
+                height: 2000,
+            });
+            toast.success('QR Code downloaded!');
+            return;
+        }
+
         const canvas = document.getElementById('experience-qr') as HTMLCanvasElement;
         if (!canvas) return;
-        
+
         try {
             const url = canvas.toDataURL('image/png');
             const link = document.createElement('a');
@@ -68,21 +91,37 @@ export function ExperienceLinkCard({ publicUrl, businessLogo }: ExperienceLinkCa
 
             {/* QR Code */}
             <div className="w-28 h-28 bg-white p-2 border border-gray-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                <QRCodeCanvas
-                    id="experience-qr"
-                    value={publicUrl}
-                    size={1024}
-                    level="H"
-                    includeMargin={false}
-                    style={{ width: 96, height: 96 }}
-                    imageSettings={businessLogo ? {
-                        src: businessLogo,
-                        height: 256,
-                        width: 256,
-                        excavate: true,
-                        crossOrigin: 'anonymous',
-                    } : undefined}
-                />
+                {isLoadingMainQr ? (
+                    <Loader2 size={20} className="text-gray-300 animate-spin" />
+                ) : hasMainQr ? (
+                    <div className="scale-[0.38] transform-gpu origin-center">
+                        <QrPreview
+                            data={mainQrCode.data?.url || publicUrl}
+                            design={mainQrCode.design || DEFAULT_QR_DESIGN}
+                            frame={mainQrCode.frame || { type: 'none' }}
+                            logo={mainQrCode.logo}
+                            width={180}
+                            height={180}
+                            onReady={(inst) => { qrRef.current = inst; }}
+                        />
+                    </div>
+                ) : (
+                    <QRCodeCanvas
+                        id="experience-qr"
+                        value={publicUrl}
+                        size={1024}
+                        level="H"
+                        includeMargin={false}
+                        style={{ width: 96, height: 96 }}
+                        imageSettings={businessLogo ? {
+                            src: businessLogo,
+                            height: 256,
+                            width: 256,
+                            excavate: true,
+                            crossOrigin: 'anonymous',
+                        } : undefined}
+                    />
+                )}
             </div>
         </div>
     );

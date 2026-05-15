@@ -23,6 +23,11 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { ExternalAffiliateModule } from '../affiliates/external-affiliate.module';
 import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
+import { SettingsModule } from '../settings/settings.module';
+import { BundleDiscount } from './entities/bundle-discount.entity';
+import { BundleDiscountsService } from './services/bundle-discounts.service';
+import { BundleDiscountsController } from './controllers/bundle-discounts.controller';
+
 
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -46,6 +51,7 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
       CatalogueItem,
       CatalogueOffer,
       AutomationRule,
+      BundleDiscount,
     ]),
     forwardRef(() => BusinessesModule),
     PaymentsModule,
@@ -54,12 +60,14 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
     AffiliatesModule,
     ExternalAffiliateModule,
     forwardRef(() => QrThriveModule),
+    SettingsModule,
   ],
-  controllers: [PlansController, SubscriptionsController, AddonsController],
+  controllers: [PlansController, SubscriptionsController, AddonsController, BundleDiscountsController],
   providers: [
     PlansService,
     SubscriptionsService,
     AddonsService,
+    BundleDiscountsService,
     TrialRestrictionGuard,
     CapabilityGuard,
     AnalyticsLevelGuard,
@@ -72,6 +80,7 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
     TrialRestrictionGuard,
     CapabilityGuard,
     AnalyticsLevelGuard,
+    BundleDiscountsService,
   ],
 })
 export class SubscriptionsModule {}

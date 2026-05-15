@@ -60,7 +60,7 @@ export class BranchesController {
     @Body() updateBranchDto: UpdateBranchDto,
   ) {
     const businessId = await this.getBusinessId(req.user);
-    return this.branchesService.update(businessId, id, updateBranchDto);
+    return this.branchesService.update(businessId, id, updateBranchDto, req.user);
   }
 
   @Delete(':id')

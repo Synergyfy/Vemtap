@@ -633,7 +633,7 @@ export default function CustomerExperiencePage() {
                     "flex-1 w-full space-y-6 transition-all duration-300",
                     mobileView === 'preview' ? "hidden xl:block" : "block"
                 )}>
-                    <ExperienceLinkCard publicUrl={publicUrl} businessLogo={previewBusinessLogo} />
+                    <ExperienceLinkCard publicUrl={publicUrl} businessLogo={previewBusinessLogo} branchId={resolvedBranchId} />
 
                     {/* Builder Sections */}
                     <div className="space-y-1">

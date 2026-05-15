@@ -16,6 +16,7 @@ import { DevicesService } from '../devices/devices.service';
 import { isValidUsername, RESERVED_USERNAMES, generateUsernameFromName } from '../../common/utils/username.util';
 
 import { User } from '../users/entities/user.entity';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 @Injectable()
 export class BranchesService {
@@ -28,6 +29,8 @@ export class BranchesService {
     private subscriptionsService: SubscriptionsService,
     @Inject(forwardRef(() => DevicesService))
     private devicesService: DevicesService,
+    @Inject(forwardRef(() => QrThriveService))
+    private qrThriveService: QrThriveService,
   ) {}
 
   async checkBranchAccess(
@@ -166,6 +169,20 @@ export class BranchesService {
       // We don't throw here to avoid failing branch creation if device auto-gen fails
     }
 
+    // Automatically create main QR code if QR-Thrive is provisioned
+    try {
+      await this.qrThriveService.createMainQRCode(
+        { id: ownerId } as User,
+        savedBranch,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to auto-create main QR code for branch ${savedBranch.id}:`,
+        error,
+      );
+      // Non-blocking - branch creation succeeds regardless
+    }
+
     return savedBranch;
   }
 
@@ -217,7 +234,11 @@ export class BranchesService {
   }
 
   async getBusinessId(branchId: string): Promise<string> {
-    const branch = await this.findById(branchId);
+    const branch = await this.branchesRepository.findOne({
+      where: { id: branchId },
+      select: ['businessId'],
+    });
+    if (!branch) throw new NotFoundException(`Branch with ID ${branchId} not found`);
     return branch.businessId;
   }
 
@@ -225,6 +246,7 @@ export class BranchesService {
     businessId: string,
     id: string,
     updateBranchDto: UpdateBranchDto,
+    user?: User,
   ): Promise<Branch> {
     const branch = await this.findOne(businessId, id);
 
@@ -241,7 +263,8 @@ export class BranchesService {
     }
 
     // Validate username if being updated
-    if (updateBranchDto.username && updateBranchDto.username !== branch.username) {
+    const oldUsername = branch.username;
+    if (updateBranchDto.username && updateBranchDto.username !== oldUsername) {
       const usernameError = await this.validateUsername(updateBranchDto.username, id);
       if (usernameError) {
         throw new BadRequestException(usernameError);
@@ -249,7 +272,32 @@ export class BranchesService {
     }
 
     Object.assign(branch, updateBranchDto);
-    return this.branchesRepository.save(branch);
+    const savedBranch = await this.branchesRepository.save(branch);
+
+    // Auto-update main QR code URL if username changed and branch has a main QR
+    if (
+      updateBranchDto.username &&
+      updateBranchDto.username !== oldUsername &&
+      branch.mainQrCodeId &&
+      user
+    ) {
+      try {
+        await this.qrThriveService.updateMainQRCodeUrl(
+          user,
+          id,
+          branch.mainQrCodeId,
+          updateBranchDto.username,
+        );
+      } catch (error) {
+        console.error(
+          `Failed to update main QR code URL for branch ${id}:`,
+          error,
+        );
+        // Non-blocking
+      }
+    }
+
+    return savedBranch;
   }
 
   async remove(businessId: string, id: string): Promise<void> {

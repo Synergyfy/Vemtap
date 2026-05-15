@@ -66,6 +66,12 @@ export class Branch extends AbstractBaseEntity {
   @Column({ nullable: true })
   officialEmail: string;
 
+  @Column({ type: 'varchar', nullable: true, length: 255 })
+  mainQrCodeId: string | null;
+
+  @Column({ type: 'varchar', nullable: true, length: 500 })
+  mainQrShortUrl: string | null;
+
   @ApiProperty({
     example: '#2563EB',
     description: 'The primary color for branch forms',
