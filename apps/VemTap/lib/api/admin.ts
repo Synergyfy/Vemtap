@@ -314,3 +314,14 @@ export const adminCreditPlansApi = {
     update: (id: string, data: any) => api.patch(`/credit-plans/${id}`, data),
     delete: (id: string) => api.delete(`/credit-plans/${id}`),
 };
+export const adminSystemSettingsApi = {
+    get: () => api.get('/admin/settings'),
+    update: (data: any) => api.patch('/admin/settings', data),
+};
+
+export const adminBundleDiscountsApi = {
+    getAll: () => api.get('/admin/bundle-discounts'),
+    create: (data: any) => api.post('/admin/bundle-discounts', data),
+    update: (id: string, data: any) => api.patch(`/admin/bundle-discounts/${id}`, data),
+    delete: (id: string) => api.delete(`/admin/bundle-discounts/${id}`),
+};

@@ -131,7 +131,27 @@ export class QrThriveController {
     return this.qrThriveService.updateQRCode(req.user, branchId, qrCodeId, dto);
   }
 
+  // --- Main QR Code ---
 
+  @Get('branches/:branchId/main-qr')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Get or create the main business link QR code for a branch' })
+  async getMainQRCode(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+  ) {
+    return this.qrThriveService.getOrCreateMainQRCode(req.user, branchId);
+  }
+
+  @Post('branches/:branchId/main-qr/recreate')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Recreate the main QR code (e.g., after user edited the old one)' })
+  async recreateMainQRCode(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+  ) {
+    return this.qrThriveService.recreateMainQRCode(req.user, branchId);
+  }
 
   @Get('branches/:branchId/stats')
   @Roles(UserRole.OWNER, UserRole.MANAGER)

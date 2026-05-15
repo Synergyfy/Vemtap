@@ -39,7 +39,9 @@ import {
     useDuplicateQrThriveCode,
     useSetQrThriveCodeStatus,
     useResetQrThriveMapping,
-    useSubscriptionIncludesQrThrive
+    useSubscriptionIncludesQrThrive,
+    useMainQrCode,
+    useRecreateMainQrCode,
 } from '@/services/qr-thrive/hooks';
 import { useActionPermission } from '@/hooks/useActionPermission';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -123,6 +125,16 @@ export default function ExploreQRThrivePage() {
         data: stats,
         error: statsError
     } = useQrThriveStats();
+
+    const {
+        data: mainQrData,
+        isLoading: isLoadingMainQr,
+    } = useMainQrCode(activeBranchId && activeBranchId !== 'all' ? activeBranchId : null);
+
+    const mainQrCodeId = mainQrData?.qrCode?.id || null;
+    const mainQrCode = mainQrData?.qrCode || null;
+
+    const recreateMainMutation = useRecreateMainQrCode();
 
     const isSaving = createMutation.isPending || updateMutation.isPending || isUploadingFiles;
     const isError404 = (codesError as any)?.status === 404 ||
@@ -271,6 +283,20 @@ export default function ExploreQRThrivePage() {
                     data: updatePayload as any,
                     branchId: activeBranchId || undefined
                 });
+
+                // If the edited QR was the main QR and its URL changed, recreate the main QR
+                if (selectedQrId === mainQrCodeId) {
+                    const originalUrl = codes?.find(c => c.id === selectedQrId)?.data?.url;
+                    if (originalUrl && originalUrl !== uploadedQrData?.url) {
+                        toast.success('Main QR code updated. A new main QR will be created with your business link.');
+                        try {
+                            await recreateMainMutation.mutateAsync(activeBranchId || undefined);
+                        } catch {
+                            // Silently handle - will be auto-created on next page visit
+                        }
+                    }
+                }
+
                 toast.success('QR Code updated successfully!');
             } else {
                 const newQr = await createMutation.mutateAsync({
@@ -513,6 +539,56 @@ export default function ExploreQRThrivePage() {
                             ))}
                         </div>
 
+                        {/* Main Business Link QR Code */}
+                        {mainQrCode && !isLoadingMainQr && (
+                            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-[40px] p-6 lg:p-8 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-32 -mt-32" />
+                                <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center gap-6">
+                                    <div className="flex-1 space-y-3">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 text-white border border-white/30 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                            <Zap size={12} className="fill-white" />
+                                            Main Business Link
+                                        </div>
+                                        <h3 className="text-xl lg:text-2xl font-bold text-white leading-tight">
+                                            {mainQrCode.name}
+                                        </h3>
+                                        <p className="text-sm text-blue-100 font-medium">
+                                            {mainQrCode.data?.url || 'No URL configured'}
+                                        </p>
+                                        <div className="flex items-center gap-3 pt-2">
+                                            <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
+                                                {mainQrCode.scans || 0} scans
+                                            </span>
+                                            <span className="text-blue-300">·</span>
+                                            <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
+                                                Dynamic QR
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <button
+                                            onClick={() => {
+                                                const qr = codes?.find(c => c.id === mainQrCode.id) || mainQrCode;
+                                                setSelectedQrId(qr.id);
+                                                setSelectedType(qr.type as QRType);
+                                                setQrData(qr.data);
+                                                setQrName(qr.name);
+                                                setQrDesign(qr.design || DEFAULT_QR_DESIGN);
+                                                setQrFrame(qr.frame || DEFAULT_QR_FRAME);
+                                                setQrLogo(qr.logo);
+                                                setView('edit');
+                                                setStep('content');
+                                                setIsLocked(true);
+                                            }}
+                                            className="px-6 py-3 bg-white text-blue-700 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all shadow-lg"
+                                        >
+                                            Edit
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {isLoadingCodes ? (
                             <div className="flex flex-col items-center justify-center py-20">
                                 <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
@@ -521,6 +597,7 @@ export default function ExploreQRThrivePage() {
                         ) : (
                             <QrGrid 
                                 codes={codes || []} 
+                                mainQrCodeId={mainQrCodeId}
                                 onEdit={(qr) => {
                                     setSelectedQrId(qr.id);
                                     setSelectedType(qr.type as QRType);
