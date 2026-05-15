@@ -59,7 +59,11 @@ export default function DashboardPage() {
     const { data, isLoading } = useDashboardAnalytics();
     const { data: visitorStatsData } = useVisitorStats();
     const resetDashboardMutation = useResetDashboard();
-    const { slides } = useBannerStore();
+    const { slides, fetchBanners } = useBannerStore();
+
+    useEffect(() => {
+        fetchBanners();
+    }, [fetchBanners]);
 
     const bannerSlides = useMemo(() => slides.map(s => ({
         ...s,

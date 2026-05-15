@@ -325,3 +325,15 @@ export const adminBundleDiscountsApi = {
     update: (id: string, data: any) => api.patch(`/admin/bundle-discounts/${id}`, data),
     delete: (id: string) => api.delete(`/admin/bundle-discounts/${id}`),
 };
+
+// =====================
+// BANNERS (Admin)
+// =====================
+export const adminBannersApi = {
+    list: () => api.get('/admin/banners'),
+    get: (id: string) => api.get(`/admin/banners/${id}`),
+    create: (data: any) => api.post('/admin/banners', data),
+    update: (id: string, data: any) => api.patch(`/admin/banners/${id}`, data),
+    delete: (id: string) => api.delete(`/admin/banners/${id}`),
+    reorder: (orderedIds: string[]) => api.patch('/admin/banners/reorder', { orderedIds }),
+};

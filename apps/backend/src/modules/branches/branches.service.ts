@@ -234,7 +234,11 @@ export class BranchesService {
   }
 
   async getBusinessId(branchId: string): Promise<string> {
-    const branch = await this.findById(branchId);
+    const branch = await this.branchesRepository.findOne({
+      where: { id: branchId },
+      select: ['businessId'],
+    });
+    if (!branch) throw new NotFoundException(`Branch with ID ${branchId} not found`);
     return branch.businessId;
   }
 

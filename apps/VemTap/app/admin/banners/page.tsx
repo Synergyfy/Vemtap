@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useBannerStore, BannerSlide } from '@/store/useBannerStore';
-import { Plus, Trash2, Edit2, Save, X, MoveUp, MoveDown, Sparkles, Megaphone, Zap, Gift } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Trash2, Edit2, Save, MoveUp, MoveDown, Sparkles, Megaphone, Zap, Gift, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { adminBannersApi } from '@/lib/api/admin';
 
 const ICON_OPTIONS = [
     { name: 'Sparkles', icon: Sparkles },
@@ -21,21 +21,53 @@ const COLOR_OPTIONS = [
     { name: 'Amber', class: 'bg-gradient-to-r from-amber-500 to-orange-500' },
 ];
 
-export default function BannerManagementPage() {
-    const { slides, addSlide, updateSlide, removeSlide, setSlides } = useBannerStore();
+interface BannerSlide {
+    id: string;
+    title: string;
+    description: string;
+    iconName: string;
+    actionLabel?: string;
+    actionUrl?: string;
+    color: string;
+    sortOrder: number;
+    isActive: boolean;
+}
+
+export default function AdminBannerManagementPage() {
+    const [slides, setSlides] = useState<BannerSlide[]>([]);
+    const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<Partial<BannerSlide>>({});
 
-    const handleAdd = () => {
-        const newSlide: BannerSlide = {
-            id: `slide-${Date.now()}`,
-            title: 'New Announcement',
-            description: 'Provide a brief description of this announcement here.',
-            iconName: 'Megaphone',
-            color: 'bg-gradient-to-r from-emerald-600 to-teal-500'
-        };
-        addSlide(newSlide);
-        toast.success('New slide added!');
+    const fetchBanners = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await adminBannersApi.list();
+            setSlides(Array.isArray(data) ? data : data?.data || []);
+        } catch {
+            toast.error('Failed to load banners');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchBanners();
+    }, [fetchBanners]);
+
+    const handleAdd = async () => {
+        try {
+            const newSlide = await adminBannersApi.create({
+                title: 'New Announcement',
+                description: 'Provide a brief description of this announcement here.',
+                iconName: 'Megaphone',
+                color: 'bg-gradient-to-r from-emerald-600 to-teal-500'
+            });
+            toast.success('New slide added!');
+            await fetchBanners();
+        } catch {
+            toast.error('Failed to add slide');
+        }
     };
 
     const handleEdit = (slide: BannerSlide) => {
@@ -43,29 +75,68 @@ export default function BannerManagementPage() {
         setEditForm(slide);
     };
 
-    const handleSave = () => {
-        if (editingId && editForm) {
-            updateSlide(editingId, editForm);
+    const handleSave = async () => {
+        if (!editingId || !editForm) return;
+        try {
+            await adminBannersApi.update(editingId, {
+                title: editForm.title,
+                description: editForm.description,
+                iconName: editForm.iconName,
+                actionLabel: editForm.actionLabel,
+                actionUrl: editForm.actionUrl,
+                color: editForm.color,
+            });
             setEditingId(null);
             toast.success('Slide updated!');
+            await fetchBanners();
+        } catch {
+            toast.error('Failed to update slide');
         }
     };
 
-    const handleMove = (index: number, direction: 'up' | 'down') => {
-        const newSlides = [...slides];
+    const handleMove = async (index: number, direction: 'up' | 'down') => {
         const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        if (targetIndex >= 0 && targetIndex < newSlides.length) {
-            [newSlides[index], newSlides[targetIndex]] = [newSlides[targetIndex], newSlides[index]];
-            setSlides(newSlides);
+        if (targetIndex < 0 || targetIndex >= slides.length) return;
+
+        const reordered = [...slides];
+        [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+
+        try {
+            await adminBannersApi.reorder(reordered.map(s => s.id));
+            setSlides(reordered);
+        } catch {
+            toast.error('Failed to reorder');
+            await fetchBanners();
         }
     };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Are you sure you want to delete this slide?')) return;
+        try {
+            await adminBannersApi.delete(id);
+            toast.success('Slide deleted');
+            await fetchBanners();
+        } catch {
+            toast.error('Failed to delete slide');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="p-4 md:p-8 max-w-5xl mx-auto">
+                <div className="flex items-center justify-center py-32">
+                    <Loader2 size={32} className="animate-spin text-primary" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-display font-bold text-text-main">Banner Management</h1>
-                    <p className="text-sm text-text-secondary">Customize the sliding announcements on your dashboard.</p>
+                    <p className="text-sm text-text-secondary">Manage the announcement banners shown on business dashboards.</p>
                 </div>
                 <button
                     onClick={handleAdd}
@@ -78,7 +149,7 @@ export default function BannerManagementPage() {
 
             <div className="space-y-4">
                 {slides.map((slide, index) => (
-                    <div 
+                    <div
                         key={slide.id}
                         className={cn(
                             "bg-white rounded-2xl border transition-all overflow-hidden",
@@ -135,8 +206,8 @@ export default function BannerManagementPage() {
                                                     onClick={() => setEditForm({ ...editForm, iconName: opt.name as any })}
                                                     className={cn(
                                                         "p-3 rounded-xl border transition-all",
-                                                        editForm.iconName === opt.name 
-                                                            ? "bg-primary/10 border-primary text-primary" 
+                                                        editForm.iconName === opt.name
+                                                            ? "bg-primary/10 border-primary text-primary"
                                                             : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
                                                     )}
                                                 >
@@ -192,14 +263,14 @@ export default function BannerManagementPage() {
                                 </div>
                                 <div className="flex items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
                                     <div className="flex items-center gap-1 mr-2">
-                                        <button 
+                                        <button
                                             disabled={index === 0}
                                             onClick={() => handleMove(index, 'up')}
                                             className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 disabled:opacity-30 rounded-lg"
                                         >
                                             <MoveUp size={16} />
                                         </button>
-                                        <button 
+                                        <button
                                             disabled={index === slides.length - 1}
                                             onClick={() => handleMove(index, 'down')}
                                             className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 disabled:opacity-30 rounded-lg"
@@ -214,12 +285,7 @@ export default function BannerManagementPage() {
                                         <Edit2 size={18} />
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            if (window.confirm('Are you sure you want to delete this slide?')) {
-                                                removeSlide(slide.id);
-                                                toast.success('Slide deleted');
-                                            }
-                                        }}
+                                        onClick={() => handleDelete(slide.id)}
                                         className="p-2.5 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                                     >
                                         <Trash2 size={18} />
@@ -236,7 +302,7 @@ export default function BannerManagementPage() {
                             <Megaphone size={32} />
                         </div>
                         <h3 className="text-base font-bold text-text-main">No Slides Found</h3>
-                        <p className="text-sm text-text-secondary mt-1">Add your first slide to display announcements on the dashboard.</p>
+                        <p className="text-sm text-text-secondary mt-1">Create your first banner announcement to display on business dashboards.</p>
                         <button
                             onClick={handleAdd}
                             className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-black uppercase tracking-widest hover:border-primary/30 hover:text-primary transition-all shadow-sm"

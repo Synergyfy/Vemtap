@@ -424,10 +424,8 @@ export class QrThriveService implements OnModuleInit {
       return { qrCode: null, isNew: false };
     }
 
-    // Use pessimistic lock to prevent duplicate main QR creation race conditions
     const branch = await this.branchRepo.findOne({
       where: { id: branchId },
-      lock: { mode: 'pessimistic_write' },
     });
     if (!branch) {
       throw new HttpException('Branch not found', HttpStatus.NOT_FOUND);

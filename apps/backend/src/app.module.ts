@@ -42,6 +42,7 @@ import { BusinessProfilingModule } from './modules/business-profiling/business-p
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
 import { TrainingModule } from './modules/training/training.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
+import { BannersModule } from './modules/banners/banners.module';
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
@@ -146,6 +147,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     AffiliatesModule,
     TrainingModule,
     QrThriveModule,
+    BannersModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
