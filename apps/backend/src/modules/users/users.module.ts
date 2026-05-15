@@ -11,6 +11,7 @@ import { BranchesModule } from '../branches/branches.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { MailModule } from '../mail/mail.module';
 import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
+import { EventsModule } from '../../common/gateways/events.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
     MailModule,
     forwardRef(() => SubscriptionsModule),
     forwardRef(() => QrThriveModule),
+    EventsModule,
   ],
 
   providers: [UsersService],

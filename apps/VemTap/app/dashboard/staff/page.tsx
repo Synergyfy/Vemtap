@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { 
     UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, 
     BarChart3, Users as UsersIcon, Settings as SettingsIcon, 
-    Building2, Loader2, Lock, Home, MessageCircle, Gift, Zap, Nfc, HelpCircle,
+    Building2, Loader2, Lock, Home, MessageCircle, Gift, Zap, HelpCircle,
     Cpu, Bell, BookOpen, Wand2, Smartphone, ShoppingBag, QrCode
 } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
@@ -32,7 +32,6 @@ const PERMISSIONS = [
     { id: 'engagement', label: 'Engagement', icon: Zap },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'staff', label: 'Team', icon: UsersIcon },
-    { id: 'nfc', label: 'NFC Manager', icon: Nfc },
     { id: 'catalogue', label: 'Catalogue', icon: ShoppingBag },
     { id: 'qrthrive', label: 'QRThrive', icon: QrCode },
     { id: 'customer-experience', label: 'Customer Experience', icon: Wand2 },
@@ -45,7 +44,7 @@ const PERMISSIONS = [
 const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     Manager: [
         'dashboard', 'visitors', 'chat', 'messages', 'loyalty',
-        'engagement', 'analytics', 'staff', 'nfc', 'catalogue',
+        'engagement', 'analytics', 'staff', 'catalogue',
         'qrthrive', 'customer-experience', 'automations',
         'support', 'tutorial', 'settings',
     ],

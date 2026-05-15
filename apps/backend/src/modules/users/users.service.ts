@@ -12,6 +12,7 @@ import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { MailService } from '../mail/mail.service';
+import { EventsGateway } from '../../common/gateways/events.gateway';
 
 @Injectable()
 export class UsersService {
@@ -21,6 +22,7 @@ export class UsersService {
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
     private readonly mailService: MailService,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   async inviteStaff(branchId: string, dto: InviteStaffDto): Promise<User> {
@@ -193,7 +195,16 @@ export class UsersService {
       user.status = updates.status;
     }
 
-    return this.usersRepository.save(user);
+    const saved = await this.usersRepository.save(user);
+
+    if (updates.permissions || updates.role) {
+      this.eventsGateway.emitUserUpdated(saved.id, {
+        permissions: saved.permissions,
+        role: updates.role || undefined,
+      });
+    }
+
+    return saved;
   }
 
   async remove(id: string, branchId: string): Promise<void> {
@@ -320,7 +331,12 @@ export class UsersService {
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
     Object.assign(user, updates);
-    return this.usersRepository.save(user);
+    const saved = await this.usersRepository.save(user);
+    this.eventsGateway.emitUserUpdated(saved.id, {
+      permissions: saved.permissions,
+      role: updates.role || undefined,
+    });
+    return saved;
   }
 
   async adminDeleteUser(id: string): Promise<void> {

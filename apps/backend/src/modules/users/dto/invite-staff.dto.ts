@@ -19,7 +19,6 @@ export enum StaffPermission {
   ENGAGEMENT = 'engagement',
   ANALYTICS = 'analytics',
   STAFF = 'staff',
-  NFC = 'nfc',
   CATALOGUE = 'catalogue',
   QRTHRIVE = 'qrthrive',
   CUSTOMER_EXPERIENCE = 'customer-experience',
