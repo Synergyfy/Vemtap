@@ -43,6 +43,7 @@ interface MenuItem {
 }
 
 import { useSudoStore } from '@/store/useSudoStore';
+import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
@@ -317,27 +318,16 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         
         // Handle Admin/Agent Sudo Mode (Impersonation)
         if (isAdminMode) {
-            // Hide sensitive items or agent/admin tools while impersonating a business
             if (item.id === 'staff') return false;
             if (item.id === 'agent-desk') return false;
             if (item.id === 'admin-nfc') return false;
             
-            // Treat the impersonator as an 'owner' so they see standard business menus
             return !item.roles || item.roles.includes('owner');
         }
 
-        // Normal Flow (Not impersonating)
         if (realUserRole === 'admin') return true;
 
-        // Role check
-        if (item.roles && !item.roles.includes(realUserRole)) return false;
-
-        // Permission check: OWNER/ADMIN always bypass, MANAGER/STAFF must have the permission
-        if (item.permission && !isOwnerOrAdmin && !userPermissions.includes(item.permission)) {
-            return false;
-        }
-
-        return true;
+        return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
     }).map(item => {
         return item;
     });
