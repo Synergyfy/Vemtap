@@ -62,8 +62,6 @@ export default function DashboardMobileNav() {
             return !item.roles || item.roles.includes('owner');
         }
 
-        if (realUserRole === 'admin') return true;
-
         return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
     });
 

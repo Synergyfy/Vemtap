@@ -9,14 +9,14 @@ export function canAccessMenuItem(
   userPermissions: string[],
   isOwnerOrAdmin: boolean,
 ): boolean {
+  if (item.roles && !item.roles.includes(userRole)) {
+    return false;
+  }
+
   if (isOwnerOrAdmin) return true;
 
   if (item.permission) {
     return userPermissions.includes(item.permission);
-  }
-
-  if (item.roles && !item.roles.includes(userRole)) {
-    return false;
   }
 
   return true;
