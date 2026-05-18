@@ -7,6 +7,7 @@ export interface BusinessHours {
 export interface Branch {
     id: string;
     uniqueCode?: string;
+    username?: string;
     name: string;
     address: string;
     phone: string;

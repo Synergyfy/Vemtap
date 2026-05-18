@@ -67,6 +67,7 @@ export default function QRShortLinkPage() {
     if (!data) return;
 
     const directRedirectTypes = ['url', 'whatsapp', 'email', 'phone', 'sms'];
+    const vemtapDomains = ['vemtap.com', 'localhost:3000', 'vemtap.vercel.app'];
 
     if (directRedirectTypes.includes(data.type)) {
       let targetUrl = '';
@@ -95,8 +96,28 @@ export default function QRShortLinkPage() {
       }
 
       if (targetUrl) {
-        if (data.type === 'url' && !/^https?:\/\//i.test(targetUrl)) {
-          targetUrl = 'https://' + targetUrl;
+        if (data.type === 'url') {
+          // Check if URL is a VemTap relative path (starts with / but not /s/ to avoid loop)
+          const isVemTapPath = /^\/(?![s/])[a-zA-Z0-9_-]+/.test(targetUrl);
+          if (isVemTapPath) {
+            window.location.replace(window.location.origin + targetUrl);
+            return;
+          }
+          if (!/^https?:\/\//i.test(targetUrl)) {
+            targetUrl = 'https://' + targetUrl;
+          }
+
+          // Prevent loop by transforming /s/[shortId] to /b/[shortId]
+          const scanPattern = new RegExp(`\\/s\\/${shortId}$`, 'i');
+          if (scanPattern.test(targetUrl)) {
+            targetUrl = targetUrl.replace(/\/s\//i, '/b/');
+          }
+
+          const isVemTapUrl = vemtapDomains.some(domain => targetUrl.includes(domain));
+          if (isVemTapUrl) {
+            window.location.replace(targetUrl);
+            return;
+          }
         }
         window.location.replace(targetUrl);
       }

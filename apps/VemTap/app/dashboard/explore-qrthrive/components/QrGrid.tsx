@@ -70,6 +70,21 @@ const getQrIcon = (type: string) => {
   }
 };
 
+const getScanCount = (scans: any): number => {
+  if (!scans) return 0;
+  if (Array.isArray(scans)) return scans.length;
+  if (typeof scans === 'number') return scans;
+  if (typeof scans === 'string') {
+    const num = parseInt(scans, 10);
+    return isNaN(num) ? 0 : num;
+  }
+  if (typeof scans === 'object') {
+    if ('id' in scans || 'qrCodeId' in scans) return 1;
+    return 0;
+  }
+  return 0;
+};
+
 interface QrGridProps {
   codes: QrThriveQRCode[];
   isLoading?: boolean;
@@ -307,12 +322,14 @@ export const QrGrid: React.FC<QrGridProps> = ({
                   >
                     <Copy className="w-4 h-4" /> Duplicate
                   </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleArchive(qr.id, qr.status); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <Archive className="w-4 h-4" /> {qr.status === 'archived' ? 'Restore' : 'Archive'}
-                  </button>
+                  {!(mainQrCodeId && qr.id === mainQrCodeId) && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleArchive(qr.id, qr.status); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      <Archive className="w-4 h-4" /> {qr.status === 'archived' ? 'Restore' : 'Archive'}
+                    </button>
+                  )}
 
                   <button 
                     onClick={(e) => { e.stopPropagation(); handlePreviewClick(qr); }}
@@ -339,7 +356,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
                       </button>
                     </div>
                   </div>
-                  {canPerformAction('delete') && (
+                  {canPerformAction('delete') && !(mainQrCodeId && qr.id === mainQrCodeId) && (
                     <>
                       <div className="border-t border-slate-100 my-1" />
                       <button 
@@ -398,7 +415,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
             >
               <BarChart3 className="w-4 h-4" />
-              <span>{qr.scans} Scans</span>
+              <span>{getScanCount(qr.scans)} Scans</span>
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onEdit(qr); }}
