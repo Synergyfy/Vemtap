@@ -407,6 +407,14 @@ export const qrThriveApi = {
   updateMainQRCode: async (branchId: string, qrCodeId: string, data: UpdateQrThriveQRDto): Promise<QrThriveQRCode> => {
     return api.patch(`/qr-thrive/branches/${branchId}/main-qr/${qrCodeId}`, data);
   },
+
+  /**
+   * Set an existing QR code as the branch's main QR code.
+   * Updates its content to the UBL URL but preserves its design.
+   */
+  setQRCodeAsMain: async (branchId: string, qrCodeId: string): Promise<QrThriveQRCode> => {
+    return api.post(`/qr-thrive/branches/${branchId}/qr-codes/${qrCodeId}/set-as-main`, {});
+  },
 };
 
 export { QrThriveApiError };
