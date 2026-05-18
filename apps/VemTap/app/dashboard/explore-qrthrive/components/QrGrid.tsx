@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   QrCode, MoreVertical, ExternalLink, BarChart3, 
-  Trash2, Edit2, Globe, Copy, Archive, Loader2, Download, Lock,
+  Trash2, Edit2, Globe, Copy, Archive, Loader2, Download,
   X, Check, Star, StarOff,
   FileText, Link2, User, Building2, Video, Image as ImageIcon,
   Users, Phone, Music, UtensilsCrossed, SmartphoneNfc, Ticket, Calendar,
@@ -310,14 +310,12 @@ export const QrGrid: React.FC<QrGridProps> = ({
                   className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-[100] animate-in fade-in slide-in-from-top-2"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {!(mainQrCodeId && qr.id === mainQrCodeId) && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onEdit(qr); setMenuOpen(null); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4" /> Edit
-                    </button>
-                  )}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(qr); setMenuOpen(null); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" /> Edit
+                  </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleDuplicate(qr.id); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
@@ -419,23 +417,13 @@ export const QrGrid: React.FC<QrGridProps> = ({
               <BarChart3 className="w-4 h-4" />
               <span>{getScanCount(qr.scans)} Scans</span>
             </button>
-            {!(mainQrCodeId && qr.id === mainQrCodeId) ? (
-              <button 
-                onClick={(e) => { e.stopPropagation(); onEdit(qr); }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
-              >
-                <Edit2 className="w-4 h-4" />
-                Edit
-              </button>
-            ) : (
-              <button 
-                disabled
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-400 rounded-xl text-xs font-bold border border-slate-200 cursor-not-allowed"
-              >
-                <Lock className="w-4 h-4" />
-                Locked
-              </button>
-            )}
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(qr); }}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
+            >
+              <Edit2 className="w-4 h-4" />
+              Edit
+            </button>
           </div>
         </div>
       ))}

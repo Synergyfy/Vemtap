@@ -305,9 +305,6 @@ export class QrThriveService implements OnModuleInit {
       'VEMTAP_APP_URL',
       'https://vemtap.com',
     );
-    if (branch.username) {
-      return `${appUrl}/${branch.username}`;
-    }
     return `${appUrl}/b/${branch.uniqueCode}`;
   }
 
@@ -404,10 +401,11 @@ export class QrThriveService implements OnModuleInit {
   }
 
   /**
-   * Fetches the branch's main QR code from QR-Thrive, creating it if missing.
-   * Returns { qrCode: null, isNew: false } if user is not provisioned.
+   * Fetches the branch's main QR code from QR-Thrive.
+   * Does NOT auto-create — returns { qrCode: null } if none exists.
+   * Returns { qrCode: null } if user is not provisioned.
    */
-  async getOrCreateMainQRCode(user: User, branchId: string) {
+  async getMainQRCode(user: User, branchId: string) {
     const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
     if (!hasAccess) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
@@ -417,11 +415,11 @@ export class QrThriveService implements OnModuleInit {
     try {
       mapping = await this.getMapping(user, branchId, false);
     } catch {
-      return { qrCode: null, isNew: false };
+      return { qrCode: null };
     }
 
     if (!mapping || !mapping.qrThriveUserId) {
-      return { qrCode: null, isNew: false };
+      return { qrCode: null };
     }
 
     const branch = await this.branchRepo.findOne({
@@ -443,17 +441,24 @@ export class QrThriveService implements OnModuleInit {
 
         return {
           qrCode: { ...data, scans: data._count?.scans || data.scans || 0 },
-          isNew: false,
         };
       } catch (error) {
-        this.logger.warn(
-          `Main QR code ${branch.mainQrCodeId} not found in QR-Thrive, recreating...`,
-        );
+        const status = error.response?.status;
+        if (status === 404) {
+          this.logger.warn(
+            `Main QR code ${branch.mainQrCodeId} not found in QR-Thrive, clearing reference...`,
+          );
+          await this.branchRepo.update(branch.id, {
+            mainQrCodeId: null,
+            mainQrShortUrl: null,
+          });
+        } else {
+          throw error;
+        }
       }
     }
 
-    const qrCode = await this.createMainQRCode(user, branch);
-    return { qrCode, isNew: true };
+    return { qrCode: null };
   }
 
   /**
@@ -472,6 +477,60 @@ export class QrThriveService implements OnModuleInit {
 
     const qrCode = await this.createMainQRCode(user, branch);
     return qrCode;
+  }
+
+  /**
+   * Updates the main QR code and detaches it from being the branch's main QR.
+   * The QR code becomes a regular QR code in the user's library.
+   */
+  async updateMainQRCode(
+    user: User,
+    branchId: string,
+    qrCodeId: string,
+    dto: UpdateQRCodeDto,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess) {
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const mapping = await this.getMapping(user, branchId);
+
+    try {
+      const headers = await this.getHeadersWithSubscription(user);
+      const { data } = await firstValueFrom(
+        this.httpService.patch(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
+          dto,
+          { headers },
+        ),
+      );
+
+      // Only clear the main QR reference if this QR is actually the branch's main
+      const branch = await this.branchRepo.findOne({ where: { id: branchId } });
+      if (branch?.mainQrCodeId === qrCodeId) {
+        await this.branchRepo.update(branchId, {
+          mainQrCodeId: null,
+          mainQrShortUrl: null,
+        });
+        this.logger.log(
+          `Detached main QR code ${qrCodeId} from branch ${branchId}`,
+        );
+      }
+
+      this.logger.log(
+        `Updated main QR code ${qrCodeId} for branch ${branchId}`,
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to update main QR code');
+    }
   }
 
   /**

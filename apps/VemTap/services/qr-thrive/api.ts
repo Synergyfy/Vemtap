@@ -399,6 +399,14 @@ export const qrThriveApi = {
   recreateMainQRCode: async (branchId: string): Promise<QrThriveQRCode | null> => {
     return api.post(`/qr-thrive/branches/${branchId}/main-qr/recreate`, {});
   },
+
+  /**
+   * Update the main QR code. This detaches it from being the branch's main QR,
+   * turning it into a regular QR code in the user's library.
+   */
+  updateMainQRCode: async (branchId: string, qrCodeId: string, data: UpdateQrThriveQRDto): Promise<QrThriveQRCode> => {
+    return api.patch(`/qr-thrive/branches/${branchId}/main-qr/${qrCodeId}`, data);
+  },
 };
 
 export { QrThriveApiError };

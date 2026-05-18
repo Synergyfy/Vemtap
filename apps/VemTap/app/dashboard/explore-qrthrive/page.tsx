@@ -42,6 +42,7 @@ import {
     useSubscriptionIncludesQrThrive,
     useMainQrCode,
     useRecreateMainQrCode,
+    useUpdateMainQrCode,
 } from '@/services/qr-thrive/hooks';
 import { useActionPermission } from '@/hooks/useActionPermission';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -136,6 +137,7 @@ export default function ExploreQRThrivePage() {
 
     const createMutation = useCreateQrThriveCode();
     const updateMutation = useUpdateQrThriveCode();
+    const updateMainQrMutation = useUpdateMainQrCode();
     const resetMappingMutation = useResetQrThriveMapping();
 
     const {
@@ -212,6 +214,20 @@ export default function ExploreQRThrivePage() {
         );
     }
 
+    const handleEditMainQr = () => {
+        if (!mainQrCode) return;
+        setSelectedQrId(mainQrCode.id);
+        setSelectedType((mainQrCode.type || 'url') as QRType);
+        setQrData(mainQrCode.data || { type: 'url', url: 'https://qrthrive.com' });
+        setQrName(mainQrCode.name || '');
+        setQrDesign(mainQrCode.design || DEFAULT_QR_DESIGN);
+        setQrFrame(mainQrCode.frame || DEFAULT_QR_FRAME);
+        setQrLogo(mainQrCode.logo);
+        setView('edit');
+        setStep('type');
+        setIsLocked(false);
+    };
+
     const handleCreateNew = () => {
         setView('create');
         setStep('type');
@@ -248,10 +264,6 @@ export default function ExploreQRThrivePage() {
     };
 
     const handleFinish = async () => {
-        if (view === 'edit' && selectedQrId && mainQrCodeId && selectedQrId === mainQrCodeId) {
-            toast.error('The main business link QR code cannot be modified.');
-            return;
-        }
         if (!qrName.trim()) {
             setQrName(`${selectedType} QR`);
         }
@@ -317,15 +329,22 @@ export default function ExploreQRThrivePage() {
             if (view === 'edit' && selectedQrId) {
                 // Strip fields that are not allowed in UpdateQRCodeDto
                 const { isDynamic, ...updatePayload } = payload;
-                
-                await updateMutation.mutateAsync({
-                    qrId: selectedQrId,
-                    data: updatePayload as any,
-                    branchId: activeBranchId || undefined
-                });
 
-
-                toast.success('QR Code updated successfully!');
+                if (mainQrCodeId && selectedQrId === mainQrCodeId) {
+                    await updateMainQrMutation.mutateAsync({
+                        qrId: selectedQrId,
+                        data: updatePayload as any,
+                        branchId: activeBranchId || undefined
+                    });
+                    toast.success('Main QR Code updated — it is now a regular QR code.');
+                } else {
+                    await updateMutation.mutateAsync({
+                        qrId: selectedQrId,
+                        data: updatePayload as any,
+                        branchId: activeBranchId || undefined
+                    });
+                    toast.success('QR Code updated successfully!');
+                }
             } else {
                 const newQr = await createMutation.mutateAsync({
                     data: payload,
@@ -610,10 +629,10 @@ export default function ExploreQRThrivePage() {
                                         </div>
                                         <div className="flex flex-wrap items-center gap-2 pt-1">
                                             <button
-                                                disabled
-                                                className="px-5 py-2.5 bg-white/10 text-white/40 border border-white/20 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 cursor-not-allowed opacity-80"
+                                                onClick={handleEditMainQr}
+                                                className="px-5 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
                                             >
-                                                <Lock size={12} /> Locked
+                                                <Edit2 size={12} /> Edit
                                             </button>
                                             <button
                                                 onClick={() => {
@@ -650,6 +669,47 @@ export default function ExploreQRThrivePage() {
                                                 className="px-4 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
                                             >
                                                 <Copy size={10} /> Copy URL
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!mainQrCode && !isLoadingMainQr && (
+                            <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[40px] p-6 lg:p-8 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full -mr-32 -mt-32" />
+                                <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/10 blur-[60px] rounded-full -ml-24 -mb-24" />
+                                <div className="relative z-10 flex flex-col lg:flex-row items-start gap-6">
+                                    <div className="shrink-0">
+                                        <div className="w-40 h-40 lg:w-48 lg:h-48 bg-white/10 rounded-3xl flex items-center justify-center">
+                                            <QrCode size={64} className="text-white/40" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0 space-y-3">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-white/80 border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                            <Zap size={12} />
+                                            Main Business Link
+                                        </div>
+                                        <h3 className="text-xl lg:text-2xl font-bold text-white leading-tight">
+                                            No main QR code yet
+                                        </h3>
+                                        <p className="text-sm text-white/60 font-medium">
+                                            Create a main business link QR code to display on your customer experience page.
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await recreateMainMutation.mutateAsync(undefined);
+                                                        toast.success('Main QR Code created!');
+                                                    } catch (err: any) {
+                                                        toast.error(err?.message || 'Failed to create main QR code');
+                                                    }
+                                                }}
+                                                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+                                            >
+                                                <Plus size={12} /> Create Main QR
                                             </button>
                                         </div>
                                     </div>
