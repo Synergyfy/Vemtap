@@ -325,8 +325,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             return !item.roles || item.roles.includes('owner');
         }
 
-        if (realUserRole === 'admin') return true;
-
         return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
     }).map(item => {
         return item;
