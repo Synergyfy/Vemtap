@@ -1,8 +1,9 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { PlansService } from '../subscriptions/plans.service';
 
 export interface VemTapQrThriveTokenPayload {
   sub: string;
@@ -30,6 +31,8 @@ export class SubscriptionTokenService {
     private readonly jwtService: JwtService,
     @Inject(forwardRef(() => SubscriptionsService))
     private readonly subscriptionsService: SubscriptionsService,
+    @Inject(forwardRef(() => PlansService))
+    private readonly plansService: PlansService,
   ) {
     this.secret = this.configService.get<string>('VEMTAP_QR_THRIVE_SECRET') || '';
     if (!this.secret) {
@@ -38,13 +41,25 @@ export class SubscriptionTokenService {
   }
 
   async generateToken(user: User, businessId: string): Promise<string> {
-    const subscriptionStatus = await this.getSubscriptionStatus(businessId);
-    const qrThrivePlanId = await this.getQrThrivePlanId(businessId);
+    const isAdminOrAgent = user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT;
+    const subscriptionStatus = isAdminOrAgent ? 'active' : await this.getSubscriptionStatus(businessId);
+    let qrThrivePlanId = isAdminOrAgent ? 'qr-pro-plan' : await this.getQrThrivePlanId(businessId);
+
+    // If no active paid plan mapped, try to find the default free plan mapping
+    if (!qrThrivePlanId) {
+      try {
+        const freePlan = await this.plansService.findFreePlan();
+        qrThrivePlanId = freePlan?.qrThrivePlanId || 'qr-free-plan';
+      } catch {
+        qrThrivePlanId = 'qr-free-plan';
+      }
+    }
+
     const planCapabilities = await this.getPlanCapabilities(qrThrivePlanId);
 
     const payload: Omit<VemTapQrThriveTokenPayload, 'exp' | 'iat'> = {
       sub: user?.id || 'unknown',
-      businessId,
+      businessId: businessId || 'unknown',
       subscriptionStatus,
       qrThrivePlanId,
       planCapabilities,
@@ -57,11 +72,15 @@ export class SubscriptionTokenService {
   }
 
   private async getSubscriptionStatus(businessId: string): Promise<'active' | 'trial' | 'expired'> {
+    if (!businessId) {
+      return 'active';
+    }
     try {
       const sub = await this.subscriptionsService.activeSubscription(businessId);
       
       if (!sub) {
-        return 'expired';
+        // Fallback: default to active for free plan users
+        return 'active';
       }
 
       if (sub.status === 'active' || sub.status === 'trial') {
@@ -71,11 +90,14 @@ export class SubscriptionTokenService {
       return 'expired';
     } catch (error) {
       this.logger.error(`Failed to get subscription status: ${error.message}`);
-      return 'expired';
+      return 'active'; // Fallback to safe 'active' on error to prevent lockout
     }
   }
 
   private async getQrThrivePlanId(businessId: string): Promise<string> {
+    if (!businessId) {
+      return '';
+    }
     try {
       const sub = await this.subscriptionsService.activeSubscription(businessId);
       
@@ -96,7 +118,6 @@ export class SubscriptionTokenService {
     try {
       // Since VemTap Plan doesn't have qrCodeLimit/qrCodeTypes directly,
       // we'll use defaults and let QR-Thrive handle the actual limits based on qrThrivePlanId
-      // For now, provide reasonable defaults based on subscription status
       return this.getDefaultCapabilities();
     } catch (error) {
       this.logger.warn(`Failed to get plan capabilities: ${error.message}, using defaults`);
@@ -110,10 +131,29 @@ export class SubscriptionTokenService {
 
   private getDefaultCapabilities(): VemTapQrThriveTokenPayload['planCapabilities'] {
     return {
-      qrCodeLimit: 10,
-      allowedQRTypes: ['url', 'text'],
+      qrCodeLimit: 100,
+      allowedQRTypes: [
+        'url',
+        'text',
+        'pdf',
+        'vcard',
+        'wifi',
+        'email',
+        'sms',
+        'phone',
+        'socials',
+        'links',
+        'image',
+        'event',
+        'video',
+        'mp3',
+        'app',
+        'booking',
+        'coupon',
+        'form',
+      ],
       canScan: true,
-      canAnalytics: false,
+      canAnalytics: true,
     };
   }
 

@@ -271,31 +271,8 @@ export class BranchesService {
       }
     }
 
-    Object.assign(branch, updateBranchDto);
+Object.assign(branch, updateBranchDto);
     const savedBranch = await this.branchesRepository.save(branch);
-
-    // Auto-update main QR code URL if username changed and branch has a main QR
-    if (
-      updateBranchDto.username &&
-      updateBranchDto.username !== oldUsername &&
-      branch.mainQrCodeId &&
-      user
-    ) {
-      try {
-        await this.qrThriveService.updateMainQRCodeUrl(
-          user,
-          id,
-          branch.mainQrCodeId,
-          updateBranchDto.username,
-        );
-      } catch (error) {
-        console.error(
-          `Failed to update main QR code URL for branch ${id}:`,
-          error,
-        );
-        // Non-blocking
-      }
-    }
 
     return savedBranch;
   }

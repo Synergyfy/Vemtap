@@ -10,20 +10,22 @@ import { DEFAULT_QR_DESIGN } from '@/services/qr-thrive/types';
 
 interface ExperienceLinkCardProps {
     publicUrl: string;
+    qrUrl?: string;
     businessLogo?: string;
     branchId?: string;
 }
 
-export function ExperienceLinkCard({ publicUrl, businessLogo, branchId }: ExperienceLinkCardProps) {
+export function ExperienceLinkCard({ publicUrl, qrUrl, businessLogo, branchId }: ExperienceLinkCardProps) {
     const [copied, setCopied] = React.useState(false);
     const qrRef = useRef<any>(null);
 
-    const { data: mainQrData, isLoading: isLoadingMainQr } = useMainQrCode(
+    const { data: mainQrData, isLoading: isLoadingMainQr, isFetched } = useMainQrCode(
         branchId && branchId !== 'all' ? branchId : null
     );
 
     const mainQrCode = mainQrData?.qrCode;
     const hasMainQr = !!mainQrCode;
+    const showFallbackQr = !hasMainQr && !isLoadingMainQr && !isFetched;
 
     const handleCopy = () => {
         navigator.clipboard.writeText(publicUrl);
@@ -79,50 +81,54 @@ export function ExperienceLinkCard({ publicUrl, businessLogo, branchId }: Experi
                         {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
                         {copied ? 'Copied!' : 'Copy Link'}
                     </button>
-                    <button
-                        onClick={handleDownloadQR}
-                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-primary/5 px-3 py-2 rounded-lg transition-colors"
-                    >
-                        <Download size={14} />
-                        Download QR
-                    </button>
+                    {(hasMainQr || showFallbackQr) && (
+                        <button
+                            onClick={handleDownloadQR}
+                            className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-primary/5 px-3 py-2 rounded-lg transition-colors"
+                        >
+                            <Download size={14} />
+                            Download QR
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* QR Code */}
-            <div className="w-28 h-28 bg-white p-2 border border-gray-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                {isLoadingMainQr ? (
-                    <Loader2 size={20} className="text-gray-300 animate-spin" />
-                ) : hasMainQr ? (
-                    <div className="scale-[0.38] transform-gpu origin-center">
-                        <QrPreview
-                            data={mainQrCode.data?.url || publicUrl}
-                            design={mainQrCode.design || DEFAULT_QR_DESIGN}
-                            frame={mainQrCode.frame || { type: 'none' }}
-                            logo={mainQrCode.logo}
-                            width={180}
-                            height={180}
-                            onReady={(inst) => { qrRef.current = inst; }}
+            {hasMainQr || showFallbackQr ? (
+                <div className="w-28 h-28 bg-white p-2 border border-gray-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                    {isLoadingMainQr ? (
+                        <Loader2 size={20} className="text-gray-300 animate-spin" />
+                    ) : hasMainQr ? (
+                        <div className="scale-[0.38] transform-gpu origin-center">
+                            <QrPreview
+                                data={qrUrl || mainQrCode.data?.url || publicUrl}
+                                design={mainQrCode.design || DEFAULT_QR_DESIGN}
+                                frame={mainQrCode.frame || { type: 'none' }}
+                                logo={mainQrCode.logo}
+                                width={180}
+                                height={180}
+                                onReady={(inst) => { qrRef.current = inst; }}
+                            />
+                        </div>
+                    ) : (
+                        <QRCodeCanvas
+                            id="experience-qr"
+                            value={qrUrl || publicUrl}
+                            size={1024}
+                            level="H"
+                            includeMargin={false}
+                            style={{ width: 96, height: 96 }}
+                            imageSettings={businessLogo ? {
+                                src: businessLogo,
+                                height: 256,
+                                width: 256,
+                                excavate: true,
+                                crossOrigin: 'anonymous',
+                            } : undefined}
                         />
-                    </div>
-                ) : (
-                    <QRCodeCanvas
-                        id="experience-qr"
-                        value={publicUrl}
-                        size={1024}
-                        level="H"
-                        includeMargin={false}
-                        style={{ width: 96, height: 96 }}
-                        imageSettings={businessLogo ? {
-                            src: businessLogo,
-                            height: 256,
-                            width: 256,
-                            excavate: true,
-                            crossOrigin: 'anonymous',
-                        } : undefined}
-                    />
-                )}
-            </div>
+                    )}
+                </div>
+            ) : null}
         </div>
     );
 }
