@@ -333,6 +333,7 @@ export class QrThriveService implements OnModuleInit {
       type: 'url',
       isDynamic: true,
       data: { url },
+      logo: branch.logoUrl || undefined,
       design: {
         dots: { type: 'square', color: '#000000' },
         cornersSquare: { type: 'square', color: '#000000' },
@@ -477,6 +478,76 @@ export class QrThriveService implements OnModuleInit {
 
     const qrCode = await this.createMainQRCode(user, branch);
     return qrCode;
+  }
+
+  /**
+   * Sets an existing QR code as the branch's main QR code.
+   * Updates its content to the UBL URL but preserves its design.
+   */
+  async setAsMainQRCode(
+    user: User,
+    branchId: string,
+    qrCodeId: string,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess) {
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) {
+      throw new HttpException('Branch not found', HttpStatus.NOT_FOUND);
+    }
+
+    const mapping = await this.getMapping(user, branchId);
+    const ublUrl = this.getMainQrUrl(branch);
+
+    try {
+      const headers = await this.getHeadersWithSubscription(user);
+
+      // Fetch existing QR to preserve its design, frame, and logo
+      const { data: existing } = await firstValueFrom(
+        this.httpService.get(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
+          { headers },
+        ),
+      );
+
+      // Update content to UBL URL, keep visual design
+      const { data: updated } = await firstValueFrom(
+        this.httpService.patch(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
+          {
+            type: 'url',
+            isDynamic: true,
+            data: { url: ublUrl },
+            design: existing.design,
+            frame: existing.frame,
+            logo: existing.logo,
+          },
+          { headers },
+        ),
+      );
+
+      // Set this QR as the branch's main QR
+      await this.branchRepo.update(branchId, {
+        mainQrCodeId: qrCodeId,
+        mainQrShortUrl: updated.shortUrl,
+      });
+
+      this.logger.log(
+        `Set QR code ${qrCodeId} as main QR for branch ${branchId}`,
+      );
+      return updated;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to set QR code as main');
+    }
   }
 
   /**
