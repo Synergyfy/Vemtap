@@ -43,6 +43,7 @@ import {
     useMainQrCode,
     useRecreateMainQrCode,
     useUpdateMainQrCode,
+    useSetQRCodeAsMain,
 } from '@/services/qr-thrive/hooks';
 import { useActionPermission } from '@/hooks/useActionPermission';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -138,6 +139,7 @@ export default function ExploreQRThrivePage() {
     const createMutation = useCreateQrThriveCode();
     const updateMutation = useUpdateQrThriveCode();
     const updateMainQrMutation = useUpdateMainQrCode();
+    const setAsMainMutation = useSetQRCodeAsMain();
     const resetMappingMutation = useResetQrThriveMapping();
 
     const {
@@ -773,6 +775,14 @@ export default function ExploreQRThrivePage() {
                                     link.download = `${qr.name}.${format}`;
                                     link.click();
                                     toast.success('Download started');
+                                }}
+                                onSetAsMain={async (id) => {
+                                    try {
+                                        await setAsMainMutation.mutateAsync({ qrId: id });
+                                        toast.success('QR Code set as main business link!');
+                                    } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to set QR code as main');
+                                    }
                                 }}
                             />
                         )}

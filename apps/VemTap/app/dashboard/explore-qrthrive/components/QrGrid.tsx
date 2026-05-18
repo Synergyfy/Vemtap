@@ -95,6 +95,7 @@ interface QrGridProps {
   onArchive: (id: string, currentStatus: string) => void;
   onViewStats: (code: QrThriveQRCode) => void;
   onDownload?: (code: QrThriveQRCode, format: 'png' | 'svg' | 'jpeg') => void;
+  onSetAsMain?: (id: string) => Promise<void>;
 }
 
 export const QrGrid: React.FC<QrGridProps> = ({ 
@@ -106,7 +107,8 @@ export const QrGrid: React.FC<QrGridProps> = ({
   onDuplicate, 
   onArchive, 
   onViewStats,
-  onDownload
+  onDownload,
+  onSetAsMain
 }) => {
   const { canPerformAction } = useActionPermission();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -322,6 +324,20 @@ export const QrGrid: React.FC<QrGridProps> = ({
                   >
                     <Copy className="w-4 h-4" /> Duplicate
                   </button>
+                  {!(mainQrCodeId && qr.id === mainQrCodeId) && qr.status !== 'archived' && onSetAsMain && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Set this QR code as your main business link? Its content will be updated to your business landing page, but the design will stay the same.')) {
+                          onSetAsMain(qr.id);
+                        }
+                        setMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-amber-600 hover:bg-amber-50 transition-colors"
+                    >
+                      <Star className="w-4 h-4" /> Set as Main
+                    </button>
+                  )}
                   {!(mainQrCodeId && qr.id === mainQrCodeId) && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleArchive(qr.id, qr.status); }}
