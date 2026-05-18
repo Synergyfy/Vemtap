@@ -627,6 +627,32 @@ export const useRecreateMainQrCode = () => {
   });
 };
 
+/**
+ * Hook to set an existing QR code as the branch's main QR code.
+ */
+export const useSetQRCodeAsMain = () => {
+  const queryClient = useQueryClient();
+  const { qrThriveUserId } = useQrThriveStore();
+  const { activeBranchId } = useActiveBranch();
+
+  return useMutation({
+    mutationFn: async (params: { qrId: string; branchId?: string }) => {
+      if (!qrThriveUserId) {
+        throw new Error('User not provisioned in QR-Thrive');
+      }
+      const resolvedBranchId = params.branchId || activeBranchId;
+      if (!resolvedBranchId || resolvedBranchId === 'all') {
+        throw new Error('Branch required');
+      }
+      return qrThriveApi.setQRCodeAsMain(resolvedBranchId, params.qrId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-thrive-main-qr'] });
+      queryClient.invalidateQueries({ queryKey: ['qr-thrive-codes'] });
+    },
+  });
+};
+
 export const useResetQrThriveMapping = () => {
   const queryClient = useQueryClient();
   const { clearQrThriveData } = useQrThriveStore();
