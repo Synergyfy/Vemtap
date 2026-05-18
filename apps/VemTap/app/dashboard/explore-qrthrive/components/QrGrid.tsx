@@ -224,8 +224,6 @@ export const QrGrid: React.FC<QrGridProps> = ({
       qrInstance.download({
         name: qr?.name || 'qrcode',
         extension: format === 'jpeg' ? 'jpg' : format,
-        width: 2000,
-        height: 2000
       });
       toast.success('Download started');
     } else if (qr && onDownload) {
@@ -396,14 +394,14 @@ export const QrGrid: React.FC<QrGridProps> = ({
               className="w-20 h-20 bg-white rounded-xl shadow-inner flex items-center justify-center relative group/qr overflow-hidden cursor-pointer"
               onClick={(e) => { e.stopPropagation(); handlePreviewClick(qr); }}
             >
-               <div className="scale-[0.4] transform-gpu">
+               <div className="scale-[0.07] transform-gpu">
                   <QrPreview 
                     data={toAbsoluteUrl(qr.shortUrl)}
                     design={qr.design}
                     frame={{ type: 'none' }}
                     logo={qr.logo}
-                    width={180}
-                    height={180}
+                    width={1024}
+                    height={1024}
                     onReady={(inst) => { qrRefs.current[qr.id] = inst; }}
                   />
                </div>

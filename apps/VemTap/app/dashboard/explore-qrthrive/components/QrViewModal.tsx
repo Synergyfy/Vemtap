@@ -28,8 +28,6 @@ export default function QrViewModal({ isOpen, onClose, qr }: QrViewModalProps) {
       qrRef.current.download({
         name: qr.name,
         extension: format,
-        width: 2000,
-        height: 2000
       });
       toast.success(`${format.toUpperCase()} download started`);
     } else {
@@ -47,15 +45,17 @@ export default function QrViewModal({ isOpen, onClose, qr }: QrViewModalProps) {
     >
       <div className="flex flex-col items-center gap-8">
         <div className="w-full aspect-square max-w-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden shadow-inner flex items-center justify-center p-4">
-          <QrPreview
-            data={toAbsoluteUrl(qr.shortUrl)}
-            design={qr.design}
-            frame={qr.frame}
-            logo={qr.logo}
-            width={320}
-            height={320}
-            onReady={(inst) => qrRef.current = inst}
-          />
+          <div className="scale-[0.3125] transform-gpu">
+            <QrPreview
+              data={toAbsoluteUrl(qr.shortUrl)}
+              design={qr.design}
+              frame={qr.frame}
+              logo={qr.logo}
+              width={1024}
+              height={1024}
+              onReady={(inst) => qrRef.current = inst}
+            />
+          </div>
         </div>
 
         <div className="w-full space-y-4">
