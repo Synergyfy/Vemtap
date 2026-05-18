@@ -25,8 +25,8 @@ import { Phone, Loader2 as LoaderIcon } from 'lucide-react';
 import { useSudoStore } from '@/store/useSudoStore';
 import MobileDashboardHub from '@/components/dashboard/MobileDashboardHub';
 import { useSearchParams } from 'next/navigation';
-import DashboardBanner from '@/components/dashboard/DashboardBanner';
-import { useBannerStore, getIconByName } from '@/store/useBannerStore';
+import DashboardBannerWrapper from '@/components/dashboard/DashboardBannerWrapper';
+import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -42,6 +42,9 @@ export default function DashboardPage() {
     const isAdminMode = activeSession !== null;
 
     const user = useAuthStore((state) => state.user);
+    const userPermissions = user?.permissions || [];
+    const isOwnerOrAdmin = ['owner', 'admin'].includes((user?.role as string)?.toLowerCase());
+    const userRole = (user?.role as string)?.toLowerCase() || 'owner';
 
     const isNewUser = useMemo(() => {
         if (!user) return false;
@@ -59,12 +62,6 @@ export default function DashboardPage() {
     const { data, isLoading } = useDashboardAnalytics();
     const { data: visitorStatsData } = useVisitorStats();
     const resetDashboardMutation = useResetDashboard();
-    const { slides } = useBannerStore();
-
-    const bannerSlides = useMemo(() => slides.map(s => ({
-        ...s,
-        icon: getIconByName(s.iconName)
-    })), [slides]);
 
     const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
@@ -270,7 +267,7 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Dashboard Banner */}
-                <DashboardBanner slides={bannerSlides} />
+                <DashboardBannerWrapper />
                 
                 {/* Mobile Navigation Hub - Hidden when showing stats on mobile */}
                 {!showStats && <MobileDashboardHub />}
@@ -430,10 +427,10 @@ export default function DashboardPage() {
                             <h2 className="text-base font-display font-bold text-text-main mb-3">Quick Actions</h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
                                 {[
-                                    { label: 'New Message', icon: MessageSquare, route: '/dashboard/messaging', color: 'bg-indigo-50 text-indigo-600' },
-                                    { label: 'Add Device', icon: LogoIcon, route: '/dashboard/settings/devices', color: 'bg-blue-50 text-blue-600' },
-                                    { label: 'Export Data', icon: Download, route: '/dashboard/visitors/all', color: 'bg-green-50 text-green-600' }
-                                ].map((action, i) => (
+                                    { label: 'New Message', icon: MessageSquare, route: '/dashboard/messaging', color: 'bg-indigo-50 text-indigo-600', roles: ['owner', 'manager'], permission: 'messages' },
+                                    { label: 'Add Device', icon: LogoIcon, route: '/dashboard/settings/devices', color: 'bg-blue-50 text-blue-600', roles: ['owner', 'manager'], permission: 'settings' },
+                                    { label: 'Export Data', icon: Download, route: '/dashboard/visitors/all', color: 'bg-green-50 text-green-600', roles: ['owner', 'manager', 'staff'], permission: 'visitors' }
+                                ].filter(action => canAccessMenuItem(action, userRole, userPermissions, isOwnerOrAdmin)).map((action, i) => (
                                     <button
                                         key={i}
                                         onClick={() => router.push(action.route)}

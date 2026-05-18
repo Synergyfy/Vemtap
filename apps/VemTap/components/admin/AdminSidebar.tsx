@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminNotificationsApi } from '@/lib/api/admin';
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ChevronDown, Shield, ShieldCheck, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye, Zap, ClipboardList, Headset
+    Settings, ChevronDown, Shield, ShieldCheck, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import AdminMobileNav from './AdminMobileNav';
@@ -223,6 +223,13 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             permission: 'admin:health'
         },
 
+        {
+            id: 'banners',
+            label: 'Banner Management',
+            icon: Megaphone,
+            href: '/admin/banners',
+            permission: 'admin:settings'
+        },
         {
             id: 'settings',
             label: 'System Settings',

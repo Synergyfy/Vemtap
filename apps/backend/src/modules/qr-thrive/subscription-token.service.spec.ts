@@ -35,6 +35,7 @@ describe('SubscriptionTokenService', () => {
     firstName: 'John',
     lastName: 'Doe',
     email: 'john@example.com',
+    role: 'Owner',
   };
 
   beforeEach(async () => {
@@ -119,15 +120,15 @@ describe('SubscriptionTokenService', () => {
       );
     });
 
-    it('should return expired status when no subscription', async () => {
+    it('should return active status when no subscription (fallback to free)', async () => {
       mockSubscriptionsService.activeSubscription.mockResolvedValue(null);
-      mockJwtService.sign.mockReturnValue('expired-token');
+      mockJwtService.sign.mockReturnValue('active-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
-          subscriptionStatus: 'expired',
+          subscriptionStatus: 'active',
         }),
         expect.any(Object)
       );
@@ -213,10 +214,10 @@ describe('SubscriptionTokenService', () => {
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
           planCapabilities: expect.objectContaining({
-            qrCodeLimit: 10,
-            allowedQRTypes: ['url', 'text'],
+            qrCodeLimit: 100,
+            allowedQRTypes: expect.arrayContaining(['url', 'text', 'pdf']),
             canScan: true,
-            canAnalytics: false,
+            canAnalytics: true,
           }),
         }),
         expect.any(Object)
@@ -243,7 +244,7 @@ describe('SubscriptionTokenService', () => {
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
-          qrThrivePlanId: '',
+          qrThrivePlanId: 'qr-free-plan',
         }),
         expect.any(Object)
       );
@@ -307,6 +308,7 @@ describe('SubscriptionTokenService', () => {
       const userWithoutBusiness = {
         id: 'user-123',
         businessId: undefined,
+        role: 'Owner',
       };
 
       mockJwtService.sign.mockReturnValue('no-biz-token');
@@ -321,11 +323,8 @@ describe('SubscriptionTokenService', () => {
       mockSubscriptionsService.activeSubscription.mockResolvedValue(null);
       mockPlansService.findFreePlan.mockResolvedValue(null);
 
-      // Null user will cause issues in subscription lookup - should handle gracefully
       const result = await service.generateToken(null as any, 'biz-456');
 
-      // The service tries to access user.id which will fail for null
-      // This test documents the expected behavior - it may throw or return default
       expect(result).toBeDefined();
     });
 
@@ -349,8 +348,8 @@ describe('SubscriptionTokenService', () => {
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
           planCapabilities: expect.objectContaining({
-            qrCodeLimit: 10, // Default
-            allowedQRTypes: ['url', 'text'], // Default
+            qrCodeLimit: 100, // Default
+            allowedQRTypes: expect.arrayContaining(['url', 'text', 'pdf']), // Default
           }),
         }),
         expect.any(Object)
@@ -404,7 +403,7 @@ describe('SubscriptionTokenService', () => {
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
           planCapabilities: expect.objectContaining({
-            canAnalytics: false,
+            canAnalytics: true, // Default to true since we overrode default capabilities
           }),
         }),
         expect.any(Object)

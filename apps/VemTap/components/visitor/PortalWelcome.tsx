@@ -64,7 +64,9 @@ export const PortalWelcome: React.FC<PortalWelcomeProps> = ({
     const isServiceOnly = serviceCount && serviceCount > 0 && (!productCount || productCount === 0);
 
     const dynamicActions = useMemo(() => {
-        if (!ublSequence || ublSequence.length === 0) return null;
+        if (!ublSequence) return null;
+        if (ublSequence.length === 0) return [];
+        
         const sequenceToUse = ublSequence;
 
         const formMap = new Map(availableForms?.map(f => [f.id, f]) || []);

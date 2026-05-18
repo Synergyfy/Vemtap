@@ -86,10 +86,6 @@ export class Setting extends AbstractBaseEntity {
   @Column({ default: 3 })
   affiliateCommissionDurationMonths: number;
 
-  @ApiProperty({
-    example: 5000,
-    description: 'Minimum balance required for withdrawal requests',
-  })
   @Column('decimal', { precision: 10, scale: 2, default: 5000 })
   affiliateMinimumWithdrawal: number;
 }

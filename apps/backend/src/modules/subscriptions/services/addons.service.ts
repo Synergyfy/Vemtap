@@ -21,6 +21,9 @@ import {
 import { CreateAddonDto } from '../dto/addons/create-addon.dto';
 import { UpdateAddonDto } from '../dto/addons/update-addon.dto';
 import { PurchaseAddonDto } from '../dto/addons/purchase-addon.dto';
+import { SettingsService } from '../../settings/settings.service';
+import { BundleDiscountsService } from './bundle-discounts.service';
+
 
 export interface AddOnCapability {
   name: string;
@@ -51,6 +54,8 @@ export class AddonsService {
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
     private readonly paymentsService: PaymentsService,
+    private readonly settingsService: SettingsService,
+    private readonly bundleDiscountsService: BundleDiscountsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -101,6 +106,10 @@ export class AddonsService {
     }
 
     return addons;
+  }
+
+  async findAllDiscounts() {
+    return this.bundleDiscountsService.getActiveDiscounts();
   }
 
   async findOne(id: string): Promise<AddOn> {
@@ -199,10 +208,28 @@ export class AddonsService {
       }
     }
 
+    const totalQuantity = addons.reduce((sum, _, i) => sum + (quantities?.[i] ?? quantity), 0);
+    const activeDiscounts = await this.bundleDiscountsService.getActiveDiscounts();
+    let discountPercent = 0;
+
+    if (activeDiscounts.length > 0) {
+      const applicableTier = activeDiscounts
+        .filter(tier => totalQuantity >= tier.minQuantity && (!tier.maxQuantity || totalQuantity <= tier.maxQuantity))
+        .sort((a, b) => b.discountPercent - a.discountPercent)[0];
+      
+      if (applicableTier) {
+        discountPercent = applicableTier.discountPercent;
+      }
+    }
+
     const results: BusinessAddOn[] = [];
     for (let i = 0; i < addons.length; i++) {
       const addon = addons[i];
       const qty = quantities?.[i] ?? quantity;
+      
+      const basePrice = Number(addon.price) * qty;
+      const discountAmount = (basePrice * discountPercent) / 100;
+      const finalPrice = basePrice - discountAmount;
 
       const purchasedAt = new Date();
       let expiresAt: Date;
@@ -220,12 +247,13 @@ export class AddonsService {
         purchasedAt,
         expiresAt,
         quantity: qty,
-        totalPaid: addon.price * qty,
+        totalPaid: finalPrice,
         paymentReference,
         metadata: {
           addonType: addon.type,
           targetCapability: addon.targetCapability,
           additionalLimit: addon.additionalLimit,
+          appliedDiscountPercent: discountPercent,
         },
       });
 

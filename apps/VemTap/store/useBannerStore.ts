@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { Sparkles, Megaphone, Zap, Gift } from 'lucide-react';
 
 export interface BannerSlide {
@@ -10,55 +9,35 @@ export interface BannerSlide {
     actionLabel?: string;
     actionUrl?: string;
     color: string;
+    isActive?: boolean;
+    sortOrder?: number;
 }
 
 interface BannerState {
     slides: BannerSlide[];
+    loading: boolean;
+    error: string | null;
     setSlides: (slides: BannerSlide[]) => void;
-    addSlide: (slide: BannerSlide) => void;
-    updateSlide: (id: string, slide: Partial<BannerSlide>) => void;
-    removeSlide: (id: string) => void;
+    fetchBanners: () => Promise<void>;
 }
 
-const DEFAULT_SLIDES: BannerSlide[] = [
-    {
-        id: 'welcome-slide',
-        title: 'Welcome to VemTap Dashboard!',
-        description: 'Manage your visitors, loyalty programs, and messaging all in one place. Explore our new features to grow your business.',
-        iconName: 'Sparkles',
-        actionLabel: 'Get Started',
-        actionUrl: '/dashboard/visitors/all',
-        color: 'bg-gradient-to-r from-emerald-600 to-teal-500'
-    },
-    {
-        id: 'loyalty-promo',
-        title: 'Grow Your Loyalty Program',
-        description: 'Did you know? Customers in a loyalty program spend 3x more. Set up your rewards today and watch your business thrive.',
-        iconName: 'Gift',
-        actionLabel: 'Setup Rewards',
-        actionUrl: '/dashboard/loyalty',
-        color: 'bg-gradient-to-r from-blue-600 to-indigo-500'
-    }
-];
-
-export const useBannerStore = create<BannerState>()(
-    persist(
-        (set) => ({
-            slides: DEFAULT_SLIDES,
-            setSlides: (slides) => set({ slides }),
-            addSlide: (slide) => set((state) => ({ slides: [...state.slides, slide] })),
-            updateSlide: (id, updates) => set((state) => ({
-                slides: state.slides.map((s) => s.id === id ? { ...s, ...updates } : s)
-            })),
-            removeSlide: (id) => set((state) => ({
-                slides: state.slides.filter((s) => s.id !== id)
-            })),
-        }),
-        {
-            name: 'vemtap-banner-storage',
+export const useBannerStore = create<BannerState>()((set) => ({
+    slides: [],
+    loading: false,
+    error: null,
+    setSlides: (slides) => set({ slides }),
+    fetchBanners: async () => {
+        try {
+            set({ loading: true, error: null });
+            const { bannersApi } = await import('@/lib/api/banners');
+            const data = await bannersApi.getActive();
+            const slides = Array.isArray(data) ? data : data?.data || [];
+            set({ slides, loading: false });
+        } catch (err) {
+            set({ error: 'Failed to load banners', loading: false });
         }
-    )
-);
+    },
+}));
 
 export const getIconByName = (name: string) => {
     switch (name) {

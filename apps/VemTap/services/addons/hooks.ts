@@ -21,6 +21,15 @@ export const useAddOns = () => {
     });
 };
 
+export const useBundleDiscounts = () => {
+    return useQuery<any[], Error>({
+        queryKey: ['addons', 'bundle-discounts'],
+        queryFn: async () => {
+            return await api.get('/addons/bundle-discounts');
+        },
+    });
+};
+
 export const useMyActiveAddOns = () => {
     return useQuery<any[], Error>({
         queryKey: ['addons', 'my', 'active'],

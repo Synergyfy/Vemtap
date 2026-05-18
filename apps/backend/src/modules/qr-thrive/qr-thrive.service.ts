@@ -30,6 +30,7 @@ import {
   SpecializedLeadsQueryDto,
 } from './dto/qr-thrive.dto';
 import { BranchesService } from '../branches/branches.service';
+import { Branch } from '../branches/entities/branch.entity';
 
 @Injectable()
 export class QrThriveService implements OnModuleInit {
@@ -47,6 +48,9 @@ export class QrThriveService implements OnModuleInit {
 
     @InjectRepository(ExternalLeadStatusEntity)
     private readonly leadStatusRepo: Repository<ExternalLeadStatusEntity>,
+
+    @InjectRepository(Branch)
+    private readonly branchRepo: Repository<Branch>,
     private readonly encryptionService: QrThriveEncryptionService,
     private readonly subscriptionTokenService: SubscriptionTokenService,
   ) {
@@ -289,6 +293,243 @@ export class QrThriveService implements OnModuleInit {
         error,
         'Failed to create QR code in QR-Thrive',
       );
+    }
+  }
+
+  private getMainQrName(branchName: string): string {
+    return `${branchName} Main Link`;
+  }
+
+  private getMainQrUrl(branch: Branch): string {
+    const appUrl = this.configService.get<string>(
+      'VEMTAP_APP_URL',
+      'https://vemtap.com',
+    );
+    return `${appUrl}/b/${branch.uniqueCode}`;
+  }
+
+  /**
+   * Creates a main business link QR code in QR-Thrive for a branch.
+   * Stores the reference on the branch entity.
+   * Returns null silently if user is not provisioned in QR-Thrive.
+   */
+  async createMainQRCode(user: User, branch: Branch) {
+    let mapping: QrThriveUserMapping;
+    try {
+      mapping = await this.getMapping(user, branch.id, false);
+    } catch {
+      return null;
+    }
+
+    if (!mapping || !mapping.qrThriveUserId) {
+      return null;
+    }
+
+    const name = this.getMainQrName(branch.name);
+    const url = this.getMainQrUrl(branch);
+
+    const dto = {
+      name,
+      type: 'url',
+      isDynamic: true,
+      data: { url },
+      design: {
+        dots: { type: 'square', color: '#000000' },
+        cornersSquare: { type: 'square', color: '#000000' },
+        cornersDot: { type: 'square', color: '#000000' },
+        background: { color: '#ffffff' },
+      },
+      frame: { type: 'none' },
+    };
+
+    try {
+      const headers = await this.getHeadersWithSubscription(user);
+      const { data } = await firstValueFrom(
+        this.httpService.post(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes`,
+          dto,
+          { headers },
+        ),
+      );
+
+      await this.branchRepo.update(branch.id, {
+        mainQrCodeId: data.id,
+        mainQrShortUrl: data.shortUrl,
+      });
+
+      this.logger.log(`Created main QR code for branch ${branch.id}: ${data.id}`);
+      return data;
+    } catch (error) {
+      this.logger.error(
+        `Failed to create main QR code for branch ${branch.id}: ${error.message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Updates the destination URL of the main QR code (e.g., when username changes).
+   */
+  async updateMainQRCodeUrl(user: User, branchId: string, qrCodeId: string, username: string) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    if (!hasAccess) {
+      throw new HttpException('You do not have access to this branch', HttpStatus.FORBIDDEN);
+    }
+
+    const mapping = await this.getMapping(user, branchId);
+    const appUrl = this.configService.get<string>('VEMTAP_APP_URL', 'https://vemtap.com');
+    const newUrl = `${appUrl}/${username}`;
+
+    try {
+      const headers = await this.getHeadersWithSubscription(user);
+      const { data } = await firstValueFrom(
+        this.httpService.patch(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
+          { data: { url: newUrl } },
+          { headers },
+        ),
+      );
+
+      this.logger.log(`Updated main QR code ${qrCodeId} URL to ${newUrl}`);
+      return data;
+    } catch (error) {
+      this.logger.error(
+        `Failed to update main QR code ${qrCodeId} URL: ${error.message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Fetches the branch's main QR code from QR-Thrive.
+   * Does NOT auto-create — returns { qrCode: null } if none exists.
+   * Returns { qrCode: null } if user is not provisioned.
+   */
+  async getMainQRCode(user: User, branchId: string) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    if (!hasAccess) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    let mapping: QrThriveUserMapping;
+    try {
+      mapping = await this.getMapping(user, branchId, false);
+    } catch {
+      return { qrCode: null };
+    }
+
+    if (!mapping || !mapping.qrThriveUserId) {
+      return { qrCode: null };
+    }
+
+    const branch = await this.branchRepo.findOne({
+      where: { id: branchId },
+    });
+    if (!branch) {
+      throw new HttpException('Branch not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (branch.mainQrCodeId) {
+      try {
+        const headers = await this.getHeadersWithSubscription(user);
+        const { data } = await firstValueFrom(
+          this.httpService.get(
+            `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${branch.mainQrCodeId}`,
+            { headers },
+          ),
+        );
+
+        return {
+          qrCode: { ...data, scans: data._count?.scans || data.scans || 0 },
+        };
+      } catch (error) {
+        const status = error.response?.status;
+        if (status === 404) {
+          this.logger.warn(
+            `Main QR code ${branch.mainQrCodeId} not found in QR-Thrive, clearing reference...`,
+          );
+          await this.branchRepo.update(branch.id, {
+            mainQrCodeId: null,
+            mainQrShortUrl: null,
+          });
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return { qrCode: null };
+  }
+
+  /**
+   * Recreates the main QR code for a branch (used when user edits it away).
+   */
+  async recreateMainQRCode(user: User, branchId: string) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    if (!hasAccess) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) {
+      throw new HttpException('Branch not found', HttpStatus.NOT_FOUND);
+    }
+
+    const qrCode = await this.createMainQRCode(user, branch);
+    return qrCode;
+  }
+
+  /**
+   * Updates the main QR code and detaches it from being the branch's main QR.
+   * The QR code becomes a regular QR code in the user's library.
+   */
+  async updateMainQRCode(
+    user: User,
+    branchId: string,
+    qrCodeId: string,
+    dto: UpdateQRCodeDto,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess) {
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const mapping = await this.getMapping(user, branchId);
+
+    try {
+      const headers = await this.getHeadersWithSubscription(user);
+      const { data } = await firstValueFrom(
+        this.httpService.patch(
+          `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${qrCodeId}`,
+          dto,
+          { headers },
+        ),
+      );
+
+      // Only clear the main QR reference if this QR is actually the branch's main
+      const branch = await this.branchRepo.findOne({ where: { id: branchId } });
+      if (branch?.mainQrCodeId === qrCodeId) {
+        await this.branchRepo.update(branchId, {
+          mainQrCodeId: null,
+          mainQrShortUrl: null,
+        });
+        this.logger.log(
+          `Detached main QR code ${qrCodeId} from branch ${branchId}`,
+        );
+      }
+
+      this.logger.log(
+        `Updated main QR code ${qrCodeId} for branch ${branchId}`,
+      );
+      return data;
+    } catch (error) {
+      return this.handleExternalError(error, 'Failed to update main QR code');
     }
   }
 
@@ -731,6 +972,14 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
+    const branch = await this.branchesService.findById(branchId);
+    if (branch && branch.mainQrCodeId === qrCodeId) {
+      throw new HttpException(
+        'The main business link QR code cannot be modified or deleted.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const mapping = await this.getMapping(user, branchId);
 
     try {
@@ -763,6 +1012,14 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
+    const branch = await this.branchesService.findById(branchId);
+    if (branch && branch.mainQrCodeId === qrCodeId) {
+      throw new HttpException(
+        'The main business link QR code cannot be modified or deleted.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const mapping = await this.getMapping(user, branchId);
 
     this.logger.log(
@@ -777,6 +1034,15 @@ export class QrThriveService implements OnModuleInit {
           { headers },
         ),
       );
+
+      // If the deleted QR was the branch's main QR, clear the reference
+      await this.branchRepo
+        .createQueryBuilder()
+        .update(Branch)
+        .set({ mainQrCodeId: null as any, mainQrShortUrl: null as any })
+        .where('id = :branchId AND mainQrCodeId = :qrCodeId', { branchId, qrCodeId })
+        .execute();
+
       return { success: true };
     } catch (error) {
       this.logger.error(
@@ -1026,15 +1292,81 @@ export class QrThriveService implements OnModuleInit {
     }
   }
 
+  private async resolveRealShortId(shortId: string): Promise<string> {
+    if (!shortId) return shortId;
+
+    try {
+      // Handle both raw branch uniqueCode (e.g. J7JTS7RZO) and optional legacy QRBR prefix (e.g. QRBRJ7JTS7RZO)
+      let uniqueCode = shortId;
+      if (shortId.startsWith('QRBR')) {
+        uniqueCode = shortId.substring(4);
+      }
+
+      const branch = await this.branchRepo.findOne({
+        where: { uniqueCode },
+      });
+
+      if (branch) {
+        // Case 1: We already have mainQrShortUrl cached in the database
+        if (branch.mainQrShortUrl) {
+          const parts = branch.mainQrShortUrl.split('/');
+          const extractedId = parts[parts.length - 1];
+          if (extractedId) {
+            this.logger.log(`Resolved branch uniqueCode ${shortId} to cached main QR shortId ${extractedId}`);
+            return extractedId;
+          }
+        }
+
+        // Case 2: mainQrShortUrl is null but we have mainQrCodeId -> Self-heal by fetching from QR-Thrive integration API
+        if (branch.mainQrCodeId) {
+          try {
+            const businessId = await this.branchesService.getBusinessId(branch.id);
+            const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
+            if (ownerId) {
+              const mapping = await this.userMappingRepo.findOne({
+                where: { userId: ownerId },
+              });
+              if (mapping && mapping.qrThriveUserId) {
+                const headers = await this.getHeadersWithSubscription();
+                const { data } = await firstValueFrom(
+                  this.httpService.get(
+                    `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${branch.mainQrCodeId}`,
+                    { headers },
+                  ),
+                );
+
+                if (data && data.shortId) {
+                  // Self-heal/Cache in database for future scans
+                  await this.branchRepo.update(branch.id, {
+                    mainQrShortUrl: data.shortUrl || `https://qrthrive.com/${data.shortId}`,
+                  });
+                  this.logger.log(`Self-healed mainQrShortUrl for branch ${branch.id} to ${data.shortUrl}`);
+                  return data.shortId;
+                }
+              }
+            }
+          } catch (apiError) {
+            this.logger.error(`Failed to fetch main QR details from QR-Thrive for self-healing: ${apiError.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to resolve branch code ${shortId}: ${error.message}`);
+    }
+
+    return shortId;
+  }
+
   /**
    * Fetches public details of a QR code from QR-Thrive.
    */
   async getPublicQRCode(shortId: string, user?: User) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
       const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
-        this.httpService.get(`${publicUrl}/public/${shortId}`, { headers }),
+        this.httpService.get(`${publicUrl}/public/${realShortId}`, { headers }),
       );
       return data;
     } catch (error) {
@@ -1046,11 +1378,12 @@ export class QrThriveService implements OnModuleInit {
    * Records a scan in QR-Thrive and returns the destination URL.
    */
   async recordPublicScan(shortId: string, ip: string, userAgent: string, user?: User) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
       const headers = await this.getHeadersWithSubscription(user);
       const { headers: responseHeaders } = await firstValueFrom(
-        this.httpService.get(`${publicUrl}/scan/${shortId}`, {
+        this.httpService.get(`${publicUrl}/scan/${realShortId}`, {
           headers: {
             ...headers,
             'x-forwarded-for': ip,
@@ -1065,11 +1398,11 @@ export class QrThriveService implements OnModuleInit {
       return responseHeaders.location || '/';
     } catch (error) {
       this.logger.error(
-        `Failed to record scan for ${shortId}: ${error.message}`,
+        `Failed to record scan for ${realShortId}: ${error.message}`,
       );
       // Fallback: try to get the QR data to determine destination if scan recording fails
       try {
-        const qrCode = await this.getPublicQRCode(shortId);
+        const qrCode = await this.getPublicQRCode(realShortId);
         const data = qrCode.data as any;
         if (qrCode.type === 'url' && data.url) {
           return data.url.startsWith('http') ? data.url : `https://${data.url}`;
@@ -1080,8 +1413,28 @@ export class QrThriveService implements OnModuleInit {
             : '';
           return `https://wa.me/${data.phoneNumber}${message}`;
         }
+        if (qrCode.type === 'pdf' && data.pdf?.url) {
+          return data.pdf.url;
+        }
+        if (qrCode.type === 'image' && data.image?.url) {
+          return data.image.url;
+        }
+        if (qrCode.type === 'video' && data.video?.url) {
+          return data.video.url;
+        }
+        if (qrCode.type === 'mp3' && data.mp3?.url) {
+          return data.mp3.url;
+        }
+
+        // Fallback to any generic url, or shortUrl of the QR code
+        if (data.url) {
+          return data.url.startsWith('http') ? data.url : `https://${data.url}`;
+        }
+        if (qrCode.shortUrl) {
+          return qrCode.shortUrl;
+        }
       } catch (e) {
-        this.logger.error(`Fallback failed for ${shortId}: ${e.message}`);
+        this.logger.error(`Fallback failed for ${realShortId}: ${e.message}`);
       }
       throw new HttpException('QR Code not found', HttpStatus.NOT_FOUND);
     }
@@ -1091,10 +1444,11 @@ export class QrThriveService implements OnModuleInit {
    * Submits a form response to QR-Thrive via VemTap.
    */
   async submitPublicForm(shortId: string, answers: Record<string, any>) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
       const { data } = await firstValueFrom(
-        this.httpService.post(`${publicUrl}/${shortId}/submit`, { answers }),
+        this.httpService.post(`${publicUrl}/${realShortId}/submit`, { answers }),
       );
       return data;
     } catch (error) {
@@ -1106,10 +1460,11 @@ export class QrThriveService implements OnModuleInit {
    * Fetches public form structure from QR-Thrive.
    */
   async getPublicForm(shortId: string) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
       const { data } = await firstValueFrom(
-        this.httpService.get(`${publicUrl}/${shortId}`),
+        this.httpService.get(`${publicUrl}/${realShortId}`),
       );
       return data;
     } catch (error) {

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info, Box } from 'lucide-react';
-import { usePurchaseAddOn } from '@/services/addons/hooks';
+import { usePurchaseAddOn, useBundleDiscounts } from '@/services/addons/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
 import { AddOn } from '@/services/addons/types';
@@ -11,22 +11,51 @@ import { AddOn } from '@/services/addons/types';
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    addon: AddOn;
+    addons: AddOn[];
     businessId?: string;
     onSuccess?: () => void;
 }
 
-export default function AddOnPurchaseModal({ isOpen, onClose, addon, businessId, onSuccess }: Props) {
+export default function AddOnPurchaseModal({ isOpen, onClose, addons, businessId, onSuccess }: Props) {
     const { user } = useAuthStore();
     const purchaseMutation = usePurchaseAddOn();
+    const { data: discountRules = [] } = useBundleDiscounts();
     const [isProcessing, setIsProcessing] = useState(false);
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
     };
 
+    const getBreakdown = () => {
+        const rawTotal = addons.reduce((sum, a) => sum + Number(a.price || 0), 0);
+        const count = addons.length;
+        
+        let discountPercent = 0;
+        const rule = discountRules
+            .filter(r => r.isActive && count >= r.minQuantity && (!r.maxQuantity || count <= r.maxQuantity))
+            .sort((a, b) => b.minQuantity - a.minQuantity)[0];
+            
+        if (rule) {
+            discountPercent = rule.discountPercent;
+        }
+
+        const discountedTotal = rawTotal * (1 - discountPercent / 100);
+        const savings = rawTotal - discountedTotal;
+
+        return {
+            rawTotal,
+            total: discountedTotal,
+            savings,
+            discountPercent
+        };
+    };
+
+    const breakdown = getBreakdown();
+
     const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (addons.length === 0) return;
 
         const email = user?.email || '';
         if (!email) {
@@ -43,11 +72,11 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addon, businessId,
             // Fallback for demo
             setTimeout(() => {
                 purchaseMutation.mutate({
-                    addonIds: [addon.id],
+                    addonIds: addons.map(a => a.id),
                     paymentReference: `mock-addon-ref-${Date.now()}`
                 }, {
                     onSuccess: () => {
-                        toast.success(`${addon.name} activated!`);
+                        toast.success(`${addons.length > 1 ? 'Bundle' : addons[0].name} activated!`);
                         setIsProcessing(false);
                         if (onSuccess) {
                             onSuccess();
@@ -68,7 +97,7 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addon, businessId,
         const handler = window.PaystackPop.setup({
             key: publicKey,
             email: email,
-            amount: addon.price * 100, // Paystack amount is in kobo
+            amount: breakdown.total * 100, // Paystack amount is in kobo
             currency: 'NGN',
             ref: `ADDON-${resolvedBusinessId || 'anon'}-${Date.now()}`,
             onClose: () => {
@@ -77,11 +106,11 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addon, businessId,
             },
             callback: (response: any) => {
                 purchaseMutation.mutate({
-                    addonIds: [addon.id],
+                    addonIds: addons.map(a => a.id),
                     paymentReference: response.reference,
                 }, {
                     onSuccess: () => {
-                        toast.success(`${addon.name} activated!`);
+                        toast.success(`${addons.length > 1 ? 'Bundle' : addons[0].name} activated!`);
                         setIsProcessing(false);
                         if (onSuccess) {
                             onSuccess();
@@ -103,31 +132,47 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addon, businessId,
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Purchase Power-Up"
-            description={`Enhance your business with ${addon.name}.`}
+            title={addons.length > 1 ? "Activate Bundle" : "Purchase Power-Up"}
+            description={addons.length > 1 ? `Unlock multiple features for your business.` : `Enhance your business with ${addons[0]?.name}.`}
         >
             <div className="space-y-6 py-4">
-                {/* Add-on Summary */}
+                {/* Add-ons List Summary */}
                 <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className={`size-12 rounded-xl flex items-center justify-center ${
-                            addon.type === 'RESOURCE' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
-                        }`}>
-                            {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-0.5">Power-Up Card</p>
-                            <h4 className="text-lg font-black text-text-main tracking-tight">{addon.name}</h4>
-                        </div>
+                    <div className="space-y-4">
+                        {addons.map((addon, idx) => (
+                            <div key={addon.id} className={`flex items-center gap-4 ${idx !== 0 ? 'pt-4 border-t border-primary/5' : ''}`}>
+                                <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${
+                                    addon.type === 'RESOURCE' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
+                                }`}>
+                                    {addon.type === 'RESOURCE' ? <Box size={20} /> : <Zap size={20} />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-xs font-black text-text-main tracking-tight uppercase">{addon.name}</h4>
+                                    <p className="text-[10px] text-slate-500 font-medium truncate">{addon.description}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-sm font-black text-primary">{formatPrice(addon.price)}</span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
-                    <p className="text-xs font-medium text-slate-500 leading-relaxed mb-6">
-                        {addon.description}
-                    </p>
+                    {breakdown.savings > 0 && (
+                        <div className="mt-6 pt-4 border-t border-primary/10 space-y-2">
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                <span>Subtotal</span>
+                                <span className="line-through">{formatPrice(breakdown.rawTotal)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                                <span>Bundle Discount ({breakdown.discountPercent}%)</span>
+                                <span>-{formatPrice(breakdown.savings)}</span>
+                            </div>
+                        </div>
+                    )}
 
-                    <div className="flex items-center justify-between pt-4 border-t border-primary/10">
-                        <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">One-time Activation</span>
-                        <span className="text-xl font-black text-primary">{formatPrice(addon.price)}</span>
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-primary/20">
+                        <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total to Pay</span>
+                        <span className="text-xl font-black text-primary">{formatPrice(breakdown.total)}</span>
                     </div>
                 </div>
 
@@ -139,26 +184,14 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addon, businessId,
                     <div>
                         <p className="text-xs font-bold text-slate-900 mb-0.5">Instant Activation</p>
                         <p className="text-[10px] font-medium text-slate-500 leading-relaxed">
-                            Once payment is confirmed, the {addon.name} features will be immediately added to your dashboard capabilities.
+                            Once payment is confirmed, these features will be immediately added to your dashboard capabilities.
                         </p>
-                    </div>
-                </div>
-
-                {/* Secure Info */}
-                <div className="flex items-center justify-center gap-8 text-[9px] font-black text-text-secondary uppercase tracking-widest py-2 border-y border-slate-50">
-                    <div className="flex items-center gap-2">
-                        <CreditCard size={14} className="text-primary" />
-                        SECURE PAYSTACK
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Zap size={14} className="text-primary" />
-                        INSTANT DELIVERY
                     </div>
                 </div>
 
                 <button
                     onClick={handlePayment}
-                    disabled={isProcessing}
+                    disabled={isProcessing || addons.length === 0}
                     className="w-full h-14 bg-primary text-white font-black rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group text-xs uppercase tracking-widest"
                 >
                     {isProcessing ? (
@@ -168,15 +201,11 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addon, businessId,
                         </>
                     ) : (
                         <>
-                            Pay {formatPrice(addon.price)} & Activate
+                            Pay {formatPrice(breakdown.total)} & Activate
                             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                         </>
                     )}
                 </button>
-
-                <p className="text-center text-[10px] font-medium text-slate-400">
-                    By activating, you agree to our <span className="underline cursor-pointer">Service Terms</span>.
-                </p>
             </div>
         </Modal>
     );

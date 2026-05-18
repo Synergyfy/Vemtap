@@ -3,6 +3,7 @@
 import React, { useEffect, Suspense } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useEventsSocket } from '@/hooks/useEventsSocket';
 
 export default function DashboardLayout({
     children,
@@ -18,6 +19,8 @@ export default function DashboardLayout({
             document.cookie = `vemtap-auth-token=${accessToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
         }
     }, [accessToken]);
+
+    useEventsSocket({ enabled: !!accessToken });
 
     return (
         <Suspense fallback={

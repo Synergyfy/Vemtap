@@ -182,6 +182,16 @@ export class AddonsController {
     return this.addonsService.findAll(true);
   }
 
+  @Get('bundle-discounts')
+  @Public()
+  @ApiOperation({
+    summary: 'List all active bundle discounts',
+    description: 'Returns all active bundle discount rules for the frontend to calculate pricing.',
+  })
+  findAllDiscounts() {
+    return this.addonsService.findAllDiscounts();
+  }
+
   @Get('admin/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

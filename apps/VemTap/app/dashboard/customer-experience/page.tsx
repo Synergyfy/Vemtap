@@ -180,16 +180,14 @@ export default function CustomerExperiencePage() {
     }, []);
     const currentBranch = branches.find((b: any) => b.id === activeBranchId) || branches.find((b: any) => b.isMainBranch);
     const primaryDevice = devices?.[0];
-    const code = primaryDevice?.code || 'setup-pending';
     
-    // If branch has a username, use it for a clean vanity URL: vemtap.com/username
-    // Otherwise, fallback to the traditional: vemtap.com/business-slug/device-code
-    const username = (currentBranch as any)?.username;
-    const slug = (currentBranch as any)?.slug || (business as any)?.slug || (user as any)?.business?.slug || (previewBusinessName !== 'Your Business' ? previewBusinessName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'your-business');
+    // Display URL - uses username for user-friendly display
+    const publicUrl = currentBranch?.username
+        ? `${origin}/${currentBranch.username}`
+        : `${origin}/${currentBranch?.uniqueCode || 'your-business'}`;
     
-    const publicUrl = username 
-        ? `${origin}/${username}` 
-        : `${origin}/${slug}/${code}`;
+    // QR URL - uses /s/uniqueCode for main QR (redirects based on content type)
+    const qrUrl = `${origin}/s/${currentBranch?.uniqueCode || primaryDevice?.code || 'setup-pending'}`;
 
     // Category Tooltip Component
     const CategoryTooltip = ({ content }: { content: string }) => {
@@ -633,7 +631,7 @@ export default function CustomerExperiencePage() {
                     "flex-1 w-full space-y-6 transition-all duration-300",
                     mobileView === 'preview' ? "hidden xl:block" : "block"
                 )}>
-                    <ExperienceLinkCard publicUrl={publicUrl} businessLogo={previewBusinessLogo} />
+                    <ExperienceLinkCard publicUrl={publicUrl} qrUrl={qrUrl} businessLogo={previewBusinessLogo} branchId={resolvedBranchId} />
 
                     {/* Builder Sections */}
                     <div className="space-y-1">

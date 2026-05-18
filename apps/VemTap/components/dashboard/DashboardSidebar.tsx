@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
-    Home, Users, Nfc, Gift, BarChart, Users2, Settings,
+    Home, Users, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
     MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText
 } from 'lucide-react';
@@ -34,6 +34,7 @@ interface MenuItem {
     icon?: LucideIcon;
     href?: string;
     roles?: string[];
+    permission?: string;
     feature?: string;
     featureName?: string;
     submenu?: MenuItem[];
@@ -42,6 +43,7 @@ interface MenuItem {
 }
 
 import { useSudoStore } from '@/store/useSudoStore';
+import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
@@ -174,13 +176,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             label: 'Dashboard',
             icon: Home,
             href: '/dashboard',
-            roles: ['owner', 'manager', 'staff']
+            roles: ['owner', 'manager', 'staff'],
+            permission: 'dashboard',
         },
         {
             id: 'visitors',
             label: 'Visitors',
             icon: Users,
             roles: ['owner', 'manager', 'staff'],
+            permission: 'visitors',
             submenu: [
                 { label: 'Overview', href: '/dashboard/visitors' },
                 { label: 'All Visitors', href: '/dashboard/visitors/all' },
@@ -194,12 +198,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: MessageCircle,
             href: '/dashboard/messaging/chat',
             roles: ['owner', 'manager', 'staff'],
+            permission: 'chat',
         },
         {
             id: 'messaging-center',
             label: 'Channels',
             icon: MessageSquare,
             roles: ['owner', 'manager'],
+            permission: 'messages',
             submenu: [
                 { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
                 { label: 'SMS', href: '/dashboard/messaging/sms' },
@@ -214,6 +220,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: Gift,
             href: '/dashboard/loyalty',
             roles: ['owner', 'manager', 'staff'],
+            permission: 'loyalty',
             feature: 'loyalty',
             featureName: 'Loyalty Programs',
         },
@@ -222,6 +229,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             label: 'Catalogue',
             icon: ShoppingBag,
             roles: ['owner', 'manager'],
+            permission: 'catalogue',
             feature: 'catalogue',
             featureName: 'Catalogue',
             submenu: [
@@ -238,6 +246,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             label: 'Advanced Analytics ',
             icon: BarChart,
             roles: ['owner', 'manager'],
+            permission: 'analytics',
             submenu: [
                 { label: 'Overview', href: '/dashboard/analytics' },
                 { label: 'Footfall', href: '/dashboard/analytics/footfall', feature: 'footfall', featureName: 'Advanced Analytics' },
@@ -250,20 +259,22 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: FileText,
             href: '/dashboard/engagement/forms',
             roles: ['owner', 'manager', 'staff'],
+            permission: 'engagement',
         },
         {
             id: 'agent-desk',
             label: 'Support Desk',
             icon: HelpCircle,
             href: '/agent/dashboard',
-            roles: ['staff', 'manager']
+            roles: ['staff', 'manager'],
+            permission: 'support',
         },
         {
             id: 'admin-nfc',
             label: 'Admin NFC Grants',
             icon: ShieldCheck,
             href: '/admin/nfc-grants',
-            roles: ['admin']
+            roles: ['admin'],
         },
         {
             id: 'explore-qrthrive',
@@ -271,6 +282,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: QrCode,
             href: '/dashboard/explore-qrthrive',
             roles: ['owner', 'manager', 'staff'],
+            permission: 'qrthrive',
         },
         {
             id: 'customer-experience',
@@ -278,6 +290,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: Zap,
             href: '/dashboard/customer-experience',
             roles: ['owner', 'manager', 'staff'],
+            permission: 'customer-experience',
         },
         {
             id: 'settings',
@@ -285,35 +298,34 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: Settings,
             href: '/dashboard/settings',
             roles: ['owner', 'manager'],
+            permission: 'settings',
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
                 { label: 'Team', href: '/dashboard/staff' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
-                { label: 'Banner Management', href: '/dashboard/settings/banners' },
                 { label: 'Support', href: '/dashboard/support' },
                 { label: 'Legal & Compliance', href: '/dashboard/compliance' },
             ]
         },
     ];
 
+    const userPermissions = user?.permissions || [];
+    const isOwnerOrAdmin = ['owner', 'admin'].includes((user?.role as string)?.toLowerCase());
+
     const filteredMenuItems = menuItems.filter(item => {
         const realUserRole = (user?.role as string)?.toLowerCase() || 'owner';
         
         // Handle Admin/Agent Sudo Mode (Impersonation)
         if (isAdminMode) {
-            // Hide sensitive items or agent/admin tools while impersonating a business
             if (item.id === 'staff') return false;
             if (item.id === 'agent-desk') return false;
             if (item.id === 'admin-nfc') return false;
             
-            // Treat the impersonator as an 'owner' so they see standard business menus
             return !item.roles || item.roles.includes('owner');
         }
 
-        // Normal Flow (Not impersonating)
-        if (realUserRole === 'admin') return true;
-        return !item.roles || item.roles.includes(realUserRole);
+        return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
     }).map(item => {
         return item;
     });
