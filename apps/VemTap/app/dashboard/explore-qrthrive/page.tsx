@@ -45,6 +45,7 @@ import {
 } from '@/services/qr-thrive/hooks';
 import { useActionPermission } from '@/hooks/useActionPermission';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches } from '@/services/branches/hooks';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
 import StatsCard from '@/components/dashboard/StatsCard';
 
@@ -54,6 +55,21 @@ const STEPS = [
     { id: 'content', label: 'Add Content' },
     { id: 'design', label: 'Design QR' },
 ];
+
+const getScanCount = (scans: any): number => {
+    if (!scans) return 0;
+    if (Array.isArray(scans)) return scans.length;
+    if (typeof scans === 'number') return scans;
+    if (typeof scans === 'string') {
+        const num = parseInt(scans, 10);
+        return isNaN(num) ? 0 : num;
+    }
+    if (typeof scans === 'object') {
+        if ('id' in scans || 'qrCodeId' in scans) return 1;
+        return 0;
+    }
+    return 0;
+};
 
 export default function ExploreQRThrivePage() {
     const { canPerformAction } = useActionPermission();
@@ -77,9 +93,16 @@ export default function ExploreQRThrivePage() {
 
     const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
     const provisionMutation = useProvisionQrThriveUser();
-    const { data: subscriptionData, isLoading: isCheckingSubscription } = useSubscriptionIncludesQrThrive();
+    const { data: subscriptionData, isPending: isCheckingSubscription } = useSubscriptionIncludesQrThrive();
     
     const { activeBranchId } = useActiveBranch();
+    const { data: branches = [] } = useBranches();
+    const [origin, setOrigin] = useState('https://vemtap.com');
+    useEffect(() => {
+        if (typeof window !== 'undefined') setOrigin(window.location.origin);
+    }, []);
+    const currentBranch = branches.find((b: any) => b.id === activeBranchId);
+    const branchUsername = currentBranch?.username || null;
     const searchParams = useSearchParams();
     const router = useRouter();
     const prefillUrl = searchParams.get('prefill_url');
@@ -134,6 +157,7 @@ export default function ExploreQRThrivePage() {
 
     const mainQrCodeId = mainQrData?.qrCode?.id || null;
     const mainQrCode = mainQrData?.qrCode || null;
+    const branchUniqueCode = currentBranch?.uniqueCode || null;
 
     const recreateMainMutation = useRecreateMainQrCode();
 
@@ -143,8 +167,19 @@ export default function ExploreQRThrivePage() {
         (codesError as any)?.message?.includes('404') ||
         (statsError as any)?.message?.includes('404');
 
-    const isSubscriptionLocked = !isCheckingSubscription &&
-        subscriptionData &&
+    // Show loading state until subscription check is resolved
+    if (isCheckingSubscription) {
+        return (
+            <div className="min-h-[calc(100vh-4rem)] bg-gray-50/50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="size-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const isSubscriptionLocked = subscriptionData &&
         !subscriptionData.includesQrThrive &&
         subscriptionData.subscriptionStatus !== 'active' &&
         subscriptionData.subscriptionStatus !== 'trial';
@@ -213,6 +248,10 @@ export default function ExploreQRThrivePage() {
     };
 
     const handleFinish = async () => {
+        if (view === 'edit' && selectedQrId && mainQrCodeId && selectedQrId === mainQrCodeId) {
+            toast.error('The main business link QR code cannot be modified.');
+            return;
+        }
         if (!qrName.trim()) {
             setQrName(`${selectedType} QR`);
         }
@@ -285,18 +324,6 @@ export default function ExploreQRThrivePage() {
                     branchId: activeBranchId || undefined
                 });
 
-                // If the edited QR was the main QR and its URL changed, recreate the main QR
-                if (selectedQrId === mainQrCodeId) {
-                    const originalUrl = codes?.find(c => c.id === selectedQrId)?.data?.url;
-                    if (originalUrl && originalUrl !== uploadedQrData?.url) {
-                        toast.success('Main QR code updated. A new main QR will be created with your business link.');
-                        try {
-                            await recreateMainMutation.mutateAsync(activeBranchId || undefined);
-                        } catch {
-                            // Silently handle - will be auto-created on next page visit
-                        }
-                    }
-                }
 
                 toast.success('QR Code updated successfully!');
             } else {
@@ -550,7 +577,7 @@ export default function ExploreQRThrivePage() {
                                         <div className="w-40 h-40 lg:w-48 lg:h-48 bg-white rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden">
                                             <div className="scale-[0.65] lg:scale-[0.8] transform-gpu">
                                                 <QrPreview
-                                                    data={mainQrCode.data?.url || mainQrCode.shortUrl || 'https://vemtap.com'}
+                                                    data={`${origin}/s/${branchUniqueCode}`}
                                                     design={mainQrCode.design || DEFAULT_QR_DESIGN}
                                                     frame={{ type: 'none' }}
                                                     logo={mainQrCode.logo}
@@ -570,11 +597,11 @@ export default function ExploreQRThrivePage() {
                                             {mainQrCode.name}
                                         </h3>
                                         <p className="text-sm text-blue-100 font-medium truncate">
-                                            {mainQrCode.data?.url || 'No URL configured'}
+                                            {branchUsername ? `${origin}/${branchUsername}` : (mainQrCode.data?.url || 'No URL configured')}
                                         </p>
                                         <div className="flex items-center gap-3">
                                             <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
-                                                {mainQrCode.scans || 0} scans
+                                                {getScanCount(mainQrCode.scans)} scans
                                             </span>
                                             <span className="text-blue-300">·</span>
                                             <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
@@ -583,22 +610,10 @@ export default function ExploreQRThrivePage() {
                                         </div>
                                         <div className="flex flex-wrap items-center gap-2 pt-1">
                                             <button
-                                                onClick={() => {
-                                                    const qr = codes?.find(c => c.id === mainQrCode.id) || mainQrCode;
-                                                    setSelectedQrId(qr.id);
-                                                    setSelectedType(qr.type as QRType);
-                                                    setQrData(qr.data);
-                                                    setQrName(qr.name);
-                                                    setQrDesign(qr.design || DEFAULT_QR_DESIGN);
-                                                    setQrFrame(qr.frame || DEFAULT_QR_FRAME);
-                                                    setQrLogo(qr.logo);
-                                                    setView('edit');
-                                                    setStep('type');
-                                                    setIsLocked(false);
-                                                }}
-                                                className="px-5 py-2.5 bg-white text-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all shadow-lg flex items-center gap-1.5"
+                                                disabled
+                                                className="px-5 py-2.5 bg-white/10 text-white/40 border border-white/20 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 cursor-not-allowed opacity-80"
                                             >
-                                                <Edit2 size={12} /> Edit
+                                                <Lock size={12} /> Locked
                                             </button>
                                             <button
                                                 onClick={() => {
@@ -626,9 +641,9 @@ export default function ExploreQRThrivePage() {
                                             </button>
                                             <button
                                                 onClick={() => {
-                                                    const url = mainQrCode.data?.url;
-                                                    if (url) {
-                                                        navigator.clipboard.writeText(url);
+                                                    const copyUrl = branchUsername ? `${origin}/${branchUsername}` : mainQrCode.data?.url;
+                                                    if (copyUrl) {
+                                                        navigator.clipboard.writeText(copyUrl);
                                                         toast.success('URL copied to clipboard');
                                                     }
                                                 }}

@@ -308,7 +308,7 @@ export class QrThriveService implements OnModuleInit {
     if (branch.username) {
       return `${appUrl}/${branch.username}`;
     }
-    return `${appUrl}/b/${branch.uniqueCode || 'branch'}`;
+    return `${appUrl}/b/${branch.uniqueCode}`;
   }
 
   /**
@@ -441,13 +441,10 @@ export class QrThriveService implements OnModuleInit {
           ),
         );
 
-        const expectedUrl = this.getMainQrUrl(branch);
-        if (data.type === 'url' && data.data?.url === expectedUrl) {
-          return {
-            qrCode: { ...data, scans: data._count?.scans || data.scans || 0 },
-            isNew: false,
-          };
-        }
+        return {
+          qrCode: { ...data, scans: data._count?.scans || data.scans || 0 },
+          isNew: false,
+        };
       } catch (error) {
         this.logger.warn(
           `Main QR code ${branch.mainQrCodeId} not found in QR-Thrive, recreating...`,
@@ -916,6 +913,14 @@ export class QrThriveService implements OnModuleInit {
       );
     }
 
+    const branch = await this.branchesService.findById(branchId);
+    if (branch && branch.mainQrCodeId === qrCodeId) {
+      throw new HttpException(
+        'The main business link QR code cannot be modified or deleted.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const mapping = await this.getMapping(user, branchId);
 
     try {
@@ -945,6 +950,14 @@ export class QrThriveService implements OnModuleInit {
       throw new HttpException(
         'You do not have access to this branch',
         HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const branch = await this.branchesService.findById(branchId);
+    if (branch && branch.mainQrCodeId === qrCodeId) {
+      throw new HttpException(
+        'The main business link QR code cannot be modified or deleted.',
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -1220,15 +1233,81 @@ export class QrThriveService implements OnModuleInit {
     }
   }
 
+  private async resolveRealShortId(shortId: string): Promise<string> {
+    if (!shortId) return shortId;
+
+    try {
+      // Handle both raw branch uniqueCode (e.g. J7JTS7RZO) and optional legacy QRBR prefix (e.g. QRBRJ7JTS7RZO)
+      let uniqueCode = shortId;
+      if (shortId.startsWith('QRBR')) {
+        uniqueCode = shortId.substring(4);
+      }
+
+      const branch = await this.branchRepo.findOne({
+        where: { uniqueCode },
+      });
+
+      if (branch) {
+        // Case 1: We already have mainQrShortUrl cached in the database
+        if (branch.mainQrShortUrl) {
+          const parts = branch.mainQrShortUrl.split('/');
+          const extractedId = parts[parts.length - 1];
+          if (extractedId) {
+            this.logger.log(`Resolved branch uniqueCode ${shortId} to cached main QR shortId ${extractedId}`);
+            return extractedId;
+          }
+        }
+
+        // Case 2: mainQrShortUrl is null but we have mainQrCodeId -> Self-heal by fetching from QR-Thrive integration API
+        if (branch.mainQrCodeId) {
+          try {
+            const businessId = await this.branchesService.getBusinessId(branch.id);
+            const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
+            if (ownerId) {
+              const mapping = await this.userMappingRepo.findOne({
+                where: { userId: ownerId },
+              });
+              if (mapping && mapping.qrThriveUserId) {
+                const headers = await this.getHeadersWithSubscription();
+                const { data } = await firstValueFrom(
+                  this.httpService.get(
+                    `${this.baseUrl}/users/${mapping.qrThriveUserId}/qr-codes/${branch.mainQrCodeId}`,
+                    { headers },
+                  ),
+                );
+
+                if (data && data.shortId) {
+                  // Self-heal/Cache in database for future scans
+                  await this.branchRepo.update(branch.id, {
+                    mainQrShortUrl: data.shortUrl || `https://qrthrive.com/${data.shortId}`,
+                  });
+                  this.logger.log(`Self-healed mainQrShortUrl for branch ${branch.id} to ${data.shortUrl}`);
+                  return data.shortId;
+                }
+              }
+            }
+          } catch (apiError) {
+            this.logger.error(`Failed to fetch main QR details from QR-Thrive for self-healing: ${apiError.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to resolve branch code ${shortId}: ${error.message}`);
+    }
+
+    return shortId;
+  }
+
   /**
    * Fetches public details of a QR code from QR-Thrive.
    */
   async getPublicQRCode(shortId: string, user?: User) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
       const headers = await this.getHeadersWithSubscription(user);
       const { data } = await firstValueFrom(
-        this.httpService.get(`${publicUrl}/public/${shortId}`, { headers }),
+        this.httpService.get(`${publicUrl}/public/${realShortId}`, { headers }),
       );
       return data;
     } catch (error) {
@@ -1240,11 +1319,12 @@ export class QrThriveService implements OnModuleInit {
    * Records a scan in QR-Thrive and returns the destination URL.
    */
   async recordPublicScan(shortId: string, ip: string, userAgent: string, user?: User) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
       const headers = await this.getHeadersWithSubscription(user);
       const { headers: responseHeaders } = await firstValueFrom(
-        this.httpService.get(`${publicUrl}/scan/${shortId}`, {
+        this.httpService.get(`${publicUrl}/scan/${realShortId}`, {
           headers: {
             ...headers,
             'x-forwarded-for': ip,
@@ -1259,11 +1339,11 @@ export class QrThriveService implements OnModuleInit {
       return responseHeaders.location || '/';
     } catch (error) {
       this.logger.error(
-        `Failed to record scan for ${shortId}: ${error.message}`,
+        `Failed to record scan for ${realShortId}: ${error.message}`,
       );
       // Fallback: try to get the QR data to determine destination if scan recording fails
       try {
-        const qrCode = await this.getPublicQRCode(shortId);
+        const qrCode = await this.getPublicQRCode(realShortId);
         const data = qrCode.data as any;
         if (qrCode.type === 'url' && data.url) {
           return data.url.startsWith('http') ? data.url : `https://${data.url}`;
@@ -1274,8 +1354,28 @@ export class QrThriveService implements OnModuleInit {
             : '';
           return `https://wa.me/${data.phoneNumber}${message}`;
         }
+        if (qrCode.type === 'pdf' && data.pdf?.url) {
+          return data.pdf.url;
+        }
+        if (qrCode.type === 'image' && data.image?.url) {
+          return data.image.url;
+        }
+        if (qrCode.type === 'video' && data.video?.url) {
+          return data.video.url;
+        }
+        if (qrCode.type === 'mp3' && data.mp3?.url) {
+          return data.mp3.url;
+        }
+
+        // Fallback to any generic url, or shortUrl of the QR code
+        if (data.url) {
+          return data.url.startsWith('http') ? data.url : `https://${data.url}`;
+        }
+        if (qrCode.shortUrl) {
+          return qrCode.shortUrl;
+        }
       } catch (e) {
-        this.logger.error(`Fallback failed for ${shortId}: ${e.message}`);
+        this.logger.error(`Fallback failed for ${realShortId}: ${e.message}`);
       }
       throw new HttpException('QR Code not found', HttpStatus.NOT_FOUND);
     }
@@ -1285,10 +1385,11 @@ export class QrThriveService implements OnModuleInit {
    * Submits a form response to QR-Thrive via VemTap.
    */
   async submitPublicForm(shortId: string, answers: Record<string, any>) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
       const { data } = await firstValueFrom(
-        this.httpService.post(`${publicUrl}/${shortId}/submit`, { answers }),
+        this.httpService.post(`${publicUrl}/${realShortId}/submit`, { answers }),
       );
       return data;
     } catch (error) {
@@ -1300,10 +1401,11 @@ export class QrThriveService implements OnModuleInit {
    * Fetches public form structure from QR-Thrive.
    */
   async getPublicForm(shortId: string) {
+    const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
       const { data } = await firstValueFrom(
-        this.httpService.get(`${publicUrl}/${shortId}`),
+        this.httpService.get(`${publicUrl}/${realShortId}`),
       );
       return data;
     } catch (error) {

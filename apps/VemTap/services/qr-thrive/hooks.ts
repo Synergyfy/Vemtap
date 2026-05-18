@@ -121,11 +121,9 @@ export const useSubscriptionIncludesQrThrive = () => {
   return useQuery({
     queryKey: ['subscription-includes-qrthrive'],
     queryFn: async () => {
-      if (!isAuthenticated) {
-        return { includesQrThrive: false, subscriptionStatus: 'not_authenticated', qrThrivePlanId: '' };
-      }
       return qrThriveApi.checkSubscriptionIncludesQrThrive();
     },
+    enabled: isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: false,
   });

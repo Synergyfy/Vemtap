@@ -10,11 +10,12 @@ import { DEFAULT_QR_DESIGN } from '@/services/qr-thrive/types';
 
 interface ExperienceLinkCardProps {
     publicUrl: string;
+    qrUrl?: string;
     businessLogo?: string;
     branchId?: string;
 }
 
-export function ExperienceLinkCard({ publicUrl, businessLogo, branchId }: ExperienceLinkCardProps) {
+export function ExperienceLinkCard({ publicUrl, qrUrl, businessLogo, branchId }: ExperienceLinkCardProps) {
     const [copied, setCopied] = React.useState(false);
     const qrRef = useRef<any>(null);
 
@@ -96,7 +97,7 @@ export function ExperienceLinkCard({ publicUrl, businessLogo, branchId }: Experi
                 ) : hasMainQr ? (
                     <div className="scale-[0.38] transform-gpu origin-center">
                         <QrPreview
-                            data={mainQrCode.data?.url || publicUrl}
+                            data={qrUrl || mainQrCode.data?.url || publicUrl}
                             design={mainQrCode.design || DEFAULT_QR_DESIGN}
                             frame={mainQrCode.frame || { type: 'none' }}
                             logo={mainQrCode.logo}
@@ -108,7 +109,7 @@ export function ExperienceLinkCard({ publicUrl, businessLogo, branchId }: Experi
                 ) : (
                     <QRCodeCanvas
                         id="experience-qr"
-                        value={publicUrl}
+                        value={qrUrl || publicUrl}
                         size={1024}
                         level="H"
                         includeMargin={false}

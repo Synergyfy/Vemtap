@@ -5,6 +5,7 @@ import { useAuthStore } from './useAuthStore';
 
 export interface Branch {
   id: string;
+  username?: string;
   name: string;
   address: string;
   phone?: string;

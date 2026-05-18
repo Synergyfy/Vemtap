@@ -363,7 +363,14 @@ export class QrThriveController {
     }
     const userAgent = req.headers['user-agent'] || 'unknown';
     const user = req.user;
-    const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
+    let redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
+    
+    // Prevent self-referencing redirect loops to scan pages
+    const scanPattern = new RegExp(`\\/s\\/${shortId}$`, 'i');
+    if (scanPattern.test(redirectUrl)) {
+      redirectUrl = redirectUrl.replace(/\/s\//i, '/b/');
+    }
+
     return res.redirect(redirectUrl);
   }
 
