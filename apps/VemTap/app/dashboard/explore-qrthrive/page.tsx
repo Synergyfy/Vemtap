@@ -596,14 +596,14 @@ export default function ExploreQRThrivePage() {
                                 <div className="relative z-10 flex flex-col lg:flex-row items-start gap-6">
                                     <div className="shrink-0">
                                         <div className="w-40 h-40 lg:w-48 lg:h-48 bg-white rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden">
-                                            <div className="scale-[0.65] lg:scale-[0.8] transform-gpu">
+                                            <div className="scale-[0.114] lg:scale-[0.141] transform-gpu">
                                                 <QrPreview
                                                     data={`${origin}/s/${branchUniqueCode}`}
                                                     design={mainQrCode.design || DEFAULT_QR_DESIGN}
                                                     frame={{ type: 'none' }}
                                                     logo={mainQrCode.logo}
-                                                    width={180}
-                                                    height={180}
+                                                    width={1024}
+                                                    height={1024}
                                                     onReady={(inst) => { qrRefs.current['main'] = inst; }}
                                                 />
                                             </div>
@@ -640,7 +640,7 @@ export default function ExploreQRThrivePage() {
                                                 onClick={() => {
                                                     const inst = qrRefs.current['main'];
                                                     if (inst) {
-                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'png', width: 2000, height: 2000 });
+                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'png' });
                                                         toast.success('QR Code downloaded');
                                                     }
                                                 }}
@@ -652,7 +652,7 @@ export default function ExploreQRThrivePage() {
                                                 onClick={() => {
                                                     const inst = qrRefs.current['main'];
                                                     if (inst) {
-                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'svg', width: 2000, height: 2000 });
+                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'svg' });
                                                         toast.success('QR Code downloaded');
                                                     }
                                                 }}
