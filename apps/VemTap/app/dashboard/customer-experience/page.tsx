@@ -170,7 +170,7 @@ export default function CustomerExperiencePage() {
     });
 
     const previewBusinessName = (activeBranch as any)?.name || business?.name || 'Your Business';
-    const previewBusinessLogo = business?.logoUrl || (activeBranch as any)?.logoUrl || '';
+    const previewBusinessLogo = (activeBranch as any)?.logoUrl || business?.logoUrl || '';
     const config = useMemo(() => getBusinessConfig(), [getBusinessConfig]);
 
     // Build public URL
@@ -179,15 +179,17 @@ export default function CustomerExperiencePage() {
         if (typeof window !== 'undefined') setOrigin(window.location.origin);
     }, []);
     const currentBranch = branches.find((b: any) => b.id === activeBranchId) || branches.find((b: any) => b.isMainBranch);
-    const primaryDevice = devices?.[0];
+    const mainDevice = devices.find((d: any) => d.isMain) || devices?.[0];
     
     // Display URL - uses username for user-friendly display
     const publicUrl = currentBranch?.username
         ? `${origin}/${currentBranch.username}`
         : `${origin}/${currentBranch?.uniqueCode || 'your-business'}`;
     
-    // QR URL - uses /s/uniqueCode for main QR (redirects based on content type)
-    const qrUrl = `${origin}/s/${currentBranch?.uniqueCode || primaryDevice?.code || 'setup-pending'}`;
+    // QR URL - uses /tap/deviceCode (Option A)
+    const qrUrl = mainDevice
+        ? `${origin}/tap/${mainDevice.code}`
+        : `${origin}/s/${currentBranch?.uniqueCode || 'setup-pending'}`;
 
     // Category Tooltip Component
     const CategoryTooltip = ({ content }: { content: string }) => {
@@ -631,7 +633,15 @@ export default function CustomerExperiencePage() {
                     "flex-1 w-full space-y-6 transition-all duration-300",
                     mobileView === 'preview' ? "hidden xl:block" : "block"
                 )}>
-                    <ExperienceLinkCard publicUrl={publicUrl} qrUrl={qrUrl} businessLogo={previewBusinessLogo} branchId={resolvedBranchId} />
+                    <ExperienceLinkCard 
+                        publicUrl={publicUrl} 
+                        qrUrl={qrUrl} 
+                        businessLogo={previewBusinessLogo} 
+                        branchId={resolvedBranchId} 
+                        forceDeviceQr={true} 
+                        businessName={business?.name}
+                        branchName={(activeBranch as any)?.name}
+                    />
 
                     {/* Builder Sections */}
                     <div className="space-y-1">
