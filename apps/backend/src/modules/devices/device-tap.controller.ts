@@ -18,6 +18,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BranchesService } from '../branches/branches.service';
+import { Branch } from '../branches/entities/branch.entity';
 
 @ApiTags('Device Taps')
 @Controller('tap')
@@ -188,8 +189,27 @@ export class DeviceTapController {
    * Extracted common context logic for reuse
    */
   private async getDeviceContext(deviceCode: string) {
-    const deviceWithRelations =
+    let deviceWithRelations =
       await this.devicesService.findByCodeWithRelations(deviceCode);
+
+    if (!deviceWithRelations) {
+      // Fallback: Check if deviceCode is a branch uniqueCode or branch username
+      let branch: Branch | null = null;
+      try {
+        branch = await this.branchesService.findByCode(deviceCode);
+      } catch (err) {
+        branch = await this.branchesService.findByUsername(deviceCode);
+      }
+
+      if (branch) {
+        const devices = await this.devicesService.findAllByBranch(branch.id);
+        const mainDevice = devices.find(d => d.isMain) || devices[0];
+        if (mainDevice) {
+          deviceWithRelations = await this.devicesService.findByCodeWithRelations(mainDevice.code);
+        }
+      }
+    }
+
     if (!deviceWithRelations) {
       throw new NotFoundException('Device not found');
     }

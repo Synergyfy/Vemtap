@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsUUID,
   ValidateIf,
+  IsBoolean,
 } from 'class-validator';
 import { DeviceStatus } from '../entities/device.entity';
 
@@ -29,4 +30,9 @@ export class UpdateDeviceDto {
   @IsEnum(DeviceStatus)
   @IsOptional()
   status?: DeviceStatus;
+
+  @ApiPropertyOptional({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isMain?: boolean;
 }

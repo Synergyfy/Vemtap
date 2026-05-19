@@ -18,6 +18,7 @@ export interface Device {
     owner?: any;
     productTypeId?: string;
     isFirstTimeVisit?: boolean;
+    isMain?: boolean;
     createdAt: string;
     updatedAt: string;
 }
