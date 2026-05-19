@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { Device, DeviceStatus } from './entities/device.entity';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { AdminCreateDeviceDto } from './dto/admin-create-device.dto';
@@ -44,9 +44,11 @@ export class DevicesService {
       throw new ConflictException('Device code already registered');
     }
 
+    const count = await this.devicesRepository.countBy({ branchId });
     const device = this.devicesRepository.create({
       ...createDeviceDto,
       branchId,
+      isMain: count === 0,
     });
     return this.devicesRepository.save(device);
   }
@@ -64,12 +66,14 @@ export class DevicesService {
       }
     }
 
+    const count = await this.devicesRepository.countBy({ branchId });
     const device = this.devicesRepository.create({
       name: 'Primary Branch Device',
       code,
       status: DeviceStatus.ACTIVE,
       branchId,
       type: 'Card', // Default type
+      isMain: count === 0,
     });
 
     return this.devicesRepository.save(device);
@@ -124,6 +128,13 @@ export class DevicesService {
     updateDeviceDto: UpdateDeviceDto,
   ): Promise<Device> {
     const device = await this.findOne(id, branchId);
+
+    if (updateDeviceDto.isMain) {
+      await this.devicesRepository.update(
+        { branchId, id: Not(id) },
+        { isMain: false },
+      );
+    }
 
     Object.assign(device, updateDeviceDto);
 
@@ -207,6 +218,7 @@ export class DevicesService {
 
     const codesArray = Array.from(uniqueCodes);
     const newDevices: Partial<Device>[] = [];
+    const count = await this.devicesRepository.countBy({ branchId });
 
     for (let i = 0; i < quantity; i++) {
       newDevices.push({
@@ -217,6 +229,7 @@ export class DevicesService {
         orderId: order.id,
         type: productType?.name || 'Card',
         productTypeId: productType?.id,
+        isMain: count === 0 && i === 0,
       });
     }
 
@@ -264,6 +277,7 @@ export class DevicesService {
     });
 
     const newDevices: Device[] = [];
+    let count = await this.devicesRepository.countBy({ branchId });
 
     for (const order of readyOrders) {
       if (!order.quote) continue;
@@ -289,9 +303,11 @@ export class DevicesService {
           branchId,
           orderId: order.id,
           order,
+          isMain: count === 0,
         });
 
         newDevices.push(device);
+        if (count === 0) count++;
         remaining--;
       }
     }
