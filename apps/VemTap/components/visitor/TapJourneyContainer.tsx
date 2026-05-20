@@ -114,7 +114,7 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
         const isPortalStep = ['PORTAL_MENU', 'PORTAL_LIST', 'PORTAL_DETAIL', 'FORM', 'FORMS_LIST', 'DYNAMIC_FORM', 'SOCIAL_CONNECT'].includes(state.currentStep);
         const isReturningVisitor = deviceContext.device?.isFirstTimeVisit === false;
 
-        const shouldSkipAnimation = isAlreadyOnThisDevice || isPortalStep || isReturningVisitor;
+        const shouldSkipAnimation = true; // Always skip artificial loading delay for instant page loads
 
         initializeFromBusiness(deviceContext, shouldSkipAnimation);
 
@@ -133,7 +133,7 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
 
     useEffect(() => {
         if (currentStep === 'SCANNING') {
-            const timer = setTimeout(() => setStep('IDENTIFYING'), 1200);
+            const timer = setTimeout(() => setStep('IDENTIFYING'), 100);
             return () => clearTimeout(timer);
         }
         if (currentStep === 'IDENTIFYING') {
@@ -142,7 +142,7 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
                 if (!isAuthenticated) {
                     setShowInitialAuth(true);
                 }
-            }, 1000);
+            }, 100);
             return () => clearTimeout(timer);
         }
     }, [currentStep, setStep, isAuthenticated]);

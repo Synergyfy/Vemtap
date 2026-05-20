@@ -148,6 +148,20 @@ export default function GetStarted() {
         setIsSocialDropdownOpen(false);
     };
 
+    // Parse referral code from URL search parameters on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const refCode = params.get('ref');
+            if (refCode) {
+                setFormData(prev => ({
+                    ...prev,
+                    referralCode: refCode
+                }));
+            }
+        }
+    }, []);
+
     /**
      * Google Auth Logic: 
      * If the user came from the login page after a Google sign-in but hasn't 

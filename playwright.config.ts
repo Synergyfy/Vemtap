@@ -22,7 +22,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm --filter entryconect exec next dev --webpack --port 3000',
+    command: 'pnpm --filter @vemtap/frontend exec next dev --webpack --port 3000',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
