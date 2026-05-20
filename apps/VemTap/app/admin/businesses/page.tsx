@@ -153,7 +153,7 @@ export default function AdminBusinessesPage() {
                 q.set('status', 'ACTIVE');
                 const res = await fetch(`http://localhost:4005/api/external/affiliates?${q.toString()}`, {
                     headers: {
-                        'x-api-key': 'vem_3774d66ba1ac7392c877d121bb3c919b65df2c9d11b66555f2e4efe6'
+                        'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
                     }
                 });
                 if (!res.ok) throw new Error('Failed to fetch affiliates');
@@ -184,7 +184,7 @@ export default function AdminBusinessesPage() {
                 q.set('status', 'ACTIVE');
                 const res = await fetch(`http://localhost:4005/api/external/affiliates?${q.toString()}`, {
                     headers: {
-                        'x-api-key': 'vem_3774d66ba1ac7392c877d121bb3c919b65df2c9d11b66555f2e4efe6'
+                        'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
                     }
                 });
                 if (!res.ok) throw new Error('Failed to fetch affiliates');
@@ -222,7 +222,7 @@ export default function AdminBusinessesPage() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-api-key': 'vem_3774d66ba1ac7392c877d121bb3c919b65df2c9d11b66555f2e4efe6'
+                    'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
                 },
                 body: JSON.stringify(payload)
             });
@@ -459,7 +459,7 @@ export default function AdminBusinessesPage() {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'x-api-key': 'vem_3774d66ba1ac7392c877d121bb3c919b65df2c9d11b66555f2e4efe6'
+                            'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
                         },
                         body: JSON.stringify(attachPayload)
                     });

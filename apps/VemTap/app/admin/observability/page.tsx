@@ -996,7 +996,7 @@ function generateMockLog(): RequestLog {
     let statusCode = 200;
     let responseTime = Math.floor(Math.random() * 80) + 15; // 15 - 95ms
     let error: any = undefined;
-    let responseBody = pickEndpoint.response;
+    let responseBody: any = pickEndpoint.response;
 
     if (rand > 0.95) {
         statusCode = 500;
