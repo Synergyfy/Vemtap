@@ -224,6 +224,13 @@ export class SubscriptionsService {
       }
     }
 
+    if (isAdminOverride && subscribeDto.customEndDate) {
+      const parsedDate = new Date(subscribeDto.customEndDate);
+      if (!isNaN(parsedDate.getTime())) {
+        endDate = parsedDate;
+      }
+    }
+
     const activeSub = await this.activeSubscription(businessId);
     if (activeSub) {
       activeSub.status = SubscriptionStatus.CANCELED;
@@ -796,6 +803,7 @@ export class SubscriptionsService {
     return subs.map((sub) => ({
       id: sub.id,
       business: sub.business?.name || 'Unknown Business',
+      businessId: sub.businessId,
       owner: sub.business?.ownerId ? 'Linked' : 'Unknown',
       plan: sub.plan?.name || 'Unknown Plan',
       status: sub.status,
