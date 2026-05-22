@@ -222,6 +222,13 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             href: '/admin/health',
             permission: 'admin:health'
         },
+        {
+            id: 'observability',
+            label: 'API Observability',
+            icon: Activity,
+            href: '/admin/observability',
+            permission: 'admin:health'
+        },
 
         {
             id: 'banners',

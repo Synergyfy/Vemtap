@@ -14,6 +14,7 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 
 import { ObservabilityLoggingInterceptor } from './observability/interceptors/logging.interceptor';
+import { ObservabilityStoreService } from './observability/observability-store.service';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 // 1. Shared Configuration Function
@@ -52,7 +53,7 @@ export function configureApp(app: INestApplication) {
   // Serialization & Global Logging
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
-    new ObservabilityLoggingInterceptor(),
+    new ObservabilityLoggingInterceptor(app.get(ObservabilityStoreService)),
   );
 
   // Swagger

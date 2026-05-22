@@ -9,9 +9,12 @@ import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { logger } from '../logger.config';
 import { trace, context as otelContext } from '@opentelemetry/api';
+import { ObservabilityStoreService } from '../observability-store.service';
 
 @Injectable()
 export class ObservabilityLoggingInterceptor implements NestInterceptor {
+  constructor(private readonly storeService?: ObservabilityStoreService) {}
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
@@ -29,6 +32,15 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
 
     const now = Date.now();
 
+    // Extract rich request details for live dashboard
+    const requestBody = request.body;
+    const queryParams = request.query;
+    const requestHeaders = request.headers;
+    const ip = request.ip || request.headers['x-forwarded-for'] || request.socket.remoteAddress;
+    const userAgent = request.headers['user-agent'];
+    const userId = (request as any).user?.id;
+    const userEmail = (request as any).user?.email;
+
     // Base log object
     const logBase = {
       requestId,
@@ -38,9 +50,10 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
     };
 
     return next.handle().pipe(
-      tap(() => {
+      tap((data) => {
         const statusCode = response.statusCode;
         const responseTime = Date.now() - now;
+        const responseHeaders = response.getHeaders ? response.getHeaders() : {};
 
         // Structured success log
         logger.info({
@@ -49,10 +62,34 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
           responseTime,
           msg: `HTTP ${method} ${url}`,
         });
+
+        // Push to Observability Store Service
+        if (this.storeService) {
+          this.storeService.addLog({
+            id: requestId,
+            traceId,
+            timestamp: new Date().toISOString(),
+            method,
+            url: request.originalUrl || request.url,
+            route,
+            statusCode,
+            responseTime,
+            ip: Array.isArray(ip) ? ip.join(', ') : String(ip || ''),
+            userAgent,
+            userId,
+            userEmail,
+            requestHeaders,
+            queryParams,
+            requestBody,
+            responseHeaders,
+            responseBody: data,
+          });
+        }
       }),
       catchError((error: any) => {
-        const statusCode = (error?.status as number) || 500;
+        const statusCode = (error?.status as number) || (error?.statusCode as number) || 500;
         const responseTime = Date.now() - now;
+        const responseHeaders = response.getHeaders ? response.getHeaders() : {};
 
         // Structured error log
         logger.error({
@@ -64,8 +101,37 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
           msg: `HTTP ${method} ${url} Error`,
         });
 
+        // Push error log to Observability Store Service
+        if (this.storeService) {
+          this.storeService.addLog({
+            id: requestId,
+            traceId,
+            timestamp: new Date().toISOString(),
+            method,
+            url: request.originalUrl || request.url,
+            route,
+            statusCode,
+            responseTime,
+            ip: Array.isArray(ip) ? ip.join(', ') : String(ip || ''),
+            userAgent,
+            userId,
+            userEmail,
+            requestHeaders,
+            queryParams,
+            requestBody,
+            responseHeaders,
+            responseBody: undefined,
+            error: {
+              message: error?.message || 'Internal Server Error',
+              name: error?.name || 'Error',
+              stack: error?.stack,
+            },
+          });
+        }
+
         return throwError(() => error);
       }),
     );
   }
 }
+
