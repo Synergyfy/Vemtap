@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi, adminCreditsApi, adminSubscriptionsApi } from '@/lib/api/admin';
-import { CheckCircle, XCircle, Search, Trash2, Edit, MoreVertical, Plus, Download, Filter, Eye, EyeOff, CreditCard, Ban, RotateCcw, Loader2, Check, RefreshCw, Copy, Layers } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Trash2, Edit, MoreVertical, Plus, Download, Filter, Eye, EyeOff, CreditCard, Ban, RotateCcw, Loader2, Check, RefreshCw, Copy, Layers, UserPlus, Link } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PasswordValidation from '@/components/shared/PasswordValidation';
 import { fetchPricingPlans } from '@/lib/api/pricing';
@@ -125,6 +125,126 @@ export default function AdminBusinessesPage() {
     const [passwordValue, setPasswordValue] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordValidation, setShowPasswordValidation] = useState(false);
+
+    // Affiliate Manual Attachment State
+    const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
+    const [attachBusinessTarget, setAttachBusinessTarget] = useState<Business | null>(null);
+    const [affiliateSearchQuery, setAffiliateSearchQuery] = useState('');
+    const [affiliatesList, setAffiliatesList] = useState<any[]>([]);
+    const [isAffiliatesLoading, setIsAffiliatesLoading] = useState(false);
+    const [selectedAffiliate, setSelectedAffiliate] = useState<any | null>(null);
+    const [isAttaching, setIsAttaching] = useState(false);
+    const [isConfirmAttachOpen, setIsConfirmAttachOpen] = useState(false);
+
+    // Optional Affiliate referral on creation state
+    const [registerSelectedAffiliate, setRegisterSelectedAffiliate] = useState<any | null>(null);
+    const [registerAffiliateSearchQuery, setRegisterAffiliateSearchQuery] = useState('');
+    const [registerAffiliatesList, setRegisterAffiliatesList] = useState<any[]>([]);
+    const [isRegisterAffiliatesLoading, setIsRegisterAffiliatesLoading] = useState(false);
+
+    // Fetch active affiliates for existing business manual attachment modal
+    useEffect(() => {
+        if (!isAttachModalOpen) return;
+        const fetchAffiliates = async () => {
+            setIsAffiliatesLoading(true);
+            try {
+                const q = new URLSearchParams();
+                if (affiliateSearchQuery) q.set('search', affiliateSearchQuery);
+                q.set('status', 'ACTIVE');
+                const res = await fetch(`http://localhost:4005/api/external/affiliates?${q.toString()}`, {
+                    headers: {
+                        'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
+                    }
+                });
+                if (!res.ok) throw new Error('Failed to fetch affiliates');
+                const result = await res.json();
+                setAffiliatesList(result.data || []);
+            } catch (err: any) {
+                console.error(err);
+            } finally {
+                setIsAffiliatesLoading(false);
+            }
+        };
+
+        const t = setTimeout(() => {
+            fetchAffiliates();
+        }, 300);
+
+        return () => clearTimeout(t);
+    }, [affiliateSearchQuery, isAttachModalOpen]);
+
+    // Fetch active affiliates for new business registration modal
+    useEffect(() => {
+        if (!isModalOpen) return;
+        const fetchRegisterAffiliates = async () => {
+            setIsRegisterAffiliatesLoading(true);
+            try {
+                const q = new URLSearchParams();
+                if (registerAffiliateSearchQuery) q.set('search', registerAffiliateSearchQuery);
+                q.set('status', 'ACTIVE');
+                const res = await fetch(`http://localhost:4005/api/external/affiliates?${q.toString()}`, {
+                    headers: {
+                        'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
+                    }
+                });
+                if (!res.ok) throw new Error('Failed to fetch affiliates');
+                const result = await res.json();
+                setRegisterAffiliatesList(result.data || []);
+            } catch (err: any) {
+                console.error(err);
+            } finally {
+                setIsRegisterAffiliatesLoading(false);
+            }
+        };
+
+        const t = setTimeout(() => {
+            fetchRegisterAffiliates();
+        }, 300);
+
+        return () => clearTimeout(t);
+    }, [registerAffiliateSearchQuery, isModalOpen]);
+
+    const handleManualAttach = async () => {
+        if (!attachBusinessTarget || !selectedAffiliate) return;
+        setIsAttaching(true);
+        try {
+            const payload = {
+                affiliateId: selectedAffiliate.id,
+                businessName: attachBusinessTarget.name,
+                ownerName: attachBusinessTarget.owner ? `${attachBusinessTarget.owner.firstName} ${attachBusinessTarget.owner.lastName}` : 'N/A',
+                email: attachBusinessTarget.officialEmail || attachBusinessTarget.email,
+                phone: attachBusinessTarget.phone || 'N/A',
+                planType: 'BASIC',
+                address: attachBusinessTarget.address || 'N/A',
+                businessType: 'Retail'
+            };
+            const res = await fetch('http://localhost:4005/api/external/businesses/attach', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || 'Attachment failed');
+            }
+
+            notify.success('Business successfully attached to affiliate!');
+            setIsAttachModalOpen(false);
+            setAttachBusinessTarget(null);
+            setSelectedAffiliate(null);
+            setAffiliateSearchQuery('');
+            setIsConfirmAttachOpen(false);
+            fetchBusinesses();
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to attach business');
+        } finally {
+            setIsAttaching(false);
+        }
+    };
 
 
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -322,7 +442,41 @@ export default function AdminBusinessesPage() {
         try {
             await adminBusinessesApi.create(payload);
             notify.success('Business registered successfully');
+
+            if (registerSelectedAffiliate) {
+                try {
+                    const attachPayload = {
+                        affiliateId: registerSelectedAffiliate.id,
+                        businessName: payload.name,
+                        ownerName: `${payload.ownerFirstName} ${payload.ownerLastName}`,
+                        email: payload.ownerEmail,
+                        phone: payload.ownerPhone,
+                        planType: 'BASIC',
+                        address: payload.address || 'N/A',
+                        businessType: 'Retail'
+                    };
+                    const attachRes = await fetch('http://localhost:4005/api/external/businesses/attach', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
+                        },
+                        body: JSON.stringify(attachPayload)
+                    });
+                    if (!attachRes.ok) {
+                        const errorData = await attachRes.json();
+                        notify.error(`Affiliate attachment failed: ${errorData.message}`);
+                    } else {
+                        notify.success('Affiliate successfully attached to this business!');
+                    }
+                } catch (attachErr: any) {
+                    notify.error(`Affiliate attachment failed: ${attachErr.message}`);
+                }
+            }
+
             setIsModalOpen(false);
+            setRegisterSelectedAffiliate(null);
+            setRegisterAffiliateSearchQuery('');
             fetchBusinesses();
         } catch (err: any) {
             notify.error(err.message || 'Failed to create business');
@@ -701,8 +855,7 @@ export default function AdminBusinessesPage() {
                                     />
                                 </div>
                             </div>
-
-
+                            
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone</label>
@@ -712,6 +865,70 @@ export default function AdminBusinessesPage() {
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Location (Optional)</label>
                                     <input name="address" placeholder="City, State" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
                                 </div>
+                            </div>
+
+                            {/* Affiliate Referral Section */}
+                            <div className="border-t border-gray-100 pt-4 mt-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Referred by Affiliate (Optional)</label>
+                                {registerSelectedAffiliate ? (
+                                    <div className="flex items-center justify-between p-3 bg-violet-50 border border-violet-100 rounded-xl">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-bold text-xs text-violet-800">{registerSelectedAffiliate.fullName}</p>
+                                            <p className="text-[10px] text-violet-600 font-bold uppercase tracking-wider mt-0.5">{registerSelectedAffiliate.referralCode} • {registerSelectedAffiliate.email}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setRegisterSelectedAffiliate(null);
+                                                setRegisterAffiliateSearchQuery('');
+                                            }}
+                                            className="p-1 hover:bg-violet-100 rounded-full text-violet-500 hover:text-violet-700 transition-colors"
+                                        >
+                                            <span className="material-icons-round text-base">close</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search affiliate name, email or code..." 
+                                            value={registerAffiliateSearchQuery}
+                                            onChange={(e) => setRegisterAffiliateSearchQuery(e.target.value)}
+                                            className="w-full h-11 pl-10 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all"
+                                        />
+                                        {isRegisterAffiliatesLoading && (
+                                            <Loader2 size={14} className="animate-spin text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                        )}
+                                        {registerAffiliateSearchQuery && (
+                                            <div className="absolute top-12 left-0 right-0 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-20 divide-y divide-gray-50">
+                                                {registerAffiliatesList.length === 0 ? (
+                                                    <div className="p-4 text-center text-[11px] text-text-secondary font-medium">
+                                                        No active affiliates found.
+                                                    </div>
+                                                ) : (
+                                                    registerAffiliatesList.map(aff => (
+                                                        <button
+                                                            key={aff.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setRegisterSelectedAffiliate(aff);
+                                                                setRegisterAffiliateSearchQuery('');
+                                                            }}
+                                                            className="w-full p-2.5 text-left text-xs font-bold text-text-main hover:bg-violet-50 hover:text-violet-700 flex items-center justify-between transition-colors"
+                                                        >
+                                                            <div className="min-w-0 flex-1 pr-2">
+                                                                <p className="truncate">{aff.fullName}</p>
+                                                                <p className="text-[10px] text-text-secondary truncate font-normal mt-0.5">{aff.referralCode} • {aff.email}</p>
+                                                            </div>
+                                                            <span className="material-icons-round text-xs text-gray-300">chevron_right</span>
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-3 pt-4">
@@ -1128,6 +1345,186 @@ export default function AdminBusinessesPage() {
                 </div>
             )}
 
+            {/* Manual Affiliate Attachment Modal */}
+            {isAttachModalOpen && attachBusinessTarget && (
+                <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isAttaching && setIsAttachModalOpen(false)} />
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+                        
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                                    <UserPlus size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-display font-bold text-text-main">Attribute Affiliate</h2>
+                                    <p className="text-xs text-text-secondary font-medium mt-0.5">Manually attach a business referral</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => !isAttaching && setIsAttachModalOpen(false)} 
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-text-main"
+                            >
+                                <span className="material-icons-round text-lg">close</span>
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-6">
+                            
+                            {/* Business Card Summary */}
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200/80 flex items-center justify-between">
+                                <div className="min-w-0">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Target Business</span>
+                                    <h3 className="font-bold text-text-main text-sm truncate mt-0.5">{attachBusinessTarget.name}</h3>
+                                    <p className="text-xs text-text-secondary truncate mt-0.5">{attachBusinessTarget.officialEmail || attachBusinessTarget.email}</p>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20">
+                                    <span className="material-icons-round text-lg">store</span>
+                                </div>
+                            </div>
+
+                            {!selectedAffiliate ? (
+                                /* STEP 1: Search and Select Affiliate */
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Search Active Affiliate</label>
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Search by name, email, or referral code..." 
+                                                value={affiliateSearchQuery}
+                                                onChange={(e) => setAffiliateSearchQuery(e.target.value)}
+                                                className="w-full h-11 pl-10 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all"
+                                            />
+                                            {isAffiliatesLoading && (
+                                                <Loader2 size={16} className="animate-spin text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Affiliate List Results */}
+                                    <div className="max-h-60 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50 bg-gray-50/50">
+                                        {isAffiliatesLoading && affiliatesList.length === 0 ? (
+                                            <div className="p-8 text-center text-xs text-text-secondary font-bold">
+                                                Searching active affiliates...
+                                            </div>
+                                        ) : affiliatesList.length === 0 ? (
+                                            <div className="p-8 text-center text-xs text-text-secondary font-medium">
+                                                {affiliateSearchQuery ? "No active affiliates found." : "Type above to search active affiliate users."}
+                                            </div>
+                                        ) : (
+                                            affiliatesList.map((affiliate) => (
+                                                <button
+                                                    key={affiliate.id}
+                                                    onClick={() => setSelectedAffiliate(affiliate)}
+                                                    className="w-full p-3.5 text-left hover:bg-violet-50/50 flex items-center justify-between transition-colors group"
+                                                >
+                                                    <div className="min-w-0 flex-1 pr-3">
+                                                        <p className="font-bold text-sm text-text-main group-hover:text-violet-600 transition-colors truncate">{affiliate.fullName}</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-[10px] bg-violet-100 text-violet-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">{affiliate.referralCode}</span>
+                                                            <span className="text-xs text-text-secondary truncate">{affiliate.email}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="material-icons-round text-gray-300 group-hover:text-violet-500 transition-all text-lg transform group-hover:translate-x-1">chevron_right</span>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                /* STEP 2: Connection Visual & Confirmation */
+                                <div className="space-y-6">
+                                    
+                                    {/* Visual Connector Card */}
+                                    <div className="relative py-4 flex items-center justify-between px-3 bg-violet-50/20 border border-violet-100/50 rounded-2xl overflow-hidden">
+                                        
+                                        {/* Business Card */}
+                                        <div className="w-[42%] text-center z-10">
+                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow mx-auto border border-gray-100">
+                                                <span className="material-icons-round text-lg">store</span>
+                                            </div>
+                                            <h4 className="font-bold text-xs text-text-main truncate mt-2">{attachBusinessTarget.name}</h4>
+                                            <p className="text-[10px] text-text-secondary truncate mt-0.5">Business</p>
+                                        </div>
+
+                                        {/* Animated Link Line */}
+                                        <div className="flex-1 flex flex-col items-center justify-center relative px-2">
+                                            <div className="w-full h-0.5 bg-gradient-to-r from-primary to-violet-500 relative">
+                                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-0.5 border border-violet-100 rounded-full shadow-sm">
+                                                    <Link size={10} className="text-violet-500 animate-pulse" />
+                                                </div>
+                                            </div>
+                                            <span className="text-[9px] font-bold text-violet-600 uppercase tracking-widest mt-2 bg-violet-100 px-1.5 py-0.5 rounded">Referral Link</span>
+                                        </div>
+
+                                        {/* Affiliate Card */}
+                                        <div className="w-[42%] text-center z-10">
+                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-violet-600 shadow mx-auto border border-gray-100">
+                                                <span className="material-icons-round text-lg">person</span>
+                                            </div>
+                                            <h4 className="font-bold text-xs text-text-main truncate mt-2">{selectedAffiliate.fullName}</h4>
+                                            <p className="text-[10px] text-violet-600 font-bold uppercase tracking-wider mt-0.5">{selectedAffiliate.referralCode}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Alert */}
+                                    <div className="p-4 bg-orange-50/50 rounded-xl border border-orange-100 flex gap-3 text-xs leading-relaxed text-orange-800">
+                                        <span className="material-icons-round text-lg text-orange-500 shrink-0 select-none">warning</span>
+                                        <div>
+                                            <strong className="font-bold block mb-0.5">Please confirm manual attachment</strong>
+                                            By confirming, this business will be permanently attributed to affiliate <strong>{selectedAffiliate.fullName}</strong>. This will:
+                                            <ul className="list-disc pl-4 mt-1.5 space-y-1">
+                                                <li>Increment the affiliate's referred count.</li>
+                                                <li>Instantly trigger and post direct commission ledgers in the Affiliate System.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    {/* Confirmation Buttons */}
+                                    <div className="flex gap-3 pt-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setSelectedAffiliate(null)}
+                                            disabled={isAttaching}
+                                            className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-xs disabled:opacity-50"
+                                        >
+                                            Change Affiliate
+                                        </button>
+                                        <button 
+                                            onClick={handleManualAttach}
+                                            disabled={isAttaching} 
+                                            className="flex-1 h-12 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-700 transition-all shadow-lg shadow-violet-200 flex items-center justify-center gap-2 text-xs active:scale-95 disabled:opacity-75"
+                                        >
+                                            {isAttaching && <Loader2 size={14} className="animate-spin" />}
+                                            Confirm Attachment
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+
+                        {/* Footer Cancel (only if no affiliate selected) */}
+                        {!selectedAffiliate && (
+                            <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsAttachModalOpen(false)}
+                                    className="w-full h-11 bg-white border border-gray-200 text-text-secondary font-bold rounded-xl hover:bg-gray-50 transition-all text-xs"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+            )}
+            
             {/* Action Menu Portal */}
             {activeMenuId && menuPosition && typeof document !== 'undefined' && createPortal(
                 <div 
@@ -1179,6 +1576,21 @@ export default function AdminBusinessesPage() {
                                         >
                                             <Eye size={16} />
                                             View Details
+                                        </button>
+
+                                        <button
+                                            onClick={() => {
+                                                setAttachBusinessTarget(biz);
+                                                setIsAttachModalOpen(true);
+                                                setSelectedAffiliate(null);
+                                                setAffiliateSearchQuery('');
+                                                setIsConfirmAttachOpen(false);
+                                                setActiveMenuId(null);
+                                            }}
+                                            className="w-full px-4 py-2.5 text-left text-sm font-bold text-violet-600 hover:bg-violet-50 flex items-center gap-3 transition-colors border-t border-gray-50"
+                                        >
+                                            <UserPlus size={16} />
+                                            Attach to Affiliate
                                         </button>
 
                                         {normalizeBusinessStatus(biz.status) === 'pending' && (

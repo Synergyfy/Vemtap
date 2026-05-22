@@ -22,6 +22,8 @@ import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
 import SubscriptionExpiredModal from './SubscriptionExpiredModal';
+import { useSudoStore } from '@/store/useSudoStore';
+import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -41,9 +43,6 @@ interface MenuItem {
     external?: boolean;
     onClick?: () => void;
 }
-
-import { useSudoStore } from '@/store/useSudoStore';
-import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
