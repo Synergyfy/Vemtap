@@ -10,7 +10,8 @@ import {
     Palette, Frame, Image as ImageIcon, CheckCircle2, Phone,
     FileText, Image, Video, User, SmartphoneNfc, Music, 
     Building2, UtensilsCrossed, Link2, Ticket, Wifi,
-    Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download, Lock, Edit2
+    Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download, Lock, Edit2,
+    WifiOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -151,12 +152,14 @@ export default function ExploreQRThrivePage() {
 
     const {
         data: stats,
-        error: statsError
+        error: statsError,
+        refetch: refetchStats,
     } = useQrThriveStats();
 
     const {
         data: mainQrData,
         isLoading: isLoadingMainQr,
+        error: mainQrError,
     } = useMainQrCode(activeBranchId && activeBranchId !== 'all' ? activeBranchId : null);
 
     const mainQrCodeId = mainQrData?.qrCode?.id || null;
@@ -170,6 +173,24 @@ export default function ExploreQRThrivePage() {
         (statsError as any)?.status === 404 ||
         (codesError as any)?.message?.includes('404') ||
         (statsError as any)?.message?.includes('404');
+
+    const isQrThriveDown = !isError404 && (
+        // Network errors (service unreachable)
+        (codesError instanceof TypeError && codesError.message === 'fetch is not defined') ||
+        (codesError as any)?.message === 'Failed to fetch' ||
+        (codesError as any)?.message?.includes('NetworkError') ||
+        (codesError as any)?.message?.includes('network') ||
+        (statsError as any)?.message === 'Failed to fetch' ||
+        (statsError as any)?.message?.includes('NetworkError') ||
+        (mainQrError as any)?.message === 'Failed to fetch' ||
+        // 5xx server errors
+        (codesError as any)?.status >= 500 ||
+        (statsError as any)?.status >= 500 ||
+        (mainQrError as any)?.status >= 500 ||
+        // Connection refused / timeouts
+        (codesError as any)?.message?.includes('timeout') ||
+        (statsError as any)?.message?.includes('timeout')
+    );
 
     // Show loading state until subscription check is resolved
     if (isCheckingSubscription) {
@@ -456,6 +477,88 @@ export default function ExploreQRThrivePage() {
                         </div>
                     </div>
                 </div>
+            </div>
+        );
+    }
+
+    if (isQrThriveDown) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 lg:p-12 text-center bg-slate-50">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className="max-w-xl w-full bg-white rounded-[3rem] p-10 lg:p-14 border border-slate-100 shadow-2xl shadow-slate-200/50"
+                >
+                    <div className="w-24 h-24 bg-amber-50 text-amber-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 relative">
+                        <div className="absolute inset-0 bg-amber-500/15 blur-[40px] rounded-full" />
+                        <motion.div
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                            <WifiOff className="w-12 h-12 relative z-10" />
+                        </motion.div>
+                    </div>
+
+                    <motion.h2
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.2 }}
+                        className="text-3xl font-black text-slate-900 tracking-tight mb-4"
+                    >
+                        QR Thrive is Unavailable
+                    </motion.h2>
+
+                    <motion.p
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.35 }}
+                        className="text-slate-500 font-medium leading-relaxed mb-10"
+                    >
+                        We're having trouble reaching the QR Thrive service. It may be temporarily
+                        down for maintenance or experiencing a network issue. Please try again shortly.
+                    </motion.p>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.5 }}
+                        className="space-y-4"
+                    >
+                        <button
+                            onClick={() => {
+                                refetchCodes();
+                                refetchStats();
+                                toast.success('Retrying connection...');
+                            }}
+                            className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3"
+                        >
+                            <RefreshCw className="w-5 h-5" />
+                            Try Again
+                        </button>
+
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="w-full py-5 bg-slate-50 text-slate-400 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-slate-100 transition-all border border-slate-100 active:scale-95"
+                        >
+                            Reload Page
+                        </button>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4, delay: 0.65 }}
+                        className="mt-12 pt-10 border-t border-slate-50 flex flex-col items-center gap-4"
+                    >
+                        <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">
+                                Service connection lost
+                            </p>
+                        </div>
+                    </motion.div>
+                </motion.div>
             </div>
         );
     }
