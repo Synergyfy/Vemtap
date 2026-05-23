@@ -29,7 +29,7 @@ export default function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalPro
         mutationFn: async ({ planId, reference }: { planId: string; reference: string }) => {
             const businessId = user?.businessId;
             if (!businessId) throw new Error('Business ID not found');
-            return purchaseCreditPlan(planId, { businessId, reference });
+            return purchaseCreditPlan(planId, { branchId: businessId, reference });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['my-credits'] });

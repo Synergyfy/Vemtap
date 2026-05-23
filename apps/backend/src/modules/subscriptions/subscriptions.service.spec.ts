@@ -200,6 +200,23 @@ describe('SubscriptionsService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('should apply customEndDate if isAdminOverride is true and customEndDate is provided', async () => {
+      mockPlansService.findOne.mockResolvedValue(mockPlan);
+      mockSubRepository.findOne.mockResolvedValue(null);
+      mockBranchRepo.find.mockResolvedValue([]);
+
+      const customEndDateStr = '2030-12-31T23:59:59.000Z';
+      const result = await service.subscribe({
+        planId: '1',
+        businessId: 'b1',
+        billingPeriod: BillingPeriod.MONTHLY,
+        isAdminOverride: true,
+        customEndDate: customEndDateStr,
+      });
+
+      expect(result.subscription.endDate.toISOString()).toBe(customEndDateStr);
+    });
   });
 
   describe('getSubscriptionStatus', () => {

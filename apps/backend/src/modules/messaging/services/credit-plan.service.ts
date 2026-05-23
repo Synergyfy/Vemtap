@@ -19,6 +19,7 @@ import {
 } from '../../payments/entities/payment.entity';
 import { CreditService } from './credit.service';
 import { BranchesService } from '../../branches/branches.service';
+import { SettingsService } from '../../settings/settings.service';
 
 @Injectable()
 export class CreditPlanService {
@@ -29,13 +30,124 @@ export class CreditPlanService {
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
     private readonly branchesService: BranchesService,
+    private readonly settingsService: SettingsService,
   ) {}
+
+  async purchaseCustom(
+    branchId: string,
+    reference: string,
+    smsAmount: number,
+    whatsappAmount: number,
+    emailAmount: number,
+  ): Promise<BusinessCreditWallet> {
+    // Idempotency: check if reference has already been processed
+    const existingPayment = await this.paymentsService.findByReference(reference);
+    if (existingPayment) {
+      this.logger.warn(
+        `Idempotency triggered: Custom credit purchase for reference ${reference} has already been processed.`,
+      );
+      const branch = await this.branchesService.findById(branchId);
+      return this.creditService.getOrCreateWallet(branch.businessId);
+    }
+
+    const settings = await this.settingsService.getGlobalSettings();
+    const priceSms = Number(settings.creditPriceSms) || 15;
+    const priceWhatsapp = Number(settings.creditPriceWhatsapp) || 25;
+    const priceEmail = Number(settings.creditPriceEmail) || 2;
+
+    const expectedPrice = (smsAmount * priceSms) + (whatsappAmount * priceWhatsapp) + (emailAmount * priceEmail);
+
+    if (expectedPrice <= 0) {
+      throw new BadRequestException('Total custom purchase amount must be greater than zero.');
+    }
+
+    const paymentData = await this.paymentsService.verifyTransaction(reference);
+    if (!paymentData) {
+      this.logger.error(
+        `Payment verification failed for custom reference: ${reference}`,
+      );
+      throw new BadRequestException(
+        'Payment verification failed. Please check your transaction reference.',
+      );
+    }
+
+    const paidAmount = Math.round(paymentData.amount / 100);
+    if (paidAmount < Math.round(expectedPrice)) {
+      this.logger.warn(
+        `Insufficient payment for custom credits. Expected ${expectedPrice}, got ${paidAmount}`,
+      );
+      throw new BadRequestException(
+        `Insufficient payment amount. Expected ${expectedPrice}, but verified payment was ${paidAmount}`,
+      );
+    }
+
+    const branch = await this.branchesService.findById(branchId);
+    const businessId = branch.businessId;
+
+    await this.paymentsService.recordPayment({
+      reference,
+      amount: expectedPrice,
+      purpose: PaymentPurpose.CREDIT_TOPUP,
+      status: PaymentStatus.SUCCESS,
+      branchId,
+      businessId,
+      metadata: {
+        smsAmount,
+        whatsappAmount,
+        emailAmount,
+        priceSms,
+        priceWhatsapp,
+        priceEmail,
+        isCustomPurchase: true,
+      },
+    });
+
+    if (smsAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.SMS,
+        smsAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Custom Top-up: ${smsAmount} SMS Credits`,
+      );
+    }
+    if (whatsappAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.WHATSAPP,
+        whatsappAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Custom Top-up: ${whatsappAmount} WhatsApp Credits`,
+      );
+    }
+    if (emailAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.EMAIL,
+        emailAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Custom Top-up: ${emailAmount} Email Credits`,
+      );
+    }
+
+    return this.creditService.getOrCreateWallet(businessId);
+  }
 
   async purchase(
     branchId: string,
     planId: string,
     reference: string,
   ): Promise<BusinessCreditWallet> {
+    // Idempotency: check if reference has already been processed
+    const existingPayment = await this.paymentsService.findByReference(reference);
+    if (existingPayment) {
+      this.logger.warn(
+        `Idempotency triggered: Credit package purchase for reference ${reference} has already been processed.`,
+      );
+      const branch = await this.branchesService.findById(branchId);
+      return this.creditService.getOrCreateWallet(branch.businessId);
+    }
+
     const plan = await this.findOne(planId);
 
     const paymentData = await this.paymentsService.verifyTransaction(reference);
@@ -64,7 +176,7 @@ export class CreditPlanService {
     await this.paymentsService.recordPayment({
       reference,
       amount: plan.price,
-      purpose: 'CREDIT_TOPUP' as PaymentPurpose,
+      purpose: PaymentPurpose.CREDIT_TOPUP,
       status: PaymentStatus.SUCCESS,
       branchId,
       businessId,
@@ -104,6 +216,15 @@ export class CreditPlanService {
 
   async getMyCredits(businessId: string): Promise<BusinessCreditWallet> {
     return this.creditService.getOrCreateWallet(businessId);
+  }
+
+  async getRates() {
+    const settings = await this.settingsService.getGlobalSettings();
+    return {
+      creditPriceSms: Number(settings.creditPriceSms) || 15.00,
+      creditPriceWhatsapp: Number(settings.creditPriceWhatsapp) || 25.00,
+      creditPriceEmail: Number(settings.creditPriceEmail) || 2.00,
+    };
   }
 
   async create(createCreditPlanDto: CreateCreditPlanDto): Promise<CreditPlan> {

@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMyCredits, useMessagingAnalytics } from '@/services/messaging/hooks';
-import { fetchCreditPlans, purchaseCreditPlan } from '@/lib/api/credit-plans';
+import { useMyCredits } from '@/services/messaging/hooks';
+import { 
+  fetchCreditPlans, 
+  purchaseCreditPlan, 
+  fetchCreditRates, 
+  purchaseCustomCredits 
+} from '@/lib/api/credit-plans';
 import { useQuery } from '@tanstack/react-query';
 import { 
   CreditCard, 
@@ -15,11 +20,13 @@ import {
   ShieldCheck,
   PlusCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Calculator,
+  Sparkles
 } from 'lucide-react';
 import { notify } from '@/lib/notify';
-import { usePaystackPayment } from 'react-paystack';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unavailable }: any) => (
   <div className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all ${unavailable ? 'opacity-60 grayscale cursor-not-allowed border-slate-200 bg-slate-50' : 'hover:shadow-md'}`}>
@@ -52,28 +59,72 @@ const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unava
 
 export default function MessagingCreditsPage() {
   const user = useAuthStore((state) => state.user);
+  const { activeBranchId } = useActiveBranch();
+  const resolvedBranchId = activeBranchId || user?.branchId || '';
+
   const { data: credits, isLoading: creditsLoading, refetch: refetchCredits } = useMyCredits();
+  
   const { data: plans, isLoading: plansLoading } = useQuery({
     queryKey: ['credit-plans'],
     queryFn: fetchCreditPlans
   });
 
+  const { data: rates, isLoading: ratesLoading } = useQuery({
+    queryKey: ['credit-rates'],
+    queryFn: fetchCreditRates
+  });
+
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<'package' | 'custom' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Custom Top-Up state
+  const [smsAmount, setSmsAmount] = useState<number>(0);
+  const [whatsappAmount, setWhatsappAmount] = useState<number>(0);
+  const [emailAmount, setEmailAmount] = useState<number>(0);
 
   const selectedPlan = plans?.find(p => p.id === selectedPlanId);
 
-  const handlePaymentSuccess = async (reference: { reference: string }) => {
-    if (!selectedPlanId) return;
+  const smsPrice = rates?.creditPriceSms ?? 15.00;
+  const whatsappPrice = rates?.creditPriceWhatsapp ?? 25.00;
+  const emailPrice = rates?.creditPriceEmail ?? 2.00;
+
+  const smsCost = smsAmount * smsPrice;
+  const whatsappCost = whatsappAmount * whatsappPrice;
+  const emailCost = emailAmount * emailPrice;
+  const totalCost = smsCost + whatsappCost + emailCost;
+
+  const handlePaymentSuccess = async (
+    reference: string,
+    mode: 'package' | 'custom',
+    params: { planId?: string; sms?: number; whatsapp?: number; email?: number }
+  ) => {
     setIsProcessing(true);
     try {
-      await purchaseCreditPlan(selectedPlanId, {
-        businessId: user?.businessId || '',
-        reference: reference.reference
-      });
+      if (mode === 'package') {
+        const planId = params.planId || selectedPlanId;
+        if (!planId) return;
+        await purchaseCreditPlan(planId, {
+          branchId: resolvedBranchId,
+          reference: reference
+        });
+      } else {
+        await purchaseCustomCredits({
+          branchId: resolvedBranchId,
+          reference: reference,
+          smsAmount: params.sms ?? smsAmount,
+          whatsappAmount: params.whatsapp ?? whatsappAmount,
+          emailAmount: params.email ?? emailAmount
+        });
+      }
       notify.success('Credits purchased successfully!');
       refetchCredits();
       setSelectedPlanId(null);
+      setPaymentMode(null);
+      // Reset custom values
+      setSmsAmount(0);
+      setWhatsappAmount(0);
+      setEmailAmount(0);
     } catch (err: any) {
       notify.error(err.message || 'Failed to complete purchase');
     } finally {
@@ -81,26 +132,129 @@ export default function MessagingCreditsPage() {
     }
   };
 
-  const handlePaymentClose = () => {
-    setIsProcessing(false);
-  };
-
-  const config = {
-    reference: (new Date()).getTime().toString(),
-    email: user?.email || '',
-    amount: (selectedPlan?.price || 0) * 100,
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-  };
-
-  const initializePayment = usePaystackPayment(config);
-
-  const handlePurchase = (planId: string) => {
+  const handlePurchasePlan = (planId: string) => {
     setSelectedPlanId(planId);
-    // In a real app, this would trigger Paystack
-    // For this prototype, we'll just show the plan selection and then initialize payment
+    setPaymentMode('package');
+    const plan = plans?.find(p => p.id === planId);
+    if (!plan) return;
+
+    const email = user?.email;
+    if (!email) {
+      notify.error('User email not found. Please log in again.');
+      return;
+    }
+
+    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey || publicKey.includes('placeholder')) {
+      setIsProcessing(true);
+      setTimeout(() => {
+        if (confirm(`[PROTOTYPE SIMULATION] Simulate Paystack payment for ${plan.name} (₦${plan.price.toLocaleString()})?`)) {
+          handlePaymentSuccess(
+            'sim-ref-' + Date.now(),
+            'package',
+            { planId }
+          );
+        } else {
+          setIsProcessing(false);
+          setPaymentMode(null);
+          setSelectedPlanId(null);
+        }
+      }, 100);
+    } else {
+      setIsProcessing(true);
+      try {
+        // @ts-ignore
+        const handler = window.PaystackPop.setup({
+          key: publicKey,
+          email: email,
+          amount: Math.round(plan.price * 100),
+          currency: 'NGN',
+          ref: `PLAN-${resolvedBranchId}-${Date.now()}`,
+          onClose: () => {
+            setIsProcessing(false);
+            setPaymentMode(null);
+            setSelectedPlanId(null);
+            notify.error('Payment window closed');
+          },
+          callback: (response: any) => {
+            handlePaymentSuccess(
+              response.reference,
+              'package',
+              { planId }
+            );
+          }
+        });
+        handler.openIframe();
+      } catch (err: any) {
+        setIsProcessing(false);
+        setPaymentMode(null);
+        setSelectedPlanId(null);
+        notify.error('Failed to initialize Paystack checkout: ' + (err.message || err));
+      }
+    }
   };
 
-  if (creditsLoading || plansLoading) {
+  const handlePurchaseCustom = () => {
+    if (totalCost <= 0) {
+      notify.error('Please select at least one credit to top-up');
+      return;
+    }
+    setPaymentMode('custom');
+    
+    const email = user?.email;
+    if (!email) {
+      notify.error('User email not found. Please log in again.');
+      return;
+    }
+
+    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey || publicKey.includes('placeholder')) {
+      setIsProcessing(true);
+      setTimeout(() => {
+        if (confirm(`[PROTOTYPE SIMULATION] Simulate Paystack payment for Custom Top-Up (₦${totalCost.toLocaleString()})?\n\nBreakdown:\n- SMS: ${smsAmount.toLocaleString()} credits (₦${smsCost.toLocaleString()})\n- WhatsApp: ${whatsappAmount.toLocaleString()} credits (₦${whatsappCost.toLocaleString()})\n- Email: ${emailAmount.toLocaleString()} credits (₦${emailCost.toLocaleString()})`)) {
+          handlePaymentSuccess(
+            'sim-ref-' + Date.now(),
+            'custom',
+            { sms: smsAmount, whatsapp: whatsappAmount, email: emailAmount }
+          );
+        } else {
+          setIsProcessing(false);
+          setPaymentMode(null);
+        }
+      }, 100);
+    } else {
+      setIsProcessing(true);
+      try {
+        // @ts-ignore
+        const handler = window.PaystackPop.setup({
+          key: publicKey,
+          email: email,
+          amount: Math.round(totalCost * 100),
+          currency: 'NGN',
+          ref: `CUSTOM-${resolvedBranchId}-${Date.now()}`,
+          onClose: () => {
+            setIsProcessing(false);
+            setPaymentMode(null);
+            notify.error('Payment window closed');
+          },
+          callback: (response: any) => {
+            handlePaymentSuccess(
+              response.reference,
+              'custom',
+              { sms: smsAmount, whatsapp: whatsappAmount, email: emailAmount }
+            );
+          }
+        });
+        handler.openIframe();
+      } catch (err: any) {
+        setIsProcessing(false);
+        setPaymentMode(null);
+        notify.error('Failed to initialize Paystack checkout: ' + (err.message || err));
+      }
+    }
+  };
+
+  if (creditsLoading || plansLoading || ratesLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="animate-spin text-primary" size={40} />
@@ -138,8 +292,7 @@ export default function MessagingCreditsPage() {
           amount={credits?.whatsappCredits || 0} 
           icon={Zap} 
           color="bg-green-500"
-          subtitle="Messaging API (Disabled)"
-          unavailable
+          subtitle="Messaging API"
         />
         <CreditCardComponent 
           title="Email Credits" 
@@ -156,8 +309,8 @@ export default function MessagingCreditsPage() {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-32 -mb-32" />
         
         <div className="relative z-10 text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-3xl font-display font-bold text-white mb-4">Top-up Your Credits</h2>
-          <p className="text-slate-400 font-medium">Choose a package to increase your messaging capacity instantly. Credits are added immediately after payment.</p>
+          <h2 className="text-3xl font-display font-bold text-white mb-4">Top-up Packages</h2>
+          <p className="text-slate-400 font-medium">Choose a pre-configured package to increase your messaging capacity instantly. Credits are added immediately after payment.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
@@ -178,11 +331,11 @@ export default function MessagingCreditsPage() {
                   </li>
                 )}
                 {plan.whatsappAmount > 0 && (
-                  <li className="flex items-center gap-3 text-slate-400/60 text-sm font-medium">
-                    <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                  <li className="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                    <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                     </div>
-                    WhatsApp Supported (Coming Soon)
+                    {plan.whatsappAmount.toLocaleString()} WhatsApp Credits
                   </li>
                 )}
                 {plan.emailAmount > 0 && (
@@ -196,16 +349,7 @@ export default function MessagingCreditsPage() {
               </ul>
 
               <button 
-                onClick={() => {
-                   setSelectedPlanId(plan.id);
-                   // In a real app, initializePayment(handlePaymentSuccess, handlePaymentClose)
-                   // For prototype, we'll simulate Paystack
-                   setTimeout(() => {
-                      if (confirm(`Simulate Paystack payment for ${plan.name} (₦${plan.price.toLocaleString()})?`)) {
-                        handlePaymentSuccess({ reference: 'T' + Date.now() });
-                      }
-                   }, 100);
-                }}
+                onClick={() => handlePurchasePlan(plan.id)}
                 disabled={isProcessing}
                 className="w-full py-4 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 group-hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
               >
@@ -218,6 +362,207 @@ export default function MessagingCreditsPage() {
               </button>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Custom Top-up Calculator */}
+      <div className="bg-white border border-slate-100 rounded-3xl p-8 md:p-12 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row gap-12">
+          {/* Left Column: Input Panel */}
+          <div className="flex-1 space-y-8">
+            <div>
+              <div className="flex items-center gap-2 text-primary mb-2">
+                <Calculator size={18} />
+                <span className="text-xs font-black uppercase tracking-widest">Custom Top-up</span>
+              </div>
+              <h2 className="text-3xl font-display font-bold text-slate-900">Custom Credits Calculator</h2>
+              <p className="text-slate-500 font-medium mt-1">Need a specific amount of credits? Drag the sliders or type in your exact counts below.</p>
+            </div>
+
+            <div className="space-y-6">
+              {/* SMS Slider & Input */}
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                      <MessageSquare size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">SMS Credits</h4>
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{smsPrice.toFixed(2)} / credit</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={smsAmount || ''}
+                      onChange={(e) => setSmsAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-24 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right font-bold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+                    <span className="text-slate-400 font-bold text-xs">Qty</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10000"
+                  step="100"
+                  value={smsAmount}
+                  onChange={(e) => setSmsAmount(parseInt(e.target.value))}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none"
+                />
+                <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                  <span>0 credits</span>
+                  <span className="font-semibold text-blue-600">Subtotal: ₦{smsCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <span>10,000+ credits</span>
+                </div>
+              </div>
+
+              {/* WhatsApp Slider & Input */}
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
+                      <Zap size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-800 text-sm">WhatsApp Credits</h4>
+                      </div>
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{whatsappPrice.toFixed(2)} / credit</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={whatsappAmount || ''}
+                      onChange={(e) => setWhatsappAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-24 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right font-bold text-slate-800 text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                    />
+                    <span className="text-slate-400 font-bold text-xs">Qty</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10000"
+                  step="100"
+                  value={whatsappAmount}
+                  onChange={(e) => setWhatsappAmount(parseInt(e.target.value))}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-500 focus:outline-none"
+                />
+                <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                  <span>0 credits</span>
+                  <span className="font-semibold text-green-600">Subtotal: ₦{whatsappCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <span>10,000+ credits</span>
+                </div>
+              </div>
+
+              {/* Email Slider & Input */}
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600">
+                      <Mail size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">Email Credits</h4>
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{emailPrice.toFixed(2)} / credit</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={emailAmount || ''}
+                      onChange={(e) => setEmailAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-24 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right font-bold text-slate-800 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    />
+                    <span className="text-slate-400 font-bold text-xs">Qty</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10000"
+                  step="100"
+                  value={emailAmount}
+                  onChange={(e) => setEmailAmount(parseInt(e.target.value))}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
+                />
+                <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                  <span>0 credits</span>
+                  <span className="font-semibold text-purple-600">Subtotal: ₦{emailCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <span>10,000+ credits</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Checkout panel */}
+          <div className="w-full lg:w-96">
+            <div className="bg-slate-900 text-white rounded-3xl p-8 flex flex-col justify-between h-full border border-slate-800 shadow-xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-primary/20 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="space-y-6 relative z-10">
+                <div className="flex items-center gap-2 text-primary">
+                  <Sparkles size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Order Summary</span>
+                </div>
+
+                <h3 className="text-2xl font-display font-bold">Top-up Summary</h3>
+
+                {/* Subtotals list */}
+                <div className="space-y-4 pt-4 border-t border-slate-800">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400 font-medium">SMS Credits ({smsAmount.toLocaleString()})</span>
+                    <span className="text-slate-200 font-bold">₦{smsCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400 font-medium">WhatsApp ({whatsappAmount.toLocaleString()})</span>
+                    <span className="text-slate-200 font-bold">₦{whatsappCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400 font-medium">Email Credits ({emailAmount.toLocaleString()})</span>
+                    <span className="text-slate-200 font-bold">₦{emailCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  </div>
+                </div>
+
+                {/* Total Cost Box */}
+                <div className="pt-6 border-t border-slate-800 space-y-2">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Amount</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-display font-black text-white">₦{totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 mt-8 relative z-10">
+                <button
+                  onClick={handlePurchaseCustom}
+                  disabled={isProcessing || totalCost <= 0}
+                  className="w-full py-4 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/95 disabled:bg-slate-800 disabled:text-slate-600 disabled:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  {isProcessing && paymentMode === 'custom' ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    <CreditCard size={18} />
+                  )}
+                  <span>Instant Custom Top-Up</span>
+                </button>
+
+                <div className="flex items-center justify-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest text-center">
+                  <ShieldCheck size={12} className="text-primary" />
+                  <span>Secured by Paystack</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
