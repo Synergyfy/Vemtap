@@ -267,7 +267,7 @@ export default function AdminBusinessesPage() {
     const [planBusiness, setPlanBusiness] = useState<Business | null>(null);
     const [availablePlans, setAvailablePlans] = useState<PricingPlan[]>([]);
     const [isPlansLoading, setIsPlansLoading] = useState(false);
-    const [planForm, setPlanForm] = useState({ planId: '', billingPeriod: 'monthly' as 'monthly' | 'quarterly' | 'yearly' });
+    const [planForm, setPlanForm] = useState({ planId: '', billingPeriod: 'monthly' as 'monthly' | 'quarterly' | 'yearly', customEndDate: '' });
 
     const fetchCredits = async (businessId: string) => {
         setIsCreditLoading(true);
@@ -321,7 +321,8 @@ export default function AdminBusinessesPage() {
                 businessId: planBusiness.id,
                 planId: planForm.planId,
                 billingPeriod: planForm.billingPeriod,
-                isAdminOverride: true
+                isAdminOverride: true,
+                customEndDate: planForm.customEndDate || undefined
             });
             notify.success('Plan changed successfully');
             setIsPlanModalOpen(false);
@@ -1323,6 +1324,17 @@ export default function AdminBusinessesPage() {
                                 </p>
                             </div>
 
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">Custom Expiration Date (Optional)</label>
+                                <input 
+                                    type="date"
+                                    value={planForm.customEndDate}
+                                    onChange={(e) => setPlanForm({ ...planForm, customEndDate: e.target.value })}
+                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                                />
+                                <p className="mt-1 text-[9px] text-text-secondary ml-1 uppercase font-bold tracking-tight">Leave blank to calculate automatically based on billing period</p>
+                            </div>
+
                             <div className="flex gap-3 pt-2">
                                 <button 
                                     type="button" 
@@ -1626,6 +1638,7 @@ export default function AdminBusinessesPage() {
                                         <button
                                             onClick={() => {
                                                 setPlanBusiness(biz);
+                                                setPlanForm({ planId: biz.planId || '', billingPeriod: 'monthly', customEndDate: '' });
                                                 setIsPlanModalOpen(true);
                                                 fetchPlans();
                                                 setActiveMenuId(null);

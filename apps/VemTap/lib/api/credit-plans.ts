@@ -28,6 +28,16 @@ export const fetchCreditPlans = async (): Promise<CreditPlan[]> => {
     return await api.get('/credit-plans');
 };
 
+export interface CreditRates {
+    creditPriceSms: number;
+    creditPriceWhatsapp: number;
+    creditPriceEmail: number;
+}
+
+export const fetchCreditRates = async (): Promise<CreditRates> => {
+    return await api.get('/credit-plans/rates');
+};
+
 export const fetchCreditPlan = async (id: string): Promise<CreditPlan> => {
     return await api.get(`/credit-plans/${id}`);
 };
@@ -38,10 +48,22 @@ export const fetchMyCredits = async (branchId?: string): Promise<BusinessCredit>
 };
 
 export interface PurchaseCreditPlanRequest {
-    businessId: string;
+    branchId: string;
     reference: string;
 }
 
 export const purchaseCreditPlan = async (planId: string, data: PurchaseCreditPlanRequest): Promise<BusinessCredit> => {
     return await api.post(`/credit-plans/${planId}/purchase`, data);
+};
+
+export interface PurchaseCustomCreditsRequest {
+    branchId: string;
+    reference: string;
+    smsAmount: number;
+    whatsappAmount: number;
+    emailAmount: number;
+}
+
+export const purchaseCustomCredits = async (data: PurchaseCustomCreditsRequest): Promise<BusinessCredit> => {
+    return await api.post('/credit-plans/custom/purchase', data);
 };

@@ -107,6 +107,10 @@ export class PaymentsService {
     }
   }
 
+  async findByReference(reference: string): Promise<Payment | null> {
+    return this.paymentRepository.findOneBy({ reference });
+  }
+
   async recordPayment(createPaymentDto: CreatePaymentDto): Promise<Payment> {
     const existing = await this.paymentRepository.findOneBy({
       reference: createPaymentDto.reference,

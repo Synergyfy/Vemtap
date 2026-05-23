@@ -8,6 +8,7 @@ import { BusinessCreditWallet } from '../entities/business-credit-wallet.entity'
 import { PaymentsService } from '../../payments/payments.service';
 import { CreditService } from './credit.service';
 import { BranchesService } from '../../branches/branches.service';
+import { SettingsService } from '../../settings/settings.service';
 
 describe('CreditPlanService', () => {
   let service: CreditPlanService;
@@ -15,6 +16,7 @@ describe('CreditPlanService', () => {
   let paymentsService: PaymentsService;
   let creditService: CreditService;
   let branchesService: BranchesService;
+  let settingsService: SettingsService;
 
   const mockCreditPlan = {
     id: 'plan-123',
@@ -32,6 +34,12 @@ describe('CreditPlanService', () => {
     smsCredits: 10,
     emailCredits: 20,
     whatsappCredits: 5,
+  };
+
+  const mockSettings = {
+    creditPriceSms: 15.00,
+    creditPriceWhatsapp: 25.00,
+    creditPriceEmail: 2.00,
   };
 
   beforeEach(async () => {
@@ -53,6 +61,7 @@ describe('CreditPlanService', () => {
           useValue: {
             verifyTransaction: jest.fn(),
             recordPayment: jest.fn().mockResolvedValue({}),
+            findByReference: jest.fn().mockResolvedValue(null),
           },
         },
         {
@@ -70,6 +79,12 @@ describe('CreditPlanService', () => {
               .mockResolvedValue({ id: 'branch-123', businessId: 'biz-123' }),
           },
         },
+        {
+          provide: SettingsService,
+          useValue: {
+            getGlobalSettings: jest.fn().mockResolvedValue(mockSettings),
+          },
+        },
       ],
     }).compile();
 
@@ -80,6 +95,8 @@ describe('CreditPlanService', () => {
     paymentsService = module.get<PaymentsService>(PaymentsService);
     creditService = module.get<CreditService>(CreditService);
     branchesService = module.get<BranchesService>(BranchesService);
+    settingsService = module.get<SettingsService>(SettingsService);
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -127,6 +144,77 @@ describe('CreditPlanService', () => {
       await expect(
         service.purchase('branch-123', 'invalid-plan', 'ref'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should short-circuit and return wallet if payment reference has already been processed (idempotency)', async () => {
+      jest.spyOn(paymentsService, 'findByReference').mockResolvedValueOnce({ id: 'pmt-123' } as any);
+
+      const result = await service.purchase('branch-123', 'plan-123', 'ref-processed');
+
+      expect(creditService.addCredits).not.toHaveBeenCalled();
+      expect(result).toEqual(mockWallet);
+    });
+  });
+
+  describe('purchaseCustom', () => {
+    it('should successfully award custom credits on valid payment', async () => {
+      const reference = 'ref-custom-123';
+      const branchId = 'branch-123';
+
+      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
+        status: 'success',
+        amount: 60000, // (10 SMS * 15) + (10 WA * 25) + (100 EM * 2) = 150 + 250 + 200 = 600 NGN = 60000 kobo
+      });
+
+      const result = await service.purchaseCustom(branchId, reference, 10, 10, 100);
+
+      expect(creditService.addCredits).toHaveBeenCalledTimes(3);
+      expect(paymentsService.recordPayment).toHaveBeenCalled();
+      expect(result).toEqual(mockWallet);
+    });
+
+    it('should throw BadRequestException if custom expected amount is <= 0', async () => {
+      await expect(
+        service.purchaseCustom('branch-123', 'ref', 0, 0, 0),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if custom payment verification fails', async () => {
+      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue(null);
+
+      await expect(
+        service.purchaseCustom('branch-123', 'ref-fail', 10, 0, 0),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if paid amount is less than expected custom price', async () => {
+      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
+        amount: 10000, // 100 NGN instead of 150 NGN (10 SMS * 15)
+      });
+
+      await expect(
+        service.purchaseCustom('branch-123', 'ref-low', 10, 0, 0),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should short-circuit and return wallet if custom payment reference has already been processed (idempotency)', async () => {
+      jest.spyOn(paymentsService, 'findByReference').mockResolvedValueOnce({ id: 'pmt-456' } as any);
+
+      const result = await service.purchaseCustom('branch-123', 'ref-custom-processed', 10, 10, 10);
+
+      expect(creditService.addCredits).not.toHaveBeenCalled();
+      expect(result).toEqual(mockWallet);
+    });
+  });
+
+  describe('getRates', () => {
+    it('should retrieve rates from setting service', async () => {
+      const result = await service.getRates();
+      expect(result).toEqual({
+        creditPriceSms: 15.00,
+        creditPriceWhatsapp: 25.00,
+        creditPriceEmail: 2.00,
+      });
     });
   });
 });
