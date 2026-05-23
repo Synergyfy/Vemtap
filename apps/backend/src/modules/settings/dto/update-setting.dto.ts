@@ -53,6 +53,21 @@ export class UpdateSettingDto {
   @IsOptional()
   messagingCostEmail?: number;
 
+  @ApiProperty({ example: 15.00, required: false })
+  @IsNumber()
+  @IsOptional()
+  creditPriceSms?: number;
+
+  @ApiProperty({ example: 25.00, required: false })
+  @IsNumber()
+  @IsOptional()
+  creditPriceWhatsapp?: number;
+
+  @ApiProperty({ example: 2.00, required: false })
+  @IsNumber()
+  @IsOptional()
+  creditPriceEmail?: number;
+
   @ApiProperty({ example: 'token_123', required: false })
   @IsOptional()
   @IsString()
