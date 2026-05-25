@@ -18,8 +18,7 @@ import {
   ApiQuery,
   ApiBody,
 } from '@nestjs/swagger';
-import { User, UserRole } from '../users/entities/user.entity';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { User } from '../users/entities/user.entity';
 import { Public } from '../../common/decorators/public.decorator';
 
 interface RequestWithUser extends Request {
@@ -152,8 +151,8 @@ export class VisitorFormsController {
     return this.formsService.getFormsByDeviceCode(code);
   }
 
+  @Public()
   @Post(':code/responses')
-  @Roles(UserRole.CUSTOMER)
   @ApiOperation({
     summary: 'Submit answers for a specific form using its unique code',
   })
@@ -187,7 +186,7 @@ export class VisitorFormsController {
     @Param('code') code: string,
     @Body() submitResponseDto: SubmitFormResponseDto,
   ) {
-    const visitorId = req.user.id;
+    const visitorId = (req as any).user?.id || null;
     return this.formsService.submitResponse(code, visitorId, submitResponseDto);
   }
 }

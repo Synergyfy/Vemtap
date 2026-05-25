@@ -14,12 +14,12 @@ export class FormResponse extends AbstractBaseEntity {
   @Column()
   formId: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'visitorId' })
   visitor: User;
 
-  @Column()
-  visitorId: string;
+  @Column({ nullable: true })
+  visitorId: string | null;
 
   @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'branchId' })

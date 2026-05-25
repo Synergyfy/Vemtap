@@ -238,6 +238,7 @@ export default function EngagementFormsBuilderPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [requiresAuth, setRequiresAuth] = useState(true);
   const [fields, setFields] = useState<FieldDraft[]>([makeField(1)]);
   const [fieldCount, setFieldCount] = useState(1);
   const [successTitle, setSuccessTitle] = useState('');
@@ -332,6 +333,7 @@ export default function EngagementFormsBuilderPage() {
     setTitle('');
     setDescription('');
     setIsActive(true);
+    setRequiresAuth(true);
     setFields([makeField(1)]);
     setFieldCount(1);
     setSuccessTitle('');
@@ -354,7 +356,8 @@ export default function EngagementFormsBuilderPage() {
     setTitle(form.title || '');
     setDescription(form.description || '');
     setIsActive(!!form.isActive);
-    setFields((form.fields || []).map((f, i) => ({
+    setRequiresAuth(form.requiresAuth ?? true);
+    setFields((form.fields || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((f, i) => ({
       id: f.id || `f-${i + 1}`,
       question: f.question,
       type: f.type,
@@ -409,6 +412,7 @@ export default function EngagementFormsBuilderPage() {
       isActive,
       isPublished: publish,
       showAfterLeadCapture: editing?.showAfterLeadCapture,
+      requiresAuth,
       fields: fields.map((f, i) => ({
         type: f.type,
         question: f.question.trim(),
@@ -430,7 +434,7 @@ export default function EngagementFormsBuilderPage() {
         toast.success(publish ? 'Form published' : 'Draft saved');
       }
       resetBuilder();
-      router.push(savedForm?.id ? `/dashboard/engagement/forms?focus=${encodeURIComponent(savedForm.id)}` : '/dashboard/engagement/forms');
+      router.push('/dashboard/engagement/forms');
     } catch (e: any) {
       toast.error(e?.message || 'Failed to save form');
     }
@@ -1123,22 +1127,32 @@ export default function EngagementFormsBuilderPage() {
                         </select>
                       </div>
 
-                      <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/30">
-                        <div className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 bg-gray-200">
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            id="isActive"
-                            checked={isActive}
-                            onChange={(e) => setIsActive(e.target.checked)}
-                          />
+                      <div
+                        className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/30 cursor-pointer select-none"
+                        onClick={() => setIsActive(!isActive)}
+                      >
+                        <div className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${isActive ? 'bg-primary' : 'bg-gray-200'}`}>
                           <span
-                            className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-5' : 'translate-x-0'}`}
+                            className={`inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-5' : 'translate-x-0'}`}
                           />
                         </div>
-                        <label htmlFor="isActive" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                        <span className="text-sm font-semibold text-slate-700">
                           Keep this form active after saving
-                        </label>
+                        </span>
+                      </div>
+
+                      <div
+                        className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/30 cursor-pointer select-none"
+                        onClick={() => setRequiresAuth(!requiresAuth)}
+                      >
+                        <div className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${requiresAuth ? 'bg-primary' : 'bg-gray-200'}`}>
+                          <span
+                            className={`inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${requiresAuth ? 'translate-x-5' : 'translate-x-0'}`}
+                          />
+                        </div>
+                        <span className="text-sm font-semibold text-slate-700">
+                          Require customers to be logged in
+                        </span>
                       </div>
 
                     </div>

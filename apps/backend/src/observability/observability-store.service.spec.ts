@@ -43,7 +43,7 @@ describe('ObservabilityStoreService', () => {
       expect(logs.total).toBe(1);
     });
 
-    it('should maintain a size cap of 500 items', () => {
+    it('should maintain a size cap of 200 items (configurable via LOG_STORE_MAX_SIZE)', () => {
       const generateLog = (id: string): ObservabilityRequestLog => ({
         id,
         timestamp: new Date().toISOString(),
@@ -54,22 +54,21 @@ describe('ObservabilityStoreService', () => {
         responseTime: 10,
       });
 
-      // Push 505 logs
-      for (let i = 1; i <= 505; i++) {
+      // Push 205 logs — 5 over the default MAX_SIZE of 200
+      for (let i = 1; i <= 205; i++) {
         service.addLog(generateLog(`req_${i}`));
       }
 
-      const logs = service.getLogs({ limit: 600 });
-      expect(logs.total).toBe(500);
-      expect(logs.items.length).toBe(500);
+      const logs = service.getLogs({ limit: 200 });
+      expect(logs.total).toBe(200);
+      expect(logs.items.length).toBe(200);
 
-      // The oldest 5 logs (req_1 to req_5) should have been shifted out.
-      // Since it returns them reversed (newest first), the last item in the returned items array (index 499)
-      // should be req_6.
+      // The oldest 5 logs (req_1 to req_5) should have been evicted.
+      // Since it returns them newest-first, the last item should be req_6.
       expect(logs.items[logs.items.length - 1].id).toBe('req_6');
-      
-      // The first item (newest) should be req_505.
-      expect(logs.items[0].id).toBe('req_505');
+
+      // The first item (newest) should be req_205.
+      expect(logs.items[0].id).toBe('req_205');
     });
   });
 

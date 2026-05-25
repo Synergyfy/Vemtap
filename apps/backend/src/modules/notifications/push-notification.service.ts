@@ -1,17 +1,33 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../users/entities/user.entity';
-import { Contact } from '../contacts/entities/contact.entity';
 import { ConfigService } from '@nestjs/config';
 import * as webpush from 'web-push';
+import { User } from '../users/entities/user.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import {
+  PUSH_NOTIFICATION_QUEUE,
+  PushNotificationJobData,
+  PushFanOutJobData,
+} from './push-notification.processor';
 
+/**
+ * PushNotificationService — the public API for triggering push notifications.
+ *
+ * All methods now enqueue a BullMQ job and return immediately.
+ * The actual web-push delivery happens asynchronously in PushNotificationProcessor,
+ * with automatic retries on failure and no impact on the calling HTTP request's latency.
+ */
 @Injectable()
 export class PushNotificationService {
   private readonly logger = new Logger(PushNotificationService.name);
   private isConfigured = false;
 
   constructor(
+    @InjectQueue(PUSH_NOTIFICATION_QUEUE)
+    private readonly pushQueue: Queue<PushNotificationJobData | PushFanOutJobData>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Contact)
@@ -30,20 +46,20 @@ export class PushNotificationService {
         webpush.setVapidDetails(email, publicKey, privateKey);
         this.isConfigured = true;
         this.logger.log('Web Push (VAPID) configured successfully');
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(
-          `Failed to configure Web Push (VAPID): ${error.message}. Push notifications will be mocked.`,
+          `Failed to configure Web Push (VAPID): ${error.message}. Push notifications will be disabled.`,
         );
       }
     } else {
       this.logger.warn(
-        'Web Push (VAPID) keys missing. Push notifications will be mocked.',
+        'Web Push (VAPID) keys missing. Push notifications will be disabled.',
       );
     }
   }
 
-  async registerToken(userId: string, token: string, isUser: boolean = true) {
-    // Token for Web Push is often a JSON string of the subscription object
+  /** Persist the push subscription token for a user or contact. */
+  async registerToken(userId: string, token: string, isUser = true) {
     if (isUser) {
       await this.userRepo.update(userId, { pushToken: token });
     } else {
@@ -52,127 +68,84 @@ export class PushNotificationService {
     return { success: true };
   }
 
+  /**
+   * Enqueues a push notification for a single user or contact.
+   *
+   * Returns as soon as the job is queued — delivery happens asynchronously.
+   * The job is retried up to 3 times with exponential back-off on failure.
+   */
   async sendNotification(
     targetId: string,
     title: string,
     body: string,
-    data: any = {},
-    isUser: boolean = true,
-  ) {
-    let token: string | null | undefined;
-
-    if (isUser) {
-      const user = await this.userRepo.findOne({
-        where: { id: targetId },
-        select: ['pushToken'],
-      });
-      token = user?.pushToken;
-    } else {
-      const contact = await this.contactRepo.findOne({
-        where: { id: targetId },
-        select: ['pushToken'],
-      });
-      token = contact?.pushToken;
-    }
-
-    if (!token) {
-      this.logger.debug(
-        `No push token for ${isUser ? 'User' : 'Contact'} ${targetId}`,
-      );
-      return;
-    }
-
-    this.logger.log(`Sending push notification to ${targetId}: ${title}`);
-
+    data: Record<string, any> = {},
+    isUser = true,
+  ): Promise<{ queued: true } | { queued: false; reason: string }> {
     if (!this.isConfigured) {
-      this.logger.debug('Push notification mocked (VAPID not configured)');
-      return { success: true, mock: true };
+      this.logger.debug('Push notifications disabled (VAPID not configured) — skipping');
+      return { queued: false, reason: 'vapid-not-configured' };
     }
 
-    try {
-      // Parse token if it's a Web Push subscription object
-      let subscription;
-      try {
-        subscription = JSON.parse(token);
-      } catch (e) {
-        // If not JSON, it might be a standard FCM token which we don't handle with web-push
-        this.logger.error(
-          `Invalid subscription format for ${targetId}. Web Push requires JSON subscription object.`,
-        );
-        return { success: false, error: 'Invalid subscription format' };
-      }
+    await this.pushQueue.add(
+      'send',
+      { targetId, isUser, title, body, data } satisfies PushNotificationJobData,
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5_000 },
+        removeOnComplete: true,
+        removeOnFail: 500,
+      },
+    );
 
-      const payload = JSON.stringify({
-        notification: {
-          title,
-          body,
-          icon: '/logo.png', // Assuming logo.png is in public folder
-          data: {
-            ...data,
-            url: data.threadId
-              ? `/dashboard/messaging/${data.threadId}`
-              : undefined,
-          },
-        },
-      });
-
-      await webpush.sendNotification(subscription, payload);
-      return { success: true };
-    } catch (error) {
-      this.logger.error(
-        `Error sending push notification to ${targetId}: ${error.message}`,
-      );
-
-      // If subscription is expired or invalid, clear it
-      if (error.statusCode === 410 || error.statusCode === 404) {
-        this.logger.warn(
-          `Push subscription for ${targetId} is no longer valid. Clearing token.`,
-        );
-        if (isUser) {
-          await this.userRepo.update(targetId, { pushToken: null });
-        } else {
-          await this.contactRepo.update(targetId, { pushToken: null });
-        }
-      }
-
-      return { success: false, error: error.message };
-    }
+    this.logger.debug(`Push job queued for ${isUser ? 'User' : 'Contact'} ${targetId}`);
+    return { queued: true };
   }
 
+  /**
+   * Fan-out push notifications to all staff in a branch.
+   *
+   * Uses a single 'fanout' job that resolves tokens and delivers in the worker,
+   * so the HTTP request doesn't block on N DB lookups + N HTTP calls.
+   */
   async sendToBranchStaff(
     branchId: string,
     title: string,
     body: string,
-    data: any = {},
-  ) {
-    const staff = await this.userRepo.find({
-      where: { branchId },
-      select: ['id', 'pushToken'],
-    });
-
-    const staffWithTokens = staff.filter((s) => !!s.pushToken);
-
-    if (staffWithTokens.length === 0) {
-      this.logger.debug(`No push tokens for staff in branch ${branchId}`);
-      return;
+    data: Record<string, any> = {},
+  ): Promise<{ queued: true } | { queued: false; reason: string }> {
+    if (!this.isConfigured) {
+      this.logger.debug('Push notifications disabled (VAPID not configured) — skipping fan-out');
+      return { queued: false, reason: 'vapid-not-configured' };
     }
 
-    this.logger.log(
-      `Sending push notification to ${staffWithTokens.length} staff in branch ${branchId}: ${title}`,
+    // Resolve the list of user IDs now (cheap indexed query), then let
+    // the worker handle the per-user token lookups and deliveries.
+    const staff = await this.userRepo.find({
+      where: { branchId },
+      select: ['id'],
+    });
+
+    if (staff.length === 0) {
+      this.logger.debug(`No staff found for branch ${branchId} — skipping fan-out`);
+      return { queued: false, reason: 'no-staff' };
+    }
+
+    const userIds = staff.map((s) => s.id);
+
+    await this.pushQueue.add(
+      'fanout',
+      { userIds, title, body, data } satisfies PushFanOutJobData,
+      {
+        attempts: 2, // Fan-outs are best-effort; 2 attempts is enough
+        backoff: { type: 'exponential', delay: 10_000 },
+        removeOnComplete: true,
+        removeOnFail: 200,
+      },
     );
 
-    const results = await Promise.all(
-      staffWithTokens.map((s) =>
-        this.sendNotification(s.id, title, body, data, true),
-      ),
+    this.logger.debug(
+      `Push fan-out job queued for branch ${branchId} (${userIds.length} staff)`,
     );
-
-    const successCount = results.filter((r) => r?.success).length;
-
-    return {
-      success: true,
-      count: successCount,
-      total: staffWithTokens.length,
-    };
+    return { queued: true };
   }
 }
