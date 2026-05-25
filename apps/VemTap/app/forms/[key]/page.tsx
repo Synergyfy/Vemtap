@@ -4,11 +4,13 @@ import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { usePublicBusinessForm, usePublicBusinessInfo, usePublicBranchInfo, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
+import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { CheckCircle2, Building2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PublicBusinessFormPage() {
     const params = useParams();
@@ -26,14 +28,7 @@ export default function PublicBusinessFormPage() {
     const [pendingAnswers, setPendingAnswers] = useState<Record<string, any> | null>(null);
     const [lastAnswers, setLastAnswers] = useState<Record<string, any> | null>(null);
     const [showSignup, setShowSignup] = useState(false);
-    const [signupName, setSignupName] = useState('');
-    const [signupEmail, setSignupEmail] = useState('');
-    const [signupPhone, setSignupPhone] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const redirectToLogin = useMemo(() => {
-        if (typeof window === 'undefined') return '/login';
-        return `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-    }, []);
+    const [isSigningUp, setIsSigningUp] = useState(false);
 
     // Resolve business name & logo: prefer fetched businessInfo, fallback to form data
     const resolvedBusinessName = businessInfo?.name || form?.businessName || '';
@@ -67,6 +62,60 @@ export default function PublicBusinessFormPage() {
                 return { fieldId, value };
             })
             .filter((entry): entry is { fieldId: string; value: string } => !!entry && !!entry.fieldId);
+    };
+
+    const onRegistrationComplete = async (data: StepFormData) => {
+        if (!pendingAnswers || !form) return;
+        setIsSigningUp(true);
+        try {
+            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ') || ' ';
+            const defaultPassword = '123456';
+            const branchQuery = form.branchId ? `?branchId=${form.branchId}` : '';
+
+            await api.post(`/visitors/signup${branchQuery}`, {
+                firstName,
+                lastName,
+                email: data.email || undefined,
+                phone: data.phone || undefined,
+            });
+
+            const identifier = data.email || data.phone || '';
+            const authResponse = await api.post('/auth/login', {
+                identifier,
+                password: defaultPassword,
+            });
+
+            if (authResponse?.access_token) {
+                useAuthStore.getState().login(authResponse.user, authResponse.access_token);
+            }
+
+            const payload = buildAnswerPayload(pendingAnswers);
+            if (payload.length === 0) {
+                toast.error('This form is missing field identifiers. Please contact the business.');
+                return;
+            }
+            await submitFormResponse.mutateAsync({ 
+                id: form.uniqueCode || form.id, 
+                payload: { answers: payload } 
+            });
+
+            if (data.email) {
+                await api.post('/auth/password-reset/request', { email: data.email });
+            }
+
+            setLastAnswers(pendingAnswers);
+            setShowSignup(false);
+            setSubmitted(true);
+            if (form.redirectUrl && typeof window !== 'undefined') {
+                window.location.assign(form.redirectUrl);
+            }
+        } catch (err: any) {
+            toast.error(err?.message || 'Signup failed');
+        } finally {
+            setIsSigningUp(false);
+        }
     };
 
     if (isLoading) {
@@ -198,7 +247,7 @@ export default function PublicBusinessFormPage() {
                         form={form}
                         hideHeader
                         onComplete={async (answers) => {
-                            if (!isCustomerAccount) {
+                            if (form.requiresAuth !== false && !isCustomerAccount) {
                                 setPendingAnswers(answers);
                                 setShowSignup(true);
                                 return;
@@ -235,130 +284,42 @@ export default function PublicBusinessFormPage() {
                 </p>
             </div>
 
-            {showSignup && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
-                        {resolvedBusinessLogo && (
-                            <div className="flex justify-center">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={resolvedBusinessLogo}
-                                    alt={resolvedBusinessName || 'Business Logo'}
-                                    className="size-14 rounded-full object-cover border border-gray-200"
-                                />
-                            </div>
-                        )}
-                        <h2 className="text-lg font-black text-text-main">Create Your Customer Account</h2>
-                        <p className="text-sm text-text-secondary">
-                            Enter your details to submit your answers and access your customer dashboard.
-                        </p>
-                        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700 font-bold">
-                            A temporary password will be set to <span className="font-black">123456</span>. You will receive a reset code by email to change it.
-                        </div>
-                        <div className="space-y-3">
-                            <input
-                                value={signupName}
-                                onChange={(e) => setSignupName(e.target.value)}
-                                placeholder="Full name"
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                            />
-                            <input
-                                value={signupEmail}
-                                onChange={(e) => setSignupEmail(e.target.value)}
-                                placeholder="Email"
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                            />
-                            <input
-                                value={signupPhone}
-                                onChange={(e) => setSignupPhone(e.target.value)}
-                                placeholder="Phone"
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                            />
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => { setShowSignup(false); setPendingAnswers(null); }}
-                                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-black text-text-secondary hover:bg-gray-50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                disabled={isSubmitting}
-                                onClick={async () => {
-                                    if (!pendingAnswers) return;
-                                    if (!signupName.trim()) {
-                                        toast.error('Name is required');
-                                        return;
-                                    }
-                                    if (!signupEmail.trim() && !signupPhone.trim()) {
-                                        toast.error('Email or phone is required');
-                                        return;
-                                    }
-                                    setIsSubmitting(true);
-                                    try {
-                                        const nameParts = signupName.trim().split(/\s+/);
-                                        const firstName = nameParts[0];
-                                        const lastName = nameParts.slice(1).join(' ') || ' ';
-                                        const defaultPassword = '123456';
-                                        const branchQuery = form.branchId ? `?branchId=${form.branchId}` : '';
-
-                                        await api.post(`/visitors/signup${branchQuery}`, {
-                                            firstName,
-                                            lastName,
-                                            email: signupEmail.trim() || undefined,
-                                            phone: signupPhone.trim() || undefined,
-                                        });
-
-                                        const identifier = signupEmail.trim() || signupPhone.trim();
-                                        const authResponse = await api.post('/auth/login', {
-                                            identifier,
-                                            password: defaultPassword,
-                                        });
-
-                                        if (authResponse?.access_token) {
-                                            useAuthStore.getState().login(authResponse.user, authResponse.access_token);
-                                        }
-
-                                        const payload = buildAnswerPayload(pendingAnswers);
-                                        if (payload.length === 0) {
-                                            toast.error('This form is missing field identifiers. Please contact the business.');
-                                            return;
-                                        }
-                                        await submitFormResponse.mutateAsync({ 
-                                            id: form.uniqueCode || form.id, 
-                                            payload: { answers: payload } 
-                                        });
-
-                                        if (signupEmail.trim()) {
-                                            await api.post('/auth/password-reset/request', { email: signupEmail.trim() });
-                                        }
-
-                                        setLastAnswers(pendingAnswers);
-                                        setShowSignup(false);
-                                        setSubmitted(true);
-                                        if (form.redirectUrl && typeof window !== 'undefined') {
-                                            window.location.assign(form.redirectUrl);
-                                        }
-                                    } catch (err: any) {
-                                        toast.error(err?.message || 'Signup failed');
-                                    } finally {
-                                        setIsSubmitting(false);
-                                    }
-                                }}
-                                className="flex-1 h-11 rounded-xl bg-primary text-white text-sm font-black disabled:opacity-60 hover:bg-primary/90 transition-colors"
-                            >
-                                {isSubmitting ? 'Submitting...' : 'Create Account & Submit'}
-                            </button>
-                        </div>
-                        <button
-                            onClick={() => router.push(redirectToLogin)}
-                            className="w-full text-xs font-bold text-primary hover:underline"
+            <AnimatePresence>
+                {showSignup && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => {
+                                setShowSignup(false);
+                                setPendingAnswers(null);
+                            }}
+                            className="absolute inset-0 bg-black/20 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-lg"
                         >
-                            Already have an account? Log in instead
-                        </button>
+                            <StepForm
+                                storeName={resolvedBusinessName || 'Business'}
+                                logoUrl={resolvedBusinessLogo}
+                                customWelcomeTitle="Create Your Customer Account"
+                                customWelcomeMessage="Enter your details to submit your answers and access your customer dashboard."
+                                submitLabel="Create Account & Submit"
+                                isSubmitting={isSigningUp}
+                                onBack={() => {
+                                    setShowSignup(false);
+                                    setPendingAnswers(null);
+                                }}
+                                onSubmit={onRegistrationComplete}
+                            />
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }

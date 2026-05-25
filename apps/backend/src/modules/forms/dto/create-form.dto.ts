@@ -68,6 +68,14 @@ export class CreateFormDto {
   showAfterLeadCapture?: boolean;
 
   @ApiPropertyOptional({
+    default: true,
+    description: 'Require customer authentication to submit',
+  })
+  @IsOptional()
+  @IsBoolean()
+  requiresAuth?: boolean;
+
+  @ApiPropertyOptional({
     description: 'Specific branch ID if mapped to one branch',
   })
   @IsOptional()
