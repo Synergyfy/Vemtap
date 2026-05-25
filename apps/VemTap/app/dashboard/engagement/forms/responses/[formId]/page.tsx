@@ -20,21 +20,28 @@ type ContactInfo = {
 };
 
 const resolveContact = (response: BusinessFormResponseItem): ContactInfo => {
-  const email =
-    response.customerEmail ||
-    response.respondent?.email ||
-    (typeof response.email === 'string' ? response.email : undefined);
-
-  const phone =
-    response.customerPhone ||
-    response.respondent?.phone ||
-    (typeof response.phone === 'string' ? response.phone : undefined);
+  const visitorName = response.visitor
+    ? `${response.visitor.firstName || ''} ${response.visitor.lastName || ''}`.trim()
+    : undefined;
 
   const name =
     response.customerName ||
     response.respondent?.name ||
     (typeof response.name === 'string' ? response.name : undefined) ||
+    visitorName ||
     'Anonymous';
+
+  const email =
+    response.customerEmail ||
+    response.respondent?.email ||
+    (typeof response.email === 'string' ? response.email : undefined) ||
+    response.visitor?.email;
+
+  const phone =
+    response.customerPhone ||
+    response.respondent?.phone ||
+    (typeof response.phone === 'string' ? response.phone : undefined) ||
+    response.visitor?.phone;
 
   return {
     email: typeof email === 'string' ? email : undefined,

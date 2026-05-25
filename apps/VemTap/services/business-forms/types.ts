@@ -25,6 +25,7 @@ export interface BusinessForm {
   isActive: boolean;
   isPublished: boolean;
   showAfterLeadCapture?: boolean;
+  requiresAuth?: boolean;
   responseCount?: number;
   businessId: string;
   branchId: string;
@@ -52,6 +53,7 @@ export interface CreateBusinessFormRequest {
   isActive: boolean;
   isPublished: boolean;
   showAfterLeadCapture?: boolean;
+  requiresAuth?: boolean;
   branchId: string;
   businessId?: string;
   businessName?: string;
@@ -113,6 +115,13 @@ export interface BusinessFormResponseItem {
   respondent?: {
     name?: string;
     email?: string;
+    phone?: string;
+  };
+  visitor?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
     phone?: string;
   };
   answers?: Record<string, unknown> | Array<{ fieldId?: string; question?: string; value?: unknown }>;
