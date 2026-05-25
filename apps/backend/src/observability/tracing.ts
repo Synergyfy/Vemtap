@@ -5,7 +5,7 @@ import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import {
   ConsoleSpanExporter,
   BatchSpanProcessor,
-  NoopSpanExporter,
+  NoopSpanProcessor,
 } from '@opentelemetry/sdk-trace-node';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -42,8 +42,9 @@ function buildSpanProcessor() {
     console.log(`[Tracing] OTLP endpoint detected: ${otlpEndpoint} — wire up OTLPTraceExporter to activate.`);
   }
 
-  // Production without a real backend: complete no-op — zero overhead
-  return new BatchSpanProcessor(new NoopSpanExporter());
+  // Production without a real backend: NoopSpanProcessor discards all spans
+  // with zero CPU and zero I/O cost.
+  return new NoopSpanProcessor();
 }
 
 const sdk = new NodeSDK({

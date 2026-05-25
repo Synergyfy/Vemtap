@@ -32,6 +32,7 @@ interface RequestLog {
     queryParams?: Record<string, any>;
     /** Truncated string preview (max 512 chars) — not a parsed object */
     requestBody?: string;
+    responseHeaders?: Record<string, string>;
     error?: {
         message: string;
         stack?: string;
@@ -1018,14 +1019,13 @@ function generateMockLog(): RequestLog {
             'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         },
         queryParams: pickEndpoint.path.includes('?') ? { filter: 'active' } : undefined,
-        requestBody: pickEndpoint.request,
+        requestBody: pickEndpoint.request ? JSON.stringify(pickEndpoint.request) : undefined,
         responseHeaders: {
             'content-type': 'application/json; charset=utf-8',
             'content-length': JSON.stringify(responseBody || {}).length.toString(),
             'x-powered-by': 'NestJS',
             'access-control-allow-origin': '*',
         },
-        responseBody,
         error
     };
 }
