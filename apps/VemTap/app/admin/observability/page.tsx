@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import {
     Activity, Play, Pause, Trash2, Search, ArrowRight, AlertTriangle,
@@ -27,11 +27,12 @@ interface RequestLog {
     userAgent?: string;
     userId?: string;
     userEmail?: string;
-    requestHeaders?: Record<string, any>;
+    /** Only safe headers: content-type, x-forwarded-for, origin */
+    requestHeaders?: Record<string, string>;
     queryParams?: Record<string, any>;
-    requestBody?: any;
-    responseHeaders?: Record<string, any>;
-    responseBody?: any;
+    /** Truncated string preview (max 512 chars) — not a parsed object */
+    requestBody?: string;
+    responseHeaders?: Record<string, string>;
     error?: {
         message: string;
         stack?: string;
@@ -65,9 +66,11 @@ export default function ObservabilityDashboard() {
     const [selectedStatus, setSelectedStatus] = useState('ALL');
     const [selectedSpeed, setSelectedSpeed] = useState('ALL');
     const [selectedLog, setSelectedLog] = useState<RequestLog | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'headers' | 'payload' | 'response' | 'error'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'headers' | 'payload' | 'error'>('overview');
     const [copied, setCopied] = useState(false);
     const eventSourceRef = useRef<EventSource | null>(null);
+    // Debounce timer ref for stats invalidation — avoids a refetch on every SSE event
+    const statsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Dynamic sandbox logs state for simulation mode
     const [sandboxLogs, setSandboxLogs] = useState<RequestLog[]>([]);
@@ -146,7 +149,12 @@ export default function ObservabilityDashboard() {
                     const updated = [newLog, ...prev];
                     return updated.slice(0, 150);
                 });
-                queryClient.invalidateQueries({ queryKey: ['admin-observability-stats'] });
+                // Debounce stats refetch — batch rapid SSE messages into a single query
+                // instead of firing one HTTP request per log event.
+                if (statsDebounceRef.current) clearTimeout(statsDebounceRef.current);
+                statsDebounceRef.current = setTimeout(() => {
+                    queryClient.invalidateQueries({ queryKey: ['admin-observability-stats'] });
+                }, 500);
             } catch (err) {
                 console.error('Failed to parse streamed log:', err);
             }
@@ -196,9 +204,9 @@ export default function ObservabilityDashboard() {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    // Filter Logs dynamically in UI
-    const filteredLogs = logs.filter((log) => {
-        // Search filter
+    // Filter Logs dynamically in UI — memoised so the filter only reruns when
+    // its inputs actually change, not on every unrelated render.
+    const filteredLogs = useMemo(() => logs.filter((log) => {
         if (search) {
             const query = search.toLowerCase();
             const matchesSearch =
@@ -209,38 +217,31 @@ export default function ObservabilityDashboard() {
                 (log.userId && log.userId.toLowerCase().includes(query));
             if (!matchesSearch) return false;
         }
-
-        // Method filter
-        if (selectedMethod !== 'ALL' && log.method !== selectedMethod) {
-            return false;
-        }
-
-        // Status filter
+        if (selectedMethod !== 'ALL' && log.method !== selectedMethod) return false;
         if (selectedStatus !== 'ALL') {
             const statusGroup = `${Math.floor(log.statusCode / 100)}xx`;
             if (statusGroup !== selectedStatus) return false;
         }
-
-        // Speed filter
         if (selectedSpeed !== 'ALL') {
             if (selectedSpeed === 'slow' && log.responseTime < 500) return false;
             if (selectedSpeed === 'critical' && log.responseTime < 1500) return false;
         }
-
         return true;
-    });
+    }), [logs, search, selectedMethod, selectedStatus, selectedSpeed]);
 
-    // Derive stats for visual preview
-    const computedStats = isSandbox ? generateSandboxStats(sandboxLogs) : (statsData || {
-        totalRequests: 0,
-        averageLatency: 0,
-        p95Latency: 0,
-        errorRate: 0,
-        slowRequestsCount: 0,
-        methodDistribution: {},
-        statusCodeDistribution: {},
-        recentVolumeChart: [],
-    });
+    // Memoised stats — avoid calling generateSandboxStats on every render
+    const computedStats = useMemo(() =>
+        isSandbox ? generateSandboxStats(sandboxLogs) : (statsData || {
+            totalRequests: 0,
+            averageLatency: 0,
+            p95Latency: 0,
+            errorRate: 0,
+            slowRequestsCount: 0,
+            methodDistribution: {},
+            statusCodeDistribution: {},
+            recentVolumeChart: [],
+        })
+    , [isSandbox, sandboxLogs, statsData]);
 
     // Layout configuration for cards
     const statCards = [
@@ -361,7 +362,7 @@ export default function ObservabilityDashboard() {
                 </div>
                 <div className="hidden sm:flex items-center gap-4 text-xs font-bold text-text-secondary">
                     <span className="flex items-center gap-1.5"><Server size={14} className="text-gray-400" /> API: operational</span>
-                    <span className="flex items-center gap-1.5"><Cpu size={14} className="text-gray-400" /> Buffer: {logs.length} / 500 max</span>
+                    <span className="flex items-center gap-1.5"><Cpu size={14} className="text-gray-400" /> Buffer: {logs.length} / 150 UI cap</span>
                 </div>
             </div>
 
@@ -569,13 +570,9 @@ export default function ObservabilityDashboard() {
                                         // Status code colors
                                         const sc = log.statusCode;
                                         let statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
-                                        if (sc >= 500) {
-                                            statusColor = 'bg-red-50 text-red-600 border-red-100';
-                                        } else if (sc >= 400) {
-                                            statusColor = 'bg-orange-50 text-orange-600 border-orange-100';
-                                        } else if (sc >= 300) {
-                                            statusColor = 'bg-blue-50 text-blue-600 border-blue-100';
-                                        }
+                                        if (sc >= 500) statusColor = 'bg-red-50 text-red-600 border-red-100';
+                                        else if (sc >= 400) statusColor = 'bg-orange-50 text-orange-600 border-orange-100';
+                                        else if (sc >= 300) statusColor = 'bg-blue-50 text-blue-600 border-blue-100';
 
                                         // Method badge layout
                                         let methodColor = 'bg-gray-100 text-gray-700';
@@ -585,12 +582,14 @@ export default function ObservabilityDashboard() {
                                         else if (log.method === 'DELETE') methodColor = 'bg-red-100 text-red-800';
                                         else if (log.method === 'PATCH') methodColor = 'bg-purple-100 text-purple-800';
 
-                                        const formattedTime = new Date(log.timestamp).toLocaleTimeString([], {
+                                        // Parse timestamp once — avoids constructing Date twice per row
+                                        const ts = new Date(log.timestamp);
+                                        const formattedTime = ts.toLocaleTimeString([], {
                                             hour: '2-digit',
                                             minute: '2-digit',
                                             second: '2-digit',
                                             hour12: false
-                                        }) + '.' + new Date(log.timestamp).getMilliseconds().toString().padStart(3, '0');
+                                        }) + '.' + ts.getMilliseconds().toString().padStart(3, '0');
 
                                         return (
                                             <motion.tr
@@ -720,8 +719,10 @@ export default function ObservabilityDashboard() {
                                     { id: 'overview', label: 'Telemetry Overview', icon: Info },
                                     { id: 'headers', label: 'Headers & Query', icon: Layers },
                                     { id: 'payload', label: 'Request Payload', icon: ArrowRight },
-                                    { id: 'response', label: 'Response Body', icon: CheckCircle },
                                     ...(selectedLog.error ? [{ id: 'error', label: 'Error Stack', icon: AlertOctagon }] : []),
+                                    // 'Response Body' tab removed: response payloads are no longer stored
+                                    // in the in-memory store to reduce RAM usage. Full responses are
+                                    // available in structured stdout logs (pino).
                                 ].map((tab) => {
                                     const Icon = tab.icon;
                                     return (
@@ -876,47 +877,24 @@ export default function ObservabilityDashboard() {
                                     </div>
                                 )}
 
-                                {/* Tab 3: Request Payload */}
+                                {/* Tab 3: Request Payload — now a string preview (max 512 chars) */}
                                 {activeTab === 'payload' && (
                                     <div className="bg-gray-900 text-gray-100 rounded-2xl p-5 border border-white/5 shadow-inner relative min-h-48 flex flex-col">
                                         <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40 font-mono">REQUEST JSON PAYLOAD</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40 font-mono">REQUEST BODY PREVIEW</span>
                                             <button
-                                                onClick={() => handleCopy(JSON.stringify(selectedLog.requestBody, null, 2))}
+                                                onClick={() => handleCopy(selectedLog.requestBody || '')}
                                                 className="text-white/40 hover:text-white flex items-center gap-1.5 text-[10px] font-bold font-mono transition-colors"
                                             >
                                                 {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                                                Copy JSON
+                                                Copy
                                             </button>
                                         </div>
                                         <pre className="font-mono text-xs leading-relaxed select-all overflow-auto flex-1 max-h-96 pr-2 whitespace-pre-wrap word-break-all text-emerald-400">
-                                            {selectedLog.requestBody && Object.keys(selectedLog.requestBody).length > 0 ? (
-                                                JSON.stringify(selectedLog.requestBody, null, 2)
+                                            {selectedLog.requestBody ? (
+                                                selectedLog.requestBody
                                             ) : (
                                                 <span className="text-white/30 italic">{"// No Body Content / Empty Payload"}</span>
-                                            )}
-                                        </pre>
-                                    </div>
-                                )}
-
-                                {/* Tab 4: Response Payload */}
-                                {activeTab === 'response' && (
-                                    <div className="bg-gray-900 text-gray-100 rounded-2xl p-5 border border-white/5 shadow-inner relative min-h-48 flex flex-col">
-                                        <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40 font-mono">RESPONSE JSON BODY</span>
-                                            <button
-                                                onClick={() => handleCopy(JSON.stringify(selectedLog.responseBody, null, 2))}
-                                                className="text-white/40 hover:text-white flex items-center gap-1.5 text-[10px] font-bold font-mono transition-colors"
-                                            >
-                                                {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                                                Copy JSON
-                                            </button>
-                                        </div>
-                                        <pre className="font-mono text-xs leading-relaxed select-all overflow-auto flex-1 max-h-96 pr-2 whitespace-pre-wrap word-break-all text-sky-400">
-                                            {selectedLog.responseBody ? (
-                                                JSON.stringify(selectedLog.responseBody, null, 2)
-                                            ) : (
-                                                <span className="text-white/30 italic">{"// Empty Response Body / Undefined"}</span>
                                             )}
                                         </pre>
                                     </div>
@@ -1041,14 +1019,13 @@ function generateMockLog(): RequestLog {
             'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         },
         queryParams: pickEndpoint.path.includes('?') ? { filter: 'active' } : undefined,
-        requestBody: pickEndpoint.request,
+        requestBody: pickEndpoint.request ? JSON.stringify(pickEndpoint.request) : undefined,
         responseHeaders: {
             'content-type': 'application/json; charset=utf-8',
             'content-length': JSON.stringify(responseBody || {}).length.toString(),
             'x-powered-by': 'NestJS',
             'access-control-allow-origin': '*',
         },
-        responseBody,
         error
     };
 }
