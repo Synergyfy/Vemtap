@@ -43,6 +43,7 @@ import { AffiliatesModule } from './modules/affiliates/affiliates.module';
 import { TrainingModule } from './modules/training/training.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
@@ -148,6 +149,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     TrainingModule,
     QrThriveModule,
     BannersModule,
+    MarketingAssetsModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

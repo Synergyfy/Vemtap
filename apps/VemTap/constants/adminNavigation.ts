@@ -1,6 +1,6 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone
+    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -138,6 +138,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/nfc-grants',
         permission: 'admin:all',
         keywords: ['quota', 'credits', 'allocations', 'permissions', 'grants', 'nfc']
+    },
+    {
+        id: 'marketing-assets',
+        label: 'Marketing Assets',
+        icon: Palette,
+        href: '/admin/marketing-assets',
+        permission: 'admin:all',
+        keywords: ['marketing', 'flyers', 'posters', 'qr', 'print', 'branding', 'graphics']
     },
     {
         id: 'engagement',

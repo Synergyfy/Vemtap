@@ -126,7 +126,8 @@ export class AuditInterceptor implements NestInterceptor {
       url.includes('/settings') ||
       url.includes('/forms') ||
       url.includes('/users') ||
-      url.includes('/devices')
+      url.includes('/devices') ||
+      url.includes('/marketing-')
     )
       return BackendModule.SETTINGS;
     if (url.includes('/branches')) return BackendModule.BRANCHES;
