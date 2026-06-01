@@ -188,6 +188,41 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             return !item.roles || item.roles.includes('owner');
         }
 
+        // Hide Marketing Materials for excluded categories (PRD §8.0)
+        if (item.id === 'marketing-assets' && myBusiness) {
+            const bizCat = typeof (myBusiness as any).category === 'object'
+                ? (myBusiness as any).category?.name
+                : myBusiness.category;
+            
+            if (bizCat) {
+                const excludedCategories = [
+                    'hospital',
+                    'clinic',
+                    'dental clinic',
+                    'eye clinic',
+                    'medical laboratory',
+                    'pharmacy',
+                    'airport',
+                    'government',
+                    'ministry',
+                    'agency',
+                    'educational',
+                    'school',
+                    'university'
+                ];
+                const catLower = bizCat.toLowerCase();
+                const isExcluded = excludedCategories.some(ex => {
+                    if (ex === 'hospital') {
+                        return catLower.includes('hospital') && !catLower.includes('hospitality');
+                    }
+                    return catLower.includes(ex);
+                });
+                if (isExcluded) {
+                    return false;
+                }
+            }
+        }
+
         return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
     }).map(item => {
         return item;
