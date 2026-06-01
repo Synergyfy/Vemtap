@@ -190,8 +190,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
         // Hide Marketing Materials for excluded categories (PRD §8.0)
         if (item.id === 'marketing-assets' && myBusiness) {
-            const bizCat = typeof myBusiness.category === 'object'
-                ? myBusiness.category?.name
+            const bizCat = typeof (myBusiness as any).category === 'object'
+                ? (myBusiness as any).category?.name
                 : myBusiness.category;
             
             if (bizCat) {

@@ -35,8 +35,8 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
   }
 
   if (myBusiness) {
-    const bizCat = typeof myBusiness.category === 'object'
-      ? myBusiness.category?.name
+    const bizCat = typeof (myBusiness as any).category === 'object'
+      ? (myBusiness as any).category?.name
       : myBusiness.category;
     
     if (bizCat) {
@@ -85,7 +85,7 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="space-y-6 md:space-y-8 pb-10 px-10 pt-5 ">
+    <div className="space-y-6 md:space-y-8 pb-10 px-4 sm:px-6 md:px-10 pt-5">
       {/* Header and Descriptive Text */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -100,7 +100,11 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
       </div>
 
       {/* Tabs Navigation */}
-      <div className="border-b border-gray-100 pb-px">
+      <div className="relative border-b border-gray-100 pb-px">
+        {/* Left & Right gradient fades for mobile scroll indicator */}
+        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-50/50 to-transparent pointer-events-none md:hidden" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50/50 to-transparent pointer-events-none md:hidden" />
+        
         <div className="flex space-x-2 overflow-x-auto no-scrollbar scroll-smooth">
           {TABS.map((tab) => {
             const isActive = pathname === tab.href || (tab.href !== '/dashboard/marketing-assets' && pathname?.startsWith(tab.href));

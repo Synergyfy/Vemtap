@@ -5,11 +5,11 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 @Entity('marketing_audit_logs')
 export class MarketingAuditLog extends AbstractBaseEntity {
   @ApiProperty({ example: 'uuid' })
-  @Column()
+  @Column({ type: 'uuid' })
   businessId: string;
 
   @ApiProperty({ example: 'uuid' })
-  @Column()
+  @Column({ type: 'uuid' })
   userId: string;
 
   @ApiProperty({ example: 'ASSET_CREATED', description: 'Action performed' })
@@ -21,7 +21,7 @@ export class MarketingAuditLog extends AbstractBaseEntity {
   entityType: string;
 
   @ApiProperty({ example: 'uuid' })
-  @Column()
+  @Column({ type: 'uuid' })
   entityId: string;
 
   @ApiProperty({ description: 'Additional context as JSON', nullable: true })

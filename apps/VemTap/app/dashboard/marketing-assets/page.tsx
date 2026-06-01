@@ -67,17 +67,16 @@ export default function MarketingAssetsOverviewPage() {
         </Link>
       </motion.div>
 
-      {/* Business Profile Summary Card (PRD §11) */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-center md:items-center justify-between gap-6"
+        className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
       >
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="size-16 rounded-2xl bg-slate-50 border border-gray-100 flex items-center justify-center p-1.5 overflow-hidden shrink-0">
             {business?.logoUrl || brandProfile?.logoUrl ? (
-              <img src={business?.logoUrl || brandProfile?.logoUrl} alt="Business logo" className="size-full object-contain rounded-xl" />
+              <img src={business?.logoUrl || brandProfile?.logoUrl || ''} alt="Business logo" className="size-full object-contain rounded-xl" />
             ) : (
               <div className="size-full rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center text-xl">
                 {business?.name?.charAt(0) || 'B'}
@@ -88,11 +87,11 @@ export default function MarketingAssetsOverviewPage() {
             <h3 className="font-extrabold text-gray-900 text-base md:text-lg flex items-center gap-2 flex-wrap">
               {business?.name || 'My Business'}
               <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-extrabold tracking-wider uppercase">
-                {business?.category?.name || business?.category || 'General'}
+                {(business as any)?.category?.name || business?.category || 'General'}
               </span>
             </h3>
             <p className="text-xs text-gray-500 font-semibold leading-relaxed max-w-md">
-              {brandProfile?.tagline || business?.tagline || 'Self-service physical marketing assets & scan analytics dashboard.'}
+              {brandProfile?.tagline || (business as any)?.tagline || 'Self-service physical marketing assets & scan analytics dashboard.'}
             </p>
           </div>
         </div>

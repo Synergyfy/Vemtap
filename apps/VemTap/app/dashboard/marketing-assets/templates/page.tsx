@@ -24,7 +24,7 @@ export default function TemplateLibraryPage() {
   // Category Auto-detection (PRD §7)
   React.useEffect(() => {
     if (business?.category && categories && categories.length > 0) {
-      const bizCatName = typeof business.category === 'object' ? business.category.name : business.category;
+      const bizCatName = typeof (business as any).category === 'object' ? (business as any).category.name : business.category;
       if (bizCatName) {
         const match = categories.find(
           (cat) =>
@@ -116,7 +116,7 @@ export default function TemplateLibraryPage() {
       </motion.div>
 
       {/* Search and Filters Bar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
         <div className="relative w-full md:w-80">
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input

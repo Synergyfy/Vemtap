@@ -97,12 +97,37 @@ export default function DesignWorkspacePage() {
   const [assetName, setAssetName] = useState('New Marketing Asset');
   const [activeControlTab, setActiveControlTab] = useState<'style' | 'content' | 'ai'>('style');
   const [activePreviewTab, setActivePreviewTab] = useState<'canvas' | 'mockup'>('canvas');
+  const [mobileViewTab, setMobileViewTab] = useState<'editor' | 'preview'>('editor');
   
-  // Custom design variable states
   const [bgColor, setBgColor] = useState('#0F172A');
   const [bgImage, setBgImage] = useState('');
   const [accentColor, setAccentColor] = useState('#2563EB');
   const [borderColor, setBorderColor] = useState('#1E293B');
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be under 5MB');
+      return;
+    }
+
+    const toastId = toast.loading('Uploading backdrop image to Cloudinary...');
+    setIsUploading(true);
+    try {
+      const { uploadToCloudinary } = await import('@/lib/cloudinary');
+      const uploadedUrl = await uploadToCloudinary(file);
+      setBgImage(uploadedUrl);
+      toast.success('Backdrop uploaded successfully!', { id: toastId });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload image', { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Dynamic canvas elements array!
   const [elements, setElements] = useState<any[]>([]);
@@ -110,6 +135,7 @@ export default function DesignWorkspacePage() {
   const [qrUrl, setQrUrl] = useState('https://vemtap.com/r/table-stand');
   const [qrFgColor, setQrFgColor] = useState('#FFFFFF');
   const [qrBgColor, setQrBgColor] = useState('#0F172A');
+  const [showLogoInQr, setShowLogoInQr] = useState(true);
 
   // AI assistant states
   const [selectedPromptId, setSelectedPromptId] = useState('');
@@ -319,6 +345,7 @@ export default function DesignWorkspacePage() {
       setQrUrl(asset.qrCodeContent || computedQrUrl);
       setQrFgColor(asset.qrCodeConfig?.color || '#FFFFFF');
       setQrBgColor(asset.qrCodeConfig?.backgroundColor || '#0F172A');
+      setShowLogoInQr(asset.qrCodeConfig?.showLogo !== false);
       hasInitialized.current = true;
     } else if (!assetId && template) {
       setAssetName(`My ${template.name}`);
@@ -374,7 +401,7 @@ export default function DesignWorkspacePage() {
   // Safeguard against loading templates outside business category (PRD §7.0)
   useEffect(() => {
     if (business && template) {
-      const bizCatName = typeof business.category === 'object' ? business.category.name : business.category;
+      const bizCatName = typeof (business as any).category === 'object' ? (business as any).category.name : business.category;
       if (bizCatName && template.category) {
         const catMatch = bizCatName.toLowerCase().includes(template.category.toLowerCase()) || 
                          template.category.toLowerCase().includes(bizCatName.toLowerCase()) ||
@@ -417,7 +444,8 @@ export default function DesignWorkspacePage() {
         },
         qrCodeConfig: {
           color: qrFgColor,
-          backgroundColor: qrBgColor
+          backgroundColor: qrBgColor,
+          showLogo: showLogoInQr
         }
       };
 
@@ -444,7 +472,7 @@ export default function DesignWorkspacePage() {
         businessName: brandProfile?.name || 'our venue',
         businessType: promptObj?.category || 'restaurant',
         tone: aiTone,
-        subject: title
+        subject: elements.find(el => el.id === 'headline-text')?.text || ''
       });
       setAiResult(res.text);
       toast.success('Tagline generated!');
@@ -467,11 +495,11 @@ export default function DesignWorkspacePage() {
       }
 
       const canvas = await html2canvas(element, {
-        scale: 3, // Premium quality scaling
+        scale: 3,
         useCORS: true,
         allowTaint: true,
         backgroundColor: isTransparentPng ? null : bgColor
-      });
+      } as any);
 
       if (isTransparentPng) {
         element.style.backgroundColor = originalBg;
@@ -612,11 +640,35 @@ export default function DesignWorkspacePage() {
         </div>
       </div>
 
+      {/* Mobile Studio Tabs View Selector */}
+      <div className="grid grid-cols-2 gap-1 bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm lg:hidden">
+        <button
+          onClick={() => setMobileViewTab('editor')}
+          className={`py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
+            mobileViewTab === 'editor'
+              ? 'bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]'
+              : 'text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          🎨 Customize Layout
+        </button>
+        <button
+          onClick={() => setMobileViewTab('preview')}
+          className={`py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
+            mobileViewTab === 'preview'
+              ? 'bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]'
+              : 'text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          👁️ Preview & Mockups
+        </button>
+      </div>
+
       {/* Main Studio Area */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Column: Toolbox Controls (4 cols) */}
-        <div className="lg:col-span-5 bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-sm space-y-6 flex flex-col justify-between">
+        <div className={`lg:col-span-5 bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-sm space-y-6 flex-col justify-between ${mobileViewTab === 'editor' ? 'flex' : 'hidden lg:flex'}`}>
           <div className="space-y-6">
             {/* Control Panel Tabs */}
             <div className="grid grid-cols-3 gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
@@ -628,8 +680,9 @@ export default function DesignWorkspacePage() {
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Palette size={14} />
-                Style Override
+                <Palette size={14} className="shrink-0" />
+                <span className="hidden sm:inline">Style Override</span>
+                <span className="sm:hidden">Style</span>
               </button>
               <button
                 onClick={() => setActiveControlTab('content')}
@@ -639,8 +692,9 @@ export default function DesignWorkspacePage() {
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Type size={14} />
-                Typography
+                <Type size={14} className="shrink-0" />
+                <span className="hidden sm:inline">Typography</span>
+                <span className="sm:hidden">Text</span>
               </button>
               <button
                 onClick={() => setActiveControlTab('ai')}
@@ -650,8 +704,9 @@ export default function DesignWorkspacePage() {
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Sparkles size={14} />
-                AI Copywriter
+                <Sparkles size={14} className="shrink-0" />
+                <span className="hidden sm:inline">AI Copywriter</span>
+                <span className="sm:hidden">AI Helper</span>
               </button>
             </div>
 
@@ -702,19 +757,60 @@ export default function DesignWorkspacePage() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 block">Graphic Background Design (URL)</label>
-                    <input 
-                      type="text" 
-                      value={bgImage} 
-                      onChange={(e) => setBgImage(e.target.value)}
-                      placeholder="e.g. https://images.unsplash.com/..."
-                      className="w-full px-4 py-2 text-xs border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white text-gray-700 font-mono text-[11px]"
-                    />
-                    <span className="text-[10px] text-gray-400 font-medium block">
-                      Tweak the template background design URL if you want a custom branding background.
-                    </span>
-                  </div>
+                   <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 block">Graphic Background Design</label>
+                      
+                      {/* PC Image Selector / Uploader */}
+                      <div className="relative group cursor-pointer border-2 border-dashed border-gray-200 hover:border-primary/50 bg-gray-50 hover:bg-primary/5 rounded-2xl p-4 text-center transition-all duration-200">
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                        />
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          {isUploading ? (
+                            <>
+                              <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              <span className="text-xs font-extrabold text-primary animate-pulse mt-1">Uploading backdrop image...</span>
+                            </>
+                          ) : bgImage ? (
+                            <>
+                              <span className="text-[20px]">🖼️</span>
+                              <span className="text-xs font-extrabold text-green-600">Backdrop Image Loaded</span>
+                              <span className="text-[10px] text-gray-400 truncate max-w-xs block font-medium">{bgImage}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[20px] transition-transform group-hover:scale-110 duration-200">📁</span>
+                              <span className="text-xs font-extrabold text-gray-700">Select Image from PC</span>
+                              <span className="text-[10px] text-gray-400 font-medium">Supports PNG, JPG (Max 5MB)</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="flex items-center justify-center gap-2 py-1">
+                        <div className="h-[1px] bg-gray-100 flex-1" />
+                        <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider">Or Paste Image URL</span>
+                        <div className="h-[1px] bg-gray-100 flex-1" />
+                      </div>
+
+                      {/* URL input */}
+                      <input 
+                        type="text" 
+                        value={bgImage} 
+                        onChange={(e) => setBgImage(e.target.value)}
+                        placeholder="Paste image URL here..."
+                        className="w-full px-4 py-2.5 text-xs border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white text-gray-700 font-mono text-[11px]"
+                      />
+                      
+                      <span className="text-[10px] text-gray-400 font-medium block">
+                        Tweak the template background design URL if you want a custom branding background.
+                      </span>
+                    </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -784,6 +880,27 @@ export default function DesignWorkspacePage() {
                       </div>
                     </div>
                   </div>
+
+                  {brandProfile?.logoUrl && (
+                    <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+                      <label className="text-xs font-bold text-gray-500">Logo in QR Code</label>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={showLogoInQr}
+                        onClick={() => setShowLogoInQr(!showLogoInQr)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                          showLogoInQr ? 'bg-primary' : 'bg-gray-200'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block size-3.5 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                            showLogoInQr ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -1027,7 +1144,7 @@ export default function DesignWorkspacePage() {
         </div>
 
         {/* Right Column: High Fidelity Preview Studio & Mockups perspective mapping (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col gap-6">
+        <div className={`lg:col-span-7 flex-col gap-6 ${mobileViewTab === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Preview Tab Trigger */}
           <div className="flex items-center justify-between bg-white border border-gray-100 p-2.5 rounded-2xl shadow-sm">
@@ -1151,12 +1268,21 @@ export default function DesignWorkspacePage() {
                           }}
                           className="rounded-[16px] shadow-lg flex items-center justify-center border border-white/10"
                         >
-                          <QRCodeSVG 
-                            value={qrUrl} 
-                            size={el.size || 100} 
-                            fgColor={qrFgColor} 
-                            bgColor={qrBgColor}
-                          />
+                          <div className="relative inline-flex">
+                            <QRCodeSVG 
+                              value={qrUrl} 
+                              size={el.size || 100} 
+                              fgColor={qrFgColor} 
+                              bgColor={qrBgColor}
+                            />
+                            {showLogoInQr && brandProfile?.logoUrl && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="bg-white rounded-full p-0.5 shadow-md" style={{ width: '26%', height: '26%' }}>
+                                  <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     }
@@ -1273,12 +1399,21 @@ export default function DesignWorkspacePage() {
                                   }}
                                   className="rounded shadow flex items-center justify-center"
                                 >
-                                  <QRCodeSVG 
-                                    value={qrUrl} 
-                                    size={(el.size || 100) * 0.3} // scale down QR size
-                                    fgColor={qrFgColor} 
-                                    bgColor={qrBgColor}
-                                  />
+                                  <div className="relative inline-flex">
+                                    <QRCodeSVG 
+                                      value={qrUrl} 
+                                      size={(el.size || 100) * 0.3}
+                                      fgColor={qrFgColor} 
+                                      bgColor={qrBgColor}
+                                    />
+                                    {showLogoInQr && brandProfile?.logoUrl && (
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="bg-white rounded-full p-0.5 shadow" style={{ width: '26%', height: '26%' }}>
+                                          <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             }
@@ -1403,7 +1538,16 @@ export default function DesignWorkspacePage() {
                       return (
                         <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, backgroundColor: qrBgColor || '#FFFFFF', padding: '4px', zIndex: 20 }}
                           className="rounded-lg shadow flex items-center justify-center">
-                          <QRCodeSVG value={qrUrl} size={(el.size || 60) * 0.4} fgColor={qrFgColor} bgColor={qrBgColor} />
+                          <div className="relative inline-flex">
+                            <QRCodeSVG value={qrUrl} size={(el.size || 60) * 0.4} fgColor={qrFgColor} bgColor={qrBgColor} />
+                            {showLogoInQr && brandProfile?.logoUrl && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="bg-white rounded-full p-0.5 shadow" style={{ width: '26%', height: '26%' }}>
+                                  <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     }

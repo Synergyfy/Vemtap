@@ -37,6 +37,7 @@ export default function AdminTemplateBuilderPage() {
 
   // Builder tabs
   const [activeTab, setActiveTab] = useState<'visual' | 'json' | 'preview'>('visual');
+  const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
 
   // Configuration states
   const [name, setName] = useState('New System Template');
@@ -48,11 +49,35 @@ export default function AdminTemplateBuilderPage() {
   const [isActive, setIsActive] = useState(true);
   const [thumbnailUrl, setThumbnailUrl] = useState('');
 
-  // Design config variables (Theme colors)
   const [bgColor, setBgColor] = useState('#0F172A');
   const [bgImage, setBgImage] = useState('');
   const [accentColor, setAccentColor] = useState('#2563EB');
   const [borderColor, setBorderColor] = useState('#1E293B');
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be under 5MB');
+      return;
+    }
+
+    const toastId = toast.loading('Uploading backdrop image to Cloudinary...');
+    setIsUploading(true);
+    try {
+      const { uploadToCloudinary } = await import('@/lib/cloudinary');
+      const uploadedUrl = await uploadToCloudinary(file);
+      setBgImage(uploadedUrl);
+      toast.success('Backdrop uploaded successfully!', { id: toastId });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload image', { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Dynamic canvas elements array!
   const [elements, setElements] = useState<any[]>([]);
@@ -345,6 +370,121 @@ export default function AdminTemplateBuilderPage() {
     ));
   };
 
+  // Custom interactive corner-resize handler
+  const handleResizeStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent) => {
+    startEvent.stopPropagation();
+    if (!canvasRef.current) return;
+
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const isTouchEvent = 'touches' in startEvent;
+    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
+    const startY = isTouchEvent ? startEvent.touches[0].clientY : startEvent.clientY;
+
+    const initialWidth = el.width || 30;
+    const initialHeight = el.height || 8;
+    const initialSize = el.size || 110;
+    const initialFontSize = el.fontSize || 14;
+
+    const handleResizeMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!canvasRef.current) return;
+      const isTouchMove = 'touches' in moveEvent;
+      
+      const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = isTouchMove ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
+
+      if (el.type === 'logo') {
+        const deltaWidthPct = (deltaX / canvasRect.width) * 100;
+        const deltaHeightPct = (deltaY / canvasRect.height) * 100;
+        const newWidth = Math.max(10, Math.min(100, Math.round(initialWidth + deltaWidthPct)));
+        const newHeight = Math.max(2, Math.min(50, Math.round(initialHeight + deltaHeightPct)));
+
+        setElements(prev => prev.map(item => 
+          item.id === el.id ? { ...item, width: newWidth, height: newHeight } : item
+        ));
+      } else if (el.type === 'qr_code') {
+        // QR Code is square, resize using deltaX
+        const newSize = Math.max(40, Math.min(240, Math.round(initialSize + deltaX)));
+        setElements(prev => prev.map(item => 
+          item.id === el.id ? { ...item, size: newSize } : item
+        ));
+      } else if (el.type === 'text') {
+        // Smoothly scale font size based on X delta / 3 (highly responsive and precise)
+        const newFontSize = Math.max(6, Math.min(72, Math.round(initialFontSize + deltaX / 3)));
+        setElements(prev => prev.map(item => 
+          item.id === el.id ? { ...item, fontSize: newFontSize } : item
+        ));
+      }
+    };
+
+    const handleResizeEnd = () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+      document.removeEventListener('touchmove', handleResizeMove);
+      document.removeEventListener('touchend', handleResizeEnd);
+    };
+
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+    document.addEventListener('touchmove', handleResizeMove, { passive: false });
+    document.addEventListener('touchend', handleResizeEnd);
+  };
+
+  // Custom interactive drag positioning handler
+  const handleCustomDragStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent) => {
+    startEvent.stopPropagation();
+    if (!canvasRef.current) return;
+
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const isTouchEvent = 'touches' in startEvent;
+    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
+    const startY = isTouchEvent ? startEvent.touches[0].clientY : startEvent.clientY;
+
+    const initialX = el.x;
+    const initialY = el.y;
+
+    const handleCustomDragMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!canvasRef.current) return;
+      const isTouchMove = 'touches' in moveEvent;
+      
+      // Prevent browser default behavior like scrolling during drag
+      if (moveEvent.cancelable) {
+        moveEvent.preventDefault();
+      }
+
+      const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = isTouchMove ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
+
+      const deltaXPct = (deltaX / canvasRect.width) * 100;
+      const deltaYPct = (deltaY / canvasRect.height) * 100;
+
+      // Bound coordinates smoothly between 0% and 95%
+      const newX = Math.max(0, Math.min(95, Math.round(initialX + deltaXPct)));
+      const newY = Math.max(0, Math.min(95, Math.round(initialY + deltaYPct)));
+
+      setElements(prev => prev.map(item => 
+        item.id === el.id ? { ...item, x: newX, y: newY } : item
+      ));
+    };
+
+    const handleCustomDragEnd = () => {
+      document.removeEventListener('mousemove', handleCustomDragMove);
+      document.removeEventListener('mouseup', handleCustomDragEnd);
+      document.removeEventListener('touchmove', handleCustomDragMove);
+      document.removeEventListener('touchend', handleCustomDragEnd);
+    };
+
+    document.addEventListener('mousemove', handleCustomDragMove);
+    document.addEventListener('mouseup', handleCustomDragEnd);
+    document.addEventListener('touchmove', handleCustomDragMove, { passive: false });
+    document.addEventListener('touchend', handleCustomDragEnd);
+  };
+
   const handleAddTextElement = (presetText: string, defaultSize: number, weight: string) => {
     const id = `text-${Date.now()}`;
     const newEl = {
@@ -433,10 +573,34 @@ export default function AdminTemplateBuilderPage() {
         </div>
       </div>
 
+      {/* Mobile Builder Tabs View Selector */}
+      <div className="grid grid-cols-2 gap-1 bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm lg:hidden">
+        <button
+          onClick={() => setMobileTab('editor')}
+          className={`py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
+            mobileTab === 'editor'
+              ? 'bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]'
+              : 'text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          🎨 Custom Settings
+        </button>
+        <button
+          onClick={() => setMobileTab('preview')}
+          className={`py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
+            mobileTab === 'preview'
+              ? 'bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]'
+              : 'text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          👁️ Design Canvas Preview
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Side: Builder controls panels (7 cols) */}
-        <div className="lg:col-span-7 bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col justify-between min-h-[600px]">
+        <div className={`lg:col-span-7 bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-sm flex-col justify-between min-h-[600px] ${mobileTab === 'editor' ? 'flex' : 'hidden lg:flex'}`}>
           <div className="space-y-6">
             
             {/* Visual Builder | JSON Raw String | Previews Tab */}
@@ -449,8 +613,9 @@ export default function AdminTemplateBuilderPage() {
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Settings size={14} />
-                Visual Designer
+                <Settings size={14} className="shrink-0" />
+                <span className="hidden sm:inline">Visual Designer</span>
+                <span className="sm:hidden">Visual</span>
               </button>
               <button
                 onClick={() => setActiveTab('json')}
@@ -460,8 +625,9 @@ export default function AdminTemplateBuilderPage() {
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Code size={14} />
-                Raw JSON Schema
+                <Code size={14} className="shrink-0" />
+                <span className="hidden sm:inline">Raw JSON Schema</span>
+                <span className="sm:hidden">JSON</span>
               </button>
               <button
                 onClick={() => setActiveTab('preview')}
@@ -471,8 +637,9 @@ export default function AdminTemplateBuilderPage() {
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Eye size={14} />
-                Live Preview
+                <Eye size={14} className="shrink-0" />
+                <span className="hidden sm:inline">Live Preview</span>
+                <span className="sm:hidden">Preview</span>
               </button>
             </div>
 
@@ -535,17 +702,59 @@ export default function AdminTemplateBuilderPage() {
                   {/* Backdrop graphic inputs */}
                   <div className="border-t border-gray-50 pt-4 space-y-4">
                     <h4 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Canvas Backdrop & Colors</h4>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">Graphic Background Image Link (URL)</label>
+                    
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 block">Graphic Background Design</label>
+                      
+                      {/* PC Image Selector / Uploader */}
+                      <div className="relative group cursor-pointer border-2 border-dashed border-gray-200 hover:border-primary/50 bg-gray-50 hover:bg-primary/5 rounded-2xl p-4 text-center transition-all duration-200">
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                        />
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          {isUploading ? (
+                            <>
+                              <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              <span className="text-xs font-extrabold text-primary animate-pulse mt-1">Uploading backdrop image...</span>
+                            </>
+                          ) : bgImage ? (
+                            <>
+                              <span className="text-[20px]">🖼️</span>
+                              <span className="text-xs font-extrabold text-green-600">Backdrop Image Loaded</span>
+                              <span className="text-[10px] text-gray-400 truncate max-w-xs block font-medium">{bgImage}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[20px] transition-transform group-hover:scale-110 duration-200">📁</span>
+                              <span className="text-xs font-extrabold text-gray-700">Select Image from PC</span>
+                              <span className="text-[10px] text-gray-400 font-medium">Supports PNG, JPG (Max 5MB)</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="flex items-center justify-center gap-2 py-1">
+                        <div className="h-[1px] bg-gray-100 flex-1" />
+                        <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider">Or Paste Image URL</span>
+                        <div className="h-[1px] bg-gray-100 flex-1" />
+                      </div>
+
+                      {/* URL input */}
                       <input 
                         type="text" 
                         value={bgImage} 
                         onChange={(e) => setBgImage(e.target.value)}
-                        placeholder="e.g. https://images.unsplash.com/photo-1543007630-9710e4a00a20"
-                        className="w-full px-4 py-2 text-xs border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white text-gray-700 font-mono"
+                        placeholder="Paste image URL here..."
+                        className="w-full px-4 py-2.5 text-xs border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white text-gray-700 font-mono"
                       />
+                      
                       <span className="text-[10px] text-gray-400 font-medium block">
-                        Provide a clean Unsplash image URL or corporate vector graphic that serves as the base design.
+                        Provide a corporate vector design, a solid texture, or Unsplash background image.
                       </span>
                     </div>
 
@@ -812,6 +1021,74 @@ export default function AdminTemplateBuilderPage() {
                             className="w-full cursor-ew-resize accent-primary"
                           />
                         </div>
+
+                        {/* Touch-friendly Nudge coordinates micro-controls (nudge pads) */}
+                        <div className="border-t border-gray-100/80 pt-3 space-y-2 col-span-2">
+                          <label className="text-[10px] font-extrabold text-gray-400 block text-center uppercase tracking-wider">Tactile Position Nudge Controls</label>
+                          
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setElements(prev => prev.map(el => 
+                                  el.id === selectedElement.id ? { ...el, y: Math.max(0, el.y - 1) } : el
+                                ));
+                              }}
+                              className="size-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl hover:scale-105 active:scale-95 transition-all text-xs border border-primary/20"
+                              title="Nudge Up"
+                            >
+                              ▲
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-center justify-center gap-4">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setElements(prev => prev.map(el => 
+                                  el.id === selectedElement.id ? { ...el, x: Math.max(0, el.x - 1) } : el
+                                ));
+                              }}
+                              className="size-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl hover:scale-105 active:scale-95 transition-all text-xs border border-primary/20"
+                              title="Nudge Left"
+                            >
+                              ◀
+                            </button>
+                            
+                            <span className="text-[10px] font-black text-gray-500 font-mono select-none px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg">
+                              X: {selectedElement.x}% | Y: {selectedElement.y}%
+                            </span>
+                            
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setElements(prev => prev.map(el => 
+                                  el.id === selectedElement.id ? { ...el, x: Math.min(95, el.x + 1) } : el
+                                ));
+                              }}
+                              className="size-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl hover:scale-105 active:scale-95 transition-all text-xs border border-primary/20"
+                              title="Nudge Right"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setElements(prev => prev.map(el => 
+                                  el.id === selectedElement.id ? { ...el, y: Math.min(95, el.y + 1) } : el
+                                ));
+                              }}
+                              className="size-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl hover:scale-105 active:scale-95 transition-all text-xs border border-primary/20"
+                              title="Nudge Down"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        </div>
+
                       </div>
                     </motion.div>
                   ) : (
@@ -865,7 +1142,7 @@ export default function AdminTemplateBuilderPage() {
         </div>
 
         {/* Right Side: Interactive Bounded Draggable Canvas Preview (5 cols) */}
-        <div className="lg:col-span-5 bg-slate-100 border border-slate-200/50 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center shadow-inner min-h-[600px] relative">
+        <div className={`lg:col-span-5 bg-slate-100 border border-slate-200/50 rounded-3xl p-6 md:p-8 flex-col items-center justify-center shadow-inner min-h-[600px] relative ${mobileTab === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
           
           <div className="text-[10px] font-extrabold text-slate-400 mb-3 tracking-wider uppercase">
             Live Draggable Bounded Canvas
@@ -894,14 +1171,14 @@ export default function AdminTemplateBuilderPage() {
               if (el.type === 'logo') {
                 return (
                   <motion.div
-                    key={`${el.id}-${el.x}-${el.y}`}
-                    drag
-                    dragMomentum={false}
-                    dragConstraints={canvasRef}
-                    onDragEnd={(e, info) => handleDragEnd(el.id, e, info)}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    key={el.id}
+                    onMouseDown={(e) => {
                       setSelectedElementId(el.id);
+                      handleCustomDragStart(el, e);
+                    }}
+                    onTouchStart={(e) => {
+                      setSelectedElementId(el.id);
+                      handleCustomDragStart(el, e);
                     }}
                     style={{
                       position: 'absolute',
@@ -915,12 +1192,22 @@ export default function AdminTemplateBuilderPage() {
                       padding: '4px',
                       zIndex: 30
                     }}
-                    className="rounded-lg flex items-center justify-center gap-1.5 text-[8px] uppercase tracking-wider font-extrabold text-slate-300"
+                    className="rounded-lg flex items-center justify-center gap-1.5 text-[8px] uppercase tracking-wider font-extrabold text-slate-300 select-none"
                   >
                     <div style={{ backgroundColor: accentColor }} className="size-4 rounded flex items-center justify-center font-bold text-white text-[9px]">
                       S
                     </div>
                     Brand Logo
+
+                    {/* Drag to resize corner handle */}
+                    {selectedElementId === el.id && (
+                      <div
+                        onMouseDown={(e) => handleResizeStart(el, e)}
+                        onTouchStart={(e) => handleResizeStart(el, e)}
+                        className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize z-50 shadow-md"
+                        title="Drag to resize logo"
+                      />
+                    )}
                   </motion.div>
                 );
               }
@@ -928,14 +1215,14 @@ export default function AdminTemplateBuilderPage() {
               if (el.type === 'qr_code') {
                 return (
                   <motion.div
-                    key={`${el.id}-${el.x}-${el.y}`}
-                    drag
-                    dragMomentum={false}
-                    dragConstraints={canvasRef}
-                    onDragEnd={(e, info) => handleDragEnd(el.id, e, info)}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    key={el.id}
+                    onMouseDown={(e) => {
                       setSelectedElementId(el.id);
+                      handleCustomDragStart(el, e);
+                    }}
+                    onTouchStart={(e) => {
+                      setSelectedElementId(el.id);
+                      handleCustomDragStart(el, e);
                     }}
                     style={{
                       position: 'absolute',
@@ -947,7 +1234,7 @@ export default function AdminTemplateBuilderPage() {
                       padding: '8px',
                       zIndex: 20
                     }}
-                    className="rounded-[16px] shadow-lg flex items-center justify-center"
+                    className="rounded-[16px] shadow-lg flex items-center justify-center relative select-none"
                   >
                     <QRCodeSVG 
                       value="https://vemtap.com/admin/templates" 
@@ -955,6 +1242,16 @@ export default function AdminTemplateBuilderPage() {
                       fgColor={qrColor || '#FFFFFF'} 
                       bgColor={qrBgColor || '#000000'}
                     />
+
+                    {/* Drag to resize corner handle */}
+                    {selectedElementId === el.id && (
+                      <div
+                        onMouseDown={(e) => handleResizeStart(el, e)}
+                        onTouchStart={(e) => handleResizeStart(el, e)}
+                        className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize z-50 shadow-md"
+                        title="Drag to resize QR code"
+                      />
+                    )}
                   </motion.div>
                 );
               }
@@ -962,14 +1259,14 @@ export default function AdminTemplateBuilderPage() {
               // Default: Text Layer
               return (
                 <motion.div
-                  key={`${el.id}-${el.x}-${el.y}`}
-                  drag
-                  dragMomentum={false}
-                  dragConstraints={canvasRef}
-                  onDragEnd={(e, info) => handleDragEnd(el.id, e, info)}
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  key={el.id}
+                  onMouseDown={(e) => {
                     setSelectedElementId(el.id);
+                    handleCustomDragStart(el, e);
+                  }}
+                  onTouchStart={(e) => {
+                    setSelectedElementId(el.id);
+                    handleCustomDragStart(el, e);
                   }}
                   style={{
                     position: 'absolute',
@@ -986,9 +1283,19 @@ export default function AdminTemplateBuilderPage() {
                     padding: '2px',
                     zIndex: 10
                   }}
-                  className="select-none leading-tight font-medium"
+                  className="select-none leading-tight font-medium relative"
                 >
                   {el.text}
+
+                  {/* Drag to resize corner handle */}
+                  {selectedElementId === el.id && (
+                    <div
+                      onMouseDown={(e) => handleResizeStart(el, e)}
+                      onTouchStart={(e) => handleResizeStart(el, e)}
+                      className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize z-50 shadow-md"
+                      title="Drag to resize text font size"
+                    />
+                  )}
                 </motion.div>
               );
             })}

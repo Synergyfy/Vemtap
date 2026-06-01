@@ -56,13 +56,13 @@ export default function AdminTemplatesListPage() {
       <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-50 pb-4 mb-6">
-          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <Layers className="text-primary size-5" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-50 pb-4 mb-6 gap-4">
+          <h3 className="text-base sm:text-lg font-extrabold text-gray-900 flex items-center gap-2">
+            <Layers className="text-primary size-5 shrink-0" />
             Base Design Presets Catalog
           </h3>
-          <Link href="/admin/marketing-assets/templates/create">
-            <Button className="bg-primary hover:bg-primary/95 text-white rounded-xl font-bold gap-2">
+          <Link href="/admin/marketing-assets/templates/create" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white rounded-xl font-bold gap-2">
               <Plus size={16} className="stroke-[3px]" />
               New Template
             </Button>
@@ -88,79 +88,131 @@ export default function AdminTemplatesListPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 text-xs font-extrabold uppercase text-gray-400">
-                  <th className="pb-3 pl-2">Template Preset</th>
-                  <th className="pb-3">Category</th>
-                  <th className="pb-3">Design Type</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3 pr-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 text-sm font-semibold text-gray-700">
-                {templates.map((template) => (
-                  <tr key={template.id} className="group hover:bg-gray-50/50 transition-colors">
-                    <td className="py-4 pl-2 font-bold text-gray-900">
-                      {template.name}
-                    </td>
-                    <td className="py-4 font-mono text-xs uppercase text-gray-500">
-                      {template.category}
-                    </td>
-                    <td className="py-4 capitalize">
-                      {template.type.replace('_', ' ')}
-                    </td>
-                    <td className="py-4">
-                      <button
-                        onClick={() => handleToggleActive(template.id, template.isActive)}
-                        className="focus:outline-none hover:scale-[1.05] transition-transform text-left"
-                        title="Click to toggle status"
-                      >
-                        {template.isActive ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-600 border border-green-200">
-                            <CheckCircle size={12} />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-400 border border-gray-200">
-                            <XCircle size={12} />
-                            Disabled
-                          </span>
-                        )}
-                      </button>
-                    </td>
-                    <td className="py-4 pr-2 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          onClick={() => handleDuplicate(template)}
-                          variant="outline" 
-                          className="rounded-xl border-gray-100 text-gray-700 hover:bg-gray-50 font-bold text-xs gap-1.5 h-9"
-                        >
-                          <Copy size={12} />
-                          Duplicate
-                        </Button>
-                        <Link href={`/admin/marketing-assets/templates/${template.id}`}>
-                          <Button variant="outline" className="rounded-xl border-gray-100 text-gray-700 hover:bg-gray-50 font-bold text-xs gap-1 h-9">
-                            <Edit size={12} />
-                            Edit Builder
-                          </Button>
-                        </Link>
-                        <Button 
-                          onClick={() => handleDelete(template.id)}
-                          variant="outline" 
-                          className="rounded-xl border-rose-50 text-rose-600 hover:bg-rose-50/50 font-bold text-xs gap-1.5 h-9"
-                        >
-                          <Trash2 size={12} />
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
+          <>
+            {/* Mobile Stacked Card View */}
+            <div className="space-y-4 md:hidden">
+              {templates.map((template) => (
+                <div key={template.id} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-extrabold text-gray-900 text-sm">{template.name}</h4>
+                      <p className="text-[10px] text-gray-400 uppercase font-mono mt-0.5">{template.category} • {template.type.replace('_', ' ')}</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleActive(template.id, template.isActive)}
+                      className="focus:outline-none hover:scale-[1.02] transition-transform text-left"
+                    >
+                      {template.isActive ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600 border border-green-200">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-gray-100 text-gray-400 border border-gray-200">
+                          Disabled
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-200/50 justify-end">
+                    <Button 
+                      onClick={() => handleDuplicate(template)}
+                      variant="outline" 
+                      className="rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-[10px] gap-1 h-8 px-2.5"
+                    >
+                      Copy
+                    </Button>
+                    <Link href={`/admin/marketing-assets/templates/${template.id}`}>
+                      <Button variant="outline" className="rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-[10px] gap-1 h-8 px-2.5">
+                        Edit
+                      </Button>
+                    </Link>
+                    <Button 
+                      onClick={() => handleDelete(template.id)}
+                      variant="outline" 
+                      className="rounded-xl border-rose-100 text-rose-600 hover:bg-rose-50/50 font-bold text-[10px] gap-1 h-8 px-2.5"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100 text-xs font-extrabold uppercase text-gray-400">
+                    <th className="pb-3 pl-2">Template Preset</th>
+                    <th className="pb-3">Category</th>
+                    <th className="pb-3">Design Type</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3 pr-2 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-sm font-semibold text-gray-700">
+                  {templates.map((template) => (
+                    <tr key={template.id} className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="py-4 pl-2 font-bold text-gray-900">
+                        {template.name}
+                      </td>
+                      <td className="py-4 font-mono text-xs uppercase text-gray-500">
+                        {template.category}
+                      </td>
+                      <td className="py-4 capitalize">
+                        {template.type.replace('_', ' ')}
+                      </td>
+                      <td className="py-4">
+                        <button
+                          onClick={() => handleToggleActive(template.id, template.isActive)}
+                          className="focus:outline-none hover:scale-[1.05] transition-transform text-left"
+                          title="Click to toggle status"
+                        >
+                          {template.isActive ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-600 border border-green-200">
+                              <CheckCircle size={12} />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-400 border border-gray-200">
+                              <XCircle size={12} />
+                              Disabled
+                            </span>
+                          )}
+                        </button>
+                      </td>
+                      <td className="py-4 pr-2 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            onClick={() => handleDuplicate(template)}
+                            variant="outline" 
+                            className="rounded-xl border-gray-100 text-gray-700 hover:bg-gray-50 font-bold text-xs gap-1.5 h-9"
+                          >
+                            <Copy size={12} />
+                            Duplicate
+                          </Button>
+                          <Link href={`/admin/marketing-assets/templates/${template.id}`}>
+                            <Button variant="outline" className="rounded-xl border-gray-100 text-gray-700 hover:bg-gray-50 font-bold text-xs gap-1 h-9">
+                              <Edit size={12} />
+                              Edit Builder
+                            </Button>
+                          </Link>
+                          <Button 
+                            onClick={() => handleDelete(template.id)}
+                            variant="outline" 
+                            className="rounded-xl border-rose-50 text-rose-600 hover:bg-rose-50/50 font-bold text-xs gap-1.5 h-9"
+                          >
+                            <Trash2 size={12} />
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   useMarketingAssets, 
@@ -43,6 +43,14 @@ export default function MyLibraryPage() {
   const [selectedCreator, setSelectedCreator] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [drawerAsset, setDrawerAsset] = useState<any | null>(null);
+
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this marketing asset from your library?')) return;
@@ -214,7 +222,7 @@ export default function MyLibraryPage() {
           </div>
 
           {/* Grid / Table View Toggle */}
-          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100 shrink-0">
+          <div className="hidden md:flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100 shrink-0">
             <button onClick={() => setViewMode('grid')}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
               Grid
@@ -247,111 +255,114 @@ export default function MyLibraryPage() {
             </Button>
           </Link>
         </div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {filteredAssets.map((asset, idx) => (
-            <motion.div
-              key={asset.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col justify-between cursor-pointer"
-              onClick={() => setDrawerAsset(asset)}
-            >
-              <div 
-                style={{ backgroundColor: asset.customConfig?.backgroundColor || '#0F172A' }}
-                className="aspect-[4/5] relative overflow-hidden flex items-center justify-center p-6 border-b border-gray-50 select-none"
-              >
-                {asset.customConfig?.elements ? (
-                  <div className="relative w-full h-full overflow-hidden rounded-lg pointer-events-none">
-                    <div style={{ backgroundColor: asset.customConfig.accentColor || '#2563EB' }} className="absolute top-0 left-0 right-0 h-1" />
-                    {asset.customConfig.elements.map((el: any) => {
-                      if (el.type === 'logo') {
-                        return (
-                          <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.width || 30}%`, height: `${el.height || 8}%` }}
-                            className="flex items-center justify-center overflow-hidden">
-                            <div style={{ backgroundColor: asset.customConfig.accentColor || '#2563EB' }} className="size-3 rounded-full flex items-center justify-center font-bold text-white text-[5px]">L</div>
-                          </div>
-                        );
-                      }
-                      if (el.type === 'text') {
-                        return (
-                          <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, fontSize: `${Math.max(4.5, el.fontSize * 0.35)}px`, color: el.color || '#FFFFFF', fontWeight: el.fontWeight || 'normal', textAlign: el.alignment || 'left', width: '100%', maxWidth: `${100 - el.x * 2}%` }}
-                            className="truncate leading-none pointer-events-none select-none font-bold">{el.text}</div>
-                        );
-                      }
-                      if (el.type === 'qr_code') {
-                        return (
-                          <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.size ? el.size * 0.35 : 40}%`, aspectRatio: '1/1' }}
-                            className="bg-white p-1 rounded-md shadow-sm flex items-center justify-center">
-                            <QRCodeSVG value={asset.qrCodeContent || 'https://vemtap.com'} size={45} fgColor={asset.qrCodeConfig?.color || '#000000'} bgColor={asset.qrCodeConfig?.backgroundColor || '#FFFFFF'} />
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                ) : (
-                  <div className="bg-white p-3 rounded-2xl shadow-lg border border-gray-200/20">
-                    <QRCodeSVG value={asset.qrCodeContent} size={110} fgColor={asset.qrCodeConfig?.color || '#000000'} bgColor={asset.qrCodeConfig?.backgroundColor || '#FFFFFF'} />
-                  </div>
-                )}
-                <span className="absolute top-3 right-3 px-2 py-0.5 bg-white/20 backdrop-blur text-[8px] font-extrabold text-white rounded-md uppercase tracking-wider">{asset.type.replace('_', ' ')}</span>
-                {branches.length > 1 && asset.branchId && (
-                  <span className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/80 backdrop-blur text-[8px] font-extrabold text-white rounded-md uppercase">
-                    {branches.find(b => b.id === asset.branchId)?.name || 'Main'}
-                  </span>
-                )}
-              </div>
-              <div className="p-4 space-y-3">
-                <h4 className="font-extrabold text-gray-900 line-clamp-1 leading-tight text-sm">{asset.name}</h4>
-                <div className="flex items-center justify-between text-xs text-gray-400 font-semibold border-t border-gray-50 pt-2.5">
-                  <div className="flex items-center gap-1.5"><Calendar size={12} /><span>Saved {new Date(asset.updatedAt).toLocaleDateString()}</span></div>
-                  {asset.isActive === false && <span className="px-2 py-0.5 bg-rose-50 text-rose-600 rounded text-[9px] font-extrabold uppercase border border-rose-200">Archived</span>}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
       ) : (
-        /* §128: Table View */
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-100 text-[10px] font-extrabold uppercase text-gray-400">
-                <th className="pb-3 pl-4 pt-4">Asset Name</th>
-                <th className="pb-3 pt-4">Template</th>
-                <th className="pb-3 pt-4">Format</th>
-                <th className="pb-3 pt-4">Branch</th>
-                <th className="pb-3 pt-4">Date</th>
-                <th className="pb-3 pr-4 pt-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 text-sm font-semibold text-gray-700">
-              {filteredAssets.map((asset) => (
-                <tr key={asset.id} className="group hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDrawerAsset(asset)}>
-                  <td className="py-3.5 pl-4 font-bold text-gray-900">{asset.name}</td>
-                  <td className="py-3.5 text-xs text-gray-500">{asset.template?.name || '-'}</td>
-                  <td className="py-3.5">
-                    <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-600 uppercase">{asset.type?.replace(/_/g, ' ')}</span>
-                  </td>
-                  <td className="py-3.5 text-xs text-gray-500">{asset.branchId ? branches.find(b => b.id === asset.branchId)?.name || '-' : '-'}</td>
-                  <td className="py-3.5 text-xs text-gray-400 font-mono">{new Date(asset.updatedAt).toLocaleDateString()}</td>
-                  <td className="py-3.5 pr-4 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => { e.stopPropagation(); window.open(`/dashboard/marketing-assets/create?templateId=${asset.templateId}&id=${asset.id}`); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Edit size={14} /></button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDownload(asset); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Download size={14} /></button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDuplicate(asset); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Copy size={14} /></button>
-                      <button onClick={(e) => { e.stopPropagation(); handleToggleArchive(asset); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Archive size={14} /></button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(asset.id); }} className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-400 hover:text-rose-600"><Trash2 size={14} /></button>
+        <>
+          {/* Grid View (default on mobile, toggleable on desktop) */}
+          <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 ${viewMode === 'grid' ? 'grid' : 'grid md:hidden'}`}>
+            {filteredAssets.map((asset, idx) => (
+              <motion.div
+                key={asset.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col justify-between cursor-pointer"
+                onClick={() => setDrawerAsset(asset)}
+              >
+                <div 
+                  style={{ backgroundColor: asset.customConfig?.backgroundColor || '#0F172A' }}
+                  className="aspect-[4/5] relative overflow-hidden flex items-center justify-center p-6 border-b border-gray-50 select-none"
+                >
+                  {asset.customConfig?.elements ? (
+                    <div className="relative w-full h-full overflow-hidden rounded-lg pointer-events-none">
+                      <div style={{ backgroundColor: asset.customConfig.accentColor || '#2563EB' }} className="absolute top-0 left-0 right-0 h-1" />
+                      {asset.customConfig.elements.map((el: any) => {
+                        if (el.type === 'logo') {
+                          return (
+                            <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.width || 30}%`, height: `${el.height || 8}%` }}
+                              className="flex items-center justify-center overflow-hidden">
+                              <div style={{ backgroundColor: asset.customConfig.accentColor || '#2563EB' }} className="size-3 rounded-full flex items-center justify-center font-bold text-white text-[5px]">L</div>
+                            </div>
+                          );
+                        }
+                        if (el.type === 'text') {
+                          return (
+                            <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, fontSize: `${Math.max(4.5, el.fontSize * 0.35)}px`, color: el.color || '#FFFFFF', fontWeight: el.fontWeight || 'normal', textAlign: el.alignment || 'left', width: '100%', maxWidth: `${100 - el.x * 2}%` }}
+                              className="truncate leading-none pointer-events-none select-none font-bold">{el.text}</div>
+                          );
+                        }
+                        if (el.type === 'qr_code') {
+                          return (
+                            <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.size ? el.size * 0.35 : 40}%`, aspectRatio: '1/1' }}
+                              className="bg-white p-1 rounded-md shadow-sm flex items-center justify-center">
+                              <QRCodeSVG value={asset.qrCodeContent || 'https://vemtap.com'} size={45} fgColor={asset.qrCodeConfig?.color || '#000000'} bgColor={asset.qrCodeConfig?.backgroundColor || '#FFFFFF'} />
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
                     </div>
-                  </td>
+                  ) : (
+                    <div className="bg-white p-3 rounded-2xl shadow-lg border border-gray-200/20">
+                      <QRCodeSVG value={asset.qrCodeContent} size={110} fgColor={asset.qrCodeConfig?.color || '#000000'} bgColor={asset.qrCodeConfig?.backgroundColor || '#FFFFFF'} />
+                    </div>
+                  )}
+                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-white/20 backdrop-blur text-[8px] font-extrabold text-white rounded-md uppercase tracking-wider">{asset.type.replace('_', ' ')}</span>
+                  {branches.length > 1 && asset.branchId && (
+                    <span className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/80 backdrop-blur text-[8px] font-extrabold text-white rounded-md uppercase">
+                      {branches.find(b => b.id === asset.branchId)?.name || 'Main'}
+                    </span>
+                  )}
+                </div>
+                <div className="p-4 space-y-3">
+                  <h4 className="font-extrabold text-gray-900 line-clamp-1 leading-tight text-sm">{asset.name}</h4>
+                  <div className="flex items-center justify-between text-xs text-gray-400 font-semibold border-t border-gray-50 pt-2.5">
+                    <div className="flex items-center gap-1.5"><Calendar size={12} /><span>Saved {new Date(asset.updatedAt).toLocaleDateString()}</span></div>
+                    {asset.isActive === false && <span className="px-2 py-0.5 bg-rose-50 text-rose-600 rounded text-[9px] font-extrabold uppercase border border-rose-200">Archived</span>}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Table View (hidden on mobile, visible on desktop if toggled) */}
+          <div className={`bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm ${viewMode === 'table' ? 'hidden md:block' : 'hidden'}`}>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 text-[10px] font-extrabold uppercase text-gray-400">
+                  <th className="pb-3 pl-4 pt-4">Asset Name</th>
+                  <th className="pb-3 pt-4">Template</th>
+                  <th className="pb-3 pt-4">Format</th>
+                  <th className="pb-3 pt-4">Branch</th>
+                  <th className="pb-3 pt-4">Date</th>
+                  <th className="pb-3 pr-4 pt-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="text-[10px] text-gray-400 font-medium text-center py-3 border-t border-gray-50">{filteredAssets.length} asset{filteredAssets.length !== 1 ? 's' : ''}</p>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-50 text-sm font-semibold text-gray-700">
+                {filteredAssets.map((asset) => (
+                  <tr key={asset.id} className="group hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDrawerAsset(asset)}>
+                    <td className="py-3.5 pl-4 font-bold text-gray-900">{asset.name}</td>
+                    <td className="py-3.5 text-xs text-gray-500">{asset.template?.name || '-'}</td>
+                    <td className="py-3.5">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-600 uppercase">{asset.type?.replace(/_/g, ' ')}</span>
+                    </td>
+                    <td className="py-3.5 text-xs text-gray-500">{asset.branchId ? branches.find(b => b.id === asset.branchId)?.name || '-' : '-'}</td>
+                    <td className="py-3.5 text-xs text-gray-400 font-mono">{new Date(asset.updatedAt).toLocaleDateString()}</td>
+                    <td className="py-3.5 pr-4 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`/dashboard/marketing-assets/create?templateId=${asset.templateId}&id=${asset.id}`); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Edit size={14} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDownload(asset); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Download size={14} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDuplicate(asset); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Copy size={14} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleToggleArchive(asset); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Archive size={14} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(asset.id); }} className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-400 hover:text-rose-600"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[10px] text-gray-400 font-medium text-center py-3 border-t border-gray-50">{filteredAssets.length} asset{filteredAssets.length !== 1 ? 's' : ''}</p>
+          </div>
+        </>
       )}
 
       {/* §129: Asset Details Drawer */}
@@ -360,9 +371,11 @@ export default function MyLibraryPage() {
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/20 z-40" onClick={() => setDrawerAsset(null)} />
             <motion.div
-              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              initial={isMobile ? { y: '100%' } : { x: '100%' }}
+              animate={isMobile ? { y: 0 } : { x: 0 }}
+              exit={isMobile ? { y: '100%' } : { x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 overflow-y-auto border-l border-gray-100"
+              className="fixed bottom-0 sm:top-0 right-0 h-[85vh] sm:h-full w-full sm:max-w-lg bg-white shadow-2xl z-50 overflow-y-auto border-t sm:border-t-0 sm:border-l border-gray-100 rounded-t-[32px] sm:rounded-t-none"
             >
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
