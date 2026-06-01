@@ -1,6 +1,6 @@
 import {
     Home, Users, Gift, BarChart, Settings, HelpCircle,
-    MessageSquare, ShieldCheck, MessageCircle, Zap, ShoppingBag, QrCode, FileText
+    MessageSquare, ShieldCheck, MessageCircle, Zap, ShoppingBag, QrCode, FileText, Palette
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -157,6 +157,15 @@ export const OWNER_MENU_ITEMS: MenuItem[] = [
         roles: ['owner', 'manager', 'staff'],
         permission: 'customer-experience',
         keywords: ['feedback', 'satisfaction', 'reviews', 'ratings', 'engagement', 'nps']
+    },
+    {
+        id: 'marketing-assets',
+        label: 'Marketing Materials',
+        icon: Palette,
+        href: '/dashboard/marketing-assets',
+        roles: ['owner', 'manager'],
+        permission: 'dashboard',
+        keywords: ['marketing', 'flyers', 'posters', 'cards', 'tent', 'designs', 'creative', 'brand', 'print']
     },
     {
         id: 'settings',
