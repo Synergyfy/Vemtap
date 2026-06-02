@@ -75,41 +75,41 @@ export default function TemplateLibraryPage() {
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-blue-50/60 border border-blue-100 rounded-3xl p-5 md:p-6 space-y-4"
+        className="bg-blue-50/60 border border-blue-100 rounded-3xl p-3 md:p-6 space-y-2 md:space-y-4"
       >
-        <div className="flex items-center gap-2 text-blue-800 font-extrabold text-sm md:text-base">
-          <HelpCircle className="size-5 text-blue-600 animate-pulse" />
+        <div className="flex items-center gap-2 text-blue-800 font-extrabold text-[11px] md:text-base">
+          <HelpCircle className="size-3.5 md:size-5 text-blue-600 animate-pulse shrink-0" />
           <span>How to create your print materials in 3 easy steps:</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-semibold text-gray-600">
-          <div className="bg-white/80 backdrop-blur rounded-2xl p-4 border border-blue-100/50 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="size-5 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-[10px]">1</span>
-              <span className="font-extrabold text-blue-900">Choose a Base Design</span>
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <div className="bg-white/80 backdrop-blur rounded-xl md:rounded-2xl p-2 md:p-4 border border-blue-100/50 space-y-0.5 md:space-y-2 text-center md:text-left">
+            <div className="flex items-center gap-1.5 md:gap-2 justify-center md:justify-start">
+              <span className="size-4 md:size-5 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-[8px] md:text-[10px] shrink-0">1</span>
+              <span className="font-extrabold text-blue-900 text-[9px] md:text-sm leading-tight">Choose a Base Design</span>
             </div>
-            <p className="leading-relaxed text-gray-500">
+            <p className="leading-relaxed text-gray-500 hidden md:block text-xs">
               Pick a styled preset catalog below (like a stand-up table card or poster). These are custom configured and look professional out of the box.
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur rounded-2xl p-4 border border-blue-100/50 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="size-5 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-[10px]">2</span>
-              <span className="font-extrabold text-blue-900">Personalize in Workspace</span>
+          <div className="bg-white/80 backdrop-blur rounded-xl md:rounded-2xl p-2 md:p-4 border border-blue-100/50 space-y-0.5 md:space-y-2 text-center md:text-left">
+            <div className="flex items-center gap-1.5 md:gap-2 justify-center md:justify-start">
+              <span className="size-4 md:size-5 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-[8px] md:text-[10px] shrink-0">2</span>
+              <span className="font-extrabold text-blue-900 text-[9px] md:text-sm leading-tight">Personalize in Workspace</span>
             </div>
-            <p className="leading-relaxed text-gray-500">
-              Customize colors, fonts, or drop in your text. You can also use our **AI Copywriter Helper** to generate tagline suggestions with a single click.
+            <p className="leading-relaxed text-gray-500 hidden md:block text-xs">
+              Customize colors, fonts, or drop in your text. You can also use our AI Copywriter Helper to generate tagline suggestions with a single click.
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur rounded-2xl p-4 border border-blue-100/50 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="size-5 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-[10px]">3</span>
-              <span className="font-extrabold text-blue-900">Print or Download</span>
+          <div className="bg-white/80 backdrop-blur rounded-xl md:rounded-2xl p-2 md:p-4 border border-blue-100/50 space-y-0.5 md:space-y-2 text-center md:text-left">
+            <div className="flex items-center gap-1.5 md:gap-2 justify-center md:justify-start">
+              <span className="size-4 md:size-5 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-[8px] md:text-[10px] shrink-0">3</span>
+              <span className="font-extrabold text-blue-900 text-[9px] md:text-sm leading-tight">Print or Download</span>
             </div>
-            <p className="leading-relaxed text-gray-500">
-              Instantly save your custom design to your library, then download a print-ready vector **PDF** or high-resolution **PNG** to print locally!
+            <p className="leading-relaxed text-gray-500 hidden md:block text-xs">
+              Instantly save your custom design to your library, then download a print-ready vector PDF or high-resolution PNG to print locally!
             </p>
           </div>
         </div>

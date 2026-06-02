@@ -2,20 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
   Save, 
   Palette, 
   Type, 
-  Sparkles, 
-  Eye, 
-  Image as ImageIcon,
   Download, 
-  Check, 
-  Copy,
-  HelpCircle,
-  RefreshCw,
   FileText
 } from 'lucide-react';
 import Link from 'next/link';
@@ -24,10 +17,7 @@ import {
   useMarketingAsset,
   useCreateMarketingAsset, 
   useUpdateMarketingAsset,
-  useAIPrompts, 
-  useGenerateAIContent, 
   useBrandProfile,
-  useMockups,
   useRecordDownload,
   useTemplateStyles,
   useTemplateFormats,
@@ -53,14 +43,11 @@ export default function DesignWorkspacePage() {
   const { data: template, isLoading: templateLoading } = useMarketingTemplate(templateId || '');
   const { data: asset, isLoading: assetLoading } = useMarketingAsset(assetId || '', !!assetId);
   const { data: brandProfile } = useBrandProfile();
-  const { data: mockups } = useMockups();
-  const { data: aiPrompts } = useAIPrompts();
   const { data: templateStyles } = useTemplateStyles();
   const { data: templateFormats } = useTemplateFormats();
   
   const createAssetMutation = useCreateMarketingAsset();
   const updateAssetMutation = useUpdateMarketingAsset();
-  const generateAIMutation = useGenerateAIContent();
   const recordDownloadMutation = useRecordDownload();
 
   const { user } = useAuthStore();
@@ -95,8 +82,7 @@ export default function DesignWorkspacePage() {
 
   // Studio customization states
   const [assetName, setAssetName] = useState('New Marketing Asset');
-  const [activeControlTab, setActiveControlTab] = useState<'style' | 'content' | 'ai'>('style');
-  const [activePreviewTab, setActivePreviewTab] = useState<'canvas' | 'mockup'>('canvas');
+  const [activeControlTab, setActiveControlTab] = useState<'style' | 'content'>('style');
   const [mobileViewTab, setMobileViewTab] = useState<'editor' | 'preview'>('editor');
   
   const [bgColor, setBgColor] = useState('#0F172A');
@@ -137,53 +123,7 @@ export default function DesignWorkspacePage() {
   const [qrBgColor, setQrBgColor] = useState('#0F172A');
   const [showLogoInQr, setShowLogoInQr] = useState(true);
 
-  // AI assistant states
-  const [selectedPromptId, setSelectedPromptId] = useState('');
-  const [aiTone, setAiTone] = useState('Friendly');
-  const [aiResult, setAiResult] = useState('');
 
-  // PRD §19: 7-Step workflow state
-  const [activeWorkflowStep, setActiveWorkflowStep] = useState<string>('template');
-  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
-
-  const navigateToStep = (section: string) => {
-    setActiveWorkflowStep(section);
-    if (!completedSteps.includes(section)) {
-      setCompletedSteps(prev => [...prev, section]);
-    }
-    if (section === 'content' || section === 'qr') {
-      setActiveControlTab('content');
-    } else if (section === 'style' || section === 'format') {
-      setActiveControlTab('style');
-    } else if (section === 'template') {
-      router.push('/dashboard/marketing-assets/templates');
-    } else if (section === 'preview') {
-      setActivePreviewTab('canvas');
-    }
-  };
-
-  // Mockup post-generation state (PRD: environment type preview after generate)
-  const [generatedPhase, setGeneratedPhase] = useState<string | null>(null);
-  const [selectedEnvType, setSelectedEnvType] = useState('table_stand');
-  const ENV_TYPES = [
-    { id: 'wall_poster',     label: 'Wall Poster',     icon: '🖼️' },
-    { id: 'table_stand',     label: 'Table Stand',      icon: '🏪' },
-    { id: 'counter_display', label: 'Counter Display',  icon: '📟' },
-    { id: 'window_sticker',  label: 'Window Sticker',   icon: '🪟' },
-    { id: 'outdoor_banner',  label: 'Outdoor Banner',   icon: '🏗️' },
-  ];
-
-  const handleGenerateAsset = () => {
-    setGeneratedPhase('generating');
-    setTimeout(() => {
-      setGeneratedPhase('preview');
-      setActiveWorkflowStep('generate');
-      toast.success('Asset generated! Preview it in different environments below.');
-    }, 1500);
-  };
-
-  // Mockup view state
-  const [selectedMockupIdx, setSelectedMockupIdx] = useState(0);
 
   // Formats derived from API (PRD §52)
   const FORMATS = (templateFormats || []).map((f) => ({
@@ -392,12 +332,6 @@ export default function DesignWorkspacePage() {
     }
   }, [qrDestination, currentBranch, mainDevice, origin]);
 
-  useEffect(() => {
-    if (aiPrompts && aiPrompts.length > 0) {
-      setSelectedPromptId(aiPrompts[0].id);
-    }
-  }, [aiPrompts]);
-
   // Safeguard against loading templates outside business category (PRD §7.0)
   useEffect(() => {
     if (business && template) {
@@ -418,7 +352,7 @@ export default function DesignWorkspacePage() {
   // Auto-export parameter handling on load (format: png, pdf, transparent_png, print_pdf)
   useEffect(() => {
     const exportParam = searchParams.get('export');
-    const validFormats = ['png', 'pdf', 'transparent_png', 'print_pdf'] as const;
+    const validFormats = ['png', 'print_pdf'] as const;
     const exportFormat = validFormats.find(f => f === exportParam);
     if (exportFormat && !assetLoading && !templateLoading && hasInitialized.current && canvasRef.current) {
       const timer = setTimeout(() => {
@@ -463,104 +397,135 @@ export default function DesignWorkspacePage() {
     }
   };
 
-  const handleGenerateAI = async () => {
-    if (!selectedPromptId) return;
-    try {
-      const promptObj = aiPrompts?.find(p => p.id === selectedPromptId);
-      const res = await generateAIMutation.mutateAsync({
-        promptId: selectedPromptId,
-        businessName: brandProfile?.name || 'our venue',
-        businessType: promptObj?.category || 'restaurant',
-        tone: aiTone,
-        subject: elements.find(el => el.id === 'headline-text')?.text || ''
-      });
-      setAiResult(res.text);
-      toast.success('Tagline generated!');
-    } catch (e) {
-      toast.error('Failed to generate AI copy');
+  const handleDownload = async (format: 'png' | 'print_pdf') => {
+    const el = canvasRef.current;
+    if (!el) {
+      toast.error('Canvas not found — make sure the preview is visible');
+      return;
     }
-  };
-
-  const handleDownload = async (format: 'pdf' | 'png' | 'transparent_png' | 'print_pdf') => {
-    if (!canvasRef.current) return;
     const loadingToast = toast.loading(`Generating ${format.toUpperCase().replace('_', ' ')}...`);
+
+    // html2canvas v1.4.1 doesn't support modern CSS color functions (oklab, oklch).
+    // We clone the element, strip all classes, and apply computed styles as inline
+    // hex/RGB values so the capture works.
+    const captureContainer = document.createElement('div');
+    captureContainer.style.position = 'absolute';
+    captureContainer.style.left = '-9999px';
+    captureContainer.style.top = '0';
+    captureContainer.style.width = `${el.offsetWidth}px`;
+    captureContainer.style.height = `${el.offsetHeight}px`;
+    captureContainer.style.pointerEvents = 'none';
+
+    const clone = el.cloneNode(true) as HTMLElement;
+    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode as HTMLElement;
+      const computed = window.getComputedStyle(node);
+      node.removeAttribute('class');
+      node.style.cssText = '';
+      node.style.color = computed.color;
+      node.style.backgroundColor = computed.backgroundColor;
+      node.style.backgroundImage = computed.backgroundImage;
+      node.style.backgroundSize = computed.backgroundSize;
+      node.style.backgroundPosition = computed.backgroundPosition;
+      node.style.fontSize = computed.fontSize;
+      node.style.fontWeight = computed.fontWeight;
+      node.style.textAlign = computed.textAlign;
+      node.style.display = computed.display;
+      node.style.position = computed.position;
+      node.style.width = computed.width;
+      node.style.height = computed.height;
+      node.style.top = computed.top;
+      node.style.left = computed.left;
+      node.style.right = computed.right;
+      node.style.bottom = computed.bottom;
+      node.style.zIndex = computed.zIndex;
+      node.style.overflow = computed.overflow;
+      node.style.border = computed.border;
+      node.style.borderRadius = computed.borderRadius;
+      node.style.padding = computed.padding;
+      node.style.margin = computed.margin;
+      node.style.transform = computed.transform;
+      node.style.opacity = computed.opacity;
+      node.style.aspectRatio = computed.aspectRatio;
+      node.style.maxWidth = computed.maxWidth;
+      node.style.lineHeight = computed.lineHeight;
+      node.style.letterSpacing = computed.letterSpacing;
+      node.style.textTransform = computed.textTransform;
+      node.style.textDecoration = computed.textDecoration;
+      node.style.boxShadow = computed.boxShadow;
+      node.style.borderColor = computed.borderColor;
+      node.style.borderWidth = computed.borderWidth;
+      node.style.borderStyle = computed.borderStyle;
+    }
+
+    captureContainer.appendChild(clone);
+    document.body.appendChild(captureContainer);
+
     try {
-      const element = canvasRef.current;
-      const isTransparentPng = format === 'transparent_png';
-      const isPrintPdf = format === 'print_pdf';
-      const originalBg = element.style.backgroundColor;
-
-      if (isTransparentPng) {
-        element.style.backgroundColor = 'transparent';
-      }
-
-      const canvas = await html2canvas(element, {
+      const canvas = await html2canvas(clone, {
         scale: 3,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: isTransparentPng ? null : bgColor
+        backgroundColor: bgColor
       } as any);
 
-      if (isTransparentPng) {
-        element.style.backgroundColor = originalBg;
-      }
-
-      if (format === 'png' || isTransparentPng) {
+      if (format === 'png') {
         const dataUrl = canvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.download = `${assetName.toLowerCase().replace(/\s+/g, '-')}${isTransparentPng ? '-transparent' : ''}.png`;
+        link.download = `${assetName.toLowerCase().replace(/\s+/g, '-')}.png`;
         link.href = dataUrl;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
       } else {
         const imgData = canvas.toDataURL('image/png');
-        const currentFormat = FORMATS.find(f => f.id === selectedFormat) || FORMATS[0];
+        const currentFormat = FORMATS.find(f => f.id === selectedFormat);
+        const ratio = currentFormat?.ratio || 4 / 6;
 
         const pdf = new jsPDF({
-          orientation: currentFormat.ratio > 1 ? 'landscape' : 'portrait',
+          orientation: ratio > 1 ? 'landscape' : 'portrait',
           unit: 'mm',
           format: 'a4'
         });
         
-        const imgWidth = 210; 
-        const pageHeight = 295;  
+        const imgWidth = 210;
+        const pageHeight = 295;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let position = 0;
 
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
-        if (isPrintPdf) {
-          const bleed = currentFormat.bleedMm ?? 3;
-          pdf.setLineWidth(0.1);
-          pdf.setDrawColor(120, 120, 120);
-          pdf.line(bleed, 0, bleed, bleed * 2);
-          pdf.line(0, bleed, bleed * 2, bleed);
-          pdf.line(imgWidth - bleed, 0, imgWidth - bleed, bleed * 2);
-          pdf.line(imgWidth, bleed, imgWidth - bleed * 2, bleed);
-          pdf.line(bleed, pageHeight, bleed, pageHeight - bleed * 2);
-          pdf.line(0, pageHeight - bleed, bleed * 2, pageHeight - bleed);
-          pdf.line(imgWidth - bleed, pageHeight, imgWidth - bleed, pageHeight - bleed * 2);
-          pdf.line(imgWidth, pageHeight - bleed, imgWidth - bleed * 2, pageHeight - bleed);
-        }
+        const bleed = currentFormat?.bleedMm ?? 3;
+        pdf.setLineWidth(0.1);
+        pdf.setDrawColor(120, 120, 120);
+        pdf.line(bleed, 0, bleed, bleed * 2);
+        pdf.line(0, bleed, bleed * 2, bleed);
+        pdf.line(imgWidth - bleed, 0, imgWidth - bleed, bleed * 2);
+        pdf.line(imgWidth, bleed, imgWidth - bleed * 2, bleed);
+        pdf.line(bleed, pageHeight, bleed, pageHeight - bleed * 2);
+        pdf.line(0, pageHeight - bleed, bleed * 2, pageHeight - bleed);
+        pdf.line(imgWidth - bleed, pageHeight, imgWidth - bleed, pageHeight - bleed * 2);
+        pdf.line(imgWidth, pageHeight - bleed, imgWidth - bleed * 2, pageHeight - bleed);
 
-        pdf.save(`${assetName.toLowerCase().replace(/\s+/g, '-')}${isPrintPdf ? '-print-ready' : ''}.pdf`);
+        pdf.save(`${assetName.toLowerCase().replace(/\s+/g, '-')}-print-ready.pdf`);
       }
 
-      // Record download metric in db
       const resolvedAssetId = assetId || createAssetMutation.data?.id;
       if (resolvedAssetId) {
         await recordDownloadMutation.mutateAsync({
           assetId: resolvedAssetId,
-          format: format.startsWith('png') ? 'png' : 'pdf'
+          format: format === 'png' ? 'png' : 'pdf'
         });
       }
 
       toast.success('File downloaded successfully!', { id: loadingToast });
     } catch (e) {
-      toast.error('Failed to render file', { id: loadingToast });
+      console.error('Download error:', e);
+      toast.error('Failed to render file. Check console for details.', { id: loadingToast });
+    } finally {
+      document.body.removeChild(captureContainer);
     }
   };
-
-  const currentMockup = mockups ? mockups[selectedMockupIdx] : null;
 
   return (
     <div className="space-y-6">
@@ -597,48 +562,7 @@ export default function DesignWorkspacePage() {
         </div>
       </div>
 
-      {/* 🚀 PRD §19: 7-Step Progress Indicator — Template → Content → QR → Style → Format → Preview → Generate */}
-      <div className="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-2 text-xs font-bold">
-          {[
-            { step: 1, label: 'Template', section: 'template' },
-            { step: 2, label: 'Content', section: 'content' },
-            { step: 3, label: 'QR Destination', section: 'qr' },
-            { step: 4, label: 'Style', section: 'style' },
-            { step: 5, label: 'Format', section: 'format' },
-            { step: 6, label: 'Preview', section: 'preview' },
-            { step: 7, label: 'Generate', section: 'generate' },
-          ].map((item, idx) => {
-            const isStepActive = item.section === activeWorkflowStep;
-            return (
-              <React.Fragment key={item.step}>
-                <button
-                  onClick={() => navigateToStep(item.section)}
-                  className="flex items-center gap-1.5 transition-all hover:opacity-80"
-                >
-                  <span className={`inline-flex size-6 rounded-full items-center justify-center font-black transition-all text-[11px] ${
-                    isStepActive
-                      ? 'bg-primary text-white scale-110 shadow-md shadow-primary/20'
-                      : idx < completedSteps.length
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {idx < completedSteps.length ? '✓' : item.step}
-                  </span>
-                  <span className={`transition-all hidden sm:inline ${
-                    isStepActive
-                      ? 'text-primary font-extrabold'
-                      : 'text-gray-400 font-semibold'
-                  }`}>
-                    {item.label}
-                  </span>
-                </button>
-                {idx < 6 && <span className="hidden md:inline text-gray-300 font-black text-[10px]">▸</span>}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
+
 
       {/* Mobile Studio Tabs View Selector */}
       <div className="grid grid-cols-2 gap-1 bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm lg:hidden">
@@ -671,7 +595,7 @@ export default function DesignWorkspacePage() {
         <div className={`lg:col-span-5 bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-sm space-y-6 flex-col justify-between ${mobileViewTab === 'editor' ? 'flex' : 'hidden lg:flex'}`}>
           <div className="space-y-6">
             {/* Control Panel Tabs */}
-            <div className="grid grid-cols-3 gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+            <div className="grid grid-cols-2 gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
               <button
                 onClick={() => setActiveControlTab('style')}
                 className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
@@ -695,18 +619,6 @@ export default function DesignWorkspacePage() {
                 <Type size={14} className="shrink-0" />
                 <span className="hidden sm:inline">Typography</span>
                 <span className="sm:hidden">Text</span>
-              </button>
-              <button
-                onClick={() => setActiveControlTab('ai')}
-                className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  activeControlTab === 'ai'
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Sparkles size={14} className="shrink-0" />
-                <span className="hidden sm:inline">AI Copywriter</span>
-                <span className="sm:hidden">AI Helper</span>
               </button>
             </div>
 
@@ -841,19 +753,7 @@ export default function DesignWorkspacePage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">Border Highlight</label>
-                      <div className="flex items-center gap-2 border border-gray-100 rounded-xl p-2 bg-gray-50">
-                        <input 
-                          type="color" 
-                          value={borderColor} 
-                          onChange={(e) => setBorderColor(e.target.value)} 
-                          className="size-7 rounded-lg border-0 cursor-pointer overflow-hidden"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-gray-700">{borderColor}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">QR Code Dot</label>
+                      <label className="text-xs font-bold text-gray-500">QR Code Color</label>
                       <div className="flex items-center gap-2 border border-gray-100 rounded-xl p-2 bg-gray-50">
                         <input 
                           type="color" 
@@ -864,9 +764,6 @@ export default function DesignWorkspacePage() {
                         <span className="text-xs font-mono font-bold uppercase text-gray-700">{qrFgColor}</span>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-gray-500">QR Code Bg</label>
                       <div className="flex items-center gap-2 border border-gray-100 rounded-xl p-2 bg-gray-50">
@@ -991,117 +888,11 @@ export default function DesignWorkspacePage() {
                 </motion.div>
               )}
 
-              {/* Tab 3: AI Copywriter Helpers */}
-              {activeControlTab === 'ai' && (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  className="space-y-4"
-                >
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500">Select Prompt Subject</label>
-                    <select
-                      value={selectedPromptId}
-                      onChange={(e) => setSelectedPromptId(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-bold text-gray-700"
-                    >
-                      {aiPrompts?.map((prompt) => (
-                        <option key={prompt.id} value={prompt.id}>
-                          {prompt.name} ({prompt.category})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500">Tone of Voice</label>
-                    <select
-                      value={aiTone}
-                      onChange={(e) => setAiTone(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-bold text-gray-700"
-                    >
-                      <option value="Friendly">Friendly & Social</option>
-                      <option value="Professional">Professional & Serious</option>
-                      <option value="Playful">Playful & Catchy</option>
-                      <option value="Urgent">Urgent & Direct</option>
-                    </select>
-                  </div>
-
-                  <Button 
-                    onClick={handleGenerateAI}
-                    disabled={generateAIMutation.isPending}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold h-11 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Sparkles size={16} />
-                    {generateAIMutation.isPending ? 'Generating Copy...' : 'Generate Heuristic Copy'}
-                  </Button>
-
-                  {aiResult && (
-                    <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider">AI Suggestion</span>
-                        <div className="flex flex-wrap items-center gap-1.5 font-medium">
-                          {elements.filter(el => el.type === 'text').map((textEl) => (
-                            <button 
-                              key={textEl.id}
-                              onClick={() => {
-                                setElements(prev => prev.map(el => el.id === textEl.id ? { ...el, text: aiResult } : el));
-                                toast.success(`Applied to ${textEl.id.replace('-text', '').replace('-', ' ')}!`);
-                              }}
-                              className="px-2 py-1 text-[9px] font-bold bg-white text-blue-600 rounded-md border border-blue-200 hover:bg-blue-100 transition-colors"
-                            >
-                              Set {textEl.id.replace('-text', '').replace('-', ' ').slice(0, 10)}...
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-700 font-medium leading-relaxed italic">
-                        "{aiResult}"
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
             </div>
           </div>
 
-          {/* Step 7 — Generate: Preview then show environment mockups */}
-          {(activeWorkflowStep === 'generate' || generatedPhase) && (
-            <div className="border-t border-gray-100 pt-5 space-y-3">
-              <h4 className="text-xs font-bold text-gray-500">Step 7: Generate Asset</h4>
-              {!generatedPhase ? (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4 space-y-3">
-                  <p className="text-xs text-green-800 font-semibold leading-relaxed">
-                    Ready to bring your design to life? Generate a high-resolution preview and see how it looks across different real-world environments.
-                  </p>
-                  <Button
-                    onClick={handleGenerateAsset}
-                    className="w-full bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold h-11 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Sparkles size={16} />
-                    Generate Preview
-                  </Button>
-                </div>
-              ) : generatedPhase === 'generating' ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-center gap-3">
-                  <div className="size-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs font-bold text-amber-700">Rendering your asset...</span>
-                </div>
-              ) : (
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Check size={16} className="text-green-600" />
-                    <span className="text-xs font-extrabold text-green-800">Asset generated successfully!</span>
-                  </div>
-                  <p className="text-[10px] text-green-700 font-medium">
-                    View the mockup preview on the right. Try different environments to see how it looks in context.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Export / Render Print-ready Files */}
+          {/* Export Options */}
           <div className="border-t border-gray-100 pt-5 space-y-3">
             <h4 className="text-xs font-bold text-gray-500">Export Options</h4>
             <div className="grid grid-cols-2 gap-3">
@@ -1112,23 +903,6 @@ export default function DesignWorkspacePage() {
               >
                 <Download size={13} />
                 Standard PNG
-              </Button>
-              <Button 
-                onClick={() => handleDownload('transparent_png')} 
-                variant="outline" 
-                className="rounded-xl border-gray-100 bg-white hover:bg-gray-50 text-gray-800 font-bold flex items-center justify-center gap-2 h-10 text-xs px-2"
-                title="Saves image with transparent background"
-              >
-                <Download size={13} className="text-blue-500" />
-                Transparent PNG
-              </Button>
-              <Button 
-                onClick={() => handleDownload('pdf')} 
-                variant="outline" 
-                className="rounded-xl border-gray-100 bg-white hover:bg-gray-50 text-gray-800 font-bold flex items-center justify-center gap-2 h-10 text-xs px-2"
-              >
-                <FileText size={13} />
-                Standard PDF
               </Button>
               <Button 
                 onClick={() => handleDownload('print_pdf')} 
@@ -1146,424 +920,74 @@ export default function DesignWorkspacePage() {
         {/* Right Column: High Fidelity Preview Studio & Mockups perspective mapping (7 cols) */}
         <div className={`lg:col-span-7 flex-col gap-6 ${mobileViewTab === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
           
-          {/* Preview Tab Trigger */}
+          {/* Live Design Canvas */}
           <div className="flex items-center justify-between bg-white border border-gray-100 p-2.5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-1.5 bg-gray-50 p-1 rounded-xl">
-              <button
-                onClick={() => setActivePreviewTab('canvas')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activePreviewTab === 'canvas'
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Eye size={14} />
-                Live Design Canvas
-              </button>
-              <button
-                onClick={() => setActivePreviewTab('mockup')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activePreviewTab === 'mockup'
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <ImageIcon size={14} />
-                Real-life Mockup Preview
-              </button>
-            </div>
-            <span className="text-[10px] uppercase font-extrabold text-gray-400 mr-2">High-Fidelity Rendering</span>
+            <span className="text-xs font-extrabold text-gray-800 ml-2">Live Design Canvas</span>
+            <span className="text-[10px] uppercase font-extrabold text-gray-400">High-Fidelity Rendering</span>
           </div>
 
-          {/* Explanation Banner based on selected view */}
-          <div className="bg-blue-50/40 border border-blue-100/50 p-3 rounded-2xl text-xs text-blue-800 font-semibold leading-relaxed flex items-start gap-2">
-            <HelpCircle size={16} className="text-blue-500 shrink-0 mt-0.5" />
-            <div>
-              {activePreviewTab === 'canvas' ? (
-                <p>
-                  <span className="font-extrabold text-blue-900">Live Design Canvas: </span>
-                  This shows a direct, flat, high-definition layout. What you see here is exactly what gets printed on paper when you download the PDF or PNG file.
-                </p>
-              ) : (
-                <p>
-                  <span className="font-extrabold text-blue-900">Real-life Mockup Preview: </span>
-                  This skews and projects your custom design into a 3D perspective onto a real-world dining table stand or shopfront frame, showing exactly how it will look in your physical venue!
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Interactive Screen Preview Container */}
           <div className="bg-slate-100 border border-slate-200/50 rounded-3xl p-6 md:p-10 flex items-center justify-center min-h-[500px] relative overflow-hidden">
-            <AnimatePresence mode="wait">
-              {activePreviewTab === 'canvas' ? (
-                
-                // Live HTML/CSS Canvas Design Renders here!
-                <motion.div
-                  key="design-canvas"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  ref={canvasRef}
-                  style={{
-                    backgroundColor: bgColor,
-                    borderColor: borderColor,
-                    backgroundImage: bgImage ? `url(${bgImage})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    aspectRatio: FORMATS.find(f => f.id === selectedFormat)?.ratio || 4/6
-                  }}
-                  className="w-[280px] border-[6px] rounded-[24px] shadow-2xl relative overflow-hidden bg-slate-900 transition-all duration-300"
-                >
-                  {/* Subtle top brand design stripe */}
-                  <div 
-                    style={{ backgroundColor: accentColor }}
-                    className="absolute top-0 left-0 right-0 h-1.5" 
-                  />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              ref={canvasRef}
+              style={{
+                backgroundColor: bgColor,
+                borderColor: borderColor,
+                backgroundImage: bgImage ? `url(${bgImage})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                aspectRatio: FORMATS.find(f => f.id === selectedFormat)?.ratio || 4/6
+              }}
+              className="w-[280px] border-[6px] rounded-[24px] shadow-2xl relative overflow-hidden bg-slate-900 transition-all duration-300"
+            >
+              <div
+                style={{ backgroundColor: accentColor }}
+                className="absolute top-0 left-0 right-0 h-1.5"
+              />
 
-                  {/* Canvas Elements Renderer */}
-                  {elements.map((el) => {
-                    
-                    if (el.type === 'logo') {
-                      return (
-                        <div
-                          key={el.id}
-                          style={{
-                            position: 'absolute',
-                            left: `${el.x}%`,
-                            top: `${el.y}%`,
-                            width: `${el.width || 30}%`,
-                            height: `${el.height || 8}%`,
-                            zIndex: 30
-                          }}
-                          className="flex items-center justify-center gap-1.5 text-[8px] uppercase tracking-wider font-extrabold text-white"
-                        >
-                          {brandProfile?.logoUrl ? (
-                            <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-lg" />
-                          ) : (
-                            <>
-                              <div style={{ backgroundColor: accentColor }} className="size-4 rounded flex items-center justify-center font-bold text-white text-[9px]">
-                                {brandProfile?.name?.charAt(0) || 'V'}
-                              </div>
-                              <span className="truncate">
-                                {brandProfile?.name || 'VemTap Store'}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    if (el.type === 'qr_code') {
-                      return (
-                        <div
-                          key={el.id}
-                          style={{
-                            position: 'absolute',
-                            left: `${el.x}%`,
-                            top: `${el.y}%`,
-                            backgroundColor: qrBgColor || '#FFFFFF',
-                            padding: '8px',
-                            zIndex: 20
-                          }}
-                          className="rounded-[16px] shadow-lg flex items-center justify-center border border-white/10"
-                        >
-                          <div className="relative inline-flex">
-                            <QRCodeSVG 
-                              value={qrUrl} 
-                              size={el.size || 100} 
-                              fgColor={qrFgColor} 
-                              bgColor={qrBgColor}
-                            />
-                            {showLogoInQr && brandProfile?.logoUrl && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="bg-white rounded-full p-0.5 shadow-md" style={{ width: '26%', height: '26%' }}>
-                                  <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
-                                </div>
-                              </div>
-                            )}
+              {elements.map((el) => {
+                if (el.type === 'logo') {
+                  return (
+                    <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.width || 30}%`, height: `${el.height || 8}%`, zIndex: 30 }}
+                      className="flex items-center justify-center gap-1.5 text-[8px] uppercase tracking-wider font-extrabold text-white">
+                      {brandProfile?.logoUrl ? (
+                        <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-lg" />
+                      ) : (
+                        <>
+                          <div style={{ backgroundColor: accentColor }} className="size-4 rounded flex items-center justify-center font-bold text-white text-[9px]">
+                            {brandProfile?.name?.charAt(0) || 'V'}
                           </div>
-                        </div>
-                      );
-                    }
-
-                    // Default: Text Layer
-                    return (
-                      <div
-                        key={el.id}
-                        style={{
-                          position: 'absolute',
-                          left: `${el.x}%`,
-                          top: `${el.y}%`,
-                          width: el.width ? `${el.width}%` : 'auto',
-                          maxWidth: '90%',
-                          color: el.color || '#FFFFFF',
-                          fontSize: `${el.fontSize || 14}px`,
-                          fontWeight: el.fontWeight || 'normal',
-                          textAlign: el.alignment || 'center',
-                          zIndex: 10
-                        }}
-                        className="leading-tight font-medium"
-                      >
-                        {el.text}
+                          <span className="truncate">{brandProfile?.name || 'VemTap Store'}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                }
+                if (el.type === 'qr_code') {
+                  return (
+                    <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, backgroundColor: qrBgColor || '#FFFFFF', padding: '8px', zIndex: 20 }}
+                      className="rounded-[16px] shadow-lg flex items-center justify-center border border-white/10">
+                      <div className="relative inline-flex">
+                        <QRCodeSVG value={qrUrl} size={el.size || 100} fgColor={qrFgColor} bgColor={qrBgColor} />
+                        {showLogoInQr && brandProfile?.logoUrl && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="bg-white rounded-full p-0.5 shadow-md" style={{ width: '26%', height: '26%' }}>
+                              <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </motion.div>
-
-              ) : (
-
-                // Photorealistic Mockup Perspective view!
-                <motion.div
-                  key="mockup-view"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="w-full max-w-lg aspect-video rounded-2xl overflow-hidden relative shadow-2xl bg-slate-900 flex items-center justify-center"
-                >
-                  {currentMockup ? (
-                    <>
-                      {/* Realistic Background Image */}
-                      <img 
-                        src={currentMockup.imageUrl} 
-                        alt={currentMockup.name} 
-                        className="absolute inset-0 size-full object-cover opacity-80"
-                      />
-                      
-                      {/* CSS Perspective / Skew overlay that projects our design canvas! */}
-                      <div 
-                        style={{
-                          position: 'absolute',
-                          left: `${currentMockup.overlayConfig.x}%`,
-                          top: `${currentMockup.overlayConfig.y}%`,
-                          width: `${currentMockup.overlayConfig.width}%`,
-                          height: `${currentMockup.overlayConfig.height}%`,
-                          perspective: `${currentMockup.overlayConfig.perspective}px`,
-                          transformStyle: 'preserve-3d',
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            backgroundColor: bgColor,
-                            borderColor: borderColor,
-                            backgroundImage: bgImage ? `url(${bgImage})` : 'none',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            transform: `rotateY(${currentMockup.overlayConfig.rotateY}deg) rotateX(${currentMockup.overlayConfig.rotateX || 0}deg)`,
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-                            position: 'relative',
-                            overflow: 'hidden'
-                          }}
-                          className="rounded-lg overflow-hidden select-none text-[3px]"
-                        >
-                          {/* Elements list scaled down */}
-                          {elements.map((el) => {
-                            if (el.type === 'logo') {
-                              return (
-                                <div
-                                  key={el.id}
-                                  style={{
-                                    position: 'absolute',
-                                    left: `${el.x}%`,
-                                    top: `${el.y}%`,
-                                    width: `${el.width || 30}%`,
-                                    height: `${el.height || 8}%`,
-                                    zIndex: 30
-                                  }}
-                                  className="flex items-center justify-center gap-0.5 text-[3px] uppercase font-bold text-white scale-75"
-                                >
-                                  {brandProfile?.logoUrl ? (
-                                    <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded" />
-                                  ) : (
-                                    <span className="truncate">
-                                      {brandProfile?.name || 'V'}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            }
-
-                            if (el.type === 'qr_code') {
-                              return (
-                                <div
-                                  key={el.id}
-                                  style={{
-                                    position: 'absolute',
-                                    left: `${el.x}%`,
-                                    top: `${el.y}%`,
-                                    backgroundColor: qrBgColor || '#FFFFFF',
-                                    padding: '2px',
-                                    zIndex: 20
-                                  }}
-                                  className="rounded shadow flex items-center justify-center"
-                                >
-                                  <div className="relative inline-flex">
-                                    <QRCodeSVG 
-                                      value={qrUrl} 
-                                      size={(el.size || 100) * 0.3}
-                                      fgColor={qrFgColor} 
-                                      bgColor={qrBgColor}
-                                    />
-                                    {showLogoInQr && brandProfile?.logoUrl && (
-                                      <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="bg-white rounded-full p-0.5 shadow" style={{ width: '26%', height: '26%' }}>
-                                          <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div
-                                key={el.id}
-                                style={{
-                                  position: 'absolute',
-                                  left: `${el.x}%`,
-                                  top: `${el.y}%`,
-                                  width: el.width ? `${el.width}%` : 'auto',
-                                  maxWidth: '90%',
-                                  color: el.color || '#FFFFFF',
-                                  fontSize: `${(el.fontSize || 14) * 0.3}px`, // scale text size
-                                  fontWeight: el.fontWeight || 'normal',
-                                  textAlign: el.alignment || 'center',
-                                  zIndex: 10
-                                }}
-                                className="leading-tight font-medium"
-                              >
-                                {el.text}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-slate-400 text-xs font-bold">No mockup backdrops configured.</div>
-                  )}
-
-                  {/* Backdrop Selector Indicator */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur border border-slate-700/50 p-2 rounded-xl flex gap-2">
-                    {mockups?.map((mockup, idx) => (
-                      <button
-                        key={mockup.id}
-                        onClick={() => setSelectedMockupIdx(idx)}
-                        className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                          selectedMockupIdx === idx
-                            ? 'bg-primary text-white'
-                            : 'bg-slate-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {mockup.name}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: el.width ? `${el.width}%` : 'auto', maxWidth: '90%', color: el.color || '#FFFFFF', fontSize: `${el.fontSize || 14}px`, fontWeight: el.fontWeight || 'normal', textAlign: el.alignment || 'center', zIndex: 10 }}
+                    className="leading-tight font-medium">{el.text}</div>
+                );
+              })}
+            </motion.div>
           </div>
-
-          {/* Post-generation Environment Mockup Display (PRD: mockup preview after generate) */}
-          {generatedPhase === 'preview' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-gray-800">Environment Preview</h3>
-                <span className="text-[10px] text-gray-400 font-semibold">See your design in context</span>
-              </div>
-              {/* Environment Type Tabs */}
-              <div className="flex flex-wrap gap-2">
-                {ENV_TYPES.map((env) => (
-                  <button
-                    key={env.id}
-                    onClick={() => setSelectedEnvType(env.id)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                      selectedEnvType === env.id
-                        ? 'bg-primary text-white shadow-md shadow-primary/20'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:border-primary/30'
-                    }`}
-                  >
-                    <span>{env.icon}</span>
-                    {env.label}
-                  </button>
-                ))}
-              </div>
-              {/* Environment Mockup Card */}
-              <motion.div
-                key={selectedEnvType}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-3xl p-6 flex items-center justify-center min-h-[320px] shadow-2xl relative overflow-hidden"
-              >
-                {/* Subtle environment background hint */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-white/20 to-transparent" />
-                </div>
-                {/* The design canvas projected inside environment */}
-                <div
-                  ref={canvasRef}
-                  style={{
-                    backgroundColor: bgColor,
-                    borderColor: borderColor,
-                    backgroundImage: bgImage ? `url(${bgImage})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    aspectRatio: FORMATS.find(f => f.id === selectedFormat)?.ratio || 4/6,
-                    maxWidth: selectedEnvType === 'wall_poster' ? '200px' : selectedEnvType === 'outdoor_banner' ? '280px' : '160px',
-                    boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
-                  }}
-                  className={`border-[4px] rounded-xl relative overflow-hidden bg-slate-900 transition-all duration-300 ${
-                    selectedEnvType === 'wall_poster' ? 'rotate-0' :
-                    selectedEnvType === 'table_stand' ? 'rotate-2 skew-y-1' :
-                    selectedEnvType === 'counter_display' ? '-rotate-1' :
-                    selectedEnvType === 'window_sticker' ? 'rotate-0 opacity-90' :
-                    'rotate-0 scale-110'
-                  }`}
-                >
-                  <div style={{ backgroundColor: accentColor }} className="absolute top-0 left-0 right-0 h-1" />
-                  {elements.map((el) => {
-                    if (el.type === 'logo') {
-                      return (
-                        <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.width || 30}%`, height: `${el.height || 8}%`, zIndex: 30 }}
-                          className="flex items-center justify-center gap-1 text-[6px] uppercase font-extrabold text-white">
-                          {brandProfile?.logoUrl ? <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded" />
-                            : <span>{brandProfile?.name?.charAt(0) || 'V'}</span>}
-                        </div>
-                      );
-                    }
-                    if (el.type === 'qr_code') {
-                      return (
-                        <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, backgroundColor: qrBgColor || '#FFFFFF', padding: '4px', zIndex: 20 }}
-                          className="rounded-lg shadow flex items-center justify-center">
-                          <div className="relative inline-flex">
-                            <QRCodeSVG value={qrUrl} size={(el.size || 60) * 0.4} fgColor={qrFgColor} bgColor={qrBgColor} />
-                            {showLogoInQr && brandProfile?.logoUrl && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="bg-white rounded-full p-0.5 shadow" style={{ width: '26%', height: '26%' }}>
-                                  <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: el.width ? `${el.width}%` : 'auto', maxWidth: '90%', color: el.color || '#FFFFFF', fontSize: `${(el.fontSize || 14) * 0.5}px`, fontWeight: el.fontWeight || 'normal', textAlign: el.alignment || 'center', zIndex: 10 }}
-                        className="leading-tight font-medium">{el.text}</div>
-                    );
-                  })}
-                </div>
-                {/* Environment label */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur px-4 py-1.5 rounded-full">
-                  <span className="text-[10px] font-bold text-white/80">{ENV_TYPES.find(e => e.id === selectedEnvType)?.label}</span>
-                </div>
-              </motion.div>
-            </div>
-          )}
 
         </div>
 
