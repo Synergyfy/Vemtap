@@ -4,21 +4,16 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { 
   QrCode, 
-  Eye, 
   TrendingUp, 
   Plus, 
   History, 
-  Palette, 
   ArrowRight,
   Sparkles,
   Award,
   Download
 } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
 import { useMarketingAssets, useAnalyticsOverview, useBrandProfile, useDownloadsLog } from '@/services/marketing-assets/hooks';
-import { useMyBusiness } from '@/services/businesses/hooks';
-import { useBranches } from '@/services/branches/hooks';
 import { Button } from '@/components/ui/button';
 import RewardStatCard from '@/components/loyalty/RewardStatCard';
 
@@ -26,8 +21,6 @@ export default function MarketingAssetsOverviewPage() {
   const { data: assets, isLoading: assetsLoading } = useMarketingAssets();
   const { data: analytics, isLoading: analyticsLoading } = useAnalyticsOverview();
   const { data: brandProfile } = useBrandProfile();
-  const { data: business } = useMyBusiness();
-  const { data: branches = [] } = useBranches();
   const { data: downloads } = useDownloadsLog();
 
   // Pick first 3 active assets as recent ones (PRD §11 archived exclusion)
@@ -37,7 +30,7 @@ export default function MarketingAssetsOverviewPage() {
   const totalDownloads = (totals as any).downloads ?? (downloads?.length || 0);
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 md:space-y-8 pb-10">
       {/* Visual Welcome Banner */}
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
@@ -65,60 +58,6 @@ export default function MarketingAssetsOverviewPage() {
             Create Marketing Material
           </Button>
         </Link>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
-      >
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="size-16 rounded-2xl bg-slate-50 border border-gray-100 flex items-center justify-center p-1.5 overflow-hidden shrink-0">
-            {business?.logoUrl || brandProfile?.logoUrl ? (
-              <img src={business?.logoUrl || brandProfile?.logoUrl || ''} alt="Business logo" className="size-full object-contain rounded-xl" />
-            ) : (
-              <div className="size-full rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center text-xl">
-                {business?.name?.charAt(0) || 'B'}
-              </div>
-            )}
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-extrabold text-gray-900 text-base md:text-lg flex items-center gap-2 flex-wrap">
-              {business?.name || 'My Business'}
-              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-extrabold tracking-wider uppercase">
-                {(business as any)?.category?.name || business?.category || 'General'}
-              </span>
-            </h3>
-            <p className="text-xs text-gray-500 font-semibold leading-relaxed max-w-md">
-              {brandProfile?.tagline || (business as any)?.tagline || 'Self-service physical marketing assets & scan analytics dashboard.'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6 md:gap-8 self-start md:self-auto w-full md:w-auto justify-between md:justify-end px-2 md:px-0 border-t md:border-t-0 border-gray-50 pt-4 md:pt-0">
-          <div className="text-left md:text-right">
-            <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Active Plan</span>
-            <span className="text-sm font-extrabold text-primary flex items-center gap-1">
-              Pro Premium
-            </span>
-          </div>
-          
-          <div className="text-left md:text-right">
-            <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Branches</span>
-            <span className="text-sm font-extrabold text-gray-900">
-              {branches.length || 1} Registered
-            </span>
-          </div>
-
-          <div className="text-left md:text-right">
-            <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">QR Code Health</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 rounded-lg text-[10px] font-extrabold border border-green-200 mt-0.5">
-              <span className="size-1.5 rounded-full bg-green-500 animate-pulse" />
-              Active
-            </span>
-          </div>
-        </div>
       </motion.div>
 
       {/* Analytics Summary Cards (PRD §11 — Total Assets, Downloads, QR Scans) */}
@@ -149,42 +88,40 @@ export default function MarketingAssetsOverviewPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Left Column: Quick Actions & Recent Materials */}
-        <div className="lg:col-span-2 space-y-6 md:space-y-8">
+      <div className="space-y-6 md:space-y-8">
           <section>
             <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Studio Tools</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Link href="/dashboard/marketing-assets/templates" className="flex">
-                <Button variant="outline" className="w-full h-auto py-5 flex-col gap-3 rounded-2xl border-gray-100 bg-white hover:bg-gray-50 text-gray-900 shadow-sm transition-all hover:scale-[1.02]">
-                  <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                    <QrCode size={20} />
+                <Button variant="outline" className="w-full h-auto py-3 md:py-5 flex-col gap-3 rounded-2xl border-gray-100 bg-white hover:bg-gray-50 text-gray-900 shadow-sm transition-all hover:scale-[1.02]">
+                  <div className="p-2 md:p-3 bg-blue-50 text-blue-600 rounded-xl">
+                    <QrCode size={18} className="md:size-5" />
                   </div>
                   <div className="text-center">
                     <span className="font-bold block text-sm">Choose Template</span>
-                    <span className="text-[10px] text-gray-400 font-medium">Browse preset catalog</span>
+                    <span className="text-[10px] text-gray-400 font-medium hidden sm:block">Browse preset catalog</span>
                   </div>
                 </Button>
               </Link>
-              <Link href="/dashboard/marketing-assets/brand-settings" className="flex">
-                <Button variant="outline" className="w-full h-auto py-5 flex-col gap-3 rounded-2xl border-gray-100 bg-white hover:bg-gray-50 text-gray-900 shadow-sm transition-all hover:scale-[1.02]">
-                  <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-                    <Palette size={20} />
+              <Link href="/dashboard/marketing-assets/create" className="flex">
+                <Button variant="outline" className="w-full h-auto py-3 md:py-5 flex-col gap-3 rounded-2xl border-gray-100 bg-white hover:bg-gray-50 text-gray-900 shadow-sm transition-all hover:scale-[1.02]">
+                  <div className="p-2 md:p-3 bg-purple-50 text-purple-600 rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                   </div>
                   <div className="text-center">
-                    <span className="font-bold block text-sm">Brand Custom Style</span>
-                    <span className="text-[10px] text-gray-400 font-medium">Configure logos & colors</span>
+                    <span className="font-bold block text-sm">Create New</span>
+                    <span className="text-[10px] text-gray-400 font-medium hidden sm:block">Start from scratch</span>
                   </div>
                 </Button>
               </Link>
               <Link href="/dashboard/marketing-assets/analytics" className="flex">
-                <Button variant="outline" className="w-full h-auto py-5 flex-col gap-3 rounded-2xl border-gray-100 bg-white hover:bg-gray-50 text-gray-900 shadow-sm transition-all hover:scale-[1.02]">
-                  <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                    <TrendingUp size={20} />
+                <Button variant="outline" className="w-full h-auto py-3 md:py-5 flex-col gap-3 rounded-2xl border-gray-100 bg-white hover:bg-gray-50 text-gray-900 shadow-sm transition-all hover:scale-[1.02]">
+                  <div className="p-2 md:p-3 bg-green-50 text-green-600 rounded-xl">
+                    <TrendingUp size={18} className="md:size-5" />
                   </div>
                   <div className="text-center">
                     <span className="font-bold block text-sm">Scan Analytics</span>
-                    <span className="text-[10px] text-gray-400 font-medium">Audits scans & formats</span>
+                    <span className="text-[10px] text-gray-400 font-medium hidden sm:block">Audits scans & formats</span>
                   </div>
                 </Button>
               </Link>
@@ -192,8 +129,8 @@ export default function MarketingAssetsOverviewPage() {
           </section>
 
           {/* Recent Designs */}
-          <section className="bg-white rounded-3xl border border-gray-100 p-6 md:p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+          <section className="bg-white rounded-3xl border border-gray-100 p-4 md:p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-4 md:mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gray-50 rounded-xl">
                   <History size={18} className="text-gray-500" />
@@ -237,7 +174,7 @@ export default function MarketingAssetsOverviewPage() {
                 {recentAssets.map((asset) => (
                   <div key={asset.id} className="flex items-center justify-between border-b border-gray-50 pb-4 last:border-0 last:pb-0 group cursor-pointer">
                     <Link href={`/dashboard/marketing-assets/library`} className="flex items-center gap-4 flex-1">
-                      <div className="size-12 rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-center text-xs text-gray-400 group-hover:bg-primary/5 transition-colors overflow-hidden">
+                      <div className="size-12 rounded-xl bg-slate-50 border border-gray-100 hidden sm:flex items-center justify-center text-xs text-gray-400 group-hover:bg-primary/5 transition-colors overflow-hidden">
                         {asset.thumbnailUrl ? (
                           <img src={asset.thumbnailUrl} alt={asset.name} className="size-full object-cover" />
                         ) : (
@@ -248,14 +185,14 @@ export default function MarketingAssetsOverviewPage() {
                         <h4 className="font-bold text-gray-900 group-hover:text-primary transition-colors text-sm md:text-base">
                           {asset.name}
                         </h4>
-                        <p className="text-xs text-gray-400 capitalize">
+                        <p className="text-xs text-gray-400 capitalize hidden sm:block">
                           {asset.type.replace('_', ' ')} • Saved {new Date(asset.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
                     </Link>
 
                     <Link href={`/dashboard/marketing-assets/templates?id=${asset.templateId}`}>
-                      <Button variant="ghost" className="text-primary hover:text-primary/90 font-bold text-xs gap-1.5 bg-primary/5 rounded-xl hover:bg-primary/10">
+                      <Button variant="ghost" className="text-primary hover:text-primary/90 font-bold text-[10px] md:text-xs gap-1.5 bg-primary/5 rounded-xl hover:bg-primary/10 px-2 md:px-3 py-1 md:py-1.5">
                         Edit
                       </Button>
                     </Link>
@@ -264,27 +201,6 @@ export default function MarketingAssetsOverviewPage() {
               </div>
             )}
           </section>
-        </div>
-
-        {/* Right Column: Creative Insight Tips */}
-        <div className="space-y-6 md:space-y-8">
-          <section className="bg-blue-600/5 rounded-3xl p-6 md:p-8 border border-blue-600/10">
-            <h3 className="text-md font-bold text-primary mb-3 flex items-center gap-2">
-              <Award size={18} />
-              Creative Recommendations
-            </h3>
-            <p className="text-xs md:text-sm text-gray-600 leading-relaxed">
-              Placing <span className="font-bold text-blue-600">Table Stand QR codes</span> directly at checkout or dining tables increases reviews by up to <span className="font-bold text-blue-600">3x</span>. 
-              <br /><br />
-              Make sure to configure your custom tagline under brand settings for extra brand alignment!
-            </p>
-            <Link href="/dashboard/marketing-assets/brand-settings">
-              <Button className="w-full mt-5 bg-blue-600 text-white rounded-xl font-bold h-11">
-                Customize Brand Presets
-              </Button>
-            </Link>
-          </section>
-        </div>
       </div>
     </div>
   );
