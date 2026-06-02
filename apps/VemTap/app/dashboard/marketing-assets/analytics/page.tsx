@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAnalyticsOverview, useMarketingAssets, useAssetAnalytics, useDownloadsLog } from '@/services/marketing-assets/hooks';
 import {
@@ -13,8 +13,9 @@ import {
   Download,
   Layers,
   Medal,
-  GitBranch,
   Trophy,
+  FileText,
+  Search,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -24,9 +25,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell,
 } from 'recharts';
 
 // ─── Leaderboard row component ─────────────────────────────────────────────
@@ -132,9 +130,32 @@ const DATE_PRESETS = [
   { label: 'All Time', value: 'all' },
 ];
 
+const FORMAT_OPTIONS = ['All', 'png', 'pdf'];
+const STATUS_BADGES: Record<string, { label: string; className: string }> = {
+  ready: { label: 'Ready', className: 'bg-green-50 text-green-700' },
+  processing: { label: 'Processing', className: 'bg-amber-50 text-amber-700' },
+  failed: { label: 'Failed', className: 'bg-rose-50 text-rose-700' },
+};
+function getSyntheticStatus(log: any): 'ready' | 'processing' | 'failed' {
+  if (log.asset) return 'ready';
+  return 'failed';
+}
+
 export default function ScanInsightsPage() {
   const [selectedAssetId, setSelectedAssetId] = useState<string>('all');
   const [datePreset, setDatePreset] = useState('30d');
+
+  const [formatFilter, setFormatFilter] = useState('All');
+  const [logDateFilter, setLogDateFilter] = useState('all');
+  const [logSearch, setLogSearch] = useState('');
+
+  const datePresets = [
+    { label: 'All Time', value: 'all' },
+    { label: 'Today', value: 'today' },
+    { label: 'Last 7 Days', value: '7d' },
+    { label: 'Last 30 Days', value: '30d' },
+    { label: 'This Year', value: 'year' },
+  ];
 
   const getDateRange = () => {
     const now = new Date();
@@ -149,10 +170,27 @@ export default function ScanInsightsPage() {
   const { data: assets } = useMarketingAssets();
 
   // Aggregate overview stats
-  const { data: overviewAnalytics, isLoading: overviewLoading } = useAnalyticsOverview();
+  const { data: downloadLogs, isLoading: logsLoading } = useDownloadsLog();
 
-  // Download logs for Download Trends chart
-  const { data: logs } = useDownloadsLog();
+  const filteredLogs = useMemo(() => {
+    if (!downloadLogs) return [];
+    return downloadLogs.filter((log: any) => {
+      const matchFormat = formatFilter === 'All' || log.format === formatFilter;
+      const matchSearch = !logSearch || log.asset?.name?.toLowerCase().includes(logSearch.toLowerCase());
+      let matchDate = true;
+      if (logDateFilter !== 'all') {
+        const d = new Date(log.downloadedAt);
+        const now = new Date();
+        if (logDateFilter === 'today') matchDate = d.toDateString() === now.toDateString();
+        else if (logDateFilter === '7d') matchDate = d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        else if (logDateFilter === '30d') matchDate = d >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        else if (logDateFilter === 'year') matchDate = d.getFullYear() === now.getFullYear();
+      }
+      return matchFormat && matchSearch && matchDate;
+    });
+  }, [downloadLogs, formatFilter, logDateFilter, logSearch]);
+
+  const { data: overviewAnalytics, isLoading: overviewLoading } = useAnalyticsOverview();
 
   // Granular asset specific stats (with date range)
   const { data: assetAnalytics, isLoading: assetLoading } = useAssetAnalytics(
@@ -171,11 +209,6 @@ export default function ScanInsightsPage() {
   const topTemplates = (overviewAnalytics?.topTemplates || []).map((t) => ({
     label: t.name,
     value: t.uses,
-  }));
-
-  const mostActiveBranches = (overviewAnalytics?.mostActiveBranches || []).map((b) => ({
-    label: b.name,
-    value: b.scans,
   }));
 
   const mostDownloadedAssets = (overviewAnalytics?.mostDownloadedAssets || []).map((a) => ({
@@ -350,97 +383,8 @@ export default function ScanInsightsPage() {
         </div>
       </div>
 
-      {/* Download & Creation Trends (PRD §131) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Download Trends */}
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <h4 className="font-bold text-gray-900 text-base mb-6 flex items-center gap-2">
-            <Download size={16} className="text-gray-500" /> Download Trends
-          </h4>
-          <div className="h-44 w-full text-xs font-semibold">
-            {(() => {
-              const downloadByDate: Record<string, number> = {};
-              const filteredLogs = datePreset === 'all'
-                ? (logs || [])
-                : (logs || []).filter((log) => {
-                    const logDate = new Date(log.downloadedAt);
-                    return logDate >= new Date(dateStart) && logDate <= new Date(dateEnd + 'T23:59:59');
-                  });
-              filteredLogs.forEach((log) => {
-                const d = new Date(log.downloadedAt).toISOString().split('T')[0];
-                downloadByDate[d] = (downloadByDate[d] || 0) + 1;
-              });
-              const downloadChartData = Object.entries(downloadByDate)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .slice(-30)
-                .map(([date, downloads]) => ({ date, downloads }));
-              return downloadChartData.length === 0 ? (
-                <div className="size-full flex items-center justify-center text-gray-400 gap-2">
-                  <Layers size={24} className="opacity-40" />
-                  <span className="text-xs">No downloads yet.</span>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={downloadChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="date" tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} stroke="#9CA3AF" />
-                    <YAxis stroke="#9CA3AF" />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} />
-                    <Bar dataKey="downloads" name="Downloads" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              );
-            })()}
-          </div>
-        </div>
-
-        {/* Asset Creation Trends */}
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <h4 className="font-bold text-gray-900 text-base mb-6 flex items-center gap-2">
-            <Layers size={16} className="text-gray-500" /> Asset Creation Trends
-          </h4>
-          <div className="h-44 w-full text-xs font-semibold">
-            {(() => {
-              const creationByDate: Record<string, number> = {};
-              const filteredAssets = datePreset === 'all'
-                ? (assets || [])
-                : (assets || []).filter((asset) => {
-                    const created = new Date(asset.createdAt);
-                    return created >= new Date(dateStart) && created <= new Date(dateEnd + 'T23:59:59');
-                  });
-              filteredAssets.forEach((asset) => {
-                const d = new Date(asset.createdAt).toISOString().split('T')[0];
-                creationByDate[d] = (creationByDate[d] || 0) + 1;
-              });
-              const creationChartData = Object.entries(creationByDate)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .slice(-30)
-                .map(([date, count]) => ({ date, count }));
-              return creationChartData.length === 0 ? (
-                <div className="size-full flex items-center justify-center text-gray-400 gap-2">
-                  <Layers size={24} className="opacity-40" />
-                  <span className="text-xs">No assets created yet.</span>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={creationChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="date" tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} stroke="#9CA3AF" />
-                    <YAxis stroke="#9CA3AF" />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} />
-                    <Bar dataKey="count" name="Assets Created" fill="#2563EB" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
-
       {/* ─── Leaderboards (PRD §27) ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
         {/* Top Templates */}
         <LeaderboardCard
@@ -450,16 +394,6 @@ export default function ScanInsightsPage() {
           rows={derivedTopTemplates.slice(0, 5)}
           unit="uses"
           emptyMessage="No template usage data yet — generate assets from a template to populate this."
-        />
-
-        {/* Most Active Branches */}
-        <LeaderboardCard
-          icon={<GitBranch size={18} />}
-          title="Most Active Branches"
-          subtitle="Branches with most QR scans"
-          rows={mostActiveBranches.slice(0, 5)}
-          unit="scans"
-          emptyMessage="No branch scan data yet — deploy QR stands to your branches to populate this."
         />
 
         {/* Most Downloaded Assets */}
@@ -474,14 +408,91 @@ export default function ScanInsightsPage() {
 
       </div>
 
-      {/* QR Tip footer */}
-      <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl p-6 shadow-sm">
-        <h4 className="font-bold text-sm uppercase tracking-wider text-slate-400 mb-2">QR Tip</h4>
-        <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-          Add a catchy incentive tagline (e.g. &ldquo;Scan to get a free drink&rdquo;) to your marketing assets.
-          Customizing tagline incentives typically boosts QR stand conversions by{' '}
-          <span className="text-primary font-bold">18%</span>.
-        </p>
+      {/* ─── Print Output Logs ─────────────────────────────────────── */}
+      <div className="bg-white border border-gray-100 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm">
+        <h3 className="text-sm md:text-base font-bold text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+          <FileText className="text-primary size-4 md:size-5" />
+          Print Output Logs
+        </h3>
+
+        <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-gray-50">
+          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-lg md:rounded-xl overflow-x-auto">
+            <Filter size={12} className="text-gray-400 ml-1.5 shrink-0" />
+            {datePresets.map((p) => (
+              <button key={p.value} onClick={() => setLogDateFilter(p.value)}
+                className={`px-2 py-1 rounded-md md:px-2.5 md:py-1.5 md:rounded-lg text-[9px] md:text-[10px] font-bold transition-all whitespace-nowrap ${logDateFilter === p.value ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1">
+            {FORMAT_OPTIONS.map((fmt) => (
+              <button key={fmt} onClick={() => setFormatFilter(fmt)}
+                className={`px-2 py-1 rounded-md md:px-2.5 md:py-1.5 md:rounded-lg text-[9px] md:text-[10px] font-bold transition-all ${formatFilter === fmt ? 'bg-primary text-white shadow-sm' : 'bg-gray-50 text-gray-500 hover:text-gray-800'}`}>
+                {fmt.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1 min-w-[120px] max-w-[200px]">
+            <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="text" placeholder="Search assets..." value={logSearch} onChange={(e) => setLogSearch(e.target.value)}
+              className="w-full pl-7 pr-2 py-1 text-[10px] border border-gray-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-medium text-gray-800" />
+          </div>
+        </div>
+
+        {logsLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-gray-50 rounded-lg animate-pulse" />)}
+          </div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="text-center py-10 space-y-3">
+            <div className="inline-flex size-10 bg-gray-50 text-gray-400 rounded-full items-center justify-center">
+              <Layers size={18} />
+            </div>
+            <p className="text-xs text-gray-400 font-medium">No downloads available yet.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 text-[9px] md:text-[10px] font-extrabold uppercase text-gray-400">
+                  <th className="pb-2 pl-2">Asset Name</th>
+                  <th className="pb-2">Format</th>
+                  <th className="pb-2">Status</th>
+                  <th className="pb-2">Downloaded At</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 text-sm font-semibold text-gray-700">
+                {filteredLogs.map((log: any) => {
+                  const status = getSyntheticStatus(log);
+                  const badge = STATUS_BADGES[status];
+                  return (
+                    <tr key={log.id} className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="py-2.5 pl-2 font-bold text-gray-900 text-xs">{log.asset?.name || 'Deleted Asset'}</td>
+                      <td className="py-2.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-600 uppercase">
+                          {log.format.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="py-2.5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${badge.className}`}>{badge.label}</span>
+                      </td>
+                      <td className="py-2.5 text-gray-500 text-[10px]">
+                        <div className="flex items-center gap-1">
+                          <Calendar size={10} className="text-gray-400" />
+                          {new Date(log.downloadedAt).toLocaleString()}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="text-[9px] text-gray-400 font-medium mt-3 text-center">
+              Showing {filteredLogs.length} of {downloadLogs?.length || 0} downloads
+            </p>
+          </div>
+        )}
       </div>
 
     </div>
