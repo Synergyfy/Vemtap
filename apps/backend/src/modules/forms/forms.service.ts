@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
@@ -69,6 +70,7 @@ export class FormsService {
   async getFormsByBranch(branchId: string): Promise<Form[]> {
     return this.formsRepository.find({
       where: { branchId },
+      relations: ['fields'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -117,6 +119,14 @@ export class FormsService {
   ): Promise<Form> {
     const form = await this.getFormById(branchId, id);
     Object.assign(form, dto);
+
+    if (dto.fields) {
+      await this.formFieldsRepository.delete({ formId: id });
+      form.fields = dto.fields.map((field) =>
+        this.formFieldsRepository.create({ ...field, formId: id }),
+      );
+    }
+
     return this.formsRepository.save(form);
   }
 
@@ -131,7 +141,7 @@ export class FormsService {
   ): Promise<FormResponse[]> {
     return this.formResponsesRepository.find({
       where: { formId, branchId },
-      relations: ['answers', 'answers.field'],
+      relations: ['answers', 'answers.field', 'visitor'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -387,7 +397,7 @@ export class FormsService {
 
   async submitResponse(
     uniqueCode: string,
-    visitorId: string,
+    visitorId: string | null,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
     const isUuid =
@@ -409,6 +419,10 @@ export class FormsService {
 
     const form = await this.formsRepository.findOne({ where });
     if (!form) throw new NotFoundException('Form not found');
+
+    if (form.requiresAuth && !visitorId) {
+      throw new UnauthorizedException('Authentication is required to submit this form');
+    }
 
     const response = this.formResponsesRepository.create({
       formId: form.id,

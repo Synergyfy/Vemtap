@@ -24,6 +24,7 @@ import { CreditPlanService } from '../services/credit-plan.service';
 import { CreateCreditPlanDto } from '../dto/create-credit-plan.dto';
 import { UpdateCreditPlanDto } from '../dto/update-credit-plan.dto';
 import { PurchaseCreditPlanDto } from '../dto/purchase-credit-plan.dto';
+import { PurchaseCustomCreditsDto } from '../dto/purchase-custom-credits.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -132,6 +133,16 @@ export class CreditPlanController {
     return this.creditPlanService.getMyCredits(businessId);
   }
 
+  @Get('rates')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get active per-credit rates for calculations',
+    description: 'Retrieves SMS, WhatsApp, and Email credit purchase rates.',
+  })
+  async getRates() {
+    return this.creditPlanService.getRates();
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get a specific credit plan detail',
@@ -147,6 +158,34 @@ export class CreditPlanController {
   @ApiResponse({ status: 404, description: 'Credit plan not found.' })
   findOne(@Param() { id }: IdDto) {
     return this.creditPlanService.findOne(id);
+  }
+
+  @Post('custom/purchase')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Purchase custom credits',
+    description:
+      'Confirms payment and awards custom quantities of SMS, WhatsApp, and Email credits. Access: Authenticated users',
+  })
+  @ApiBody({ type: PurchaseCustomCreditsDto })
+  @ApiResponse({
+    status: 200,
+    description:
+      'The custom credits have been successfully purchased and awarded.',
+    type: BusinessCreditWallet,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Payment verification failed or insufficient amount.',
+  })
+  purchaseCustom(@Body() customPurchaseDto: PurchaseCustomCreditsDto) {
+    return this.creditPlanService.purchaseCustom(
+      customPurchaseDto.branchId,
+      customPurchaseDto.reference,
+      customPurchaseDto.smsAmount,
+      customPurchaseDto.whatsappAmount,
+      customPurchaseDto.emailAmount,
+    );
   }
 
   @Post(':id/purchase')

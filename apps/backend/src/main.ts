@@ -14,6 +14,7 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 
 import { ObservabilityLoggingInterceptor } from './observability/interceptors/logging.interceptor';
+import { ObservabilityStoreService } from './observability/observability-store.service';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 // 1. Shared Configuration Function
@@ -52,7 +53,7 @@ export function configureApp(app: INestApplication) {
   // Serialization & Global Logging
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
-    new ObservabilityLoggingInterceptor(),
+    new ObservabilityLoggingInterceptor(app.get(ObservabilityStoreService)),
   );
 
   // Swagger
@@ -92,10 +93,46 @@ if (require.main === module) {
 
     configureApp(app);
 
-    const port = process.env.PORT || 3002;
-    await app.listen(port);
-    logger.log(`Application is running on: http://localhost:${port}/api/v1`);
-    logger.log(`Swagger documentation: http://localhost:${port}/api-docs`);
+    // -------------------------------------------------------------------
+    // Graceful shutdown
+    // -------------------------------------------------------------------
+    // Tells NestJS to listen for OS shutdown signals (SIGTERM, SIGINT).
+    // When received it calls `onModuleDestroy()` on every provider before
+    // the process exits, allowing DB connections, queues, etc. to close cleanly.
+    app.enableShutdownHooks();
+
+    const server = await app.listen(process.env.PORT || 3002);
+
+    // Keep-alive timeout must be > any upstream load balancer idle timeout
+    // (AWS ALB default is 60s) to prevent the LB closing a connection mid-request.
+    server.keepAliveTimeout = 65_000;
+    server.headersTimeout = 66_000; // must be > keepAliveTimeout
+
+    // -------------------------------------------------------------------
+    // SIGTERM drain window
+    // -------------------------------------------------------------------
+    // On SIGTERM (Docker stop / k8s rolling deploy / PM2 restart):
+    //  1. Stop accepting new connections immediately.
+    //  2. Give in-flight requests up to 10 seconds to complete.
+    //  3. Then close the NestJS app (flushes queues, closes DB pool, etc.).
+    process.on('SIGTERM', async () => {
+      logger.log('[Shutdown] SIGTERM received — draining in-flight requests (10s window)...');
+      server.close(async () => {
+        logger.log('[Shutdown] HTTP server closed. Closing application...');
+        await app.close();
+        logger.log('[Shutdown] Application closed cleanly.');
+        process.exit(0);
+      });
+
+      // Safety net: force-exit after 15 seconds if drain stalls
+      setTimeout(() => {
+        logger.warn('[Shutdown] Drain timeout exceeded — force exiting.');
+        process.exit(1);
+      }, 15_000).unref();
+    });
+
+    logger.log(`Application is running on: http://localhost:${process.env.PORT || 3002}/api/v1`);
+    logger.log(`Swagger documentation: http://localhost:${process.env.PORT || 3002}/api-docs`);
   };
   void bootstrap();
 }

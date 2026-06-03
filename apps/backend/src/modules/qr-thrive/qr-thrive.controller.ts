@@ -135,12 +135,24 @@ export class QrThriveController {
 
   @Get('branches/:branchId/main-qr')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Get or create the main business link QR code for a branch' })
+  @ApiOperation({ summary: 'Get the main business link QR code for a branch' })
   async getMainQRCode(
     @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
   ) {
-    return this.qrThriveService.getOrCreateMainQRCode(req.user, branchId);
+    return this.qrThriveService.getMainQRCode(req.user, branchId);
+  }
+
+  @Patch('branches/:branchId/main-qr/:qrCodeId')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Update main QR code and detach it from being the main QR' })
+  async updateMainQRCode(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Param('qrCodeId') qrCodeId: string,
+    @Body() dto: UpdateQRCodeDto,
+  ) {
+    return this.qrThriveService.updateMainQRCode(req.user, branchId, qrCodeId, dto);
   }
 
   @Post('branches/:branchId/main-qr/recreate')
@@ -151,6 +163,17 @@ export class QrThriveController {
     @Param('branchId') branchId: string,
   ) {
     return this.qrThriveService.recreateMainQRCode(req.user, branchId);
+  }
+
+  @Post('branches/:branchId/qr-codes/:qrCodeId/set-as-main')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Set an existing QR code as the main business link QR code' })
+  async setAsMainQRCode(
+    @Req() req: RequestWithUser,
+    @Param('branchId') branchId: string,
+    @Param('qrCodeId') qrCodeId: string,
+  ) {
+    return this.qrThriveService.setAsMainQRCode(req.user, branchId, qrCodeId);
   }
 
   @Get('branches/:branchId/stats')
@@ -363,7 +386,14 @@ export class QrThriveController {
     }
     const userAgent = req.headers['user-agent'] || 'unknown';
     const user = req.user;
-    const redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
+    let redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
+    
+    // Prevent self-referencing redirect loops to scan pages
+    const scanPattern = new RegExp(`\\/s\\/${shortId}$`, 'i');
+    if (scanPattern.test(redirectUrl)) {
+      redirectUrl = redirectUrl.replace(/\/s\//i, '/b/');
+    }
+
     return res.redirect(redirectUrl);
   }
 

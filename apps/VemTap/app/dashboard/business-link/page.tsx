@@ -43,7 +43,7 @@ export default function BusinessLinkPage() {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const [selectedLink, setSelectedLink] = useState<any | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '', status: 'active' });
+    const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '', status: 'active', isMain: false });
     const [searchQuery, setSearchQuery] = useState('');
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
@@ -144,7 +144,8 @@ export default function BusinessLinkPage() {
             location: device.location || '',
             branchId: device.branchId || '',
             targetUrl: currentTargetUrl,
-            status: device.status || 'active'
+            status: device.status || 'active',
+            isMain: device.isMain || false
         });
         setIsEditModalOpen(true);
     };
@@ -171,7 +172,8 @@ export default function BusinessLinkPage() {
             name: editData.name,
             location: editData.location,
             branchId: editData.branchId,
-            status: editData.status
+            status: editData.status,
+            isMain: editData.isMain
         };
 
         if (normalizedTargetUrl) {
@@ -412,6 +414,11 @@ export default function BusinessLinkPage() {
                                     >
                                         {/* Status Badge Top Right */}
                                         <div className="absolute top-6 right-8 flex items-center gap-1.5">
+                                            {device.isMain && (
+                                                <span className="px-2 py-0.5 bg-amber-500 text-white text-[8px] font-black rounded-md uppercase tracking-wider shadow-sm mr-1">
+                                                    ★ MAIN
+                                                </span>
+                                            )}
                                             <div className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{device.status}</span>
                                         </div>
@@ -664,6 +671,26 @@ export default function BusinessLinkPage() {
                                             ))}
                                         </select>
                                     </div>
+
+                                    {editData.branchId && (
+                                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200/60 mt-4 transition-all hover:bg-slate-100/50">
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 block mb-0.5">Designate as Main Device</label>
+                                                <p className="text-[9px] text-text-secondary font-medium max-w-[280px]">
+                                                    Makes this the main touchpoint for customer experience QR code scans. Any other main device on this branch will be unmarked.
+                                                </p>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={editData.isMain} 
+                                                    onChange={(e) => setEditData({ ...editData, isMain: e.target.checked })}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary animate-all duration-300"></div>
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">

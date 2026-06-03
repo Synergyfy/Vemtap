@@ -70,6 +70,21 @@ const getQrIcon = (type: string) => {
   }
 };
 
+const getScanCount = (scans: any): number => {
+  if (!scans) return 0;
+  if (Array.isArray(scans)) return scans.length;
+  if (typeof scans === 'number') return scans;
+  if (typeof scans === 'string') {
+    const num = parseInt(scans, 10);
+    return isNaN(num) ? 0 : num;
+  }
+  if (typeof scans === 'object') {
+    if ('id' in scans || 'qrCodeId' in scans) return 1;
+    return 0;
+  }
+  return 0;
+};
+
 interface QrGridProps {
   codes: QrThriveQRCode[];
   isLoading?: boolean;
@@ -80,6 +95,7 @@ interface QrGridProps {
   onArchive: (id: string, currentStatus: string) => void;
   onViewStats: (code: QrThriveQRCode) => void;
   onDownload?: (code: QrThriveQRCode, format: 'png' | 'svg' | 'jpeg') => void;
+  onSetAsMain?: (id: string) => Promise<void>;
 }
 
 export const QrGrid: React.FC<QrGridProps> = ({ 
@@ -91,7 +107,8 @@ export const QrGrid: React.FC<QrGridProps> = ({
   onDuplicate, 
   onArchive, 
   onViewStats,
-  onDownload
+  onDownload,
+  onSetAsMain
 }) => {
   const { canPerformAction } = useActionPermission();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -207,8 +224,6 @@ export const QrGrid: React.FC<QrGridProps> = ({
       qrInstance.download({
         name: qr?.name || 'qrcode',
         extension: format === 'jpeg' ? 'jpg' : format,
-        width: 2000,
-        height: 2000
       });
       toast.success('Download started');
     } else if (qr && onDownload) {
@@ -307,12 +322,28 @@ export const QrGrid: React.FC<QrGridProps> = ({
                   >
                     <Copy className="w-4 h-4" /> Duplicate
                   </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleArchive(qr.id, qr.status); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <Archive className="w-4 h-4" /> {qr.status === 'archived' ? 'Restore' : 'Archive'}
-                  </button>
+                  {!(mainQrCodeId && qr.id === mainQrCodeId) && qr.status !== 'archived' && onSetAsMain && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Set this QR code as your main business link? Its content will be updated to your business landing page, but the design will stay the same.')) {
+                          onSetAsMain(qr.id);
+                        }
+                        setMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-amber-600 hover:bg-amber-50 transition-colors"
+                    >
+                      <Star className="w-4 h-4" /> Set as Main
+                    </button>
+                  )}
+                  {!(mainQrCodeId && qr.id === mainQrCodeId) && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleArchive(qr.id, qr.status); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      <Archive className="w-4 h-4" /> {qr.status === 'archived' ? 'Restore' : 'Archive'}
+                    </button>
+                  )}
 
                   <button 
                     onClick={(e) => { e.stopPropagation(); handlePreviewClick(qr); }}
@@ -339,7 +370,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
                       </button>
                     </div>
                   </div>
-                  {canPerformAction('delete') && (
+                  {canPerformAction('delete') && !(mainQrCodeId && qr.id === mainQrCodeId) && (
                     <>
                       <div className="border-t border-slate-100 my-1" />
                       <button 
@@ -363,14 +394,14 @@ export const QrGrid: React.FC<QrGridProps> = ({
               className="w-20 h-20 bg-white rounded-xl shadow-inner flex items-center justify-center relative group/qr overflow-hidden cursor-pointer"
               onClick={(e) => { e.stopPropagation(); handlePreviewClick(qr); }}
             >
-               <div className="scale-[0.4] transform-gpu">
+               <div className="scale-[0.07] transform-gpu">
                   <QrPreview 
                     data={toAbsoluteUrl(qr.shortUrl)}
                     design={qr.design}
                     frame={{ type: 'none' }}
                     logo={qr.logo}
-                    width={180}
-                    height={180}
+                    width={1024}
+                    height={1024}
                     onReady={(inst) => { qrRefs.current[qr.id] = inst; }}
                   />
                </div>
@@ -398,7 +429,7 @@ export const QrGrid: React.FC<QrGridProps> = ({
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
             >
               <BarChart3 className="w-4 h-4" />
-              <span>{qr.scans} Scans</span>
+              <span>{getScanCount(qr.scans)} Scans</span>
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onEdit(qr); }}

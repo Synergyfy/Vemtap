@@ -1,0 +1,34 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class AddMarketingTemplateFormatTable1780345575201 implements MigrationInterface {
+    name = 'AddMarketingTemplateFormatTable1780345575201'
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') THEN ALTER TABLE "marketing_templates" DROP CONSTRAINT IF EXISTS "FK_marketing_templates_categoryId"; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_brand_rules') THEN ALTER TABLE "marketing_brand_rules" DROP CONSTRAINT IF EXISTS "FK_marketing_brand_rules_businessId"; END IF; END $$;`);
+        await queryRunner.query(`CREATE TABLE IF NOT EXISTS "marketing_template_styles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "name" character varying NOT NULL, "slug" character varying NOT NULL, "description" character varying, "bgColor" character varying(7) NOT NULL, "accentColor" character varying(7) NOT NULL, "borderColor" character varying(7) NOT NULL, "qrFgColor" character varying(7) NOT NULL, "qrBgColor" character varying(7) NOT NULL, "textColor" character varying(7) NOT NULL, "fontConfig" json, "layoutConfig" json, "ctaConfig" json, "qrConfig" json, "isActive" boolean NOT NULL DEFAULT true, CONSTRAINT "UQ_d0135c2e498c216b20af4b10d4d" UNIQUE ("slug"), CONSTRAINT "PK_04fc40784ba71b2e426b32ee1e0" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE IF NOT EXISTS "marketing_template_formats" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "name" character varying NOT NULL, "slug" character varying NOT NULL, "widthMm" double precision NOT NULL, "heightMm" double precision NOT NULL, "bleedMm" double precision NOT NULL DEFAULT '3', "printMarginMm" double precision NOT NULL DEFAULT '5', "resolution" integer NOT NULL DEFAULT '300', "isActive" boolean NOT NULL DEFAULT true, CONSTRAINT "UQ_f356dcfbd4147c8825c4ee0696a" UNIQUE ("slug"), CONSTRAINT "PK_42fd4713346a13703d3720b6072" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT '0.05'`);
+        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT '0.08'`);
+        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT '0.01'`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_categories') THEN ALTER TABLE "marketing_categories" ALTER COLUMN "slug" DROP DEFAULT; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_categories') THEN ALTER TABLE "marketing_templates" DROP CONSTRAINT IF EXISTS "FK_1ecbb98d1f43670477c7638df53"; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_categories') THEN ALTER TABLE "marketing_templates" ADD CONSTRAINT "FK_1ecbb98d1f43670477c7638df53" FOREIGN KEY ("categoryId") REFERENCES "marketing_categories"("id") ON DELETE NO ACTION ON UPDATE NO ACTION; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_brand_rules') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'businesses') THEN ALTER TABLE "marketing_brand_rules" DROP CONSTRAINT IF EXISTS "FK_27eb70ba4fc6312e8ac269eea63"; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_brand_rules') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'businesses') THEN ALTER TABLE "marketing_brand_rules" ADD CONSTRAINT "FK_27eb70ba4fc6312e8ac269eea63" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION; END IF; END $$;`);
+    }
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_categories') THEN ALTER TABLE "marketing_templates" DROP CONSTRAINT IF EXISTS "FK_1ecbb98d1f43670477c7638df53"; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_brand_rules') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'businesses') THEN ALTER TABLE "marketing_brand_rules" DROP CONSTRAINT IF EXISTS "FK_27eb70ba4fc6312e8ac269eea63"; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_categories') THEN ALTER TABLE "marketing_categories" ALTER COLUMN "slug" SET DEFAULT ''; END IF; END $$;`);
+        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT 0.01`);
+        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT 0.08`);
+        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT 0.05`);
+        await queryRunner.query(`DROP TABLE IF EXISTS "marketing_template_formats"`);
+        await queryRunner.query(`DROP TABLE IF EXISTS "marketing_template_styles"`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_brand_rules') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'businesses') THEN ALTER TABLE "marketing_brand_rules" ADD CONSTRAINT "FK_marketing_brand_rules_businessId" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION; END IF; END $$;`);
+        await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') AND EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_categories') THEN ALTER TABLE "marketing_templates" ADD CONSTRAINT "FK_marketing_templates_categoryId" FOREIGN KEY ("categoryId") REFERENCES "marketing_categories"("id") ON DELETE SET NULL ON UPDATE NO ACTION; END IF; END $$;`);
+    }
+
+}

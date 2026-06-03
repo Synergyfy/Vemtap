@@ -4,40 +4,66 @@ import { usePathname } from 'next/navigation';
 import { Home, Users, ShoppingBag, MessageCircle, MessageSquare } from 'lucide-react';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useSudoStore } from '@/store/useSudoStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
 export default function DashboardMobileNav() {
     const pathname = usePathname();
     const { getLinkWithBranch } = useActiveBranch();
     const { activeSession } = useSudoStore();
     const isAdminMode = activeSession !== null;
+    const user = useAuthStore((state) => state.user);
 
     const navItems = [
         {
             label: 'Home',
             icon: Home,
-            href: '/dashboard'
+            href: '/dashboard',
+            roles: ['owner', 'manager', 'staff'],
+            permission: 'dashboard',
         },
         {
             label: 'Visitor',
             icon: Users,
-            href: '/dashboard/visitors'
+            href: '/dashboard/visitors',
+            roles: ['owner', 'manager', 'staff'],
+            permission: 'visitors',
         },
         {
             label: 'Catalogue',
             icon: ShoppingBag,
-            href: '/dashboard/catalogue'
+            href: '/dashboard/catalogue',
+            roles: ['owner', 'manager'],
+            permission: 'catalogue',
         },
         {
             label: 'Chat',
             icon: MessageCircle,
-            href: '/dashboard/messaging/chat'
+            href: '/dashboard/messaging/chat',
+            roles: ['owner', 'manager', 'staff'],
+            permission: 'chat',
         },
         {
             label: 'Channels',
             icon: MessageSquare,
-            href: '/dashboard/messaging'
-        }
+            href: '/dashboard/messaging',
+            roles: ['owner', 'manager'],
+            permission: 'messages',
+        },
     ];
+
+    const userPermissions = user?.permissions || [];
+    const isOwnerOrAdmin = ['owner', 'admin'].includes((user?.role as string)?.toLowerCase());
+
+    const filteredNavItems = navItems.filter(item => {
+        const realUserRole = (user?.role as string)?.toLowerCase() || 'owner';
+
+        if (isAdminMode) {
+            return !item.roles || item.roles.includes('owner');
+        }
+
+        return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
+    });
 
     return (
         <div
@@ -45,7 +71,7 @@ export default function DashboardMobileNav() {
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
             <div className="flex justify-around items-center h-20 px-2">
-                {navItems.map((item) => {
+                {filteredNavItems.map((item) => {
                     const isActive = (() => {
                         if (item.label === 'Home') return pathname === '/dashboard' || pathname === '/dashboard/';
                         if (item.label === 'Channels') {

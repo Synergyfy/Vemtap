@@ -22,6 +22,10 @@ import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
 import SubscriptionExpiredModal from './SubscriptionExpiredModal';
+import { useSudoStore } from '@/store/useSudoStore';
+import { canAccessMenuItem } from '@/lib/utils/nav-filter';
+import OwnerSearch from './OwnerSearch';
+import { OWNER_MENU_ITEMS } from '@/constants/ownerNavigation';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -42,8 +46,6 @@ interface MenuItem {
     onClick?: () => void;
 }
 
-import { useSudoStore } from '@/store/useSudoStore';
-
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -62,6 +64,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
+    const isCreateAssetPage = pathname.includes('/marketing-assets/create');
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const mainRef = useRef<HTMLElement | null>(null);
 
@@ -169,145 +172,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         });
     };
 
-    const menuItems: MenuItem[] = [
-        {
-            id: 'overview',
-            label: 'Dashboard',
-            icon: Home,
-            href: '/dashboard',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'dashboard',
-        },
-        {
-            id: 'visitors',
-            label: 'Visitors',
-            icon: Users,
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'visitors',
-            submenu: [
-                { label: 'Overview', href: '/dashboard/visitors' },
-                { label: 'All Visitors', href: '/dashboard/visitors/all' },
-                { label: 'New Visitors', href: '/dashboard/visitors/new' },
-                { label: 'Returning', href: '/dashboard/visitors/returning' },
-            ]
-        },
-        {
-            id: 'live-chat',
-            label: 'In-App Chat',
-            icon: MessageCircle,
-            href: '/dashboard/messaging/chat',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'chat',
-        },
-        {
-            id: 'messaging-center',
-            label: 'Channels',
-            icon: MessageSquare,
-            roles: ['owner', 'manager'],
-            permission: 'messages',
-            submenu: [
-                { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
-                { label: 'SMS', href: '/dashboard/messaging/sms' },
-                { label: 'Email', href: '/dashboard/messaging/email' },
-                { label: 'Messaging Credits', href: '/dashboard/messaging/credits' },
-                { label: 'History', href: '/dashboard/messaging/history' },
-            ]
-        },
-        {
-            id: 'loyalty',
-            label: 'Loyalty',
-            icon: Gift,
-            href: '/dashboard/loyalty',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'loyalty',
-            feature: 'loyalty',
-            featureName: 'Loyalty Programs',
-        },
-        {
-            id: 'catalogue',
-            label: 'Catalogue',
-            icon: ShoppingBag,
-            roles: ['owner', 'manager'],
-            permission: 'catalogue',
-            feature: 'catalogue',
-            featureName: 'Catalogue',
-            submenu: [
-                { label: 'Overview', href: '/dashboard/catalogue' },
-                { label: 'Products', href: '/dashboard/catalogue/products' },
-                { label: 'Offers', href: '/dashboard/catalogue/offers' },
-                { label: 'Categories', href: '/dashboard/catalogue/categories' },
-                { label: 'Orders', href: '/dashboard/catalogue/orders' },
-                { label: 'Bookings', href: '/dashboard/catalogue/bookings' },
-            ]
-        },
-        {
-            id: 'analytics',
-            label: 'Advanced Analytics ',
-            icon: BarChart,
-            roles: ['owner', 'manager'],
-            permission: 'analytics',
-            submenu: [
-                { label: 'Overview', href: '/dashboard/analytics' },
-                { label: 'Footfall', href: '/dashboard/analytics/footfall', feature: 'footfall', featureName: 'Advanced Analytics' },
-                { label: 'Peak Times', href: '/dashboard/analytics/peak-times', feature: 'peak-times', featureName: 'Advanced Analytics' },
-            ]
-        },
-        {
-            id: 'manage-forms',
-            label: 'Manage Forms',
-            icon: FileText,
-            href: '/dashboard/engagement/forms',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'engagement',
-        },
-        {
-            id: 'agent-desk',
-            label: 'Support Desk',
-            icon: HelpCircle,
-            href: '/agent/dashboard',
-            roles: ['staff', 'manager'],
-            permission: 'support',
-        },
-        {
-            id: 'admin-nfc',
-            label: 'Admin NFC Grants',
-            icon: ShieldCheck,
-            href: '/admin/nfc-grants',
-            roles: ['admin'],
-        },
-        {
-            id: 'explore-qrthrive',
-            label: 'Explore QRThrive',
-            icon: QrCode,
-            href: '/dashboard/explore-qrthrive',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'qrthrive',
-        },
-        {
-            id: 'customer-experience',
-            label: 'Customer Experience',
-            icon: Zap,
-            href: '/dashboard/customer-experience',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'customer-experience',
-        },
-        {
-            id: 'settings',
-            label: 'Settings',
-            icon: Settings,
-            href: '/dashboard/settings',
-            roles: ['owner', 'manager'],
-            permission: 'settings',
-            submenu: [
-                { label: 'Profile', href: '/dashboard/settings/profile' },
-                { label: 'Business Locations', href: '/dashboard/settings/branches' },
-                { label: 'Team', href: '/dashboard/staff' },
-                { label: 'Subscription', href: '/dashboard/settings/subscription' },
-                { label: 'Support', href: '/dashboard/support' },
-                { label: 'Legal & Compliance', href: '/dashboard/compliance' },
-            ]
-        },
-    ];
+    const menuItems: MenuItem[] = OWNER_MENU_ITEMS as any[];
 
     const userPermissions = user?.permissions || [];
     const isOwnerOrAdmin = ['owner', 'admin'].includes((user?.role as string)?.toLowerCase());
@@ -317,27 +182,49 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         
         // Handle Admin/Agent Sudo Mode (Impersonation)
         if (isAdminMode) {
-            // Hide sensitive items or agent/admin tools while impersonating a business
             if (item.id === 'staff') return false;
             if (item.id === 'agent-desk') return false;
             if (item.id === 'admin-nfc') return false;
             
-            // Treat the impersonator as an 'owner' so they see standard business menus
             return !item.roles || item.roles.includes('owner');
         }
 
-        // Normal Flow (Not impersonating)
-        if (realUserRole === 'admin') return true;
-
-        // Role check
-        if (item.roles && !item.roles.includes(realUserRole)) return false;
-
-        // Permission check: OWNER/ADMIN always bypass, MANAGER/STAFF must have the permission
-        if (item.permission && !isOwnerOrAdmin && !userPermissions.includes(item.permission)) {
-            return false;
+        // Hide Marketing Materials for excluded categories (PRD §8.0)
+        if (item.id === 'marketing-assets' && myBusiness) {
+            const bizCat = typeof (myBusiness as any).category === 'object'
+                ? (myBusiness as any).category?.name
+                : myBusiness.category;
+            
+            if (bizCat) {
+                const excludedCategories = [
+                    'hospital',
+                    'clinic',
+                    'dental clinic',
+                    'eye clinic',
+                    'medical laboratory',
+                    'pharmacy',
+                    'airport',
+                    'government',
+                    'ministry',
+                    'agency',
+                    'educational',
+                    'school',
+                    'university'
+                ];
+                const catLower = bizCat.toLowerCase();
+                const isExcluded = excludedCategories.some(ex => {
+                    if (ex === 'hospital') {
+                        return catLower.includes('hospital') && !catLower.includes('hospitality');
+                    }
+                    return catLower.includes(ex);
+                });
+                if (isExcluded) {
+                    return false;
+                }
+            }
         }
 
-        return true;
+        return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
     }).map(item => {
         return item;
     });
@@ -651,6 +538,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         <div className="relative max-w-sm w-full hidden sm:block">
                             <BranchSwitcher />
                         </div>
+                        <OwnerSearch />
                     </div>
                     <div className="flex items-center gap-2 lg:gap-4 relative">
                         {(() => {
@@ -906,7 +794,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             {/* Only show Mobile Nav if NOT on an active chat conversation */}
-            {!(isChatRoute && activeConversationId) && <DashboardMobileNav />}
+            {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
             
             <UpgradeModal
                 isOpen={upgradeModal.isOpen}

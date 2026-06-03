@@ -43,6 +43,18 @@ export class Setting extends AbstractBaseEntity {
   @Column('decimal', { precision: 10, scale: 2, default: 0.01 })
   messagingCostEmail: number;
 
+  @ApiProperty({ example: 15.00, description: 'Price per SMS Credit in NGN' })
+  @Column('decimal', { precision: 10, scale: 2, default: 15.00 })
+  creditPriceSms: number;
+
+  @ApiProperty({ example: 25.00, description: 'Price per WhatsApp Credit in NGN' })
+  @Column('decimal', { precision: 10, scale: 2, default: 25.00 })
+  creditPriceWhatsapp: number;
+
+  @ApiProperty({ example: 2.00, description: 'Price per Email Credit in NGN' })
+  @Column('decimal', { precision: 10, scale: 2, default: 2.00 })
+  creditPriceEmail: number;
+
   @ApiProperty({ example: 'token_123', description: 'WhatsApp API Token' })
   @Column({ nullable: true })
   whatsappApiToken: string;

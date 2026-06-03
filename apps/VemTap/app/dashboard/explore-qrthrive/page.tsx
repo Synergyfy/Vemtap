@@ -10,7 +10,8 @@ import {
     Palette, Frame, Image as ImageIcon, CheckCircle2, Phone,
     FileText, Image, Video, User, SmartphoneNfc, Music, 
     Building2, UtensilsCrossed, Link2, Ticket, Wifi,
-    Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download, Lock, Edit2
+    Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download, Lock, Edit2,
+    WifiOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -42,9 +43,12 @@ import {
     useSubscriptionIncludesQrThrive,
     useMainQrCode,
     useRecreateMainQrCode,
+    useUpdateMainQrCode,
+    useSetQRCodeAsMain,
 } from '@/services/qr-thrive/hooks';
 import { useActionPermission } from '@/hooks/useActionPermission';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches } from '@/services/branches/hooks';
 import { QRType, DEFAULT_QR_DESIGN, DEFAULT_QR_FRAME } from '@/services/qr-thrive/types';
 import StatsCard from '@/components/dashboard/StatsCard';
 
@@ -54,6 +58,21 @@ const STEPS = [
     { id: 'content', label: 'Add Content' },
     { id: 'design', label: 'Design QR' },
 ];
+
+const getScanCount = (scans: any): number => {
+    if (!scans) return 0;
+    if (Array.isArray(scans)) return scans.length;
+    if (typeof scans === 'number') return scans;
+    if (typeof scans === 'string') {
+        const num = parseInt(scans, 10);
+        return isNaN(num) ? 0 : num;
+    }
+    if (typeof scans === 'object') {
+        if ('id' in scans || 'qrCodeId' in scans) return 1;
+        return 0;
+    }
+    return 0;
+};
 
 export default function ExploreQRThrivePage() {
     const { canPerformAction } = useActionPermission();
@@ -77,9 +96,16 @@ export default function ExploreQRThrivePage() {
 
     const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
     const provisionMutation = useProvisionQrThriveUser();
-    const { data: subscriptionData, isLoading: isCheckingSubscription } = useSubscriptionIncludesQrThrive();
+    const { data: subscriptionData, isPending: isCheckingSubscription } = useSubscriptionIncludesQrThrive();
     
     const { activeBranchId } = useActiveBranch();
+    const { data: branches = [] } = useBranches();
+    const [origin, setOrigin] = useState('https://vemtap.com');
+    useEffect(() => {
+        if (typeof window !== 'undefined') setOrigin(window.location.origin);
+    }, []);
+    const currentBranch = branches.find((b: any) => b.id === activeBranchId);
+    const branchUsername = currentBranch?.username || null;
     const searchParams = useSearchParams();
     const router = useRouter();
     const prefillUrl = searchParams.get('prefill_url');
@@ -113,6 +139,8 @@ export default function ExploreQRThrivePage() {
 
     const createMutation = useCreateQrThriveCode();
     const updateMutation = useUpdateQrThriveCode();
+    const updateMainQrMutation = useUpdateMainQrCode();
+    const setAsMainMutation = useSetQRCodeAsMain();
     const resetMappingMutation = useResetQrThriveMapping();
 
     const {
@@ -124,16 +152,19 @@ export default function ExploreQRThrivePage() {
 
     const {
         data: stats,
-        error: statsError
+        error: statsError,
+        refetch: refetchStats,
     } = useQrThriveStats();
 
     const {
         data: mainQrData,
         isLoading: isLoadingMainQr,
+        error: mainQrError,
     } = useMainQrCode(activeBranchId && activeBranchId !== 'all' ? activeBranchId : null);
 
     const mainQrCodeId = mainQrData?.qrCode?.id || null;
     const mainQrCode = mainQrData?.qrCode || null;
+    const branchUniqueCode = currentBranch?.uniqueCode || null;
 
     const recreateMainMutation = useRecreateMainQrCode();
 
@@ -143,8 +174,37 @@ export default function ExploreQRThrivePage() {
         (codesError as any)?.message?.includes('404') ||
         (statsError as any)?.message?.includes('404');
 
-    const isSubscriptionLocked = !isCheckingSubscription &&
-        subscriptionData &&
+    const isQrThriveDown = !isError404 && (
+        // Network errors (service unreachable)
+        (codesError instanceof TypeError && codesError.message === 'fetch is not defined') ||
+        (codesError as any)?.message === 'Failed to fetch' ||
+        (codesError as any)?.message?.includes('NetworkError') ||
+        (codesError as any)?.message?.includes('network') ||
+        (statsError as any)?.message === 'Failed to fetch' ||
+        (statsError as any)?.message?.includes('NetworkError') ||
+        (mainQrError as any)?.message === 'Failed to fetch' ||
+        // 5xx server errors
+        (codesError as any)?.status >= 500 ||
+        (statsError as any)?.status >= 500 ||
+        (mainQrError as any)?.status >= 500 ||
+        // Connection refused / timeouts
+        (codesError as any)?.message?.includes('timeout') ||
+        (statsError as any)?.message?.includes('timeout')
+    );
+
+    // Show loading state until subscription check is resolved
+    if (isCheckingSubscription) {
+        return (
+            <div className="min-h-[calc(100vh-4rem)] bg-gray-50/50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="size-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const isSubscriptionLocked = subscriptionData &&
         !subscriptionData.includesQrThrive &&
         subscriptionData.subscriptionStatus !== 'active' &&
         subscriptionData.subscriptionStatus !== 'trial';
@@ -176,6 +236,20 @@ export default function ExploreQRThrivePage() {
             </div>
         );
     }
+
+    const handleEditMainQr = () => {
+        if (!mainQrCode) return;
+        setSelectedQrId(mainQrCode.id);
+        setSelectedType((mainQrCode.type || 'url') as QRType);
+        setQrData(mainQrCode.data || { type: 'url', url: 'https://qrthrive.com' });
+        setQrName(mainQrCode.name || '');
+        setQrDesign(mainQrCode.design || DEFAULT_QR_DESIGN);
+        setQrFrame(mainQrCode.frame || DEFAULT_QR_FRAME);
+        setQrLogo(mainQrCode.logo);
+        setView('edit');
+        setStep('type');
+        setIsLocked(false);
+    };
 
     const handleCreateNew = () => {
         setView('create');
@@ -278,27 +352,22 @@ export default function ExploreQRThrivePage() {
             if (view === 'edit' && selectedQrId) {
                 // Strip fields that are not allowed in UpdateQRCodeDto
                 const { isDynamic, ...updatePayload } = payload;
-                
-                await updateMutation.mutateAsync({
-                    qrId: selectedQrId,
-                    data: updatePayload as any,
-                    branchId: activeBranchId || undefined
-                });
 
-                // If the edited QR was the main QR and its URL changed, recreate the main QR
-                if (selectedQrId === mainQrCodeId) {
-                    const originalUrl = codes?.find(c => c.id === selectedQrId)?.data?.url;
-                    if (originalUrl && originalUrl !== uploadedQrData?.url) {
-                        toast.success('Main QR code updated. A new main QR will be created with your business link.');
-                        try {
-                            await recreateMainMutation.mutateAsync(activeBranchId || undefined);
-                        } catch {
-                            // Silently handle - will be auto-created on next page visit
-                        }
-                    }
+                if (mainQrCodeId && selectedQrId === mainQrCodeId) {
+                    await updateMainQrMutation.mutateAsync({
+                        qrId: selectedQrId,
+                        data: updatePayload as any,
+                        branchId: activeBranchId || undefined
+                    });
+                    toast.success('Main QR Code updated — it is now a regular QR code.');
+                } else {
+                    await updateMutation.mutateAsync({
+                        qrId: selectedQrId,
+                        data: updatePayload as any,
+                        branchId: activeBranchId || undefined
+                    });
+                    toast.success('QR Code updated successfully!');
                 }
-
-                toast.success('QR Code updated successfully!');
             } else {
                 const newQr = await createMutation.mutateAsync({
                     data: payload,
@@ -408,6 +477,88 @@ export default function ExploreQRThrivePage() {
                         </div>
                     </div>
                 </div>
+            </div>
+        );
+    }
+
+    if (isQrThriveDown) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 lg:p-12 text-center bg-slate-50">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className="max-w-xl w-full bg-white rounded-[3rem] p-10 lg:p-14 border border-slate-100 shadow-2xl shadow-slate-200/50"
+                >
+                    <div className="w-24 h-24 bg-amber-50 text-amber-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 relative">
+                        <div className="absolute inset-0 bg-amber-500/15 blur-[40px] rounded-full" />
+                        <motion.div
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                            <WifiOff className="w-12 h-12 relative z-10" />
+                        </motion.div>
+                    </div>
+
+                    <motion.h2
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.2 }}
+                        className="text-3xl font-black text-slate-900 tracking-tight mb-4"
+                    >
+                        QR Thrive is Unavailable
+                    </motion.h2>
+
+                    <motion.p
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.35 }}
+                        className="text-slate-500 font-medium leading-relaxed mb-10"
+                    >
+                        We're having trouble reaching the QR Thrive service. It may be temporarily
+                        down for maintenance or experiencing a network issue. Please try again shortly.
+                    </motion.p>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.5 }}
+                        className="space-y-4"
+                    >
+                        <button
+                            onClick={() => {
+                                refetchCodes();
+                                refetchStats();
+                                toast.success('Retrying connection...');
+                            }}
+                            className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3"
+                        >
+                            <RefreshCw className="w-5 h-5" />
+                            Try Again
+                        </button>
+
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="w-full py-5 bg-slate-50 text-slate-400 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-slate-100 transition-all border border-slate-100 active:scale-95"
+                        >
+                            Reload Page
+                        </button>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4, delay: 0.65 }}
+                        className="mt-12 pt-10 border-t border-slate-50 flex flex-col items-center gap-4"
+                    >
+                        <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">
+                                Service connection lost
+                            </p>
+                        </div>
+                    </motion.div>
+                </motion.div>
             </div>
         );
     }
@@ -548,14 +699,14 @@ export default function ExploreQRThrivePage() {
                                 <div className="relative z-10 flex flex-col lg:flex-row items-start gap-6">
                                     <div className="shrink-0">
                                         <div className="w-40 h-40 lg:w-48 lg:h-48 bg-white rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden">
-                                            <div className="scale-[0.65] lg:scale-[0.8] transform-gpu">
+                                            <div className="scale-[0.114] lg:scale-[0.141] transform-gpu">
                                                 <QrPreview
-                                                    data={mainQrCode.data?.url || mainQrCode.shortUrl || 'https://vemtap.com'}
+                                                    data={`${origin}/s/${branchUniqueCode}`}
                                                     design={mainQrCode.design || DEFAULT_QR_DESIGN}
                                                     frame={{ type: 'none' }}
                                                     logo={mainQrCode.logo}
-                                                    width={180}
-                                                    height={180}
+                                                    width={1024}
+                                                    height={1024}
                                                     onReady={(inst) => { qrRefs.current['main'] = inst; }}
                                                 />
                                             </div>
@@ -570,11 +721,11 @@ export default function ExploreQRThrivePage() {
                                             {mainQrCode.name}
                                         </h3>
                                         <p className="text-sm text-blue-100 font-medium truncate">
-                                            {mainQrCode.data?.url || 'No URL configured'}
+                                            {branchUsername ? `${origin}/${branchUsername}` : (mainQrCode.data?.url || 'No URL configured')}
                                         </p>
                                         <div className="flex items-center gap-3">
                                             <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
-                                                {mainQrCode.scans || 0} scans
+                                                {getScanCount(mainQrCode.scans)} scans
                                             </span>
                                             <span className="text-blue-300">·</span>
                                             <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
@@ -583,20 +734,8 @@ export default function ExploreQRThrivePage() {
                                         </div>
                                         <div className="flex flex-wrap items-center gap-2 pt-1">
                                             <button
-                                                onClick={() => {
-                                                    const qr = codes?.find(c => c.id === mainQrCode.id) || mainQrCode;
-                                                    setSelectedQrId(qr.id);
-                                                    setSelectedType(qr.type as QRType);
-                                                    setQrData(qr.data);
-                                                    setQrName(qr.name);
-                                                    setQrDesign(qr.design || DEFAULT_QR_DESIGN);
-                                                    setQrFrame(qr.frame || DEFAULT_QR_FRAME);
-                                                    setQrLogo(qr.logo);
-                                                    setView('edit');
-                                                    setStep('type');
-                                                    setIsLocked(false);
-                                                }}
-                                                className="px-5 py-2.5 bg-white text-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 transition-all shadow-lg flex items-center gap-1.5"
+                                                onClick={handleEditMainQr}
+                                                className="px-5 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
                                             >
                                                 <Edit2 size={12} /> Edit
                                             </button>
@@ -604,7 +743,7 @@ export default function ExploreQRThrivePage() {
                                                 onClick={() => {
                                                     const inst = qrRefs.current['main'];
                                                     if (inst) {
-                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'png', width: 2000, height: 2000 });
+                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'png' });
                                                         toast.success('QR Code downloaded');
                                                     }
                                                 }}
@@ -616,7 +755,7 @@ export default function ExploreQRThrivePage() {
                                                 onClick={() => {
                                                     const inst = qrRefs.current['main'];
                                                     if (inst) {
-                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'svg', width: 2000, height: 2000 });
+                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'svg' });
                                                         toast.success('QR Code downloaded');
                                                     }
                                                 }}
@@ -626,15 +765,56 @@ export default function ExploreQRThrivePage() {
                                             </button>
                                             <button
                                                 onClick={() => {
-                                                    const url = mainQrCode.data?.url;
-                                                    if (url) {
-                                                        navigator.clipboard.writeText(url);
+                                                    const copyUrl = branchUsername ? `${origin}/${branchUsername}` : mainQrCode.data?.url;
+                                                    if (copyUrl) {
+                                                        navigator.clipboard.writeText(copyUrl);
                                                         toast.success('URL copied to clipboard');
                                                     }
                                                 }}
                                                 className="px-4 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
                                             >
                                                 <Copy size={10} /> Copy URL
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!mainQrCode && !isLoadingMainQr && (
+                            <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[40px] p-6 lg:p-8 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full -mr-32 -mt-32" />
+                                <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/10 blur-[60px] rounded-full -ml-24 -mb-24" />
+                                <div className="relative z-10 flex flex-col lg:flex-row items-start gap-6">
+                                    <div className="shrink-0">
+                                        <div className="w-40 h-40 lg:w-48 lg:h-48 bg-white/10 rounded-3xl flex items-center justify-center">
+                                            <QrCode size={64} className="text-white/40" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0 space-y-3">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-white/80 border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                            <Zap size={12} />
+                                            Main Business Link
+                                        </div>
+                                        <h3 className="text-xl lg:text-2xl font-bold text-white leading-tight">
+                                            No main QR code yet
+                                        </h3>
+                                        <p className="text-sm text-white/60 font-medium">
+                                            Create a main business link QR code to display on your customer experience page.
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await recreateMainMutation.mutateAsync(undefined);
+                                                        toast.success('Main QR Code created!');
+                                                    } catch (err: any) {
+                                                        toast.error(err?.message || 'Failed to create main QR code');
+                                                    }
+                                                }}
+                                                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+                                            >
+                                                <Plus size={12} /> Create Main QR
                                             </button>
                                         </div>
                                     </div>
@@ -698,6 +878,14 @@ export default function ExploreQRThrivePage() {
                                     link.download = `${qr.name}.${format}`;
                                     link.click();
                                     toast.success('Download started');
+                                }}
+                                onSetAsMain={async (id) => {
+                                    try {
+                                        await setAsMainMutation.mutateAsync({ qrId: id });
+                                        toast.success('QR Code set as main business link!');
+                                    } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to set QR code as main');
+                                    }
                                 }}
                             />
                         )}

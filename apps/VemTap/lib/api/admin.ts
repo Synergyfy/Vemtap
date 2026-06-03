@@ -118,7 +118,7 @@ export const adminSubscriptionsApi = {
         return api.get(`/subscriptions/admin?${q.toString()}`);
     },
     getStats: () => api.get('/subscriptions/admin/stats'),
-    subscribe: (data: { planId: string; businessId: string; billingPeriod: 'monthly' | 'quarterly' | 'yearly'; paymentReference?: string; isTrial?: boolean; isAdminOverride?: boolean }) =>
+    subscribe: (data: { planId: string; businessId: string; billingPeriod: 'monthly' | 'quarterly' | 'yearly'; paymentReference?: string; isTrial?: boolean; isAdminOverride?: boolean; customEndDate?: string }) =>
         api.post('/subscriptions/subscribe', data),
 };
 

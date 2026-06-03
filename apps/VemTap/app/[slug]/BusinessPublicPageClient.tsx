@@ -1,0 +1,491 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+    MapPin, Phone, Mail, Globe, ShieldCheck, Instagram,
+    Twitter, Facebook, Share2, Building2, Linkedin, ExternalLink,
+    ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon,
+    QrCode, ShoppingBag, Briefcase, Tag, FileJson
+} from 'lucide-react';
+import { fetchDeviceByCode, fetchContextByUsername } from '@/lib/api/devices';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
+import { TapJourneyContainer } from '@/components/visitor/TapJourneyContainer';
+
+interface BusinessPublicPageClientProps {
+    slug: string;
+    initialData?: any;
+}
+
+export default function BusinessPublicPageClient({ slug, initialData }: BusinessPublicPageClientProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const storeDeviceCode = useCustomerFlowStore(state => state.deviceCode);
+    const queryCode = searchParams.get('code');
+    const deviceCode = storeDeviceCode || queryCode;
+
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const user = useAuthStore((state) => state.user);
+    const isBusinessAccount = isAuthenticated && user?.role?.toLowerCase() !== 'customer';
+    const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
+
+    const [businessData, setBusinessData] = useState<any>(initialData || null);
+    const [isLoading, setIsLoading] = useState(!initialData);
+    const [isUsernameMode, setIsUsernameMode] = useState(!!initialData);
+
+    useEffect(() => {
+        if (initialData) return;
+
+        const loadPageData = async () => {
+            // 1. Try treating slug as a username first
+            try {
+                const usernameContext = await fetchContextByUsername(slug);
+                if (usernameContext) {
+                    setBusinessData(usernameContext);
+                    setIsUsernameMode(true);
+                    setIsLoading(false);
+                    return;
+                }
+            } catch (err) {
+                console.log('Not a username context, checking for device code');
+            }
+
+            // 2. If not a username, check if we have a device code for the redirect/loading
+            if (!deviceCode) {
+                setIsLoading(false);
+                return;
+            }
+
+            // 3. Normal redirect logic for device-based visits if not authenticated
+            if (!isAuthenticated && deviceCode) {
+                router.replace(`/${slug}/${deviceCode}`);
+                return;
+            }
+
+            try {
+                const data = await fetchDeviceByCode(deviceCode);
+                setBusinessData(data);
+            } catch (err) {
+                console.error('Failed to load business data:', err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadPageData();
+    }, [deviceCode, slug, isAuthenticated, router, initialData]);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-[#fafbfc] flex items-center justify-center">
+                <Loader2 className="size-10 text-primary animate-spin" />
+            </div>
+        );
+    }
+
+    if (isUsernameMode && businessData) {
+        return <TapJourneyContainer username={slug} />;
+    }
+
+    if (!businessData?.business) {
+        return (
+            <div className="min-h-screen bg-[#fafbfc] flex flex-col items-center justify-center p-6 text-center">
+                <Building2 size={64} className="text-slate-300 mb-4" />
+                <h1 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Business Not Found</h1>
+                <p className="text-slate-500 font-bold mb-8">We couldn't find the business you're looking for.</p>
+                <button
+                    onClick={() => router.push('/')}
+                    className="px-8 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20"
+                >
+                    Back to Home
+                </button>
+            </div>
+        );
+    }
+
+    const { business, owner } = businessData;
+    const businessName = business.name || 'VemTap Business';
+    const logoUrl = business.logoUrl;
+    const rewardsVisible = business.showRewards ?? true;
+
+    const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+
+    const formatHours = (day: string) => {
+        const hours = business.businessHours?.[day as keyof typeof business.businessHours];
+        if (!hours || hours.closed) return 'Closed';
+        return `${hours.open} - ${hours.close}`;
+    };
+
+    return (
+        <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
+            {/* Minimal Header */}
+            <div className="h-[25vh] md:h-[40vh] bg-linear-to-b from-primary/10 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
+                <div className="absolute top-0 left-0 w-full h-full">
+                    <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-primary/10 rounded-full blur-3xl" />
+                </div>
+
+                <div className="absolute top-6 left-4 right-4 md:top-8 md:left-8 md:right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
+                    {isBusinessAccount ? (
+                        <button
+                            onClick={() => router.back()}
+                            className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors"
+                        >
+                            <ChevronRight size={14} className="rotate-180" /> Back
+                        </button>
+                    ) : (
+                        <div />
+                    )}
+                    <div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary tracking-[0.3em] font-black">
+                        {businessName}
+                    </div>
+                    <button className="text-slate-400 hover:text-primary transition-colors">
+                        <Share2 size={16} />
+                    </button>
+                </div>
+
+                <div className="flex flex-col items-center text-center z-10 px-4 md:px-6">
+                    <div className="size-20 md:size-32 rounded-2xl md:rounded-3xl bg-white p-1 md:p-1.5 shadow-2xl shadow-slate-200/50 mb-4 md:mb-6 border border-white">
+                        {logoUrl ? (
+                            <img
+                                src={logoUrl}
+                                alt={businessName}
+                                className="w-full h-full rounded-2xl object-cover"
+                            />
+                        ) : (
+                            <div className="w-full h-full rounded-2xl bg-slate-50 flex items-center justify-center text-primary text-4xl font-black italic">
+                                {businessName.charAt(0)}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 md:mb-2">
+                        <h1 className="text-xl md:text-5xl font-black text-slate-900 tracking-tight capitalize">
+                            {businessName}
+                        </h1>
+                        <ShieldCheck size={20} className="text-emerald-500 md:size-6" />
+                    </div>
+                    <p className="text-slate-400 font-bold text-xs md:text-sm tracking-wide flex items-center gap-2">
+                        <span className="text-primary">{business.category || business.type || 'Business'}</span>
+                        {business.address && (
+                            <>
+                                <span className="text-slate-200">•</span>
+                                <span className="flex items-center gap-1 leading-none"><MapPin size={12} /> {business.address}</span>
+                            </>
+                        )}
+                    </p>
+                </div>
+            </div>
+
+            <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-6 md:-mt-10 relative z-20 pb-24">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div className="md:col-span-8 space-y-6">
+                        <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-5 md:p-12 shadow-xl shadow-slate-200/40 border border-white/50">
+                            {business.about && (
+                                <section className="mb-8 md:mb-12">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-4 md:mb-6">About the Business</h2>
+                                    <p className="text-base md:text-xl text-slate-600 leading-relaxed font-bold">
+                                        {business.about}
+                                    </p>
+                                </section>
+                            )}
+
+                            {!business.about && business.welcomeMessage && (
+                                <section className="mb-12">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6">Welcome</h2>
+                                    <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-bold">
+                                        {business.welcomeMessage}
+                                    </p>
+                                </section>
+                            )}
+
+                            {business.businessHours && (
+                                <section className="mb-12 p-6 rounded-2xl bg-slate-50">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6 flex items-center gap-2">
+                                        <Clock size={16} /> Business Hours
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {DAYS.map((day) => (
+                                            <div key={day} className="flex justify-between items-center text-sm">
+                                                <span className="font-bold text-slate-500 capitalize">{day}</span>
+                                                <span className={`font-black ${business.businessHours?.[day]?.closed ? 'text-red-400' : 'text-slate-900'}`}>
+                                                    {formatHours(day)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {business.rewardEnabled && rewardsVisible && (
+                                <section className="p-8 rounded-[2rem] bg-linear-to-br from-slate-50 to-white border border-slate-100/50">
+                                    <h3 className="text-sm font-black text-slate-900 mb-2 flex items-center gap-2">
+                                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <Star size={16} fill="currentColor" />
+                                        </div>
+                                        Exclusive Rewards
+                                    </h3>
+                                    <p className="text-slate-500 font-bold mb-6 leading-relaxed">
+                                        {business.rewardMessage || `Visit us ${business.rewardVisitThreshold || 5} times to unlock special rewards and benefits tailored for you.`}
+                                    </p>
+                                    {isCustomerAccount && (
+                                        <button
+                                            onClick={() => router.push(`/customer/dashboard`)}
+                                            className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] hover:gap-3 transition-all underline underline-offset-8"
+                                        >
+                                            View your progress <ExternalLink size={14} />
+                                        </button>
+                                    )}
+                                </section>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-8 mt-12 pt-12 border-t border-slate-50 text-center md:text-left">
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">Impact</p>
+                                    <p className="text-xl font-black text-slate-900">{business.monthlyVisitors || 'N/A'}</p>
+                                    <p className="text-[10px] font-bold text-slate-400">Monthly Visitors</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">Focus</p>
+                                    <p className="text-xl font-black text-slate-900 truncate">{business.goal || 'Quality Service'}</p>
+                                    <p className="text-[10px] font-bold text-slate-400">Primary Goal</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="md:col-span-4 space-y-6">
+                        <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-slate-200/40 border border-white/50">
+                            <h3 className="text-sm font-black text-slate-900 mb-8 tracking-tight">Direct Connect</h3>
+                            <div className="space-y-6">
+                                {(business.engagement?.ublSequence || [
+                                    'system:order', 'system:service', 'system:offers', 'system:whatsapp', 'system:forms', 'system:engagement'
+                                ]).map((itemId: string) => {
+                                    if (itemId === 'system:whatsapp' && business.whatsappNumber) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`https://wa.me/${business.whatsappNumber}`, '_blank')}>
+                                                <div className="size-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Phone size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">WhatsApp</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.whatsappNumber}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:email' && business.officialEmail) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`mailto:${business.officialEmail}`, '_blank')}>
+                                                <div className="size-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Mail size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Email</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.officialEmail}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:website' && business.website) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => {
+                                                const url = business.website?.startsWith('http') ? business.website : `https://${business.website}`;
+                                                window.open(url, '_blank');
+                                            }}>
+                                                <div className="size-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Globe size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Website</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.website}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:review' && business.reviewUrl && business.showReview) {
+                                        return (
+                                            <div key={itemId} className="pt-4">
+                                                <button
+                                                    onClick={() => window.open(business.reviewUrl, '_blank')}
+                                                    className="w-full h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors text-xs font-black uppercase tracking-widest"
+                                                >
+                                                    <Star size={16} fill="currentColor" />
+                                                    Google Review
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+
+                                    if (itemId === 'system:order' && (business.productCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/catalog`)}>
+                                                <div className="size-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <ShoppingBag size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Shop</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Browse Products</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:service' && (business.serviceCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/services`)}>
+                                                <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Briefcase size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Services</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Book a Service</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:offers' && (business.offerCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/offers`)}>
+                                                <div className="size-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Tag size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Deals</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Exclusive Offers</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    if (itemId === 'system:forms' && (business.formCount || 0) > 0) {
+                                        return (
+                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/forms`)}>
+                                                <div className="size-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <FileJson size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Forms</p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">Submit Request</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    if (itemId === 'system:engagement' && business.showSocial) {
+                                        const hasSocial = business.instagramUrl || business.xUrl || business.facebookUrl || business.linkedinUrl || business.tiktokUrl || business.youtubeUrl || business.customLink;
+                                        if (!hasSocial) return null;
+                                        return (
+                                            <div key={itemId} className="mt-6 pt-6 border-t border-slate-50 flex flex-wrap gap-2">
+                                                {business.facebookUrl && (
+                                                    <button onClick={() => window.open(business.facebookUrl, '_blank')} className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                                        <Facebook size={18} />
+                                                    </button>
+                                                )}
+                                                {business.instagramUrl && (
+                                                    <button onClick={() => window.open(business.instagramUrl, '_blank')} className="size-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-100 transition-colors">
+                                                        <Instagram size={18} />
+                                                    </button>
+                                                )}
+                                                {business.tiktokUrl && (
+                                                    <button onClick={() => window.open(business.tiktokUrl, '_blank')} className="size-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-colors">
+                                                        <span className="text-xs font-black">TT</span>
+                                                    </button>
+                                                )}
+                                                {business.xUrl && (
+                                                    <button onClick={() => window.open(business.xUrl, '_blank')} className="size-10 rounded-xl bg-slate-50 text-slate-900 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                                                        <Twitter size={18} />
+                                                    </button>
+                                                )}
+                                                {business.youtubeUrl && (
+                                                    <button onClick={() => window.open(business.youtubeUrl, '_blank')} className="size-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                                        <Youtube size={18} />
+                                                    </button>
+                                                )}
+                                                {business.linkedinUrl && (
+                                                    <button onClick={() => window.open(business.linkedinUrl, '_blank')} className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center hover:bg-sky-100 transition-colors">
+                                                        <Linkedin size={18} />
+                                                    </button>
+                                                )}
+                                                {business.customLink && (
+                                                    <button onClick={() => window.open(business.customLink, '_blank')} className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-colors">
+                                                        <LinkIcon size={18} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    const qrCode = businessData?.qrThriveCodes?.find((q: any) => q.id === itemId);
+                                    if (qrCode) {
+                                        const Icon = getQrIcon(qrCode.type);
+                                        return (
+                                            <div 
+                                                key={itemId} 
+                                                className="flex items-center gap-4 group cursor-pointer" 
+                                                onClick={() => router.push(`/${slug}/${businessData.device.code}?qr=${qrCode.shortId}`)}
+                                            >
+                                                <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Icon size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+                                                        {getQrDescription(qrCode.type)}
+                                                    </p>
+                                                    <p className="text-sm font-bold text-slate-900 truncate">{qrCode.name}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return null;
+                                })}
+                            </div>
+                        </div>
+
+                        {owner && (
+                            <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-2xl shadow-slate-900/20">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                        <ShieldCheck size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Verified Owner</p>
+                                        <p className="text-sm font-bold">{owner.firstName}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-12 text-center flex flex-col items-center">
+                    {isCustomerAccount && (
+                        <button
+                            onClick={() => router.push('/customer/dashboard')}
+                            className="group relative px-12 h-20 bg-primary text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-primary/40 hover:scale-105 transition-all duration-500"
+                        >
+                            <div className="absolute inset-0 bg-linear-to-r from-primary/30 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative flex items-center gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-[10px] uppercase tracking-[0.3em] font-black text-white/80">Ready to engage?</span>
+                                        <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
+                                    </div>
+                                    <div className="size-10 rounded-2xl bg-white/15 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                        <LayoutDashboard size={20} />
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    )}
+
+                    <div className="mt-12 flex items-center gap-4 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by</span>
+                        <div className="h-6 w-px bg-slate-200" />
+                        <span className="text-lg font-black tracking-tighter text-slate-900">VemTap</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import AdminMobileNav from './AdminMobileNav';
+import { ADMIN_MENU_ITEMS } from '@/constants/adminNavigation';
+import AdminSearch from '@/components/admin/AdminSearch';
 
 interface AdminSidebarProps {
     children: React.ReactNode;
@@ -62,191 +64,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
         router.push('/login');
     };
 
-    const menuItems = [
-        {
-            id: 'overview',
-            label: 'Dashboard',
-            icon: Home,
-            href: '/admin/dashboard',
-            permission: 'admin:dashboard'
-        },
-        {
-            id: 'businesses',
-            label: 'Businesses',
-            icon: Store,
-            submenu: [
-                { label: 'All Businesses', href: '/admin/businesses' },
-                { label: 'Business Categories', href: '/admin/categories' },
-                { label: 'Badge Approval', href: '/admin/businesses/pending' },
-                { label: 'Suspended', href: '/admin/businesses/suspended' },
-            ],
-            permission: 'admin:businesses'
-        },
-        {
-            id: 'customers',
-            label: 'Customers',
-            icon: Users,
-            href: '/admin/users/customers',
-            permission: 'admin:customers'
-        },
-        {
-            id: 'agents',
-            label: 'Support Agents',
-            icon: ShieldCheck,
-            href: '/admin/agents',
-            permission: 'admin:agents'
-        },
-        {
-            id: 'devices',
-            label: 'Devices',
-            icon: Nfc,
-            submenu: [
-                { label: 'All Devices', href: '/admin/devices' },
-                { label: 'Active', href: '/admin/devices/active' },
-                { label: 'Inactive', href: '/admin/devices/inactive' },
-            ],
-            permission: 'admin:devices'
-        },
-        {
-            id: 'subscriptions',
-            label: 'Subscriptions',
-            icon: CreditCard,
-            href: '/admin/subscriptions',
-            permission: 'admin:subscriptions'
-        },
-        {
-            id: 'products',
-            label: 'Products',
-            icon: Package,
-            submenu: [
-                { label: 'All Products', href: '/admin/products' },
-                { label: 'Hardware Orders', href: '/admin/orders' },
-                { label: 'Quote Requests', href: '/admin/quotes' },
-                { label: 'Product Categories', href: '/admin/products/types' },
-                { label: 'Add New Product', href: '/admin/products/create' },
-            ],
-            permission: 'admin:products'
-        },
-        {
-            id: 'analytics',
-            label: 'Platform Analytics',
-            icon: BarChart,
-            href: '/admin/analytics',
-            permission: 'admin:analytics'
-        },
-        {
-            id: 'loyalty',
-            label: 'Loyalty Control',
-            icon: Gift,
-            href: '/admin/loyalty',
-            permission: 'admin:loyalty'
-        },
-        {
-            id: 'support',
-            label: 'Support Tickets',
-            icon: MessageSquare,
-            href: '/admin/support',
-            permission: 'admin:support'
-        },
-        {
-            id: 'support-chat',
-            label: 'Support Chat Desk',
-            icon: Headset,
-            href: '/admin/support/chat-desk',
-            permission: 'admin:support'
-        },
-        {
-            id: 'forms',
-            label: 'Form Approvals',
-            icon: FileText,
-            href: '/admin/forms',
-            permission: 'admin:forms'
-        },
-        {
-            id: 'nfc-grants',
-            label: 'NFC Quota Grants',
-            icon: ShieldCheck,
-            href: '/admin/nfc-grants',
-            permission: 'admin:all'
-        },
-        {
-            id: 'engagement',
-            label: 'Engagement Control',
-            icon: Zap,
-            href: '/admin/forms',
-            permission: 'admin:forms'
-        },
-        {
-            id: 'messaging',
-            label: 'WhatsApp Templates',
-            icon: MessageSquare,
-            href: '/admin/messaging',
-            permission: 'admin:messaging'
-        },
-        {
-            id: 'flow-engine',
-            label: 'Flow Engine',
-            icon: Workflow,
-            submenu: [
-                { label: 'Overview', href: '/admin/flow-engine' },
-                { label: 'Flow Templates', href: '/admin/flow-engine/templates' },
-                { label: 'Trigger Management', href: '/admin/flow-engine/triggers' },
-                { label: 'WhatsApp Settings', href: '/admin/flow-engine/settings' },
-                { label: 'Sessions Monitor', href: '/admin/flow-engine/sessions' },
-                { label: 'Logs & Errors', href: '/admin/flow-engine/logs' },
-                { label: 'System Analytics', href: '/admin/flow-engine/analytics' },
-            ],
-            permission: 'admin:flow-engine'
-        },
-        {
-            id: 'control-tower',
-            label: 'Control Tower',
-            icon: Eye,
-            submenu: [
-                { label: 'Business Override', href: '/admin/control-tower/business-override' },
-                { label: 'Customer Override', href: '/admin/control-tower/customer-override' },
-            ],
-            permission: 'admin:control-tower'
-        },
-        {
-            id: 'pricing',
-            label: 'Pricing Plans',
-            icon: Tag,
-            href: '/admin/pricing',
-            permission: 'admin:pricing'
-        },
-        {
-            id: 'health',
-            label: 'System Health',
-            icon: Activity,
-            href: '/admin/health',
-            permission: 'admin:health'
-        },
-
-        {
-            id: 'banners',
-            label: 'Banner Management',
-            icon: Megaphone,
-            href: '/admin/banners',
-            permission: 'admin:settings'
-        },
-        {
-            id: 'settings',
-            label: 'System Settings',
-            icon: Settings,
-            href: '/admin/settings',
-            permission: 'admin:settings'
-        },
-        {
-            id: 'business-profiling',
-            label: 'Business Profiling',
-            icon: ClipboardList,
-            href: '/admin/business-profiling',
-            permission: 'admin:all'
-        },
-    ];
-
-    const filteredMenuItems = menuItems.filter(item => {
+    const filteredMenuItems = ADMIN_MENU_ITEMS.filter(item => {
         // Super Admin check (Role is Admin and no restrictions, or specific email/id)
         if (user?.role?.toLowerCase() === 'admin' && (!user.permissions || user.permissions.length === 0)) return true;
         if (user?.permissions?.includes('admin:all')) return true;
@@ -373,14 +191,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                         >
                             <Menu size={24} />
                         </button>
-                        <div className="relative max-w-md w-full hidden sm:block">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search businesses, users, devices..."
-                                className="w-full h-10 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
-                            />
-                        </div>
+                        <AdminSearch />
                     </div>
                     <div className="flex items-center gap-4 relative">
                         {/* Notification Button */}

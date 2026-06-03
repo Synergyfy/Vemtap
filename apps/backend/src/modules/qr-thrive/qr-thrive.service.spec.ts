@@ -4,9 +4,12 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
+import { QrThriveEncryptionService } from './qr-thrive-encryption.service';
+import { SubscriptionTokenService } from './subscription-token.service';
 
 import { ExternalLeadStatusEntity, ExternalLeadStatus } from './entities/external-lead-status.entity';
 import { BranchesService } from '../branches/branches.service';
+import { Branch } from '../branches/entities/branch.entity';
 import { of } from 'rxjs';
 import { User } from '../users/entities/user.entity';
 
@@ -34,6 +37,7 @@ describe('QrThriveService - Lead Management', () => {
 
     branchesService = {
       checkBranchAccess: jest.fn().mockResolvedValue(true),
+      findById: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -43,6 +47,9 @@ describe('QrThriveService - Lead Management', () => {
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('mock-key') } },
         { provide: BranchesService, useValue: branchesService },
         { provide: getRepositoryToken(QrThriveUserMapping), useValue: {} },
+        { provide: getRepositoryToken(Branch), useValue: { findOne: jest.fn() } },
+        { provide: QrThriveEncryptionService, useValue: {} },
+        { provide: SubscriptionTokenService, useValue: {} },
 
         { provide: getRepositoryToken(ExternalLeadStatusEntity), useValue: leadStatusRepo },
       ],
@@ -55,7 +62,7 @@ describe('QrThriveService - Lead Management', () => {
     it('should merge local statuses into external leads data', async () => {
       // Mock external data from QR Thrive
       const externalData = {
-        data: [{ id: 'lead-1', type: 'booking' }, { id: 'lead-2', type: 'menu' }]
+        items: [{ id: 'lead-1', type: 'booking' }, { id: 'lead-2', type: 'menu' }]
       };
       httpService.get.mockReturnValue(of({ data: externalData }));
 
@@ -69,9 +76,9 @@ describe('QrThriveService - Lead Management', () => {
 
       const result = await service.getSpecializedLeads(mockUser, mockBranchId, {});
 
-      expect(result.data[0].status).toBe(ExternalLeadStatus.PROCESSING);
-      expect(result.data[0].internalNotes).toBe('Called');
-      expect(result.data[1].status).toBe(ExternalLeadStatus.NEW); // Default for untracked lead
+      expect(result.items[0].status).toBe(ExternalLeadStatus.PROCESSING);
+      expect(result.items[0].localNotes).toBe('Called');
+      expect(result.items[1].status).toBe(ExternalLeadStatus.NEW); // Default for untracked lead
     });
   });
 
@@ -107,6 +114,53 @@ describe('QrThriveService - Lead Management', () => {
       await expect(
         service.updateLeadStatus(mockUser, mockBranchId, 'lead-1', ExternalLeadStatus.PROCESSING)
       ).rejects.toThrow('You do not have access to this branch');
+    });
+  });
+
+  describe('updateQRCode & deleteQRCode - Main QR Protection', () => {
+    const mockBranch = { id: mockBranchId, mainQrCodeId: 'main-qr-id' } as Branch;
+
+    beforeEach(() => {
+      branchesService.findById = jest.fn().mockResolvedValue(mockBranch);
+      (service as any).getMapping = jest.fn().mockResolvedValue({ qrThriveUserId: 'qt-1' });
+      httpService.patch = jest.fn().mockReturnValue(of({ data: {} }));
+      httpService.delete = jest.fn().mockReturnValue(of({ data: {} }));
+    });
+
+    it('should throw BadRequest when trying to update the main QR code', async () => {
+      await expect(
+        service.updateQRCode(mockUser, mockBranchId, 'main-qr-id', {})
+      ).rejects.toThrow('The main business link QR code cannot be modified or deleted.');
+    });
+
+    it('should allow updating a non-main QR code', async () => {
+      const mockHeaders = {};
+      (service as any).getHeadersWithSubscription = jest.fn().mockResolvedValue(mockHeaders);
+      
+      await service.updateQRCode(mockUser, mockBranchId, 'other-qr-id', {});
+      expect(httpService.patch).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequest when trying to delete the main QR code', async () => {
+      await expect(
+        service.deleteQRCode(mockUser, mockBranchId, 'main-qr-id')
+      ).rejects.toThrow('The main business link QR code cannot be modified or deleted.');
+    });
+
+    it('should allow deleting a non-main QR code', async () => {
+      const mockHeaders = {};
+      (service as any).getHeadersWithSubscription = jest.fn().mockResolvedValue(mockHeaders);
+      (service as any).branchRepo = {
+        createQueryBuilder: jest.fn().mockReturnValue({
+          update: jest.fn().mockReturnThis(),
+          set: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          execute: jest.fn().mockResolvedValue({}),
+        }),
+      };
+
+      await service.deleteQRCode(mockUser, mockBranchId, 'other-qr-id');
+      expect(httpService.delete).toHaveBeenCalled();
     });
   });
 });

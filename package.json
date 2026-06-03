@@ -10,10 +10,10 @@
         "test:e2e:headed": "playwright test --headed",
         "test:e2e:report": "playwright show-report",
         "dev": "turbo dev",
-        "dev:ui": "turbo dev --filter=entryconect",
+        "dev:ui": "turbo dev --filter=@vemtap/frontend",
         "dev:api": "turbo dev --filter=@vemtap/backend",
         "build": "turbo build",
-        "build:ui": "turbo build --filter=entryconect",
+        "build:ui": "turbo build --filter=@vemtap/frontend",
         "build:api": "turbo build --filter=@vemtap/backend"
     },
     "keywords": [],
