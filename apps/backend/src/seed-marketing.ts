@@ -29,11 +29,8 @@ async function bootstrap() {
     console.log(`  Seeded ${CATEGORIES.length} Categories.`);
   }
 
-  const categoryMap = new Map<string, string>();
   const allCats = await categoryRepo.find();
-  for (const cat of allCats) {
-    categoryMap.set(cat.name.toLowerCase(), cat.id);
-  }
+  const categoryMap = new Map(allCats.map(c => [c.name.toLowerCase(), c]));
 
   // 1. Seed AI Prompts
   const promptRepo = dataSource.getRepository(MarketingAIPrompt);
@@ -101,7 +98,7 @@ async function bootstrap() {
       templateRepo.create({
         name: 'Sleek Dark Table Tent',
         category: 'Restaurant',
-        categoryId: categoryMap.get('restaurant'),
+        categories: [categoryMap.get('restaurant'), categoryMap.get('cafe')].filter(Boolean),
         type: 'table_tent',
         thumbnailUrl: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&w=200&q=80',
         layoutConfig: {
@@ -123,7 +120,7 @@ async function bootstrap() {
       templateRepo.create({
         name: 'Minimal Light Review Poster',
         category: 'Retail',
-        categoryId: categoryMap.get('retail'),
+        categories: [categoryMap.get('retail'), categoryMap.get('restaurant')].filter(Boolean),
         type: 'poster',
         thumbnailUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=200&q=80',
         layoutConfig: {
@@ -145,7 +142,7 @@ async function bootstrap() {
       templateRepo.create({
         name: 'Neon Nightclub Table Tent',
         category: 'Entertainment',
-        categoryId: categoryMap.get('entertainment'),
+        categories: [categoryMap.get('entertainment'), categoryMap.get('cafe')].filter(Boolean),
         type: 'table_tent',
         thumbnailUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=200&q=80',
         layoutConfig: {

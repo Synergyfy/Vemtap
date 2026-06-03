@@ -15,10 +15,75 @@
     --color-secondary-container: #64a8fe;
     --color-tertiary-container: #4865d4;
 
+    --color-on-surface-variant: #464555;
+    --color-inverse-surface: #2a2f47;
+    --color-on-primary-fixed-variant: #321ed2;
+    --color-on-secondary: #ffffff;
+    --color-on-secondary-fixed-variant: #004e5f;
+    --color-on-tertiary-fixed: #181c1e;
+    --color-surface-container-highest: #dde1ff;
+    --color-surface-bright: #fbf8ff;
+    --color-error: #ba1a1a;
+    --color-error-container: #ffdad6;
+    --color-primary-fixed-dim: #c3c0ff;
+    --color-on-tertiary-container: #f8fbfe;
+    --color-secondary-container: #00d2fd;
+    --color-inverse-on-surface: #f0efff;
+    --color-on-background: #151a31;
+    --color-on-secondary-fixed: #001f27;
+    --color-surface-dim: #d4d8f7;
+    --color-on-primary-container: #fefaff;
+    --color-surface-container: #ececff;
+    --color-on-primary: #ffffff;
+    --color-tertiary-fixed: #e0e3e6;
+    --color-on-secondary-container: #005669;
+    --color-tertiary-fixed-dim: #c3c7ca;
+    --color-surface-container-low: #f3f2ff;
+    --color-surface-tint: #4c42e9;
+    --color-on-error-container: #93000a;
+    --color-surface-variant: #dde1ff;
+    --color-on-primary-fixed: #001f27;
+    --color-secondary-fixed-dim: #3cd7ff;
+    --color-on-tertiary-fixed-variant: #43474a;
+    --color-inverse-primary: #c3c0ff;
+    --color-outline-variant: #c7c4d8;
+    --color-primary-fixed: #e2dfff;
+    --color-secondary-fixed: #b4ebff;
+    --color-surface-container-lowest: #ffffff;
+
     --radius-xl: 0.75rem;
     --radius-2xl: 1.25rem;
     --radius-3xl: 2rem;
     --radius-leaf: 3rem;
+
+    --text-headline-md: 20px;
+    --text-headline-md--line-height: 28px;
+    --text-headline-md--font-weight: 600;
+    --text-headline-lg: 32px;
+    --text-headline-lg--line-height: 40px;
+    --text-headline-lg--letter-spacing: -0.02em;
+    --text-headline-lg--font-weight: 700;
+    --text-headline-lg-mobile: 24px;
+    --text-headline-lg-mobile--line-height: 32px;
+    --text-headline-lg-mobile--letter-spacing: -0.01em;
+    --text-headline-lg-mobile--font-weight: 700;
+    --text-body-lg: 16px;
+    --text-body-lg--line-height: 24px;
+    --text-body-lg--font-weight: 400;
+    --text-body-sm: 14px;
+    --text-body-sm--line-height: 20px;
+    --text-body-sm--font-weight: 400;
+    --text-label-caps: 12px;
+    --text-label-caps--line-height: 16px;
+    --text-label-caps--letter-spacing: 0.05em;
+    --text-label-caps--font-weight: 600;
+    --text-button: 15px;
+    --text-button--line-height: 20px;
+    --text-button--font-weight: 500;
+
+    --spacing-container-margin: 20px;
+    --spacing-gutter: 16px;
+    --spacing-touch-target-min: 48px;
 }
 
 @layer utilities {

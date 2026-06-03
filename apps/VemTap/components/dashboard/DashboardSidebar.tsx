@@ -64,6 +64,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
+    const isCreateAssetPage = pathname.includes('/marketing-assets/create');
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const mainRef = useRef<HTMLElement | null>(null);
 
@@ -793,7 +794,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             {/* Only show Mobile Nav if NOT on an active chat conversation */}
-            {!(isChatRoute && activeConversationId) && <DashboardMobileNav />}
+            {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
             
             <UpgradeModal
                 isOpen={upgradeModal.isOpen}

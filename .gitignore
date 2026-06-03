@@ -75,3 +75,6 @@ npm_install.log
 dev_output.log
 dev.log
 endpoint.log
+
+# opencode
+opencode.json

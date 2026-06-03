@@ -1,997 +1,584 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  Save, 
-  Palette, 
-  Type, 
-  Download, 
-  FileText
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowLeft,
+  Check,
+  Sparkles,
+  QrCode,
+  Download,
+  Bookmark,
+  ZoomIn,
 } from 'lucide-react';
-import Link from 'next/link';
-import { 
-  useMarketingTemplate, 
-  useMarketingAsset,
-  useCreateMarketingAsset, 
-  useUpdateMarketingAsset,
+import {
+  useCreateMarketingAsset,
   useBrandProfile,
-  useRecordDownload,
   useTemplateStyles,
   useTemplateFormats,
 } from '@/services/marketing-assets/hooks';
-import { Button } from '@/components/ui/button';
-import { QRCodeSVG } from 'qrcode.react';
-import toast from 'react-hot-toast';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
-import { useQuery } from '@tanstack/react-query';
 import { useMyBusiness } from '@/services/businesses/hooks';
-import { fetchDevices } from '@/lib/api/devices';
+import toast from 'react-hot-toast';
 
-export default function DesignWorkspacePage() {
+type Goal = 'view-menu' | 'place-order' | 'join-loyalty' | 'leave-feedback' | 'reserve-table' | 'promotions' | null;
+type DesignStyle = 'classic' | 'modern' | 'premium' | 'luxury' | 'bold' | 'minimal' | null;
+type AssetFormat = 'table-stand' | 'poster' | 'flyer' | 'window-sticker' | 'banner' | 'social-media' | null;
+
+const goals = [
+  { id: 'view-menu' as const, icon: 'restaurant', label: 'View Menu', desc: 'Digital browsing for dine-in or takeout.' },
+  { id: 'place-order' as const, icon: 'shopping_cart', label: 'Place Order', desc: 'Direct checkout flow for quick service.' },
+  { id: 'join-loyalty' as const, icon: 'star', label: 'Join Loyalty Program', desc: 'Build customer retention with rewards.' },
+  { id: 'leave-feedback' as const, icon: 'chat', label: 'Leave Feedback', desc: 'Gather reviews and customer insights.' },
+  { id: 'reserve-table' as const, icon: 'calendar_today', label: 'Reserve Table', desc: 'Manage bookings and table turnover.' },
+  { id: 'promotions' as const, icon: 'sell', label: 'Promotions', desc: 'Highlight limited time offers and sales.' },
+];
+
+const designStyles = [
+  { id: 'classic' as const, label: 'Classic', color: 'bg-amber-100', accent: 'bg-amber-800' },
+  { id: 'modern' as const, label: 'Modern', color: 'bg-indigo-100', accent: 'bg-indigo-600' },
+  { id: 'premium' as const, label: 'Premium', color: 'bg-slate-800', accent: 'bg-yellow-500' },
+  { id: 'luxury' as const, label: 'Luxury', color: 'bg-emerald-900', accent: 'bg-amber-400' },
+  { id: 'bold' as const, label: 'Bold', color: 'bg-orange-500', accent: 'bg-purple-700' },
+  { id: 'minimal' as const, label: 'Minimal', color: 'bg-gray-100', accent: 'bg-gray-400' },
+];
+
+const formats = [
+  { id: 'table-stand' as const, label: 'Table Stand', size: '5 x 7 in', thumb: 'bg-amber-50' },
+  { id: 'poster' as const, label: 'Poster', size: '18 x 24 in', thumb: 'bg-blue-50' },
+  { id: 'flyer' as const, label: 'Flyer', size: '8.5 x 11 in', thumb: 'bg-green-50' },
+  { id: 'window-sticker' as const, label: 'Window Sticker', size: 'Custom Size', thumb: 'bg-purple-50' },
+  { id: 'banner' as const, label: 'Banner', size: 'Various Sizes', thumb: 'bg-rose-50' },
+  { id: 'social-media' as const, label: 'Social Media', size: '1080 x 1080 px', thumb: 'bg-cyan-50' },
+];
+
+const stepLabels = ['Goal', 'Design', 'Content', 'Format', 'Generate', 'Preview'];
+
+export default function CreateAssetWizardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get('templateId');
-  const assetId = searchParams.get('id');
 
-  const { data: template, isLoading: templateLoading } = useMarketingTemplate(templateId || '');
-  const { data: asset, isLoading: assetLoading } = useMarketingAsset(assetId || '', !!assetId);
   const { data: brandProfile } = useBrandProfile();
   const { data: templateStyles } = useTemplateStyles();
   const { data: templateFormats } = useTemplateFormats();
-  
   const createAssetMutation = useCreateMarketingAsset();
-  const updateAssetMutation = useUpdateMarketingAsset();
-  const recordDownloadMutation = useRecordDownload();
-
-  const { user } = useAuthStore();
-  const { activeBranchId, setActiveBranch } = useActiveBranch();
-  const { data: business } = useMyBusiness();
   const { data: branches = [] } = useBranches();
-  
-  const resolvedBranchId = activeBranchId || undefined;
-  
-  const { data: devices = [] } = useQuery<any[]>({
-    queryKey: ['devices', user?.businessId, resolvedBranchId, false],
-    queryFn: () => fetchDevices(resolvedBranchId || undefined, false)
-  });
+  const { data: business } = useMyBusiness();
 
-  const [origin, setOrigin] = useState('https://vemtap.com');
-  useEffect(() => {
-    if (typeof window !== 'undefined') setOrigin(window.location.origin);
-  }, []);
+  const [step, setStep] = useState(templateId ? 2 : 1);
+  const [goal, setGoal] = useState<Goal>(null);
+  const [designStyle, setDesignStyle] = useState<DesignStyle>(null);
+  const [headline, setHeadline] = useState('');
+  const [subheadline, setSubheadline] = useState('');
+  const [cta, setCta] = useState('');
+  const [format, setFormat] = useState<AssetFormat>(null);
+  const [showAiSheet, setShowAiSheet] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [assetId, setAssetId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(false);
+  const [mockupEnv, setMockupEnv] = useState('Wall');
+  const [aiHeadline, setAiHeadline] = useState('');
 
-  const currentBranch = branches.find((b: any) => b.id === activeBranchId) || branches.find((b: any) => b.isMainBranch);
-  const mainDevice = devices.find((d: any) => d.isMain) || devices?.[0];
+  const previewRef = useRef<HTMLDivElement>(null);
 
-  const computedQrUrl = mainDevice
-    ? `${origin}/tap/${mainDevice.code}`
-    : `${origin}/s/${currentBranch?.uniqueCode || 'setup-pending'}`;
+  const displayStep = templateId ? step - 1 : step;
+  const totalSteps = templateId ? 3 : 4;
+  const stepProgress = templateId
+    ? Math.min(100, ((step - 2) / 3) * 100)
+    : Math.min(100, ((step - 1) / 4) * 100);
 
-  // Reference for capturing screenshot / PDF
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const handleBack = () => {
+    if (showAiSheet) { setShowAiSheet(false); return; }
+    if (step > 1) { setStep(step - 1); return; }
+    router.push('/dashboard/marketing-assets');
+  };
 
-  // Lock to initialize values exactly once when the async data loads
-  const hasInitialized = useRef(false);
+  const handleGenerateAi = () => {
+    setAiHeadline(`Unleash Your ${headline || 'Brand'}: The Definitive Collection`);
+    setShowAiSheet(true);
+  };
 
-  // Studio customization states
-  const [assetName, setAssetName] = useState('New Marketing Asset');
-  const [activeControlTab, setActiveControlTab] = useState<'style' | 'content'>('style');
-  const [mobileViewTab, setMobileViewTab] = useState<'editor' | 'preview'>('editor');
-  
-  const [bgColor, setBgColor] = useState('#0F172A');
-  const [bgImage, setBgImage] = useState('');
-  const [accentColor, setAccentColor] = useState('#2563EB');
-  const [borderColor, setBorderColor] = useState('#1E293B');
+  const applyAiContent = () => {
+    if (aiHeadline) setHeadline(aiHeadline);
+    setShowAiSheet(false);
+    toast.success('Content optimized with AI!');
+  };
 
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be under 5MB');
+  const handleContinue = async () => {
+    if (step === 4) {
+      setStep(5);
+      setGenerating(true);
+      for (let i = 0; i <= 100; i += 2) {
+        await new Promise(r => setTimeout(r, 40));
+        setProgress(i);
+      }
+      setGenerating(false);
+      try {
+        const payload = {
+          name: headline || 'Marketing Asset',
+          templateId: templateId || undefined,
+          type: format || 'table-stand',
+          qrCodeContent: `${window.location.origin}/s/default`,
+          customConfig: {
+            backgroundColor: designStyle === 'modern' ? '#4F46E5' : designStyle === 'premium' ? '#1E293B' : '#0F172A',
+            accentColor: designStyle === 'classic' ? '#92400E' : '#493EE5',
+            elements: [
+              { id: 'headline', type: 'text', text: headline || 'Your Headline', x: 10, y: 24, fontSize: 18, color: '#FFFFFF', fontWeight: 'extrabold', alignment: 'center' },
+              { id: 'subheadline', type: 'text', text: subheadline || 'Your subheadline here', x: 10, y: 38, fontSize: 12, color: '#FFFFFF', fontWeight: 'medium', alignment: 'center' },
+              { id: 'cta', type: 'text', text: cta || 'Get Started', x: 10, y: 78, fontSize: 10, color: '#FFFFFF', fontWeight: 'bold', alignment: 'center' },
+              { id: 'qr', type: 'qr_code', x: 30, y: 50, size: 110 },
+            ],
+          },
+          qrCodeConfig: { color: '#FFFFFF', backgroundColor: '#0F172A' },
+        };
+        const result = await createAssetMutation.mutateAsync(payload);
+        setAssetId(result.id);
+      } catch {
+        toast.error('Failed to create asset');
+      }
+      setStep(6);
       return;
     }
-
-    const toastId = toast.loading('Uploading backdrop image to Cloudinary...');
-    setIsUploading(true);
-    try {
-      const { uploadToCloudinary } = await import('@/lib/cloudinary');
-      const uploadedUrl = await uploadToCloudinary(file);
-      setBgImage(uploadedUrl);
-      toast.success('Backdrop uploaded successfully!', { id: toastId });
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to upload image', { id: toastId });
-    } finally {
-      setIsUploading(false);
-    }
+    setStep(step + 1);
   };
 
-  // Dynamic canvas elements array!
-  const [elements, setElements] = useState<any[]>([]);
-  
-  const [qrUrl, setQrUrl] = useState('https://vemtap.com/r/table-stand');
-  const [qrFgColor, setQrFgColor] = useState('#FFFFFF');
-  const [qrBgColor, setQrBgColor] = useState('#0F172A');
-  const [showLogoInQr, setShowLogoInQr] = useState(true);
-
-
-
-  // Formats derived from API (PRD §52)
-  const FORMATS = (templateFormats || []).map((f) => ({
-    id: f.slug,
-    label: `${f.name} (${f.widthMm}x${f.heightMm}mm)`,
-    aspect: `aspect-[${f.widthMm}/${f.heightMm}]`,
-    styleAspect: `${f.widthMm}/${f.heightMm}`,
-    ratio: f.widthMm / f.heightMm,
-    bleedMm: f.bleedMm,
-  }));
-
-  const [selectedFormat, setSelectedFormat] = useState('table_tent');
-
-  // Styles derived from API (PRD §51)
-  const STYLE_PRESETS = (templateStyles || []).map((s) => ({
-    id: s.slug,
-    label: s.name,
-    bgColor: s.bgColor,
-    accentColor: s.accentColor,
-    borderColor: s.borderColor,
-    qrFgColor: s.qrFgColor,
-    qrBgColor: s.qrBgColor,
-    textColor: s.textColor,
-    desc: s.description || '',
-  }));
-
-  const applyStylePreset = (preset: typeof STYLE_PRESETS[0]) => {
-    setBgColor(preset.bgColor);
-    setAccentColor(preset.accentColor);
-    setBorderColor(preset.borderColor);
-    setQrFgColor(preset.qrFgColor);
-    setQrBgColor(preset.qrBgColor);
-    
-    // Update elements color if they are text
-    setElements((prev) => prev.map((el) => {
-      if (el.type === 'text') {
-        return { ...el, color: preset.textColor };
-      }
-      return el;
-    }));
-    toast.success(`Theme updated to ${preset.label}!`);
+  const canContinue = () => {
+    if (step === 1) return goal !== null;
+    if (step === 2) return designStyle !== null;
+    if (step === 3) return headline.trim().length > 0;
+    if (step === 4) return format !== null;
+    return true;
   };
 
-  // QR destination selection configuration (PRD §16)
-  const DESTINATIONS = [
-    { id: 'connect', label: 'Branch Check-in (Default)', path: (branch: any, device: any) => device ? `/tap/${device.code}` : `/s/${branch?.uniqueCode || 'setup-pending'}` },
-    { id: 'menu', label: 'Digital Menu', path: (branch: any) => `/m/${branch?.uniqueCode || 'menu'}` },
-    { id: 'order', label: 'Order & Pay', path: (branch: any) => `/o/${branch?.uniqueCode || 'order'}` },
-    { id: 'feedback', label: 'Feedback & Reviews Form', path: (branch: any) => `/f/${branch?.uniqueCode || 'feedback'}` },
-    { id: 'loyalty', label: 'Loyalty Rewards Program', path: (branch: any) => `/l/${branch?.uniqueCode || 'loyalty'}` },
-    { id: 'custom', label: 'Custom URL...', path: () => '' }
-  ];
-
-  const [qrDestination, setQrDestination] = useState('connect');
-
-  // Legacy-to-elements transformer for robust compatibility
-  const transformToDynamicElements = (layoutConfig: any) => {
-    if (layoutConfig?.elements) {
-      return {
-        elements: layoutConfig.elements,
-        backgroundColor: layoutConfig.backgroundColor || '#0F172A',
-        backgroundImage: layoutConfig.backgroundImage || '',
-        accentColor: layoutConfig.accentColor || '#2563EB',
-        borderColor: layoutConfig.borderColor || '#1E293B',
-      };
-    }
-
-    const legacyBgColor = layoutConfig?.backgroundColor || '#0F172A';
-    const legacyTextColor = layoutConfig?.textColor || '#FFFFFF';
-    const legacyAccentColor = layoutConfig?.accentColor || '#2563EB';
-    const titleText = layoutConfig?.title || 'Scan to Connect';
-    const subtitleText = layoutConfig?.subtitle || 'Enjoy contactless services';
-    const taglineText = layoutConfig?.tagline || 'Scan, tap & check-in.';
-    const logoPos = layoutConfig?.logoPosition || 'top';
-
-    const legacyElements: any[] = [];
-
-    // Logo slot
-    if (logoPos === 'top') {
-      legacyElements.push({ id: 'logo-slot', type: 'logo', x: 35, y: 8, width: 30, height: 8 });
-    } else if (logoPos === 'bottom') {
-      legacyElements.push({ id: 'logo-slot', type: 'logo', x: 35, y: 84, width: 30, height: 8 });
-    }
-
-    // Headline
-    legacyElements.push({
-      id: 'headline-text',
-      type: 'text',
-      text: titleText,
-      x: 10,
-      y: 24,
-      fontSize: 18,
-      color: legacyTextColor,
-      fontWeight: 'extrabold',
-      alignment: 'center'
-    });
-
-    // Subtitle
-    legacyElements.push({
-      id: 'subtitle-text',
-      type: 'text',
-      text: subtitleText,
-      x: 10,
-      y: 38,
-      fontSize: 12,
-      color: legacyTextColor,
-      fontWeight: 'medium',
-      alignment: 'center'
-    });
-
-    // QR code
-    legacyElements.push({
-      id: 'qr-code-slot',
-      type: 'qr_code',
-      x: 30,
-      y: 50,
-      size: 110
-    });
-
-    // Tagline
-    legacyElements.push({
-      id: 'tagline-text',
-      type: 'text',
-      text: taglineText,
-      x: 10,
-      y: 78,
-      fontSize: 9,
-      color: legacyTextColor,
-      fontWeight: 'semibold',
-      alignment: 'center'
-    });
-
-    return {
-      elements: legacyElements,
-      backgroundColor: legacyBgColor,
-      backgroundImage: layoutConfig?.backgroundImage || '',
-      accentColor: legacyAccentColor,
-      borderColor: layoutConfig?.borderColor || '#1E293B',
-    };
-  };
-
-  // Synchronise settings on load
-  useEffect(() => {
-    if (hasInitialized.current) return;
-
-    if (assetId && asset) {
-      setAssetName(asset.name);
-      
-      const config = asset.customConfig || {};
-      const transformed = transformToDynamicElements(config);
-
-      setBgColor(transformed.backgroundColor);
-      setBgImage(transformed.backgroundImage);
-      setAccentColor(transformed.accentColor);
-      setBorderColor(transformed.borderColor);
-      setElements(transformed.elements);
-      setSelectedFormat(asset.type || 'table_tent');
-
-      setQrUrl(asset.qrCodeContent || computedQrUrl);
-      setQrFgColor(asset.qrCodeConfig?.color || '#FFFFFF');
-      setQrBgColor(asset.qrCodeConfig?.backgroundColor || '#0F172A');
-      setShowLogoInQr(asset.qrCodeConfig?.showLogo !== false);
-      hasInitialized.current = true;
-    } else if (!assetId && template) {
-      setAssetName(`My ${template.name}`);
-      
-      const config = template.layoutConfig || {};
-      const transformed = transformToDynamicElements(config);
-
-      setBgColor(transformed.backgroundColor);
-      setBgImage(transformed.backgroundImage);
-      setAccentColor(transformed.accentColor);
-      setBorderColor(transformed.borderColor);
-      setElements(transformed.elements);
-      setSelectedFormat(template.type || 'table_tent');
-
-      setQrUrl(computedQrUrl);
-      setQrFgColor(template.qrCodeConfig?.color || '#FFFFFF');
-      setQrBgColor(template.qrCodeConfig?.backgroundColor || '#0F172A');
-      hasInitialized.current = true;
-    } else if (!assetId && !template && brandProfile) {
-      setBgColor(brandProfile.secondaryColor || '#1E293B');
-      setAccentColor(brandProfile.primaryColor || '#2563EB');
-      setQrFgColor(brandProfile.secondaryColor || '#1E293B');
-    }
-  }, [asset, template, brandProfile, assetId, computedQrUrl]);
-
-  // Synchronise dynamic QR Code URL from branches / devices data when it resolves
-  useEffect(() => {
-    if (computedQrUrl && computedQrUrl !== `${origin}/s/setup-pending`) {
-      if (!assetId) {
-        setQrUrl(computedQrUrl);
-      } else if (asset && !asset.qrCodeContent) {
-        setQrUrl(computedQrUrl);
-      }
-    }
-  }, [computedQrUrl, assetId, asset, origin]);
-
-  // Synchronise dynamic QR Code URL from destinations, branches, or devices
-  useEffect(() => {
-    if (qrDestination === 'custom') return;
-    const dest = DESTINATIONS.find(d => d.id === qrDestination);
-    if (dest) {
-      const path = dest.path(currentBranch, mainDevice);
-      setQrUrl(`${origin}${path}`);
-    }
-  }, [qrDestination, currentBranch, mainDevice, origin]);
-
-  // Safeguard against loading templates outside business category (PRD §7.0)
-  useEffect(() => {
-    if (business && template) {
-      const bizCatName = typeof (business as any).category === 'object' ? (business as any).category.name : business.category;
-      if (bizCatName && template.category) {
-        const catMatch = bizCatName.toLowerCase().includes(template.category.toLowerCase()) || 
-                         template.category.toLowerCase().includes(bizCatName.toLowerCase()) ||
-                         template.category.toLowerCase() === 'general';
-        
-        if (!catMatch) {
-          toast.error(`Access Restricted: This template is categorized under ${template.category} and is not available for your industry.`);
-          router.push('/dashboard/marketing-assets/templates');
-        }
-      }
-    }
-  }, [business, template, router]);
-
-  // Auto-export parameter handling on load (format: png, pdf, transparent_png, print_pdf)
-  useEffect(() => {
-    const exportParam = searchParams.get('export');
-    const validFormats = ['png', 'print_pdf'] as const;
-    const exportFormat = validFormats.find(f => f === exportParam);
-    if (exportFormat && !assetLoading && !templateLoading && hasInitialized.current && canvasRef.current) {
-      const timer = setTimeout(() => {
-        handleDownload(exportFormat);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, assetLoading, templateLoading]);
-
-  const handleSaveAsset = async () => {
-    try {
-      const payload = {
-        name: assetName,
-        templateId: templateId || undefined,
-        type: selectedFormat,
-        qrCodeContent: qrUrl,
-        customConfig: {
-          backgroundColor: bgColor,
-          backgroundImage: bgImage,
-          accentColor,
-          borderColor,
-          elements
-        },
-        qrCodeConfig: {
-          color: qrFgColor,
-          backgroundColor: qrBgColor,
-          showLogo: showLogoInQr
-        }
-      };
-
-      const saveToast = toast.loading(assetId ? 'Saving design changes...' : 'Creating new design...');
-      if (assetId) {
-        await updateAssetMutation.mutateAsync({ id: assetId, updates: payload });
-        toast.success('Creative asset updated successfully!', { id: saveToast });
-      } else {
-        await createAssetMutation.mutateAsync(payload);
-        toast.success('Creative asset saved to library successfully!', { id: saveToast });
-      }
-      router.push('/dashboard/marketing-assets/library');
-    } catch (e) {
-      toast.error('Failed to save layout config');
-    }
-  };
-
-  const handleDownload = async (format: 'png' | 'print_pdf') => {
-    const el = canvasRef.current;
-    if (!el) {
-      toast.error('Canvas not found — make sure the preview is visible');
-      return;
-    }
-    const loadingToast = toast.loading(`Generating ${format.toUpperCase().replace('_', ' ')}...`);
-
-    // html2canvas v1.4.1 doesn't support modern CSS color functions (oklab, oklch).
-    // We clone the element, strip all classes, and apply computed styles as inline
-    // hex/RGB values so the capture works.
-    const captureContainer = document.createElement('div');
-    captureContainer.style.position = 'absolute';
-    captureContainer.style.left = '-9999px';
-    captureContainer.style.top = '0';
-    captureContainer.style.width = `${el.offsetWidth}px`;
-    captureContainer.style.height = `${el.offsetHeight}px`;
-    captureContainer.style.pointerEvents = 'none';
-
-    const clone = el.cloneNode(true) as HTMLElement;
-    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT);
-    while (walker.nextNode()) {
-      const node = walker.currentNode as HTMLElement;
-      const computed = window.getComputedStyle(node);
-      node.removeAttribute('class');
-      node.style.cssText = '';
-      node.style.color = computed.color;
-      node.style.backgroundColor = computed.backgroundColor;
-      node.style.backgroundImage = computed.backgroundImage;
-      node.style.backgroundSize = computed.backgroundSize;
-      node.style.backgroundPosition = computed.backgroundPosition;
-      node.style.fontSize = computed.fontSize;
-      node.style.fontWeight = computed.fontWeight;
-      node.style.textAlign = computed.textAlign;
-      node.style.display = computed.display;
-      node.style.position = computed.position;
-      node.style.width = computed.width;
-      node.style.height = computed.height;
-      node.style.top = computed.top;
-      node.style.left = computed.left;
-      node.style.right = computed.right;
-      node.style.bottom = computed.bottom;
-      node.style.zIndex = computed.zIndex;
-      node.style.overflow = computed.overflow;
-      node.style.border = computed.border;
-      node.style.borderRadius = computed.borderRadius;
-      node.style.padding = computed.padding;
-      node.style.margin = computed.margin;
-      node.style.transform = computed.transform;
-      node.style.opacity = computed.opacity;
-      node.style.aspectRatio = computed.aspectRatio;
-      node.style.maxWidth = computed.maxWidth;
-      node.style.lineHeight = computed.lineHeight;
-      node.style.letterSpacing = computed.letterSpacing;
-      node.style.textTransform = computed.textTransform;
-      node.style.textDecoration = computed.textDecoration;
-      node.style.boxShadow = computed.boxShadow;
-      node.style.borderColor = computed.borderColor;
-      node.style.borderWidth = computed.borderWidth;
-      node.style.borderStyle = computed.borderStyle;
-    }
-
-    captureContainer.appendChild(clone);
-    document.body.appendChild(captureContainer);
-
-    try {
-      const canvas = await html2canvas(clone, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: bgColor
-      } as any);
-
-      if (format === 'png') {
-        const dataUrl = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = `${assetName.toLowerCase().replace(/\s+/g, '-')}.png`;
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        const imgData = canvas.toDataURL('image/png');
-        const currentFormat = FORMATS.find(f => f.id === selectedFormat);
-        const ratio = currentFormat?.ratio || 4 / 6;
-
-        const pdf = new jsPDF({
-          orientation: ratio > 1 ? 'landscape' : 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-        
-        const imgWidth = 210;
-        const pageHeight = 295;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-
-        const bleed = currentFormat?.bleedMm ?? 3;
-        pdf.setLineWidth(0.1);
-        pdf.setDrawColor(120, 120, 120);
-        pdf.line(bleed, 0, bleed, bleed * 2);
-        pdf.line(0, bleed, bleed * 2, bleed);
-        pdf.line(imgWidth - bleed, 0, imgWidth - bleed, bleed * 2);
-        pdf.line(imgWidth, bleed, imgWidth - bleed * 2, bleed);
-        pdf.line(bleed, pageHeight, bleed, pageHeight - bleed * 2);
-        pdf.line(0, pageHeight - bleed, bleed * 2, pageHeight - bleed);
-        pdf.line(imgWidth - bleed, pageHeight, imgWidth - bleed, pageHeight - bleed * 2);
-        pdf.line(imgWidth, pageHeight - bleed, imgWidth - bleed * 2, pageHeight - bleed);
-
-        pdf.save(`${assetName.toLowerCase().replace(/\s+/g, '-')}-print-ready.pdf`);
-      }
-
-      const resolvedAssetId = assetId || createAssetMutation.data?.id;
-      if (resolvedAssetId) {
-        await recordDownloadMutation.mutateAsync({
-          assetId: resolvedAssetId,
-          format: format === 'png' ? 'png' : 'pdf'
-        });
-      }
-
-      toast.success('File downloaded successfully!', { id: loadingToast });
-    } catch (e) {
-      console.error('Download error:', e);
-      toast.error('Failed to render file. Check console for details.', { id: loadingToast });
-    } finally {
-      document.body.removeChild(captureContainer);
-    }
+  const mockupEnvs = ['Wall', 'Table', 'Window', 'Counter', 'Banner'];
+  const mockupColors: Record<string, string> = {
+    Wall: 'bg-slate-100',
+    Table: 'bg-amber-50',
+    Window: 'bg-sky-50',
+    Counter: 'bg-stone-50',
+    Banner: 'bg-rose-50',
   };
 
   return (
-    <div className="space-y-6">
-      {/* Design Workspace Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/marketing-assets/templates">
-            <Button variant="ghost" className="size-10 p-0 rounded-xl hover:bg-gray-100">
-              <ArrowLeft size={18} />
-            </Button>
-          </Link>
-          <div className="space-y-1">
-            <input 
-              type="text" 
-              value={assetName} 
-              onChange={(e) => setAssetName(e.target.value)}
-              className="font-extrabold text-gray-900 border-b border-transparent hover:border-gray-200 focus:border-primary focus:outline-none text-base md:text-lg max-w-xs md:max-w-md py-0 px-1"
-            />
-            <p className="text-xs text-gray-400 font-medium ml-1">
-              Customizing: {template?.name || 'Blank Canvas'} ({template?.type?.replace('_', ' ') || 'Table Stand'})
-            </p>
+    <div className="flex flex-col min-h-full bg-background text-on-surface">
+      <header className="sticky top-0 z-10 shrink-0 flex items-center justify-between px-5 h-12 bg-surface shadow-sm">
+        <div className="flex items-center gap-4">
+          <button onClick={handleBack} className="flex items-center justify-center w-10 h-10 hover:bg-surface-container-high rounded-full transition-transform active:scale-95">
+            <ArrowLeft size={20} className="text-primary" />
+          </button>
+          <h1 className="text-headline-md font-bold text-primary">Marketing Assets</h1>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-outline-variant">
+          <div className="size-full flex items-center justify-center text-label-caps text-on-surface-variant">
+            {(brandProfile?.name || 'U').charAt(0)}
           </div>
         </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Button 
-            onClick={handleSaveAsset} 
-            disabled={createAssetMutation.isPending}
-            className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white rounded-xl font-bold gap-2 px-5"
-          >
-            <Save size={16} />
-            {createAssetMutation.isPending ? 'Saving...' : 'Save to Library'}
-          </Button>
+        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-surface-container">
+          <div className="bg-primary h-full transition-all duration-500 ease-out" style={{ width: `${stepProgress}%` }} />
         </div>
-      </div>
+      </header>
 
-
-
-      {/* Mobile Studio Tabs View Selector */}
-      <div className="grid grid-cols-2 gap-1 bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm lg:hidden">
-        <button
-          onClick={() => setMobileViewTab('editor')}
-          className={`py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
-            mobileViewTab === 'editor'
-              ? 'bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]'
-              : 'text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          🎨 Customize Layout
-        </button>
-        <button
-          onClick={() => setMobileViewTab('preview')}
-          className={`py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
-            mobileViewTab === 'preview'
-              ? 'bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]'
-              : 'text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          👁️ Preview & Mockups
-        </button>
-      </div>
-
-      {/* Main Studio Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Toolbox Controls (4 cols) */}
-        <div className={`lg:col-span-5 bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-sm space-y-6 flex-col justify-between ${mobileViewTab === 'editor' ? 'flex' : 'hidden lg:flex'}`}>
-          <div className="space-y-6">
-            {/* Control Panel Tabs */}
-            <div className="grid grid-cols-2 gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
-              <button
-                onClick={() => setActiveControlTab('style')}
-                className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  activeControlTab === 'style'
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Palette size={14} className="shrink-0" />
-                <span className="hidden sm:inline">Style Override</span>
-                <span className="sm:hidden">Style</span>
-              </button>
-              <button
-                onClick={() => setActiveControlTab('content')}
-                className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  activeControlTab === 'content'
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Type size={14} className="shrink-0" />
-                <span className="hidden sm:inline">Typography</span>
-                <span className="sm:hidden">Text</span>
-              </button>
-            </div>
-
-            {/* Tab Contents */}
-            <div className="space-y-5 min-h-[300px]">
-              
-              {/* Tab 1: Style Overrides */}
-              {activeControlTab === 'style' && (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  className="space-y-4"
-                >
-                  <div className="space-y-1.5 border-b border-gray-50 pb-4 mb-4">
-                    <label className="text-xs font-bold text-gray-500 block">Output Print Format</label>
-                    <select
-                      value={selectedFormat}
-                      onChange={(e) => setSelectedFormat(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-semibold text-gray-800 cursor-pointer"
+      <main className="flex-1 px-5 max-w-2xl mx-auto w-full">
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+              <div className="py-4">
+                <span className="text-label-caps text-primary mb-2 block">Step {displayStep} of {totalSteps}</span>
+                <h2 className="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-1">What do you want customers to do?</h2>
+                <p className="text-body-lg text-on-surface-variant">Choose a goal for this marketing material.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {goals.map((g) => {
+                  const isActive = goal === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => setGoal(g.id)}
+                      className={`flex flex-col p-4 bg-surface-container-lowest border rounded-xl text-left shadow-[0_4px_20px_rgba(0,0,0,0.04)] active:scale-95 transition-all cursor-pointer ${
+                        isActive ? 'border-2 border-primary bg-primary-container/5' : 'border border-outline-variant hover:border-primary/50'
+                      }`}
                     >
-                      {FORMATS.map((f) => (
-                        <option key={f.id} value={f.id}>{f.label}</option>
-                      ))}
-                    </select>
-                    <span className="text-[10px] text-gray-400 font-medium block">
-                      Choose standard size for table signs, acrylic stands, window stickers, posters or flyers. Aspect ratio adjusts instantly.
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 border-b border-gray-50 pb-4 mb-4">
-                    <label className="text-xs font-bold text-gray-500 block">Design Style Presets (PRD §17)</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {STYLE_PRESETS.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => applyStylePreset(p)}
-                          className="px-2 py-2 rounded-xl text-left border border-gray-100 hover:border-primary/30 bg-gray-50 hover:bg-white text-[11px] font-extrabold flex flex-col justify-between h-14 transition-all shadow-sm"
-                        >
-                          <span className="text-gray-800 font-extrabold leading-none">{p.label}</span>
-                          <div className="flex gap-1">
-                            <span className="size-2 rounded-full inline-block" style={{ backgroundColor: p.bgColor, border: '1px solid #e2e8f0' }} />
-                            <span className="size-2 rounded-full inline-block" style={{ backgroundColor: p.accentColor }} />
-                            <span className="size-2 rounded-full inline-block" style={{ backgroundColor: p.textColor }} />
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                   <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 block">Graphic Background Design</label>
-                      
-                      {/* PC Image Selector / Uploader */}
-                      <div className="relative group cursor-pointer border-2 border-dashed border-gray-200 hover:border-primary/50 bg-gray-50 hover:bg-primary/5 rounded-2xl p-4 text-center transition-all duration-200">
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleImageUpload}
-                          disabled={isUploading}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                        />
-                        <div className="flex flex-col items-center justify-center gap-1">
-                          {isUploading ? (
-                            <>
-                              <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                              <span className="text-xs font-extrabold text-primary animate-pulse mt-1">Uploading backdrop image...</span>
-                            </>
-                          ) : bgImage ? (
-                            <>
-                              <span className="text-[20px]">🖼️</span>
-                              <span className="text-xs font-extrabold text-green-600">Backdrop Image Loaded</span>
-                              <span className="text-[10px] text-gray-400 truncate max-w-xs block font-medium">{bgImage}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-[20px] transition-transform group-hover:scale-110 duration-200">📁</span>
-                              <span className="text-xs font-extrabold text-gray-700">Select Image from PC</span>
-                              <span className="text-[10px] text-gray-400 font-medium">Supports PNG, JPG (Max 5MB)</span>
-                            </>
-                          )}
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-3 transition-colors ${
+                        isActive ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'
+                      }`}>
+                        <span className="material-symbols-outlined text-[24px]">{g.icon}</span>
+                      </div>
+                      <span className="text-headline-md text-on-surface mb-1 font-semibold">{g.label}</span>
+                      <span className="text-body-sm text-on-surface-variant">{g.desc}</span>
+                      {isActive && (
+                        <div className="mt-2 flex justify-end">
+                          <Check size={18} className="text-primary" />
                         </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="flex items-center justify-center gap-2 py-1">
-                        <div className="h-[1px] bg-gray-100 flex-1" />
-                        <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider">Or Paste Image URL</span>
-                        <div className="h-[1px] bg-gray-100 flex-1" />
-                      </div>
-
-                      {/* URL input */}
-                      <input 
-                        type="text" 
-                        value={bgImage} 
-                        onChange={(e) => setBgImage(e.target.value)}
-                        placeholder="Paste image URL here..."
-                        className="w-full px-4 py-2.5 text-xs border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white text-gray-700 font-mono text-[11px]"
-                      />
-                      
-                      <span className="text-[10px] text-gray-400 font-medium block">
-                        Tweak the template background design URL if you want a custom branding background.
-                      </span>
-                    </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">Canvas Color</label>
-                      <div className="flex items-center gap-2 border border-gray-100 rounded-xl p-2 bg-gray-50">
-                        <input 
-                          type="color" 
-                          value={bgColor} 
-                          onChange={(e) => setBgColor(e.target.value)} 
-                          className="size-7 rounded-lg border-0 cursor-pointer overflow-hidden"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-gray-700">{bgColor}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">Accent Stripe</label>
-                      <div className="flex items-center gap-2 border border-gray-100 rounded-xl p-2 bg-gray-50">
-                        <input 
-                          type="color" 
-                          value={accentColor} 
-                          onChange={(e) => setAccentColor(e.target.value)} 
-                          className="size-7 rounded-lg border-0 cursor-pointer overflow-hidden"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-gray-700">{accentColor}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">QR Code Color</label>
-                      <div className="flex items-center gap-2 border border-gray-100 rounded-xl p-2 bg-gray-50">
-                        <input 
-                          type="color" 
-                          value={qrFgColor} 
-                          onChange={(e) => setQrFgColor(e.target.value)} 
-                          className="size-7 rounded-lg border-0 cursor-pointer overflow-hidden"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-gray-700">{qrFgColor}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">QR Code Bg</label>
-                      <div className="flex items-center gap-2 border border-gray-100 rounded-xl p-2 bg-gray-50">
-                        <input 
-                          type="color" 
-                          value={qrBgColor} 
-                          onChange={(e) => setQrBgColor(e.target.value)} 
-                          className="size-7 rounded-lg border-0 cursor-pointer overflow-hidden"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-gray-700">{qrBgColor}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {brandProfile?.logoUrl && (
-                    <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-                      <label className="text-xs font-bold text-gray-500">Logo in QR Code</label>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={showLogoInQr}
-                        onClick={() => setShowLogoInQr(!showLogoInQr)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
-                          showLogoInQr ? 'bg-primary' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block size-3.5 rounded-full bg-white shadow transform transition-transform duration-200 ${
-                            showLogoInQr ? 'translate-x-[18px]' : 'translate-x-[3px]'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Tab 2: Typography & Content */}
-              {activeControlTab === 'content' && (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  className="space-y-4"
-                >
-                  {/* Dynamically list text elements of templates */}
-                  {elements.filter(el => el.type === 'text').map((textEl) => (
-                    <div key={textEl.id} className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 capitalize">
-                        {textEl.id.replace('-text', '').replace('-', ' ')}
-                      </label>
-                      <input 
-                        type="text" 
-                        value={textEl.text || ''} 
-                        onChange={(e) => {
-                          setElements(prev => prev.map(el => 
-                            el.id === textEl.id ? { ...el, text: e.target.value } : el
-                          ));
-                        }}
-                        className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-semibold text-gray-800"
-                      />
-                    </div>
-                  ))}
-
-                  <div className="space-y-4 border-t border-gray-100 pt-4">
-                    <h5 className="text-[10px] uppercase font-extrabold tracking-wider text-gray-400">QR Code Link & Branches</h5>
-                    
-                    {/* Branch switcher dropdown if venue has more than 1 branch (PRD §94) */}
-                    {branches.length > 1 && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-gray-500 block">Switch Venue Branch</label>
-                        <select
-                          value={activeBranchId || ''}
-                          onChange={(e) => setActiveBranch(e.target.value || null)}
-                          className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-semibold text-gray-800 cursor-pointer"
-                        >
-                          <option value="">All Branches (Main)</option>
-                          {branches.map((b: any) => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                          ))}
-                        </select>
-                        <span className="text-[10px] text-gray-400 font-medium block">
-                          Switching branches automatically recalculates QR Code content.
-                        </span>
-                      </div>
-                    )}
-
-                    {/* QR Destination Selector dropdown (PRD §16) */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 block">QR Destination Type</label>
-                      <select
-                        value={qrDestination}
-                        onChange={(e) => setQrDestination(e.target.value)}
-                        className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-semibold text-gray-800 cursor-pointer"
-                      >
-                        {DESTINATIONS.map((d) => (
-                          <option key={d.id} value={d.id}>{d.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Show raw URL field only if "Custom URL" is selected */}
-                    {qrDestination === 'custom' ? (
-                      <div className="space-y-1.5 animate-fadeIn">
-                        <label className="text-xs font-bold text-gray-500 block">Custom Web Link</label>
-                        <input 
-                          type="text" 
-                          value={qrUrl} 
-                          onChange={(e) => setQrUrl(e.target.value)}
-                          placeholder="e.g. https://google.com/review/link"
-                          className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white font-mono text-xs text-gray-600"
-                        />
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 space-y-1">
-                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-gray-400 block">Resolved Scan Link</span>
-                        <span className="text-xs font-mono text-primary truncate block font-bold" title={qrUrl}>
-                          {qrUrl}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-
-
-            </div>
-          </div>
-
-          {/* Export Options */}
-          <div className="border-t border-gray-100 pt-5 space-y-3">
-            <h4 className="text-xs font-bold text-gray-500">Export Options</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <Button 
-                onClick={() => handleDownload('png')} 
-                variant="outline" 
-                className="rounded-xl border-gray-100 bg-white hover:bg-gray-50 text-gray-800 font-bold flex items-center justify-center gap-2 h-10 text-xs px-2"
-              >
-                <Download size={13} />
-                Standard PNG
-              </Button>
-              <Button 
-                onClick={() => handleDownload('print_pdf')} 
-                variant="outline" 
-                className="rounded-xl border-gray-100 bg-white hover:bg-gray-50 text-gray-800 font-bold flex items-center justify-center gap-2 h-10 text-xs px-2"
-                title="Saves PDF with professional bleed & trim crop marks"
-              >
-                <FileText size={13} className="text-green-600" />
-                Print-Ready PDF
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: High Fidelity Preview Studio & Mockups perspective mapping (7 cols) */}
-        <div className={`lg:col-span-7 flex-col gap-6 ${mobileViewTab === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
-          
-          {/* Live Design Canvas */}
-          <div className="flex items-center justify-between bg-white border border-gray-100 p-2.5 rounded-2xl shadow-sm">
-            <span className="text-xs font-extrabold text-gray-800 ml-2">Live Design Canvas</span>
-            <span className="text-[10px] uppercase font-extrabold text-gray-400">High-Fidelity Rendering</span>
-          </div>
-
-          <div className="bg-slate-100 border border-slate-200/50 rounded-3xl p-6 md:p-10 flex items-center justify-center min-h-[500px] relative overflow-hidden">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              ref={canvasRef}
-              style={{
-                backgroundColor: bgColor,
-                borderColor: borderColor,
-                backgroundImage: bgImage ? `url(${bgImage})` : 'none',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                aspectRatio: FORMATS.find(f => f.id === selectedFormat)?.ratio || 4/6
-              }}
-              className="w-[280px] border-[6px] rounded-[24px] shadow-2xl relative overflow-hidden bg-slate-900 transition-all duration-300"
-            >
-              <div
-                style={{ backgroundColor: accentColor }}
-                className="absolute top-0 left-0 right-0 h-1.5"
-              />
-
-              {elements.map((el) => {
-                if (el.type === 'logo') {
-                  return (
-                    <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.width || 30}%`, height: `${el.height || 8}%`, zIndex: 30 }}
-                      className="flex items-center justify-center gap-1.5 text-[8px] uppercase tracking-wider font-extrabold text-white">
-                      {brandProfile?.logoUrl ? (
-                        <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-lg" />
-                      ) : (
-                        <>
-                          <div style={{ backgroundColor: accentColor }} className="size-4 rounded flex items-center justify-center font-bold text-white text-[9px]">
-                            {brandProfile?.name?.charAt(0) || 'V'}
-                          </div>
-                          <span className="truncate">{brandProfile?.name || 'VemTap Store'}</span>
-                        </>
                       )}
-                    </div>
+                    </button>
                   );
-                }
-                if (el.type === 'qr_code') {
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+              <div className="py-4">
+                <span className="text-label-caps text-primary mb-2 block">Step {displayStep} of {totalSteps}</span>
+                <h2 className="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-1">Choose A Design</h2>
+                <p className="text-body-lg text-on-surface-variant">Pick a design style for your marketing assets.</p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {designStyles.map((ds) => {
+                  const isActive = designStyle === ds.id;
                   return (
-                    <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, backgroundColor: qrBgColor || '#FFFFFF', padding: '8px', zIndex: 20 }}
-                      className="rounded-[16px] shadow-lg flex items-center justify-center border border-white/10">
-                      <div className="relative inline-flex">
-                        <QRCodeSVG value={qrUrl} size={el.size || 100} fgColor={qrFgColor} bgColor={qrBgColor} />
-                        {showLogoInQr && brandProfile?.logoUrl && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-white rounded-full p-0.5 shadow-md" style={{ width: '26%', height: '26%' }}>
-                              <img src={brandProfile.logoUrl} alt="logo" className="size-full object-contain rounded-full" />
-                            </div>
-                          </div>
+                    <button
+                      key={ds.id}
+                      onClick={() => setDesignStyle(ds.id)}
+                      className={`relative flex flex-col p-3 bg-surface-container-lowest border-2 rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] text-left active:scale-95 transition-all cursor-pointer ${
+                        isActive ? 'border-primary bg-surface-container-low' : 'border-transparent hover:bg-surface-container-low'
+                      }`}
+                    >
+                      <div className={`aspect-square w-full rounded-lg ${ds.color} overflow-hidden mb-2 flex items-center justify-center`}>
+                        <div className={`w-12 h-12 rounded-full ${ds.accent} opacity-60`} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-label-caps uppercase tracking-wider text-on-surface">{ds.label}</span>
+                        <Check size={16} className={`transition-all duration-200 ${isActive ? 'opacity-100 text-primary' : 'opacity-0'}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {step === 3 && (
+            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
+              <div className="flex items-center justify-between py-4">
+                <div>
+                  <span className="text-label-caps text-on-surface-variant">Step {displayStep} of {totalSteps}</span>
+                  <h2 className="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-1">Customize Content</h2>
+                </div>
+                <span className="text-label-caps text-primary">Content Creation</span>
+              </div>
+
+              <section className="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] space-y-2">
+                <label className="text-label-caps text-on-surface-variant block">Headline</label>
+                <input
+                  value={headline}
+                  onChange={(e) => setHeadline(e.target.value)}
+                  className="w-full bg-transparent border border-outline-variant focus:border-primary focus:ring-0 rounded-lg h-12 px-4 text-body-lg text-on-surface transition-all"
+                  placeholder="e.g. Summer Collection Launch"
+                />
+              </section>
+
+              <section className="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] space-y-2">
+                <label className="text-label-caps text-on-surface-variant block">Subheadline</label>
+                <textarea
+                  value={subheadline}
+                  onChange={(e) => setSubheadline(e.target.value)}
+                  className="w-full bg-transparent border border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-4 text-body-lg text-on-surface transition-all resize-none"
+                  placeholder="Describe your offering in detail..."
+                  rows={3}
+                />
+              </section>
+
+              <section className="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] space-y-2">
+                <label className="text-label-caps text-on-surface-variant block">Call To Action</label>
+                <input
+                  value={cta}
+                  onChange={(e) => setCta(e.target.value)}
+                  className="w-full bg-transparent border border-outline-variant focus:border-primary focus:ring-0 rounded-lg h-12 px-4 text-body-lg text-on-surface transition-all"
+                  placeholder="Shop Now"
+                />
+              </section>
+
+              <button
+                onClick={handleGenerateAi}
+                className="w-full flex items-center justify-center gap-2 bg-surface-container-high text-primary font-button text-button h-12 rounded-xl hover:bg-surface-container-highest transition-all active:scale-95 cursor-pointer"
+              >
+                <Sparkles size={18} />
+                Improve My Content
+              </button>
+
+              <div className="relative overflow-hidden rounded-xl h-48">
+                <div className="w-full h-full bg-gradient-to-br from-indigo-100 via-white to-purple-100 flex items-end p-4">
+                  <div>
+                    <span className="text-label-caps text-[10px] mb-1 opacity-60 uppercase block">Live Preview</span>
+                    <p className="text-headline-md leading-tight text-on-surface">{headline || 'Your Headline Will Appear Here'}</p>
+                    {subheadline && <p className="text-body-sm text-on-surface-variant mt-1">{subheadline}</p>}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 4 && (
+            <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+              <div className="py-4">
+                <span className="text-label-caps text-primary uppercase tracking-widest mb-2 block">Step {displayStep} of {totalSteps}</span>
+                <h2 className="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-1">Where will this be displayed?</h2>
+                <p className="text-body-lg text-on-surface-variant">Select the format and dimensions that best fit your display environment.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {formats.map((f) => {
+                  const isActive = format === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => setFormat(f.id)}
+                      className={`relative flex flex-col bg-surface-container-lowest border rounded-xl p-4 cursor-pointer active:scale-95 transition-all ${
+                        isActive ? 'border-2 border-primary bg-surface-container-low' : 'border border-outline-variant hover:shadow-lg'
+                      }`}
+                    >
+                      <div className={`aspect-square ${f.thumb} rounded-lg mb-3 flex items-center justify-center`}>
+                        <QrCode size={32} className="text-on-surface-variant opacity-30" />
+                      </div>
+                      <h3 className="text-headline-md text-body-lg font-semibold text-on-surface">{f.label}</h3>
+                      <p className="text-label-caps text-on-surface-variant mt-1">{f.size}</p>
+                      <div className={`absolute top-2 right-2 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}>
+                        <Check size={18} className="text-primary" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {step === 5 && (
+            <motion.div key="step5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20">
+              <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
+                <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping" />
+                <div className="absolute inset-4 border-2 border-primary/20 border-dashed rounded-full animate-spin" style={{ animationDuration: '8s' }} />
+                <div className="z-10 bg-white shadow-lg rounded-xl p-4">
+                  <Sparkles size={48} className="text-primary" />
+                </div>
+              </div>
+              <h1 className="text-headline-lg-mobile text-on-surface mb-4">Preparing Design</h1>
+              <p className="text-body-sm text-on-surface-variant text-center mb-8 max-w-[280px]">
+                We are tailoring your marketing assets to match your unique brand identity.
+              </p>
+              <div className="w-full max-w-sm space-y-3">
+                {[
+                  { label: 'Loading Business Brand', done: progress > 25 },
+                  { label: 'Generating QR Code', done: progress > 50 },
+                  { label: 'Applying Design', done: progress > 75 },
+                  { label: 'Creating Preview', done: progress > 95 },
+                ].map((s, i) => (
+                  <div key={i} className={`flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 transition-all duration-500 ${
+                    s.done ? 'opacity-100' : 'opacity-40'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        s.done ? 'bg-primary' : 'bg-surface-container'
+                      }`}>
+                        {s.done ? (
+                          <Check size={14} className="text-white" />
+                        ) : (
+                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
                         )}
                       </div>
+                      <span className="text-label-caps tracking-wide">{s.label}</span>
                     </div>
-                  );
-                }
-                return (
-                  <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: el.width ? `${el.width}%` : 'auto', maxWidth: '90%', color: el.color || '#FFFFFF', fontSize: `${el.fontSize || 14}px`, fontWeight: el.fontWeight || 'normal', textAlign: el.alignment || 'center', zIndex: 10 }}
-                    className="leading-tight font-medium">{el.text}</div>
-                );
-              })}
+                  </div>
+                ))}
+              </div>
+              <div className="w-full max-w-sm mt-8">
+                <div className="flex justify-between mb-2">
+                  <span className="text-label-caps text-on-surface-variant">{Math.round(progress)}%</span>
+                  <span className="text-label-caps text-primary uppercase font-bold tracking-widest">
+                    {progress < 100 ? 'Synchronizing...' : 'Ready!'}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+                  <div className="h-full bg-primary-container transition-all duration-300 ease-out rounded-full" style={{ width: `${progress}%`, boxShadow: progress > 0 ? '0 0 12px rgba(99, 91, 255, 0.4)' : 'none' }} />
+                </div>
+              </div>
             </motion.div>
+          )}
+
+          {step === 6 && (
+            <motion.div key="step6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <section className="flex flex-col items-center">
+                <div
+                  ref={previewRef}
+                  className={`relative w-full max-w-[280px] aspect-[9/16] rounded-[40px] overflow-hidden bg-white mb-4 shadow-2xl transition-all duration-500 ${
+                    zoom ? 'scale-110' : 'scale-100'
+                  }`}
+                  style={{ boxShadow: '0 0 0 8px #151a31, 0 20px 50px rgba(0,0,0,0.15)' }}
+                >
+                  <div className="w-full h-full bg-gradient-to-br from-indigo-900 via-slate-800 to-purple-900 flex flex-col items-center justify-center p-6 text-white">
+                    {headline && <h3 className="text-xl font-bold text-center mb-2">{headline}</h3>}
+                    {subheadline && <p className="text-sm text-center opacity-80 mb-4">{subheadline}</p>}
+                    <div className="bg-white p-3 rounded-2xl shadow-lg">
+                      <QrCode size={100} className="text-black" />
+                    </div>
+                    {cta && <p className="text-xs font-semibold mt-4 uppercase tracking-wider opacity-70">{cta}</p>}
+                  </div>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    <button onClick={() => setZoom(!zoom)} className="flex items-center gap-1 bg-black/80 text-white h-9 px-4 rounded-full backdrop-blur-md text-label-caps active:scale-95 transition-all cursor-pointer">
+                      <ZoomIn size={14} />
+                      Zoom
+                    </button>
+                  </div>
+                </div>
+                <h2 className="text-headline-lg-mobile text-on-surface mb-1">{headline || 'Your Asset'}</h2>
+                <p className="text-body-sm text-on-surface-variant">Aspect Ratio: 9:16</p>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-headline-md text-on-surface font-semibold">See It In Real Life</h3>
+                  <Sparkles size={16} className="text-primary" />
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 mb-3 no-scrollbar">
+                  {mockupEnvs.map((env) => (
+                    <button
+                      key={env}
+                      onClick={() => setMockupEnv(env)}
+                      className={`px-4 py-2 rounded-xl text-label-caps transition-all cursor-pointer ${
+                        mockupEnv === env
+                          ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                          : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                      }`}
+                    >
+                      {env}
+                    </button>
+                  ))}
+                </div>
+                <div className={`relative w-full aspect-video rounded-xl overflow-hidden shadow-sm ${mockupColors[mockupEnv] || 'bg-surface-container-low'} flex items-center justify-center`}>
+                  <div className="text-center opacity-40">
+                    <QrCode size={48} className="mx-auto mb-2 text-on-surface-variant" />
+                    <p className="text-body-sm text-on-surface-variant">{mockupEnv} environment preview</p>
+                  </div>
+                  <div className="absolute top-3 right-3 bg-primary/10 backdrop-blur-md px-3 py-1 rounded-full border border-primary/20 flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[10px] text-label-caps text-primary uppercase">Live Preview</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-surface-container-lowest rounded-xl p-4 border border-surface-container-high shadow-sm">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container">
+                    <span className="material-symbols-outlined text-[20px]">info</span>
+                  </div>
+                  <div>
+                    <h4 className="text-headline-md text-[16px] text-on-surface font-semibold">Design Specs</h4>
+                    <p className="text-body-sm text-on-surface-variant">
+                      {format === 'social-media' ? 'Optimized for Instagram & TikTok' : 'Ready for print'}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-surface-container-low p-3 rounded-lg">
+                    <span className="text-label-caps text-on-surface-variant block mb-1">FORMAT</span>
+                    <span className="text-body-lg font-semibold">{formats.find(f => f.id === format)?.label || 'Standard'}</span>
+                  </div>
+                  <div className="bg-surface-container-low p-3 rounded-lg">
+                    <span className="text-label-caps text-on-surface-variant block mb-1">RESOLUTION</span>
+                    <span className="text-body-lg font-semibold">1080 x 1920</span>
+                  </div>
+                </div>
+              </section>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Sticky Bottom Action Bar - not for step 5 (generating) */}
+      {step !== 5 && (
+        <footer className="shrink-0 px-5 py-4 bg-surface/80 backdrop-blur-md border-t border-outline-variant/10">
+          <div className="max-w-2xl mx-auto">
+            {step === 6 ? (
+              <div className="flex items-center gap-3">
+                <button className="flex-1 h-12 border border-primary text-primary font-button text-button rounded-xl flex items-center justify-center gap-2 hover:bg-primary-container/10 active:scale-95 transition-all cursor-pointer">
+                  <Bookmark size={18} />
+                  Save Asset
+                </button>
+                <button className="flex-[1.5] h-12 bg-primary text-on-primary font-button text-button rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20 cursor-pointer">
+                  <Download size={18} />
+                  Download
+                </button>
+              </div>
+            ) : step === 4 ? (
+              <div className="flex items-center gap-3">
+                <button className="flex-1 h-12 border border-outline text-on-surface font-button text-button rounded-xl hover:bg-surface-container-high transition-colors active:scale-95 cursor-pointer">
+                  Save Draft
+                </button>
+                <button
+                  onClick={handleContinue}
+                  disabled={!canContinue()}
+                  className="flex-[2] h-12 bg-primary text-on-primary font-button text-button rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                >
+                  Continue
+                  <ArrowLeft size={18} className="rotate-180" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleContinue}
+                disabled={!canContinue()}
+                className="w-full h-12 bg-primary text-on-primary font-button text-button rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Continue
+                <ArrowLeft size={18} className="rotate-180" />
+              </button>
+            )}
           </div>
+        </footer>
+      )}
 
-        </div>
-
-      </div>
+      {/* AI Content Optimizer Bottom Sheet */}
+      {showAiSheet && (
+        <>
+          <div className="fixed inset-0 bg-on-surface/40 z-[60]" onClick={() => setShowAiSheet(false)} />
+          <div className="fixed bottom-0 left-0 w-full bg-surface rounded-t-[32px] z-[70] max-h-[795px] overflow-hidden flex flex-col shadow-2xl">
+            <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mx-auto my-4 shrink-0" />
+            <div className="px-5 pb-6 space-y-5 overflow-y-auto">
+              <header className="text-center">
+                <h3 className="text-headline-md font-semibold">AI Content Optimizer</h3>
+                <p className="text-body-sm text-on-surface-variant mt-1">Refining your brand voice using Marketing AI</p>
+              </header>
+              <div className="space-y-4">
+                <div className="p-4 bg-surface-container rounded-xl border border-outline-variant/20">
+                  <span className="text-label-caps text-on-surface-variant block mb-2">Original Version</span>
+                  <h4 className="text-headline-md text-primary opacity-60">{headline || 'Your headline'}</h4>
+                  <p className="text-body-sm text-on-surface-variant mt-2 italic">{subheadline || 'Your subheadline...'}</p>
+                </div>
+                <div className="flex justify-center -my-2">
+                  <div className="bg-primary-container text-on-primary-container p-2 rounded-full shadow-md">
+                    <span className="material-symbols-outlined text-[20px] block">expand_more</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-primary-container/10 rounded-xl border-2 border-primary relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-primary text-on-primary px-3 py-1 rounded-bl-lg text-label-caps text-[10px]">RECOMMENDED</div>
+                  <span className="text-label-caps text-primary block mb-2">AI Enhanced Version</span>
+                  <h4 className="text-headline-md text-on-surface">{aiHeadline || 'Enhanced version will appear here'}</h4>
+                  <p className="text-body-sm text-on-surface mt-2 leading-relaxed">
+                    Experience a curated fusion of high-velocity style and intentional comfort. Designed for the modern professional who demands both elegance and performance.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => setShowAiSheet(false)}
+                  className="h-12 border border-outline-variant text-on-surface font-button rounded-xl hover:bg-surface-container transition-colors cursor-pointer"
+                >
+                  Try Another
+                </button>
+                <button
+                  onClick={applyAiContent}
+                  className="h-12 bg-primary text-on-primary font-button rounded-xl shadow-lg active:scale-95 transition-all cursor-pointer"
+                >
+                  Use This
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
