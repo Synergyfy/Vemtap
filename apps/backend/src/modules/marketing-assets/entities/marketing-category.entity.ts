@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, Column, ManyToMany, BeforeInsert, BeforeUpdate } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { MarketingTemplate } from './marketing-template.entity';
@@ -41,6 +41,6 @@ export class MarketingCategory extends AbstractBaseEntity {
   @Column({ default: true })
   isActive: boolean;
 
-  @OneToMany(() => MarketingTemplate, template => template.categoryRelation)
+  @ManyToMany(() => MarketingTemplate, template => template.categories)
   templates?: MarketingTemplate[];
 }

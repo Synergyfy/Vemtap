@@ -21,12 +21,17 @@ import {
 // TEMPLATE HOOKS
 // ==========================================
 
-export const useMarketingTemplates = (category?: string, type?: string, all = false) => {
+export const useMarketingTemplates = (category?: string, type?: string, all = false, categoryIds?: string[]) => {
   return useQuery<MarketingTemplate[], Error>({
-    queryKey: ['marketing-templates', { category, type, all }],
+    queryKey: ['marketing-templates', { category, type, all, categoryIds }],
     queryFn: async () => {
       const data = await api.get('/marketing-templates', {
-        params: { category, type, all: all ? 'true' : 'false' },
+        params: {
+          category,
+          type,
+          all: all ? 'true' : 'false',
+          categoryIds: categoryIds?.length ? categoryIds.join(',') : undefined,
+        },
       });
       return data;
     },

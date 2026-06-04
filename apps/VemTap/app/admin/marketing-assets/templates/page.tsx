@@ -38,6 +38,7 @@ export default function AdminTemplatesListPage() {
       const payload = {
         name: `${template.name} (Copy)`,
         category: template.category,
+        categoryIds: template.categories?.map((c: any) => c.id),
         type: template.type,
         thumbnailUrl: template.thumbnailUrl,
         layoutConfig: template.layoutConfig,

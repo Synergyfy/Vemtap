@@ -3,8 +3,7 @@ export interface MarketingTemplate {
   name: string;
   description?: string;
   category: string;
-  categoryId?: string;
-  categoryRelation?: MarketingCategory;
+  categories?: MarketingCategory[];
   type: string;
   layoutConfig: {
     backgroundColor: string;
