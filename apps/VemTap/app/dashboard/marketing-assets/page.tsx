@@ -11,6 +11,7 @@ import {
 } from '@/services/marketing-assets/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
+import { MarketingAssetPreview } from '@/components/dashboard/MarketingAssetPreview';
 
 const navItems = [
   { icon: Archive, label: 'My Assets', href: '/dashboard/marketing-assets/library', color: 'text-primary', bg: 'bg-primary/10' },
@@ -49,6 +50,8 @@ export default function MarketingAssetsOverviewPage() {
     downloads: analyticsLoading ? '...' : ((totals as any).downloads ?? 0).toLocaleString(),
     scans: analyticsLoading ? '...' : totals.scans.toLocaleString(),
   };
+
+  const businessLogo = brandProfile?.logoUrl || business?.logoUrl || (branches && branches.length > 0 ? (branches[0] as any)?.logoUrl : '') || '';
 
   return (
     <div className="pb-24 md:pb-10 space-y-5 md:space-y-6 max-w-2xl mx-auto">
@@ -156,15 +159,16 @@ export default function MarketingAssetsOverviewPage() {
             recentAssets.map((asset: any) => (
               <Link
                 key={asset.id}
-                href={`/dashboard/marketing-assets/library`}
-                className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/20 flex items-center p-2 gap-3 hover:bg-surface-container-low transition-colors"
+                href={`/dashboard/marketing-assets/library?view=${asset.id}`}
+                className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/20 flex items-center p-2 gap-3 hover:bg-surface-container-low transition-colors group"
               >
                 <div className="w-16 h-16 rounded-lg bg-surface-container overflow-hidden shrink-0 flex items-center justify-center">
-                  {asset.thumbnailUrl ? (
-                    <img src={asset.thumbnailUrl} alt={asset.name} className="size-full object-cover" />
-                  ) : (
-                    <QrCode size={18} className="text-on-surface-variant opacity-40" />
-                  )}
+                  <MarketingAssetPreview 
+                    asset={asset} 
+                    scale={0.35} 
+                    businessLogo={businessLogo}
+                    className="size-full group-hover:scale-110 transition-transform duration-500" 
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-body-lg font-semibold text-on-surface truncate">
@@ -174,9 +178,9 @@ export default function MarketingAssetsOverviewPage() {
                     Created {new Date(asset.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </p>
                 </div>
-                <button className="h-9 px-4 bg-surface-container-high rounded-full text-label-caps text-on-surface-variant active:scale-95 transition-transform shrink-0 cursor-pointer">
+                <div className="h-9 px-4 bg-surface-container-high rounded-full text-label-caps text-on-surface-variant flex items-center justify-center active:scale-95 transition-transform shrink-0 font-bold">
                   View
-                </button>
+                </div>
               </Link>
             ))
           )}
