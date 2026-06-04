@@ -20,6 +20,8 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import { Plan } from '../subscriptions/entities/plan.entity';
 
 @Injectable()
 export class BusinessesService {
@@ -38,6 +40,10 @@ export class BusinessesService {
     private readonly devicesService: DevicesService,
     @Inject(forwardRef(() => SubscriptionsService))
     private readonly subscriptionsService: SubscriptionsService,
+    @InjectRepository(Subscription)
+    private subscriptionRepository: Repository<Subscription>,
+    @InjectRepository(Plan)
+    private planRepository: Repository<Plan>,
   ) {}
 
   async create(
@@ -663,5 +669,84 @@ export class BusinessesService {
     return this.branchRepository.findOne({
       where: { businessId, isMainBranch: true },
     });
+  }
+
+  private toNumber(value: number | string): number {
+    return Number(value) || 0;
+  }
+
+  async getStats() {
+    const [totalBusinesses, activeBusinesses, churnedCount, statusRaw] = await Promise.all([
+      this.businessesRepository.count(),
+      this.businessesRepository.count({ where: { status: 'active' as any } }),
+      this.businessesRepository.count({ where: { status: 'suspended' as any } }),
+      this.businessesRepository
+        .createQueryBuilder('b')
+        .select('b.status', 'status')
+        .addSelect('COUNT(b.id)', 'count')
+        .groupBy('b.status')
+        .getRawMany<{ status: string; count: string }>(),
+    ]);
+
+    const statusDistribution = statusRaw.map((r) => ({
+      status: r.status,
+      count: parseInt(r.count, 10),
+    }));
+
+    const churnRate =
+      totalBusinesses > 0
+        ? Math.round((churnedCount / totalBusinesses) * 1000) / 10
+        : 0;
+
+    const activeSubscriptions = await this.subscriptionRepository.find({
+      where: { status: SubscriptionStatus.ACTIVE },
+      relations: ['plan'],
+    });
+
+    const totalMrr = activeSubscriptions.reduce(
+      (sum, sub) => sum + this.toNumber(sub.plan?.monthlyPrice ?? 0),
+      0,
+    );
+
+    const planMap = new Map<string, { count: number; totalMrr: number }>();
+    for (const sub of activeSubscriptions) {
+      const planName = sub.plan?.name ?? 'UNKNOWN';
+      const entry = planMap.get(planName) ?? { count: 0, totalMrr: 0 };
+      entry.count += 1;
+      entry.totalMrr += this.toNumber(sub.plan?.monthlyPrice ?? 0);
+      planMap.set(planName, entry);
+    }
+
+    const planDistribution = Array.from(planMap.entries()).map(([plan, data]) => ({
+      plan,
+      count: data.count,
+      totalMrr: data.totalMrr,
+    }));
+
+    let bestSellingPlan: {
+      plan: string;
+      totalMrr: number;
+      businessCount: number;
+    } | null = null;
+
+    if (planDistribution.length > 0) {
+      const sorted = [...planDistribution].sort((a, b) => b.totalMrr - a.totalMrr);
+      bestSellingPlan = {
+        plan: sorted[0].plan,
+        totalMrr: sorted[0].totalMrr,
+        businessCount: sorted[0].count,
+      };
+    }
+
+    return {
+      activeBusinesses,
+      totalMrr: Math.round(totalMrr * 100) / 100,
+      churnRate,
+      churnedCount,
+      totalBusinesses,
+      bestSellingPlan,
+      planDistribution,
+      statusDistribution,
+    };
   }
 }

@@ -293,6 +293,36 @@ export class BusinessesController {
     return this.businessesService.unverify(id);
   }
 
+  @Get('stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get aggregate business statistics for summary cards' })
+  @ApiResponse({
+    status: 200,
+    description: 'Business stats returned successfully',
+    schema: {
+      example: {
+        activeBusinesses: 45,
+        totalMrr: 2250000,
+        churnRate: 10,
+        churnedCount: 5,
+        totalBusinesses: 50,
+        bestSellingPlan: { plan: 'GOLD', totalMrr: 1200000, businessCount: 24 },
+        planDistribution: [
+          { plan: 'GOLD', count: 24, totalMrr: 1200000 },
+          { plan: 'SILVER', count: 16, totalMrr: 800000 },
+        ],
+        statusDistribution: [
+          { status: 'active', count: 45 },
+          { status: 'pending', count: 3 },
+          { status: 'suspended', count: 5 },
+        ],
+      },
+    },
+  })
+  async getBusinessStatsSummary() {
+    return this.businessesService.getStats();
+  }
+
   @Get('admin/:id/stats')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get stats about a business' })
