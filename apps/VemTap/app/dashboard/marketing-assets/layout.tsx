@@ -24,6 +24,8 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
   const pathname = usePathname();
   const { data: myBusiness, isLoading } = useMyBusiness();
 
+  const isCreatePage = pathname?.startsWith('/dashboard/marketing-assets/create');
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -36,7 +38,7 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
     const bizCat = typeof (myBusiness as any).category === 'object'
       ? (myBusiness as any).category?.name
       : myBusiness.category;
-    
+
     if (bizCat) {
       const excludedCategories = [
         'hospital',
@@ -60,7 +62,7 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
         }
         return catLower.includes(ex);
       });
-      
+
       if (isExcluded) {
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 space-y-4 max-w-md mx-auto">
@@ -83,53 +85,53 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="space-y-5 md:space-y-8 pb-24 md:pb-10 px-4 sm:px-6 md:px-10 pt-4 md:pt-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-            <Palette className="text-primary size-6 md:size-7" />
-            Marketing Materials
-          </h1>
-        </div>
-      </div>
+    <div className={isCreatePage ? '' : 'space-y-5 md:space-y-8 pb-24 md:pb-10 px-4 sm:px-6 md:px-10 pt-4 md:pt-5'}>
+      {!isCreatePage && (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                <Palette className="text-primary size-6 md:size-7" />
+                Marketing Materials
+              </h1>
+            </div>
+          </div>
 
-      {/* Page Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {children}
-      </motion.div>
+          <nav className="flex items-center justify-around md:justify-start md:gap-1 bg-gray-50 rounded-2xl p-1 border border-gray-100 shadow-sm max-w-2xl">
+            {TABS.map((tab) => {
+              const isActive = pathname === tab.href || (tab.href !== '/dashboard/marketing-assets' && pathname?.startsWith(tab.href));
+              const Icon = tab.icon;
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] md:relative md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:border-t-0 md:shadow-none md:mb-6">
-        <div className="flex items-center justify-around md:justify-start md:gap-1 md:bg-gray-50 md:rounded-2xl md:p-1 md:border md:border-gray-100 md:shadow-sm max-w-2xl md:mx-auto">
-          {TABS.map((tab) => {
-            const isActive = pathname === tab.href || (tab.href !== '/dashboard/marketing-assets' && pathname?.startsWith(tab.href));
-            const Icon = tab.icon;
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={`relative flex flex-col md:flex-row items-center gap-0.5 md:gap-2 py-2 px-3 md:px-5 md:py-2.5 rounded-xl transition-all text-[10px] md:text-xs font-bold ${
+                    isActive
+                      ? 'text-primary bg-white shadow-sm'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <Icon size={20} />
+                  <span>{tab.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </>
+      )}
 
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`relative flex flex-col items-center gap-0.5 py-2 px-3 md:px-5 md:py-2.5 rounded-xl transition-all md:flex-row md:gap-2 text-[10px] md:text-xs font-bold ${
-                  isActive
-                    ? 'text-primary'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <div className={`absolute -inset-1 md:inset-0 rounded-xl -z-10 ${
-                  isActive ? 'bg-blue-50 md:bg-white md:shadow-sm' : ''
-                }`} />
-                <Icon size={20} />
-                <span>{tab.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {isCreatePage ? (
+        children
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {children}
+        </motion.div>
+      )}
     </div>
   );
 }

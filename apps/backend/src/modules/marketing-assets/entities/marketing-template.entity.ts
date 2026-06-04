@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToMany, JoinTable } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { MarketingCategory } from './marketing-category.entity';
@@ -17,13 +17,10 @@ export class MarketingTemplate extends AbstractBaseEntity {
   @Column()
   category: string;
 
-  @ApiProperty({ example: 'uuid', nullable: true, description: 'FK to marketing_categories' })
-  @Column({ nullable: true })
-  categoryId?: string;
-
-  @ManyToOne(() => MarketingCategory, cat => cat.templates, { nullable: true })
-  @JoinColumn({ name: 'categoryId' })
-  categoryRelation?: MarketingCategory;
+  @ApiProperty({ example: ['uuid'], description: 'FKs to marketing_categories' })
+  @ManyToMany(() => MarketingCategory, cat => cat.templates)
+  @JoinTable({ name: 'marketing_template_categories' })
+  categories?: MarketingCategory[];
 
   @ApiProperty({ example: 'table_tent', description: 'Type of the template (table_tent, poster, flyer, business_card)' })
   @Column()

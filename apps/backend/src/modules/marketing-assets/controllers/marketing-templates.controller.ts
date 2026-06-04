@@ -48,10 +48,11 @@ export class MarketingTemplatesController {
     @Query('category') category?: string,
     @Query('type') type?: string,
     @Query('all') all?: string,
-    @Query('categoryId') categoryId?: string,
+    @Query('categoryIds') categoryIds?: string,
   ) {
     const activeOnly = all !== 'true';
-    return this.templatesService.findAll(category, type, activeOnly, categoryId);
+    const ids = categoryIds ? categoryIds.split(',').filter(Boolean) : undefined;
+    return this.templatesService.findAll(category, type, activeOnly, ids);
   }
 
   @Get('categories')

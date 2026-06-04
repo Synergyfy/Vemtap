@@ -1,47 +1,43 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useMarketingTemplates, useTemplateCategories } from '@/services/marketing-assets/hooks';
+import { useMarketingTemplates } from '@/services/marketing-assets/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { QrCode, Search, Filter, Layers, ArrowRight, Sparkles, HelpCircle, Palette, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 
 export default function TemplateLibraryPage() {
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
 
   const { data: templates, isLoading } = useMarketingTemplates(
-    selectedCategory === 'all' ? undefined : selectedCategory,
+    undefined,
     selectedType === 'all' ? undefined : selectedType
   );
 
-  const { data: categories } = useTemplateCategories();
   const { data: business } = useMyBusiness();
 
-  // Category Auto-detection (PRD §7)
-  React.useEffect(() => {
-    if (business?.category && categories && categories.length > 0) {
-      const bizCatName = typeof (business as any).category === 'object' ? (business as any).category.name : business.category;
-      if (bizCatName) {
-        const match = categories.find(
-          (cat) =>
-            cat.toLowerCase() === bizCatName.toLowerCase() ||
-            bizCatName.toLowerCase().includes(cat.toLowerCase())
-        );
-        if (match) {
-          setSelectedCategory(match);
-        }
-      }
-    }
-  }, [business, categories]);
+  const bizCatName = business?.category
+    ? typeof (business as any).category === 'object'
+      ? (business as any).category.name
+      : business.category
+    : null;
 
-  // Search filtering
-  const filteredTemplates = templates
-    ? templates.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
-    : [];
+  // Filter templates by business category + search
+  const filteredTemplates = useMemo(() => {
+    if (!templates) return [];
+    return templates.filter((t) => {
+      const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
+      if (!bizCatName) return matchesSearch;
+      const matchesCategory = t.categories?.some(
+        (c) =>
+          c.name.toLowerCase() === bizCatName.toLowerCase() ||
+          bizCatName.toLowerCase().includes(c.name.toLowerCase())
+      );
+      return matchesSearch && matchesCategory;
+    });
+  }, [templates, search, bizCatName]);
 
   const typesList = [
     { label: 'All Layouts', value: 'all' },
@@ -129,13 +125,15 @@ export default function TemplateLibraryPage() {
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto no-scrollbar py-1">
-          {/* Category Filter — Locked for Category Detection Engine compliance (PRD §7.0) */}
-          <div className="flex items-center gap-1.5 shrink-0 bg-blue-50 border border-blue-100 text-blue-700 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm">
-            <CheckCircle2 size={13} className="text-blue-600 shrink-0" />
-            <span className="capitalize">
-              Industry: {selectedCategory === 'all' ? 'General' : selectedCategory}
-            </span>
-          </div>
+          {/* Industry Badge — shows the business's matched category */}
+          {bizCatName && (
+            <div className="flex items-center gap-1.5 shrink-0 bg-blue-50 border border-blue-100 text-blue-700 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm">
+              <CheckCircle2 size={13} className="text-blue-600 shrink-0" />
+              <span className="capitalize">
+                Industry: {bizCatName}
+              </span>
+            </div>
+          )}
 
           {/* Type Filter Tabs */}
           <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100 shrink-0">
@@ -184,9 +182,9 @@ export default function TemplateLibraryPage() {
             >
               {/* Very Compact Cover Preview (aspect-[3/4] and small padding) */}
               <div className="h-36 sm:h-44 bg-slate-50 relative overflow-hidden flex items-center justify-center border-b border-gray-50">
-                {template.thumbnailUrl ? (
+                {template.thumbnailUrl || template.layoutConfig?.backgroundImage ? (
                   <img
-                    src={template.thumbnailUrl}
+                    src={template.thumbnailUrl || template.layoutConfig?.backgroundImage}
                     alt={template.name}
                     className="size-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -223,11 +221,12 @@ export default function TemplateLibraryPage() {
                   </span>
                 </div>
 
-                <Link href={`/dashboard/marketing-assets/create?templateId=${template.id}`}>
-                  <Button className="w-full bg-primary/5 hover:bg-primary hover:text-white text-primary rounded-xl font-bold h-9 border-none shadow-none text-xs transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-white">
-                    Customize
-                    <ArrowRight size={12} />
-                  </Button>
+                <Link
+                  href={`/dashboard/marketing-assets/create?templateId=${template.id}`}
+                  className="w-full bg-primary/5 hover:bg-primary hover:text-white text-primary rounded-xl font-bold h-9 border-none shadow-none text-xs transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-white no-underline"
+                >
+                  Customize
+                  <ArrowRight size={12} />
                 </Link>
               </div>
             </motion.div>

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsObject } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsObject, IsArray } from 'class-validator';
 
 export class CreateTemplateDto {
   @ApiProperty({ example: 'Sleek Table Tent' })
@@ -17,10 +17,11 @@ export class CreateTemplateDto {
   @IsNotEmpty()
   category: string;
 
-  @ApiProperty({ example: 'uuid', required: false, description: 'FK to marketing_categories' })
-  @IsString()
+  @ApiProperty({ example: ['uuid'], required: false, description: 'FKs to marketing_categories' })
+  @IsArray()
   @IsOptional()
-  categoryId?: string;
+  @IsString({ each: true })
+  categoryIds?: string[];
 
   @ApiProperty({ example: 'table_tent' })
   @IsString()

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { MarketingTemplate } from '../entities/marketing-template.entity';
 import { MarketingCategory } from '../entities/marketing-category.entity';
 import { CreateTemplateDto } from '../dto/create-template.dto';
@@ -19,10 +19,11 @@ export class TemplatesService {
   ) {}
 
   async create(createDto: CreateTemplateDto, user?: User): Promise<MarketingTemplate> {
-    if (createDto.categoryId === '') {
-      createDto.categoryId = null as any;
+    const { categoryIds, ...rest } = createDto;
+    const template = this.templateRepo.create(rest);
+    if (categoryIds && categoryIds.length > 0) {
+      template.categories = await this.categoryRepo.findBy({ id: In(categoryIds) });
     }
-    const template = this.templateRepo.create(createDto);
     const saved = await this.templateRepo.save(template);
     if (user) {
       await this.auditLogService.log({
@@ -34,12 +35,12 @@ export class TemplatesService {
         details: { name: saved.name },
       });
     }
-    return saved;
+    return this.findOne(saved.id);
   }
 
-  async findAll(category?: string, type?: string, activeOnly = true, categoryId?: string): Promise<MarketingTemplate[]> {
+  async findAll(category?: string, type?: string, activeOnly = true, categoryIds?: string[]): Promise<MarketingTemplate[]> {
     const query = this.templateRepo.createQueryBuilder('template')
-      .leftJoinAndSelect('template.categoryRelation', 'categoryRelation');
+      .leftJoinAndSelect('template.categories', 'categories');
 
     if (activeOnly) {
       query.andWhere('template.isActive = :isActive', { isActive: true });
@@ -47,8 +48,9 @@ export class TemplatesService {
     if (category) {
       query.andWhere('template.category = :category', { category });
     }
-    if (categoryId) {
-      query.andWhere('template.categoryId = :categoryId', { categoryId });
+    if (categoryIds && categoryIds.length > 0) {
+      query.innerJoin('marketing_template_categories', 'mtc', 'mtc."templateId" = template.id')
+        .andWhere('mtc."categoryId" IN (:...categoryIds)', { categoryIds });
     }
     if (type) {
       query.andWhere('template.type = :type', { type });
@@ -60,7 +62,7 @@ export class TemplatesService {
   async findOne(id: string): Promise<MarketingTemplate> {
     const template = await this.templateRepo.findOne({
       where: { id },
-      relations: ['categoryRelation'],
+      relations: ['categories'],
     });
     if (!template) {
       throw new NotFoundException(`Template with ID ${id} not found`);
@@ -70,10 +72,11 @@ export class TemplatesService {
 
   async update(id: string, updateDto: UpdateTemplateDto, user?: User): Promise<MarketingTemplate> {
     const template = await this.findOne(id);
-    if (updateDto.categoryId === '') {
-      updateDto.categoryId = null as any;
+    const { categoryIds, ...rest } = updateDto;
+    Object.assign(template, rest);
+    if (categoryIds !== undefined) {
+      template.categories = await this.categoryRepo.findBy({ id: In(categoryIds) });
     }
-    Object.assign(template, updateDto);
     const saved = await this.templateRepo.save(template);
     if (user) {
       await this.auditLogService.log({
@@ -85,7 +88,7 @@ export class TemplatesService {
         details: { changes: Object.keys(updateDto) },
       });
     }
-    return saved;
+    return this.findOne(saved.id);
   }
 
   async remove(id: string, user?: User): Promise<void> {

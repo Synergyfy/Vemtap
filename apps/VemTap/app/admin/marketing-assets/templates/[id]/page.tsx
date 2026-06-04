@@ -43,7 +43,7 @@ export default function AdminTemplateBuilderPage() {
   const [name, setName] = useState('New System Template');
   const [description, setDescription] = useState('Premium layout preset.');
   const [category, setCategory] = useState('Restaurant');
-  const [categoryId, setCategoryId] = useState('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const { data: activeCategories = [], isLoading: categoriesLoading } = useMarketingCategories(false);
   const [type, setType] = useState('table_tent');
   const [isActive, setIsActive] = useState(true);
@@ -182,7 +182,7 @@ export default function AdminTemplateBuilderPage() {
       setName(template.name);
       setDescription(template.description || '');
       setCategory(template.category);
-      setCategoryId(template.categoryId || '');
+      setCategoryIds(template.categories?.map((c: any) => c.id) || []);
       setType(template.type);
       setIsActive(template.isActive);
       setThumbnailUrl(template.thumbnailUrl || '');
@@ -276,15 +276,15 @@ export default function AdminTemplateBuilderPage() {
     }
   }, [template, isCreateMode]);
 
-  // Helper effect to map loaded category text to its active categoryId
+  // Auto-select the primary category when none are selected yet
   useEffect(() => {
-    if (activeCategories.length > 0 && category && !categoryId) {
+    if (activeCategories.length > 0 && categoryIds.length === 0 && category) {
       const found = activeCategories.find((c: any) => c.name === category);
       if (found) {
-        setCategoryId(found.id);
+        setCategoryIds([found.id]);
       }
     }
-  }, [activeCategories, category, categoryId]);
+  }, [activeCategories, category, categoryIds]);
 
   // Sync style picks into JSON string on change
   const syncVisualToJson = () => {
@@ -328,7 +328,7 @@ export default function AdminTemplateBuilderPage() {
       name,
       description: description || undefined,
       category,
-      categoryId: categoryId || null,
+      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
       type,
       isActive,
       thumbnailUrl: thumbnailUrl || undefined,
@@ -656,32 +656,38 @@ export default function AdminTemplateBuilderPage() {
                   {/* Category and Type metadata */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">Industry Category</label>
+                      <label className="text-xs font-bold text-gray-500">Industry Categories (multi-select)</label>
                       {categoriesLoading ? (
                         <div className="w-full px-4 py-2.5 text-xs border border-gray-100 rounded-xl bg-gray-50 text-gray-400 font-semibold animate-pulse">
                           Loading active categories...
                         </div>
                       ) : (
-                        <select 
-                          value={categoryId} 
-                          onChange={(e) => {
-                            const selectedId = e.target.value;
-                            setCategoryId(selectedId);
-                            const cat = activeCategories.find((c: any) => c.id === selectedId);
-                            if (cat) {
-                              setCategory(cat.name);
-                            }
-                          }}
-                          className="w-full px-4 py-2 text-xs border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white text-gray-700 font-bold cursor-pointer"
-                        >
-                          <option value="">Select Category...</option>
-                          {activeCategories.map((cat: any) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                          {category && !activeCategories.some((c: any) => c.id === categoryId || c.name === category) && (
-                            <option value="" disabled>{category} (Inactive)</option>
-                          )}
-                        </select>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeCategories.map((cat: any) => {
+                            const selected = categoryIds.includes(cat.id);
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => {
+                                  if (selected) {
+                                    setCategoryIds(prev => prev.filter(id => id !== cat.id));
+                                  } else {
+                                    setCategoryIds(prev => [...prev, cat.id]);
+                                    setCategory(cat.name);
+                                  }
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                                  selected
+                                    ? 'bg-primary text-white border-primary shadow-sm'
+                                    : 'bg-gray-50 text-gray-600 border-gray-100 hover:border-gray-200'
+                                }`}
+                              >
+                                {cat.name}
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                     <div className="space-y-1.5">
