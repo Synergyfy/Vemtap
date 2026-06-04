@@ -9,6 +9,7 @@ import { AffiliateTrainingModule } from './entities/training-module.entity';
 import { AffiliatesService } from './affiliates.service';
 import { ExternalAffiliateModule } from './external-affiliate.module';
 import { AffiliatesController } from './affiliates.controller';
+import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service';
 import { User } from '../users/entities/user.entity';
 import { SettingsModule } from '../settings/settings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -30,7 +31,7 @@ import { forwardRef } from '@nestjs/common';
     ExternalAffiliateModule,
   ],
   controllers: [AffiliatesController],
-  providers: [AffiliatesService],
+  providers: [AffiliatesService, VemtapAffiliateAgentsService],
   exports: [AffiliatesService, ExternalAffiliateModule],
 })
 export class AffiliatesModule {}

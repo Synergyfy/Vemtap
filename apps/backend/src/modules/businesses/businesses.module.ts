@@ -11,11 +11,13 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesModule } from '../devices/devices.module';
 import { BranchesModule } from '../branches/branches.module';
 import { Reward } from '../loyalty/entities/reward.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { Plan } from '../subscriptions/entities/plan.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Business, User, Branch, Visit, Reward]),
+    TypeOrmModule.forFeature([Business, User, Branch, Visit, Reward, Subscription, Plan]),
     MailModule,
     DevicesModule,
     forwardRef(() => BranchesModule),
