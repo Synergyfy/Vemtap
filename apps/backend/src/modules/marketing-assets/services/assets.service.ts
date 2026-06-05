@@ -23,10 +23,10 @@ export class AssetsService {
 
   // Validate business category is not in the excluded list (PRD §8.0)
   private async validateBusinessCategory(user: User): Promise<void> {
-    const businessId = user.businessId || user.ownedBusiness?.id;
-    if (!businessId) {
-      throw new ForbiddenException('User is not associated with any business');
+    if (user.role === 'Admin') {
+      return;
     }
+    const businessId = user.businessId || user.ownedBusiness?.id;
 
     const business = await this.businessRepo.findOne({
       where: { id: businessId },
@@ -99,14 +99,20 @@ export class AssetsService {
   }
 
   async findAll(user: User, branchId?: string, type?: string): Promise<MarketingAsset[]> {
-    await this.validateBusinessCategory(user);
+    const isAdmin = user.role === 'Admin';
+    if (!isAdmin) {
+      await this.validateBusinessCategory(user);
+    }
     const businessId = user.businessId || user.ownedBusiness?.id;
-    if (!businessId) {
+    if (!isAdmin && !businessId) {
       throw new ForbiddenException('User is not associated with any business');
     }
 
-    const query = this.assetRepo.createQueryBuilder('asset')
-      .where('asset.businessId = :businessId', { businessId });
+    const query = this.assetRepo.createQueryBuilder('asset');
+
+    if (!isAdmin) {
+      query.where('asset.businessId = :businessId', { businessId });
+    }
 
     if (branchId) {
       query.andWhere('asset.branchId = :branchId', { branchId });
@@ -119,7 +125,10 @@ export class AssetsService {
   }
 
   async findOne(id: string, user: User): Promise<MarketingAsset> {
-    await this.validateBusinessCategory(user);
+    const isAdmin = user.role === 'Admin';
+    if (!isAdmin) {
+      await this.validateBusinessCategory(user);
+    }
     const businessId = user.businessId || user.ownedBusiness?.id;
     const asset = await this.assetRepo.findOne({
       where: { id },
@@ -131,7 +140,6 @@ export class AssetsService {
     }
 
     // Only allow access if user belongs to same business (or is Admin)
-    const isAdmin = user.role === 'Admin';
     if (!isAdmin && asset.businessId !== businessId) {
       throw new ForbiddenException('You do not have access to this marketing asset');
     }

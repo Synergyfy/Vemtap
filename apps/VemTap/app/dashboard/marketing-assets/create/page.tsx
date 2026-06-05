@@ -11,14 +11,19 @@ import {
   Download,
   Bookmark,
   ChevronDown,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import * as htmlToImage from 'html-to-image';
+import { MarketingAssetRenderer } from '@/components/dashboard/MarketingAssetPreview';
 import {
   useCreateMarketingAsset,
   useBrandProfile,
   useTemplateStyles,
   useTemplateFormats,
+  useAIPrompts,
+  useGenerateAIContent,
 } from '@/services/marketing-assets/hooks';
 import { useQrThriveCodes, useQrThriveMappingStatus } from '@/services/qr-thrive/hooks';
 import { useBranches } from '@/services/branches/hooks';
@@ -55,6 +60,8 @@ export default function CreateAssetWizardPage() {
   const { data: branches = [] } = useBranches();
   const { data: business } = useMyBusiness();
   const { data: qrCodes = [] } = useQrThriveCodes();
+  const { data: aiPrompts = [] } = useAIPrompts();
+  const generateAIContentMutation = useGenerateAIContent();
   const createAssetMutation = useCreateMarketingAsset();
   useQrThriveMappingStatus();
 
@@ -72,11 +79,12 @@ export default function CreateAssetWizardPage() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [backgroundColor, setBackgroundColor] = useState('#FFFFFF');
   const canvasRef = useRef<HTMLDivElement>(null);
+  const downloadRef = useRef<HTMLDivElement>(null);
   
   const [elements, setElements] = useState<any[]>([
-    { id: 'headline', type: 'text', text: '', x: 0, y: 15, fontSize: 28, color: '#0F172A', fontWeight: '900', scale: 1, width: 90 },
-    { id: 'subheadline', type: 'text', text: '', x: 0, y: 35, fontSize: 16, color: '#475569', fontWeight: '500', scale: 1, width: 80 },
-    { id: 'qr', type: 'qr', x: 0, y: 65, size: 120, scale: 1 }
+    { id: 'headline', type: 'text', text: 'Scan to Experience', x: 10, y: 15, fontSize: 22, color: '#0F172A', fontWeight: 'extrabold', alignment: 'center', width: 80 },
+    { id: 'subheadline', type: 'text', text: 'Join our community and unlock exclusive digital access.', x: 10, y: 35, fontSize: 11, color: '#475569', fontWeight: 'medium', alignment: 'center', width: 80 },
+    { id: 'qr', type: 'qr', x: 25, y: 55, size: 130 }
   ]);
 
   // QR Selection State
@@ -86,11 +94,11 @@ export default function CreateAssetWizardPage() {
   // Sync elements with input fields
   useEffect(() => {
     setElements(prev => prev.map(el => {
-      if (el.id === 'headline') return { ...el, text: headline || 'Scan to Experience' };
-      if (el.id === 'subheadline') return { ...el, text: subheadline || 'Join our community and unlock exclusive digital access in one simple tap.' };
+      if (el.id === 'headline') return { ...el, text: el.text || headline || 'Scan to Experience' };
+      if (el.id === 'subheadline') return { ...el, text: el.text || subheadline || 'Join our community and unlock exclusive digital access.' };
       return el;
     }));
-  }, [headline, subheadline]);
+  }, []); // only on mount
 
   // Contrast logic helper
   const getContrastColor = (hex: string) => {
@@ -141,7 +149,7 @@ export default function CreateAssetWizardPage() {
     "A vibrant summer-themed design with tropical leaves and bright colors.",
     "A minimalist and elegant layout for a luxury brand.",
     "A bold and energetic design for a fitness or sports brand.",
-    "A cozy and warm aesthetic for a café or bakery.",
+    "A cozy and warm aesthetic for a cafÃ© or bakery.",
     "A professional and clean layout for a corporate or tech brand.",
   ];
 
@@ -159,9 +167,43 @@ export default function CreateAssetWizardPage() {
     router.push('/dashboard/marketing-assets');
   };
 
-  const handleGenerateAi = () => {
-    setAiHeadline(`Unleash Your ${headline || 'Brand'}: The Definitive Collection`);
+  const handleGenerateAi = async () => {
+    let category = 'Review Request';
+    if (goal === 'view-menu' || goal === 'place-order' || goal === 'reserve-table') {
+      category = 'Contactless Menu';
+    } else if (goal === 'join-loyalty' || goal === 'promotions') {
+      category = 'Discount Promo';
+    } else if (goal === 'leave-feedback') {
+      category = 'Review Request';
+    }
+
+    const matchedPrompt = aiPrompts?.find((p: any) => p.category?.toLowerCase() === category.toLowerCase()) 
+                          || aiPrompts?.[0];
+
+    if (!matchedPrompt) {
+      toast.error('AI prompts not loaded yet. Please wait a moment.');
+      return;
+    }
+
     setShowAiSheet(true);
+    try {
+      const response = await generateAIContentMutation.mutateAsync({
+        promptId: matchedPrompt.id,
+        businessType: (typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'store',
+        businessName: business?.name || brandProfile?.name || 'our business',
+        tone: 'Friendly and Catchy',
+        subject: goal || 'Google Reviews'
+      });
+
+      if (response && response.text) {
+        setAiHeadline(response.text);
+      } else {
+        toast.error('Failed to generate tagline suggestions');
+      }
+    } catch (err: any) {
+      console.error('AI copywriting generation failed:', err);
+      toast.error(err.message || 'Failed to generate content');
+    }
   };
 
   const handleGenerateAiImage = async () => {
@@ -218,19 +260,20 @@ export default function CreateAssetWizardPage() {
   };
 
   const handleDownload = async () => {
-    if (!previewRef.current) return;
+    if (!downloadRef.current) return;
     
     const toastId = toast.loading('Preparing high-fidelity export...');
     try {
-      const dataUrl = await htmlToImage.toPng(previewRef.current, {
+      const dataUrl = await htmlToImage.toPng(downloadRef.current, {
         quality: 1.0,
-        pixelRatio: 4,
+        pixelRatio: 2, // 1200px * 2 = 2400px wide crisp output
         skipAutoScale: true,
         cacheBust: true,
       });
 
       const link = document.createElement('a');
-      link.download = `${headline || 'marketing-asset'}-${format || 'custom'}.png`;
+      const sanitizedHeadline = (headline || 'marketing-asset').trim().replace(/[^a-zA-Z0-9-_]/g, '_');
+      link.download = `${sanitizedHeadline}-${format || 'custom'}.png`;
       link.href = dataUrl;
       link.click();
       
@@ -255,18 +298,153 @@ export default function CreateAssetWizardPage() {
     }
   }, [selectedQrId, qrCodes, defaultBusinessUrl]);
 
-  const handleDragEnd = (elementId: string, event: any, info: any) => {
+  // Auto-select QR when opening editor with an AI/uploaded design
+  useEffect(() => {
+    if (editingDesign && uploadedDesign) {
+      setSelectedElementId('qr');
+    }
+    if (!editingDesign) {
+      setSelectedElementId(null);
+    }
+  }, [editingDesign, uploadedDesign]);
+
+  // ---- Admin-style element management ----
+  const handleAddTextElement = (presetText: string, defaultSize: number, weight: string) => {
+    const id = `text-${Date.now()}`;
+    setElements(prev => [...prev, {
+      id, type: 'text', text: presetText,
+      x: 10, y: 45, fontSize: defaultSize,
+      color: backgroundColor === '#FFFFFF' ? '#0F172A' : '#FFFFFF',
+      fontWeight: weight, alignment: 'center', width: 80
+    }]);
+    setSelectedElementId(id);
+    toast.success('Text element added! Drag it on the canvas.');
+  };
+
+  const handleAddLogoElement = () => {
+    if (elements.some(el => el.type === 'logo')) {
+      toast.error('Only one Brand Logo slot is allowed!');
+      return;
+    }
+    const id = `logo-${Date.now()}`;
+    setElements(prev => [...prev, { id, type: 'logo', x: 35, y: 8, width: 30, height: 8 }]);
+    setSelectedElementId(id);
+    toast.success('Brand logo slot added!');
+  };
+
+  const handleAddQrElement = () => {
+    if (elements.some(el => el.type === 'qr')) {
+      toast.error('Only one QR Code slot is allowed!');
+      return;
+    }
+    const id = `qr-${Date.now()}`;
+    setElements(prev => [...prev, { id, type: 'qr', x: 25, y: 55, size: 120 }]);
+    setSelectedElementId(id);
+    toast.success('QR Code element added!');
+  };
+
+  const handleDeleteElement = (elementId: string) => {
+    setElements(prev => prev.filter(el => el.id !== elementId));
+    if (selectedElementId === elementId) setSelectedElementId(null);
+    toast.success('Element deleted');
+  };
+
+  // Resize handler (admin-style: bottom-right corner drag)
+  const handleResizeStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent) => {
+    startEvent.stopPropagation();
     if (!canvasRef.current) return;
+    const isTouchEvent = 'touches' in startEvent;
+    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
+    const initialSize = el.size || 110;
+    const initialFontSize = el.fontSize || 14;
+    const initialWidth = el.width || 30;
+    const initialHeight = el.height || 8;
     const canvasRect = canvasRef.current.getBoundingClientRect();
-    
-    setElements(prev => prev.map(el => {
-      if (el.id === elementId) {
-        const deltaXPct = (info.offset.x / canvasRect.width) * 100;
-        const deltaYPct = (info.offset.y / canvasRect.height) * 100;
-        return { ...el, x: el.x + deltaXPct, y: el.y + deltaYPct };
+
+    const handleResizeMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!canvasRef.current) return;
+      const isTouchMove = 'touches' in moveEvent;
+      const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const deltaX = currentX - startX;
+
+      if (el.type === 'logo') {
+        const isTouchMove2 = 'touches' in moveEvent;
+        const currentY2 = isTouchMove2 ? (moveEvent as TouchEvent).touches[0].clientY : (moveEvent as MouseEvent).clientY;
+        const startY2 = isTouchEvent ? (startEvent as React.TouchEvent).touches[0].clientY : (startEvent as React.MouseEvent).clientY;
+        const deltaY2 = currentY2 - startY2;
+        const newW = Math.max(10, Math.min(100, Math.round(initialWidth + (deltaX / canvasRect.width) * 100)));
+        const newH = Math.max(2, Math.min(50, Math.round(initialHeight + (deltaY2 / canvasRect.height) * 100)));
+        setElements(prev => prev.map(item => item.id === el.id ? { ...item, width: newW, height: newH } : item));
+      } else if (el.type === 'qr') {
+        const newSize = Math.max(40, Math.min(260, Math.round(initialSize + deltaX)));
+        setElements(prev => prev.map(item => item.id === el.id ? { ...item, size: newSize } : item));
+      } else if (el.type === 'text') {
+        const newFontSize = Math.max(6, Math.min(72, Math.round(initialFontSize + deltaX / 3)));
+        setElements(prev => prev.map(item => item.id === el.id ? { ...item, fontSize: newFontSize } : item));
       }
-      return el;
-    }));
+    };
+
+    const handleResizeEnd = () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+      document.removeEventListener('touchmove', handleResizeMove);
+      document.removeEventListener('touchend', handleResizeEnd);
+    };
+
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+    document.addEventListener('touchmove', handleResizeMove, { passive: false });
+    document.addEventListener('touchend', handleResizeEnd);
+  };
+
+  const handleCustomDragStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent) => {
+    startEvent.stopPropagation();
+    if (!canvasRef.current) return;
+
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const isTouchEvent = 'touches' in startEvent;
+    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
+    const startY = isTouchEvent ? startEvent.touches[0].clientY : startEvent.clientY;
+
+    const initialX = el.x;
+    const initialY = el.y;
+
+    const handleCustomDragMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!canvasRef.current) return;
+      const isTouchMove = 'touches' in moveEvent;
+      
+      if (moveEvent.cancelable) {
+        moveEvent.preventDefault();
+      }
+
+      const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = isTouchMove ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
+
+      const deltaXPct = (deltaX / canvasRect.width) * 100;
+      const deltaYPct = (deltaY / canvasRect.height) * 100;
+
+      const newX = Math.max(0, Math.min(95, Math.round(initialX + deltaXPct)));
+      const newY = Math.max(0, Math.min(95, Math.round(initialY + deltaYPct)));
+
+      setElements(prev => prev.map(item => 
+        item.id === el.id ? { ...item, x: newX, y: newY } : item
+      ));
+    };
+
+    const handleCustomDragEnd = () => {
+      document.removeEventListener('mousemove', handleCustomDragMove);
+      document.removeEventListener('mouseup', handleCustomDragEnd);
+      document.removeEventListener('touchmove', handleCustomDragMove);
+      document.removeEventListener('touchend', handleCustomDragEnd);
+    };
+
+    document.addEventListener('mousemove', handleCustomDragMove);
+    document.addEventListener('mouseup', handleCustomDragEnd);
+    document.addEventListener('touchmove', handleCustomDragMove, { passive: false });
+    document.addEventListener('touchend', handleCustomDragEnd);
   };
 
   const handleCenterElement = (elementId: string) => {
@@ -278,41 +456,88 @@ export default function CreateAssetWizardPage() {
     setElements(prev => prev.map(el => el.id === elementId ? { ...el, scale: newScale } : el));
   };
 
-  const handleWidthResize = (elementId: string, event: any, info: any) => {
+  const handleCustomWidthStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent) => {
+    startEvent.stopPropagation();
     if (!canvasRef.current) return;
+
     const canvasRect = canvasRef.current.getBoundingClientRect();
-    
-    setElements(prev => prev.map(el => {
-      if (el.id === elementId) {
-        // More stable width adjustment using percentage of canvas
-        const deltaWidthPct = (info.delta.x / canvasRect.width) * 100;
-        // Symmetric resize: dragging one side affects total width proportionally
-        const newWidth = Math.max(10, Math.min(100, (el.width || 90) + (deltaWidthPct * 2)));
-        return { ...el, width: newWidth };
-      }
-      return el;
-    }));
+    const isTouchEvent = 'touches' in startEvent;
+    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
+
+    const initialWidth = el.width || 90;
+
+    const handleWidthMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!canvasRef.current) return;
+      const isTouchMove = 'touches' in moveEvent;
+      const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
+
+      const deltaX = currentX - startX;
+      const deltaWidthPct = (deltaX / canvasRect.width) * 100;
+      
+      const newWidth = Math.max(10, Math.min(100, Math.round(initialWidth + (deltaWidthPct * 2))));
+
+      setElements(prev => prev.map(item => 
+        item.id === el.id ? { ...item, width: newWidth } : item
+      ));
+    };
+
+    const handleWidthEnd = () => {
+      document.removeEventListener('mousemove', handleWidthMove);
+      document.removeEventListener('mouseup', handleWidthEnd);
+      document.removeEventListener('touchmove', handleWidthMove);
+      document.removeEventListener('touchend', handleWidthEnd);
+    };
+
+    document.addEventListener('mousemove', handleWidthMove);
+    document.addEventListener('mouseup', handleWidthEnd);
+    document.addEventListener('touchmove', handleWidthMove, { passive: false });
+    document.addEventListener('touchend', handleWidthEnd);
   };
 
-  const handleScaleResize = (elementId: string, event: any, info: any, corner: string) => {
-    setElements(prev => prev.map(el => {
-      if (el.id === elementId) {
-        const factor = 0.005; // Slightly slower for more precision
-        const dx = info.delta.x;
-        const dy = info.delta.y;
-        let deltaScale = 0;
-        
-        // Correct diagonal logic for all corners
-        if (corner === 'bottom-right') deltaScale = (dx + dy) * factor;
-        else if (corner === 'bottom-left') deltaScale = (-dx + dy) * factor;
-        else if (corner === 'top-right') deltaScale = (dx - dy) * factor;
-        else if (corner === 'top-left') deltaScale = (-dx - dy) * factor;
+  const handleCustomScaleStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent, corner: string) => {
+    startEvent.stopPropagation();
+    if (!canvasRef.current) return;
 
-        const newScale = Math.max(0.5, Math.min(3, (el.scale || 1) + deltaScale));
-        return { ...el, scale: newScale };
-      }
-      return el;
-    }));
+    const isTouchEvent = 'touches' in startEvent;
+    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
+    const startY = isTouchEvent ? startEvent.touches[0].clientY : startEvent.clientY;
+
+    const initialScale = el.scale || 1;
+
+    const handleScaleMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const isTouchMove = 'touches' in moveEvent;
+      const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = isTouchMove ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+      
+      const factor = 0.009;
+      let deltaScale = 0;
+      
+      if (corner === 'bottom-right') deltaScale = (dx + dy) * factor;
+      else if (corner === 'bottom-left') deltaScale = (-dx + dy) * factor;
+      else if (corner === 'top-right') deltaScale = (dx - dy) * factor;
+      else if (corner === 'top-left') deltaScale = (-dx - dy) * factor;
+
+      const newScale = Math.max(0.3, Math.min(3, initialScale + deltaScale));
+
+      setElements(prev => prev.map(item => 
+        item.id === el.id ? { ...item, scale: newScale } : item
+      ));
+    };
+
+    const handleScaleEnd = () => {
+      document.removeEventListener('mousemove', handleScaleMove);
+      document.removeEventListener('mouseup', handleScaleEnd);
+      document.removeEventListener('touchmove', handleScaleMove);
+      document.removeEventListener('touchend', handleScaleEnd);
+    };
+
+    document.addEventListener('mousemove', handleScaleMove);
+    document.addEventListener('mouseup', handleScaleEnd);
+    document.addEventListener('touchmove', handleScaleMove, { passive: false });
+    document.addEventListener('touchend', handleScaleEnd);
   };
 
   const handleContinue = async () => {
@@ -333,8 +558,9 @@ export default function CreateAssetWizardPage() {
           customConfig: {
             backgroundColor: backgroundColor,
             accentColor: '#493EE5',
-            dimensions: format === 'window-sticker' && customWidth && customHeight ? { width: Number(customWidth), height: Number(customHeight), unit: customUnit } : formats.find(f => f.id === format)?.dimensions,
-            elements: elements.map(el => ({ ...el, x: 50 + el.x })),
+            dimensions: (customWidth && customHeight) ? { width: Number(customWidth), height: Number(customHeight), unit: customUnit } : formats.find(f => f.id === format)?.dimensions,
+            elements: elements,
+            uploadedDesign: uploadedDesign,
           },
           qrCodeConfig: { color: '#FFFFFF', backgroundColor: '#0F172A' },
         };
@@ -353,7 +579,7 @@ export default function CreateAssetWizardPage() {
     if (step === 1) return format !== null || (customWidth && customHeight);
     if (step === 2) return goal !== null;
     if (step === 3) return headline.trim().length > 0 || uploadedDesign !== null;
-    if (step === 4) return selectedMockup !== null;
+    if (step === 4) return format !== null || (!!customWidth && !!customHeight);
     return true;
   };
 
@@ -366,75 +592,7 @@ export default function CreateAssetWizardPage() {
     Banner: 'bg-rose-50',
   };
 
-  const HighFidelityDesign = ({ isMockup = false, scaleMultiplier = 1 }: { isMockup?: boolean, scaleMultiplier?: number }) => {
-    const currentFormat = formats.find(f => f.id === format);
-    const aspectRatio = format === 'window-sticker' && customWidth && customHeight 
-      ? `${customWidth}/${customHeight}` 
-      : currentFormat?.dimensions 
-        ? `${currentFormat.dimensions.width}/${currentFormat.dimensions.height}`
-        : '9/16';
-
-    return (
-      <div 
-        className={`relative w-full h-full overflow-hidden ${isMockup ? '' : 'rounded-lg'}`}
-        style={{ aspectRatio, backgroundColor: uploadedDesign ? 'transparent' : backgroundColor }}
-      >
-        {uploadedDesign ? (
-          <img src={uploadedDesign} alt="Custom Design" className="w-full h-full object-cover" />
-        ) : (
-          <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-            <div className="relative w-full h-full flex items-center justify-center">
-              {elements.map((el) => (
-                <div 
-                  key={el.id}
-                  style={{ 
-                    position: 'absolute',
-                    left: '50%',
-                    top: `${el.y}%`,
-                    transform: `translate(-50%, 0) scale(${el.scale * scaleMultiplier})`,
-                    x: `${el.x}%`,
-                    width: el.type === 'text' ? `${el.width || 90}%` : 'auto',
-                    zIndex: el.id === 'headline' ? 3 : el.id === 'subheadline' ? 2 : 1
-                  }}
-                  className="mx-auto"
-                >
-                  {el.type === 'text' ? (
-                    <div className="text-center px-4" style={{ width: '100%', margin: '0 auto' }}>
-                      <h3 
-                        style={{ fontSize: `${el.fontSize}px`, fontWeight: el.fontWeight, color: el.color }}
-                        className={`leading-tight drop-shadow-sm tracking-tight w-full ${isMockup ? 'line-clamp-2' : ''}`}
-                      >
-                        {el.text}
-                      </h3>
-                    </div>
-                  ) : (
-                    <div className={`${isMockup ? 'p-1.5 rounded-lg' : 'p-3 rounded-[18px]'} bg-white shadow-2xl mx-auto inline-block`}>
-                       <QRCodeSVG 
-                        value={activeQrUrl} 
-                        size={isMockup ? 40 : 80} 
-                        level="H" 
-                        includeMargin={false} 
-                        imageSettings={!selectedQrId && previewBusinessLogo ? {
-                          src: previewBusinessLogo,
-                          height: isMockup ? 10 : 20,
-                          width: isMockup ? 10 : 20,
-                          excavate: true,
-                          crossOrigin: 'anonymous',
-                        } : undefined}
-                       />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {isMockup && (
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-transparent via-white/5 to-white/10 mix-blend-overlay" />
-        )}
-      </div>
-    );
-  };
+  // HighFidelityDesign removed in favor of reusable MarketingAssetRenderer
 
   return (
     <div className="flex flex-col min-h-full bg-background text-on-surface">
@@ -538,7 +696,10 @@ export default function CreateAssetWizardPage() {
                 <textarea value={subheadline} onChange={(e) => setSubheadline(e.target.value)} className="w-full bg-transparent border border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-4 text-body-lg text-on-surface transition-all resize-none" placeholder="Describe your offering in detail..." rows={3} />
               </section>
 
-              <button onClick={() => setShowAiImageModal(true)} className="w-full flex items-center justify-center gap-2 bg-surface-container-high text-primary font-button text-button h-12 rounded-xl hover:bg-surface-container-highest transition-all active:scale-95 cursor-pointer"><Sparkles size={18} />Generate with AI</button>
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setShowAiImageModal(true)} className="flex items-center justify-center gap-2 bg-surface-container-high text-primary font-button text-button h-12 rounded-xl hover:bg-surface-container-highest transition-all active:scale-95 cursor-pointer"><Sparkles size={18} />Generate Art</button>
+                <button type="button" onClick={handleGenerateAi} className="flex items-center justify-center gap-2 bg-primary/10 text-primary font-button text-button h-12 rounded-xl hover:bg-primary/20 transition-all active:scale-95 cursor-pointer"><Sparkles size={18} />AI Slogan Helper</button>
+              </div>
 
               <div className="space-y-4">
                 <div className="relative group">
@@ -567,35 +728,30 @@ export default function CreateAssetWizardPage() {
                 </div>
               </div>
 
-              <div className="relative overflow-hidden rounded-3xl h-[550px] border border-outline-variant/30 shadow-2xl group/preview">
-                {!uploadedDesign && (
-                  <button onClick={() => setEditingDesign(true)} className="absolute top-6 right-6 z-[30] bg-white/10 backdrop-blur-xl border border-white/20 text-white px-4 py-2.5 rounded-full font-button text-button shadow-2xl hover:bg-white/20 transition-all active:scale-95 flex items-center gap-2 group/editbtn"><div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center group-hover/editbtn:scale-110 transition-transform"><Sparkles size={16} className="text-white" /></div>Edit Layout</button>
+              <div 
+                className="relative overflow-hidden rounded-3xl border border-outline-variant/30 shadow-2xl group/preview mx-auto"
+                style={{ 
+                  width: '100%', 
+                  maxWidth: '340px', 
+                }}
+              >
+                <button onClick={() => setEditingDesign(true)} className="absolute top-6 right-6 z-[30] bg-surface/90 backdrop-blur-md border border-outline-variant text-on-surface px-4 py-2.5 rounded-full font-button text-button shadow-lg hover:bg-surface-container-high transition-all active:scale-95 flex items-center gap-2 group/editbtn"><div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center group-hover/editbtn:scale-110 transition-transform"><Sparkles size={16} className="text-white" /></div>Edit Layout</button>
+                {uploadedDesign && (
+                  <button onClick={() => setUploadedDesign(null)} className="absolute top-6 left-6 z-[30] bg-black/60 hover:bg-rose-600 backdrop-blur-md text-white h-10 px-4 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all border border-white/20 flex items-center gap-2"><span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">✕</span>Remove Design</button>
                 )}
-                {uploadedDesign ? (
-                  <div className="relative w-full h-full group"><img src={uploadedDesign} alt="Custom design" className="w-full h-full object-cover" /><div className="absolute top-4 right-4 z-20"><button onClick={() => setUploadedDesign(null)} className="bg-black/60 hover:bg-rose-600 backdrop-blur-md text-white h-10 px-4 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all border border-white/20 flex items-center gap-2"><span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">✕</span>Remove Design</button></div></div>
-                ) : (
-                  <div className="relative w-full h-full flex flex-col items-center justify-center p-8 text-center overflow-hidden" style={{ backgroundColor }}>
-                    <div className="relative w-full h-full flex items-center justify-center">
-                      {elements.map((el) => (
-                        <motion.div 
-                          key={el.id}
-                          style={{ position: 'absolute', left: '50%', top: `${el.y}%`, x: `${el.x}%`, translateX: '-50%', transform: `scale(${el.scale})`, zIndex: el.id === 'headline' ? 3 : el.id === 'subheadline' ? 2 : 1 }}
-                          className="w-full"
-                        >
-                          {el.type === 'text' ? (
-                            <div className="text-center px-4" style={{ width: `${el.width || 90}%`, margin: '0 auto' }}>
-                              <h3 style={{ fontSize: `${el.fontSize}px`, fontWeight: el.fontWeight, color: el.color }} className="leading-tight drop-shadow-sm tracking-tight w-full">{el.text}</h3>
-                            </div>
-                          ) : (
-                            <div className="bg-white p-3 rounded-[18px] shadow-2xl mx-auto inline-block">
-                               <QRCodeSVG value={activeQrUrl} size={80} level="H" includeMargin={false} imageSettings={!selectedQrId && previewBusinessLogo ? { src: previewBusinessLogo, height: 20, width: 20, excavate: true, crossOrigin: 'anonymous' } : undefined} />
-                            </div>
-                          )}
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                
+                <MarketingAssetRenderer
+                  elements={elements}
+                  backgroundColor={backgroundColor}
+                  uploadedDesign={uploadedDesign}
+                  activeQrUrl={activeQrUrl}
+                  previewBusinessLogo={previewBusinessLogo}
+                  selectedQrId={selectedQrId}
+                  format={format}
+                  customWidth={customWidth}
+                  customHeight={customHeight}
+                  customUnit={customUnit}
+                />
               </div>
             </motion.div>
           )}
@@ -641,16 +797,41 @@ export default function CreateAssetWizardPage() {
           {step === 6 && (
             <motion.div key="step6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
               <section className="flex flex-col items-center">
-                <div ref={previewRef} className={`relative overflow-hidden shadow-2xl transition-all duration-500 rounded-lg`} style={{ width: '100%', maxWidth: '400px', aspectRatio: format === 'window-sticker' && customWidth && customHeight ? `${customWidth}/${customHeight}` : formats.find(f => f.id === format)?.dimensions ? `${formats.find(f => f.id === format)?.dimensions.width}/${formats.find(f => f.id === format)?.dimensions.height}` : '9/16' }}>
-                  <HighFidelityDesign />
+                <div ref={previewRef} className={`relative overflow-hidden shadow-2xl transition-all duration-500 rounded-lg`} style={{ width: '100%', maxWidth: '400px' }}>
+                  <MarketingAssetRenderer
+                    elements={elements}
+                    backgroundColor={backgroundColor}
+                    uploadedDesign={uploadedDesign}
+                    activeQrUrl={activeQrUrl}
+                    previewBusinessLogo={previewBusinessLogo}
+                    selectedQrId={selectedQrId}
+                    format={format}
+                    customWidth={customWidth}
+                    customHeight={customHeight}
+                    customUnit={customUnit}
+                  />
                 </div>
-                <div className="mt-4 text-center"><h2 className="text-headline-lg-mobile text-on-surface mb-1">{headline || 'Your Asset'}</h2><p className="text-body-sm text-on-surface-variant uppercase tracking-widest font-bold">{format === 'window-sticker' && customWidth && customHeight ? `${customWidth} x ${customHeight} ${customUnit}` : formats.find(f => f.id === format)?.size || 'Custom Size'}</p></div>
+                <div className="mt-4 text-center"><h2 className="text-headline-lg-mobile text-on-surface mb-1">{headline || 'Your Asset'}</h2><p className="text-body-sm text-on-surface-variant uppercase tracking-widest font-bold">{(customWidth && customHeight) ? `${customWidth} x ${customHeight} ${customUnit}` : formats.find(f => f.id === format)?.size || 'Custom Size'}</p></div>
               </section>
               <section>
                 <div className="flex items-center justify-between mb-3"><h3 className="text-headline-md text-on-surface font-semibold">See It In Real Life</h3><Sparkles size={16} className="text-primary" /></div>
                 <div className="flex gap-2 overflow-x-auto pb-2 mb-3 no-scrollbar">{mockupEnvs.map((env) => (<button key={env} onClick={() => setMockupEnv(env)} className={`px-4 py-2 rounded-xl text-label-caps transition-all cursor-pointer ${mockupEnv === env ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'}`}>{env}</button>))}</div>
                 <div className={`relative w-full aspect-video rounded-xl overflow-hidden shadow-sm ${mockupColors[mockupEnv] || 'bg-surface-container-low'} flex items-center justify-center`}>
-                  <div className="w-[120px] aspect-[9/16] transform scale-50"><HighFidelityDesign isMockup /></div>
+                  <div className="w-[120px]">
+                    <MarketingAssetRenderer
+                      elements={elements}
+                      backgroundColor={backgroundColor}
+                      uploadedDesign={uploadedDesign}
+                      activeQrUrl={activeQrUrl}
+                      previewBusinessLogo={previewBusinessLogo}
+                      selectedQrId={selectedQrId}
+                      format={format}
+                      customWidth={customWidth}
+                      customHeight={customHeight}
+                      customUnit={customUnit}
+                      isMockup
+                    />
+                  </div>
                   <div className="absolute top-3 right-3 bg-primary/10 backdrop-blur-md px-3 py-1 rounded-full border border-primary/20 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-primary animate-pulse" /><span className="text-[10px] text-label-caps text-primary uppercase block">Live Preview</span></div>
                 </div>
               </section>
@@ -670,96 +851,381 @@ export default function CreateAssetWizardPage() {
       </footer>
 
       <AnimatePresence>
-        {editingDesign && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-6 md:p-12 overflow-hidden">
-            <div className="w-full max-w-5xl flex flex-col md:flex-row gap-12 h-full items-center">
-              <div className="flex-1 w-full h-full flex items-center justify-center">
-                <div ref={canvasRef} className="relative w-full max-w-[340px] aspect-[9/16] rounded-[48px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] border-[8px] border-white/5" style={{ backgroundColor }}>
-                    {elements.map((el) => (
-                      <motion.div 
-                        key={el.id} drag dragConstraints={canvasRef} dragElastic={0} dragMomentum={false} onDragEnd={(e, info) => handleDragEnd(el.id, e, info)} onClick={() => setSelectedElementId(el.id)}
-                        className={`draggable-element absolute cursor-grab active:cursor-grabbing p-2 rounded-lg transition-shadow group ${selectedElementId === el.id ? 'ring-2 ring-primary bg-primary/5 z-50' : 'z-10 hover:bg-white/5'}`}
-                        style={{ left: '50%', top: `${el.y}%`, x: `${el.x}%`, translateX: '-50%', scale: el.scale }}
-                      >
-                        {el.type === 'text' ? (
-                          <div className="text-center pointer-events-none select-none" style={{ width: `${el.width || 90}%`, margin: '0 auto' }}>
-                            <h3 style={{ fontSize: `${el.fontSize}px`, fontWeight: el.fontWeight, color: el.color }} className="leading-tight drop-shadow-lg tracking-tight w-full text-center">{el.text}</h3>
-                          </div>
-                        ) : (
-                          <div className="bg-white p-3 rounded-[18px] shadow-2xl pointer-events-none select-none mx-auto inline-block">
-                             <QRCodeSVG value={activeQrUrl} size={80} level="H" includeMargin={false} imageSettings={!selectedQrId && previewBusinessLogo ? { src: previewBusinessLogo, height: 20, width: 20, excavate: true, crossOrigin: 'anonymous' } : undefined} />
-                          </div>
-                        )}
-                        {selectedElementId === el.id && (
-                          <div className="absolute -inset-1 border border-primary/50 pointer-events-none rounded-lg">
-                            <motion.div drag dragMomentum={false} dragElastic={0} onDrag={(e, info) => handleScaleResize(el.id, e, info, 'top-left')} className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm cursor-nwse-resize pointer-events-auto hover:scale-125 transition-transform" />
-                            <motion.div drag dragMomentum={false} dragElastic={0} onDrag={(e, info) => handleScaleResize(el.id, e, info, 'top-right')} className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm cursor-nesw-resize pointer-events-auto hover:scale-125 transition-transform" />
-                            <motion.div drag dragMomentum={false} dragElastic={0} onDrag={(e, info) => handleScaleResize(el.id, e, info, 'bottom-left')} className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm cursor-nesw-resize pointer-events-auto hover:scale-125 transition-transform" />
-                            <motion.div drag dragMomentum={false} dragElastic={0} onDrag={(e, info) => handleScaleResize(el.id, e, info, 'bottom-right')} className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm cursor-nwse-resize pointer-events-auto hover:scale-125 transition-transform" />
-                            {el.type === 'text' && (
-                              <>
-                                <motion.div drag="x" dragMomentum={false} dragElastic={0} onDrag={(e, info) => handleWidthResize(el.id, e, info)} className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-1.5 h-8 bg-primary rounded-full border border-white shadow-md cursor-ew-resize pointer-events-auto hover:scale-x-150 transition-transform" />
-                                <motion.div drag="x" dragMomentum={false} dragElastic={0} onDrag={(e, info) => handleWidthResize(el.id, e, info)} className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-1.5 h-8 bg-primary rounded-full border border-white shadow-md cursor-ew-resize pointer-events-auto hover:scale-x-150 transition-transform" />
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                  </div>
-              </div>
-              <div className="w-full md:w-[400px] bg-surface rounded-[40px] p-8 space-y-8 overflow-y-auto max-h-full">
-                <header><h2 className="text-headline-lg text-on-surface font-black">Layout Editor</h2><p className="text-body-md text-on-surface-variant">Customize your design assets perfectly.</p></header>
-                <div className="space-y-4">
-                  <h4 className="text-label-caps text-on-surface-variant font-bold uppercase tracking-widest">Background Color</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {['#FFFFFF', '#F8FAFC', '#F1F5F9', '#0F172A', '#1E293B', '#493EE5', '#EF4444', '#10B981', '#F59E0B'].map((color) => (
-                      <button key={color} onClick={() => setBackgroundColor(color)} className={`w-10 h-10 rounded-full border-2 transition-all active:scale-90 ${backgroundColor === color ? 'border-primary shadow-lg scale-110' : 'border-outline-variant hover:border-primary/50'}`} style={{ backgroundColor: color }} />
-                    ))}
-                    <div className="relative group"><input type="color" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)} className="w-10 h-10 rounded-full border-2 border-outline-variant cursor-pointer p-0 overflow-hidden appearance-none bg-transparent" /><div className="absolute inset-0 flex items-center justify-center pointer-events-none mix-blend-difference text-white opacity-0 group-hover:opacity-100 transition-opacity"><Sparkles size={16} /></div></div>
-                  </div>
-                  <div className="flex items-center gap-3"><input type="text" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)} className="flex-1 bg-surface-container-low border border-outline-variant rounded-xl h-12 px-4 font-mono text-sm uppercase focus:border-primary outline-none transition-all" placeholder="#FFFFFF" /><button onClick={() => setBackgroundColor('#FFFFFF')} className="h-12 px-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors">Reset</button></div>
+        {editingDesign && (() => {
+          const isAiDesignMode = !!uploadedDesign;
+          const selectedElement = elements.find(el => el.id === selectedElementId);
+          const canvasAspect = customWidth && customHeight
+            ? `${customWidth}/${customHeight}`
+            : formats.find(f => f.id === format)?.dimensions
+              ? `${formats.find(f => f.id === format)?.dimensions.width}/${formats.find(f => f.id === format)?.dimensions.height}`
+              : '4/6';
+
+          return (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900 flex flex-col overflow-hidden"
+          >
+            {/* Top bar */}
+            <div className="shrink-0 flex items-center justify-between px-5 h-14 bg-white border-b border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setEditingDesign(false)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
+                  <ArrowLeft size={18} className="text-gray-600" />
+                </button>
+                <div>
+                  <h2 className="font-extrabold text-gray-900 text-sm">Layout Editor</h2>
+                  <p className="text-[10px] text-gray-400 font-medium">Drag elements Â· Click to select Â· Resize with handle</p>
                 </div>
-                <div className="h-px bg-outline-variant/30" />
-                <div className="space-y-6">
-                  {selectedElementId ? (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                      <div className="flex items-center justify-between"><h4 className="text-label-caps text-primary font-bold uppercase tracking-widest">Editing: {selectedElementId}</h4><button onClick={() => { const defaults: any = { headline: { x: 0, y: 15, scale: 1, width: 90 }, subheadline: { x: 0, y: 35, scale: 1, width: 80 }, qr: { x: 0, y: 65, scale: 1 } }; setElements(prev => prev.map(el => el.id === selectedElementId ? { ...el, ...defaults[el.id] } : el)); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors font-bold underline underline-offset-4">RESET ELEMENT</button></div>
-                      <div className="space-y-2"><div className="flex justify-between text-xs text-on-surface-variant font-bold uppercase"><span>Element Scale</span><span className="text-primary">{Math.round((elements.find(el => el.id === selectedElementId)?.scale || 1) * 100)}%</span></div><input type="range" min="0.5" max="2" step="0.05" value={elements.find(el => el.id === selectedElementId)?.scale || 1} onChange={(e) => handleScaleChange(selectedElementId, parseFloat(e.target.value))} className="w-full h-1.5 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary" /></div>
-                      
-                      {elements.find(el => el.id === selectedElementId)?.type === 'text' && (
-                        <div className="space-y-2 animate-in fade-in duration-300">
-                          <div className="flex justify-between text-xs text-on-surface-variant font-bold uppercase">
-                            <span>Text Box Width</span>
-                            <span className="text-primary">{Math.round(elements.find(el => el.id === selectedElementId)?.width || 90)}%</span>
+              </div>
+              <button
+                onClick={() => setEditingDesign(false)}
+                className="h-9 px-5 bg-primary text-white text-xs font-extrabold rounded-xl shadow-md hover:opacity-90 active:scale-95 transition-all"
+              >
+                Done
+              </button>
+            </div>
+
+            {/* Main layout */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
+
+              {/* Left panel â€” controls */}
+              <div className="lg:col-span-5 bg-white border-r border-gray-100 flex flex-col overflow-y-auto order-2 lg:order-1">
+                <div className="p-5 space-y-5">
+
+                  {/* Background */}
+                  {!isAiDesignMode && (
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Background</h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-400">Canvas Color</label>
+                          <input type="color" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)} className="w-full h-9 rounded-lg border border-gray-200 cursor-pointer" />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[10px] font-bold text-gray-400">Hex Value</label>
+                          <input type="text" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)} className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg font-mono bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="#FFFFFF" />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['#FFFFFF', '#F8FAFC', '#0F172A', '#1E293B', '#493EE5', '#EF4444', '#10B981', '#F59E0B', '#7C3AED'].map(c => (
+                          <button key={c} onClick={() => setBackgroundColor(c)} className={`w-7 h-7 rounded-full border-2 transition-all ${backgroundColor === c ? 'border-primary scale-110 shadow-md' : 'border-gray-200 hover:border-gray-400'}`} style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                      <div className="h-px bg-gray-100" />
+                    </div>
+                  )}
+
+                  {/* Add Elements */}
+                  {!isAiDesignMode && (
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Add Elements</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => handleAddTextElement('YOUR HEADLINE', 18, 'extrabold')} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 active:scale-95 transition-all">
+                          <Plus size={12} strokeWidth={3} /> Title Text
+                        </button>
+                        <button onClick={() => handleAddTextElement('Your supporting copy goes here', 11, 'medium')} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 active:scale-95 transition-all">
+                          <Plus size={12} strokeWidth={3} /> Subtitle
+                        </button>
+                        <button onClick={() => handleAddTextElement('Scan, Tap & Enjoy.', 9, 'semibold')} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 active:scale-95 transition-all">
+                          <Plus size={12} strokeWidth={3} /> Tagline
+                        </button>
+                        <button onClick={handleAddLogoElement} className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center gap-1.5 active:scale-95 transition-all">
+                          <Plus size={12} strokeWidth={3} /> Logo Slot
+                        </button>
+                        <button onClick={handleAddQrElement} className="px-3 py-1.5 bg-green-50 border border-green-200 rounded-xl text-xs font-bold text-green-700 hover:bg-green-100 flex items-center gap-1.5 active:scale-95 transition-all">
+                          <Plus size={12} strokeWidth={3} /> QR Code
+                        </button>
+                      </div>
+                      <div className="h-px bg-gray-100" />
+                    </div>
+                  )}
+
+                  {/* Element Properties */}
+                  {selectedElement ? (
+                    <motion.div
+                      key={selectedElement.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4 border-2 border-primary/20 bg-primary/5 rounded-2xl p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-extrabold text-primary uppercase tracking-wider">
+                          Editing: {selectedElement.type.replace('_', ' ')} element
+                        </span>
+                        <button
+                          onClick={() => handleDeleteElement(selectedElement.id)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-100 text-rose-500 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+
+                      {/* Text element controls */}
+                      {selectedElement.type === 'text' && (
+                        <>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-500">Text Content</label>
+                            <input
+                              type="text"
+                              value={selectedElement.text || ''}
+                              onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, text: e.target.value } : el))}
+                              className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-gray-800"
+                            />
                           </div>
-                          <input 
-                            type="range" 
-                            min="20" 
-                            max="100" 
-                            step="1" 
-                            value={elements.find(el => el.id === selectedElementId)?.width || 90} 
-                            onChange={(e) => {
-                              const newWidth = parseFloat(e.target.value);
-                              setElements(prev => prev.map(el => el.id === selectedElementId ? { ...el, width: newWidth } : el));
-                            }} 
-                            className="w-full h-1.5 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary" 
-                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500">Font Size (px)</label>
+                              <input type="number" value={selectedElement.fontSize || 14}
+                                onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, fontSize: parseInt(e.target.value) || 12 } : el))}
+                                className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none text-gray-700 font-semibold" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500">Text Color</label>
+                              <div className="flex items-center gap-2">
+                                <input type="color" value={selectedElement.color || '#000000'}
+                                  onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, color: e.target.value } : el))}
+                                  className="w-9 h-9 rounded-lg border border-gray-200 cursor-pointer" />
+                                <span className="text-[10px] font-mono font-bold text-gray-600 uppercase">{selectedElement.color || '#000000'}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500">Font Weight</label>
+                              <select value={selectedElement.fontWeight || 'normal'}
+                                onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, fontWeight: e.target.value } : el))}
+                                className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none text-gray-700 font-semibold">
+                                <option value="normal">Normal</option>
+                                <option value="medium">Medium</option>
+                                <option value="semibold">Semi Bold</option>
+                                <option value="bold">Bold</option>
+                                <option value="extrabold">Extra Bold</option>
+                                <option value="900">Black 900</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500">Alignment</label>
+                              <select value={selectedElement.alignment || 'center'}
+                                onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, alignment: e.target.value } : el))}
+                                className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none text-gray-700 font-semibold">
+                                <option value="left">Left</option>
+                                <option value="center">Center</option>
+                                <option value="right">Right</option>
+                              </select>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* QR element controls */}
+                      {selectedElement.type === 'qr' && (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500">QR Size (px)</label>
+                          <input type="number" value={selectedElement.size || 120}
+                            onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, size: parseInt(e.target.value) || 100 } : el))}
+                            className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none text-gray-700 font-semibold" />
                         </div>
                       )}
 
-                      <div className="pt-2"><button onClick={() => handleCenterElement(selectedElementId)} className="w-full h-12 bg-surface-container-high hover:bg-primary/10 hover:text-primary border border-outline-variant text-on-surface font-button text-button rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"><span className="material-symbols-outlined text-[20px]">align_horizontal_center</span>Auto-Center</button></div>
-                    </div>
+                      {/* Logo element controls */}
+                      {selectedElement.type === 'logo' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-500">Width (%)</label>
+                            <input type="number" value={selectedElement.width || 30}
+                              onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, width: parseInt(e.target.value) || 30 } : el))}
+                              className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none text-gray-700 font-semibold" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-500">Height (%)</label>
+                            <input type="number" value={selectedElement.height || 8}
+                              onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, height: parseInt(e.target.value) || 8 } : el))}
+                              className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none text-gray-700 font-semibold" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Position sliders */}
+                      <div className="grid grid-cols-2 gap-3 border-t border-primary/10 pt-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 flex justify-between">
+                            <span>X (%)</span><span className="text-primary font-mono">{selectedElement.x}%</span>
+                          </label>
+                          <input type="range" min="0" max="95" value={selectedElement.x}
+                            onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, x: parseInt(e.target.value) } : el))}
+                            className="w-full accent-primary cursor-ew-resize" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 flex justify-between">
+                            <span>Y (%)</span><span className="text-primary font-mono">{selectedElement.y}%</span>
+                          </label>
+                          <input type="range" min="0" max="95" value={selectedElement.y}
+                            onChange={(e) => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, y: parseInt(e.target.value) } : el))}
+                            className="w-full accent-primary cursor-ew-resize" />
+                        </div>
+                      </div>
+
+                      {/* Nudge controls */}
+                      <div className="space-y-1 border-t border-primary/10 pt-3">
+                        <label className="text-[10px] font-extrabold text-gray-400 block text-center uppercase tracking-wider">Nudge Position</label>
+                        <div className="flex flex-col items-center gap-1">
+                          <button onClick={() => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, y: Math.max(0, el.y - 1) } : el))}
+                            className="w-9 h-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl text-xs border border-primary/20 active:scale-95 transition-all">â–²</button>
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, x: Math.max(0, el.x - 1) } : el))}
+                              className="w-9 h-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl text-xs border border-primary/20 active:scale-95 transition-all">â—€</button>
+                            <span className="text-[10px] font-black text-gray-500 font-mono px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg select-none">X:{selectedElement.x} Y:{selectedElement.y}</span>
+                            <button onClick={() => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, x: Math.min(95, el.x + 1) } : el))}
+                              className="w-9 h-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl text-xs border border-primary/20 active:scale-95 transition-all">â–¶</button>
+                          </div>
+                          <button onClick={() => setElements(prev => prev.map(el => el.id === selectedElement.id ? { ...el, y: Math.min(95, el.y + 1) } : el))}
+                            className="w-9 h-9 bg-primary/10 hover:bg-primary hover:text-white text-primary font-extrabold flex items-center justify-center rounded-xl text-xs border border-primary/20 active:scale-95 transition-all">â–¼</button>
+                        </div>
+                      </div>
+                    </motion.div>
                   ) : (
-                    <div className="py-12 text-center space-y-4"><div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mx-auto text-on-surface-variant/40"><Sparkles size={32} /></div><p className="text-body-md text-on-surface-variant font-medium">Select an element to edit.</p></div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center">
+                      <p className="text-xs text-slate-400 font-medium">Click any element on the canvas to edit its properties.</p>
+                    </div>
                   )}
+
                 </div>
-                <div className="flex flex-col gap-3 pt-4"><button onClick={() => setEditingDesign(false)} className="w-full h-14 bg-primary text-on-primary font-button text-button rounded-2xl shadow-xl shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">Finish Design</button></div>
+              </div>
+
+              {/* Right panel â€” live canvas */}
+              <div className="lg:col-span-7 bg-slate-100 border-slate-200 flex flex-col items-center justify-center p-6 order-1 lg:order-2 min-h-[400px] lg:min-h-0">
+                <div className="text-[10px] font-extrabold text-slate-400 mb-3 tracking-wider uppercase">Live Draggable Canvas</div>
+                <div
+                  ref={canvasRef}
+                  className="relative overflow-hidden shadow-2xl border-[6px] border-white/10 rounded-[24px]"
+                  style={{
+                    width: '280px',
+                    aspectRatio: canvasAspect,
+                    backgroundColor: uploadedDesign ? 'transparent' : backgroundColor,
+                    maxHeight: 'calc(100vh - 180px)',
+                  }}
+                >
+                  {uploadedDesign && (
+                    <img src={uploadedDesign} alt="Background" className="w-full h-full object-cover absolute inset-0 z-0 pointer-events-none select-none" />
+                  )}
+
+                  {/* Canvas elements */}
+                  {elements
+                    .filter(el => !isAiDesignMode || el.type === 'qr')
+                    .map(el => {
+                    if (el.type === 'logo') {
+                      return (
+                        <div
+                          key={el.id}
+                          onMouseDown={(e) => { setSelectedElementId(el.id); handleCustomDragStart(el, e); }}
+                          onTouchStart={(e) => { setSelectedElementId(el.id); handleCustomDragStart(el, e); }}
+                          style={{
+                            position: 'absolute',
+                            left: `${el.x}%`,
+                            top: `${el.y}%`,
+                            width: `${el.width || 30}%`,
+                            height: `${el.height || 8}%`,
+                            border: selectedElementId === el.id ? '2px dashed #493EE5' : '1px dashed rgba(255,255,255,0.3)',
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            cursor: 'move',
+                            zIndex: 30,
+                          }}
+                          className="rounded-lg flex items-center justify-center gap-1 text-[8px] uppercase tracking-wider font-extrabold text-white select-none"
+                        >
+                          {previewBusinessLogo ? (
+                            <img src={previewBusinessLogo} alt="Logo" className="w-full h-full object-contain" />
+                          ) : (
+                            <span className="opacity-60">Brand Logo</span>
+                          )}
+                          {selectedElementId === el.id && (
+                            <div
+                              onMouseDown={(e) => handleResizeStart(el, e)}
+                              onTouchStart={(e) => handleResizeStart(el, e)}
+                              className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-primary border border-white rounded-full cursor-se-resize z-50 shadow-md"
+                            />
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (el.type === 'qr') {
+                      return (
+                        <div
+                          key={el.id}
+                          onMouseDown={(e) => { setSelectedElementId(el.id); handleCustomDragStart(el, e); }}
+                          onTouchStart={(e) => { setSelectedElementId(el.id); handleCustomDragStart(el, e); }}
+                          style={{
+                            position: 'absolute',
+                            left: `${el.x}%`,
+                            top: `${el.y}%`,
+                            border: selectedElementId === el.id ? '2px dashed #493EE5' : '2px solid rgba(255,255,255,0.15)',
+                            backgroundColor: '#FFFFFF',
+                            padding: '8px',
+                            cursor: 'move',
+                            zIndex: 20,
+                          }}
+                          className="rounded-[14px] shadow-lg flex items-center justify-center relative select-none"
+                        >
+                          <QRCodeSVG value={activeQrUrl} size={el.size || 120} level="H" includeMargin={false}
+                            imageSettings={!selectedQrId && previewBusinessLogo ? { src: previewBusinessLogo, height: 20, width: 20, excavate: true, crossOrigin: 'anonymous' } : undefined}
+                          />
+                          {selectedElementId === el.id && (
+                            <div
+                              onMouseDown={(e) => handleResizeStart(el, e)}
+                              onTouchStart={(e) => handleResizeStart(el, e)}
+                              className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-primary border border-white rounded-full cursor-se-resize z-50 shadow-md"
+                            />
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Text element
+                    return (
+                      <div
+                        key={el.id}
+                        onMouseDown={(e) => { setSelectedElementId(el.id); handleCustomDragStart(el, e); }}
+                        onTouchStart={(e) => { setSelectedElementId(el.id); handleCustomDragStart(el, e); }}
+                        style={{
+                          position: 'absolute',
+                          left: `${el.x}%`,
+                          top: `${el.y}%`,
+                          width: el.width ? `${el.width}%` : 'auto',
+                          maxWidth: '90%',
+                          color: el.color || '#0F172A',
+                          fontSize: `${el.fontSize || 14}px`,
+                          fontWeight: el.fontWeight || 'normal',
+                          textAlign: (el.alignment || 'center') as any,
+                          border: selectedElementId === el.id ? '2px dashed #493EE5' : '1px dashed transparent',
+                          padding: '2px',
+                          cursor: 'move',
+                          zIndex: 10,
+                        }}
+                        className="select-none leading-tight relative"
+                      >
+                        {el.text}
+                        {selectedElementId === el.id && (
+                          <div
+                            onMouseDown={(e) => handleResizeStart(el, e)}
+                            onTouchStart={(e) => handleResizeStart(el, e)}
+                            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-primary border border-white rounded-full cursor-se-resize z-50 shadow-md"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 mt-4 text-center max-w-xs leading-normal">
+                  ðŸ’¡ Click an element to select it Â· Drag to reposition Â· Drag the blue dot to resize
+                </p>
               </div>
             </div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
+
 
       <AnimatePresence>
         {showAiImageModal && (
@@ -785,6 +1251,78 @@ export default function CreateAssetWizardPage() {
           </>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showAiSheet && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-on-surface/40 z-[80] backdrop-blur-sm" onClick={() => !generateAIContentMutation.isPending && setShowAiSheet(false)} />
+            <motion.div initial={{ opacity: 0, y: 100, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 100, scale: 0.95 }} className="fixed bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full max-w-lg bg-surface rounded-t-[32px] md:rounded-[32px] z-[90] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+              <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mx-auto my-4 shrink-0 md:hidden" />
+              <div className="px-6 py-6 md:py-8 space-y-6 overflow-y-auto">
+                <header className="text-center relative">
+                  {!generateAIContentMutation.isPending && (
+                    <button onClick={() => setShowAiSheet(false)} className="absolute right-0 top-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
+                  )}
+                  <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-4"><Sparkles size={24} /></div>
+                  <h3 className="text-headline-md text-on-surface">AI Copywriter Helper</h3>
+                  <p className="text-body-sm text-on-surface-variant">Generate high-converting taglines using Gemini AI</p>
+                </header>
+                
+                <div className="space-y-4">
+                  {generateAIContentMutation.isPending ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-3">
+                      <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <p className="text-body-md text-on-surface-variant font-medium">Gemini is writing copy...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {aiHeadline ? (
+                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-2">
+                          <p className="text-[10px] font-bold text-primary uppercase">Suggested Slogan</p>
+                          <p className="text-body-lg text-on-surface font-semibold leading-snug">"{aiHeadline}"</p>
+                        </div>
+                      ) : (
+                        <p className="text-body-md text-on-surface-variant text-center">Click below to generate an optimized headline based on your business niche and goal.</p>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <button type="button" onClick={() => setShowAiSheet(false)} className="h-12 border border-outline-variant text-on-surface font-button rounded-xl hover:bg-surface-container-low transition-colors">Cancel</button>
+                        {aiHeadline ? (
+                          <button type="button" onClick={applyAiContent} className="h-12 bg-primary text-on-primary font-button rounded-xl hover:opacity-95 transition-all shadow-md">Apply Copy</button>
+                        ) : (
+                          <button type="button" onClick={handleGenerateAi} className="h-12 bg-primary text-on-primary font-button rounded-xl hover:opacity-95 transition-all shadow-md flex items-center justify-center gap-2"><Sparkles size={16} /> Generate Slogan</button>
+                        )}
+                      </div>
+                      
+                      {aiHeadline && (
+                        <button type="button" onClick={handleGenerateAi} className="w-full h-10 text-primary hover:underline font-bold text-xs flex items-center justify-center gap-1.5"><Sparkles size={12} /> Try Another Suggestion</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+      {/* Hidden container for high-fidelity export */}
+      <div style={{ position: 'fixed', left: '-9999px', top: '-9999px', pointerEvents: 'none', zIndex: -1000 }}>
+        <div ref={downloadRef}>
+          <MarketingAssetRenderer
+            elements={elements}
+            backgroundColor={backgroundColor}
+            uploadedDesign={uploadedDesign}
+            activeQrUrl={activeQrUrl}
+            previewBusinessLogo={previewBusinessLogo}
+            selectedQrId={selectedQrId}
+            format={format}
+            customWidth={customWidth}
+            customHeight={customHeight}
+            customUnit={customUnit}
+            width={1200}
+          />
+        </div>
+      </div>
     </div>
   );
 }
