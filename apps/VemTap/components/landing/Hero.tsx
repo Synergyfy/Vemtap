@@ -29,25 +29,20 @@ export default function Hero() {
                             </span>
                         </div>
                         <h1 className="font-display font-black text-4xl md:text-5xl lg:text-7xl leading-[1.1] text-text-main tracking-tight">
-                            Collect Customer <br className="hidden sm:block" /> Details <span className="text-primary">Fast & Simple</span>
+                            Turn Every Visitor Into A <span className="text-primary">Customer You Can Reach Again</span>
                         </h1>
 
                         <p className="text-base md:text-xl text-text-secondary max-w-xl font-medium leading-relaxed">
-                            We help businesses bring customers back. Instantly collect data with a simple tap and engage them automatically.
+                            Capture customer details using QR codes and NFC technology. Build your customer database, send smart messages, and grow your business.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
                             <Link href="/get-started" className="w-full sm:w-auto text-center bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-widest text-xs px-10 py-5 rounded-2xl transition-all transform hover:scale-105 shadow-2xl shadow-primary/30 cursor-pointer">
-                                Get Started Free
+                                Start Free
                             </Link>
-                            <div className="flex -space-x-3 items-center">
-                                {[1, 2, 3, 4].map((i) => (
-                                    <div key={i} className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
-                                        <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" className="w-full h-full object-cover" />
-                                    </div>
-                                ))}
-                                <p className="ml-6 text-[10px] font-black text-text-secondary uppercase tracking-widest">Joined by 2k+ owners</p>
-                            </div>
+                            <Link href="/demo" className="w-full sm:w-auto text-center bg-white border-2 border-primary/10 hover:border-primary/30 text-primary font-black uppercase tracking-widest text-xs px-10 py-5 rounded-2xl transition-all transform hover:scale-105 shadow-xl shadow-gray-200/50 cursor-pointer">
+                                Watch Demo
+                            </Link>
                         </div>
                     </div>
 

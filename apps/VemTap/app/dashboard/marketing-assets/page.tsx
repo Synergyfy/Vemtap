@@ -2,7 +2,12 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Archive, Download, QrCode, Plus, BarChart2, Settings } from 'lucide-react';
+import { 
+  Archive, Download, QrCode, Plus, BarChart2, Settings, 
+  FileText, Palette, Layout, Smartphone, CreditCard, 
+  Layers, StickyNote, Image as ImageIcon, Map, Monitor, 
+  ChevronRight, ArrowRight, Sparkles
+} from 'lucide-react';
 import Link from 'next/link';
 import {
   useMarketingAssets,
@@ -11,201 +16,131 @@ import {
 } from '@/services/marketing-assets/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
-import { MarketingAssetPreview } from '@/components/dashboard/MarketingAssetPreview';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
-const navItems = [
-  { icon: Archive, label: 'My Assets', href: '/dashboard/marketing-assets/library', color: 'text-primary', bg: 'bg-primary/10' },
-  { icon: Download, label: 'Downloads', href: '/dashboard/marketing-assets/analytics', color: 'text-secondary', bg: 'bg-secondary/10' },
-  { icon: BarChart2, label: 'Analytics', href: '/dashboard/marketing-assets/analytics', color: 'text-primary-container', bg: 'bg-primary-container/10' },
-  { icon: Settings, label: 'Brand Settings', href: '/dashboard/settings/profile', color: 'text-tertiary', bg: 'bg-tertiary/10' },
-];
-
-const statsConfig = [
-  { key: 'assets', icon: Archive, label: 'Assets Created', color: 'text-primary' },
-  { key: 'downloads', icon: Download, label: 'Downloads', color: 'text-secondary' },
-  { key: 'scans', icon: QrCode, label: 'QR Scans', color: 'text-primary-container' },
+const assetCategories = [
+  { id: 'posters', label: 'Posters', desc: 'A4, A3, A2 high-resolution prints.', icon: ImageIcon, color: 'bg-blue-50 text-blue-600' },
+  { id: 'counter_displays', label: 'Counter Displays', desc: 'Perfect for checkout areas.', icon: Monitor, color: 'bg-emerald-50 text-emerald-600' },
+  { id: 'table_tents', label: 'Table Tents', desc: 'Dine-in QR experience.', icon: Layers, color: 'bg-amber-50 text-amber-600' },
+  { id: 'flyers', label: 'Flyers', desc: 'Promotional handouts.', icon: StickyNote, color: 'bg-indigo-50 text-indigo-600' },
+  { id: 'stickers', label: 'Stickers', desc: 'Window and door decals.', icon: Map, color: 'bg-pink-50 text-pink-600' },
+  { id: 'business_cards', label: 'Business Cards', desc: 'Personal QR connections.', icon: CreditCard, color: 'bg-purple-50 text-purple-600' },
+  { id: 'social_media', label: 'Social Media', desc: 'Instagram, FB, WhatsApp posts.', icon: Smartphone, color: 'bg-rose-50 text-rose-600' },
 ];
 
 export default function MarketingAssetsOverviewPage() {
   const { data: assets, isLoading: assetsLoading } = useMarketingAssets();
   const { data: analytics, isLoading: analyticsLoading } = useAnalyticsOverview();
-  const { data: brandProfile } = useBrandProfile();
   const { data: business } = useMyBusiness();
-  const { data: branches = [] } = useBranches();
-
-  const recentAssets = assets
-    ? assets.filter((a: any) => a.isActive !== false).slice(0, 3)
-    : [];
 
   const totals = analytics?.totals || { scans: 0, views: 0, conversionRate: 0, downloads: 0 };
 
-  const bizCatName = business?.category
-    ? typeof (business as any).category === 'object'
-      ? (business as any).category?.name
-      : business.category
-    : null;
-
-  const statValues: Record<string, string> = {
-    assets: assetsLoading ? '...' : (assets?.length || 0).toLocaleString(),
-    downloads: analyticsLoading ? '...' : ((totals as any).downloads ?? 0).toLocaleString(),
-    scans: analyticsLoading ? '...' : totals.scans.toLocaleString(),
-  };
-
-  const businessLogo = brandProfile?.logoUrl || business?.logoUrl || (branches && branches.length > 0 ? (branches[0] as any)?.logoUrl : '') || '';
-
   return (
-    <div className="pb-24 md:pb-10 space-y-5 md:space-y-6 max-w-2xl mx-auto">
-      <p className="text-body-lg text-on-surface-variant text-sm md:text-base leading-relaxed">
-        Create professional QR marketing materials for your business.
-      </p>
+    <div className="pb-24 md:pb-10 space-y-8 max-w-4xl mx-auto p-4">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 leading-tight">Marketing Assets</h1>
+          <p className="text-sm font-medium text-gray-500 mt-1">
+            Create professional QR marketing materials for your business.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/marketing-assets/library">
+            <Button variant="outline" className="rounded-2xl border-gray-100 text-[10px] font-black uppercase tracking-widest">
+              <Archive className="mr-2 size-4" />
+              Library
+            </Button>
+          </Link>
+          <Link href="/dashboard/marketing-assets/create">
+            <Button className="rounded-2xl bg-[#066CF4] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
+              <Plus className="mr-2 size-4" />
+              Create New
+            </Button>
+          </Link>
+        </div>
+      </div>
 
-      <section>
-        <div className="bg-surface-container-lowest rounded-xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-outline-variant/20 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-lg overflow-hidden bg-primary-container/10 flex items-center justify-center shrink-0">
-            {brandProfile?.logoUrl ? (
-              <img
-                src={brandProfile.logoUrl}
-                alt={brandProfile?.name || 'Logo'}
-                className="size-full object-contain"
-              />
-            ) : (
-              <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
-                {(brandProfile?.name || 'V').charAt(0)}
-              </div>
-            )}
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-headline-md font-semibold text-on-surface truncate">
-              {brandProfile?.name || business?.name || 'Your Business'}
-            </h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              {bizCatName && (
-                <span className="text-label-caps text-on-surface-variant capitalize">
-                  {bizCatName}
-                </span>
-              )}
-              {branches.length > 0 && (
-                <>
-                  <span className="w-1 h-1 bg-outline-variant rounded-full" />
-                  <span className="text-label-caps text-on-surface-variant">
-                    {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
-                  </span>
-                </>
-              )}
+      {/* Stats Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Assets Created', value: assets?.length || 0, icon: Layout, color: 'text-[#066CF4]' },
+          { label: 'Total Downloads', value: totals.downloads || 0, icon: Download, color: 'text-emerald-500' },
+          { label: 'QR Scans', value: totals.scans || 0, icon: QrCode, color: 'text-amber-500' },
+          { label: 'Active Goals', value: 3, icon: Sparkles, color: 'text-purple-500' },
+        ].map((stat, i) => (
+          <div key={i} className="rounded-[32px] bg-white p-5 shadow-sm border border-gray-100">
+            <div className={cn("size-10 rounded-2xl bg-gray-50 flex items-center justify-center mb-3", stat.color.replace('text-', 'bg-').replace('500', '50'))}>
+              <stat.icon size={20} className={stat.color} />
             </div>
+            <div className="text-2xl font-black text-gray-900">{stat.value}</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">{stat.label}</div>
           </div>
-        </div>
-      </section>
+        ))}
+      </div>
 
-      <section className="-mx-5 md:-mx-0">
-        <div className="flex overflow-x-auto gap-3 px-5 md:px-0 pb-1 no-scrollbar">
-          {statsConfig.map((stat, i) => {
-            const Icon = stat.icon;
-            return (
-              <motion.div
-                key={stat.key}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="min-w-[140px] flex-shrink-0 bg-surface-container-low rounded-xl p-4 border border-outline-variant/10 shadow-sm"
-              >
-                <Icon size={20} className={`${stat.color} mb-2`} />
-                <p className="text-label-caps text-on-surface-variant mb-0.5">{stat.label}</p>
-                <p className="text-headline-md font-semibold text-on-surface">
-                  {statValues[stat.key]}
-                </p>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section>
-        <Link href="/dashboard/marketing-assets/create">
-          <button className="w-full h-12 bg-primary text-on-primary font-button text-button rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform flex items-center justify-center gap-2 cursor-pointer">
-            <Plus size={20} />
-            Create New Marketing Asset
-          </button>
-        </Link>
-      </section>
-
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-headline-md font-semibold text-on-surface">Recent Assets</h3>
-          {recentAssets.length > 0 && (
-            <Link
-              href="/dashboard/marketing-assets/library"
-              className="text-primary text-label-caps"
+      {/* Categories Grid */}
+      <div className="space-y-6">
+        <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest flex items-center gap-3">
+          Asset Categories
+          <span className="h-0.5 flex-1 bg-gray-100" />
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {assetCategories.map((cat) => (
+            <motion.div 
+              key={cat.id}
+              whileHover={{ y: -5 }}
+              className="group relative rounded-[32px] bg-white p-6 shadow-sm border border-gray-100 transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5"
             >
-              VIEW ALL
-            </Link>
-          )}
-        </div>
-        <div className="space-y-3">
-          {assetsLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-16 bg-surface-container rounded-xl animate-pulse" />
-            ))
-          ) : recentAssets.length === 0 ? (
-            <div className="text-center py-10 space-y-3">
-              <div className="inline-flex size-12 bg-surface-container-highest rounded-full items-center justify-center">
-                <QrCode size={20} className="text-on-surface-variant" />
+              <div className={cn("size-14 rounded-[22px] flex items-center justify-center mb-6 shadow-sm", cat.color)}>
+                <cat.icon size={28} />
               </div>
-              <p className="text-body-sm text-on-surface-variant">
-                No materials designed yet. Tap the button above to get started.
+              <h3 className="text-lg font-bold text-gray-900">{cat.label}</h3>
+              <p className="text-xs font-medium text-gray-500 mt-2 leading-relaxed">
+                {cat.desc}
               </p>
-            </div>
-          ) : (
-            recentAssets.map((asset: any) => (
-              <Link
-                key={asset.id}
-                href={`/dashboard/marketing-assets/library?view=${asset.id}`}
-                className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/20 flex items-center p-2 gap-3 hover:bg-surface-container-low transition-colors group"
-              >
-                <div className="w-16 h-16 rounded-lg bg-surface-container overflow-hidden shrink-0 flex items-center justify-center">
-                  <MarketingAssetPreview 
-                    asset={asset} 
-                    scale={0.35} 
-                    businessLogo={businessLogo}
-                    className="size-full group-hover:scale-110 transition-transform duration-500" 
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-body-lg font-semibold text-on-surface truncate">
-                    {asset.name}
-                  </p>
-                  <p className="text-body-sm text-on-surface-variant">
-                    Created {new Date(asset.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </p>
-                </div>
-                <div className="h-9 px-4 bg-surface-container-high rounded-full text-label-caps text-on-surface-variant flex items-center justify-center active:scale-95 transition-transform shrink-0 font-bold">
-                  View
-                </div>
+              
+              <Link href={`/dashboard/marketing-assets/create?type=${cat.id}`} className="mt-8 block">
+                <Button className="w-full h-12 rounded-2xl bg-gray-900 text-[10px] font-black uppercase tracking-widest group-hover:bg-[#066CF4] transition-all">
+                  Create {cat.label.slice(0, -1)}
+                  <ChevronRight size={16} className="ml-2" />
+                </Button>
               </Link>
-            ))
-          )}
+            </motion.div>
+          ))}
         </div>
-      </section>
+      </div>
 
-      {!assetsLoading && recentAssets.length === 0 && (
-        <section className="grid grid-cols-2 gap-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="bg-surface-container-highest/40 p-4 rounded-xl border border-outline-variant/30 flex flex-col items-center text-center gap-2 active:scale-95 transition-transform hover:bg-surface-container-highest/60"
-              >
-                <div className={`w-12 h-12 rounded-full ${item.bg} flex items-center justify-center ${item.color}`}>
-                  <Icon size={20} />
-                </div>
-                <p className="text-label-caps text-on-surface font-bold">{item.label}</p>
-              </Link>
-            );
-          })}
-        </section>
-      )}
+      {/* Main CTA Banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-[40px] bg-gradient-to-br from-[#066CF4] to-[#4293FF] p-10 text-white shadow-2xl shadow-blue-500/20"
+      >
+        <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-black/10 blur-3xl" />
+
+        <div className="relative z-10 flex flex-col items-center text-center max-w-lg mx-auto">
+          <Badge className="bg-white/20 text-white border-none px-4 py-1.5 font-black uppercase tracking-widest mb-6">
+            New Templates Available
+          </Badge>
+          <h2 className="text-4xl font-black leading-tight mb-4">
+            Transform Your Physical Space Into A Growth Engine
+          </h2>
+          <p className="text-lg font-medium text-white/80 mb-10">
+            Generate professional posters, table tents, and social media assets in seconds.
+          </p>
+          <Link href="/dashboard/marketing-assets/create">
+            <Button className="h-16 px-12 rounded-3xl bg-white text-gray-900 text-sm font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/10 hover:bg-gray-50 active:scale-95 transition-all">
+              Create New Marketing Asset
+              <ArrowRight className="ml-3 size-5" />
+            </Button>
+          </Link>
+        </div>
+      </motion.div>
     </div>
   );
 }

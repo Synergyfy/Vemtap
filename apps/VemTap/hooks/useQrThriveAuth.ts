@@ -53,7 +53,7 @@ export function useQrThriveAuth() {
         // 1. Check if the user already has a QRThrive ID in their VemTap profile
         if (user.qrThriveUserId) {
           console.log('[QRThrive] User already has ID in profile:', user.qrThriveUserId);
-          setQrThriveUser(user.qrThriveUserId, user.email);
+          setQrThriveUser(user.qrThriveUserId);
           return;
         }
 
@@ -63,7 +63,7 @@ export function useQrThriveAuth() {
           const response = await api.get('/auth/qr-thrive/status');
           if (response?.qrThriveUserId) {
             console.log('[QRThrive] Found ID from status endpoint:', response.qrThriveUserId);
-            setQrThriveUser(response.qrThriveUserId, user.email);
+            setQrThriveUser(response.qrThriveUserId);
             return;
           }
         } catch (e) {
