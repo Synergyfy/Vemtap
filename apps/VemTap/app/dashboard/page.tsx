@@ -28,6 +28,12 @@ import { useSearchParams } from 'next/navigation';
 import DashboardBannerWrapper from '@/components/dashboard/DashboardBannerWrapper';
 import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
+// Activation Flow
+import { useActivationStore } from '@/store/useActivationStore';
+import ActivationDashboard from '@/components/dashboard/activation/ActivationDashboard';
+import SetupWizard from '@/components/dashboard/activation/SetupWizard';
+import ActivationCelebration from '@/components/dashboard/activation/ActivationCelebration';
+
 export default function DashboardPage() {
     const router = useRouter();
     const [showClearModal, setShowClearModal] = useState(false);
@@ -36,6 +42,9 @@ export default function DashboardPage() {
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
     const searchParams = useSearchParams();
     const showStats = searchParams.get('show_stats') === '1';
+
+    // Activation State
+    const { isActivated, toggleActivation } = useActivationStore();
     
     // We use the store now instead of URL params for sudo state
     const { activeSession } = useSudoStore();
@@ -226,6 +235,18 @@ export default function DashboardPage() {
     const returningPct = totalVisitors > 0 ? Math.round((repeatVisitors / totalVisitors) * 100) : 0;
     const newPct = totalVisitors > 0 ? 100 - returningPct : 0;
 
+    // Celebration State
+    const [showCelebration, setShowCelebration] = useState(false);
+
+    const handleFinishSetup = () => {
+        setShowCelebration(true);
+    };
+
+    const handleCloseCelebration = () => {
+        setShowCelebration(false);
+        toggleActivation(true);
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center p-8 h-screen">
@@ -233,6 +254,16 @@ export default function DashboardPage() {
                     <div className="w-12 h-12 bg-gray-200 rounded-full mb-4"></div>
                     <div className="h-4 w-32 bg-gray-200 rounded"></div>
                 </div>
+            </div>
+        );
+    }
+
+    if (!isActivated) {
+        return (
+            <div className="p-4 md:p-8">
+                <ActivationDashboard />
+                <SetupWizard onFinish={handleFinishSetup} />
+                {showCelebration && <ActivationCelebration onFinish={handleCloseCelebration} />}
             </div>
         );
     }
