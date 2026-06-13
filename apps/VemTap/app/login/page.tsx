@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -9,6 +9,7 @@ import {
     ShieldCheck, 
     Zap, AlertCircle
 } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,54 @@ export default function LoginPage() {
         return Object.keys(errors).length === 0;
     };
 
+    const routeAfterLogin = useCallback((role: string, businessId?: string, isNewUser?: boolean) => {
+        const normalizedRole = role?.toLowerCase();
+        if (normalizedRole === 'admin') {
+            router.push('/admin');
+        } else if (normalizedRole === 'owner' && (!businessId || isNewUser)) {
+            router.push('/onboarding');
+        } else if (businessId && (normalizedRole === 'owner' || normalizedRole === 'manager' || normalizedRole === 'staff')) {
+            router.push('/dashboard');
+        } else if (normalizedRole === 'customer') {
+            router.push('/customer/dashboard');
+        } else {
+            router.push('/dashboard');
+        }
+    }, [router]);
+
+    const handleGoogleSuccess = useCallback(async (credentialResponse: any) => {
+        if (!credentialResponse?.credential) {
+            setGeneralError('Google authentication failed — no credential received');
+            return;
+        }
+        setIsLoggingIn(true);
+        setGeneralError(null);
+        try {
+            const response = await api.post('/auth/google', {
+                token: credentialResponse.credential,
+            });
+            if (!response?.user || !response?.access_token) {
+                setGeneralError('Invalid response from server');
+                return;
+            }
+            storeLogin(response.user, response.access_token);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
+        } catch (err: any) {
+            const message = err?.message || 'Google sign-in failed. Please try again.';
+            setGeneralError(message);
+        } finally {
+            setIsLoggingIn(false);
+        }
+    }, [storeLogin, routeAfterLogin]);
+
+    const googleLogin = useGoogleLogin({
+        onSuccess: handleGoogleSuccess,
+        onError: () => {
+            setGeneralError('Google sign-in was cancelled or failed. Please try again.');
+        },
+        flow: 'implicit',
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setGeneralError(null);
@@ -60,7 +109,7 @@ export default function LoginPage() {
         setIsLoggingIn(true);
         try {
             const response = await api.post('/auth/login', {
-                email: formData.email.trim(),
+                identifier: formData.email.trim(),
                 password: formData.password,
             });
 
@@ -70,19 +119,7 @@ export default function LoginPage() {
             }
 
             storeLogin(response.user, response.access_token);
-
-            const role = response.user.role?.toLowerCase();
-            if (role === 'admin') {
-                router.push('/admin');
-            } else if (response.user.businessId && (role === 'owner' || role === 'manager' || role === 'staff')) {
-                router.push('/dashboard');
-            } else if (role === 'owner' && !response.user.businessId) {
-                router.push('/onboarding');
-            } else if (role === 'customer') {
-                router.push('/customer/dashboard');
-            } else {
-                router.push('/dashboard');
-            }
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
         } catch (err: any) {
             const message = err?.message || 'Invalid email, phone number or password';
             setGeneralError(message);
@@ -241,9 +278,18 @@ export default function LoginPage() {
                             <span className="relative px-4 bg-white text-[10px] font-black uppercase tracking-widest text-gray-300">Or continue with</span>
                         </div>
                         
-                        <Button variant="outline" className="w-full h-16 rounded-2xl border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50">
+                        <Button
+                            variant="outline"
+                            disabled={isLoggingIn}
+                            onClick={() => googleLogin()}
+                            className="w-full h-16 rounded-2xl border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50"
+                        >
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="size-5" alt="Google" />
-                            Sign in with Google
+                            {isLoggingIn ? (
+                                <div className="size-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                            ) : (
+                                'Sign in with Google'
+                            )}
                         </Button>
                     </div>
 
