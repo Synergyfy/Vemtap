@@ -1,131 +1,219 @@
+"use client";
+
 import React from 'react';
+import { motion } from 'framer-motion';
+import { 
+    Smartphone, MessageSquare, QrCode, BarChart3, 
+    Image as ImageIcon, Globe, CheckCircle2, Zap, 
+    ArrowRight, ChevronRight, Layout, Database,
+    Layers, Monitor, StickyNote, Smartphone as Smartphone2,
+    ShieldCheck, Star, Users, Target
+} from 'lucide-react';
+import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import Link from 'next/link';
-import ProfileMyBusinessCTA from '@/components/landing/ProfileMyBusinessCTA';
-import { Metadata } from 'next';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
-export const metadata: Metadata = {
-    title: 'Features',
-    description: 'Explore the powerful features of VemTap: from digital lead capture and CRM integration to real-time analytics and NFC-driven automation.',
-};
+const featureCategories = [
+    {
+        title: 'Customer Capture',
+        icon: Smartphone,
+        color: 'text-blue-600',
+        bg: 'bg-blue-50',
+        description: 'Seamlessly onboard customers at the point of interaction. No apps, no friction—just a simple tap or scan.',
+        features: [
+            'QR Check-ins',
+            'NFC Tap Registration',
+            'Lead Collection Forms',
+            'Customer Database',
+            'Instant Sync'
+        ]
+    },
+    {
+        title: 'Smart Messaging',
+        icon: MessageSquare,
+        color: 'text-indigo-600',
+        bg: 'bg-indigo-50',
+        description: 'Engage your customers where they are. Automate follow-ups and build relationships with personalized messaging.',
+        features: [
+            'WhatsApp Campaigns',
+            'SMS Promotions',
+            'Auto-Announcements',
+            'Smart Follow-ups',
+            'Behavior Triggers'
+        ]
+    },
+    {
+        title: 'QR & NFC Solutions',
+        icon: QrCode,
+        color: 'text-purple-600',
+        bg: 'bg-purple-50',
+        description: 'Bridge the physical and digital gap with branded NFC plates and dynamic QR codes.',
+        features: [
+            'Dynamic QR Codes',
+            'Static Branding',
+            'Custom Design',
+            'Multi-format Exports',
+            'Print-Ready Files'
+        ]
+    },
+    {
+        title: 'Growth Analytics',
+        icon: BarChart3,
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-50',
+        description: 'Make data-driven decisions with live insights into visitor behavior and retention.',
+        features: [
+            'Customer Insights',
+            'Visit Tracking',
+            'Growth Reports',
+            'Campaign ROI',
+            'Scan Heatmaps'
+        ]
+    },
+    {
+        title: 'Marketing Assets',
+        icon: ImageIcon,
+        color: 'text-rose-600',
+        bg: 'bg-rose-50',
+        description: 'Professional ready-to-print materials designed to drive customer registration in-store.',
+        features: [
+            'Poster Templates',
+            'Table Tent Designs',
+            'Counter Displays',
+            'Business Cards',
+            'Social Graphics'
+        ]
+    },
+    {
+        title: 'Discovery Network',
+        icon: Globe,
+        color: 'text-amber-600',
+        bg: 'bg-amber-50',
+        description: 'Get discovered by new customers already using Vemtap at nearby local businesses.',
+        features: [
+            'Business Listings',
+            'Local Discovery',
+            'Cross-Promotions',
+            'Traffic Generation',
+            'Referral Engine'
+        ]
+    }
+];
 
 export default function FeaturesPage() {
-    const features = [
-        {
-            title: 'Digital Lead Capture',
-            desc: 'Automatically collect names, emails, and contact details the moment a customer taps. No manual entry, no errors.',
-            icon: 'person_add',
-            highlight: 'Lead Gen'
-        },
-        {
-            title: 'Dynamic Redirection',
-            desc: 'Route customers to different links based on time of day, location, or visitor frequency. Perfect for menus, reviews, or bookings.',
-            icon: 'shortcut',
-            highlight: 'Smart Links'
-        },
-        {
-            title: 'CRM Integration',
-            desc: 'Sync your captured data directly with HubSpot, Salesforce, or Mailchimp. Turn walk-ins into mailing list subscribers instantly.',
-            icon: 'hub',
-            highlight: 'Automation'
-        },
-        {
-            title: 'Real-time Analytics',
-            desc: 'Track every tap, scan conversion rates, and identify peak business hours with our centralized dashboard.',
-            icon: 'insights',
-            highlight: 'Data'
-        },
-        {
-            title: 'Multi-Location Fleet',
-            desc: 'Manage thousands of NFC tags across different venues from a single account. Update all your redirects in one click.',
-            icon: 'layers',
-            highlight: 'Fleet'
-        },
-        {
-            title: 'Enterprise Security',
-            desc: 'GDPR and CCPA compliant data handling. End-to-end encryption for every visitor interaction.',
-            icon: 'admin_panel_settings',
-            highlight: 'Secure'
-        }
-    ];
-
     return (
         <div className="min-h-screen bg-white">
             <Navbar />
-
-            <main className="pt-40 pb-24">
-                <section className="px-4 sm:px-6 lg:px-8 text-center mb-24">
-                    <div className="max-w-4xl mx-auto">
-                        <span className="text-primary font-bold tracking-widest text-xs uppercase mb-4 block">Capabilities</span>
-                        <h1 className="text-5xl md:text-7xl font-display font-bold text-text-main mb-8 leading-tight">
-                            Built for <span className="text-gradient">Modern Scale</span>
-                        </h1>
-                        <p className="text-xl text-text-secondary font-medium leading-relaxed max-w-2xl mx-auto">
-                            Powerful tools to manage your physical-to-digital bridge. Simple enough for a cafe, powerful enough for a global stadium.
-                        </p>
-                    </div>
+            
+            <main className="pt-32 pb-24 px-6">
+                {/* HERO SECTION */}
+                <section className="container mx-auto max-w-6xl text-center mb-32">
+                    <Badge className="bg-blue-50 text-[#066CF4] border-none px-4 py-1.5 font-black uppercase tracking-widest mb-6">
+                        Platform Capabilities
+                    </Badge>
+                    <h1 className="text-4xl md:text-7xl font-black text-gray-900 leading-tight mb-8">
+                        Everything You Need To <br /> Capture, Engage & <span className="text-[#066CF4]">Retain</span>
+                    </h1>
+                    <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto mb-10">
+                        Vemtap provides the complete toolkit to turn your physical space into a digital growth engine.
+                    </p>
+                    <Link href="/get-started">
+                        <Button className="h-16 px-12 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20 active:scale-95 transition-all">
+                            Start Free
+                        </Button>
+                    </Link>
                 </section>
 
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {features.map((f, i) => (
-                        <div key={i} className="group p-10 rounded-[2.5rem] bg-gray-50 border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-2xl transition-all duration-500">
-                            <div className="flex justify-between items-start mb-10">
-                                <div className="size-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all transform group-hover:rotate-6">
-                                    <span className="material-icons-round text-3xl">{f.icon}</span>
+                {/* FEATURES GRID */}
+                <section className="container mx-auto max-w-6xl mb-32">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {featureCategories.map((category, index) => (
+                            <motion.div 
+                                key={index}
+                                whileHover={{ y: -8 }}
+                                className="p-10 rounded-[48px] bg-white border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col"
+                            >
+                                <div className={cn("size-16 rounded-[22px] flex items-center justify-center mb-8 shadow-sm", category.bg, category.color)}>
+                                    <category.icon size={32} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/40 group-hover:text-primary transition-colors">{f.highlight}</span>
-                            </div>
-                            <h3 className="text-2xl font-bold font-display text-text-main mb-4">{f.title}</h3>
-                            <p className="text-text-secondary font-medium leading-relaxed">
-                                {f.desc}
-                            </p>
-                        </div>
-                    ))}
-                </section>
-
-                {/* Integration Spotlight */}
-                <section className="mt-32 py-24 bg-text-main text-white overflow-hidden relative">
-                    <div className="absolute inset-0 opacity-10 pointer-events-none">
-                        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-primary rounded-full blur-[150px] -translate-x-1/2 -translate-y-1/2"></div>
-                    </div>
-
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
-                        <div className="max-w-xl text-center md:text-left">
-                            <h2 className="text-4xl font-display font-bold mb-6">Connect to your favorite tools.</h2>
-                            <p className="text-lg opacity-70 mb-8">
-                                VemTap integrates seamlessly with over 5,000+ apps via Zapier and direct webhooks. Automate your workflow the second a customer taps.
-                            </p>
-                            <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                                <Link href="/get-started" className="bg-primary hover:bg-primary-hover text-white font-bold px-10 py-4 rounded-full transition-all">
-                                    Start Integrating
-                                </Link>
-                            </div>
-                        </div>
-                        <div className="flex-1 flex justify-center">
-                            <div className="grid grid-cols-3 gap-4">
-                                {['hubspot', 'mailchimp', 'salesforce', 'slack', 'shopify', 'google_drive'].map((icon, i) => (
-                                    <div key={i} className="size-20 md:size-24 bg-white/10 rounded-2xl border border-white/10 flex items-center justify-center hover:bg-white/20 transition-all cursor-pointer group">
-                                        <span className="material-icons-round text-3xl opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all">api</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                                <h3 className="text-2xl font-black text-gray-900 mb-4">{category.title}</h3>
+                                <p className="text-sm font-medium text-gray-500 leading-relaxed mb-8">
+                                    {category.description}
+                                </p>
+                                <ul className="space-y-4 mb-10 flex-1">
+                                    {category.features.map((feature, fIndex) => (
+                                        <li key={fIndex} className="flex items-center gap-3 text-xs font-bold text-gray-700">
+                                            <div className="size-5 rounded-full bg-blue-50 text-[#066CF4] flex items-center justify-center">
+                                                <CheckCircle2 size={12} strokeWidth={4} />
+                                            </div>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <Button variant="ghost" className="justify-start px-0 text-[10px] font-black uppercase tracking-widest text-[#066CF4] hover:bg-transparent hover:text-blue-700">
+                                    Learn More <ChevronRight size={14} className="ml-1" />
+                                </Button>
+                            </motion.div>
+                        ))}
                     </div>
                 </section>
 
-                {/* CTA */}
-                <section className="py-32 text-center">
-                    <div className="max-w-4xl mx-auto px-4">
-                        <h2 className="text-4xl md:text-6xl font-display font-bold text-text-main mb-8 leading-tight">Ready to unlock these <br />features for your business?</h2>
-                        <Link href="/get-started" className="inline-block bg-primary text-white font-bold px-12 py-5 rounded-full text-xl shadow-2xl shadow-primary/20 hover:scale-105 transition-all">
-                            Get Started for Free
+                {/* DEEP DIVE SECTION */}
+                <section className="container mx-auto max-w-6xl mb-32 bg-gray-900 rounded-[60px] md:rounded-[100px] p-10 md:p-24 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-[50%] h-full bg-[#066CF4]/10 rounded-full blur-[120px]" />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
+                        <div>
+                           <Badge className="bg-[#066CF4] text-white border-none px-4 py-1.5 font-black uppercase tracking-widest mb-6">
+                             Enterprise Grade
+                           </Badge>
+                           <h2 className="text-3xl md:text-5xl font-black leading-tight mb-8">
+                             Scalable Solutions For <br /> Every Stage Of Growth
+                           </h2>
+                           <p className="text-lg font-medium text-white/60 mb-10">
+                             Whether you're a single boutique or a national franchise, Vemtap scales with you. Our infrastructure is built for speed and security.
+                           </p>
+                           <div className="grid grid-cols-2 gap-6">
+                              {[
+                                { t: '99.9% Uptime', d: 'Reliable infrastructure.' },
+                                { t: 'GDPR Ready', d: 'Data privacy by design.' },
+                                { t: 'Global CDN', d: 'Fast loading everywhere.' },
+                                { t: 'API Access', d: 'Custom integrations.' }
+                              ].map(i => (
+                                <div key={i.t}>
+                                   <p className="font-black text-sm uppercase tracking-widest mb-1">{i.t}</p>
+                                   <p className="text-xs text-white/40">{i.d}</p>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                        <div className="relative">
+                            <div className="aspect-square bg-[#066CF4] rounded-full flex items-center justify-center p-8 shadow-[0_0_80px_rgba(6,108,244,0.3)]">
+                                <Zap size={120} className="text-white fill-white" />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* FINAL CTA SECTION */}
+                <section className="container mx-auto max-w-4xl text-center py-20">
+                    <h2 className="text-4xl md:text-6xl font-black text-gray-900 mb-8 leading-tight">Start Growing Your <br /> Business Today</h2>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <Link href="/get-started">
+                            <Button className="h-16 px-12 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20 active:scale-95 transition-all">
+                                Start Free
+                            </Button>
+                        </Link>
+                        <Link href="/contact">
+                            <Button variant="outline" className="h-16 px-12 rounded-2xl border-gray-100 text-sm font-black uppercase tracking-[0.2em] text-gray-400 hover:bg-gray-50 transition-all">
+                                Contact Sales
+                            </Button>
                         </Link>
                     </div>
                 </section>
-
-                {/* Profile My Business CTA */}
-                <ProfileMyBusinessCTA />
             </main>
 
             <Footer />

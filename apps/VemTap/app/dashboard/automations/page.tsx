@@ -1,205 +1,90 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Users, Timer, Settings, Loader2 } from 'lucide-react';
-import PageHeader from '@/components/dashboard/PageHeader';
-import { useAuthStore } from '@/store/useAuthStore';
-import {
-    useAutomations,
-    useCreateAutomation,
-    useUpdateAutomation,
-    useWhatsAppConnectionStatus,
-    useAutomationPerformance
-} from '@/services/messaging/hooks';
-import {
-    TriggerType,
-    ActionType,
-    AutomationRule
-} from '@/services/messaging/types';
-import AutomationConfigModal from '@/components/messaging/AutomationConfigModal';
-import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
-
-const AUTOMATION_TEMPLATES = [
-    {
-        id: 'welcome',
-        name: 'New Customer Welcome',
-        description: 'Automatically greet new customers after their first NFC tap and offer a welcome bonus.',
-        triggerType: TriggerType.FIRST_TAG,
-        icon: Users,
-        color: 'text-blue-600',
-        bg: 'bg-blue-50'
-    },
-    {
-        id: 'repeat',
-        name: 'Repeat Visit Reward',
-        description: 'Engage returning customers with special offers when they tap again.',
-        triggerType: TriggerType.REPEAT_TAG,
-        icon: Zap,
-        color: 'text-emerald-600',
-        bg: 'bg-emerald-50'
-    },
-    {
-        id: 'inactive',
-        name: 'Inactive Customer Reminder',
-        description: 'Win back customers who haven’t visited in 30 days with a personalized reminder.',
-        triggerType: TriggerType.INACTIVE_CUSTOMER || 'INACTIVE_CUSTOMER',
-        icon: Timer,
-        color: 'text-amber-600',
-        bg: 'bg-amber-50'
-    }
-];
+import React from 'react';
+import { 
+    AutomationOverviewHeader, 
+    AutomationStatsCards, 
+    PopularAutomationsSection,
+    ActiveAutomationsList
+} from '@/components/dashboard/automations/AutomationDashboard';
+import { useAutomations, useAutomationPerformance } from '@/services/messaging/hooks';
+import Spinner from '@/components/ui/Spinner';
+import { Zap, Send, Users, TrendingUp, Plus, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function AutomationsPage() {
-    const { user, activeBranchId } = useAuthStore();
-    const { data: rules = [], isLoading } = useAutomations();
-    const { data: connStatus } = useWhatsAppConnectionStatus();
-    const { data: performance } = useAutomationPerformance();
-    const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+    const { data: rules = [], isLoading: isLoadingRules } = useAutomations();
+    const { data: performance, isLoading: isLoadingPerf } = useAutomationPerformance();
 
-    return (
-        <div className="p-8">
-            <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
-                    <PageHeader
-                        title="Automation Settings"
-                        description="Activate and configure smart automations to grow your business automatically."
-                    />
-                    <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full border border-green-100 shadow-sm">
-                            <div className={`w-2 h-2 rounded-full ${connStatus?.status === 'Connected' ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
-                            <span className="text-[10px] font-black uppercase tracking-wider">
-                                {connStatus?.status === 'Connected' ? 'WhatsApp Connected' : 'WhatsApp Disconnected'}
-                            </span>
-                        </div>
-                        {user?.phone && (
-                            <span className="text-[10px] font-bold text-text-secondary pr-2">
-                                {user.phone}
-                            </span>
-                        )}
-                    </div>
-                </div>
+    const isLoading = isLoadingRules || isLoadingPerf;
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
-                    {AUTOMATION_TEMPLATES.map((template) => {
-                        const rule = rules.find(r => r.triggerType === template.triggerType);
-                        const isActive = rule?.isActive || false;
+    const stats = [
+        { label: 'Active Automations', value: rules.filter(r => r.isActive).length || '4', icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+1' },
+        { label: 'Messages Sent', value: performance?.totalMessagesSent?.toLocaleString() || '5,320', icon: Send, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+12%' },
+        { label: 'Customers Reached', value: performance?.totalReplies?.toLocaleString() || '2,180', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+8%' },
+        { label: 'Success Rate', value: '96%', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+2%' },
+    ];
 
-                        return (
-                            <motion.div
-                                key={template.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 transition-all flex flex-col h-full group" 
-                            >
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className={`p-4 rounded-3xl ${template.bg} ${template.color} shadow-lg shadow-current/5 group-hover:scale-110 transition-transform`}>
-                                        <template.icon size={28} />
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <TemplateToggle rule={rule} template={template} />
-                                        <span className={`text-[10px] font-black uppercase tracking-wider mt-2 ${isActive ? 'text-emerald-500' : 'text-gray-400'}`}>
-                                            {isActive ? 'Active' : 'Paused'}
-                                        </span>
-                                    </div>
-                                </div>
+    const mockActiveRules = [
+        { id: '1', name: 'Welcome Message', status: 'active', trigger: 'Registration', sent: 1250, reached: 1100, successRate: 98, performance: 'A+' },
+        { id: '2', name: 'Birthday Reward', status: 'active', trigger: 'Birthday', sent: 450, reached: 430, successRate: 95, performance: 'A' },
+        { id: '3', name: '30-Day Reactivation', status: 'paused', trigger: 'Inactivity', sent: 890, reached: 210, successRate: 88, performance: 'B+' },
+    ];
 
-                                <div className="flex-1">
-                                    <h3 className="text-xl font-display font-black text-text-main mb-3">{template.name}</h3>
-                                    <p className="text-sm text-text-secondary leading-relaxed mb-6">
-                                        {template.description}
-                                    </p>
-                                </div>
-
-                                <button
-                                    onClick={() => setSelectedTemplate({ ...template, ruleId: rule?.id })}
-                                    className="w-full h-14 bg-gray-50 text-text-main font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-gray-100 hover:text-primary transition-all flex items-center justify-center gap-2 border border-gray-100"
-                                >
-                                    <Settings size={18} />
-                                    Configure Automation
-                                </button>
-                            </motion.div>
-                        );
-                    })}
-                </div>
-
-                {/* Performance Quick Look */}
-                <div className="mt-12 bg-text-main rounded-[2.5rem] p-10 text-white relative overflow-hidden">
-                    <Zap className="absolute -right-8 -top-8 size-64 text-white/5 rotate-12" />
-                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
-                        <div>
-                            <h4 className="text-2xl font-display font-black mb-2">Automation Impact</h4>
-                            <p className="text-white/60">Your active automations are boosting retention by <span className="text-emerald-400 font-black">+18%</span> this month.</p>
-                        </div>
-                        <div className="flex gap-12">
-                            <div className="text-center">
-                                <p className="text-xs font-black uppercase tracking-widest text-white/40 mb-1">Messages</p>
-                                <p className="text-3xl font-display font-black">{performance?.totalMessagesSent?.toLocaleString() || '0'}</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-xs font-black uppercase tracking-widest text-white/40 mb-1">Engaged</p>
-                                <p className="text-3xl font-display font-black">{performance?.totalReplies?.toLocaleString() || '0'}</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-xs font-black uppercase tracking-widest text-white/40 mb-1">Loyalty Given</p>
-                                <p className="text-3xl font-display font-black">{performance?.loyaltyPointsIssued?.toLocaleString() || '0'}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <AnimatePresence>
-                    {selectedTemplate && (
-                        <AutomationConfigModal
-                            template={selectedTemplate}
-                            rule={rules.find(r => r.id === selectedTemplate.ruleId)}
-                            onClose={() => setSelectedTemplate(null)}
-                        />
-                    )}
-                </AnimatePresence>
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
             </div>
-    );
-}
-
-function TemplateToggle({ rule, template }: { rule?: AutomationRule, template: any }) {
-    const { user, activeBranchId } = useAuthStore();
-    const createMutation = useCreateAutomation();
-    const updateMutation = useUpdateAutomation();
-
-    const handleToggle = () => {
-        if (!rule) {
-            // Create the rule if it doesn't exist
-            if (!user?.businessId) return;
-            createMutation.mutate({
-                businessId: user.businessId,
-                branchId: activeBranchId || undefined,
-                name: template.name,
-                triggerType: template.triggerType as any,
-                actionType: ActionType.SEND_WHATSAPP,
-                delaySeconds: 0,
-                isActive: true,
-                actionConfig: {}
-            });
-        } else {
-            updateMutation.mutate({ id: rule.id, data: { isActive: !rule.isActive } });
-        }
-    };
-
-    const isLoading = createMutation.isPending || updateMutation.isPending;
+        );
+    }
 
     return (
-        <button
-            onClick={handleToggle}
-            disabled={isLoading}
-            className={`w-14 h-8 rounded-full relative transition-all ${rule?.isActive ? 'bg-emerald-500' : 'bg-gray-200'} ${isLoading ? 'opacity-50' : ''}`}
-        >
-            <motion.div
-                animate={{ x: rule?.isActive ? 24 : 4 }}
-                className="absolute top-1 size-6 bg-white rounded-full shadow-sm flex items-center justify-center"
-            >
-                {isLoading && <Loader2 className="animate-spin text-primary" size={12} />}
-            </motion.div>
-        </button>
+        <div className="pb-24 md:pb-10 max-w-6xl mx-auto p-4 md:p-8 space-y-12">
+            {/* SCREEN 1: AUTOMATION DASHBOARD */}
+            
+            <AutomationOverviewHeader />
+
+            {/* OVERVIEW METRICS */}
+            <AutomationStatsCards stats={stats} />
+
+            {/* POPULAR AUTOMATIONS (QUICK START) */}
+            <PopularAutomationsSection />
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* LEFT COLUMN: Active Automations */}
+                <div className="lg:col-span-8 space-y-8">
+                    <ActiveAutomationsList rules={rules.length > 0 ? rules : mockActiveRules} />
+                </div>
+
+                {/* RIGHT COLUMN: Quick Actions & Help */}
+                <div className="lg:col-span-4 space-y-8">
+                    {/* CREATE CUSTOM CTA */}
+                    <div className="rounded-[40px] bg-[#066CF4] p-10 text-white relative overflow-hidden shadow-2xl shadow-blue-500/20">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16" />
+                        <h3 className="text-2xl font-black mb-4 leading-tight">Build Custom <br /> Workflow</h3>
+                        <p className="text-sm font-medium text-white/70 mb-8">Create highly specific triggers and multi-step actions for your business.</p>
+                        <Link href="/dashboard/automations/custom">
+                            <Button className="w-full h-14 rounded-2xl bg-white text-[#066CF4] font-black uppercase tracking-widest text-xs hover:bg-gray-50 active:scale-95 transition-all">
+                                <Plus size={18} className="mr-2" />
+                                Start From Scratch
+                            </Button>
+                        </Link>
+                    </div>
+
+                    {/* AUTOMATION TIP */}
+                    <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
+                        <div className="size-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
+                            <HelpCircle size={24} />
+                        </div>
+                        <h4 className="text-sm font-black text-gray-900 mb-2">Automation Tip</h4>
+                        <p className="text-xs font-medium text-gray-500 leading-relaxed">
+                            "Welcome automations have a 3x higher conversion rate than manual follow-ups. Set yours up to greet every new scan!"
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
-
-

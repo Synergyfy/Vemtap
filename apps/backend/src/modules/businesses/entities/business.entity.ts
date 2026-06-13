@@ -12,7 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Category } from './category.entity';
 import { Subcategory } from './subcategory.entity';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
 
 export enum BusinessStatus {
@@ -106,6 +106,26 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   whatsappNumber: string;
 
+  @ApiPropertyOptional({ example: 'We serve local delicacies.' })
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  @ApiPropertyOptional({ example: { Monday: { open: '08:00', close: '18:00', isClosed: false, is24h: false } } })
+  @Column({ type: 'jsonb', nullable: true })
+  openingHours: Record<string, any>;
+
+  @ApiPropertyOptional({ example: 'Africa/Lagos' })
+  @Column({ nullable: true })
+  timezone: string;
+
+  @ApiPropertyOptional({ example: true })
+  @Column({ default: true })
+  isVisible: boolean;
+
+  @ApiPropertyOptional({ example: { facebook: 'https://facebook.com/mybiz' } })
+  @Column({ type: 'jsonb', nullable: true })
+  socials: Record<string, string>;
+
   @ApiProperty({
     example: false,
     description: 'Whether the business is verified by admin',
@@ -123,6 +143,7 @@ export class Business extends AbstractBaseEntity {
   })
   @JoinColumn({ name: 'ownerId' })
   owner: User;
+
 
   @Column()
   ownerId: string;

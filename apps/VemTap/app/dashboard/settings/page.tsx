@@ -1,60 +1,67 @@
-'use client';
+"use client";
 
 import React from 'react';
-import PageHeader from '@/components/dashboard/PageHeader';
-import Link from 'next/link';
-import { Store, Bell, Users, Puzzle, Shield, ArrowRight, Star } from 'lucide-react';
-import LogoIcon from '@/components/brand/LogoIcon';
-import { useAuthStore } from '@/store/useAuthStore';
-import SettingsMobileHub from '@/components/dashboard/SettingsMobileHub';
+import { 
+    SettingsOverviewHeader, 
+    BusinessProfileCard, 
+    SettingsNavigationCards 
+} from '@/components/dashboard/settings/SettingsComponents';
+import { ProfileSettingsView } from '@/components/dashboard/settings/ProfileSettings';
+import { TeamSettingsView } from '@/components/dashboard/settings/TeamSettings';
+import { SubscriptionSettingsView } from '@/components/dashboard/settings/SubscriptionSettings';
+import { BillingSettingsView } from '@/components/dashboard/settings/BillingSettings';
+import { NotificationSettingsView, SecuritySettingsView } from '@/components/dashboard/settings/OtherSettings';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import Spinner from '@/components/ui/Spinner';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 export default function SettingsPage() {
-    const { user } = useAuthStore();
-    const isOwner = user?.role?.toLowerCase() === 'owner';
+    const { data: business, isLoading } = useMyBusiness();
+    const { activeTab, setActiveTab } = useSettingsStore();
 
-    const settingsCategories = [
-        { title: 'Business Profile', desc: 'Manage your business information and layout', icon: Store, href: '/dashboard/settings/profile' },
-        { title: 'Notifications', desc: 'Configure how you receive alerts and reports', icon: Bell, href: '/dashboard/settings/profile?tab=push' },
-        { title: 'Device Settings', desc: 'Configure NFC device defaults and behaviors', icon: LogoIcon, href: '/dashboard/settings/devices' },
-        { title: 'Team Management', desc: 'Invite staff and manage permissions', icon: Users, href: '/dashboard/staff', ownerOnly: true },
-        { title: 'Integrations', desc: 'Connect with POS and CRM tools', icon: Puzzle, href: '/dashboard/settings/integrations' },
-        { title: 'Data & Privacy', desc: 'Manage data retention and compliance', icon: Shield, href: '/dashboard/compliance?tab=privacy' },
-    ];
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
 
-    const filteredCategories = settingsCategories.filter(item =>
-        !item.ownerOnly || isOwner
-    );
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'profile': return <ProfileSettingsView business={business} />;
+            case 'team': return <TeamSettingsView />;
+            case 'subscription': return <SubscriptionSettingsView />;
+            case 'billing': return <BillingSettingsView />;
+            case 'notifications': return <NotificationSettingsView />;
+            case 'security': return <SecuritySettingsView />;
+            default: return <SettingsNavigationCards />;
+        }
+    };
+
+    const isHubView = activeTab === 'profile' || activeTab === 'team' || activeTab === 'subscription' || activeTab === 'billing' || activeTab === 'notifications' || activeTab === 'security';
 
     return (
-        <div className="p-4 md:p-8 space-y-8 md:space-y-10">
-            <PageHeader
-                title="Settings"
-                description="Configure and manage your VemTap account preferences"
-            />
+        <div className="pb-24 md:pb-10 max-w-5xl mx-auto p-4 md:p-8">
+            <SettingsOverviewHeader />
+            
+            {!isHubView && (
+                <>
+                  <BusinessProfileCard business={business} />
+                  <SettingsNavigationCards />
+                </>
+            )}
 
-            {/* Mobile Hub View */}
-            <SettingsMobileHub />
-
-            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {filteredCategories.map((item, i) => (
-                    <Link
-                        key={i}
-                        href={item.href}
-                        className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-primary/20 transition-all group overflow-hidden relative shadow-sm"
-                    >
-                        <div className="size-12 rounded-xl bg-gray-50 flex items-center justify-center mb-4 group-hover:bg-primary text-primary group-hover:text-white transition-all border border-gray-100 shadow-sm">
-                            <item.icon size={24} />
-                        </div>
-                        <h3 className="text-lg font-display font-bold text-text-main mb-1 tracking-tight">{item.title}</h3>
-                        <p className="text-xs text-text-secondary font-medium leading-relaxed">{item.desc}</p>
-                        <div className="mt-4 flex items-center text-primary text-[10px] font-black uppercase tracking-widest gap-2 group-hover:gap-3 transition-all">
-                            Manage
-                            <ArrowRight size={14} />
-                        </div>
-                    </Link>
-                ))}
-            </div>
+            {isHubView && (
+                <>
+                  <Button variant="ghost" onClick={() => setActiveTab('profile')} className="mb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      <ArrowLeft className="mr-2" size={14} /> Back to Settings
+                  </Button>
+                  {renderContent()}
+                </>
+            )}
         </div>
     );
 }
-

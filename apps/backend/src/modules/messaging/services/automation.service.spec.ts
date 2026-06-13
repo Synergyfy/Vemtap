@@ -143,7 +143,7 @@ describe('AutomationService', () => {
     it('should execute immediate rule', async () => {
       const rule = {
         id: '1',
-        triggerType: TriggerType.FIRST_TAG,
+        triggerType: TriggerType.FIRST_MESSAGE,
         delaySeconds: 0,
         actionType: ActionType.SEND_SMS,
         branchId: 'br1',
@@ -154,7 +154,7 @@ describe('AutomationService', () => {
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
       const executeSpy = jest.spyOn(service, 'executeRule');
 
-      await service.trigger(TriggerType.FIRST_TAG, {
+      await service.trigger(TriggerType.FIRST_MESSAGE, {
         branchId: 'br1',
         customerId: 'c1',
       });
@@ -165,7 +165,7 @@ describe('AutomationService', () => {
     it('should queue delayed rule', async () => {
       const rule = {
         id: '1',
-        triggerType: TriggerType.FIRST_TAG,
+        triggerType: TriggerType.FIRST_MESSAGE,
         delaySeconds: 3600,
         actionType: ActionType.SEND_SMS,
         branchId: 'br1',
@@ -174,7 +174,7 @@ describe('AutomationService', () => {
 
       jest.spyOn(ruleRepo, 'find').mockResolvedValue([rule]);
 
-      await service.trigger(TriggerType.FIRST_TAG, {
+      await service.trigger(TriggerType.FIRST_MESSAGE, {
         branchId: 'br1',
         customerId: 'c1',
       });

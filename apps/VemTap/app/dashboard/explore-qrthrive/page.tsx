@@ -11,7 +11,7 @@ import {
     FileText, Image, Video, User, SmartphoneNfc, Music, 
     Building2, UtensilsCrossed, Link2, Ticket, Wifi,
     Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download, Lock, Edit2,
-    WifiOff
+    WifiOff, Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -25,10 +25,22 @@ import { QrPreview } from './components/QrPreview';
 import { DesignPanel } from './components/DesignPanel';
 import { ContentForm } from './components/ContentForm';
 
+// QRThrive Hub Components
+import { 
+    QRThriveOverviewHeader,
+    QRThriveMetrics,
+    QRThriveQuickActions,
+    QRThriveCategoriesGrid,
+    QRThriveLeaderboard
+} from '@/components/dashboard/qr-thrive/QRThriveHub';
+import { QRThriveManagementView } from '@/components/dashboard/qr-thrive/QRThriveManagement';
+import { QRThriveAnalyticsView } from '@/components/dashboard/qr-thrive/QRThriveAnalytics';
+
 // QRThrive Dynamic Preview
 import DynamicView from '@/components/qr-thrive/DynamicView';
 
 // Hooks & Services
+import { useQrThriveStore } from '@/store/useQrThriveStore';
 import { 
     useQrThriveCodes, 
     useCreateQrThriveCode, 
@@ -76,7 +88,13 @@ const getScanCount = (scans: any): number => {
 
 export default function ExploreQRThrivePage() {
     const { canPerformAction } = useActionPermission();
-    const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
+    
+    // Bridge internal state with store
+    const { view: storeView, setView: setStoreView, setSelectedType: setStoreSelectedType } = useQrThriveStore();
+    const [view, setView] = useState<'hub' | 'list' | 'create' | 'edit' | 'analytics'>(
+        storeView === 'manage' ? 'list' : storeView as any
+    );
+    
     const [step, setStep] = useState<'type' | 'content' | 'design'>('type');
     const [designTab, setDesignTab] = useState<'shape' | 'frame' | 'logo'>('shape');
     const [previewMode, setPreviewMode] = useState<'preview' | 'qr'>('qr');
@@ -93,6 +111,20 @@ export default function ExploreQRThrivePage() {
     const [selectedQrId, setSelectedQrId] = useState<string | null>(null);
     const [isUploadingFiles, setIsUploadingFiles] = useState(false);
     const qrRefs = useRef<Record<string, any>>({});
+
+    // Sync internal view with store when store changes
+    useEffect(() => {
+        if (storeView === 'hub') setView('hub');
+        if (storeView === 'manage') setView('list');
+        if (storeView === 'create') setView('create');
+        if (storeView === 'analytics') setView('analytics');
+    }, [storeView]);
+
+    // Handle view changes internally
+    const handleSetView = (newView: any) => {
+        setView(newView);
+        setStoreView(newView === 'list' ? 'manage' : newView);
+    };
 
     const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
     const provisionMutation = useProvisionQrThriveUser();
@@ -114,7 +146,7 @@ export default function ExploreQRThrivePage() {
 
     useEffect(() => {
         if (prefillUrl) {
-            setView('create');
+            handleSetView('create');
             setSelectedType('url' as QRType);
             setQrData({ type: 'url', url: decodeURIComponent(prefillUrl) });
             if (prefillName) setQrName(decodeURIComponent(prefillName));
@@ -246,13 +278,13 @@ export default function ExploreQRThrivePage() {
         setQrDesign(mainQrCode.design || DEFAULT_QR_DESIGN);
         setQrFrame(mainQrCode.frame || DEFAULT_QR_FRAME);
         setQrLogo(mainQrCode.logo);
-        setView('edit');
+        handleSetView('edit');
         setStep('type');
         setIsLocked(false);
     };
 
     const handleCreateNew = () => {
-        setView('create');
+        handleSetView('create');
         setStep('type');
         setSelectedType(null);
         setQrData({ type: 'url', url: 'https://qrthrive.com' });
@@ -273,7 +305,7 @@ export default function ExploreQRThrivePage() {
     const handleBack = () => {
         if (step === 'content') {
             if (isLocked) {
-                setView('list');
+                handleSetView('list');
                 return;
             }
             setStep('type');
@@ -391,7 +423,7 @@ export default function ExploreQRThrivePage() {
                 }
                 toast.success('QR Code created successfully!');
             }
-            setView('list');
+            handleSetView('list');
             refetchCodes();
         } catch (error: any) {
             toast.error(error?.message || `Failed to ${view === 'edit' ? 'update' : 'create'} QR Code`);
@@ -629,292 +661,47 @@ export default function ExploreQRThrivePage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
             <div className="max-w-7xl mx-auto w-full p-4 lg:p-10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <PageHeader 
-                        title="QR-Thrive Integration" 
-                        description="Create and manage your dynamic QR codes"
-                    />
-                    
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        {view === 'list' && (
+                
+                {view === 'hub' && (
+                    <div className="space-y-12">
+                        <QRThriveOverviewHeader />
+                        <QRThriveMetrics />
+                        <QRThriveQuickActions />
+                        <QRThriveLeaderboard />
+                        <QRThriveCategoriesGrid />
+                    </div>
+                )}
+
+                {view === 'analytics' && <QRThriveAnalyticsView />}
+
+                {view === 'list' && (
+                    <QRThriveManagementView codes={codes || []} />
+                )}
+
+                {(view === 'create' || view === 'edit') && (
+                    <>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                        <PageHeader 
+                            title={view === 'edit' ? "Edit QR Code" : "Create QR Experience"} 
+                            description="Configure your custom dynamic QR journey"
+                        />
+                        
+                        <div className="flex items-center gap-3">
                             <button 
-                                onClick={() => router.push('/dashboard/explore-qrthrive/leads')}
+                                onClick={() => handleSetView('hub')}
                                 className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
                             >
-                                <UsersIcon className="size-4" /> View Leads
+                                Hub Overview
                             </button>
-                        )}
-                        {view === 'list' ? (
                             <button 
-                                onClick={handleCreateNew}
-                                className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
-                            >
-                                <Plus className="size-4" /> Create New
-                            </button>
-                        ) : (
-                            <button 
-                                onClick={() => setView('list')}
+                                onClick={() => handleSetView('list')}
                                 className="px-6 py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-200 transition-all border border-slate-200"
                             >
                                 <List className="size-4" /> Back to List
                             </button>
-                        )}
-                    </div>
-                </div>
-
-                {view === 'list' ? (
-                    <div className="space-y-8">
-                        {(!activeBranchId || activeBranchId === 'all') && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex items-start gap-4 mb-8">
-                                <HelpCircle className="w-6 h-6 text-amber-600 shrink-0 mt-1" />
-                                <div>
-                                    <h4 className="text-sm font-bold text-amber-900 uppercase tracking-widest leading-none mb-2">Select a Location</h4>
-                                    <p className="text-xs text-amber-700 font-medium">Please select a specific branch from the location switcher above to manage and create QR codes.</p>
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                            {[
-                                { label: 'Total QR Codes', value: stats?.totalQrCodes || 0, icon: QrCode, color: 'blue' as const },
-                                { label: 'Total Scans', value: stats?.totalScans || 0, icon: BarChart3, color: 'green' as const },
-                                { label: 'Unique Visitors', value: stats?.uniqueVisitors || 0, icon: UsersIcon, color: 'purple' as const },
-                                { label: 'Scans (Last 24h)', value: stats?.scansLast24h || 0, icon: Zap, color: 'yellow' as const },
-                            ].map((stat, i) => (
-                                <StatsCard
-                                    key={i}
-                                    label={stat.label}
-                                    value={stat.value.toLocaleString()}
-                                    icon={stat.icon}
-                                    color={stat.color}
-                                />
-                            ))}
-                        </div>
-
-                        {/* Main Business Link QR Code */}
-                        {mainQrCode && !isLoadingMainQr && (
-                            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-[40px] p-6 lg:p-8 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-32 -mt-32" />
-                                <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/20 blur-[60px] rounded-full -ml-24 -mb-24" />
-                                <div className="relative z-10 flex flex-col lg:flex-row items-start gap-6">
-                                    <div className="shrink-0">
-                                        <div className="w-40 h-40 lg:w-48 lg:h-48 bg-white rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden">
-                                            <div className="scale-[0.114] lg:scale-[0.141] transform-gpu">
-                                                <QrPreview
-                                                    data={`${origin}/s/${branchUniqueCode}`}
-                                                    design={mainQrCode.design || DEFAULT_QR_DESIGN}
-                                                    frame={{ type: 'none' }}
-                                                    logo={mainQrCode.logo}
-                                                    width={1024}
-                                                    height={1024}
-                                                    onReady={(inst) => { qrRefs.current['main'] = inst; }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0 space-y-3">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 text-white border border-white/30 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                            <Zap size={12} className="fill-white" />
-                                            Main Business Link
-                                        </div>
-                                        <h3 className="text-xl lg:text-2xl font-bold text-white leading-tight truncate">
-                                            {mainQrCode.name}
-                                        </h3>
-                                        <p className="text-sm text-blue-100 font-medium truncate">
-                                            {branchUsername ? `${origin}/${branchUsername}` : (mainQrCode.data?.url || 'No URL configured')}
-                                        </p>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
-                                                {getScanCount(mainQrCode.scans)} scans
-                                            </span>
-                                            <span className="text-blue-300">·</span>
-                                            <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
-                                                Dynamic QR
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-2 pt-1">
-                                            <button
-                                                onClick={handleEditMainQr}
-                                                className="px-5 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
-                                            >
-                                                <Edit2 size={12} /> Edit
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const inst = qrRefs.current['main'];
-                                                    if (inst) {
-                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'png' });
-                                                        toast.success('QR Code downloaded');
-                                                    }
-                                                }}
-                                                className="px-4 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
-                                            >
-                                                <Download size={10} /> PNG
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const inst = qrRefs.current['main'];
-                                                    if (inst) {
-                                                        inst.download({ name: mainQrCode.name || 'main-qr', extension: 'svg' });
-                                                        toast.success('QR Code downloaded');
-                                                    }
-                                                }}
-                                                className="px-4 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
-                                            >
-                                                <Download size={10} /> SVG
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const copyUrl = branchUsername ? `${origin}/${branchUsername}` : mainQrCode.data?.url;
-                                                    if (copyUrl) {
-                                                        navigator.clipboard.writeText(copyUrl);
-                                                        toast.success('URL copied to clipboard');
-                                                    }
-                                                }}
-                                                className="px-4 py-2.5 bg-white/15 text-white border border-white/30 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/25 transition-all flex items-center gap-1.5"
-                                            >
-                                                <Copy size={10} /> Copy URL
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {!mainQrCode && !isLoadingMainQr && (
-                            <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[40px] p-6 lg:p-8 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full -mr-32 -mt-32" />
-                                <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/10 blur-[60px] rounded-full -ml-24 -mb-24" />
-                                <div className="relative z-10 flex flex-col lg:flex-row items-start gap-6">
-                                    <div className="shrink-0">
-                                        <div className="w-40 h-40 lg:w-48 lg:h-48 bg-white/10 rounded-3xl flex items-center justify-center">
-                                            <QrCode size={64} className="text-white/40" />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0 space-y-3">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-white/80 border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                            <Zap size={12} />
-                                            Main Business Link
-                                        </div>
-                                        <h3 className="text-xl lg:text-2xl font-bold text-white leading-tight">
-                                            No main QR code yet
-                                        </h3>
-                                        <p className="text-sm text-white/60 font-medium">
-                                            Create a main business link QR code to display on your customer experience page.
-                                        </p>
-                                        <div className="flex flex-wrap items-center gap-2 pt-1">
-                                            <button
-                                                onClick={async () => {
-                                                    try {
-                                                        await recreateMainMutation.mutateAsync(undefined);
-                                                        toast.success('Main QR Code created!');
-                                                    } catch (err: any) {
-                                                        toast.error(err?.message || 'Failed to create main QR code');
-                                                    }
-                                                }}
-                                                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
-                                            >
-                                                <Plus size={12} /> Create Main QR
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {isLoadingCodes ? (
-                            <div className="flex flex-col items-center justify-center py-20">
-                                <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-                                <p className="text-slate-500 font-medium">Loading your QR codes...</p>
-                            </div>
-                        ) : (
-                            <QrGrid 
-                                codes={codes || []} 
-                                mainQrCodeId={mainQrCodeId}
-                                onEdit={(qr) => {
-                                    setSelectedQrId(qr.id);
-                                    setSelectedType(qr.type as QRType);
-                                    setQrData(qr.data);
-                                    setQrName(qr.name);
-                                    setQrDesign(qr.design || DEFAULT_QR_DESIGN);
-                                    setQrFrame(qr.frame || DEFAULT_QR_FRAME);
-                                    setQrLogo(qr.logo);
-                                    setView('edit');
-                                    setStep('type');
-                                    setIsLocked(false);
-                                }}
-                                 onDelete={async (id) => {
-                                    console.log('Page onDelete called with:', id);
-                                    try {
-                                        await deleteMutation.mutateAsync({ qrId: id });
-                                        toast.success('QR Code deleted');
-                                    } catch (err: any) {
-                                        toast.error(err?.message || 'Failed to delete');
-                                    }
-                                }}
-                                onDuplicate={async (id) => {
-                                    try {
-                                        await duplicateMutation.mutateAsync({ qrId: id });
-                                        toast.success('QR Code duplicated');
-                                    } catch (err: any) {
-                                        toast.error(err?.message || 'Failed to duplicate');
-                                    }
-                                }}
-                                onArchive={async (id, status) => {
-                                    try {
-                                        await statusMutation.mutateAsync({ qrId: id, status: status as 'active' | 'archived' });
-                                        toast.success(status === 'archived' ? 'QR Code archived' : 'QR Code restored');
-                                    } catch (err: any) {
-                                        toast.error(err?.message || 'Failed to update status');
-                                    }
-                                }}
-
-                                onViewStats={(qr) => {
-                                    toast.success(`Total scans: ${qr.scans}`);
-                                }}
-                                onDownload={(qr, format) => {
-                                    const link = document.createElement('a');
-                                    link.href = qr.shortUrl;
-                                    link.download = `${qr.name}.${format}`;
-                                    link.click();
-                                    toast.success('Download started');
-                                }}
-                                onSetAsMain={async (id) => {
-                                    try {
-                                        await setAsMainMutation.mutateAsync({ qrId: id });
-                                        toast.success('QR Code set as main business link!');
-                                    } catch (err: any) {
-                                        toast.error(err?.message || 'Failed to set QR code as main');
-                                    }
-                                }}
-                            />
-                        )}
-
-
-                        <div className="bg-slate-900 rounded-[3rem] p-8 lg:p-12 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-[100px] rounded-full -mr-32 -mt-32" />
-                            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-                                <div className="space-y-4">
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                                        <Zap size={12} className="fill-blue-400" />
-                                        Advanced Features
-                                    </div>
-                                    <h3 className="text-3xl font-bold text-white leading-tight">
-                                        Need more power? <br />
-                                        <span className="text-blue-400">Use the full QRThrive platform.</span>
-                                    </h3>
-                                </div>
-                                <a 
-                                    href="/dashboard/explore-qrthrive/sso"
-                                    target="_blank"
-                                    className="px-8 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 text-center whitespace-nowrap"
-                                >
-                                    Open Dashboard
-                                </a>
-                            </div>
                         </div>
                     </div>
-                ) : (
+
                     <div className="flex flex-col lg:flex-row relative min-h-[calc(100vh-200px)]">
                         {/* Left Side: Configuration */}
                         <div className="flex-1 w-full lg:pr-[500px] p-4 sm:p-8 lg:p-12 flex flex-col">
@@ -1064,7 +851,6 @@ export default function ExploreQRThrivePage() {
                          {/* Right Side: Preview */}
                         <div className="w-full lg:w-[500px] lg:fixed lg:top-20 lg:right-0 lg:bottom-0 bg-white border-t lg:border-t-0 lg:border-l border-slate-100 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-30 p-6 sm:p-8 flex flex-col items-center overflow-y-auto custom-scrollbar lg:min-h-0 min-h-[500px]">
                             {/* Toggle */}
-                            {/* Toggle - Always show when in create mode */}
                             <div className="mb-8 w-full max-w-[200px] p-1 bg-slate-50 rounded-full border border-slate-100 flex items-center relative group/switcher shadow-sm">
                                 <div className={cn(
                                     "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-blue-600 rounded-full shadow-lg shadow-blue-200 transition-all duration-300 ease-out z-10",
@@ -1090,7 +876,7 @@ export default function ExploreQRThrivePage() {
                                 </button>
                             </div>
 
-{previewMode === 'qr' ? (
+                            {previewMode === 'qr' ? (
                                 <QrPreview 
                                     data={qrData?.url || qrData?.text || 'https://qrthrive.com'} 
                                     design={qrDesign}
@@ -1156,6 +942,7 @@ export default function ExploreQRThrivePage() {
                             )}
                         </div>
                     </div>
+                    </>
                 )}
             </div>
         </div>

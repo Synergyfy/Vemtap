@@ -22,9 +22,9 @@ export class VemtapAffiliateAgentsService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    const configuredUrl = this.configService.get<string>('VEMTAP_AFFILIATE_BASE_URL', 'http://localhost:4005/api');
+    const configuredUrl = this.configService.get<string>('VEMTAP_AFFILIATE_BASE_URL') || 'http://localhost:4005/api';
     this.baseUrl = configuredUrl.replace(/\/external\/?$/, '');
-    this.secret = this.configService.get<string>('VEMTAP_AFFILIATE_KEY', '');
+    this.secret = this.configService.get<string>('VEMTAP_AFFILIATE_KEY') || '';
   }
 
   private get headers() {

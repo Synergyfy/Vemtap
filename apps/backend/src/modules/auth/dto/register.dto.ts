@@ -10,6 +10,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { UserRole } from '../../users/entities/user.entity';
+import { Transform } from 'class-transformer';
 
 export class RegisterDto {
   @ApiProperty({ example: 'John', description: 'First name of the user' })
@@ -49,6 +50,12 @@ export class RegisterDto {
       'Role of the user (default: customer or owner if businessName is present)',
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value;
+    const normalized =
+      value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    return normalized as UserRole;
+  })
   @IsEnum(UserRole)
   role?: UserRole;
 

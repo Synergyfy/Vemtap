@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsBoolean, IsObject, IsEmail } from 'class-validator';
 
 export class UpdateBusinessDto {
   @ApiPropertyOptional({ example: 'The Azure Bistro' })
@@ -50,4 +50,55 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @ApiPropertyOptional({ example: 'We serve local delicacies.' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com' })
+  @IsOptional()
+  @IsString()
+  website?: string;
+
+  @ApiPropertyOptional({ example: { Monday: { open: '08:00', close: '18:00', isClosed: false, is24h: false } } })
+  @IsOptional()
+  @IsObject()
+  openingHours?: object;
+
+  @ApiPropertyOptional({ example: 'Africa/Lagos' })
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isVisible?: boolean;
+
+  @ApiPropertyOptional({ example: { facebook: 'https://facebook.com/mybiz' } })
+  @IsOptional()
+  @IsObject()
+  socials?: object;
+
+  @ApiPropertyOptional({ example: 'info@example.com' })
+  @IsOptional()
+  @IsEmail()
+  officialEmail?: string;
+
+  @ApiPropertyOptional({ example: '+2348012345678' })
+  @IsOptional()
+  @IsString()
+  whatsappNumber?: string;
+
+  @ApiPropertyOptional({ example: '+2348012345678' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: '123 Main Street' })
+  @IsOptional()
+  @IsString()
+  address?: string;
 }
+

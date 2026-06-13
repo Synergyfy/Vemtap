@@ -19,24 +19,35 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-lg mb-8 font-display">Product</h4>
                         <ul className="space-y-4 text-text-secondary font-bold text-sm">
-                            <li><Link href="/how-it-works" className="hover:text-primary transition-colors">How it Works</Link></li>
                             <li><Link href="/features" className="hover:text-primary transition-colors">Features</Link></li>
-                            <li><Link href="/solutions" className="hover:text-primary transition-colors">Solutions</Link></li>
                             <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
-                            <li><Link href="/testimonials" className="hover:text-primary transition-colors">Testimonials</Link></li>
-                            <li><Link href="/faq" className="hover:text-primary transition-colors">FAQ</Link></li>
+                            <li><Link href="/how-it-works" className="hover:text-primary transition-colors">How It Works</Link></li>
+                            <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-bold text-lg mb-8 font-display">Resources</h4>
+                        <h4 className="font-bold text-lg mb-8 font-display">Legal</h4>
                         <ul className="space-y-4 text-text-secondary font-bold text-sm">
-                            <li><Link href="/faq" className="hover:text-primary transition-colors">Documentation</Link></li>
-                            <li><Link href="/bussinesss" className="hover:text-primary transition-colors">Tutorial Dashboard</Link></li>
-                            <li><Link href="/profile-my-business" className="hover:text-primary transition-colors">Profile my business</Link></li>
-                            <li><Link href="/status" className="hover:text-primary transition-colors">Security Center</Link></li>
-                            <li><Link href="/contact" className="hover:text-primary transition-colors">Contact Us</Link></li>
-                            <li><Link href="/support" className="hover:text-primary transition-colors">Contact Support</Link></li>
+                            <li><Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
+                            <li><Link href="/terms" className="hover:text-primary transition-colors">Terms</Link></li>
                         </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-lg mb-8 font-display">Social</h4>
+                        <div className="flex gap-4">
+                            <Link href="https://facebook.com/vemtap" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">
+                                <span className="material-icons-round">facebook</span>
+                            </Link>
+                            <Link href="https://instagram.com/vemtap" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">
+                                <span className="material-icons-round">camera_alt</span>
+                            </Link>
+                            <Link href="https://linkedin.com/company/vemtap" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">
+                                <span className="material-icons-round">business</span>
+                            </Link>
+                            <Link href="https://x.com/vemtap" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">
+                                <span className="material-icons-round">X</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
                 <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
