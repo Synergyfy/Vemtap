@@ -9,6 +9,7 @@ import { useAddOns, useBundleDiscounts } from '@/services/addons/hooks';
 import AddOnSelectionList from './AddOnSelectionList';
 import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
+import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { PricingPlan } from '@/types/pricing';
 
 interface Props {
@@ -90,6 +91,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         const amountToCharge = isTrial ? 50 : (breakdown?.total || 0); // Charge NGN 50 for trial verification
         paymentSuccessful.current = false;
 
+        await loadPaystackScript();
         // @ts-ignore
         const handler = window.PaystackPop.setup({
             key: publicKey,
