@@ -19,7 +19,17 @@ export class MarketingTemplate extends AbstractBaseEntity {
 
   @ApiProperty({ example: ['uuid'], description: 'FKs to marketing_categories' })
   @ManyToMany(() => MarketingCategory, cat => cat.templates)
-  @JoinTable({ name: 'marketing_template_categories' })
+  @JoinTable({
+    name: 'marketing_template_categories',
+    joinColumn: {
+      name: 'templateId',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'categoryId',
+      referencedColumnName: 'id',
+    },
+  })
   categories?: MarketingCategory[];
 
   @ApiProperty({ example: 'table_tent', description: 'Type of the template (table_tent, poster, flyer, business_card)' })

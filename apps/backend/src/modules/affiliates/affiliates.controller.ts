@@ -3,14 +3,20 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   UseGuards,
   Req,
   Param,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AffiliatesService } from './affiliates.service';
+import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service';
+import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
+import { CreateAgentDto } from './dto/create-agent.dto';
+import { UpdateAgentDto } from './dto/update-agent.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -22,7 +28,10 @@ import { KycStatus } from './entities/affiliate-profile.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('affiliates')
 export class AffiliatesController {
-  constructor(private readonly affiliatesService: AffiliatesService) {}
+  constructor(
+    private readonly affiliatesService: AffiliatesService,
+    private readonly agentsService: VemtapAffiliateAgentsService,
+  ) {}
 
   @Get('stats')
   @Roles(UserRole.AGENT)
@@ -179,5 +188,52 @@ export class AffiliatesController {
     @Body('reason') reason?: string,
   ) {
     return this.affiliatesService.toggleAffiliateFlag(id, isFlagged, reason);
+  }
+
+  // --- Affiliate Agent Proxy Endpoints (Compensation Dashboard) ---
+
+  @Get('agents')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'List agents from affiliate backend' })
+  async listAgents(@Query() query: ListAgentsQueryDto) {
+    return this.agentsService.listAgents(query);
+  }
+
+  @Get('agents/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get agent detail from affiliate backend' })
+  async getAgentDetail(@Param('id', ParseUUIDPipe) id: string) {
+    return this.agentsService.getAgentDetail(id);
+  }
+
+  @Get('agents/:id/revenue')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get agent monthly revenue trend' })
+  async getAgentRevenue(@Param('id', ParseUUIDPipe) id: string) {
+    return this.agentsService.getAgentRevenue(id);
+  }
+
+  @Post('agents')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a new agent in affiliate backend' })
+  async createAgent(@Body() dto: CreateAgentDto) {
+    return this.agentsService.createAgent(dto);
+  }
+
+  @Patch('agents/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update an agent in affiliate backend' })
+  async updateAgent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAgentDto,
+  ) {
+    return this.agentsService.updateAgent(id, dto);
+  }
+
+  @Delete('agents/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Deactivate an agent in affiliate backend' })
+  async deleteAgent(@Param('id', ParseUUIDPipe) id: string) {
+    return this.agentsService.deleteAgent(id);
   }
 }

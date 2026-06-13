@@ -74,26 +74,10 @@ export class AIPromptsService {
       promptText = promptText.replace(new RegExp(`{${key}}`, 'g'), value);
     }
 
-    // 1. Try OpenAI if configured
-    if (this.openAiClient) {
-      try {
-        const response = await this.openAiClient.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: promptText }],
-          temperature: 0.7,
-          max_tokens: 150,
-        });
-        const text = response.choices[0]?.message?.content?.trim();
-        if (text) return { text };
-      } catch (e) {
-        console.warn('OpenAI Generation failed, falling back to Gemini/Local', e);
-      }
-    }
-
-    // 2. Try Gemini if configured
+    // 1. Try Gemini if configured
     if (this.geminiClient) {
       try {
-        const model = this.geminiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = this.geminiClient.getGenerativeModel({ model: 'gemini-flash-latest' });
         const result = await model.generateContent(promptText);
         const response = await result.response;
         const text = response.text()?.trim();

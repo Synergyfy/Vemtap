@@ -37,6 +37,18 @@ export class RegisterOwnerDto {
   })
   password?: string;
 
+  @ApiPropertyOptional({ example: 'John' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  firstName?: string;
+
+  @ApiPropertyOptional({ example: 'Doe' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  lastName?: string;
+
   // --- Business Details ---
   @ApiPropertyOptional({
     example: 'Green Terrace Cafe',

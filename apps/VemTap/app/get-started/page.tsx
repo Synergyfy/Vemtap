@@ -1,20 +1,22 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     CheckCircle2, Building2, Smartphone, Mail, 
     Lock, ArrowRight, ArrowLeft, Eye, EyeOff, 
-    Check, Sparkles, User, ShieldCheck, Rocket,
-    ChevronRight, Globe
+    Check, User, ShieldCheck
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
-import { useCategories } from '@/services/categories/hooks';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useRegisterOwner, useOtp } from '@/services/auth/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import type { AuthResponse } from '@/services/auth/types';
 
 // Confetti Component
 const Confetti = () => {
@@ -43,35 +45,174 @@ export default function GetStartedPage() {
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [isGoogleUser, setIsGoogleUser] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
         businessName: '',
-        ownerName: '',
-        businessCategory: '',
+        firstName: '',
+        lastName: '',
         email: '',
         phone: '',
         password: '',
         confirmPassword: '',
     });
 
-    const [error, setError] = useState('');
-    const { data: categoriesData } = useCategories();
+    // OTP verification states
+    const [otpCode, setOtpCode] = useState('');
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+    const [resendDisabled, setResendDisabled] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
 
-    const handleNext = () => {
-        setError('');
-        setStep(s => s + 1);
+    const [error, setError] = useState('');
+    const { registerOwner, requestOwnerOtp } = useRegisterOwner();
+    const { verifyOtp } = useOtp();
+    const login = useAuthStore(state => state.login);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        } else {
+            setResendDisabled(false);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
+
+    // Password rules checker
+    const getPasswordRules = (pwd: string) => {
+        return {
+            minLength: pwd.length >= 8,
+            hasLowercase: /[a-z]/.test(pwd),
+            hasUppercase: /[A-Z]/.test(pwd),
+            hasNumber: /[0-9]/.test(pwd),
+            hasSymbol: /[^A-Za-z0-9]/.test(pwd),
+        };
     };
+
+    const pwdRules = getPasswordRules(formData.password);
+    const isPasswordStrong = Object.values(pwdRules).every(Boolean);
 
     const handleBack = () => setStep(s => s - 1);
 
-    const handleFinalSubmit = async () => {
+    const handleStep2Submit = async () => {
+        setError('');
         setIsLoading(true);
-        // Simulate registration
-        setTimeout(() => {
+        try {
+            await requestOwnerOtp({
+                email: formData.email,
+                phone: formData.phone,
+                role: 'Owner'
+            });
+            setStep(2);
+            setResendTimer(30);
+            setResendDisabled(true);
+        } catch (err: any) {
+            setError(err.message || 'Failed to request verification code');
+        } finally {
             setIsLoading(false);
-            setStep(4); // Step 4 is success
-        }, 1500);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        setError('');
+        setOtpLoading(true);
+        try {
+            await verifyOtp({
+                email: formData.email,
+                code: otpCode
+            });
+            setStep(3);
+        } catch (err: any) {
+            setError(err.message || 'Invalid or expired verification code');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        setError('');
+        setResendLoading(true);
+        try {
+            await requestOwnerOtp({
+                email: formData.email,
+                phone: formData.phone,
+                role: 'Owner'
+            });
+            setResendTimer(30);
+            setResendDisabled(true);
+        } catch (err: any) {
+            setError(err.message || 'Failed to resend verification code');
+        } finally {
+            setResendLoading(false);
+        }
+    };
+
+    const handleGoogleSuccess = (authResponse: AuthResponse) => {
+        const { user, isNewUser } = authResponse;
+
+        if (!isNewUser) {
+            router.push('/dashboard');
+            return;
+        }
+
+        setIsGoogleUser(true);
+        setFormData(prev => ({
+            ...prev,
+            email: user.email || '',
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
+            phone: user.phone || '',
+        }));
+    };
+
+    const handleGoogleComplete = async () => {
+        setIsLoading(true);
+        setError('');
+        try {
+            const response = await registerOwner({
+                email: formData.email,
+                businessNumber: formData.phone,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                businessName: formData.businessName,
+            });
+
+            login(response.user, response.access_token);
+
+            router.push('/onboarding');
+        } catch (err: any) {
+            setError(err.message || 'Something went wrong');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleFinalSubmit = async () => {
+        setError('');
+        setIsLoading(true);
+        try {
+            const response = await registerOwner({
+                email: formData.email,
+                password: formData.password,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                businessName: formData.businessName,
+            });
+
+            // Log user in
+            login(response.user, response.access_token);
+
+            // Redirect immediately to onboarding
+            router.push('/onboarding');
+        } catch (err: any) {
+            setError(err.message || 'Registration failed. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -137,8 +278,8 @@ export default function GetStartedPage() {
                             <div className="flex items-center justify-between mb-4">
                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#066CF4]">Step {step} of 3</span>
                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">
-                                  {step === 1 ? 'Business' : step === 2 ? 'Contact' : 'Security'}
-                               </span>
+                                   {step === 1 ? 'Contact' : step === 2 ? 'Verify' : isGoogleUser ? 'Business' : 'Security'}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 {[1, 2, 3].map((s) => (
@@ -149,12 +290,161 @@ export default function GetStartedPage() {
                     )}
 
                     <AnimatePresence mode="wait">
-                        {/* STEP 1: Business Info */}
+                        {/* STEP 1: Contact Info */}
                         {step === 1 && (
                             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                 <div>
-                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">Tell Us About Your Business</h1>
-                                    <p className="text-sm font-medium text-gray-400">Let's start with the basics of your establishment.</p>
+                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">
+                                        {isGoogleUser ? 'Enter Your Phone Number' : 'How Can We Reach You?'}
+                                    </h1>
+                                    <p className="text-sm font-medium text-gray-400">
+                                        {isGoogleUser ? 'We need your phone number to complete your profile.' : 'Your contact info will be used for account verification.'}
+                                    </p>
+                                </div>
+                                <div className="space-y-6">
+                                    {isGoogleUser ? (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
+                                                <div className="relative">
+                                                    <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                    <input 
+                                                        type="tel" 
+                                                        value={formData.phone} 
+                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})} 
+                                                        placeholder="+234 ..." 
+                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
+
+                                            <Button 
+                                                onClick={() => setStep(3)} 
+                                                disabled={!formData.phone} 
+                                                className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                            >
+                                                Continue <ArrowRight size={16} />
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <GoogleAuthButton
+                                                role="owner"
+                                                onSuccess={handleGoogleSuccess}
+                                                label="Sign up with Google"
+                                            />
+
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex-1 h-px bg-gray-200" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">Or</span>
+                                                <div className="flex-1 h-px bg-gray-200" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
+                                                <div className="relative">
+                                                    <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                    <input 
+                                                        type="tel" 
+                                                        value={formData.phone} 
+                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})} 
+                                                        placeholder="+234 ..." 
+                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email Address</label>
+                                                <div className="relative">
+                                                    <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                    <input 
+                                                        type="email" 
+                                                        value={formData.email} 
+                                                        onChange={(e) => setFormData({...formData, email: e.target.value})} 
+                                                        placeholder="name@business.com" 
+                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
+
+                                            <Button 
+                                                onClick={handleStep2Submit} 
+                                                disabled={isLoading || !formData.phone || !formData.email} 
+                                                className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                            >
+                                                {isLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Send Verification Code <ArrowRight size={16} /></>}
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 2: OTP Verification */}
+                        {step === 2 && (
+                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                                <button onClick={handleBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 transition-colors mb-4">
+                                    <ArrowLeft size={16} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
+                                </button>
+                                <div>
+                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">Verify Your Email</h1>
+                                    <p className="text-sm font-medium text-gray-400">We sent a 4-digit verification code to <span className="text-[#066CF4] font-bold">{formData.email}</span>.</p>
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Verification Code</label>
+                                        <div className="relative">
+                                            <ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                            <input 
+                                                type="text" 
+                                                maxLength={4}
+                                                value={otpCode} 
+                                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))} 
+                                                placeholder="e.g. 1234" 
+                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-center tracking-[1em] text-lg transition-all" 
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
+
+                                    <Button 
+                                        onClick={handleVerifyOtp} 
+                                        disabled={otpLoading || otpCode.length !== 4} 
+                                        className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                    >
+                                        {otpLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Verify Code'}
+                                    </Button>
+
+                                    <div className="text-center pt-2">
+                                        <button 
+                                            type="button"
+                                            onClick={handleResendOtp}
+                                            disabled={resendDisabled || resendLoading}
+                                            className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4] disabled:opacity-50 transition-colors"
+                                        >
+                                            {resendDisabled ? `Resend Code in ${resendTimer}s` : 'Resend Code'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 3: Password / Security */}
+                        {step === 3 && (
+                            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                                <button onClick={() => { if (isGoogleUser) { setStep(1); } else { handleBack(); } }} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 transition-colors mb-4">
+                                    <ArrowLeft size={16} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
+                                </button>
+                                <div>
+                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">{isGoogleUser ? 'Tell Us About Your Business' : 'Secure Your Account'}</h1>
+                                    <p className="text-sm font-medium text-gray-400">{isGoogleUser ? 'Just a few more details to get started.' : 'Set up your business details and password.'}</p>
                                 </div>
                                 <div className="space-y-6">
                                     <div className="space-y-2">
@@ -170,182 +460,105 @@ export default function GetStartedPage() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Owner / Manager Name</label>
-                                        <div className="relative">
-                                            <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                            <input 
-                                                type="text" 
-                                                value={formData.ownerName} 
-                                                onChange={(e) => setFormData({...formData, ownerName: e.target.value})} 
-                                                placeholder="Your Full Name" 
-                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                            />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">First Name</label>
+                                            <div className="relative">
+                                                <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                <input 
+                                                    type="text" 
+                                                    value={formData.firstName} 
+                                                    onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
+                                                    placeholder="First Name" 
+                                                    className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Business Category</label>
-                                        <select 
-                                            value={formData.businessCategory} 
-                                            onChange={(e) => setFormData({...formData, businessCategory: e.target.value})} 
-                                            className="w-full px-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm appearance-none"
-                                        >
-                                            <option value="">Select Category</option>
-                                            <option value="restaurant">Restaurant / Cafe</option>
-                                            <option value="retail">Retail / Fashion</option>
-                                            <option value="salon">Salon / Spa</option>
-                                            <option value="gym">Gym / Fitness</option>
-                                            <option value="other">Other Business</option>
-                                        </select>
-                                    </div>
-                                    <Button 
-                                        onClick={handleNext} 
-                                        disabled={!formData.businessName || !formData.ownerName || !formData.businessCategory} 
-                                        className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
-                                    >
-                                        Continue <ArrowRight size={16} />
-                                    </Button>
-                                </div>
-                            </motion.div>
-                        )}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Last Name</label>
+                                            <div className="relative">
+                                                <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                <input 
+                                                    type="text" 
+                                                    value={formData.lastName} 
+                                                    onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
+                                                    placeholder="Last Name" 
+                                                    className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                        {/* STEP 2: Contact Info */}
-                        {step === 2 && (
-                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                <button onClick={handleBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 transition-colors mb-4">
-                                    <ArrowLeft size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
-                                </button>
-                                <div>
-                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">How Can We Reach You?</h1>
-                                    <p className="text-sm font-medium text-gray-400">Your contact info will be used for account verification.</p>
-                                </div>
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
-                                        <div className="relative">
-                                            <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                            <input 
-                                                type="tel" 
-                                                value={formData.phone} 
-                                                onChange={(e) => setFormData({...formData, phone: e.target.value})} 
-                                                placeholder="+234 ..." 
-                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email Address</label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                            <input 
-                                                type="email" 
-                                                value={formData.email} 
-                                                onChange={(e) => setFormData({...formData, email: e.target.value})} 
-                                                placeholder="name@business.com" 
-                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <Button 
-                                        onClick={handleNext} 
-                                        disabled={!formData.phone || !formData.email} 
-                                        className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
-                                    >
-                                        Continue <ArrowRight size={16} />
-                                    </Button>
-                                </div>
-                            </motion.div>
-                        )}
+                                    {!isGoogleUser && (
+                                        <div className="border-t border-gray-100 pt-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Create Password</label>
+                                                <div className="relative">
+                                                    <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                    <input 
+                                                        type={showPassword ? 'text' : 'password'} 
+                                                        value={formData.password} 
+                                                        onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                                                        placeholder="••••••••" 
+                                                        className="w-full pl-14 pr-14 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                    />
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setShowPassword(!showPassword)} 
+                                                        className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#066CF4]"
+                                                    >
+                                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2 mt-4">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Confirm Password</label>
+                                                <div className="relative">
+                                                    <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                    <input 
+                                                        type="password" 
+                                                        value={formData.confirmPassword} 
+                                                        onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
+                                                        placeholder="••••••••" 
+                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                    />
+                                                </div>
+                                            </div>
 
-                        {/* STEP 3: Password */}
-                        {step === 3 && (
-                            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                <button onClick={handleBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 transition-colors mb-4">
-                                    <ArrowLeft size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
-                                </button>
-                                <div>
-                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">Secure Your Account</h1>
-                                    <p className="text-sm font-medium text-gray-400">Choose a strong password for your business dashboard.</p>
-                                </div>
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Create Password</label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                            <input 
-                                                type={showPassword ? 'text' : 'password'} 
-                                                value={formData.password} 
-                                                onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                                                placeholder="••••••••" 
-                                                className="w-full pl-14 pr-14 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                            />
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setShowPassword(!showPassword)} 
-                                                className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#066CF4]"
-                                            >
-                                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                            </button>
+                                            {/* Password strength checklist */}
+                                            <div className="space-y-2 px-6 py-4 bg-gray-50 rounded-2xl mt-4">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Password Requirements</p>
+                                                {[
+                                                    { label: 'Minimum 8 characters', pass: pwdRules.minLength },
+                                                    { label: 'At least 1 lowercase letter', pass: pwdRules.hasLowercase },
+                                                    { label: 'At least 1 uppercase letter', pass: pwdRules.hasUppercase },
+                                                    { label: 'At least 1 digit (0-9)', pass: pwdRules.hasNumber },
+                                                    { label: 'At least 1 special character', pass: pwdRules.hasSymbol },
+                                                ].map((rule, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2 text-xs">
+                                                        {rule.pass ? (
+                                                            <Check size={14} className="text-emerald-500 shrink-0" />
+                                                        ) : (
+                                                            <div className="size-3.5 rounded-full border border-gray-300 shrink-0" />
+                                                        )}
+                                                        <span className={cn("font-medium transition-colors", rule.pass ? "text-emerald-600" : "text-gray-400")}>
+                                                            {rule.label}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Confirm Password</label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                            <input 
-                                                type="password" 
-                                                value={formData.confirmPassword} 
-                                                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
-                                                placeholder="••••••••" 
-                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                            />
-                                        </div>
-                                    </div>
+                                    )}
 
-                                    {/* Password strength mockup */}
-                                    <div className="flex gap-2 h-1 px-1">
-                                       <div className={cn("h-full flex-1 rounded-full", formData.password.length > 0 ? "bg-[#066CF4]" : "bg-gray-100")} />
-                                       <div className={cn("h-full flex-1 rounded-full", formData.password.length > 5 ? "bg-[#066CF4]" : "bg-gray-100")} />
-                                       <div className={cn("h-full flex-1 rounded-full", formData.password.length > 8 ? "bg-[#066CF4]" : "bg-gray-100")} />
-                                       <div className={cn("h-full flex-1 rounded-full", formData.password.length > 10 ? "bg-[#066CF4]" : "bg-gray-100")} />
-                                    </div>
+                                    {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
 
                                     <Button 
-                                        onClick={handleFinalSubmit} 
-                                        disabled={isLoading || !formData.password || formData.password !== formData.confirmPassword} 
+                                        onClick={isGoogleUser ? handleGoogleComplete : handleFinalSubmit} 
+                                        disabled={isLoading || !formData.businessName || !formData.firstName || !formData.lastName || (!isGoogleUser && (!formData.password || formData.password !== formData.confirmPassword || !isPasswordStrong))} 
                                         className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                                     >
-                                        {isLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Create My Account'}
+                                        {isLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isGoogleUser ? 'Complete Setup' : 'Create My Account')}
                                     </Button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* STEP 4: Success Screen */}
-                        {step === 4 && (
-                            <motion.div key="step4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8">
-                                <Confetti />
-                                <div className="relative z-10">
-                                   <div className="size-24 rounded-[40px] bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto mb-10 shadow-2xl shadow-emerald-500/10">
-                                      <CheckCircle2 size={48} />
-                                   </div>
-                                   <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-tight mb-4">Welcome To Vemtap!</h1>
-                                   <p className="text-lg font-medium text-gray-400 mb-12">Your account has been created successfully. Your growth journey starts now.</p>
-                                   
-                                   <div className="space-y-4">
-                                      <Link href="/onboarding" className="block w-full">
-                                         <Button className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
-                                            Complete Business Setup
-                                         </Button>
-                                      </Link>
-                                      <Link href="/dashboard" className="block w-full">
-                                         <Button variant="ghost" className="w-full h-16 text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-[#066CF4]">
-                                            Go To Dashboard
-                                         </Button>
-                                      </Link>
-                                   </div>
                                 </div>
                             </motion.div>
                         )}
@@ -355,7 +568,7 @@ export default function GetStartedPage() {
                     {step < 4 && (
                         <div className="mt-12 text-center">
                            <p className="text-sm font-medium text-gray-400">
-                              Already have an account? <Link href="/login" className="text-[#066CF4] font-black uppercase tracking-widest text-[10px] ml-2 hover:underline">Sign In</Link>
+                               Already have an account? <Link href="/login" className="text-[#066CF4] font-black uppercase tracking-widest text-[10px] ml-2 hover:underline">Sign In</Link>
                            </p>
                         </div>
                     )}

@@ -44,6 +44,12 @@ import { TrainingModule } from './modules/training/training.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
+import { FosCoreModule } from './modules/fos-core/fos-core.module';
+import { FosDashboardModule } from './modules/fos-dashboard/fos-dashboard.module';
+import { FosPnlModule } from './modules/fos-pnl/fos-pnl.module';
+import { FosFinancialPlanningModule } from './modules/fos-financial-planning/fos-financial-planning.module';
+import { FosForecastingModule } from './modules/fos-forecasting/fos-forecasting.module';
+import { FosRevenueAnalyticsModule } from './modules/fos-revenue-analytics/fos-revenue-analytics.module';
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
@@ -150,6 +156,12 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     QrThriveModule,
     BannersModule,
     MarketingAssetsModule,
+    FosCoreModule,
+    FosDashboardModule,
+    FosPnlModule,
+    FosFinancialPlanningModule,
+    FosForecastingModule,
+    FosRevenueAnalyticsModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
