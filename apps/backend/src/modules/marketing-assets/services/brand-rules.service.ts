@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { MarketingBrandRule } from '../entities/marketing-brand-rule.entity';
 import { SaveBrandRuleDto } from '../dto/save-brand-rule.dto';
 import { User } from '../../users/entities/user.entity';
+import { Business } from '../../businesses/entities/business.entity';
 
 @Injectable()
 export class BrandRulesService {
@@ -12,8 +13,14 @@ export class BrandRulesService {
     private readonly ruleRepo: Repository<MarketingBrandRule>,
   ) {}
 
-  private resolveBusinessId(user: User): string {
-    const businessId = user.businessId || user.ownedBusiness?.id;
+  private async resolveBusinessId(user: User): Promise<string> {
+    let businessId = user.businessId || user.ownedBusiness?.id;
+    if (!businessId && user.role === 'Admin') {
+      const firstBusiness = await this.ruleRepo.manager.getRepository(Business).findOne({ where: {} });
+      if (firstBusiness) {
+        businessId = firstBusiness.id;
+      }
+    }
     if (!businessId) {
       throw new ForbiddenException('User is not associated with any business');
     }
@@ -21,7 +28,7 @@ export class BrandRulesService {
   }
 
   async getRules(user: User): Promise<MarketingBrandRule> {
-    const businessId = this.resolveBusinessId(user);
+    const businessId = await this.resolveBusinessId(user);
     let rules = await this.ruleRepo.findOne({ where: { businessId } });
     if (!rules) {
       rules = this.ruleRepo.create({ businessId });
@@ -31,7 +38,7 @@ export class BrandRulesService {
   }
 
   async saveRules(user: User, dto: SaveBrandRuleDto): Promise<MarketingBrandRule> {
-    const businessId = this.resolveBusinessId(user);
+    const businessId = await this.resolveBusinessId(user);
     let rules = await this.ruleRepo.findOne({ where: { businessId } });
     if (!rules) {
       rules = this.ruleRepo.create({ businessId });

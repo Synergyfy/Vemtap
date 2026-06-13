@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ChevronLeft, 
-    X, 
     CheckCircle2, 
     QrCode, 
     Users, 
@@ -34,7 +33,6 @@ import {
     Stethoscope,
     MoreHorizontal,
     Camera,
-    Image as ImageIcon,
     MapPin,
     Globe,
     Facebook,
@@ -61,6 +59,16 @@ import LogoIcon from '@/components/brand/LogoIcon';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { useCategories } from '@/services/categories/hooks';
+import type { Category } from '@/services/categories/index';
+import { useUpdateBusiness } from '@/services/businesses/hooks';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
+import type { PricingPlan } from '@/types/pricing';
+import { useSubscribe } from '@/services/subscriptions/hooks';
+import type { SubscribeRequest } from '@/services/subscriptions/types';
+import { loadPaystackScript } from '@/lib/loadPaystackScript';
+import { useAuthStore } from '@/store/useAuthStore';
+import toast from 'react-hot-toast';
 
 // --- Types ---
 type Step = 1 | 2 | '2A' | 3 | 4 | 5 | '5A' | 6 | 7;
@@ -97,6 +105,7 @@ interface OnboardingData {
     timezone: string;
     isVisible: boolean;
     planId: string;
+    billingCycle?: 'monthly' | 'quarterly' | 'yearly';
 }
 
 // --- Steps Data ---
@@ -328,29 +337,35 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(data.category || '');
+    const { data: categoriesData, isLoading } = useCategories();
+    const rawCategories: Category[] = categoriesData?.items || [];
 
-    const categories = [
-        { id: 'restaurant', label: 'Restaurant', icon: Utensils },
-        { id: 'salon', label: 'Salon', icon: Scissors },
-        { id: 'barbershop', label: 'Barbershop', icon: Scissors },
-        { id: 'retail', label: 'Fashion Store', icon: ShoppingBag },
-        { id: 'gym', label: 'Gym', icon: Dumbbell },
-        { id: 'hotel', label: 'Hotel', icon: Hotel },
-        { id: 'electronics', label: 'Electronics Store', icon: Tv },
-        { id: 'supermarket', label: 'Supermarket', icon: ShoppingCart },
-        { id: 'pharmacy', label: 'Pharmacy', icon: Pill },
-        { id: 'beauty', label: 'Beauty Store', icon: Sparkles },
-        { id: 'spa', label: 'Spa', icon: Waves },
-        { id: 'bakery', label: 'Bakery', icon: Croissant },
-        { id: 'cafe', label: 'Cafe', icon: Coffee },
-        { id: 'laundry', label: 'Laundry Service', icon: Truck },
-        { id: 'auto', label: 'Auto Service', icon: Wrench },
-        { id: 'realestate', label: 'Real Estate', icon: Home },
-        { id: 'education', label: 'Education', icon: GraduationCap },
-        { id: 'professional', label: 'Professional Services', icon: Briefcase },
-        { id: 'healthcare', label: 'Healthcare', icon: Stethoscope },
-        { id: 'other', label: 'Other', icon: MoreHorizontal },
-    ];
+    const CATEGORY_ICONS: Record<string, React.ElementType> = {
+        'restaurant': Utensils,
+        'salon & barbershop': Scissors,
+        'retail & fashion': ShoppingBag,
+        'gym & fitness': Dumbbell,
+        'hotel & hospitality': Hotel,
+        'electronics': Tv,
+        'supermarket': ShoppingCart,
+        'pharmacy': Pill,
+        'beauty store': Sparkles,
+        'spa': Waves,
+        'bakery': Croissant,
+        'cafe': Coffee,
+        'laundry': Truck,
+        'auto service': Wrench,
+        'real estate': Home,
+        'education': GraduationCap,
+        'professional services': Briefcase,
+        'healthcare': Stethoscope,
+    };
+
+    const categories = rawCategories.map((cat: Category) => {
+        const key = cat.name.toLowerCase();
+        const icon = Object.entries(CATEGORY_ICONS).find(([k]) => key.includes(k))?.[1] || MoreHorizontal;
+        return { id: cat.id, label: cat.name, icon };
+    });
 
     const filtered = categories.filter(c => c.label.toLowerCase().includes(search.toLowerCase()));
 
@@ -382,6 +397,11 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                 />
             </div>
 
+            {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                    <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </div>
+            ) : (
             <div className="grid grid-cols-2 gap-4">
                 {filtered.map((cat) => (
                     <button
@@ -412,6 +432,7 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                     </button>
                 ))}
             </div>
+            )}
 
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto flex gap-4">
@@ -471,6 +492,38 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
         address: data.address || { street: '', city: '', state: '', country: '', zip: '' },
         socials: data.socials || { facebook: '', instagram: '', tiktok: '', x: '', linkedin: '', whatsapp: '' }
     });
+    const [isSaving, setIsSaving] = useState(false);
+    const updateBusiness = useUpdateBusiness();
+
+    const handleContinue = async () => {
+        if (!localData.businessName || !localData.address.street) return;
+        setIsSaving(true);
+        try {
+            await updateBusiness.mutateAsync({
+                updates: {
+                    name: localData.businessName,
+                    categoryId: data.category,
+                    logoUrl: localData.logo,
+                    about: localData.description,
+                    website: localData.website || undefined,
+                    address: `${localData.address.street}, ${localData.address.city}`,
+                    city: localData.address.city,
+                    state: localData.address.state,
+                    facebookUrl: localData.socials.facebook || undefined,
+                    instagramUrl: localData.socials.instagram || undefined,
+                    tiktokUrl: localData.socials.tiktok || undefined,
+                    xUrl: localData.socials.x || undefined,
+                    linkedinUrl: localData.socials.linkedin || undefined,
+                    whatsappNumber: localData.socials.whatsapp || undefined,
+                }
+            });
+            onNext(localData);
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to save business details');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     return (
         <motion.div
@@ -667,11 +720,11 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto flex gap-4">
                     <Button 
-                        disabled={!localData.businessName || !localData.address.street}
-                        onClick={() => onNext(localData)}
+                        disabled={!localData.businessName || !localData.address.street || isSaving}
+                        onClick={handleContinue}
                         className="flex-1 bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
-                        Continue
+                        {isSaving ? 'Saving...' : 'Continue'}
                     </Button>
                 </div>
             </div>
@@ -692,6 +745,33 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
         timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         isVisible: data.isVisible ?? true
     });
+    const [isSaving, setIsSaving] = useState(false);
+    const updateBusiness = useUpdateBusiness();
+
+    const handleContinue = async () => {
+        if (!localData.contact.phone || !localData.contact.email) return;
+        setIsSaving(true);
+        try {
+            await updateBusiness.mutateAsync({
+                updates: {
+                    phone: localData.contact.phone,
+                    officialEmail: localData.contact.email,
+                    whatsappNumber: localData.contact.whatsapp || undefined,
+                    businessHours: Object.entries(localData.hours).reduce((acc, [day, h]) => ({
+                        ...acc,
+                        [day.toLowerCase()]: { open: (h as any).open, close: (h as any).close, closed: (h as any).isClosed }
+                    }), {} as Record<string, { open: string; close: string; closed: boolean }>),
+                    timezone: localData.timezone,
+                    isVisible: localData.isVisible,
+                }
+            });
+            onNext(localData);
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to save operating details');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const updateDay = (day: string, updates: any) => {
         setLocalData({
@@ -861,11 +941,11 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto">
                     <Button 
-                        disabled={!localData.contact.phone || !localData.contact.email}
-                        onClick={() => onNext(localData)}
+                        disabled={!localData.contact.phone || !localData.contact.email || isSaving}
+                        onClick={handleContinue}
                         className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
-                        Continue
+                        {isSaving ? 'Saving...' : 'Continue'}
                     </Button>
                 </div>
             </div>
@@ -877,54 +957,38 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
 function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [selectedPlan, setSelectedPlan] = useState(data.planId || '');
+    const plans = useSubscriptionStore((s) => s.plans);
+    const pricingLoading = useSubscriptionStore((s) => s.isLoading);
 
-    const plans = [
-        {
-            id: 'free',
-            name: 'Free Plan',
-            price: '₦0',
-            badge: 'Get Started',
-            icon: Zap,
-            color: 'bg-gray-50 text-text-secondary',
-            features: ['10 QR Scans/mo', 'Basic Profile', 'Email Support']
-        },
-        {
-            id: 'silver',
-            name: 'Silver Plan',
-            price: billingCycle === 'monthly' ? '₦5,000' : billingCycle === 'quarterly' ? '₦13,500' : '₦50,000',
-            badge: 'Popular',
-            icon: Shield,
-            color: 'bg-blue-50 text-primary',
-            features: ['Unlimited Scans', 'Custom Branding', 'Advanced Analytics']
-        },
-        {
-            id: 'gold',
-            name: 'Gold Plan',
-            price: billingCycle === 'monthly' ? '₦9,500' : billingCycle === 'quarterly' ? '₦25,500' : '₦95,000',
-            badge: 'Best Value',
-            icon: Star,
-            color: 'bg-yellow-50 text-yellow-600',
-            features: ['NFC Integration', 'Multiple Locations', 'Priority Support']
-        },
-        {
-            id: 'platinum',
-            name: 'Platinum Plan',
-            price: billingCycle === 'monthly' ? '₦18,000' : billingCycle === 'quarterly' ? '₦48,000' : '₦180,000',
-            badge: 'Premium',
-            icon: Crown,
-            color: 'bg-purple-50 text-purple-600',
-            features: ['White Labeling', 'API Access', 'Dedicated Manager']
-        },
-        {
-            id: 'enterprise',
-            name: 'Enterprise',
-            price: 'Custom',
-            badge: 'Contact Sales',
-            icon: HeadphonesIcon,
-            color: 'bg-black text-white',
-            features: ['Full Customization', 'SLA Guarantees', 'On-site Training']
-        }
-    ];
+    const PLAN_META: Record<string, { icon: React.ElementType; color: string; badge: string; badgeColor: string }> = {
+        free: { icon: Zap, color: 'bg-gray-50 text-text-secondary', badge: 'Free', badgeColor: 'border-gray-300 text-gray-500' },
+        silver: { icon: Shield, color: 'bg-blue-50 text-primary', badge: 'Popular', badgeColor: 'border-primary/20 text-primary' },
+        gold: { icon: Star, color: 'bg-yellow-50 text-yellow-600', badge: 'Best Value', badgeColor: 'border-yellow-300 text-yellow-700' },
+        platinum: { icon: Crown, color: 'bg-purple-50 text-purple-600', badge: 'Premium', badgeColor: 'border-purple-300 text-purple-700' },
+    };
+
+    const formatPrice = (plan: PricingPlan) => {
+        if (plan.isFree) return '₦0';
+        let price: number;
+        if (billingCycle === 'yearly') price = plan.yearlyPrice || plan.monthlyPrice * 12;
+        else if (billingCycle === 'quarterly') price = plan.quarterlyPrice || plan.monthlyPrice * 3;
+        else price = plan.monthlyPrice;
+        return `₦${price.toLocaleString()}`;
+    };
+
+    const uiPlans = plans.map((plan: PricingPlan) => {
+        const meta = PLAN_META[plan.id] || plan.isFree ? PLAN_META.free : { icon: HeadphonesIcon, color: 'bg-black text-white', badge: 'Enterprise', badgeColor: 'border-gray-300 text-gray-500' };
+        return {
+            id: plan.id,
+            name: plan.name,
+            price: formatPrice(plan),
+            badge: meta.badge,
+            icon: meta.icon,
+            color: meta.color,
+            badgeColor: meta.badgeColor,
+            features: plan.features,
+        };
+    });
 
     return (
         <motion.div
@@ -968,8 +1032,15 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                 </div>
             </div>
 
+            {pricingLoading || plans.length === 0 ? (
+                <div className="flex items-center justify-center py-20">
+                    <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </div>
+            ) : uiPlans.length === 0 ? (
+                <div className="text-center py-20 text-text-secondary font-medium">No plans available</div>
+            ) : (
             <div className="space-y-4">
-                {plans.map((plan) => (
+                {uiPlans.map((plan) => (
                     <button
                         key={plan.id}
                         onClick={() => setSelectedPlan(plan.id)}
@@ -989,7 +1060,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                     <span className="text-primary font-black text-base sm:text-lg whitespace-nowrap">{plan.price}</span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                    <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-primary/20 text-primary shrink-0">
+                                    <Badge variant="outline" className={`text-[8px] font-black uppercase tracking-widest shrink-0 ${plan.badgeColor}`}>
                                         {plan.badge}
                                     </Badge>
                                     <p className="text-[10px] text-text-secondary font-medium opacity-50 line-clamp-1 sm:line-clamp-none">
@@ -1001,12 +1072,13 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                     </button>
                 ))}
             </div>
+            )}
 
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto">
                     <Button 
                         disabled={!selectedPlan}
-                        onClick={() => onNext({ planId: selectedPlan })}
+                        onClick={() => onNext({ planId: selectedPlan, billingCycle })}
                         className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
                         Continue
@@ -1019,6 +1091,9 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
 
 // --- Screen 5A: Plan Confirmation ---
 function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingData>, onNext: (d: any) => void, onBack: () => void }) {
+    const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
+    const planFeatures = plan?.features || [];
+
     return (
         <motion.div
             key="plan-confirm"
@@ -1028,7 +1103,7 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
             className="space-y-12 text-center py-12"
         >
             <div className="space-y-4">
-                <h1 className="text-4xl font-display font-black text-text-main tracking-tight uppercase">You Selected {data.planId} Plan</h1>
+                <h1 className="text-4xl font-display font-black text-text-main tracking-tight uppercase">You Selected {plan?.name || data.planId} Plan</h1>
                 <p className="text-text-secondary font-medium">Great choice! Let's get your subscription active.</p>
             </div>
 
@@ -1039,11 +1114,11 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
                         <Star size={40} />
                     </div>
                     <div className="space-y-1">
-                        <h3 className="font-black text-2xl text-text-main capitalize">{data.planId} Plan</h3>
-                        <p className="text-xs text-text-secondary font-medium">Billed {data.planId === 'free' ? 'Once' : 'Automatically'}</p>
+                        <h3 className="font-black text-2xl text-text-main capitalize">{plan?.name || data.planId} Plan</h3>
+                        <p className="text-xs text-text-secondary font-medium">Billed {plan?.isFree ? 'Once' : 'Automatically'}</p>
                     </div>
                     <div className="pt-6 border-t border-gray-200 space-y-3">
-                        {['Unlimited Scans', 'Custom Branding', 'Advanced Analytics'].map((f, i) => (
+                        {planFeatures.map((f, i) => (
                             <div key={i} className="flex items-center gap-2 text-xs font-bold text-text-main">
                                 <CheckCircle2 size={16} className="text-green-500" />
                                 {f}
@@ -1058,7 +1133,7 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
                     onClick={() => onNext({})}
                     className="w-full max-w-sm mx-auto bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3"
                 >
-                    {data.planId === 'free' ? 'Complete Setup' : 'Continue To Payment'} <ArrowRight size={18} />
+                    {plan?.isFree ? 'Complete Setup' : 'Continue To Payment'} <ArrowRight size={18} />
                 </Button>
                 <button 
                     onClick={onBack}
@@ -1075,14 +1150,95 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
 function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const { user } = useAuthStore();
+    const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
+    const subscribe = useSubscribe();
 
-    const handlePay = () => {
+    const billingCycle = data.billingCycle || 'monthly';
+    const subtotal = plan?.isFree ? 0 : billingCycle === 'yearly'
+        ? (plan?.yearlyPrice || (plan?.monthlyPrice || 0) * 12)
+        : billingCycle === 'quarterly'
+            ? (plan?.quarterlyPrice || (plan?.monthlyPrice || 0) * 3)
+            : (plan?.monthlyPrice || 0);
+    const tax = Math.round(subtotal * 0.075);
+    const total = subtotal + tax;
+
+    const handlePay = async () => {
+        if (plan?.isFree) {
+            setIsProcessing(true);
+            try {
+                await subscribe.mutateAsync({
+                    planId: plan.id,
+                    billingPeriod: billingCycle,
+                    businessId: user?.businessId,
+                    isTrial: true,
+                });
+                setIsProcessing(false);
+                setIsSuccess(true);
+                setTimeout(() => onNext({}), 2000);
+            } catch (err: any) {
+                toast.error(err?.message || 'Failed to activate plan');
+                setIsProcessing(false);
+            }
+            return;
+        }
+
+        const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+        if (!publicKey || publicKey.includes('placeholder')) {
+            setIsProcessing(true);
+            try {
+                await subscribe.mutateAsync({
+                    planId: plan!.id,
+                    billingPeriod: billingCycle,
+                    businessId: user?.businessId,
+                    paymentReference: `mock-ref-${Date.now()}`,
+                });
+                setIsProcessing(false);
+                setIsSuccess(true);
+                setTimeout(() => onNext({}), 2000);
+            } catch (err: any) {
+                toast.error(err?.message || 'Failed to activate subscription');
+                setIsProcessing(false);
+            }
+            return;
+        }
+
         setIsProcessing(true);
-        setTimeout(() => {
+        try {
+            await loadPaystackScript();
+            const email = user?.email || '';
+            // @ts-ignore
+            const handler = window.PaystackPop.setup({
+                key: publicKey,
+                email,
+                amount: total * 100,
+                currency: 'NGN',
+                ref: `SUB-${user?.businessId || 'anon'}-${Date.now()}`,
+                onClose: () => {
+                    setIsProcessing(false);
+                },
+                callback: async (response: any) => {
+                    try {
+                        await subscribe.mutateAsync({
+                            planId: plan!.id,
+                            billingPeriod: billingCycle,
+                            businessId: user?.businessId,
+                            paymentReference: response.reference,
+                        });
+                        setIsProcessing(false);
+                        setIsSuccess(true);
+                        setTimeout(() => onNext({}), 2000);
+                    } catch (err: any) {
+                        toast.error(err?.message || 'Payment verified but subscription sync failed');
+                        setIsProcessing(false);
+                    }
+                },
+            });
+            handler.openIframe();
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to initialize payment');
             setIsProcessing(false);
-            setIsSuccess(true);
-            setTimeout(() => onNext({}), 2000);
-        }, 3000);
+        }
     };
 
     if (isProcessing) {
@@ -1128,37 +1284,34 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             <div className="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 space-y-6">
                 <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Order Summary</span>
-                    <Badge variant="outline" className="border-primary/20 text-primary capitalize">{data.planId} Plan</Badge>
+                    <Badge variant="outline" className="border-primary/20 text-primary capitalize">{plan?.name || data.planId}</Badge>
                 </div>
                 <div className="space-y-3">
-                    <div className="flex justify-between text-sm font-bold text-text-main"><span>Monthly Subscription</span><span>₦9,500.00</span></div>
-                    <div className="flex justify-between text-sm font-bold text-text-secondary opacity-50"><span>Tax (7.5%)</span><span>₦712.50</span></div>
-                    <div className="pt-4 border-t border-gray-200 flex justify-between text-xl font-black text-primary"><span>Total</span><span>₦10,212.50</span></div>
+                    <div className="flex justify-between text-sm font-bold text-text-main">
+                        <span>{billingCycle === 'yearly' ? 'Yearly' : billingCycle === 'quarterly' ? 'Quarterly' : 'Monthly'} Subscription</span>
+                        <span>₦{subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold text-text-secondary opacity-50">
+                        <span>Tax (7.5%)</span>
+                        <span>₦{tax.toLocaleString()}</span>
+                    </div>
+                    <div className="pt-4 border-t border-gray-200 flex justify-between text-xl font-black text-primary">
+                        <span>Total</span>
+                        <span>{plan?.isFree ? 'Free' : `₦${total.toLocaleString()}`}</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Payment Method Group */}
+            {/* Payment Method */}
             <div className="space-y-6">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Payment Method</label>
-                <div className="grid grid-cols-2 gap-4">
-                    <button className="p-6 rounded-3xl border-2 border-primary bg-primary/5 flex flex-col items-center gap-2">
-                        <CreditCard size={24} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Card</span>
-                    </button>
-                    <button className="p-6 rounded-3xl border-2 border-gray-100 bg-white flex flex-col items-center gap-2 opacity-40">
-                        <Home size={24} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Bank</span>
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="relative">
-                        <CreditCard className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input type="text" placeholder="Card Number" className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <input type="text" placeholder="MM/YY" className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm" />
-                        <input type="text" placeholder="CVV" className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm" />
+                <div className="bg-primary/5 rounded-[2rem] p-8 border border-primary/10 flex flex-col items-center gap-4 text-center">
+                    <CreditCard size={32} className="text-primary" />
+                    <div className="space-y-1">
+                        <p className="font-black text-sm text-text-main">Pay with Card</p>
+                        <p className="text-xs text-text-secondary font-medium">
+                            You'll be redirected to Paystack's secure checkout to complete your payment.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1172,9 +1325,10 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                 <div className="max-w-xl mx-auto">
                     <Button 
                         onClick={handlePay}
+                        disabled={isProcessing}
                         className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                     >
-                        Pay Now <ArrowRight size={18} />
+                        {plan?.isFree ? 'Activate Free Plan' : 'Pay Now'} <ArrowRight size={18} />
                     </Button>
                 </div>
             </div>
