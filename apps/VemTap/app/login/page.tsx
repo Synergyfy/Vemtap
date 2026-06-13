@@ -1,36 +1,131 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
-    Mail, Lock, Eye, EyeOff, ArrowRight, 
-    ChevronRight, CheckCircle2, ShieldCheck, 
-    Globe, Zap, Layout
+    Mail, Lock, Eye, EyeOff, ArrowRight,
+    ShieldCheck, 
+    Zap, AlertCircle
 } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
+
+const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
+const isValidIdentifier = (v: string) => isEmail(v) || isPhone(v);
 
 export default function LoginPage() {
     const router = useRouter();
+    const storeLogin = useAuthStore((s) => s.login);
     const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
     });
+    const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+    const [generalError, setGeneralError] = useState<string | null>(null);
+
+    const validate = () => {
+        const errors: { email?: string; password?: string } = {};
+        const trimmed = formData.email.trim();
+
+        if (!trimmed) {
+            errors.email = 'Email or phone number is required';
+        } else if (!isValidIdentifier(trimmed)) {
+            errors.email = 'Enter a valid email address or phone number';
+        }
+
+        if (!formData.password) {
+            errors.password = 'Password is required';
+        } else if (formData.password.length < 6) {
+            errors.password = 'Password must be at least 6 characters';
+        }
+
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const routeAfterLogin = useCallback((role: string, businessId?: string, isNewUser?: boolean) => {
+        const normalizedRole = role?.toLowerCase();
+        if (normalizedRole === 'admin') {
+            router.push('/admin');
+        } else if (normalizedRole === 'owner' && (!businessId || isNewUser)) {
+            router.push('/onboarding');
+        } else if (businessId && (normalizedRole === 'owner' || normalizedRole === 'manager' || normalizedRole === 'staff')) {
+            router.push('/dashboard');
+        } else if (normalizedRole === 'customer') {
+            router.push('/customer/dashboard');
+        } else {
+            router.push('/dashboard');
+        }
+    }, [router]);
+
+    const handleGoogleSuccess = useCallback(async (credentialResponse: any) => {
+        if (!credentialResponse?.credential) {
+            setGeneralError('Google authentication failed — no credential received');
+            return;
+        }
+        setIsLoggingIn(true);
+        setGeneralError(null);
+        try {
+            const response = await api.post('/auth/google', {
+                token: credentialResponse.credential,
+            });
+            if (!response?.user || !response?.access_token) {
+                setGeneralError('Invalid response from server');
+                return;
+            }
+            storeLogin(response.user, response.access_token);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
+        } catch (err: any) {
+            const message = err?.message || 'Google sign-in failed. Please try again.';
+            setGeneralError(message);
+        } finally {
+            setIsLoggingIn(false);
+        }
+    }, [storeLogin, routeAfterLogin]);
+
+    const googleLogin = useGoogleLogin({
+        onSuccess: handleGoogleSuccess,
+        onError: () => {
+            setGeneralError('Google sign-in was cancelled or failed. Please try again.');
+        },
+        flow: 'implicit',
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        // Simulate login
-        setTimeout(() => {
-            setIsLoading(false);
-            router.push('/dashboard');
-        }, 1500);
+        setGeneralError(null);
+
+        if (!validate()) return;
+
+        setIsLoggingIn(true);
+        try {
+            const response = await api.post('/auth/login', {
+                identifier: formData.email.trim(),
+                password: formData.password,
+            });
+
+            if (!response?.user || !response?.access_token) {
+                setGeneralError('Invalid response from server');
+                return;
+            }
+
+            storeLogin(response.user, response.access_token);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
+        } catch (err: any) {
+            const message = err?.message || 'Invalid email, phone number or password';
+            setGeneralError(message);
+        } finally {
+            setIsLoggingIn(false);
+        }
     };
 
     return (
@@ -83,53 +178,97 @@ export default function LoginPage() {
                         <p className="text-sm font-medium text-gray-400">Sign in to manage your Vemtap dashboard.</p>
                     </div>
 
+                    {/* General Error Banner */}
+                    {generalError && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3"
+                        >
+                            <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                            <p className="text-sm font-bold text-red-600">{generalError}</p>
+                        </motion.div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email Address</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email or Phone Number</label>
                             <div className="relative">
                                 <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                <input 
-                                    type="email" 
-                                    required
-                                    value={formData.email} 
-                                    onChange={(e) => setFormData({...formData, email: e.target.value})} 
-                                    placeholder="name@business.com" 
-                                    className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                <input
+                                    type="text"
+                                    value={formData.email}
+                                    onChange={(e) => {
+                                        setFormData({...formData, email: e.target.value});
+                                        if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
+                                        if (generalError) setGeneralError(null);
+                                    }}
+                                    placeholder="name@business.com or +2348012345678"
+                                    className={cn(
+                                        "w-full pl-14 pr-6 h-16 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-sm transition-all",
+                                        fieldErrors.email
+                                            ? "border-red-200 focus:ring-2 focus:ring-red-200"
+                                            : "border-transparent focus:ring-2 focus:ring-[#066CF4]/10"
+                                    )}
                                 />
                             </div>
+                            {fieldErrors.email && (
+                                <p className="ml-4 mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1.5">
+                                    <AlertCircle size={12} />
+                                    {fieldErrors.email}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
                             <div className="flex justify-between items-center ml-4">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Password</label>
-                                <Link href="/forgot-password" title="reset password"  className="text-[10px] font-black uppercase tracking-widest text-[#066CF4] hover:underline">Forgot?</Link>
+                                <Link href="/forgot-password" title="reset password" className="text-[10px] font-black uppercase tracking-widest text-[#066CF4] hover:underline">Forgot?</Link>
                             </div>
                             <div className="relative">
                                 <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                <input 
-                                    type={showPassword ? 'text' : 'password'} 
-                                    required
-                                    value={formData.password} 
-                                    onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                                    placeholder="••••••••" 
-                                    className="w-full pl-14 pr-14 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={formData.password}
+                                    onChange={(e) => {
+                                        setFormData({...formData, password: e.target.value});
+                                        if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
+                                        if (generalError) setGeneralError(null);
+                                    }}
+                                    placeholder="••••••••"
+                                    className={cn(
+                                        "w-full pl-14 pr-14 h-16 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-sm transition-all",
+                                        fieldErrors.password
+                                            ? "border-red-200 focus:ring-2 focus:ring-red-200"
+                                            : "border-transparent focus:ring-2 focus:ring-[#066CF4]/10"
+                                    )}
                                 />
-                                <button 
-                                    type="button" 
-                                    onClick={() => setShowPassword(!showPassword)} 
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#066CF4]"
                                 >
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
+                            {fieldErrors.password && (
+                                <p className="ml-4 mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1.5">
+                                    <AlertCircle size={12} />
+                                    {fieldErrors.password}
+                                </p>
+                            )}
                         </div>
 
-                        <Button 
+                        <Button
                             type="submit"
-                            disabled={isLoading || !formData.email || !formData.password} 
+                            disabled={isLoggingIn || !formData.email || !formData.password}
                             className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                         >
-                            {isLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Login To Dashboard'}
+                            {isLoggingIn ? (
+                                <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                'Login To Dashboard'
+                            )}
                         </Button>
                     </form>
 
@@ -139,9 +278,18 @@ export default function LoginPage() {
                             <span className="relative px-4 bg-white text-[10px] font-black uppercase tracking-widest text-gray-300">Or continue with</span>
                         </div>
                         
-                        <Button variant="outline" className="w-full h-16 rounded-2xl border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50">
+                        <Button
+                            variant="outline"
+                            disabled={isLoggingIn}
+                            onClick={() => googleLogin()}
+                            className="w-full h-16 rounded-2xl border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50"
+                        >
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="size-5" alt="Google" />
-                            Sign in with Google
+                            {isLoggingIn ? (
+                                <div className="size-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                            ) : (
+                                'Sign in with Google'
+                            )}
                         </Button>
                     </div>
 
