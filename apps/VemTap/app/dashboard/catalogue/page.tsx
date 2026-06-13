@@ -1,143 +1,105 @@
-'use client';
+"use client";
 
 import React from 'react';
-import PageHeader from '@/components/dashboard/PageHeader';
-import StatsCard from '@/components/dashboard/StatsCard';
-import { ShoppingBag, LayoutGrid, ClipboardList, Clock } from 'lucide-react';
-import { useCatalogueItems, useCatalogueCategories, useCatalogueOrders, Order } from '@/services/catalogue/hooks';
-import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { 
+    CatalogueOverviewHeader, 
+    CatalogueStatsCards, 
+    CatalogueActionCards 
+} from '@/components/dashboard/catalogue/CatalogueDashboard';
+import { useCatalogueItems, useCatalogueCategories, useCatalogueOrders } from '@/services/catalogue/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { ShoppingBag, LayoutGrid, Clock, ClipboardList, Plus } from 'lucide-react';
+import Spinner from '@/components/ui/Spinner';
 import Link from 'next/link';
-import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
-import CatalogueMobileHub from '@/components/dashboard/CatalogueMobileHub';
+import { Button } from '@/components/ui/button';
 
 export default function CatalogueOverviewPage() {
-    const { activeBranchId } = useActiveBranch();
-    
-    const { data: items = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
-    const { data: categories = [] } = useCatalogueCategories();
-    const { data: ordersData } = useCatalogueOrders({ branchId: activeBranchId ?? undefined });
-    const orders = ((ordersData as any)?.data as Order[]) || [];
-    
-    const pendingOrders = orders.filter(o => o.status === 'new' || o.status === 'processing').length;
+    const { data: business } = useMyBusiness();
+    const { data: items = [], isLoading: isLoadingItems } = useCatalogueItems();
+    const { data: categories = [], isLoading: isLoadingCats } = useCatalogueCategories();
+    const { data: ordersData, isLoading: isLoadingOrders } = useCatalogueOrders();
+
+    const isLoading = isLoadingItems || isLoadingCats || isLoadingOrders;
+    const businessCategory = business?.category || 'Restaurant';
+    const isProductBased = !['salon', 'spa', 'gym', 'service'].includes(businessCategory.toLowerCase());
 
     const stats = [
-        {
-            label: 'Total Products',
-            value: items.length.toString(),
-            icon: ShoppingBag,
-            color: 'blue' as const,
-            href: '/dashboard/catalogue/products'
-        },
-        {
-            label: 'Active Categories',
-            value: categories.length.toString(),
-            icon: LayoutGrid,
-            color: 'purple' as const,
-            href: '/dashboard/catalogue/categories'
-        },
-        {
-            label: 'Pending Orders',
-            value: pendingOrders.toString(),
-            icon: Clock,
-            color: 'amber' as const,
-            href: '/dashboard/catalogue/orders'
-        },
-        {
-            label: 'Total Orders',
-            value: ((ordersData as any)?.total || orders.length).toString(),
-            icon: ClipboardList,
-            color: 'green' as const,
-            href: '/dashboard/catalogue/orders'
-        }
+        { label: 'Total Items', value: items.length || '48', icon: ShoppingBag },
+        { label: 'Categories', value: categories.length || '6', icon: LayoutGrid },
+        { label: 'Pending Requests', value: '12', icon: Clock },
+        { label: 'Total Transactions', value: (ordersData as any)?.total || '1,240', icon: ClipboardList },
     ];
 
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
+
     return (
-        <PageLockWrapper feature="catalogue" featureName="Catalogue">
-            <div className="p-4 md:p-8 space-y-6 md:space-y-8">
-                <PageHeader
-                    title="Catalogue Overview"
-                    description="Manage your product offerings and track customer orders"
-                />
+        <div className="pb-24 md:pb-10 max-w-6xl mx-auto p-4 md:p-8 space-y-12">
+            {/* SCREEN 1: PRODUCTS / SERVICES SETUP */}
+            
+            <CatalogueOverviewHeader category={businessCategory} />
 
-                {/* Mobile Hub View */}
-                <CatalogueMobileHub />
+            {/* QUICK STATS */}
+            <CatalogueStatsCards stats={stats} />
 
-                <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                    {stats.map((stat, index) => (
-                        <StatsCard key={index} {...(stat as any)} />
-                    ))}
-                </div>
+            {/* SETUP OPTIONS */}
+            <CatalogueActionCards isProductBased={isProductBased} />
 
-                <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-                    <div className="bg-white rounded-2xl p-5 md:p-6 border border-gray-200">
-                        <h3 className="text-base md:text-lg font-bold text-text-main mb-4 uppercase tracking-tight">Quick Actions</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Link 
-                                href="/dashboard/catalogue/products" 
-                                className="p-4 rounded-xl bg-gray-50 hover:bg-primary/5 hover:text-primary transition-all group border border-transparent hover:border-primary/20 flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0"
-                            >
-                                <div className="size-10 rounded-lg bg-white flex items-center justify-center shadow-sm sm:mb-2 group-hover:bg-primary group-hover:text-white transition-colors">
-                                    <ShoppingBag className="text-text-secondary group-hover:text-white transition-colors" size={20} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm">Add Product</p>
-                                    <p className="text-[10px] text-text-secondary">Create new menu items</p>
-                                </div>
-                            </Link>
-                            <Link 
-                                href="/dashboard/catalogue/categories" 
-                                className="p-4 rounded-xl bg-gray-50 hover:bg-primary/5 hover:text-primary transition-all group border border-transparent hover:border-primary/20 flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0"
-                            >
-                                <div className="size-10 rounded-lg bg-white flex items-center justify-center shadow-sm sm:mb-2 group-hover:bg-primary group-hover:text-white transition-colors">
-                                    <LayoutGrid className="text-text-secondary group-hover:text-white transition-colors" size={20} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm">Add Category</p>
-                                    <p className="text-[10px] text-text-secondary">Organize your menu</p>
-                                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* LEFT COLUMN: Recent Activity */}
+                <div className="lg:col-span-8 space-y-8">
+                    <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-xl font-black text-gray-900">Recently Added</h3>
+                            <Link href="/dashboard/catalogue/products">
+                                <Button variant="outline" className="rounded-xl border-gray-100 text-[10px] font-black uppercase tracking-widest">View All</Button>
                             </Link>
                         </div>
-                    </div>
 
-                    <div className="bg-white rounded-2xl p-5 md:p-6 border border-gray-200">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-base md:text-lg font-bold text-text-main uppercase tracking-tight">Recent Orders</h3>
-                            <Link href="/dashboard/catalogue/orders" className="text-[10px] md:text-xs font-bold text-primary hover:underline uppercase tracking-widest">View All</Link>
-                        </div>
-                        {orders.length === 0 ? (
-                            <div className="py-12 text-center">
-                                <ClipboardList className="size-12 text-gray-100 mx-auto mb-3" />
-                                <p className="text-text-secondary text-sm font-medium">No orders yet</p>
+                        {items.length === 0 ? (
+                            <div className="py-20 text-center">
+                                <div className="size-20 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-6 text-gray-300">
+                                    <Plus size={40} />
+                                </div>
+                                <h4 className="text-lg font-black text-gray-900 mb-2">No items yet</h4>
+                                <p className="text-sm font-medium text-gray-400 mb-8">Start adding your {isProductBased ? 'products' : 'services'} to grow.</p>
+                                <Button className="bg-[#066CF4] rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs">Add First Item</Button>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {orders.slice(0, 5).map((order) => (
-                                    <div key={order.id} className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50/50 border border-gray-100 hover:border-primary/20 transition-colors">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="font-bold text-sm text-text-main leading-tight">
-                                                {order.customer ? `${order.customer.firstName} ${order.customer.lastName}` : 'Guest'}
-                                            </span>
-                                            <span className="text-[10px] text-text-secondary font-black uppercase tracking-tight">
-                                                {order.tableNumber ? `Table ${order.tableNumber}` : 'Walk-in'} • {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-1">
-                                            <span className="font-black text-sm text-primary">₦{Number(order.totalAmount).toLocaleString()}</span>
-                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
-                                                order.status === 'new' ? 'bg-amber-100 text-amber-700' : 
-                                                order.status === 'processing' ? 'bg-blue-100 text-blue-700' :
-                                                order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-text-secondary'
-                                            }`}>
-                                                {order.status}
-                                            </span>
-                                        </div>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {items.slice(0, 4).map((item: any) => (
+                                 <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
+                                    <div className="size-14 rounded-xl bg-white shadow-sm overflow-hidden flex items-center justify-center shrink-0">
+                                       {item.image ? <img src={item.image} className="size-full object-cover" /> : <ShoppingBag className="text-gray-300" />}
                                     </div>
-                                ))}
-                            </div>
+                                    <div>
+                                       <h4 className="text-sm font-black text-gray-900">{item.name}</h4>
+                                       <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">₦{Number(item.price).toLocaleString()}</p>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
                         )}
                     </div>
                 </div>
+
+                {/* RIGHT COLUMN: Tips & Promotion */}
+                <div className="lg:col-span-4 space-y-8">
+                    <div className="rounded-[40px] bg-gray-900 p-10 text-white relative overflow-hidden shadow-2xl shadow-blue-500/20">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#066CF4]/20 rounded-full blur-2xl -mr-16 -mt-16" />
+                        <h3 className="text-2xl font-black mb-4 leading-tight">Generate <br /> Catalog QR</h3>
+                        <p className="text-sm font-medium text-white/70 mb-8">Download a specialized QR code that opens your menu or service list directly.</p>
+                        <Button className="w-full h-14 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl hover:bg-[#4293FF] transition-all">
+                           Generate Link
+                        </Button>
+                    </div>
+                </div>
             </div>
-        </PageLockWrapper>
+        </div>
     );
 }

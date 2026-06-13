@@ -47,7 +47,7 @@ export const useProvisionQrThriveUser = () => {
       try {
         const response = await qrThriveApi.provisionUser();
         // The VemTap backend returns { qrThriveUserId: string }
-        setQrThriveUser(response.qrThriveUserId, user.email);
+        setQrThriveUser(response.qrThriveUserId);
         setLastProvisionAttempt(new Date().toISOString());
         
         return response;
@@ -108,7 +108,7 @@ export const useQrThriveProvisioningStatus = () => {
     isProvisioning: isProvisioning || isCheckingMapping,
     qrThriveUserId,
     provisionError,
-    needsProvision: needsProvision(),
+    needsProvision,
   };
 };
 
@@ -144,7 +144,7 @@ export const useGenerateMagicLink = () => {
 
       clearMagicLink();
       const response = await qrThriveApi.generateMagicLink(qrThriveUserId);
-      setMagicLink(response.token, response.expiresAt, response.url);
+      setMagicLink(response.token);
       
       return response;
     },
