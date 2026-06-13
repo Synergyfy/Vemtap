@@ -5,15 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
-    Mail, Lock, Eye, EyeOff, ArrowRight, Phone,
-    ChevronRight, CheckCircle2, ShieldCheck, 
-    Globe, Zap, Layout, AlertCircle
+    Mail, Lock, Eye, EyeOff, ArrowRight,
+    ShieldCheck, 
+    Zap, AlertCircle
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useLogin } from '@/services/auth/hooks';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -23,8 +22,8 @@ const isValidIdentifier = (v: string) => isEmail(v) || isPhone(v);
 export default function LoginPage() {
     const router = useRouter();
     const storeLogin = useAuthStore((s) => s.login);
-    const { loginUser, isLoading: isLoggingIn, error: loginError } = useLogin();
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -58,8 +57,9 @@ export default function LoginPage() {
 
         if (!validate()) return;
 
+        setIsLoggingIn(true);
         try {
-            const response = await loginUser({
+            const response = await api.post('/auth/login', {
                 email: formData.email.trim(),
                 password: formData.password,
             });
@@ -86,6 +86,8 @@ export default function LoginPage() {
         } catch (err: any) {
             const message = err?.message || 'Invalid email, phone number or password';
             setGeneralError(message);
+        } finally {
+            setIsLoggingIn(false);
         }
     };
 
