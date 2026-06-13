@@ -9,6 +9,7 @@ import {
   purchaseCustomCredits 
 } from '@/lib/api/credit-plans';
 import { useQuery } from '@tanstack/react-query';
+import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { 
   CreditCard, 
   MessageSquare, 
@@ -132,7 +133,7 @@ export default function MessagingCreditsPage() {
     }
   };
 
-  const handlePurchasePlan = (planId: string) => {
+  const handlePurchasePlan = async (planId: string) => {
     setSelectedPlanId(planId);
     setPaymentMode('package');
     const plan = plans?.find(p => p.id === planId);
@@ -163,6 +164,7 @@ export default function MessagingCreditsPage() {
     } else {
       setIsProcessing(true);
       try {
+        await loadPaystackScript();
         // @ts-ignore
         const handler = window.PaystackPop.setup({
           key: publicKey,
@@ -194,7 +196,7 @@ export default function MessagingCreditsPage() {
     }
   };
 
-  const handlePurchaseCustom = () => {
+  const handlePurchaseCustom = async () => {
     if (totalCost <= 0) {
       notify.error('Please select at least one credit to top-up');
       return;
@@ -225,6 +227,7 @@ export default function MessagingCreditsPage() {
     } else {
       setIsProcessing(true);
       try {
+        await loadPaystackScript();
         // @ts-ignore
         const handler = window.PaystackPop.setup({
           key: publicKey,

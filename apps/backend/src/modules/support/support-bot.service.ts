@@ -23,7 +23,7 @@ export class SupportBotService {
   private readonly logger = new Logger(SupportBotService.name);
   private genAI: GoogleGenerativeAI;
   private readonly CONFIDENCE_THRESHOLD = 70;
-  private readonly GEMINI_MODEL = 'gemini-1.5-flash';
+  private readonly GEMINI_MODEL = 'gemini-flash-latest';
 
   // Cached full knowledge base for Gemini grounding
   private knowledgeCache: string | null = null;

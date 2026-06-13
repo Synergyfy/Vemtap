@@ -13,6 +13,7 @@ import { fetchProductDetail, requestQuote, createOrder } from '@/lib/api/marketp
 import { ProductDetailSkeleton } from '@/components/marketplace/Skeletons';
 import useEmblaCarousel from 'embla-carousel-react';
 import toast from 'react-hot-toast';
+import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { useAuthStore } from '@/store/useAuthStore';
 import { calculateQuotePrice } from '@/lib/utils/calculateQuotePrice';
 import { Loader2 } from 'lucide-react';
@@ -182,6 +183,7 @@ export default function ProductClient({ id }: { id: string }) {
         setIsSubmitting(true);
 
         try {
+            await loadPaystackScript();
             // @ts-ignore
             const handler = window.PaystackPop.setup({
                 key: publicKey,

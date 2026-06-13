@@ -97,6 +97,21 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   website: string;
 
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  @Column({ type: 'json', nullable: true })
+  socials: Record<string, string>;
+
+  @Column({ type: 'json', nullable: true })
+  openingHours: Record<string, any>;
+
+  @Column({ nullable: true })
+  timezone: string;
+
+  @Column({ nullable: true })
+  isVisible: boolean;
+
   @Column({ nullable: true })
   state: string;
 

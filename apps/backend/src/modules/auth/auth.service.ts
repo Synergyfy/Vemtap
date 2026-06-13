@@ -184,10 +184,14 @@ export class AuthService {
     let referralCode: string | undefined;
 
     if (user.role === UserRole.AGENT) {
-      const affiliate = await this.affiliatesService.getStats(
-        user.id as string,
-      );
-      referralCode = affiliate.referralCode;
+      try {
+        const affiliate = await this.affiliatesService.getStats(
+          user.id as string,
+        );
+        referralCode = affiliate.referralCode;
+      } catch (error) {
+        // Safe to ignore if profile doesn't exist yet (referralCode remains undefined)
+      }
     }
 
     const payload = {
@@ -516,19 +520,21 @@ export class AuthService {
       throw new ConflictException('Email already exists');
     }
 
-    // 2. Create or Update User (Owner)
+      // 2. Create or Update User (Owner)
     let user: User;
     const hashedPassword = dto.password
       ? await bcrypt.hash(dto.password, 10)
       : undefined;
 
+    const firstName = dto.firstName || registrationData.firstName || '';
+    const lastName = dto.lastName || registrationData.lastName || '';
+    const phone = registrationData.phone || dto.businessNumber || '';
+
     if (existingUser) {
       // Update existing user (could be PENDING manual or ACTIVE google)
-      if (registrationData.firstName)
-        existingUser.firstName = registrationData.firstName;
-      if (registrationData.lastName)
-        existingUser.lastName = registrationData.lastName;
-      if (registrationData.phone) existingUser.phone = registrationData.phone;
+      if (firstName) existingUser.firstName = firstName;
+      if (lastName) existingUser.lastName = lastName;
+      if (phone) existingUser.phone = phone;
       if (hashedPassword) existingUser.password = hashedPassword;
 
       existingUser.role = UserRole.OWNER;
@@ -540,13 +546,13 @@ export class AuthService {
     } else {
       // This path is for people who verify OTP then register (Manual)
       user = await this.usersService.create({
-        firstName: registrationData.firstName,
-        lastName: registrationData.lastName,
+        firstName,
+        lastName,
         email: dto.email,
         password: hashedPassword,
         role: UserRole.OWNER,
         status: isGoogleUser ? UserStatus.ACTIVE : UserStatus.PENDING,
-        phone: registrationData.phone,
+        phone,
         authProvider: isGoogleUser
           ? AuthProvider.GOOGLE
           : (AuthProvider.LOCAL as any),

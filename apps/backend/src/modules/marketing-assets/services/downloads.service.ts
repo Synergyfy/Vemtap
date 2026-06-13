@@ -54,14 +54,18 @@ export class DownloadsService {
   }
 
   async getDownloads(user: User, assetId?: string): Promise<MarketingDownload[]> {
+    const isAdmin = user.role === 'Admin';
     const businessId = user.businessId || user.ownedBusiness?.id;
-    if (!businessId) {
+    if (!isAdmin && !businessId) {
       throw new ForbiddenException('User is not associated with any business');
     }
 
     const query = this.downloadRepo.createQueryBuilder('download')
-      .leftJoinAndSelect('download.asset', 'asset')
-      .where('download.businessId = :businessId', { businessId });
+      .leftJoinAndSelect('download.asset', 'asset');
+
+    if (!isAdmin) {
+      query.where('download.businessId = :businessId', { businessId });
+    }
 
     if (assetId) {
       query.andWhere('download.assetId = :assetId', { assetId });
