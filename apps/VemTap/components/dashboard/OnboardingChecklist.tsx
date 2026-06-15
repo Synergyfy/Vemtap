@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     CheckCircle2, Circle, ArrowRight, Sparkles, 
-    UserEdit, QrCode, Download, UserPlus, Send,
+    Edit, QrCode, Download, UserPlus, Send,
     PartyPopper
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -30,7 +30,7 @@ export default function OnboardingChecklist() {
                 id: 'profile',
                 title: 'Complete Profile',
                 description: 'Add your brand logo and business details.',
-                icon: UserEdit,
+                icon: Edit,
                 isCompleted: !!myBusiness?.logoUrl,
                 route: '/dashboard/settings/profile'
             },

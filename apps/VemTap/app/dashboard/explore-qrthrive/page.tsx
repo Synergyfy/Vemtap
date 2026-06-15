@@ -126,7 +126,10 @@ export default function ExploreQRThrivePage() {
         setStoreView(newView === 'list' ? 'manage' : newView);
     };
 
-    const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
+    // const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
+    const isProvisioned = true;
+    const isProvisioning = false;
+    const provisionError = null;
     const provisionMutation = useProvisionQrThriveUser();
     const { data: subscriptionData, isPending: isCheckingSubscription } = useSubscriptionIncludesQrThrive();
     

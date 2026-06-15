@@ -15,7 +15,267 @@ import {
   MarketingAuditLog,
   TemplateStyle,
   TemplateFormat,
+  MarketingAssetType,
+  QRDestination,
+  CTALibraryItem,
+  PlacementGuide,
+  RecommendationRule,
 } from './types';
+
+// ==========================================
+// ASSET TYPE HOOKS
+// ==========================================
+
+export const useMarketingAssetTypes = (all = false) => {
+  return useQuery<MarketingAssetType[], Error>({
+    queryKey: ['marketing-asset-types', { all }],
+    queryFn: async () => {
+      return await api.get('/marketing-asset-types', {
+        params: { all: all ? 'true' : 'false' },
+      });
+    },
+  });
+};
+
+export const useCreateMarketingAssetType = () => {
+  const queryClient = useQueryClient();
+  return useMutation<MarketingAssetType, Error, any>({
+    mutationFn: async (data) => {
+      return await api.post('/marketing-asset-types', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-asset-types'] });
+    },
+  });
+};
+
+export const useUpdateMarketingAssetType = () => {
+  const queryClient = useQueryClient();
+  return useMutation<MarketingAssetType, Error, { id: string; updates: any }>({
+    mutationFn: async ({ id, updates }) => {
+      return await api.patch(`/marketing-asset-types/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-asset-types'] });
+    },
+  });
+};
+
+export const useDeleteMarketingAssetType = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/marketing-asset-types/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-asset-types'] });
+    },
+  });
+};
+
+// ==========================================
+// QR DESTINATION HOOKS
+// ==========================================
+
+export const useQRDestinations = (all = false) => {
+  return useQuery<QRDestination[], Error>({
+    queryKey: ['marketing-qr-destinations', { all }],
+    queryFn: async () => {
+      return await api.get('/marketing-qr-destinations', {
+        params: { all: all ? 'true' : 'false' },
+      });
+    },
+  });
+};
+
+export const useCreateQRDestination = () => {
+  const queryClient = useQueryClient();
+  return useMutation<QRDestination, Error, any>({
+    mutationFn: async (data) => {
+      return await api.post('/marketing-qr-destinations', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-qr-destinations'] });
+    },
+  });
+};
+
+export const useUpdateQRDestination = () => {
+  const queryClient = useQueryClient();
+  return useMutation<QRDestination, Error, { id: string; updates: any }>({
+    mutationFn: async ({ id, updates }) => {
+      return await api.patch(`/marketing-qr-destinations/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-qr-destinations'] });
+    },
+  });
+};
+
+export const useDeleteQRDestination = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/marketing-qr-destinations/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-qr-destinations'] });
+    },
+  });
+};
+
+// ==========================================
+// CTA LIBRARY HOOKS
+// ==========================================
+
+export const useCTALibrary = (all = false) => {
+  return useQuery<CTALibraryItem[], Error>({
+    queryKey: ['marketing-cta-library', { all }],
+    queryFn: async () => {
+      return await api.get('/marketing-cta-library', {
+        params: { all: all ? 'true' : 'false' },
+      });
+    },
+  });
+};
+
+export const useCreateCTALibraryItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation<CTALibraryItem, Error, any>({
+    mutationFn: async (data) => {
+      return await api.post('/marketing-cta-library', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-cta-library'] });
+    },
+  });
+};
+
+export const useUpdateCTALibraryItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation<CTALibraryItem, Error, { id: string; updates: any }>({
+    mutationFn: async ({ id, updates }) => {
+      return await api.patch(`/marketing-cta-library/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-cta-library'] });
+    },
+  });
+};
+
+export const useDeleteCTALibraryItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/marketing-cta-library/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-cta-library'] });
+    },
+  });
+};
+
+// ==========================================
+// PLACEMENT GUIDE HOOKS
+// ==========================================
+
+export const usePlacementGuides = (all = false) => {
+  return useQuery<PlacementGuide[], Error>({
+    queryKey: ['marketing-placement-guides', { all }],
+    queryFn: async () => {
+      return await api.get('/marketing-placement-guides', {
+        params: { all: all ? 'true' : 'false' },
+      });
+    },
+  });
+};
+
+export const useCreatePlacementGuide = () => {
+  const queryClient = useQueryClient();
+  return useMutation<PlacementGuide, Error, any>({
+    mutationFn: async (data) => {
+      return await api.post('/marketing-placement-guides', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-placement-guides'] });
+    },
+  });
+};
+
+export const useUpdatePlacementGuide = () => {
+  const queryClient = useQueryClient();
+  return useMutation<PlacementGuide, Error, { id: string; updates: any }>({
+    mutationFn: async ({ id, updates }) => {
+      return await api.patch(`/marketing-placement-guides/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-placement-guides'] });
+    },
+  });
+};
+
+export const useDeletePlacementGuide = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/marketing-placement-guides/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-placement-guides'] });
+    },
+  });
+};
+
+// ==========================================
+// RECOMMENDATION RULE HOOKS
+// ==========================================
+
+export const useRecommendationRules = (all = false) => {
+  return useQuery<RecommendationRule[], Error>({
+    queryKey: ['marketing-recommendation-rules', { all }],
+    queryFn: async () => {
+      return await api.get('/marketing-recommendation-rules', {
+        params: { all: all ? 'true' : 'false' },
+      });
+    },
+  });
+};
+
+export const useCreateRecommendationRule = () => {
+  const queryClient = useQueryClient();
+  return useMutation<RecommendationRule, Error, any>({
+    mutationFn: async (data) => {
+      return await api.post('/marketing-recommendation-rules', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-recommendation-rules'] });
+    },
+  });
+};
+
+export const useUpdateRecommendationRule = () => {
+  const queryClient = useQueryClient();
+  return useMutation<RecommendationRule, Error, { id: string; updates: any }>({
+    mutationFn: async ({ id, updates }) => {
+      return await api.patch(`/marketing-recommendation-rules/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-recommendation-rules'] });
+    },
+  });
+};
+
+export const useDeleteRecommendationRule = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/marketing-recommendation-rules/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-recommendation-rules'] });
+    },
+  });
+};
 
 // ==========================================
 // TEMPLATE HOOKS

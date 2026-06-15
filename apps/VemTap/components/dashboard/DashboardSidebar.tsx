@@ -134,7 +134,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         if (!myBusiness?.logoUrl) count++;
         if (!assets || assets.length === 0) count++;
         if (!(marketingAnalytics?.totals?.downloads > 0)) count++;
-        const visitorsCount = (data?.stats || []).find((s: any) => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        const visitorsCount = (Array.isArray(data?.stats) ? data.stats : []).find((s: any) => s.label.toLowerCase().includes('total visitors'))?.value || '0';
         if (visitorsCount === '0') count++;
         // Campaign placeholder
         count++; 

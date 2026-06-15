@@ -485,7 +485,7 @@ export default function AdminTemplateBuilderPage() {
     document.addEventListener('touchend', handleCustomDragEnd);
   };
 
-  const handleAddTextElement = (presetText: string, defaultSize: number, weight: string) => {
+  const handleAddTextElement = (presetText: string, defaultSize: number, weight: string, isPlaceholder = false) => {
     const id = `text-${Date.now()}`;
     const newEl = {
       id,
@@ -497,11 +497,12 @@ export default function AdminTemplateBuilderPage() {
       color: '#FFFFFF',
       fontWeight: weight,
       alignment: 'center',
-      width: 80
+      width: 80,
+      isPlaceholder
     };
     setElements(prev => [...prev, newEl]);
     setSelectedElementId(id);
-    toast.success('Text element added! Drag it on the preview canvas.');
+    toast.success(`${isPlaceholder ? 'Placeholder' : 'Text element'} added! Drag it on the preview canvas.`);
   };
 
   const handleAddLogoElement = () => {
@@ -513,7 +514,7 @@ export default function AdminTemplateBuilderPage() {
     const newEl = { id, type: 'logo', x: 35, y: 8, width: 30, height: 8 };
     setElements(prev => [...prev, newEl]);
     setSelectedElementId(id);
-    toast.success('Brand logo slot added!');
+    toast.success('Business Logo placeholder added!');
   };
 
   const handleAddQrElement = () => {
@@ -525,7 +526,7 @@ export default function AdminTemplateBuilderPage() {
     const newEl = { id, type: 'qr_code', x: 30, y: 50, size: 110 };
     setElements(prev => [...prev, newEl]);
     setSelectedElementId(id);
-    toast.success('QR Code container added!');
+    toast.success('Dynamic QR Code space added!');
   };
 
   const handleDeleteElement = (elementId: string) => {
@@ -797,7 +798,29 @@ export default function AdminTemplateBuilderPage() {
 
                   {/* Add layers widgets */}
                   <div className="border-t border-gray-50 pt-4 space-y-3">
-                    <h4 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Add Elements to Canvas</h4>
+                    <h4 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Add Sudo Placeholders</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleAddTextElement('BUSINESS NAME', 14, 'bold', true)}
+                        className="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-100 flex items-center gap-1.5"
+                      >
+                        <Plus size={12} className="stroke-[3px]" /> Business Name
+                      </button>
+                      <button
+                        onClick={handleAddLogoElement}
+                        className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center gap-1.5"
+                      >
+                        <Plus size={12} className="stroke-[3px]" /> Business Logo
+                      </button>
+                      <button
+                        onClick={handleAddQrElement}
+                        className="px-3 py-1.5 bg-green-50 border border-green-100 rounded-xl text-xs font-bold text-green-700 hover:bg-green-100 flex items-center gap-1.5"
+                      >
+                        <Plus size={12} className="stroke-[3px]" /> QR Code
+                      </button>
+                    </div>
+
+                    <h4 className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider pt-2">Custom Text Elements</h4>
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => handleAddTextElement('SCAN TO ORDER', 18, 'extrabold')}
@@ -816,18 +839,6 @@ export default function AdminTemplateBuilderPage() {
                         className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center gap-1.5"
                       >
                         <Plus size={12} className="stroke-[3px]" /> Footer Tagline
-                      </button>
-                      <button
-                        onClick={handleAddLogoElement}
-                        className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center gap-1.5"
-                      >
-                        <Plus size={12} className="stroke-[3px]" /> Brand Logo Slot
-                      </button>
-                      <button
-                        onClick={handleAddQrElement}
-                        className="px-3 py-1.5 bg-green-50 border border-green-100 rounded-xl text-xs font-bold text-green-700 hover:bg-green-100 flex items-center gap-1.5"
-                      >
-                        <Plus size={12} className="stroke-[3px]" /> QR Code Space
                       </button>
                     </div>
                   </div>
