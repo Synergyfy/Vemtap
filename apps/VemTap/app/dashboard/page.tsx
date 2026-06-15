@@ -1,713 +1,242 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Visitor } from '@/lib/store/mockDashboardStore';
-import toast from 'react-hot-toast';
-import {
-    Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
-    ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap
-} from 'lucide-react';
-import StatsCard from '@/components/dashboard/StatsCard';
-import Tooltip from '@/components/ui/Tooltip';
-import LogoIcon from '@/components/brand/LogoIcon';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import SendMessageModal from '@/components/dashboard/SendMessageModal';
-import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
-import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
-import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Users, UserPlus, ShoppingBag, Gift, Bell, 
+    Plus, Send, MessageSquare, QrCode, Zap, 
+    TrendingUp, ArrowRight, UserCheck, Search,
+    ChevronRight, BarChart3, Settings as SettingsIcon,
+    PieChart, Activity, Sparkles
+} from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
-import { useVisitorStats, useResetDashboard } from '@/services/visitors/hooks';
+import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useBranches, useUpdateBranch } from '@/services/branches/hooks';
-import Modal from '@/components/ui/Modal';
-import { Phone, Loader2 as LoaderIcon } from 'lucide-react';
-import { useSudoStore } from '@/store/useSudoStore';
-import MobileDashboardHub from '@/components/dashboard/MobileDashboardHub';
-import { useSearchParams } from 'next/navigation';
+import { useMyBusiness } from '@/services/businesses/hooks';
 import DashboardBannerWrapper from '@/components/dashboard/DashboardBannerWrapper';
-import { canAccessMenuItem } from '@/lib/utils/nav-filter';
-
-// Activation Flow
-import { useActivationStore } from '@/store/useActivationStore';
-import ActivationDashboard from '@/components/dashboard/activation/ActivationDashboard';
-import SetupWizard from '@/components/dashboard/activation/SetupWizard';
-import ActivationCelebration from '@/components/dashboard/activation/ActivationCelebration';
+import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
+import { Button } from '@/components/ui/Button';
 
 export default function DashboardPage() {
     const router = useRouter();
-    const [showClearModal, setShowClearModal] = useState(false);
-    const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
-    const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
-    const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
-    const searchParams = useSearchParams();
-    const showStats = searchParams.get('show_stats') === '1';
-
-    // Activation State
-    const { isActivated, toggleActivation } = useActivationStore();
-    
-    // We use the store now instead of URL params for sudo state
-    const { activeSession } = useSudoStore();
-    const isAdminMode = activeSession !== null;
-
     const user = useAuthStore((state) => state.user);
-    const userPermissions = user?.permissions || [];
-    const isOwnerOrAdmin = ['owner', 'admin'].includes((user?.role as string)?.toLowerCase());
-    const userRole = (user?.role as string)?.toLowerCase() || 'owner';
+    const { activeBranchId } = useActiveBranch();
+    const { data: myBusiness } = useMyBusiness();
+    const { data: analytics, isLoading: isAnalyticsLoading } = useDashboardAnalytics();
+    const { data: loyaltyStats } = useBusinessLoyaltyStats();
 
-    const isNewUser = useMemo(() => {
-        if (!user) return false;
-        const createdAt = user.createdAt || user.joined;
-        if (!createdAt) return true;
-
-        const createdDate = new Date(createdAt);
-        const now = new Date();
-        const diffInHours = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60);
-
-        return diffInHours < 24;
-    }, [user]);
-
-    // Fetch Dashboard Data
-    const { data, isLoading } = useDashboardAnalytics();
-    const { data: visitorStatsData } = useVisitorStats();
-    const resetDashboardMutation = useResetDashboard();
-
-    const { getPlan } = useSubscriptionStore();
-    const currentPlan = getPlan();
-
-    const { activeBranchId, isAllBranches } = useActiveBranch();
-    const { data: branches } = useBranches();
-    const activeBranch = useMemo(() => branches?.find(b => b.id === activeBranchId), [branches, activeBranchId]);
-    const updateBranchMutation = useUpdateBranch();
-
-    const [showWhatsAppPrompt, setShowWhatsAppPrompt] = useState(false);
-    const [promptNumber, setPromptNumber] = useState('');
-
-    useEffect(() => {
-        if (!activeBranch || isAllBranches) return;
-
-        const checkPrompt = () => {
-            const hasNumber = !!activeBranch.whatsappNumber;
-            if (hasNumber) return;
-
-            const lastPromptKey = `last_wa_prompt_${activeBranch.id}`;
-            const lastPromptDate = localStorage.getItem(lastPromptKey);
-            const today = new Date().toISOString().split('T')[0];
-
-            if (lastPromptDate !== today) {
-                setShowWhatsAppPrompt(true);
-                localStorage.setItem(lastPromptKey, today);
-            }
-        };
-
-        const timer = setTimeout(checkPrompt, 3000); // Delay slightly for better UX
-        return () => clearTimeout(timer);
-    }, [activeBranch, isAllBranches]);
-
-    useEffect(() => {
-        // Redirect logic based on roles
-        if (!user) return;
-
-        const userRole = user.role?.toLowerCase();
-
-        // Step 6: If Admin is in Sudo mode targeting a customer, redirect to customer dashboard
-        if (isAdminMode && activeSession?.type === 'customer') {
-            const customerUid = activeSession.subjectId;
-            router.replace(`/customer/dashboard?admin_mode=1&customer_uid=${customerUid}`);
-            return;
-        }
-
-        // Redirect Agents to their specific dashboard
-        if (userRole === 'agent') {
-            router.replace('/agent/dashboard');
-            return;
-        }
+    // KPI Data Mapping
+    const kpis = useMemo(() => {
+        const stats = analytics?.stats || [];
+        const visitorsToday = stats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        const customersCaptured = stats.find(s => s.label.toLowerCase().includes('new customers'))?.value || '0';
+        const activeLoyalty = loyaltyStats?.activeMembers || '0';
         
-        // Check if user is in "Just Registered" grace period (recently created)
-        const isRecentlyCreated = isNewUser; // isNewUser hook already calculates < 24h
+        return [
+            { label: "Today's Visitors", value: visitorsToday, icon: Users, color: 'bg-blue-500' },
+            { label: "Customers Captured", value: customersCaptured, icon: UserPlus, color: 'bg-emerald-500' },
+            { label: "Sales Today", value: "₦0", icon: ShoppingBag, color: 'bg-purple-500' }, // Placeholder for now
+            { label: "Active Loyalty Members", value: activeLoyalty, icon: Gift, color: 'bg-amber-500' }
+        ];
+    }, [analytics, loyaltyStats]);
 
-        if (userRole === 'owner' && !user.businessId && !isAdminMode) {
-            // Guard against race conditions: After finishing onboarding, 
-            // the user object hits the store but some components might mount 
-            // before the redirect happens.
-            console.log('[DASHBOARD] Incomplete owner profile detected', { userRole, businessId: user.businessId });
-            
-            // Critical check: if they have NO business at all AND it's been more than a short window
-            // then we send them to onboarding. 
-            // (Keeping it aggressive for now to maintain security, but adding the log)
-            router.replace('/get-started');
-        }
-    }, [user, router, isAdminMode, isNewUser]);
-
-    const handleSaveWhatsApp = async () => {
-        if (!activeBranch || !promptNumber) return;
-        try {
-            await updateBranchMutation.mutateAsync({
-                id: activeBranch.id,
-                updates: { whatsappNumber: promptNumber }
-            });
-            toast.success('WhatsApp number updated!');
-            setShowWhatsAppPrompt(false);
-        } catch (err: any) {
-            toast.error('Failed to update WhatsApp number');
-        }
-    };
-
-    const handleClearDashboard = () => {
-        setShowClearModal(true);
-    };
-
-    const confirmClear = async () => {
-        try {
-            await resetDashboardMutation.mutateAsync();
-            toast.success('Dashboard data cleared');
-            setShowClearModal(false);
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to reset dashboard');
-        }
-    };
-
-    const analyticsStats = data?.stats.map((s) => {
-        let icon = Users;
-        let color = 'blue';
-        if (s.label === 'New Customers') { icon = UserPlus; color = 'green'; }
-        if (s.label === 'Repeat Rate') { icon = Repeat; color = 'purple'; }
-        if (s.label === 'Avg. Stay Time') { icon = Calendar; color = 'orange'; }
-
-        return {
-            label: s.label,
-            value: s.value.toString(),
-            change: s.trend,
-            trend: s.isUp ? 'up' : 'down',
-            icon: icon,
-            color: color
-        };
-    }) || [];
-
-    const stats = visitorStatsData?.stats?.length
-        ? visitorStatsData.stats.map((s) => {
-            const label = s.label?.toString?.() || 'Metric';
-            const normalizedLabel = label.toLowerCase();
-            let icon = Users;
-            let color = 'blue';
-            if (normalizedLabel.includes('new')) { icon = UserPlus; color = 'green'; }
-            if (normalizedLabel.includes('repeat') || normalizedLabel.includes('returning') || normalizedLabel.includes('frequency')) {
-                icon = Repeat;
-                color = 'purple';
-            }
-            if (normalizedLabel.includes('vip')) { icon = Users; color = 'orange'; }
-
-            return {
-                label,
-                value: (s.value ?? '0').toString(),
-                change: s.trend?.value || '+0%',
-                trend: s.trend?.isUp ? 'up' : 'down',
-                icon,
-                color
-            };
-        })
-        : analyticsStats;
-
-
-        const peakTimes = Array.isArray(data?.peakTimes)
-  ? data.peakTimes
-  : data?.peakTimes && typeof data.peakTimes === 'object'
-    ? Object.values(data.peakTimes)
-    : [];
-
-    const maxVisits = peakTimes.length
-        ? Math.max(...peakTimes.map((d: any) => d.value))
-        : 100;
-
-    // Computed audience breakdown
-    const getStatValue = (labels: string[]) => {
-        const stat = stats.find((s) => labels.includes(s.label));
-        const normalized = stat?.value?.toString().replace(/,/g, '').trim() || '0';
-        const parsed = Number.parseFloat(normalized);
-        return Number.isFinite(parsed) ? parsed : 0;
-    };
-
-    const totalVisitors = getStatValue(['Total Visitors', 'Total Visits', 'Total Customers']);
-    const newVisitorsCount = getStatValue(['New This Month', 'New Customers']);
-    const knownReturning = getStatValue(['Returning', 'Repeat Visitors']);
-    const repeatVisitors = knownReturning > 0 ? knownReturning : (totalVisitors - newVisitorsCount > 0 ? totalVisitors - newVisitorsCount : 0);
-
-    const returningPct = totalVisitors > 0 ? Math.round((repeatVisitors / totalVisitors) * 100) : 0;
-    const newPct = totalVisitors > 0 ? 100 - returningPct : 0;
-
-    // Celebration State
-    const [showCelebration, setShowCelebration] = useState(false);
-
-    const handleFinishSetup = () => {
-        setShowCelebration(true);
-    };
-
-    const handleCloseCelebration = () => {
-        setShowCelebration(false);
-        toggleActivation(true);
-    };
-
-    if (isLoading) {
+    if (isAnalyticsLoading) {
         return (
-            <div className="flex items-center justify-center p-8 h-screen">
-                <div className="animate-pulse flex flex-col items-center">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full mb-4"></div>
-                    <div className="h-4 w-32 bg-gray-200 rounded"></div>
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">Loading Dashboard...</p>
                 </div>
-            </div>
-        );
-    }
-
-    if (!isActivated) {
-        return (
-            <div className="p-4 md:p-8">
-                <ActivationDashboard />
-                <SetupWizard onFinish={handleFinishSetup} />
-                {showCelebration && <ActivationCelebration onFinish={handleCloseCelebration} />}
             </div>
         );
     }
 
     return (
-        <>
-            <div className="p-4 md:p-8 space-y-8 md:space-y-10">
-                {/* Page Header */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex-1">
-                        <h1 className="text-2xl font-display font-bold text-text-main mb-1">
-                            {isNewUser ? `Welcome to VemTap, ${user?.firstName || 'there'}!` : 'Dashboard'}
-                        </h1>
-                        <p className="text-sm text-text-secondary font-medium">
-                            {isNewUser
-                                ? "We're excited to have you here. Let's get your business started."
-                                : `Welcome back ${user?.firstName || 'there'}! Here's what's happening today.`}
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        {currentPlan?.id === 'free' && (
-                            <button
-                                onClick={() => router.push('/#pricing')}
-                                className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-lg transition-all shadow-lg shadow-primary/20"
-                            >
-                                <Zap size={14} />
-                                Upgrade
-                            </button>
-                        )}
-                    </div>
-                </div>
-                
-                {/* Dashboard Banner */}
+        <div className="min-h-screen bg-gray-50 pb-24">
+            <main className="p-6 space-y-10">
                 <DashboardBannerWrapper />
-                
-                {/* Mobile Navigation Hub - Hidden when showing stats on mobile */}
-                {!showStats && <MobileDashboardHub />}
 
-                {/* Stats Grid — Hidden on mobile unless show_stats=1 is present */}
-                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 ${!showStats ? 'hidden md:grid' : 'grid'}`}>
-                    {stats.map((stat, index) => (
-                        <StatsCard
-                            key={index}
-                            label={stat.label}
-                            value={stat.value}
-                            icon={stat.icon}
-                            color={stat.color as any}
-                            trend={stat.change ? { value: stat.change, isUp: stat.trend === 'up' } : undefined}
-                        />
-                    ))}
-                </div>
+                <OnboardingChecklist />
 
-                {/* Main Content Sections - Hidden on mobile unless show_stats=1 is present */}
-                <div className={`space-y-8 md:space-y-10 ${!showStats ? 'hidden md:block' : 'block'}`}>
-                    <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                        <div>
-                            <h2 className="text-base font-display font-bold text-text-main">Tutorial Center</h2>
-                            <p className="text-[11px] text-text-secondary">Learn how to run core workflows with step-by-step docs.</p>
+                {/* SECTION 1: BUSINESS SNAPSHOT (Swipeable Cards) */}
+                <section>
+                    <div className="flex items-center justify-between mb-4 px-1">
+                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Snapshot</h2>
+                        <div className="flex gap-1">
+                            <div className="size-1 bg-primary rounded-full" />
+                            <div className="size-1 bg-gray-200 rounded-full" />
+                            <div className="size-1 bg-gray-200 rounded-full" />
                         </div>
-                        <button
-                            onClick={() => router.push('/bussinesss')}
-                            className="w-full sm:w-auto px-4 py-2 text-xs font-black rounded-xl border border-primary/20 text-primary hover:bg-primary/5"
-                        >
-                            Open Tutorial
-                        </button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {[
-                            { title: 'Build Forms', desc: 'Create forms, preview on mobile, and publish.', href: '/bussinesss' },
-                            { title: 'Send Messages', desc: 'Attach form links to SMS, WhatsApp, and Email.', href: '/bussinesss' },
-                            { title: 'Track Results', desc: 'Use analytics and visitor reports to improve.', href: '/bussinesss' },
-                        ].map((item) => (
-                            <button
-                                key={item.title}
-                                onClick={() => router.push(item.href)}
-                                className="text-left rounded-xl border border-gray-200 p-3 hover:border-primary/30 hover:bg-primary/[0.03] transition-colors"
+                    <div className="flex overflow-x-auto no-scrollbar gap-4 -mx-6 px-6 snap-x">
+                        {kpis.map((kpi, i) => (
+                            <div 
+                                key={i}
+                                className="min-w-[180px] bg-white rounded-2xl p-5 border border-gray-100 shadow-sm snap-center flex flex-col justify-between h-32 group hover:border-primary/20 transition-all"
                             >
-                                <p className="text-sm font-black text-text-main">{item.title}</p>
-                                <p className="text-xs text-text-secondary mt-1">{item.desc}</p>
+                                <div className={`size-8 rounded-lg ${kpi.color} text-white flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                    <kpi.icon size={16} />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-black text-gray-900 mb-0.5 leading-none">{kpi.value}</p>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 leading-none">{kpi.label}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* SECTION 2: QUICK ACTIONS */}
+                <section>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 px-1">Quick Actions</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                        {[
+                            { label: 'Add Customer', icon: UserPlus, color: 'text-blue-600 bg-blue-50', route: '/dashboard/visitors/add' },
+                            { label: 'New Sale', icon: ShoppingBag, color: 'text-purple-600 bg-purple-50', route: '/dashboard/catalogue' },
+                            { label: 'Send Message', icon: Send, color: 'text-indigo-600 bg-indigo-50', route: '/dashboard/messaging' },
+                            { label: 'Create Campaign', icon: Zap, color: 'text-amber-600 bg-amber-50', route: '/dashboard/marketing-assets/create' },
+                            { label: 'Generate QR', icon: QrCode, color: 'text-emerald-600 bg-emerald-50', route: '/dashboard/marketing-assets' },
+                            { label: 'Capture Visitor', icon: UserCheck, color: 'text-rose-600 bg-rose-50', route: '/dashboard/visitors' }
+                        ].map((action, i) => (
+                            <button 
+                                key={i}
+                                onClick={() => router.push(action.route)}
+                                className="bg-white border border-gray-100 p-5 rounded-3xl flex flex-col items-center gap-3 active:scale-95 transition-all shadow-sm group hover:border-primary/20"
+                            >
+                                <div className={`size-12 rounded-2xl ${action.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                    <action.icon size={24} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">{action.label}</span>
                             </button>
                         ))}
                     </div>
-                </div>
+                </section>
 
-                {/* Main Content Grid: Chart + Audience + Quick Actions */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* SECTION 3: BUSINESS HEALTH */}
+                <section className="bg-white rounded-[2.5rem] p-6 border border-gray-100 shadow-sm">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">Business Health</h2>
+                    <div className="space-y-6">
+                        {[
+                            { label: 'Customer Growth', value: 75, color: 'bg-blue-500', trend: '+12%' },
+                            { label: 'Sales Growth', value: 45, color: 'bg-purple-500', trend: '+5%' },
+                            { label: 'QR Scan Activity', value: 90, color: 'bg-emerald-500', trend: '+28%' },
+                            { label: 'Referral Activity', value: 30, color: 'bg-amber-500', trend: '+2%' }
+                        ].map((item, i) => (
+                            <div key={i} className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">{item.label}</span>
+                                    <span className="text-[10px] font-black text-emerald-500">{item.trend}</span>
+                                </div>
+                                <div className="h-2 w-full bg-gray-50 rounded-full overflow-hidden">
+                                    <div className={`h-full ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${item.value}%` }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
 
-                    {/* Visitor Activity Chart — spans 7 cols */}
-                    <div className="lg:col-span-7 bg-white rounded-2xl p-4 md:p-5 border border-gray-100 overflow-hidden">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                {/* SECTION 4: RECENT ACTIVITY */}
+                <section>
+                    <div className="flex items-center justify-between mb-4 px-1">
+                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Recent Activity</h2>
+                        <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">View All</button>
+                    </div>
+                    {analytics?.recentVisitors?.length > 0 ? (
+                        <div className="space-y-3">
+                            {(analytics?.recentVisitors || []).slice(0, 5).map((visitor: any, i: number) => (
+                                <div key={i} className="bg-white border border-gray-100 p-4 rounded-3xl flex items-center gap-4 shadow-sm">
+                                    <div className="size-10 rounded-xl bg-gray-50 flex items-center justify-center text-primary">
+                                        <Activity size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-black text-gray-900 truncate">{visitor.name || 'New Visitor'}</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{visitor.status === 'new' ? 'New visitor captured' : 'Returning visitor'}</p>
+                                    </div>
+                                    <p className="text-[10px] font-black text-gray-300 uppercase">{visitor.time || 'Just now'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-[2.5rem] p-12 border border-gray-100 shadow-sm flex flex-col items-center text-center gap-6">
+                            <div className="size-24 rounded-full bg-[#066CF4]/5 flex items-center justify-center text-gray-300">
+                                <Users size={48} strokeWidth={1} />
+                            </div>
                             <div>
-                                <h2 className="text-base font-display font-bold text-text-main">Visitor Activity</h2>
-                                <p className="text-[10px] text-text-secondary">Today's hourly breakdown</p>
+                                <h4 className="text-lg font-black text-gray-900 mb-1">No Customers Yet</h4>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight leading-relaxed max-w-[240px] mx-auto">
+                                    Your customer list is waiting for its first entry. Start by setting up your QR codes.
+                                </p>
                             </div>
-                            <div className="flex items-center justify-between sm:justify-end gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                        <span className="text-[8px] md:text-[9px] font-bold text-text-secondary uppercase">All</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                                        <span className="text-[8px] md:text-[9px] font-bold text-text-secondary uppercase">New</span>
-                                    </div>
-                                </div>
-                                <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
-                                    <span>Week</span>
-                                    <ChevronDown size={12} />
-                                </button>
-                            </div>
+                            <Button 
+                                onClick={() => router.push('/dashboard/marketing-assets/create')}
+                                className="h-12 px-8 rounded-xl bg-[#066CF4] text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
+                            >
+                                <Plus size={16} />
+                                Generate QR Code
+                            </Button>
                         </div>
+                    )}
+                </section>
 
-                        {/* Bar Chart — scrollable on very small screens if needed, but here we use flex-1 */}
-                        <div className="flex items-end justify-between gap-1 md:gap-2 h-40 md:h-48 overflow-x-auto no-scrollbar pb-1">
-                            {peakTimes.map((d: any, index: number) => {
-                                const newVisits = d.new || 0;
-                                const totalPct = maxVisits > 0 ? (d.value / maxVisits) * 100 : 0;
-                                const newPctBar = d.value > 0 ? (newVisits / d.value) * 100 : 0;
-                                return (
-                                    <div key={index} className="flex-1 min-w-[20px] flex flex-col items-center gap-1.5 group relative">
-                                        <div className="w-full rounded-t-sm md:rounded-t-md relative flex flex-col justify-end" style={{ height: '100%' }}>
-                                            {/* Total Bar */}
-                                            <div
-                                                className="w-full bg-primary/15 rounded-t-sm md:rounded-t-md transition-all relative overflow-hidden"
-                                                style={{ height: `${totalPct}%`, minHeight: d.value > 0 ? '2px' : '0' }}
-                                            >
-                                                {/* New Visitor portion */}
-                                                <div
-                                                    className="w-full bg-emerald-500/80 rounded-t-sm md:rounded-t-md absolute bottom-0 left-0"
-                                                    style={{ height: `${newPctBar}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-[8px] md:text-[9px] font-bold text-text-main">{d.value}</p>
-                                            <p className="text-[7px] md:text-[8px] text-text-secondary font-black uppercase tracking-tighter">{d.hour}</p>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Audience Breakdown — spans 5 cols, split into 2 rows */}
-                    <div className="lg:col-span-5 flex flex-col gap-4">
-                        {/* Audience Growth Donut */}
-                        <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100 flex-1">
-                            <h2 className="text-base font-display font-bold text-text-main mb-4">Audience Growth</h2>
-                            <div className="flex flex-col sm:flex-row items-center gap-6">
-                                <div className="relative size-24 md:size-28 shrink-0">
-                                    <svg className="size-full" viewBox="0 0 100 100">
-                                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f3f4f6" strokeWidth="10" />
-                                        {/* Returning = primary, New = emerald */}
-                                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--color-primary)" strokeWidth="10" strokeDasharray={`${(returningPct / 100) * 251.2} 251.2`} strokeDashoffset="0" strokeLinecap="round" transform="rotate(-90 50 50)" />
-                                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" strokeWidth="10" strokeDasharray={`${(newPct / 100) * 251.2} 251.2`} strokeDashoffset={`${-(returningPct / 100) * 251.2}`} strokeLinecap="round" transform="rotate(-90 50 50)" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <p className="text-base md:text-lg font-black text-slate-900">{totalVisitors}</p>
-                                        <p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest">Total</p>
-                                    </div>
-                                </div>
-
-                                <div className="w-full flex-1 space-y-2 md:space-y-3">
-                                    <div className="flex items-center justify-between p-2 md:p-2.5 bg-primary/5 rounded-xl border border-primary/10">
-                                        <div className="flex items-center gap-2">
-                                            <div className="size-2 bg-primary rounded-full" />
-                                            <span className="text-[9px] md:text-[10px] font-black uppercase text-slate-500">Returning</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs md:text-sm font-black text-slate-900">{repeatVisitors}</span>
-                                            <span className="text-[8px] md:text-[9px] font-bold text-slate-400 ml-1">({returningPct}%)</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between p-2 md:p-2.5 bg-emerald-50/50 rounded-xl border border-emerald-100">
-                                        <div className="flex items-center gap-2">
-                                            <div className="size-2 bg-emerald-500 rounded-full" />
-                                            <span className="text-[9px] md:text-[10px] font-black uppercase text-slate-500">New</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs md:text-sm font-black text-slate-900">{newVisitorsCount}</span>
-                                            <span className="text-[8px] md:text-[9px] font-bold text-slate-400 ml-1">({newPct}%)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Quick Actions — compact */}
-                        <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
-                            <h2 className="text-base font-display font-bold text-text-main mb-3">Quick Actions</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
-                                {[
-                                    { label: 'New Message', icon: MessageSquare, route: '/dashboard/messaging', color: 'bg-indigo-50 text-indigo-600', roles: ['owner', 'manager'], permission: 'messages' },
-                                    { label: 'Add Device', icon: LogoIcon, route: '/dashboard/settings/devices', color: 'bg-blue-50 text-blue-600', roles: ['owner', 'manager'], permission: 'settings' },
-                                    { label: 'Export Data', icon: Download, route: '/dashboard/visitors/all', color: 'bg-green-50 text-green-600', roles: ['owner', 'manager', 'staff'], permission: 'visitors' }
-                                ].filter(action => canAccessMenuItem(action, userRole, userPermissions, isOwnerOrAdmin)).map((action, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => router.push(action.route)}
-                                        className="w-full flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl transition-all group hover:border-gray-200"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${action.color} flex items-center justify-center`}>
-                                                <action.icon size={14} />
-                                            </div>
-                                            <p className="font-bold text-[11px] md:text-xs text-text-main">{action.label}</p>
-                                        </div>
-                                        <ArrowRight size={14} className="text-gray-300 group-hover:text-primary transition-colors group-hover:translate-x-1" />
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Recent Visitors */}
-                <div className="bg-white rounded-2xl p-4 md:p-5 border border-gray-100">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h2 className="text-base font-display font-bold text-text-main mb-0.5">Recent Visitors</h2>
-                            <p className="text-[10px] text-text-secondary">Latest customer check-ins</p>
-                        </div>
-                        <button
-                            onClick={() => router.push('/dashboard/visitors/all')}
-                            className="px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                {/* SECTION 5: MANAGE YOUR BUSINESS */}
+                <section className="space-y-4">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">Manage Your Business</h2>
+                    {[
+                        { 
+                            title: 'Customers', 
+                            desc: 'Manage visitors, customers, loyalty, messaging and forms.', 
+                            icon: Users, 
+                            color: 'text-blue-600 bg-blue-50',
+                            route: '/dashboard/visitors'
+                        },
+                        { 
+                            title: 'Sales', 
+                            desc: 'Manage inventory, catalogue and POS.', 
+                            icon: ShoppingBag, 
+                            color: 'text-purple-600 bg-purple-50',
+                            route: '/dashboard/catalogue'
+                        },
+                        { 
+                            title: 'Growth', 
+                            desc: 'Marketing, referrals, reviews and QR campaigns.', 
+                            icon: TrendingUp, 
+                            color: 'text-emerald-600 bg-emerald-50',
+                            route: '/dashboard/marketing-assets'
+                        },
+                        { 
+                            title: 'Insights', 
+                            desc: 'Analytics and business performance.', 
+                            icon: BarChart3, 
+                            color: 'text-amber-600 bg-amber-50',
+                            route: '/dashboard/analytics'
+                        },
+                        { 
+                            title: 'Settings', 
+                            desc: 'Business configuration and account settings.', 
+                            icon: SettingsIcon, 
+                            color: 'text-gray-600 bg-gray-50',
+                            route: '/dashboard/settings'
+                        }
+                    ].map((module, i) => (
+                        <button 
+                            key={i}
+                            onClick={() => router.push(module.route)}
+                            className="w-full bg-white border border-gray-100 p-6 rounded-[2.5rem] flex items-center gap-5 shadow-sm active:scale-[0.98] transition-all text-left"
                         >
-                            View All
+                            <div className={`size-14 rounded-2xl ${module.color} shrink-0 flex items-center justify-center`}>
+                                <module.icon size={28} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-black text-gray-900 mb-1">{module.title}</h3>
+                                <p className="text-[10px] font-bold text-gray-400 leading-relaxed uppercase tracking-tight">{module.desc}</p>
+                            </div>
+                            <ChevronRight className="text-gray-300" size={20} />
                         </button>
-                    </div>
-
-                    {/* Table for Desktop */}
-                    <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-gray-100">
-                                    <th className="text-left py-2.5 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Name</th>
-                                    <th className="text-left py-2.5 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Phone</th>
-                                    <th className="text-left py-2.5 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Time</th>
-                                    <th className="text-left py-2.5 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
-                                    <th className="text-left py-2.5 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(() => {
-                                    const recentVisitors = Array.isArray((data as any)?.recentVisitors) ? (data as any).recentVisitors : [];
-                                    if (recentVisitors.length === 0) {
-                                        return (
-                                            <tr>
-                                                <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">
-                                                    No recent visitors found for this branch.
-                                                </td>
-                                            </tr>
-                                        );
-                                    }
-                                    return recentVisitors.slice(0, 5).map((visitor: Visitor) => {
-                                        const fallbackFirstName = (visitor as any).firstName;
-                                        const fallbackLastName = (visitor as any).lastName;
-                                        const displayName = visitor.name?.trim()
-                                            || [fallbackFirstName, fallbackLastName].filter(Boolean).join(' ').trim()
-                                            || 'Unknown Visitor';
-                                        const initials = displayName
-                                            .split(' ')
-                                            .filter(Boolean)
-                                            .map((n) => n[0])
-                                            .join('')
-                                            .slice(0, 2);
-
-                                        return (
-                                            <tr
-                                                key={visitor.id}
-                                                className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
-                                                onClick={() => setSelectedVisitorForDetails(visitor)}
-                                            >
-                                                <td className="py-4 px-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">
-                                                            {initials}
-                                                        </div>
-                                                        <span className="text-sm font-bold text-text-main">{displayName}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.phone}</td>
-                                                <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.time}</td>
-                                                <td className="py-4 px-4">
-                                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${visitor.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                        {visitor.status}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setSelectedVisitorForMsg({ visitor, type: 'welcome' });
-                                                            }}
-                                                            className="p-1.5 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                                                        >
-                                                            <Send size={14} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    });
-                                })()}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Card View for Mobile */}
-                    <div className="md:hidden space-y-3">
-                        {(() => {
-                            const recentVisitors = Array.isArray((data as any)?.recentVisitors) ? (data as any).recentVisitors : [];
-                            if (recentVisitors.length === 0) {
-                                return (
-                                    <div className="py-8 text-center text-text-secondary text-xs">
-                                        No recent visitors found.
-                                    </div>
-                                );
-                            }
-                            return recentVisitors.slice(0, 5).map((visitor: Visitor) => {
-                                const fallbackFirstName = (visitor as any).firstName;
-                                const fallbackLastName = (visitor as any).lastName;
-                                const displayName = visitor.name?.trim()
-                                    || [fallbackFirstName, fallbackLastName].filter(Boolean).join(' ').trim()
-                                    || 'Unknown Visitor';
-                                const initials = displayName
-                                    .split(' ')
-                                    .filter(Boolean)
-                                    .map((n) => n[0])
-                                    .join('')
-                                    .slice(0, 2);
-
-                                return (
-                                    <div
-                                        key={visitor.id}
-                                        className="p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center justify-between"
-                                        onClick={() => setSelectedVisitorForDetails(visitor)}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">
-                                                {initials}
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-black text-text-main">{displayName}</p>
-                                                <p className="text-[10px] text-text-secondary font-medium">{visitor.phone}</p>
-                                                <p className="text-[9px] text-text-secondary font-bold uppercase tracking-tighter mt-0.5">{visitor.time}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${visitor.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                {visitor.status}
-                                            </span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedVisitorForMsg({ visitor, type: 'welcome' });
-                                                }}
-                                                className="p-2 bg-white text-text-secondary hover:text-primary rounded-xl border border-gray-100 shadow-sm"
-                                            >
-                                                <Send size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            });
-                        })()}
-                    </div>
-                </div>
-                </div>
-            </div>
-
-            <SendMessageModal
-                isOpen={!!selectedVisitorForMsg}
-                onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg?.visitor.name || ''}
-                recipientPhone={selectedVisitorForMsg?.visitor.phone}
-                recipientEmail={selectedVisitorForMsg?.visitor.email}
-                visitors={selectedVisitorForMsg?.visitor ? [selectedVisitorForMsg.visitor] : undefined}
-                type={selectedVisitorForMsg?.type || 'welcome'}
-            />
-
-            <VisitorDetailsModal
-                isOpen={!!selectedVisitorForDetails}
-                onClose={() => setSelectedVisitorForDetails(null)}
-                visitor={selectedVisitorForDetails as any}
-            />
-
-            <PreviewRewardModal
-                isOpen={!!rewardPreviewVisitor}
-                onClose={() => setRewardPreviewVisitor(null)}
-                rewardTitle="Free Coffee or Pastry"
-                businessName={user?.businessName || 'Your Business'}
-            />
-
-            <Modal
-                isOpen={showWhatsAppPrompt}
-                onClose={() => setShowWhatsAppPrompt(false)}
-                title="Connect with your Customers"
-                description="Link your WhatsApp number to make it easier for customers to chat with you directly from your public page."
-                size="md"
-            >
-                <div className="space-y-6 pt-4">
-                    <div className="flex items-center gap-4 p-4 bg-green-50 rounded-2xl border border-green-100">
-                        <div className="size-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-green-600">
-                            <Phone size={24} />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-bold text-green-900 leading-tight">Instant Communication</p>
-                            <p className="text-xs text-green-800/70 mt-1">Branches with WhatsApp enabled see 40% higher engagement.</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">WhatsApp Number</label>
-                        <input
-                            type="tel"
-                            value={promptNumber}
-                            onChange={(e) => setPromptNumber(e.target.value)}
-                            placeholder="+234 801 234 5678"
-                            className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                        />
-                        <p className="text-[10px] text-text-secondary italic px-1">Include country code (e.g., +234)</p>
-                    </div>
-
-                    <div className="flex flex-col gap-3 pt-2">
-                        <button
-                            onClick={handleSaveWhatsApp}
-                            disabled={!promptNumber || updateBranchMutation.isPending}
-                            className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
-                        >
-                            {updateBranchMutation.isPending ? <LoaderIcon size={14} className="animate-spin" /> : 'Save WhatsApp Number'}
-                        </button>
-                        <button
-                            onClick={() => setShowWhatsAppPrompt(false)}
-                            className="w-full h-12 bg-gray-50 text-text-secondary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-gray-100 transition-all"
-                        >
-                            Later
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-        </>
+                    ))}
+                </section>
+            </main>
+        </div>
     );
 }

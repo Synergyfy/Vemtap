@@ -35,8 +35,8 @@ export default function Homepage() {
               <Badge className="bg-blue-50 text-[#066CF4] border-none px-4 py-1.5 font-black uppercase tracking-widest mb-6">
                 Customer Engagement Platform
               </Badge>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-[1.1] mb-8">
-                Turn Every Visitor <br className="hidden md:block" /> Into A Customer <br className="hidden md:block" /> <span className="text-[#066CF4]">You Can Reach Again</span>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.1] mb-8 max-w-2xl mx-auto lg:mx-0">
+                Turn Every Visitor Into A Customer <span className="text-[#066CF4]">You Can Reach Again</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-500 font-medium max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
                 Capture customer details using QR codes and NFC technology. Build your customer database, send smart messages, and grow your business.
@@ -44,7 +44,7 @@ export default function Homepage() {
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
                 <Link href="/get-started" className="w-full sm:w-auto">
                   <Button className="h-16 px-10 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20 active:scale-95 transition-all">
-                    Start Free
+                    Get Started
                   </Button>
                 </Link>
                 <button className="flex items-center gap-3 px-8 py-4 text-gray-900 font-black uppercase tracking-widest text-xs hover:text-[#066CF4] transition-colors">
@@ -59,10 +59,10 @@ export default function Homepage() {
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="relative"
+              className="relative lg:mt-0"
             >
-              <div className="relative mx-auto w-full max-w-[400px] aspect-[9/18.5] bg-gray-900 rounded-[3rem] border-[10px] border-gray-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden">
-                <div className="h-full w-full bg-white p-6 pt-12">
+              <div className="relative mx-auto w-full max-w-[320px] aspect-[9/18.5] bg-gray-900 rounded-[3rem] border-[8px] border-gray-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden">
+                <div className="h-full w-full bg-white p-5 pt-10">
                    {/* Simplified Dashboard Illustration */}
                    <div className="space-y-6">
                      <div className="flex justify-between items-center">
@@ -362,7 +362,7 @@ export default function Homepage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/get-started">
                   <Button className="h-16 px-12 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20 active:scale-95 transition-all">
-                    Start Free
+                    Get Started
                   </Button>
                 </Link>
                 <Link href="/contact">

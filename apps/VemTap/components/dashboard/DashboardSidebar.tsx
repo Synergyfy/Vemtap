@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -12,12 +12,14 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText
+    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
+    ClipboardCheck
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
+import { useMarketingAssets, useAnalyticsOverview } from '@/services/marketing-assets/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
@@ -123,6 +125,21 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
     const isFreePlan = Boolean(activeSubscription?.plan?.isFree) || String(activeSubscription?.planId || '').toLowerCase().includes('free');
+
+    // Setup Checklist Pending Count
+    const { data: assets } = useMarketingAssets();
+    const { data: marketingAnalytics } = useAnalyticsOverview();
+    const pendingSetupCount = useMemo(() => {
+        let count = 0;
+        if (!myBusiness?.logoUrl) count++;
+        if (!assets || assets.length === 0) count++;
+        if (!(marketingAnalytics?.totals?.downloads > 0)) count++;
+        const visitorsCount = (data?.stats || []).find((s: any) => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        if (visitorsCount === '0') count++;
+        // Campaign placeholder
+        count++; 
+        return count;
+    }, [myBusiness, assets, marketingAnalytics, data]);
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -526,126 +543,95 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden w-full min-h-0">
-                {/* Top Bar */}
-                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
+                {/* Top Bar - Consolidated Unified Header */}
+                <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 shrink-0 sticky top-0 z-40">
                     <div className="flex items-center gap-4 flex-1">
                         <button
                             onClick={() => setIsMobileOpen(true)}
-                            className="p-2 text-text-secondary hover:bg-gray-50 rounded-lg lg:hidden"
+                            className="p-2 text-text-secondary hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100"
                         >
                             <Menu size={24} />
                         </button>
-                        <div className="relative max-w-sm w-full hidden sm:block">
-                            <BranchSwitcher />
+                        
+                        <div className="flex items-center gap-4">
+                            <div className="size-10 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center shrink-0 hidden sm:flex">
+                                {businessLogo ? (
+                                    <img src={businessLogo} alt="Logo" className="size-full object-cover p-1" />
+                                ) : (
+                                    <Zap className="text-primary size-5" />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-1 truncate max-w-[120px]">
+                                    {businessName}
+                                </p>
+                                <h1 className="text-base font-black text-gray-900 leading-none truncate">
+                                    {pathname === '/dashboard' ? (
+                                        <>Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.firstName || 'Owner'}</>
+                                    ) : (
+                                        menuItems.find(i => i.href && pathname.startsWith(i.href))?.label || 'Dashboard'
+                                    )}
+                                </h1>
+                            </div>
                         </div>
-                        <OwnerSearch />
+
+                        <div className="hidden lg:flex items-center gap-4 ml-6 border-l border-gray-100 pl-6">
+                            <div className="w-48">
+                                <BranchSwitcher />
+                            </div>
+                            <div className="w-64">
+                                <OwnerSearch />
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 lg:gap-4 relative">
+
+                    <div className="flex items-center gap-2 lg:gap-3">
+                        {/* Plan Status */}
                         {(() => {
                             const isOnTrial = activeSubscription?.status === 'trial' || activeSubscription?.status === 'trialing';
                             const planId = String(activeSubscription?.planId || '').toLowerCase();
                             const isFree = planId.includes('free') || Boolean(activeSubscription?.plan?.isFree);
-                            const planName = activeSubscription?.plan?.name || (isFree ? 'Free Plan' : 'Active Plan');
-
-                            // Compute counts/days for trial
-                            let daysRemaining = 0;
-                            if (isOnTrial && activeSubscription?.trialEndDate) {
-                                const trialEndDate = new Date(activeSubscription.trialEndDate);
-                                const now = new Date();
-                                daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-                            }
-
-                            const subscriptionLink = withBranch("/dashboard/settings/subscription" + (!isFree ? "/manage" : ""));
+                            const planName = activeSubscription?.plan?.name || (isFree ? 'Free' : 'Active');
 
                             return (
-                                <>
-                                    {/* Desktop View: Full Badge */}
-                                    <div className="hidden sm:flex items-center">
-                                        {isSubscriptionExpired ? (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-red-100 transition-colors shadow-sm shadow-red-100 animate-pulse"
-                                            >
-                                                Plan Expired
-                                            </Link>
-                                        ) : isFree ? (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
-                                            >
-                                                Free Plan
-                                            </Link>
-                                        ) : isOnTrial ? (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="flex items-center gap-2 pl-3 pr-1 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-full transition-all group"
-                                            >
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
-                                                    {planName}
-                                                </span>
-                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded-full">
-                                                    <Zap size={10} className="fill-white" />
-                                                    <span className="text-[9px] font-black uppercase tracking-tighter">
-                                                        {daysRemaining > 0 ? `${daysRemaining}d trial` : 'Last day!'}
-                                                    </span>
-                                                </div>
-                                            </Link>
-                                        ) : (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-100 transition-colors"
-                                            >
-                                                {planName}
-                                            </Link>
-                                        )}
-                                    </div>
-
-                                    {/* Mobile View: Compact Icon */}
-                                    <div className="flex sm:hidden items-center">
-                                        <Link
-                                            href={subscriptionLink}
-                                            className={`size-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
-                                                isSubscriptionExpired
-                                                    ? 'bg-red-50 border-red-200 text-red-600 animate-pulse'
-                                                    : isFree 
-                                                        ? 'bg-gray-50 border-gray-200 text-gray-400' 
-                                                        : isOnTrial 
-                                                            ? 'bg-amber-50 border-amber-200 text-amber-600' 
-                                                            : 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                                            }`}
-                                        >
-                                            {isSubscriptionExpired ? (
-                                                <AlertCircle size={18} />
-                                            ) : isFree ? (
-                                                <Zap size={18} className="opacity-40" />
-                                            ) : isOnTrial ? (
-                                                <div className="relative">
-                                                    <Zap size={18} className="fill-current" />
-                                                    {daysRemaining > 0 && (
-                                                        <span className="absolute -top-1 -right-1 size-4 bg-amber-500 text-white text-[8px] font-black rounded-full border-2 border-amber-50 flex items-center justify-center">
-                                                            {daysRemaining}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <ShieldCheck size={18} />
-                                            )}
-                                        </Link>
-                                    </div>
-                                </>
+                                <Link
+                                    href={withBranch("/dashboard/settings/subscription" + (!isFree ? "/manage" : ""))}
+                                    className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+                                        isSubscriptionExpired ? 'bg-red-50 border-red-100 text-red-600' :
+                                        isOnTrial ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                                        'bg-gray-50 border-gray-100 text-gray-600'
+                                    }`}
+                                >
+                                    <span className="text-[9px] font-black uppercase tracking-widest">{planName}</span>
+                                    {isOnTrial && <Zap size={10} className="fill-current" />}
+                                </Link>
                             );
                         })()}
+
+                        <div className="h-8 w-px bg-gray-100 mx-2 hidden sm:block" />
+
+                        {/* Setup Progress Icon */}
+                        {pendingSetupCount > 0 && (
+                            <Link
+                                href={withBranch("/dashboard")}
+                                className="relative size-10 rounded-xl bg-[#066CF4]/5 flex items-center justify-center text-[#066CF4] hover:bg-[#066CF4]/10 transition-all border border-transparent hover:border-[#066CF4]/20 mr-1 sm:mr-0"
+                                title="Pending Setup Tasks"
+                            >
+                                <ClipboardCheck size={20} />
+                                <span className="absolute -top-1 -right-1 size-5 bg-[#066CF4] text-white text-[10px] font-black rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                                    {pendingSetupCount}
+                                </span>
+                            </Link>
+                        )}
 
                         {/* Notification Button */}
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
-                            className="relative p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors"
+                            className="relative size-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all border border-transparent hover:border-gray-200"
                         >
                             <Bell size={20} />
                             {unreadCount > 0 && (
-                                <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
-                                    {unreadCount > 9 ? '9+' : unreadCount}
-                                </span>
+                                <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white" />
                             )}
                         </button>
 
@@ -656,19 +642,19 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     className="fixed inset-0 z-40"
                                     onClick={() => setShowNotifications(false)}
                                 ></div>
-                                <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
-                                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                                        <h3 className="font-bold text-text-main text-sm">Notifications</h3>
+                                <div className="absolute right-0 top-14 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+                                        <h3 className="font-black text-gray-900 text-xs uppercase tracking-widest">Notifications</h3>
                                         <button
                                             onClick={() => readAllMutation.mutate()}
-                                            className="text-xs text-primary font-bold hover:underline"
+                                            className="text-[10px] text-primary font-black uppercase hover:underline"
                                         >
                                             Mark all read
                                         </button>
                                     </div>
                                     <div className="max-h-80 overflow-y-auto">
                                         {notifications.length === 0 ? (
-                                            <div className="p-8 text-center text-text-secondary text-sm">
+                                            <div className="p-10 text-center text-gray-400 text-xs font-medium">
                                                 No notifications yet
                                             </div>
                                         ) : (
@@ -679,13 +665,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${!note.read ? 'bg-blue-50/30' : ''}`}
                                                 >
                                                     <div className="flex items-start gap-3">
-                                                        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!note.read ? 'bg-primary' : 'bg-transparent'}`}></div>
-                                                        <div className="flex-1">
-                                                            <p className={`text-sm ${!note.read ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
+                                                        <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${!note.read ? 'bg-primary' : 'bg-transparent'}`}></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-sm ${!note.read ? 'font-bold text-gray-900' : 'text-gray-500'}`}>
                                                                 {note.title}
                                                             </p>
-                                                            <p className="text-xs text-text-secondary mt-1">{note.message}</p>
-                                                            <p className="text-[10px] text-gray-400 mt-2">
+                                                            <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{note.message}</p>
+                                                            <p className="text-[10px] text-gray-300 mt-2 font-bold uppercase">
                                                                 {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             </p>
                                                         </div>
@@ -694,43 +680,32 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                             ))
                                         )}
                                     </div>
-                                    <div className="p-3 border-t border-gray-100 text-center">
+                                    <div className="p-4 border-t border-gray-100 text-center">
                                         <Link
                                             href={withBranch("/dashboard/notifications")}
-                                            className="text-xs font-bold text-primary hover:text-primary-hover"
+                                            className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-hover"
                                             onClick={() => setShowNotifications(false)}
                                         >
-                                            View All Notifications
+                                            View All Activity
                                         </Link>
                                     </div>
                                 </div>
                             </>
                         )}
 
-                        <Link
-                            href={withBranch("/dashboard/support")}
-                            className="p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors"
-                        >
-                            <HelpCircle size={20} />
-                        </Link>
-
                         {/* User Avatar & Dropdown */}
-                        <div className="relative">
+                        <div className="relative ml-1">
                             <button
                                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                                className="flex items-center gap-2 p-0.5 hover:bg-gray-100 rounded-full transition-all focus:outline-none border border-transparent hover:border-gray-200"
+                                className="size-10 rounded-xl bg-[#066CF4]/10 border border-[#066CF4]/20 flex items-center justify-center overflow-hidden transition-transform hover:scale-105 active:scale-95"
                             >
-                                <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm transition-transform hover:scale-105 active:scale-95">
-                                    {businessLogo ? (
-                                        <img
-                                            src={businessLogo}
-                                            alt={businessName}
-                                            className="w-full h-full object-contain p-1"
-                                        />
-                                    ) : (
-                                        <Users className="text-primary" size={16} />
-                                    )}
-                                </div>
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt="Avatar" className="size-full object-cover" />
+                                ) : (
+                                    <span className="text-[#066CF4] font-black text-xs uppercase">
+                                        {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+                                    </span>
+                                )}
                             </button>
 
                             {showUserDropdown && (
@@ -739,39 +714,39 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         className="fixed inset-0 z-40"
                                         onClick={() => setShowUserDropdown(false)}
                                     ></div>
-                                    <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
-                                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'User'}</p>
-                                            <p className="text-[11px] text-text-secondary truncate">{user?.email}</p>
+                                    <div className="absolute right-0 top-14 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="px-5 py-4 border-b border-gray-50 mb-2 bg-gray-50/50">
+                                            <p className="text-sm font-black text-gray-900 truncate">{user?.name || 'User'}</p>
+                                            <p className="text-[11px] font-bold text-gray-400 truncate uppercase tracking-tight">{user?.email}</p>
                                         </div>
-                                        <div className="px-2">
+                                        <div className="px-2 space-y-1">
                                             <Link
                                                 href={withBranch("/dashboard/settings/profile")}
-                                                className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
+                                                className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-primary/5 hover:text-primary rounded-xl transition-colors"
                                                 onClick={() => setShowUserDropdown(false)}
                                             >
                                                 <Settings size={16} className="opacity-70" />
-                                                <span>Profile</span>
+                                                <span>Business Profile</span>
                                             </Link>
                                             {((user?.role as string)?.toLowerCase() === 'owner' || (user?.role as string)?.toLowerCase() === 'admin') && (
                                                 <Link
                                                     href={withBranch("/dashboard/staff")}
-                                                    className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
+                                                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-primary/5 hover:text-primary rounded-xl transition-colors"
                                                     onClick={() => setShowUserDropdown(false)}
                                                 >
                                                     <Users2 size={16} className="opacity-70" />
-                                                    <span>Users</span>
+                                                    <span>Staff & Access</span>
                                                 </Link>
                                             )}
                                         </div>
-                                        <div className="border-t border-gray-50 my-2"></div>
+                                        <div className="border-t border-gray-50 my-2 mx-2"></div>
                                         <div className="px-2">
                                             <button
                                                 onClick={() => {
                                                     setShowUserDropdown(false);
                                                     handleLogout();
                                                 }}
-                                                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                                             >
                                                 <LogOut size={16} />
                                                 <span>Logout</span>
