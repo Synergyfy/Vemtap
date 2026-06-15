@@ -6,6 +6,7 @@ import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info, Box } from 'lu
 import { usePurchaseAddOn, useBundleDiscounts } from '@/services/addons/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
+import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { AddOn } from '@/services/addons/types';
 
 interface Props {
@@ -93,6 +94,7 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addons, businessId
             return;
         }
 
+        await loadPaystackScript();
         // @ts-ignore
         const handler = window.PaystackPop.setup({
             key: publicKey,

@@ -1,17 +1,20 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { UserRole } from '../../users/entities/user.entity';
+import { Transform } from 'class-transformer';
 
 export class RequestOtpDto {
-  @ApiProperty({ example: 'John' })
+  @ApiPropertyOptional({ example: 'John' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  firstName: string;
+  firstName?: string;
 
-  @ApiProperty({ example: 'Doe' })
+  @ApiPropertyOptional({ example: 'Doe' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  lastName: string;
+  lastName?: string;
 
   @ApiProperty({ example: 'john@example.com' })
   @IsEmail()
@@ -24,6 +27,12 @@ export class RequestOtpDto {
   phone: string;
 
   @ApiProperty({ enum: UserRole, example: UserRole.OWNER })
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value;
+    const normalized =
+      value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    return normalized as UserRole;
+  })
   @IsEnum(UserRole)
   @IsNotEmpty()
   role: UserRole;

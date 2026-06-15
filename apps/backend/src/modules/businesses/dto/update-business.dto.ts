@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsObject, IsUrl } from 'class-validator';
 
 export class UpdateBusinessDto {
   @ApiPropertyOptional({ example: 'The Azure Bistro' })
@@ -50,4 +50,54 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @ApiPropertyOptional({ example: '123 Business Ave, Lagos' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ example: 'A premium restaurant...' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'https://greenterrace.com' })
+  @IsOptional()
+  @IsString()
+  @IsUrl()
+  website?: string;
+
+  @ApiPropertyOptional({ example: { instagram: '...', facebook: '...' } })
+  @IsOptional()
+  @IsObject()
+  socials?: Record<string, string>;
+
+  @ApiPropertyOptional({ example: '+2348012345678' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'hello@greenterrace.com' })
+  @IsOptional()
+  @IsString()
+  officialEmail?: string;
+
+  @ApiPropertyOptional({ example: '+2348012345678' })
+  @IsOptional()
+  @IsString()
+  whatsappNumber?: string;
+
+  @ApiPropertyOptional({ example: { Monday: { open: '09:00', close: '18:00' } } })
+  @IsOptional()
+  @IsObject()
+  openingHours?: Record<string, any>;
+
+  @ApiPropertyOptional({ example: 'Africa/Lagos' })
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  isVisible?: boolean;
 }

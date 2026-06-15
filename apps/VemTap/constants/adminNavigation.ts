@@ -1,6 +1,6 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone
+    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -108,6 +108,23 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         keywords: ['rewards', 'points', 'coupons', 'discounts', 'offers', 'bonuses', 'programs']
     },
     {
+        id: 'discovery',
+        label: 'Discovery Network',
+        icon: Zap,
+        submenu: [
+            { label: 'Network Dashboard', href: '/admin/discovery/dashboard', keywords: ['discovery', 'stats', 'performance', 'overview'] },
+            { label: 'Discovery Businesses', href: '/admin/discovery/businesses', keywords: ['network', 'members', 'directory'] },
+            { label: 'Offer Management', href: '/admin/discovery/offers', keywords: ['promotions', 'deals', 'active', 'pending'] },
+            { label: 'Referral Tracking', href: '/admin/discovery/referrals', keywords: ['tracking', 'conversions', 'customer-flow'] },
+            { label: 'Attribution Engine', href: '/admin/discovery/attribution', keywords: ['roi', 'proof', 'revenue', 'source'] },
+            { label: 'Sponsored Placements', href: '/admin/discovery/sponsored', keywords: ['ads', 'featured', 'paid', 'campaigns'] },
+            { label: 'B2B Partnerships', href: '/admin/discovery/partnerships', keywords: ['collaboration', 'shared-customers', 'agreements'] },
+            { label: 'Network Settings', href: '/admin/discovery/settings', keywords: ['config', 'radius', 'limits', 'rules'] },
+        ],
+        permission: 'admin:all',
+        keywords: ['discovery', 'network', 'referrals', 'attribution', 'partnerships', 'nearby']
+    },
+    {
         id: 'support',
         label: 'Support Tickets',
         icon: MessageSquare,
@@ -138,6 +155,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/nfc-grants',
         permission: 'admin:all',
         keywords: ['quota', 'credits', 'allocations', 'permissions', 'grants', 'nfc']
+    },
+    {
+        id: 'marketing-assets',
+        label: 'Marketing Assets',
+        icon: Palette,
+        href: '/admin/marketing-assets',
+        permission: 'admin:all',
+        keywords: ['marketing', 'flyers', 'posters', 'qr', 'print', 'branding', 'graphics']
     },
     {
         id: 'engagement',

@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCreditPlans, purchaseCreditPlan, CreditPlan } from '@/lib/api/credit-plans';
 import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
+import { loadPaystackScript } from '@/lib/loadPaystackScript';
 
 interface TopUpModalProps {
     isOpen: boolean;
@@ -66,6 +67,7 @@ export default function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalPro
             return;
         }
 
+        await loadPaystackScript();
         // @ts-ignore
         const handler = window.PaystackPop.setup({
             key: publicKey,

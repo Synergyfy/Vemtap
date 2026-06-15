@@ -1,322 +1,132 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
-import PageHeader from '@/components/dashboard/PageHeader';
-import DataTable, { Column } from '@/components/dashboard/DataTable';
-import EmptyState from '@/components/dashboard/EmptyState';
-import { Eye, Clock, CheckCircle, XCircle, Calendar as CalendarIcon, Filter, ShoppingBag, QrCode } from 'lucide-react';
-import { useCatalogueOrders, Order } from '@/services/catalogue/hooks';
-import { useQrThriveSpecializedLeads } from '@/services/qr-thrive/hooks';
-import { QrThriveLead } from '@/services/qr-thrive/types';
-import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useAuthStore } from '@/store/useAuthStore';
-import OrderDetailsModal from '@/components/dashboard/catalogue/OrderDetailsModal';
-import QrThriveLeadModal from '@/components/dashboard/qr-thrive/QrThriveLeadModal';
-import { formatOrderDate } from '@/lib/utils/date';
-import { format } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Calendar as CalendarIcon, Clock, CheckCircle2, XCircle, 
+    Search, Filter, Plus, ArrowLeft, ChevronRight,
+    Users, Scissors, Star, MessageSquare, Phone,
+    Smartphone, MoreVertical, LayoutGrid, List
+} from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import Spinner from '@/components/ui/Spinner';
 
-export default function BookingsPage() {
-    const { activeBranchId } = useActiveBranch();
-    const [activeTab, setActiveTab] = useState<'vemtap' | 'qrthrive'>('vemtap');
-    const [statusFilter, setStatusFilter] = useState('all');
-    
-    // Vemtap Bookings Logic
-    const { data: ordersData, isLoading: isVemtapLoading } = useCatalogueOrders({ 
-        branchId: activeBranchId ?? undefined, 
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        type: 'booking'
-    });
-    const bookings = ((ordersData as any)?.data as Order[]) || [];
-    
-    // QRThrive Leads Logic
-    const { data: qrLeads, isLoading: isQrLoading } = useQrThriveSpecializedLeads(activeBranchId, { types: 'booking' });
-    const filteredQrItems = (qrLeads?.items || []).filter((item: any) => {
-        const currentStatus = item.localStatus || 'new';
-        return statusFilter === 'all' || currentStatus === statusFilter;
-    });
+export default function BookingsDashboardPage() {
+    const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+    const isLoading = false;
 
-    const [isVemtapModalOpen, setIsVemtapModalOpen] = useState(false);
-    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-
-    const [selectedQrLead, setSelectedQrLead] = useState<QrThriveLead | null>(null);
-    const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-
-    const handleViewVemtapDetails = (order: Order) => {
-        setSelectedOrderId(order.id);
-        setIsVemtapModalOpen(true);
-    };
-
-    const handleViewQrDetails = (lead: QrThriveLead) => {
-        setSelectedQrLead(lead);
-        setIsQrModalOpen(true);
-    };
-
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'new': 
-                return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit"><Clock size={12}/> NEW</span>;
-            case 'processing': 
-                return <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit"><Clock size={12}/> PROCESSING</span>;
-            case 'completed': 
-                return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit"><CheckCircle size={12}/> COMPLETED</span>;
-            case 'cancelled': 
-                return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit"><XCircle size={12}/> CANCELLED</span>;
-            default: 
-                return <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-[10px] font-black uppercase tracking-wider w-fit">{status.toUpperCase()}</span>;
-        }
-    };
-
-    const vemtapColumns: Column<Order>[] = [
-        {
-            header: 'Booking Info',
-            accessor: (item: Order) => (
-                <div className="flex flex-col">
-                    <span className="font-bold text-text-main">#{item.id.slice(0, 8)}</span>
-                    <span className="text-[10px] text-text-secondary uppercase">{item.items.length} Service(s)</span>
-                </div>
-            )
-        },
-        {
-            header: 'Customer',
-            accessor: (item: Order) => (
-                <div className="flex flex-col">
-                    <span className="font-medium text-text-main">
-                        {item.customer ? `${item.customer.firstName} ${item.customer.lastName}` : 'Guest'}
-                    </span>
-                    <span className="text-[10px] text-text-secondary">{item.customer?.phone || 'No phone'}</span>
-                </div>
-            )
-        },
-        {
-            header: 'Appointment',
-            accessor: (item: any) => (
-                <div className="flex flex-col">
-                    <span className="font-bold text-primary flex items-center gap-1">
-                        <CalendarIcon size={12} /> {item.bookingDate || 'N/A'}
-                    </span>
-                    <span className="text-[10px] text-text-secondary font-black uppercase">
-                        <Clock size={10} className="inline mr-1" /> {item.bookingTime || 'N/A'}
-                    </span>
-                </div>
-            )
-        },
-        {
-            header: 'Status',
-            accessor: (item: Order) => getStatusBadge(item.status)
-        },
-        {
-            header: 'Booked On',
-            accessor: (item: Order) => (
-                <div className="flex flex-col">
-                    <span className="text-xs text-text-main font-medium">
-                        {formatOrderDate(item.createdAt)}
-                    </span>
-                    <span className="text-[10px] text-text-secondary uppercase">
-                        {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                </div>
-            )
-        },
-        {
-            header: 'Actions',
-            accessor: (item: Order) => (
-                <button
-                    onClick={() => handleViewVemtapDetails(item)}
-                    className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
-                    title="View Details"
-                >
-                    <Eye size={16} />
-                </button>
-            )
-        }
+    const stats = [
+        { label: "Today's Bookings", value: '14', icon: CalendarIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: "Upcoming", value: '42', icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { label: "Confirmed", value: '38', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: "Cancelled", value: '3', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
     ];
 
-    const qrThriveColumns: Column<QrThriveLead>[] = [
-        {
-            header: 'Lead / Submission',
-            accessor: (item: QrThriveLead) => {
-                const answers = item.answers || {};
-                const fields = item.form.fields || [];
-                const nameField = fields.find(f => f.label.toLowerCase().includes('name'))?.id;
-                
-                const getPrimaryText = () => {
-                    if (nameField && answers[nameField]) return String(answers[nameField]);
-                    if (answers.details?.name) return String(answers.details.name);
-                    if (answers.serviceTitle) return String(answers.serviceTitle);
-                    return 'Untitled Booking';
-                };
-                
-                const primaryText = getPrimaryText();
-                const subText = answers.serviceTitle && primaryText !== answers.serviceTitle 
-                    ? answers.serviceTitle 
-                    : (answers.date ? `${answers.date} ${answers.time || ''}` : (answers.details?.type || 'Booking Request'));
-                
-                return (
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0">
-                            {String(primaryText).charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="font-bold text-text-main truncate max-w-[200px]">{primaryText}</span>
-                            <span className="text-[10px] text-text-secondary truncate max-w-[200px]">
-                                {subText}
-                            </span>
-                        </div>
-                    </div>
-                );
-            }
-        },
-        {
-            header: 'Form Source',
-            accessor: (item: QrThriveLead) => (
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-text-main">{item.form.title}</span>
-                    <span className="text-[10px] text-text-secondary uppercase tracking-wider">{item.form.qrCode.name}</span>
-                </div>
-            )
-        },
-        {
-            header: 'Data Points',
-            accessor: (item: QrThriveLead) => (
-                <span className="text-sm font-black text-text-main">{Object.keys(item.answers || {}).length} fields</span>
-            )
-        },
-        {
-            header: 'Status',
-            accessor: (item: QrThriveLead) => getStatusBadge(item.localStatus || 'new')
-        },
-        {
-            header: 'Date & Time',
-            accessor: (item: QrThriveLead) => (
-                <div className="flex flex-col">
-                    <span className="text-xs text-text-main font-bold">
-                        {format(new Date(item.createdAt), 'MMM d, yyyy')}
-                    </span>
-                    <span className="text-[10px] text-text-secondary uppercase">
-                        {format(new Date(item.createdAt), 'h:mm a')}
-                    </span>
-                </div>
-            )
-        },
-        {
-            header: 'Actions',
-            accessor: (item: QrThriveLead) => (
-                <button
-                    onClick={() => handleViewQrDetails(item)}
-                    className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
-                    title="View Details"
-                >
-                    <Eye size={16} />
-                </button>
-            )
-        }
+    const mockBookings = [
+        { id: '1', customer: 'Sarah Jenkins', service: 'Premium Haircut', date: 'Today', time: '02:00 PM', duration: '45m', status: 'Confirmed' },
+        { id: '2', customer: 'Michael K.', service: 'Beard Trim & Style', date: 'Today', time: '03:15 PM', duration: '30m', status: 'Pending' },
+        { id: '3', customer: 'Elena R.', service: 'Full Color Treatment', date: 'Tomorrow', time: '10:00 AM', duration: '2h', status: 'Confirmed' },
+        { id: '4', customer: 'David W.', service: 'Quick Trim', date: 'Tomorrow', time: '12:30 PM', duration: '15m', status: 'Cancelled' },
     ];
+
+    if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Spinner size="lg" /></div>;
 
     return (
-        <div className="p-4 md:p-8">
-            <PageHeader
-                title="Service Bookings"
-                description="Manage appointments from your catalogue and QRThrive leads"
-            />
-
-            {/* Tab Switcher */}
-            <div className="flex bg-gray-100/50 p-1 rounded-2xl w-fit mb-8 border border-gray-200 shadow-sm">
-                <button
-                    onClick={() => {
-                        setActiveTab('vemtap');
-                        setStatusFilter('all');
-                    }}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
-                        activeTab === 'vemtap' 
-                        ? 'bg-white text-primary shadow-sm' 
-                        : 'text-text-secondary hover:text-text-main'
-                    }`}
-                >
-                    <ShoppingBag size={14} /> Vemtap Bookings
-                </button>
-                <button
-                    onClick={() => {
-                        setActiveTab('qrthrive');
-                        setStatusFilter('all');
-                    }}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
-                        activeTab === 'qrthrive' 
-                        ? 'bg-white text-emerald-600 shadow-sm' 
-                        : 'text-text-secondary hover:text-text-main'
-                    }`}
-                >
-                    <QrCode size={14} /> QRThrive Bookings
-                </button>
+        <div className="pb-24 md:pb-10 max-w-6xl mx-auto p-4 md:p-8 space-y-12">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <h1 className="text-3xl font-black text-gray-900 leading-tight">Bookings</h1>
+                    <p className="text-sm font-medium text-gray-500 mt-1">Manage your appointment schedule and service requests.</p>
+                </div>
+                <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm">
+                   <button 
+                       onClick={() => setViewMode('list')}
+                       className={cn("px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'list' ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-600")}
+                   >
+                      <List size={14} className="inline mr-2" /> List
+                   </button>
+                   <button 
+                       onClick={() => setViewMode('calendar')}
+                       className={cn("px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'calendar' ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-600")}
+                   >
+                      <CalendarIcon size={14} className="inline mr-2" /> Calendar
+                   </button>
+                </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6 flex flex-col md:flex-row gap-4 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-black text-text-secondary uppercase tracking-widest mr-4">
-                    <Filter size={16} /> Filter Status
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {stats.map((s, i) => (
+                    <div key={i} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                        <div className={cn("size-10 rounded-xl flex items-center justify-center mb-4 shadow-sm", s.bg)}>
+                            <s.icon size={20} className={s.color} />
+                        </div>
+                        <p className="text-2xl font-black text-gray-900">{s.value}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{s.label}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Bookings List */}
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                   <h3 className="text-xl font-black text-gray-900 uppercase tracking-widest">Active Schedule</h3>
+                   <Button variant="outline" className="h-10 rounded-xl border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">Filter By Date</Button>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    {['all', 'new', 'processing', 'completed', 'cancelled'].map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setStatusFilter(status)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                statusFilter === status 
-                                ? (activeTab === 'vemtap' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200')
-                                : 'bg-gray-50 text-text-secondary hover:bg-gray-100 border border-transparent hover:border-gray-200'
-                            }`}
-                        >
-                            {status}
-                        </button>
+
+                <div className="grid grid-cols-1 gap-4">
+                    {mockBookings.map((bk) => (
+                        <div key={bk.id} className="group p-6 rounded-[32px] bg-white border border-gray-100 shadow-sm hover:border-[#066CF4]/20 hover:shadow-xl transition-all">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div className="flex items-center gap-5">
+                                    <div className="size-14 rounded-2xl bg-gray-50 flex flex-col items-center justify-center shrink-0 border border-gray-100">
+                                       <span className="text-[10px] font-black text-[#066CF4] uppercase">{bk.time.split(' ')[1]}</span>
+                                       <span className="text-sm font-black text-gray-900">{bk.time.split(' ')[0]}</span>
+                                    </div>
+                                    <div>
+                                       <h4 className="text-base font-black text-gray-900">{bk.customer}</h4>
+                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{bk.service} • {bk.duration}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <Badge className={cn(
+                                        "border-none font-black text-[8px] uppercase px-4 py-1.5",
+                                        bk.status === 'Confirmed' ? "bg-emerald-50 text-emerald-600" :
+                                        bk.status === 'Pending' ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600"
+                                    )}>
+                                        {bk.status}
+                                    </Badge>
+                                    <div className="flex items-center gap-2">
+                                       <button className="size-10 rounded-xl bg-blue-50 text-[#066CF4] flex items-center justify-center hover:scale-110 transition-all"><Phone size={16} /></button>
+                                       <button className="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center hover:scale-110 transition-all"><Smartphone size={16} /></button>
+                                       <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center"><MoreVertical size={16} /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     ))}
                 </div>
             </div>
 
-            {activeTab === 'vemtap' ? (
-                <DataTable
-                    columns={vemtapColumns}
-                    data={bookings}
-                    isLoading={isVemtapLoading}
-                    onRowClick={handleViewVemtapDetails}
-                    emptyState={
-                        <EmptyState
-                            icon="calendar"
-                            title="No bookings yet"
-                            description="Customer appointments for your services will appear here."
-                        />
-                    }
-                />
-            ) : (
-                <DataTable
-                    columns={qrThriveColumns}
-                    data={filteredQrItems}
-                    isLoading={isQrLoading}
-                    onRowClick={handleViewQrDetails}
-                    emptyState={
-                        <EmptyState
-                            icon="calendar"
-                            title="No booking leads yet"
-                            description="Submissions from your booking QR codes will appear here."
-                        />
-                    }
-                />
-            )}
-
-            <OrderDetailsModal
-                isOpen={isVemtapModalOpen}
-                onClose={() => {
-                    setIsVemtapModalOpen(false);
-                    setSelectedOrderId(null);
-                }}
-                orderId={selectedOrderId}
-            />
-
-            <QrThriveLeadModal
-                isOpen={isQrModalOpen}
-                onClose={() => {
-                    setIsQrModalOpen(false);
-                    setSelectedQrLead(null);
-                }}
-                lead={selectedQrLead}
-            />
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-[40px] bg-gray-900 p-10 text-white relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#066CF4]/20 rounded-full blur-2xl -mr-16 -mt-16" />
+                    <h3 className="text-2xl font-black mb-4 leading-tight">Setup Booking <br /> Availability</h3>
+                    <p className="text-sm font-medium text-white/50 mb-8">Configure your working hours, break times, and service limits.</p>
+                    <Button className="h-14 px-8 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-widest text-white shadow-xl hover:bg-[#4293FF] transition-all">Configure Hours</Button>
+                </div>
+                <div className="rounded-[40px] bg-[#066CF4] p-10 text-white relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16" />
+                    <h3 className="text-2xl font-black mb-4 leading-tight">Get More <br /> Appointments</h3>
+                    <p className="text-sm font-medium text-white/80 mb-8">Share your specialized booking QR code on Instagram and Facebook.</p>
+                    <Button className="h-14 px-8 rounded-2xl bg-white text-[#066CF4] font-black uppercase tracking-widest text-xs hover:bg-gray-50 active:scale-95 transition-all">Share Booking QR</Button>
+                </div>
+            </div>
         </div>
     );
 }

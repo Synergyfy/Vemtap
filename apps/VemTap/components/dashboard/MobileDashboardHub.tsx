@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
     Home, Users, MessageCircle, MessageSquare, Gift, 
     ShoppingBag, BarChart, FileText, QrCode, Zap, Settings,
-    UserPlus, History, Smartphone, Globe, HelpCircle
+    UserPlus, History, Smartphone, Globe, HelpCircle, Palette
 } from 'lucide-react';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -26,6 +26,7 @@ export default function MobileDashboardHub() {
         { label: 'Manage Forms', icon: FileText, href: '/dashboard/engagement/forms', color: 'bg-orange-50 text-orange-600', roles: ['owner', 'manager', 'staff'], permission: 'engagement' },
         { label: 'Explore QRThrive', icon: QrCode, href: '/dashboard/explore-qrthrive', color: 'bg-purple-50 text-purple-600', roles: ['owner', 'manager', 'staff'], permission: 'qrthrive' },
         { label: 'Customer Experience', icon: Zap, href: '/dashboard/customer-experience', color: 'bg-yellow-50 text-yellow-600', roles: ['owner', 'manager', 'staff'], permission: 'customer-experience' },
+        { label: 'Marketing Assets', icon: Palette, href: '/dashboard/marketing-assets', color: 'bg-pink-50 text-pink-600', roles: ['owner', 'manager'], permission: 'dashboard' },
         { label: 'Support Desk', icon: HelpCircle, href: '/agent/dashboard', color: 'bg-red-50 text-red-600', roles: ['staff', 'manager'], permission: 'support' },
         { label: 'Settings', icon: Settings, href: '/dashboard/settings', color: 'bg-slate-50 text-slate-600', roles: ['owner', 'manager'], permission: 'settings' },
     ];

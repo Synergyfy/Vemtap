@@ -64,6 +64,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
+    const isCreateAssetPage = pathname.includes('/marketing-assets/create');
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const mainRef = useRef<HTMLElement | null>(null);
 
@@ -186,6 +187,41 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             if (item.id === 'admin-nfc') return false;
             
             return !item.roles || item.roles.includes('owner');
+        }
+
+        // Hide Marketing Materials for excluded categories (PRD §8.0)
+        if (item.id === 'marketing-assets' && myBusiness) {
+            const bizCat = typeof (myBusiness as any).category === 'object'
+                ? (myBusiness as any).category?.name
+                : myBusiness.category;
+            
+            if (bizCat) {
+                const excludedCategories = [
+                    'hospital',
+                    'clinic',
+                    'dental clinic',
+                    'eye clinic',
+                    'medical laboratory',
+                    'pharmacy',
+                    'airport',
+                    'government',
+                    'ministry',
+                    'agency',
+                    'educational',
+                    'school',
+                    'university'
+                ];
+                const catLower = bizCat.toLowerCase();
+                const isExcluded = excludedCategories.some(ex => {
+                    if (ex === 'hospital') {
+                        return catLower.includes('hospital') && !catLower.includes('hospitality');
+                    }
+                    return catLower.includes(ex);
+                });
+                if (isExcluded) {
+                    return false;
+                }
+            }
         }
 
         return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
@@ -758,7 +794,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             {/* Only show Mobile Nav if NOT on an active chat conversation */}
-            {!(isChatRoute && activeConversationId) && <DashboardMobileNav />}
+            {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
             
             <UpgradeModal
                 isOpen={upgradeModal.isOpen}

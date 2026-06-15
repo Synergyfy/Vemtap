@@ -1,6 +1,6 @@
 export interface RequestOwnerOtpRequest {
-    firstName: string;
-    lastName: string;
+    firstName?: string;
+    lastName?: string;
     email: string;
     phone: string;
     role: 'Owner';
@@ -9,16 +9,18 @@ export interface RequestOwnerOtpRequest {
 export interface RegisterOwnerRequest {
     email: string;
     password?: string;
+    firstName?: string;
+    lastName?: string;
     businessName: string;
     businessLogo?: string;
-    categoryId: string;
-    subcategoryId: string;
+    categoryId?: string;
+    subcategoryId?: string;
     otherSubcategoryName?: string;
     visitors?: string;
     goals?: string[];
     whatsappNumber?: string;
-    officialEmail: string;
-    businessNumber: string;
+    officialEmail?: string;
+    businessNumber?: string;
     businessAddress?: string;
     businessWebsite?: string;
     state?: string;
