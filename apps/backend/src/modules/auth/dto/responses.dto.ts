@@ -15,6 +15,13 @@ export class AuthResponseDto {
 
   @ApiProperty({ type: User })
   user: User;
+
+  @ApiProperty({
+    example: false,
+    description: 'Whether this is a newly created user',
+    required: false,
+  })
+  isNewUser?: boolean;
 }
 
 export class VerifyOtpResponseDto {

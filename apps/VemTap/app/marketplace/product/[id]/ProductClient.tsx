@@ -195,20 +195,19 @@ export default function ProductClient({ id }: { id: string }) {
                     setIsSubmitting(false);
                     toast.error('Payment cancelled');
                 },
-                callback: async (response: any) => {
-                    try {
-                        await createOrder({
-                            productId: product.id,
-                            quantity: finalQuantity,
-                            paymentReference: response.reference
-                        });
+                callback: function (response: any) {
+                    createOrder({
+                        productId: product.id,
+                        quantity: finalQuantity,
+                        paymentReference: response.reference
+                    }).then(() => {
                         toast.success('Order placed successfully!');
                         router.push('/dashboard/hardware');
-                    } catch (err: any) {
+                    }).catch((err: any) => {
                         toast.error(err.message || 'Failed to complete order after payment. Please contact support.');
-                    } finally {
+                    }).finally(() => {
                         setIsSubmitting(false);
-                    }
+                    });
                 }
             });
             handler.openIframe();
