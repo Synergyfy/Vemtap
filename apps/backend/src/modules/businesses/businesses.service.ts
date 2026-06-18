@@ -228,6 +228,37 @@ export class BusinessesService {
     updateBusinessDto: UpdateBusinessDto,
   ): Promise<Business> {
     const business = await this.findById(id);
+
+    // Map frontend aliases to entity field names
+    if (updateBusinessDto.about && !updateBusinessDto.description) {
+      (updateBusinessDto as any).description = updateBusinessDto.about;
+    }
+    if (updateBusinessDto.businessHours && !updateBusinessDto.openingHours) {
+      (updateBusinessDto as any).openingHours = updateBusinessDto.businessHours;
+    }
+
+    // Merge individual social fields into socials object
+    const socialFields = ['facebookUrl', 'instagramUrl', 'tiktokUrl', 'xUrl', 'linkedinUrl'] as const;
+    const hasIndividualSocials = socialFields.some(f => !!(updateBusinessDto as any)[f]);
+    if (hasIndividualSocials) {
+      const existingSocials = business.socials || {};
+      for (const field of socialFields) {
+        const value = (updateBusinessDto as any)[field];
+        if (value) {
+          const key = field.replace('Url', '').toLowerCase();
+          existingSocials[key] = value;
+        }
+      }
+      (updateBusinessDto as any).socials = existingSocials;
+    }
+
+    // Clean up alias fields before assign to avoid TypeORM warnings
+    delete (updateBusinessDto as any).about;
+    delete (updateBusinessDto as any).businessHours;
+    for (const field of socialFields) {
+      delete (updateBusinessDto as any)[field];
+    }
+
     Object.assign(business, updateBusinessDto);
     return this.businessesRepository.save(business);
   }
