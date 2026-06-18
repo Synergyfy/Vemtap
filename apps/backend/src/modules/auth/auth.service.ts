@@ -100,7 +100,7 @@ export class AuthService {
   async sendOtp(dto: any) {
     const email = (typeof dto === 'string' ? dto : dto.email).toLowerCase();
     const existingUser = await this.usersService.findByEmail(email);
-    if (existingUser) {
+    if (existingUser && existingUser.status !== UserStatus.PENDING) {
       throw new ConflictException('User with this email already exists');
     }
 
@@ -360,6 +360,7 @@ export class AuthService {
       ? await bcrypt.hash(registrationData.password, 10)
       : undefined;
     let user: User;
+    const isNewUser = !existingUser;
 
     if (existingUser && existingUser.status === UserStatus.INVITED) {
       // Complete registration for invited user
@@ -402,7 +403,7 @@ export class AuthService {
         email: registrationData.email,
         password: hashedPassword,
         role: role as UserRole,
-        status: UserStatus.PENDING,
+        status: UserStatus.ACTIVE,
         phone: registrationData.phone || metadata.phone,
         branchId: registrationData.branchId, // Use branchId instead of businessId
         isPasswordChanged: false,
@@ -473,7 +474,7 @@ export class AuthService {
     await this.otpRepository.remove(otpRecord);
 
     const { password: _password, ...result } = user;
-    return this.generateAuthResponse(result as User);
+    return this.generateAuthResponse(result as User, isNewUser);
   }
 
   // --- New Dedicated Owner Registration ---
@@ -524,6 +525,7 @@ export class AuthService {
 
       // 2. Create or Update User (Owner)
     let user: User;
+    let isNewUser = !existingUser;
     const hashedPassword = dto.password
       ? await bcrypt.hash(dto.password, 10)
       : undefined;
@@ -547,13 +549,19 @@ export class AuthService {
       user = await this.usersService.create(existingUser);
     } else {
       // This path is for people who verify OTP then register (Manual)
+      // If business name is provided, they'll be made ACTIVE via business creation.
+      // Without business name, they stay PENDING for resumption flow.
       user = await this.usersService.create({
         firstName,
         lastName,
         email: dto.email,
         password: hashedPassword,
         role: UserRole.OWNER,
-        status: isGoogleUser ? UserStatus.ACTIVE : UserStatus.PENDING,
+        status: isGoogleUser
+          ? UserStatus.ACTIVE
+          : dto.businessName
+            ? UserStatus.ACTIVE
+            : UserStatus.PENDING,
         phone,
         authProvider: isGoogleUser
           ? AuthProvider.GOOGLE
@@ -667,7 +675,7 @@ export class AuthService {
       }
     }
 
-    return this.generateAuthResponse(updatedUser);
+    return this.generateAuthResponse(updatedUser, isNewUser);
   }
 
   // --- New Dedicated Admin Registration ---

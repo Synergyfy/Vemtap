@@ -232,10 +232,13 @@ export class FosPnlService {
 
     const allTransactions = transactions;
 
-    const gatewayCost = allTransactions.reduce(
-      (sum, t) => sum + this.toNumber(t.cost),
-      0,
-    );
+    const gatewayCost = allTransactions
+      .filter(
+        (t) =>
+          t.type === FosTransactionType.SUBSCRIPTION ||
+          t.type === FosTransactionType.SMS,
+      )
+      .reduce((sum, t) => sum + this.toNumber(t.cost), 0);
 
     const commissionPaid = allTransactions
       .filter((t) => t.type === FosTransactionType.COMMISSION)

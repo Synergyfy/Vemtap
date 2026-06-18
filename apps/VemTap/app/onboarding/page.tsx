@@ -49,10 +49,7 @@ import {
     Zap,
     Shield,
     Star,
-    Crown,
-    HeadphonesIcon,
-    CreditCard,
-    Lock
+    Crown
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import LogoIcon from '@/components/brand/LogoIcon';
@@ -960,11 +957,18 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
     const plans = useSubscriptionStore((s) => s.plans);
     const pricingLoading = useSubscriptionStore((s) => s.isLoading);
 
-    const PLAN_META: Record<string, { icon: React.ElementType; color: string; badge: string; badgeColor: string }> = {
-        free: { icon: Zap, color: 'bg-gray-50 text-text-secondary', badge: 'Free', badgeColor: 'border-gray-300 text-gray-500' },
-        silver: { icon: Shield, color: 'bg-blue-50 text-primary', badge: 'Popular', badgeColor: 'border-primary/20 text-primary' },
-        gold: { icon: Star, color: 'bg-yellow-50 text-yellow-600', badge: 'Best Value', badgeColor: 'border-yellow-300 text-yellow-700' },
-        platinum: { icon: Crown, color: 'bg-purple-50 text-purple-600', badge: 'Premium', badgeColor: 'border-purple-300 text-purple-700' },
+    const getPlanMeta = (plan: PricingPlan) => {
+        const name = plan.name.toLowerCase();
+        if (plan.isFree || name.includes('starter') || name.includes('free')) {
+            return { icon: Zap, color: 'bg-gray-50 text-text-secondary', badge: 'Free', badgeColor: 'border-gray-300 text-gray-500' };
+        }
+        if (plan.isPopular || name.includes('professional') || name.includes('silver')) {
+            return { icon: Shield, color: 'bg-blue-50 text-primary', badge: 'Popular', badgeColor: 'border-primary/20 text-primary' };
+        }
+        if (name.includes('ultimate') || name.includes('gold') || name.includes('premium')) {
+            return { icon: Star, color: 'bg-yellow-50 text-yellow-600', badge: 'Best Value', badgeColor: 'border-yellow-300 text-yellow-700' };
+        }
+        return { icon: Crown, color: 'bg-purple-50 text-purple-600', badge: 'Premium', badgeColor: 'border-purple-300 text-purple-700' };
     };
 
     const formatPrice = (plan: PricingPlan) => {
@@ -977,7 +981,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
     };
 
     const uiPlans = plans.map((plan: PricingPlan) => {
-        const meta = PLAN_META[plan.id] || plan.isFree ? PLAN_META.free : { icon: HeadphonesIcon, color: 'bg-black text-white', badge: 'Enterprise', badgeColor: 'border-gray-300 text-gray-500' };
+        const meta = getPlanMeta(plan);
         return {
             id: plan.id,
             name: plan.name,
@@ -1207,31 +1211,31 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
         try {
             await loadPaystackScript();
             const email = user?.email || '';
+            const paystackRef = `SUB-${user?.businessId || 'anon'}-${Date.now()}`;
             // @ts-ignore
             const handler = window.PaystackPop.setup({
                 key: publicKey,
                 email,
                 amount: total * 100,
                 currency: 'NGN',
-                ref: `SUB-${user?.businessId || 'anon'}-${Date.now()}`,
-                onClose: () => {
+                ref: paystackRef,
+                onClose: function () {
                     setIsProcessing(false);
                 },
-                callback: async (response: any) => {
-                    try {
-                        await subscribe.mutateAsync({
-                            planId: plan!.id,
-                            billingPeriod: billingCycle,
-                            businessId: user?.businessId,
-                            paymentReference: response.reference,
-                        });
+                callback: function (response: any) {
+                    subscribe.mutateAsync({
+                        planId: plan!.id,
+                        billingPeriod: billingCycle,
+                        businessId: user?.businessId,
+                        paymentReference: response.reference,
+                    }).then(() => {
                         setIsProcessing(false);
                         setIsSuccess(true);
                         setTimeout(() => onNext({}), 2000);
-                    } catch (err: any) {
+                    }).catch((err: any) => {
                         toast.error(err?.message || 'Payment verified but subscription sync failed');
                         setIsProcessing(false);
-                    }
+                    });
                 },
             });
             handler.openIframe();
@@ -1300,25 +1304,6 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                         <span>{plan?.isFree ? 'Free' : `₦${total.toLocaleString()}`}</span>
                     </div>
                 </div>
-            </div>
-
-            {/* Payment Method */}
-            <div className="space-y-6">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Payment Method</label>
-                <div className="bg-primary/5 rounded-[2rem] p-8 border border-primary/10 flex flex-col items-center gap-4 text-center">
-                    <CreditCard size={32} className="text-primary" />
-                    <div className="space-y-1">
-                        <p className="font-black text-sm text-text-main">Pay with Card</p>
-                        <p className="text-xs text-text-secondary font-medium">
-                            You'll be redirected to Paystack's secure checkout to complete your payment.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-text-secondary opacity-50">
-                <Lock size={12} />
-                <span>Your payment is encrypted and secure.</span>
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">

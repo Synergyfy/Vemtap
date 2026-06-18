@@ -201,6 +201,7 @@ export default function GetStartedPage() {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 businessName: formData.businessName,
+                businessNumber: formData.phone,
             });
 
             // Log user in
