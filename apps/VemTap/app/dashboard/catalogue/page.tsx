@@ -20,7 +20,7 @@ export default function CatalogueOverviewPage() {
     const { data: ordersData, isLoading: isLoadingOrders } = useCatalogueOrders();
 
     const isLoading = isLoadingItems || isLoadingCats || isLoadingOrders;
-    const businessCategory = (typeof business?.category === 'string' ? business.category : business?.category?.name) || 'Restaurant';
+    const businessCategory = (typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Restaurant';
     const isProductBased = !['salon', 'spa', 'gym', 'service'].includes(businessCategory.toLowerCase());
 
     const stats = [

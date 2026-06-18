@@ -103,8 +103,8 @@ export default function CustomerExperienceRedesignPage() {
 
     // Data for preview using established hooks
     const { data: allForms = [] } = useBusinessForms({ branchId: activeBranchId as string, enabled: !!user && !!activeBranchId });
-    const { data: catalogueItems = [] } = useCatalogueItems({ branchId: activeBranchId }, { enabled: !!user && !!activeBranchId });
-    const { data: catalogueOffers = [] } = useCatalogueOffersAdmin({ branchId: activeBranchId }, { enabled: !!user && !!activeBranchId });
+    const { data: catalogueItems = [] } = useCatalogueItems({ branchId: activeBranchId as string }, { enabled: !!user && !!activeBranchId });
+    const { data: catalogueOffers = [] } = useCatalogueOffersAdmin({ branchId: activeBranchId as string }, { enabled: !!user && !!activeBranchId });
     const { data: devices = [] } = useQuery({
         queryKey: ['devices', user?.businessId, activeBranchId, false],
         queryFn: () => fetchDevices(activeBranchId || undefined, false),
@@ -135,7 +135,7 @@ export default function CustomerExperienceRedesignPage() {
     const isInitialLoading = isBusinessLoading || isBranchesLoading;
 
     const hasSocials = useMemo(() => {
-        const s = engagementSettings || {};
+        const s = (engagementSettings || {}) as any;
         return !!(s.facebookUrl || s.instagramUrl || s.tiktokUrl || s.xUrl || s.linkedinUrl || s.youtubeUrl);
     }, [engagementSettings]);
 
@@ -259,7 +259,7 @@ export default function CustomerExperienceRedesignPage() {
                 isOpen={isIdModalOpen}
                 onClose={() => setIsIdModalOpen(false)}
                 onConfirm={() => {
-                    updateEngagementSettings({ requireIdentify: false });
+                    updateEngagementSettings({ requireIdentify: false } as any);
                     handleAutoSave({ requireIdentify: false });
                     toast.success('Customer Identification disabled.');
                 }}
@@ -390,7 +390,7 @@ function ScreenHub({
         if (!val) {
             setIsIdModalOpen(true);
         } else {
-            onUpdateSettings({ requireIdentify: true });
+            onUpdateSettings({ requireIdentify: true } as any);
         }
     };
 
@@ -465,11 +465,11 @@ function ScreenHub({
         let newSequence = [...ublSequence];
         const systemIds = ALL_SYSTEM_ACTIONS.map(a => a.id);
         if (enabled) {
-            systemIds.forEach(id => {
+            systemIds.forEach((id: string) => {
                 if (!newSequence.includes(id)) newSequence.push(id);
             });
         } else {
-            newSequence = newSequence.filter(id => !id.startsWith('system:'));
+            newSequence = newSequence.filter((id: string) => !id.startsWith('system:'));
         }
         onUpdateSettings({ ublSequence: newSequence });
     };
@@ -478,11 +478,11 @@ function ScreenHub({
         let newSequence = [...ublSequence];
         const qrIds = qrCodes.map((q: any) => `qr-${q.shortId}`);
         if (enabled) {
-            qrIds.forEach(id => {
+            qrIds.forEach((id: string) => {
                 if (!newSequence.includes(id)) newSequence.push(id);
             });
         } else {
-            newSequence = newSequence.filter(id => !id.startsWith('qr-'));
+            newSequence = newSequence.filter((id: string) => !id.startsWith('qr-'));
         }
         onUpdateSettings({ ublSequence: newSequence });
     };

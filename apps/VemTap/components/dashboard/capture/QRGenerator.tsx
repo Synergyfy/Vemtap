@@ -50,7 +50,7 @@ export default function QRGenerator() {
                     </div>
                     <h2 className="text-xl font-bold text-gray-900">{business?.name || 'Your Business'}</h2>
                     <Badge variant="secondary" className="mt-1 bg-blue-50 text-blue-600 border-none px-3 py-0.5 text-[10px] font-black uppercase">
-                        {(typeof business?.category === 'string' ? business.category : business?.category?.name) || 'Business'}
+                        {(typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Business'}
                     </Badge>
                 </div>
 

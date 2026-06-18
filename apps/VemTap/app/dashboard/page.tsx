@@ -19,7 +19,7 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import DashboardBannerWrapper from '@/components/dashboard/DashboardBannerWrapper';
 import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
 
@@ -59,7 +59,7 @@ export default function DashboardPage() {
         
         const visitorsToday = stats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || mockStats.todaysVisits.toString();
         const customersCaptured = stats.find(s => s.label.toLowerCase().includes('new customers'))?.value || (mockStats.todaysVisits * 0.7).toFixed(0);
-        const activeLoyalty = loyaltyStats?.activeMembers || '124';
+        const activeLoyalty = loyaltyStats?.stats?.find(s => s.label.toLowerCase().includes('active'))?.value || '124';
         
         return [
             { label: "Today's Visitors", value: visitorsToday, icon: Users, color: 'bg-blue-500' },
@@ -71,7 +71,7 @@ export default function DashboardPage() {
 
     // Format recent activity from analytics or mock data
     const recentActivity = useMemo(() => {
-        if (analytics?.recentVisitors?.length > 0) return analytics.recentVisitors;
+        if (analytics?.recentVisitors && analytics.recentVisitors.length > 0) return analytics.recentVisitors;
         return mockVisitors.slice(0, 5).map(v => ({
             name: v.name,
             status: v.status === 'new' ? 'new' : 'returning',

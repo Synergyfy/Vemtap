@@ -7,7 +7,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 export default function OnboardingChecklist() {
     const router = useRouter();

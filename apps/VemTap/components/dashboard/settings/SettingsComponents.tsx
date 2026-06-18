@@ -43,7 +43,7 @@ export function BusinessProfileCard({ business }: { business: any }) {
                 </div>
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#066CF4] mb-2">
-                        {(typeof business?.category === 'string' ? business.category : business?.category?.name) || 'Business Category'}
+                        {(typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Business Category'}
                     </p>
                     <h2 className="text-2xl font-black text-gray-900 leading-none mb-4">{business?.name || 'Your Business'}</h2>
                     <div className="flex items-center gap-4">

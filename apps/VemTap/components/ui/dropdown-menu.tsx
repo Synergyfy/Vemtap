@@ -48,7 +48,15 @@ export function DropdownMenu({ children, className }: DropdownMenuProps) {
   )
 }
 
-export function DropdownMenuTrigger({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) {
+export function DropdownMenuTrigger({ children, onClick, asChild }: { children: React.ReactNode, onClick?: () => void, asChild?: boolean }) {
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children as React.ReactElement<any>, {
+        onClick: (e: any) => {
+            if (onClick) onClick();
+            if (children.props.onClick) children.props.onClick(e);
+        }
+    });
+  }
   return <div onClick={onClick} className="cursor-pointer">{children}</div>
 }
 DropdownMenuTrigger.displayName = "DropdownMenuTrigger"
