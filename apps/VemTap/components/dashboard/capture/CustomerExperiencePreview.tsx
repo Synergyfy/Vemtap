@@ -235,7 +235,6 @@ function FinalSuccessScreen() {
                     <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Next Recommended Actions</h3>
                     <div className="grid grid-cols-1 gap-3">
                         {[
-                            { icon: Download, label: 'Print Your QR Code' },
                             { icon: Building2, label: 'Place It In Your Business' },
                             { icon: User, label: 'Capture Your First Customer' },
                             { icon: LineChart, label: 'Start Building Database' },

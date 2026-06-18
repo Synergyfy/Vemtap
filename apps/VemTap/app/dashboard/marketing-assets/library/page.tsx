@@ -133,6 +133,9 @@ export default function MyLibraryPage() {
 
   // Local filtering logic
   const filteredAssets = assets ? assets.filter((asset: any) => {
+    // Ensure we don't show mock content
+    if (asset.isMock) return false;
+
     const matchesSearch = asset.name.toLowerCase().includes(search.toLowerCase()) || 
                           asset.qrCodeContent.toLowerCase().includes(search.toLowerCase());
     const matchesFormat = selectedFormat === 'all' || asset.type === selectedFormat;

@@ -13,7 +13,7 @@ export default function DiscoveryAnalyticsPage() {
     ];
 
     return (
-        <div className="pb-24 md:pb-10 max-w-6xl mx-auto p-4 md:p-8 space-y-12">
+        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
             <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Discovery Analytics</h2>
             <AnalyticsStatsCards stats={stats} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

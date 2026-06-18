@@ -1400,7 +1400,7 @@ export default function EngagementFormsBuilderPage() {
                         </div>
 
                         <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-center text-[8px] font-medium text-slate-400">
-                          Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                          Powered by <span className="font-bold" style={{ color: brandColor }}>{myBusiness?.name || 'VemTap'}</span>
                         </div>
                       </div>
                     </PhoneFrame>
@@ -1505,7 +1505,7 @@ export default function EngagementFormsBuilderPage() {
                       </div>
 
                       <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-center text-[8px] font-medium text-slate-400">
-                        Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                        Powered by <span className="font-bold" style={{ color: brandColor }}>{myBusiness?.name || 'VemTap'}</span>
                       </div>
                     </div>
                   </PhoneFrame>

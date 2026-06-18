@@ -2,9 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Palette, Layers, Grid, BarChart2 } from 'lucide-react';
+import { Palette, Layers, Grid, BarChart2, ChevronLeft } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 
 interface TabItem {
@@ -22,6 +22,7 @@ const TABS: TabItem[] = [
 
 export default function MarketingAssetsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: myBusiness, isLoading } = useMyBusiness();
 
   const isCreatePage = pathname?.startsWith('/dashboard/marketing-assets/create');
@@ -88,12 +89,25 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
     <div className={isCreatePage ? '' : 'space-y-5 md:space-y-8 pb-24 md:pb-10 px-4 sm:px-6 md:px-10 pt-4 md:pt-5'}>
       {!isCreatePage && (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                <Palette className="text-primary size-6 md:size-7" />
-                Marketing Materials
-              </h1>
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center">
+              <button 
+                  onClick={() => router.back()} 
+                  className="size-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
+              >
+                  <ChevronLeft size={20} />
+              </button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Palette size={24} />
+                  </div>
+                  Marketing Materials
+                </h1>
+              </div>
             </div>
           </div>
 

@@ -362,7 +362,7 @@ export default function ActiveFormsPage() {
                                             )}
 
                                             <p className="text-center text-[8px] font-medium text-slate-400">
-                                                Powered by <span className="font-bold" style={{ color: engagementSettings?.brandColor || '#2563eb' }}>VemTap</span>
+                                                Powered by <span className="font-bold" style={{ color: engagementSettings?.brandColor || '#2563eb' }}>{business?.name || 'VemTap'}</span>
                                             </p>
                                         </div>
                                     </PhoneFrame>

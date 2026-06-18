@@ -65,7 +65,9 @@ export default function CustomerOrderingPage() {
                       </div>
                    </div>
                    <h1 className="text-2xl font-black">{business?.name || 'Vemtap Business'}</h1>
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-1">{business?.category || 'Digital Menu'}</p>
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-1">
+                       {(typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Digital Menu'}
+                   </p>
                 </div>
             </div>
 

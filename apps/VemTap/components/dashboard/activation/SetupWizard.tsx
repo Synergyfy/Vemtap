@@ -30,7 +30,7 @@ export default function SetupWizard({ onFinish }: SetupWizardProps) {
 
     const steps = [
         { id: 'profile', title: 'Complete Profile' },
-        { id: 'qr', title: 'Generate QR Code' },
+        { id: 'qr', title: 'My Business QR' },
         { id: 'assets', title: 'Download Assets' },
         { id: 'customer', title: 'Capture First Customer' },
         { id: 'campaign', title: 'Send First Campaign' },
@@ -168,8 +168,8 @@ function StepQRCode() {
     return (
         <div className="space-y-8">
             <div className="text-center">
-                <h2 className="text-3xl font-black text-gray-900 leading-tight">Generate Your QR Code</h2>
-                <p className="mt-2 text-sm font-medium text-gray-500">Customers will scan this code to register and connect with your business.</p>
+                <h2 className="text-3xl font-black text-gray-900 leading-tight">Your Business QR Code</h2>
+                <p className="mt-2 text-sm font-medium text-gray-500">This is your primary QR code. Customers scan it to connect with your business.</p>
             </div>
 
             <div className="flex flex-col items-center">

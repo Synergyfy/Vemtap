@@ -305,17 +305,13 @@ export default function GetStartedPage() {
                                 <div className="space-y-6">
                                     {isGoogleUser ? (
                                         <>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
-                                                <div className="relative">
-                                                    <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                                    <input 
-                                                        type="tel" 
-                                                        value={formData.phone} 
-                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})} 
-                                                        placeholder="+234 ..." 
-                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                                    />
+                                            <div className="p-8 rounded-3xl bg-blue-50 border border-blue-100 text-center space-y-4">
+                                                <div className="size-16 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm text-[#066CF4]">
+                                                    <Mail size={32} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Verified Email</p>
+                                                    <p className="text-sm font-bold text-gray-900">{formData.email}</p>
                                                 </div>
                                             </div>
 
@@ -323,10 +319,9 @@ export default function GetStartedPage() {
 
                                             <Button 
                                                 onClick={() => setStep(3)} 
-                                                disabled={!formData.phone} 
                                                 className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                                             >
-                                                Continue <ArrowRight size={16} />
+                                                Continue To Setup <ArrowRight size={16} />
                                             </Button>
                                         </>
                                     ) : (
@@ -343,19 +338,6 @@ export default function GetStartedPage() {
                                                 <div className="flex-1 h-px bg-gray-200" />
                                             </div>
 
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
-                                                <div className="relative">
-                                                    <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                                    <input 
-                                                        type="tel" 
-                                                        value={formData.phone} 
-                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})} 
-                                                        placeholder="+234 ..." 
-                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                                    />
-                                                </div>
-                                            </div>
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email Address</label>
                                                 <div className="relative">
@@ -374,7 +356,7 @@ export default function GetStartedPage() {
 
                                             <Button 
                                                 onClick={handleStep2Submit} 
-                                                disabled={isLoading || !formData.phone || !formData.email} 
+                                                disabled={isLoading || !formData.email} 
                                                 className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                                             >
                                                 {isLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Send Verification Code <ArrowRight size={16} /></>}

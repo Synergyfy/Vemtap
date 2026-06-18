@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, ShoppingBag, MessageCircle, MessageSquare } from 'lucide-react';
+import { Home, Users, ShoppingBag, TrendingUp, MoreHorizontal, Wand2, Settings } from 'lucide-react';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useSudoStore } from '@/store/useSudoStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -19,36 +19,31 @@ export default function DashboardMobileNav() {
             label: 'Home',
             icon: Home,
             href: '/dashboard',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'dashboard',
+            roles: ['owner', 'manager', 'cashier', 'inventory', 'marketing', 'customer_service', 'staff'],
         },
         {
-            label: 'Visitor',
+            label: 'Customers',
             icon: Users,
             href: '/dashboard/visitors',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'visitors',
+            roles: ['owner', 'manager', 'customer_service', 'staff'],
         },
         {
-            label: 'Catalogue',
+            label: 'Commerce',
             icon: ShoppingBag,
-            href: '/dashboard/catalogue',
-            roles: ['owner', 'manager'],
-            permission: 'catalogue',
+            href: '/dashboard/commerce',
+            roles: ['owner', 'manager', 'inventory', 'cashier', 'staff'],
         },
         {
-            label: 'Chat',
-            icon: MessageCircle,
-            href: '/dashboard/messaging/chat',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'chat',
+            label: 'Experience',
+            icon: Wand2,
+            href: '/dashboard/customer-experience',
+            roles: ['owner', 'manager', 'marketing', 'staff'],
         },
         {
-            label: 'Channels',
-            icon: MessageSquare,
-            href: '/dashboard/messaging',
-            roles: ['owner', 'manager'],
-            permission: 'messages',
+            label: 'More',
+            icon: MoreHorizontal,
+            href: '/dashboard/more',
+            roles: ['owner', 'manager', 'cashier', 'inventory', 'marketing', 'customer_service', 'staff'],
         },
     ];
 
@@ -74,8 +69,18 @@ export default function DashboardMobileNav() {
                 {filteredNavItems.map((item) => {
                     const isActive = (() => {
                         if (item.label === 'Home') return pathname === '/dashboard' || pathname === '/dashboard/';
-                        if (item.label === 'Channels') {
-                            return pathname.startsWith('/dashboard/messaging') && !pathname.startsWith('/dashboard/messaging/chat');
+                        if (item.label === 'Commerce') {
+                            return pathname.startsWith('/dashboard/commerce') || 
+                                   pathname.startsWith('/dashboard/catalogue') || 
+                                   pathname.startsWith('/dashboard/inventory') || 
+                                   pathname.startsWith('/dashboard/pos');
+                        }
+                        if (item.label === 'More') {
+                            return pathname.startsWith('/dashboard/more') || 
+                                   pathname.startsWith('/dashboard/analytics') || 
+                                   pathname.startsWith('/dashboard/explore-qrthrive') || 
+                                   pathname.startsWith('/dashboard/settings') || 
+                                   pathname.startsWith('/dashboard/staff');
                         }
                         return pathname.startsWith(item.href);
                     })();
@@ -86,24 +91,18 @@ export default function DashboardMobileNav() {
                             key={item.href}
                             href={getLinkWithBranch(item.href)}
                             className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
-                                isActive ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'
+                                isActive ? 'text-[#066CF4]' : 'text-gray-400 hover:text-gray-600'
                             }`}
                         >
                             <div className={`relative p-2 rounded-2xl transition-all duration-300 ${
                                 isActive 
-                                    ? item.label === 'Home' 
-                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 scale-110' 
-                                        : 'bg-emerald-50 text-emerald-600 scale-110'
+                                    ? 'bg-[#066CF4] text-white shadow-lg shadow-blue-200 scale-110' 
                                     : 'bg-transparent'
                             }`}>
                                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                                
-                                {isActive && item.label !== 'Home' && (
-                                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white"></div>
-                                )}
                             </div>
                             <span className={`text-[10px] mt-1.5 font-bold tracking-tight transition-all ${
-                                isActive ? 'text-emerald-600 opacity-100' : 'text-gray-400 opacity-80'
+                                isActive ? 'text-[#066CF4] opacity-100' : 'text-gray-400 opacity-80'
                             }`}>
                                 {item.label}
                             </span>

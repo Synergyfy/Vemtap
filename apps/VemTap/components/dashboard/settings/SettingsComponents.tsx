@@ -15,12 +15,20 @@ import Link from 'next/link';
 
 export function SettingsOverviewHeader() {
     return (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-                <h1 className="text-3xl font-black text-gray-900 leading-tight">Business Settings</h1>
-                <p className="text-sm font-medium text-gray-500 mt-1">
-                    Manage your Vemtap account and business preferences.
-                </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <div className="flex items-center gap-4">
+                <div className="size-14 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
+                    <SettingsIcon size={28} />
+                </div>
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Configuration</p>
+                    <h1 className="text-2xl font-black text-gray-900 leading-none">Settings</h1>
+                </div>
+            </div>
+            <div className="flex items-center gap-3">
+                <Badge className="h-12 px-6 rounded-2xl bg-white border border-gray-100 text-gray-900 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm">
+                    Account Status: <span className="text-emerald-500">Verified</span>
+                </Badge>
             </div>
         </div>
     );
@@ -28,22 +36,27 @@ export function SettingsOverviewHeader() {
 
 export function BusinessProfileCard({ business }: { business: any }) {
     return (
-        <div className="rounded-[40px] bg-white p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
-            <div className="flex items-center gap-6">
-                <div className="size-24 rounded-[32px] bg-gray-50 flex items-center justify-center shadow-sm border border-gray-100 overflow-hidden">
-                    {business?.logo ? <img src={business.logo} className="size-full object-cover" /> : <Building2 size={32} className="text-gray-300" />}
+        <div className="rounded-[2.5rem] bg-white p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 mb-12 group hover:border-[#066CF4]/20 transition-all">
+            <div className="flex items-center gap-8">
+                <div className="size-24 rounded-[2rem] bg-gray-50 flex items-center justify-center shadow-sm border border-gray-100 overflow-hidden transition-transform group-hover:scale-105">
+                    {business?.logoUrl ? <img src={business.logoUrl} className="size-full object-cover" /> : <Building2 size={40} className="text-gray-300" />}
                 </div>
                 <div>
-                    <h2 className="text-2xl font-black text-gray-900">{business?.name || 'Your Business'}</h2>
-                    <p className="text-xs font-bold text-[#066CF4] uppercase tracking-widest mt-1">{business?.category || 'Business Category'}</p>
-                    <div className="flex items-center gap-3 mt-3">
-                        <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] uppercase px-3 py-1">Active</Badge>
-                        <span className="text-[10px] font-medium text-gray-400">Joined Oct 2024</span>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#066CF4] mb-2">
+                        {(typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Business Category'}
+                    </p>
+                    <h2 className="text-2xl font-black text-gray-900 leading-none mb-4">{business?.name || 'Your Business'}</h2>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest">
+                            <span className="size-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                            Active
+                        </div>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Member Since 2024</span>
                     </div>
                 </div>
             </div>
-            <Button variant="outline" className="h-14 px-8 rounded-2xl border-gray-100 font-black text-[10px] uppercase tracking-widest text-[#066CF4]">
-                View Full Profile
+            <Button variant="outline" className="h-14 px-8 rounded-2xl border-gray-100 font-black text-[10px] uppercase tracking-widest text-gray-900 hover:bg-gray-50 active:scale-95 transition-all">
+                Update Profile
             </Button>
         </div>
     );
@@ -53,12 +66,12 @@ export function SettingsNavigationCards() {
     const { setActiveTab } = useSettingsStore();
 
     const sections = [
-        { id: 'profile', label: 'Profile Settings', icon: User, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { id: 'team', label: 'Team Members', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
-        { id: 'subscription', label: 'Subscription', icon: LayoutGrid, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { id: 'billing', label: 'Billing', icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-rose-600', bg: 'bg-rose-50' },
-        { id: 'security', label: 'Security', icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { id: 'profile', label: 'Profile Settings', desc: 'Manage your business profile, logo and contact info.', icon: User, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { id: 'team', label: 'Team Members', desc: 'Add staff and manage their access permissions.', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { id: 'subscription', label: 'Subscription', desc: 'Manage your plan, limits and active features.', icon: LayoutGrid, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { id: 'billing', label: 'Billing & History', desc: 'Download invoices and update payment methods.', icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { id: 'notifications', label: 'Notifications', desc: 'Configure email and WhatsApp alert preferences.', icon: Bell, color: 'text-rose-600', bg: 'bg-rose-50' },
+        { id: 'security', label: 'Account Security', desc: 'Update password and manage authentication.', icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     ];
 
     return (
@@ -68,16 +81,19 @@ export function SettingsNavigationCards() {
                     key={sec.id}
                     onClick={() => setActiveTab(sec.id as SettingsTab)}
                     whileHover={{ y: -5 }}
-                    className="flex flex-col gap-4 p-8 rounded-[32px] bg-white border border-gray-100 shadow-sm transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5 active:scale-95 text-left"
+                    className="group flex flex-col gap-6 p-8 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5 active:scale-[0.98] text-left h-full"
                 >
-                    <div className={cn("size-16 rounded-2xl flex items-center justify-center shadow-sm", sec.bg)}>
-                        <sec.icon size={28} className={sec.color} />
+                    <div className={cn("size-16 rounded-[2rem] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform", sec.bg)}>
+                        <sec.icon size={32} className={sec.color} />
                     </div>
                     <div>
-                        <h3 className="text-base font-black text-gray-900">{sec.label}</h3>
+                        <h3 className="text-lg font-black text-gray-900 mb-2">{sec.label}</h3>
+                        <p className="text-[10px] font-bold text-gray-400 leading-relaxed uppercase tracking-tight">{sec.desc}</p>
                     </div>
                 </motion.button>
             ))}
         </div>
     );
 }
+
+import { Settings as SettingsIcon } from 'lucide-react';

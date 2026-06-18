@@ -68,12 +68,14 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    const existingUserByPhone = await this.usersService.findByPhone(dto.phone);
-    if (
-      existingUserByPhone &&
-      existingUserByPhone.status !== UserStatus.PENDING
-    ) {
-      throw new ConflictException('User with this phone number already exists');
+    if (dto.phone) {
+      const existingUserByPhone = await this.usersService.findByPhone(dto.phone);
+      if (
+        existingUserByPhone &&
+        existingUserByPhone.status !== UserStatus.PENDING
+      ) {
+        throw new ConflictException('User with this phone number already exists');
+      }
     }
 
     const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit OTP

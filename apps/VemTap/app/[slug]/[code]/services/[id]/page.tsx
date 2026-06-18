@@ -247,9 +247,10 @@ export default function ServiceDetailPage() {
 
                             <section className="pt-4">
                                 <BookingSystem 
-                                    service={service} 
+                                    service={service}
                                     onConfirm={handleConfirmBooking}
                                     isSubmitting={isSubmitting}
+                                    storeName={storeName}
                                 />
                             </section>
                         </div>

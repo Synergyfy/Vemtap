@@ -8,10 +8,22 @@ interface VisitorLayoutProps {
     onReset?: () => void;
     onCredentialResponse?: (response: any) => void;
     brandColor?: string | null;
+    storeName?: string;
+    logoUrl?: string | null;
 }
 
-export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset, onCredentialResponse, brandColor }) => {
+export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ 
+    children, 
+    onReset, 
+    onCredentialResponse, 
+    brandColor,
+    storeName,
+    logoUrl
+}) => {
     const brandVars = buildBrandCssVars(brandColor || undefined);
+    const displayLogo = logoUrl || "/VEMTAP_PNG.png";
+    const displayName = storeName || "VemTap";
+
     return (
         <div style={brandVars} className="min-h-screen bg-[#fafbfc] font-body flex flex-col items-center pt-1 pb-6 px-5 antialiased">
             <Script
@@ -47,9 +59,9 @@ export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset,
                 
                 <div className="flex items-center gap-2 opacity-40">
                     <div className="size-5 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                        <img src="/VEMTAP_PNG.png" alt="VemTap" className="w-3 h-3 object-contain opacity-50" />
+                        <img src={displayLogo} alt={displayName} className="w-3 h-3 object-contain opacity-50" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by VemTap</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by {displayName}</span>
                 </div>
             </footer>
 

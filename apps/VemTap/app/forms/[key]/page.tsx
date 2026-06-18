@@ -280,7 +280,7 @@ export default function PublicBusinessFormPage() {
 
                 {/* Powered-by footer */}
                 <p className="text-center text-[10px] font-medium text-slate-400 pb-4">
-                    Powered by <span className="font-bold text-primary">VemTap</span>
+                    Powered by <span className="font-bold text-primary">{resolvedBusinessName || 'VemTap'}</span>
                 </p>
             </div>
 
