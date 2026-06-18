@@ -50,10 +50,11 @@ export function DropdownMenu({ children, className }: DropdownMenuProps) {
 
 export function DropdownMenuTrigger({ children, onClick, asChild }: { children: React.ReactNode, onClick?: () => void, asChild?: boolean }) {
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as React.ReactElement<any>, {
+    const childElement = children as React.ReactElement<any>;
+    return React.cloneElement(childElement, {
         onClick: (e: any) => {
             if (onClick) onClick();
-            if (children.props.onClick) children.props.onClick(e);
+            if (childElement.props.onClick) childElement.props.onClick(e);
         }
     });
   }
