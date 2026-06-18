@@ -334,6 +334,7 @@ export default function ServicesPage() {
                                             service={selectedService}
                                             onConfirm={(date, time) => handleConfirmBooking(selectedService, date, time)}
                                             isSubmitting={isSubmitting}
+                                            storeName={storeName}
                                         />
                                     </div>
                                 </div>

@@ -143,67 +143,67 @@ export default function AdminTemplatesListPage() {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-100 text-xs font-extrabold uppercase text-gray-400">
-                    <th className="pb-3 pl-2">Template Preset</th>
-                    <th className="pb-3">Category</th>
-                    <th className="pb-3">Design Type</th>
-                    <th className="pb-3">Status</th>
+                  <tr className="border-b border-gray-100 text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                    <th className="pb-3 pl-2 pr-4">Template Preset</th>
+                    <th className="pb-3 px-4">Category</th>
+                    <th className="pb-3 px-4">Design Type</th>
+                    <th className="pb-3 px-4">Status</th>
                     <th className="pb-3 pr-2 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 text-sm font-semibold text-gray-700">
+                <tbody className="divide-y divide-gray-50 text-xs font-bold text-gray-700">
                   {templates.map((template) => (
                     <tr key={template.id} className="group hover:bg-gray-50/50 transition-colors">
-                      <td className="py-4 pl-2 font-bold text-gray-900">
+                      <td className="py-5 pl-2 pr-4 font-black text-gray-900 whitespace-nowrap">
                         {template.name}
                       </td>
-                      <td className="py-4 font-mono text-xs uppercase text-gray-500">
+                      <td className="py-5 px-4 font-mono text-[10px] uppercase text-gray-500 whitespace-nowrap">
                         {template.category}
                       </td>
-                      <td className="py-4 capitalize">
+                      <td className="py-5 px-4 capitalize whitespace-nowrap text-gray-600">
                         {template.type.replace('_', ' ')}
                       </td>
-                      <td className="py-4">
+                      <td className="py-5 px-4">
                         <button
                           onClick={() => handleToggleActive(template.id, template.isActive)}
                           className="focus:outline-none hover:scale-[1.05] transition-transform text-left"
                           title="Click to toggle status"
                         >
                           {template.isActive ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-600 border border-green-200">
-                              <CheckCircle size={12} />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-green-50 text-green-600 border border-green-200 uppercase tracking-tight">
+                              <CheckCircle size={12} className="stroke-[2.5px]" />
                               Active
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-400 border border-gray-200">
-                              <XCircle size={12} />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-gray-100 text-gray-400 border border-gray-200 uppercase tracking-tight">
+                              <XCircle size={12} className="stroke-[2.5px]" />
                               Disabled
                             </span>
                           )}
                         </button>
                       </td>
-                      <td className="py-4 pr-2 text-right">
+                      <td className="py-5 pr-2 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button 
                             onClick={() => handleDuplicate(template)}
                             variant="outline" 
-                            className="rounded-xl border-gray-100 text-gray-700 hover:bg-gray-50 font-bold text-xs gap-1.5 h-9"
+                            className="rounded-xl border-gray-100 text-gray-700 hover:bg-white hover:border-primary/30 hover:text-primary font-black text-[10px] uppercase tracking-wider gap-1.5 h-9 px-4 shadow-sm transition-all"
                           >
-                            <Copy size={12} />
+                            <Copy size={13} />
                             Duplicate
                           </Button>
                           <Link href={`/admin/marketing-assets/templates/${template.id}`}>
-                            <Button variant="outline" className="rounded-xl border-gray-100 text-gray-700 hover:bg-gray-50 font-bold text-xs gap-1 h-9">
-                              <Edit size={12} />
+                            <Button variant="outline" className="rounded-xl border-gray-100 text-gray-700 hover:bg-white hover:border-primary/30 hover:text-primary font-black text-[10px] uppercase tracking-wider gap-1.5 h-9 px-4 shadow-sm transition-all">
+                              <Edit size={13} />
                               Edit Builder
                             </Button>
                           </Link>
                           <Button 
                             onClick={() => handleDelete(template.id)}
                             variant="outline" 
-                            className="rounded-xl border-rose-50 text-rose-600 hover:bg-rose-50/50 font-bold text-xs gap-1.5 h-9"
+                            className="rounded-xl border-rose-50 text-rose-600 hover:bg-rose-50 hover:border-rose-200 font-black text-[10px] uppercase tracking-wider gap-1.5 h-9 px-4 shadow-sm transition-all"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={13} />
                             Delete
                           </Button>
                         </div>

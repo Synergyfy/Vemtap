@@ -75,7 +75,7 @@ export default function Navbar() {
                             </Link>
                             <Link href="/get-started">
                                 <Button className="h-12 px-8 rounded-xl bg-[#066CF4] text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-                                    Start Free
+                                    Get Started
                                 </Button>
                             </Link>
                         </>
@@ -126,7 +126,7 @@ export default function Navbar() {
                                     <Link href="/login" onClick={() => setIsOpen(false)} className="text-lg font-bold text-gray-500">Login</Link>
                                     <Link href="/get-started" onClick={() => setIsOpen(false)}>
                                         <Button className="w-full h-16 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20">
-                                            Start Free
+                                            Get Started
                                         </Button>
                                     </Link>
                                     <Link href="/contact" onClick={() => setIsOpen(false)} className="text-center text-sm font-black uppercase tracking-widest text-gray-400">

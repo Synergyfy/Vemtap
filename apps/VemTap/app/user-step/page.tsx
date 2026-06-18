@@ -292,6 +292,8 @@ function UserStepPageContent() {
         <VisitorLayout
             onReset={resetFlow}
             onCredentialResponse={handleCredentialResponse}
+            storeName={storeName}
+            logoUrl={logoUrl}
         >
             <AnimatePresence mode="wait">
                 {currentStep === 'SELECT_TYPE' && (

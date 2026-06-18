@@ -17,7 +17,7 @@ export default function ProductsPage() {
     const { data: business } = useMyBusiness();
     const { items, services } = useProductStore();
 
-    const businessCategory = business?.category || 'Retail';
+    const businessCategory = (typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Retail';
     const isProductBased = !['salon', 'spa', 'gym', 'service'].includes(businessCategory.toLowerCase());
     const displayItems = isProductBased ? items : services;
     const isLoading = false; // Mock loading state

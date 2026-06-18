@@ -1,18 +1,7 @@
 import type { Metadata } from "next";
-// import { Inter, Outfit } from "next/font/google";
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
-
-// Force rebuild
-
-// const inter = Inter({
-//     subsets: ["latin"],
-//     variable: "--font-body",
-// });
-
-// const outfit = Outfit({
-//     subsets: ["latin"],
-//     variable: "--font-display",
-// });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vemtap.io";
 
@@ -82,6 +71,7 @@ import SupportChatbot from "@/components/shared/SupportChatbot";
 import InstallPWA from "@/components/shared/InstallPWA";
 import GoogleAuthProvider from "./providers/GoogleAuthProvider";
 import AdminViewerBanner from "@/components/admin/control-tower/AdminViewerBanner";
+import FloatingBackButton from "@/components/shared/FloatingBackButton";
 
 export default function RootLayout({
     children,
@@ -89,26 +79,15 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
             <head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />        
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet" />
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />  
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
                 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                <style dangerouslySetInnerHTML={{
-                    __html: `
-            :root {
-              --font-body: 'Inter', sans-serif;
-              --font-display: 'Outfit', sans-serif;
-            }
-          `}} />
             </head>
             <body
-                className={`antialiased font-sans`}
-                style={{ fontFamily: "var(--font-body)" }}
+                className={`${GeistSans.className} antialiased`}
                 suppressHydrationWarning
             >
                 <QueryProvider>
@@ -116,6 +95,7 @@ export default function RootLayout({
                         <GoogleAuthProvider>
                             <ToastProvider />
                             <AdminViewerBanner />
+                            <FloatingBackButton />
                             {children}
                             <CookieBanner />
                             <SupportChatbot />

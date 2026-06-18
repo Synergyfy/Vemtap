@@ -21,10 +21,11 @@ export class RequestOtpDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '+1234567890' })
+  @ApiPropertyOptional({ example: '+1234567890' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  phone: string;
+  phone?: string;
 
   @ApiProperty({ enum: UserRole, example: UserRole.OWNER })
   @Transform(({ value }) => {

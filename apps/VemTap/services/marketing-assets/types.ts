@@ -210,6 +210,57 @@ export interface TemplateFormat {
   updatedAt: string;
 }
 
+export interface MarketingAssetType {
+  id: string;
+  name: string;
+  description?: string;
+  previewImageUrl?: string;
+  isActive: boolean;
+  templateCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QRDestination {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  urlPattern?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CTALibraryItem {
+  id: string;
+  text: string;
+  category?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlacementGuide {
+  id: string;
+  assetTypeId: string;
+  location: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecommendationRule {
+  id: string;
+  name: string;
+  condition: string;
+  recommendation: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BrandProfile {
   businessId: string;
   name: string;

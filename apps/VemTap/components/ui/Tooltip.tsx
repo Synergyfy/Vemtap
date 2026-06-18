@@ -6,9 +6,10 @@ interface TooltipProps {
     content: string;
     children: React.ReactNode;
     side?: 'top' | 'bottom' | 'left' | 'right';
+    className?: string;
 }
 
-export default function Tooltip({ content, children, side = 'top' }: TooltipProps) {
+export default function Tooltip({ content, children, side = 'top', className }: TooltipProps) {
     const [isVisible, setIsVisible] = useState(false);
 
     const positionClasses = {
@@ -20,7 +21,7 @@ export default function Tooltip({ content, children, side = 'top' }: TooltipProp
 
     return (
         <div
-            className="relative inline-block"
+            className={`relative inline-block ${className || ''}`}
             onMouseEnter={() => setIsVisible(true)}
             onMouseLeave={() => setIsVisible(false)}
             onFocus={() => setIsVisible(true)}

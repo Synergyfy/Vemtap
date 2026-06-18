@@ -327,6 +327,8 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
         <VisitorLayout
             onReset={resetFlow}
             brandColor={engagementSettings?.brandColor}
+            storeName={storeName}
+            logoUrl={logoUrl}
         >
             {isAuthenticated && user && (
                 <div className="w-full flex justify-end mb-4 relative z-[210]">

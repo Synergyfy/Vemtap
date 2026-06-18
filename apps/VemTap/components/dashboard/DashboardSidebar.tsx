@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -12,12 +12,16 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText
+    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
+    ClipboardCheck, Search, Star, Pin, PinOff, ChevronLeft, ChevronRight, LayoutDashboard,
+    X, MoreHorizontal, User
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
+import { useBranches } from '@/services/branches/hooks';
+import { useMarketingAssets, useAnalyticsOverview } from '@/services/marketing-assets/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
@@ -25,25 +29,11 @@ import SubscriptionExpiredModal from './SubscriptionExpiredModal';
 import { useSudoStore } from '@/store/useSudoStore';
 import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 import OwnerSearch from './OwnerSearch';
-import { OWNER_MENU_ITEMS } from '@/constants/ownerNavigation';
+import { NAVIGATION_SECTIONS, MenuItem, NavSection } from '@/constants/ownerNavigation';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 interface SidebarProps {
     children: React.ReactNode;
-}
-
-interface MenuItem {
-    id?: string;
-    label: string;
-    description?: string;
-    icon?: LucideIcon;
-    href?: string;
-    roles?: string[];
-    permission?: string;
-    feature?: string;
-    featureName?: string;
-    submenu?: MenuItem[];
-    external?: boolean;
-    onClick?: () => void;
 }
 
 export default function DashboardSidebar({ children }: SidebarProps) {
@@ -53,61 +43,67 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { activeSession } = useSudoStore();
     const isAdminMode = activeSession !== null;
     const [isMounted, setIsMounted] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [favorites, setFavorites] = useState<string[]>(['pos', 'visitors', 'in-app-chat']); // Default favorites
+    
     useEffect(() => {
         setIsMounted(true);
+        // Load favorites from local storage if available
+        const savedFavs = localStorage.getItem('vt-sidebar-favs');
+        if (savedFavs) setFavorites(JSON.parse(savedFavs));
+        
+        // Load collapsed state
+        const savedCollapsed = localStorage.getItem('vt-sidebar-collapsed');
+        if (savedCollapsed === 'true') setIsCollapsed(true);
     }, []);
+
+    const toggleCollapse = () => {
+        const newState = !isCollapsed;
+        setIsCollapsed(newState);
+        localStorage.setItem('vt-sidebar-collapsed', String(newState));
+    };
+
+    const toggleFavorite = (e: React.MouseEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setFavorites(prev => {
+            const next = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+            localStorage.setItem('vt-sidebar-favs', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
+    const { data: branches = [] } = useBranches();
     const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription, isSubscriptionExpired } = useSubscriptionStore();
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
+
+    const currentBranch = useMemo(() => {
+        if (!activeBranchId) return null;
+        return branches.find(b => b.id === activeBranchId);
+    }, [branches, activeBranchId]);
+
+    const currentBranchLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || defaultLogo;
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
     const isCreateAssetPage = pathname.includes('/marketing-assets/create');
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const mainRef = useRef<HTMLElement | null>(null);
 
-    // Close upgrade modal and mobile sidebar on navigation
-    useEffect(() => {
-        setUpgradeModal({ isOpen: false, featureName: '' });
-        setIsMobileOpen(false);
-    }, [pathname, searchParams]);
-
-    useEffect(() => {
-        if (isChatRoute && mainRef.current) {
-            mainRef.current.scrollTop = 0;
-        }
-    }, [isChatRoute, pathname]);
-
-    useEffect(() => {
-        if (isAuthenticated) {
-            fetchSubscriptionData();
-        }
-    }, [isAuthenticated, fetchSubscriptionData]);
-
-    const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
-    const activeBranch = myBusiness?.branches?.find(b => b.id === activeBranchId);
-    const firstBranchWithCode = myBusiness?.branches?.find(b => b.uniqueCode);
-    const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
-    const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
-    const businessSlug = businessName.toLowerCase().replace(/\s+/g, '-');
-    const publicProfileCode = activeBranch?.uniqueCode || mainBranch?.uniqueCode || firstBranchWithCode?.uniqueCode || myBusiness?.uniqueCode;
-    const publicProfileHref = getLinkWithBranch(publicProfileCode ? `/b/${publicProfileCode}` : `/business/${businessSlug}`);
-
-
-
     // Auto-expand the menu corresponding to the current path
     const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
-        // Only expand based on current path logic initially
         const pathParts = pathname.split('/');
-        if (pathParts.length > 2) {
-            return [pathParts[2]];
-        }
+        if (pathParts.length > 2) return [pathParts[2]];
         return [];
     });
+
+    const [expandedSections, setExpandedSections] = useState<string[]>(['section-dashboard', 'section-customers']);
+
     const [showNotifications, setShowNotifications] = useState(false);
-    const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     const queryClient = useQueryClient();
@@ -122,7 +118,19 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const redemptionRequests = data?.redemptionRequests || [];
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
-    const isFreePlan = Boolean(activeSubscription?.plan?.isFree) || String(activeSubscription?.planId || '').toLowerCase().includes('free');
+
+    const { data: assets } = useMarketingAssets();
+    const { data: marketingAnalytics } = useAnalyticsOverview();
+    const pendingSetupCount = useMemo(() => {
+        let count = 0;
+        if (!myBusiness?.logoUrl) count++;
+        if (!assets || assets.length === 0) count++;
+        if (!((marketingAnalytics?.totals?.downloads ?? 0) > 0)) count++;
+        const visitorsCount = (Array.isArray(data?.stats) ? data.stats : []).find((s: any) => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        if (visitorsCount === '0') count++;
+        count++; 
+        return count;
+    }, [myBusiness, assets, marketingAnalytics, data]);
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -139,115 +147,61 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     });
 
     const handleLogout = () => {
-        // 1. Clear React Query Cache
         queryClient.clear();
-
-        // 2. Clear Local Storage (Zustand persists here)
-        if (typeof window !== 'undefined') {
-            localStorage.clear();
-        }
-
-        // 3. Clear Auth Store State
+        if (typeof window !== 'undefined') localStorage.clear();
         logout();
-
-        // 4. Redirect to login
         router.push('/login');
     };
 
-    // Unified Expand Logic: Handle nested menus
-    const toggleMenu = (menuId: string, parentId?: string) => {
-        setExpandedMenus(prev => {
-            const isExpanded = prev.includes(menuId);
-            if (isExpanded) {
-                // Remove this menu and its sub-menus (if any)
-                return prev.filter(id => id !== menuId);
-            } else {
-                // If it's a top-level menu, we might want to close others (Accordion style)
-                // If it's a nested menu, we just add it to the stack
-                if (!parentId) {
-                    return [menuId];
-                }
-                return [...prev, menuId];
-            }
-        });
+    const toggleMenu = (menuId: string) => {
+        setExpandedMenus(prev => prev.includes(menuId) ? prev.filter(id => id !== menuId) : [...prev, menuId]);
     };
 
-    const menuItems: MenuItem[] = OWNER_MENU_ITEMS as any[];
+    const toggleSection = (sectionId: string) => {
+        setExpandedSections(prev => prev.includes(sectionId) ? prev.filter(id => id !== sectionId) : [...prev, sectionId]);
+    };
 
     const userPermissions = user?.permissions || [];
     const isOwnerOrAdmin = ['owner', 'admin'].includes((user?.role as string)?.toLowerCase());
 
-    const filteredMenuItems = menuItems.filter(item => {
+    const filteredSections = useMemo(() => {
         const realUserRole = (user?.role as string)?.toLowerCase() || 'owner';
         
-        // Handle Admin/Agent Sudo Mode (Impersonation)
-        if (isAdminMode) {
-            if (item.id === 'staff') return false;
-            if (item.id === 'agent-desk') return false;
-            if (item.id === 'admin-nfc') return false;
-            
-            return !item.roles || item.roles.includes('owner');
-        }
-
-        // Hide Marketing Materials for excluded categories (PRD §8.0)
-        if (item.id === 'marketing-assets' && myBusiness) {
-            const bizCat = typeof (myBusiness as any).category === 'object'
-                ? (myBusiness as any).category?.name
-                : myBusiness.category;
-            
-            if (bizCat) {
-                const excludedCategories = [
-                    'hospital',
-                    'clinic',
-                    'dental clinic',
-                    'eye clinic',
-                    'medical laboratory',
-                    'pharmacy',
-                    'airport',
-                    'government',
-                    'ministry',
-                    'agency',
-                    'educational',
-                    'school',
-                    'university'
-                ];
-                const catLower = bizCat.toLowerCase();
-                const isExcluded = excludedCategories.some(ex => {
-                    if (ex === 'hospital') {
-                        return catLower.includes('hospital') && !catLower.includes('hospitality');
-                    }
-                    return catLower.includes(ex);
-                });
-                if (isExcluded) {
-                    return false;
+        return NAVIGATION_SECTIONS.map(section => ({
+            ...section,
+            items: section.items.filter(item => {
+                // Sudo/Admin filters
+                if (isAdminMode) {
+                    if (['staff', 'agent-desk', 'admin-nfc'].includes(item.id)) return false;
+                    return !item.roles || item.roles.includes('owner');
                 }
-            }
-        }
+                
+                // Search filter
+                if (searchQuery) {
+                    const match = item.label.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                 item.keywords?.some(k => k.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                 item.submenu?.some(s => s.label.toLowerCase().includes(searchQuery.toLowerCase()));
+                    if (!match) return false;
+                }
 
-        return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
-    }).map(item => {
-        return item;
-    });
+                return canAccessMenuItem(item, realUserRole, userPermissions, isOwnerOrAdmin);
+            })
+        })).filter(section => section.items.length > 0);
+    }, [searchQuery, isAdminMode, user?.role, userPermissions, isOwnerOrAdmin]);
+
+    const favoriteItems = useMemo(() => {
+        const allItems = NAVIGATION_SECTIONS.flatMap(s => s.items);
+        return allItems.filter(i => favorites.includes(i.id));
+    }, [favorites]);
 
     const isActive = (href: string) => pathname === href;
     const isParentActive = (submenu?: any[]): boolean =>
         submenu?.some(item => (item.href && pathname === item.href) || (item.submenu && isParentActive(item.submenu))) || false;
-    const primaryNavClasses = (active: boolean) =>
-        active
-            ? 'bg-primary text-white shadow-lg shadow-primary/20'
-            : 'text-text-secondary hover:bg-blue-50 hover:text-primary';
-    const subNavClasses = (active: boolean) =>
-        active
-            ? 'bg-gray-100 text-text-main'
-            : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
+
     const withBranch = (href: string) => getLinkWithBranch(href);
 
-    const handleItemClick = (e: React.MouseEvent, item: any, parentId?: string) => {
-        // Close modal if open when clicking something else
-        if (upgradeModal.isOpen) {
-            setUpgradeModal({ isOpen: false, featureName: '' });
-        }
-
+    const handleItemClick = (e: React.MouseEvent, item: any) => {
+        if (upgradeModal.isOpen) setUpgradeModal({ isOpen: false, featureName: '' });
         if (item.feature && isFeatureLocked(item.feature)) {
             e.preventDefault();
             e.stopPropagation();
@@ -255,271 +209,221 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             return false;
         }
         if (item.submenu) {
-            if (!item.id) {
-                return true;
-            }
-            toggleMenu(item.id, parentId);
+            if (!item.id) return true;
+            toggleMenu(item.id);
         }
         return true;
     };
+
+    const businessLogo = myBusiness?.logoUrl || defaultLogo;
+    const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
+    const publicProfileHref = getLinkWithBranch(myBusiness?.uniqueCode ? `/b/${myBusiness.uniqueCode}` : `/dashboard/settings/profile`);
 
     return (
         <div className="flex h-screen bg-gray-50 overflow-hidden relative">
             {/* Mobile Overlay */}
             {isMobileOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-60 lg:hidden backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsMobileOpen(false)}
-                />
+                <div className="fixed inset-0 bg-black/50 z-60 lg:hidden backdrop-blur-sm transition-opacity" onClick={() => setIsMobileOpen(false)} />
             )}
 
             {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-70 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0
-                ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+                fixed inset-y-0 left-0 z-70 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 lg:static 
+                ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                ${isCollapsed ? 'w-20' : 'w-72'}
             `}>
-                {/* Logo  */}
-                <div className="h-16 flex items-center px-6 border-b border-gray-200">
-                    <Link href={withBranch('/dashboard')} className="flex items-center gap-2">
-                        <Logo />
+                {/* Header / Collapse Toggle */}
+                <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 shrink-0">
+                    <Link href={withBranch('/dashboard')} className={`flex items-center gap-2 transition-opacity ${isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+                        <div className="flex items-center gap-2">
+                            <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
+                                {businessLogo ? (
+                                    <img src={businessLogo} alt={businessName} className="size-full object-cover p-1" />
+                                ) : (
+                                    <Zap className="text-primary size-4" />
+                                )}
+                            </div>
+                            <span className="text-sm font-black text-gray-900 truncate max-w-[120px]">{businessName}</span>
+                        </div>
                     </Link>
+                    <button 
+                        onClick={toggleCollapse} 
+                        className={`size-8 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-all ${isCollapsed ? 'mx-auto' : ''}`}
+                    >
+                        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    </button>
                 </div>
 
-                {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
-                    {isMounted && filteredMenuItems.map((item) => {
-                        const IconComponent = item.icon;
-                        const isLocked = isMounted && item.feature && isFeatureLocked(item.feature);
-                        return (
-                            <div key={item.id} className="mb-1">
-                                {item.submenu ? (
-                                    <>
-                                        <button
-                                            onClick={(e) => handleItemClick(e, item)}
-                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isParentActive(item.submenu))
-                                                } ${isLocked ? 'opacity-70' : ''}`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                {IconComponent && <IconComponent size={18} />}
-                                                <span>{item.label}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {isLocked && <Lock size={14} className="text-text-secondary" />}
-                                                <ChevronDown
-                                                    size={16}
-                                                    className={`transition-transform ${expandedMenus.includes(item.id || '') ? 'rotate-180' : ''}`}
-                                                />
-                                            </div>
-                                        </button>
-                                        {expandedMenus.includes(item.id || '') && !isLocked && (
-                                            <div className="mt-2 ml-4 space-y-2">
-                                                {item.submenu.map((subItem: any, idx) => {
-                                                    const isSubLocked = isMounted && subItem.feature && isFeatureLocked(subItem.feature);
-                                                    return subItem.submenu ? (
-                                                        <div key={subItem.id || idx} className="mb-1">
-                                                            <button
-                                                                onClick={(e) => handleItemClick(e, subItem, item.id)}
-                                                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(subItem.submenu))
-                                                                    } ${isSubLocked ? 'opacity-70' : ''}`}
-                                                            >
-                                                                <span>{subItem.label}</span>
-                                                                <div className="flex items-center gap-2">
-                                                                    {isSubLocked && <Lock size={12} className="text-text-secondary" />}
-                                                                    <ChevronDown
-                                                                        size={14}
-                                                                        className={`transition-transform ${expandedMenus.includes(subItem.id) ? 'rotate-180' : ''}`}
-                                                                    />
-                                                                </div>
-                                                            </button>
-                                                            {expandedMenus.includes(subItem.id) && !isSubLocked && (
-                                                                <div className="mt-2 ml-3 space-y-2">
-                                                                    {subItem.submenu.map((nestedItem: any, nIdx: number) => {
-                                                                        const isNestedLocked = isMounted && nestedItem.feature && isFeatureLocked(nestedItem.feature);
-                                                                        return nestedItem.submenu ? (
-                                                                            <div key={nestedItem.id || nIdx} className="mb-1">
-                                                                                <button
-                                                                                    onClick={(e) => handleItemClick(e, nestedItem, subItem.id)}
-                                                                                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(nestedItem.submenu))
-                                                                                        } ${isNestedLocked ? 'opacity-70' : ''}`}
-                                                                                >
-                                                                                    <span>{nestedItem.label}</span>
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        {isNestedLocked && <Lock size={12} className="text-text-secondary" />}
-                                                                                        <ChevronDown
-                                                                                            size={12}
-                                                                                            className={`transition-transform ${expandedMenus.includes(nestedItem.id) ? 'rotate-180' : ''}`}
-                                                                                        />
-                                                                                    </div>
-                                                                                </button>
-                                                                                {expandedMenus.includes(nestedItem.id) && !isNestedLocked && (
-                                                                                    <div className="mt-1 ml-3 space-y-1 border-l border-gray-100">
-                                                                                        {nestedItem.submenu.map((deepItem: any, dIdx: number) => (
-                                                                                            deepItem.href ? (
-                                                                                                <Link
-                                                                                                    key={deepItem.href}
-                                                                                                    href={getLinkWithBranch(deepItem.href!)}
-                                                                                                    onClick={(e) => {
-                                                                                                        if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
-                                                                                                            e.preventDefault();
-                                                                                                            setUpgradeModal({ isOpen: true, featureName: deepItem.featureName || deepItem.label });
-                                                                                                        }
-                                                                                                    }}
-                                                                                                    className={`flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
-                                                                                                        ? 'text-primary border-l-2 border-primary -ml-px'
-                                                                                                        : 'text-text-secondary hover:text-text-main'
-                                                                                                        }`}
-                                                                                                >
-                                                                                                    <span>{deepItem.label}</span>
-                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
-                                                                                                </Link>
-                                                                                            ) : (
-                                                                                                <span
-                                                                                                    key={`${deepItem.label}-${dIdx}`}
-                                                                                                    className="flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium text-text-secondary"
-                                                                                                >
-                                                                                                    <span>{deepItem.label}</span>
-                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
-                                                                                                </span>
-                                                                                            )
-                                                                                        ))}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        ) : (
-                                                                            nestedItem.href ? (
-                                                                                <Link
-                                                                                    key={nestedItem.href}
-                                                                                    href={withBranch(nestedItem.href!)}
-                                                                                    onClick={(e) => {
-                                                                                        if (nestedItem.feature && isFeatureLocked(nestedItem.feature)) {
-                                                                                            e.preventDefault();
-                                                                                            setUpgradeModal({ isOpen: true, featureName: nestedItem.featureName || nestedItem.label });
-                                                                                        }
-                                                                                    }}
-                                                                                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
-                                                                                        }`}
-                                                                                >
-                                                                                    <span className="flex flex-col text-left">
-                                                                                        <span>{nestedItem.label}</span>
-                                                                                        {nestedItem.description && (
-                                                                                            <span className="text-[10px] font-medium text-text-secondary mt-0.5">{nestedItem.description}</span>
-                                                                                        )}
-                                                                                    </span>
-                                                                                    {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
-                                                                                </Link>
-                                                                            ) : (
-                                                                                <span
-                                                                                    key={`${nestedItem.label}-${nIdx}`}
-                                                                                    className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black text-text-secondary"
-                                                                                >
-                                                                                    <span>{nestedItem.label}</span>
-                                                                                    {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
-                                                                                </span>
-                                                                            )
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        subItem.href ? (
-                                                            <Link
-                                                                key={subItem.href}
-                                                                href={getLinkWithBranch(subItem.href!)}
-                                                                onClick={(e) => {
-                                                                    setIsMobileOpen(false);
-                                                                    if (subItem.feature && isFeatureLocked(subItem.feature)) {
-                                                                        e.preventDefault();
-                                                                        setUpgradeModal({ isOpen: true, featureName: subItem.featureName || subItem.label });
-                                                                    }
-                                                                }}
-                                                                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
-                                                                    }`}
-                                                            >
-                                                                <span className="flex flex-col text-left">
-                                                                    <span>{subItem.label}</span>
-                                                                    {subItem.description && (
-                                                                        <span className="text-[10px] font-medium text-text-secondary mt-0.5">{subItem.description}</span>
-                                                                    )}
-                                                                </span>
-                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
-                                                            </Link>
-                                                        ) : (
-                                                            <span
-                                                                key={`${subItem.label}-${idx}`}
-                                                                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black text-text-secondary"
-                                                            >
-                                                                <span>{subItem.label}</span>
-                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
-                                                            </span>
-                                                        )
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <Link
-                                        href={item.external ? item.href! : withBranch(item.href!)}
-                                        target={item.external ? '_blank' : undefined}
-                                        rel={item.external ? 'noopener noreferrer' : undefined}
-                                        onClick={(e) => {
-                                            if (item.feature && isFeatureLocked(item.feature)) {
-                                                e.preventDefault();
-                                                setUpgradeModal({ isOpen: true, featureName: item.featureName || item.label });
-                                            }
-                                        }}
-                                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isActive(item.href!))
-                                            } ${isLocked ? 'opacity-70' : ''}`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            {IconComponent && <IconComponent size={18} />}
-                                            <span>{item.label}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {isLocked && <Lock size={14} className="text-text-secondary" />}
-                                            {item.id === 'loyalty' && pendingRedemptions > 0 && !isLocked && (
-                                                <span className="w-5 h-5 bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center rounded-full shadow-sm shadow-emerald-500/20">
-                                                    {pendingRedemptions}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </Link>
-                                )}
-
-                            </div>
-                        );
-                    })}
-                </nav>
-
-                {/* User Profile */}
-                <div className="border-t border-gray-200 p-4">
-                    <Link
-                        href={publicProfileHref}
-                        className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-xl transition-colors group"
-                    >
-                        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
-                            {businessLogo ? (
-                                <img
-                                    src={businessLogo}
-                                    alt={businessName}
-                                    className="w-full h-full object-contain p-1"
-                                />
-                            ) : (
-                                <Users className="text-primary" size={20} />
+                {/* Sidebar Search */}
+                {!isCollapsed && (
+                    <div className="px-4 mt-6 mb-2">
+                        <div className="relative group">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" />
+                            <input 
+                                type="text"
+                                placeholder="Search modules..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full h-10 bg-gray-50 border border-transparent rounded-xl pl-9 pr-4 text-xs font-bold focus:bg-white focus:border-primary/20 focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+                            />
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <X size={12} />
+                                </button>
                             )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Business Owner'}</p>
-                            <p className="text-xs text-text-secondary truncate">{businessName}</p>
+                    </div>
+                )}
+
+                {/* Navigation Content */}
+                <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar space-y-6">
+                    
+                    {/* Quick Access Area */}
+                    {!searchQuery && favoriteItems.length > 0 && (
+                        <div className="space-y-2 px-1">
+                            {!isCollapsed && (
+                                <div className="flex items-center justify-between px-3">
+                                    <p className="text-[11px] md:text-xs font-black uppercase tracking-[0.15em] text-gray-500">Quick Access</p>
+                                    <Star size={10} className="text-amber-400 fill-current" />
+                                </div>
+                            )}
+                            <div className="space-y-1">
+                                {favoriteItems.map(item => {
+                                    const Icon = item.icon;
+                                    const active = isActive(item.href || '');
+                                    return (
+                                        <Link 
+                                            key={`fav-${item.id}`}
+                                            href={withBranch(item.href || '')}
+                                            className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative ${
+                                                active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            <div className="shrink-0"><Icon size={18} /></div>
+                                            {!isCollapsed && <span className="text-sm font-black truncate">{item.label}</span>}
+                                            {isCollapsed && (
+                                                <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none z-50 whitespace-nowrap">
+                                                    {item.label}
+                                                </div>
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </Link>
+                    )}
+
+                    {/* Main Sections */}
+                    {isMounted && filteredSections.map((section) => (
+                        <div key={section.id} className="space-y-2">
+                            {!isCollapsed && !searchQuery && (
+                                <button 
+                                    onClick={() => toggleSection(section.id)}
+                                    className="w-full flex items-center justify-between px-4 py-1 group"
+                                >
+                                    <span className="text-[11px] md:text-xs font-black uppercase tracking-[0.15em] text-gray-500 group-hover:text-gray-700 transition-colors">
+                                        {section.label}
+                                    </span>
+                                    <ChevronDown size={10} className={`text-gray-300 transition-transform ${expandedSections.includes(section.id) ? '' : '-rotate-90'}`} />
+                                </button>
+                            )}
+                            
+                            {(searchQuery || expandedSections.includes(section.id) || isCollapsed) && (
+                                <div className="space-y-1">
+                                    {section.items.map((item) => {
+                                        const Icon = item.icon;
+                                        const isLocked = item.feature && isFeatureLocked(item.feature);
+                                        const active = item.href ? isActive(item.href) : (item.submenu && isParentActive(item.submenu));
+                                        const isMenuExpanded = expandedMenus.includes(item.id);
+
+                                        return (
+                                            <div key={item.id} className="relative group/item">
+                                                {item.submenu ? (
+                                                    <div className="space-y-1">
+                                                        <button
+                                                            onClick={(e) => handleItemClick(e, item)}
+                                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                                                                active ? 'bg-primary/5 text-primary' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="shrink-0"><Icon size={18} /></div>
+                                                                {!isCollapsed && <span className="text-sm font-black">{item.label}</span>}
+                                                            </div>
+                                                            {!isCollapsed && <ChevronDown size={14} className={`transition-transform ${isMenuExpanded ? 'rotate-180' : ''}`} />}
+                                                        </button>
+                                                        {!isCollapsed && isMenuExpanded && (
+                                                            <div className="ml-9 space-y-1 border-l border-gray-100 pl-4 py-1">
+                                                                {item.submenu.map((sub, idx) => (
+                                                                    <Link 
+                                                                        key={idx}
+                                                                        href={withBranch(sub.href)}
+                                                                        className={`block text-xs md:text-sm font-bold py-1.5 transition-colors ${
+                                                                            isActive(sub.href) ? 'text-primary' : 'text-gray-400 hover:text-gray-700'
+                                                                        }`}
+                                                                    >
+                                                                        {sub.label}
+                                                                    </Link>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <Link
+                                                        href={withBranch(item.href!)}
+                                                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                                                            active ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <div className="shrink-0"><Icon size={18} /></div>
+                                                            {!isCollapsed && <span className="text-sm font-black truncate">{item.label}</span>}
+                                                        </div>
+                                                        {!isCollapsed && (
+                                                            <div className="flex items-center gap-2">
+                                                                {isLocked && <Lock size={12} className="text-gray-400" />}
+                                                                {item.id === 'loyalty' && pendingRedemptions > 0 && (
+                                                                    <span className="size-4 bg-emerald-500 text-white text-[8px] font-black flex items-center justify-center rounded-full">
+                                                                        {pendingRedemptions}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </Link>
+                                                )}
+
+                                                {/* Tooltip & Favorite Toggle on Hover */}
+                                                {isCollapsed && (
+                                                    <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded opacity-0 group-hover/item:opacity-100 pointer-events-none z-50 whitespace-nowrap">
+                                                        {item.label}
+                                                    </div>
+                                                )}
+                                                {!isCollapsed && (
+                                                    <button 
+                                                        onClick={(e) => toggleFavorite(e, item.id)}
+                                                        className={`absolute right-2 top-1/2 -translate-y-1/2 size-6 rounded-lg flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity bg-white/10 hover:bg-white/20 ${favorites.includes(item.id) ? 'text-amber-400' : 'text-gray-300'}`}
+                                                    >
+                                                        <Star size={10} className={favorites.includes(item.id) ? 'fill-current' : ''} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </nav>
+
+                {/* Footer / Branch Switcher */}
+                <div className="border-t border-gray-100 p-4 space-y-3">
+                    {!isCollapsed && <BranchSwitcher />}
                     <button
                         onClick={handleLogout}
-                        className="w-full py-2 px-3 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors ${isCollapsed ? 'justify-center' : ''}`}
                     >
-                        <LogOut size={16} />
-                        Logout
+                        <LogOut size={18} />
+                        {!isCollapsed && <span className="text-xs font-black uppercase tracking-widest">Logout</span>}
                     </button>
                 </div>
             </aside>
@@ -527,284 +431,90 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             {/* Main Content */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden w-full min-h-0">
                 {/* Top Bar */}
-                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
+                <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 shrink-0 sticky top-0 z-40">
                     <div className="flex items-center gap-4 flex-1">
-                        <button
-                            onClick={() => setIsMobileOpen(true)}
-                            className="p-2 text-text-secondary hover:bg-gray-50 rounded-lg lg:hidden"
-                        >
+                        <button onClick={() => setIsMobileOpen(true)} className="p-2 text-text-secondary hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100">
                             <Menu size={24} />
                         </button>
-                        <div className="relative max-w-sm w-full hidden sm:block">
-                            <BranchSwitcher />
+                        
+                        <div className="flex items-center gap-3">
+                            <div className="size-8 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center shrink-0 hidden sm:flex">
+                                {currentBranchLogo ? <img src={currentBranchLogo} alt="Logo" className="size-full object-cover p-1" /> : <Zap className="text-primary size-4" />}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[8px] font-black uppercase tracking-[0.1em] text-gray-400 leading-none mb-0.5 truncate max-w-[120px]">{currentBranch?.name || businessName}</p>
+                                <h1 className="text-sm font-black text-gray-900 leading-none truncate capitalize">
+                                    {pathname.split('/').pop()?.replace(/-/g, ' ') || 'Overview'}
+                                </h1>
+                            </div>
                         </div>
-                        <OwnerSearch />
                     </div>
-                    <div className="flex items-center gap-2 lg:gap-4 relative">
-                        {(() => {
-                            const isOnTrial = activeSubscription?.status === 'trial' || activeSubscription?.status === 'trialing';
-                            const planId = String(activeSubscription?.planId || '').toLowerCase();
-                            const isFree = planId.includes('free') || Boolean(activeSubscription?.plan?.isFree);
-                            const planName = activeSubscription?.plan?.name || (isFree ? 'Free Plan' : 'Active Plan');
 
-                            // Compute counts/days for trial
-                            let daysRemaining = 0;
-                            if (isOnTrial && activeSubscription?.trialEndDate) {
-                                const trialEndDate = new Date(activeSubscription.trialEndDate);
-                                const now = new Date();
-                                daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-                            }
-
-                            const subscriptionLink = withBranch("/dashboard/settings/subscription" + (!isFree ? "/manage" : ""));
-
-                            return (
-                                <>
-                                    {/* Desktop View: Full Badge */}
-                                    <div className="hidden sm:flex items-center">
-                                        {isSubscriptionExpired ? (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-red-100 transition-colors shadow-sm shadow-red-100 animate-pulse"
-                                            >
-                                                Plan Expired
-                                            </Link>
-                                        ) : isFree ? (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
-                                            >
-                                                Free Plan
-                                            </Link>
-                                        ) : isOnTrial ? (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="flex items-center gap-2 pl-3 pr-1 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-full transition-all group"
-                                            >
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
-                                                    {planName}
-                                                </span>
-                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded-full">
-                                                    <Zap size={10} className="fill-white" />
-                                                    <span className="text-[9px] font-black uppercase tracking-tighter">
-                                                        {daysRemaining > 0 ? `${daysRemaining}d trial` : 'Last day!'}
-                                                    </span>
-                                                </div>
-                                            </Link>
-                                        ) : (
-                                            <Link
-                                                href={subscriptionLink}
-                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-100 transition-colors"
-                                            >
-                                                {planName}
-                                            </Link>
-                                        )}
-                                    </div>
-
-                                    {/* Mobile View: Compact Icon */}
-                                    <div className="flex sm:hidden items-center">
-                                        <Link
-                                            href={subscriptionLink}
-                                            className={`size-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
-                                                isSubscriptionExpired
-                                                    ? 'bg-red-50 border-red-200 text-red-600 animate-pulse'
-                                                    : isFree 
-                                                        ? 'bg-gray-50 border-gray-200 text-gray-400' 
-                                                        : isOnTrial 
-                                                            ? 'bg-amber-50 border-amber-200 text-amber-600' 
-                                                            : 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                                            }`}
-                                        >
-                                            {isSubscriptionExpired ? (
-                                                <AlertCircle size={18} />
-                                            ) : isFree ? (
-                                                <Zap size={18} className="opacity-40" />
-                                            ) : isOnTrial ? (
-                                                <div className="relative">
-                                                    <Zap size={18} className="fill-current" />
-                                                    {daysRemaining > 0 && (
-                                                        <span className="absolute -top-1 -right-1 size-4 bg-amber-500 text-white text-[8px] font-black rounded-full border-2 border-amber-50 flex items-center justify-center">
-                                                            {daysRemaining}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <ShieldCheck size={18} />
-                                            )}
-                                        </Link>
-                                    </div>
-                                </>
-                            );
-                        })()}
-
-                        {/* Notification Button */}
-                        <button
-                            onClick={() => setShowNotifications(!showNotifications)}
-                            className="relative p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors"
-                        >
-                            <Bell size={20} />
-                            {unreadCount > 0 && (
-                                <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
-                                    {unreadCount > 9 ? '9+' : unreadCount}
+                    <div className="flex items-center gap-2 lg:gap-3">
+                        {pendingSetupCount > 0 && (
+                            <Link href={withBranch("/dashboard")} className="relative size-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary hover:bg-primary/10 transition-all border border-transparent">
+                                <ClipboardCheck size={18} />
+                                <span className="absolute -top-1 -right-1 size-4 bg-primary text-white text-[8px] font-black rounded-full border-2 border-white flex items-center justify-center">
+                                    {pendingSetupCount}
                                 </span>
-                            )}
+                            </Link>
+                        )}
+                        <button onClick={() => setShowNotifications(!showNotifications)} className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
+                            <Bell size={18} />
+                            {unreadCount > 0 && <span className="absolute top-2 right-2 size-1.5 bg-red-500 rounded-full border border-white" />}
                         </button>
 
-                        {/* Notifications Dropdown */}
-                        {showNotifications && (
-                            <>
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setShowNotifications(false)}
-                                ></div>
-                                <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
-                                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                                        <h3 className="font-bold text-text-main text-sm">Notifications</h3>
-                                        <button
-                                            onClick={() => readAllMutation.mutate()}
-                                            className="text-xs text-primary font-bold hover:underline"
-                                        >
-                                            Mark all read
-                                        </button>
-                                    </div>
-                                    <div className="max-h-80 overflow-y-auto">
-                                        {notifications.length === 0 ? (
-                                            <div className="p-8 text-center text-text-secondary text-sm">
-                                                No notifications yet
-                                            </div>
-                                        ) : (
-                                            notifications.map((note: Notification) => (
-                                                <div
-                                                    key={note.id}
-                                                    onClick={() => !note.read && readNotificationMutation.mutate(note.id)}
-                                                    className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${!note.read ? 'bg-blue-50/30' : ''}`}
-                                                >
-                                                    <div className="flex items-start gap-3">
-                                                        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!note.read ? 'bg-primary' : 'bg-transparent'}`}></div>
-                                                        <div className="flex-1">
-                                                            <p className={`text-sm ${!note.read ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
-                                                                {note.title}
-                                                            </p>
-                                                            <p className="text-xs text-text-secondary mt-1">{note.message}</p>
-                                                            <p className="text-[10px] text-gray-400 mt-2">
-                                                                {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                    <div className="p-3 border-t border-gray-100 text-center">
-                                        <Link
-                                            href={withBranch("/dashboard/notifications")}
-                                            className="text-xs font-bold text-primary hover:text-primary-hover"
-                                            onClick={() => setShowNotifications(false)}
-                                        >
-                                            View All Notifications
-                                        </Link>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                        <div className="h-6 w-px bg-gray-100 mx-1 hidden sm:block" />
 
-                        <Link
-                            href={withBranch("/dashboard/support")}
-                            className="p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors"
-                        >
-                            <HelpCircle size={20} />
-                        </Link>
-
-                        {/* User Avatar & Dropdown */}
                         <div className="relative">
-                            <button
-                                onClick={() => setShowUserDropdown(!showUserDropdown)}
-                                className="flex items-center gap-2 p-0.5 hover:bg-gray-100 rounded-full transition-all focus:outline-none border border-transparent hover:border-gray-200"
-                            >
-                                <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm transition-transform hover:scale-105 active:scale-95">
-                                    {businessLogo ? (
-                                        <img
-                                            src={businessLogo}
-                                            alt={businessName}
-                                            className="w-full h-full object-contain p-1"
-                                        />
-                                    ) : (
-                                        <Users className="text-primary" size={16} />
-                                    )}
-                                </div>
-                            </button>
-
-                            {showUserDropdown && (
-                                <>
-                                    <div
-                                        className="fixed inset-0 z-40"
-                                        onClick={() => setShowUserDropdown(false)}
-                                    ></div>
-                                    <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
-                                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'User'}</p>
-                                            <p className="text-[11px] text-text-secondary truncate">{user?.email}</p>
-                                        </div>
-                                        <div className="px-2">
-                                            <Link
-                                                href={withBranch("/dashboard/settings/profile")}
-                                                className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
-                                                onClick={() => setShowUserDropdown(false)}
-                                            >
-                                                <Settings size={16} className="opacity-70" />
-                                                <span>Profile</span>
-                                            </Link>
-                                            {((user?.role as string)?.toLowerCase() === 'owner' || (user?.role as string)?.toLowerCase() === 'admin') && (
-                                                <Link
-                                                    href={withBranch("/dashboard/staff")}
-                                                    className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
-                                                    onClick={() => setShowUserDropdown(false)}
-                                                >
-                                                    <Users2 size={16} className="opacity-70" />
-                                                    <span>Users</span>
-                                                </Link>
-                                            )}
-                                        </div>
-                                        <div className="border-t border-gray-50 my-2"></div>
-                                        <div className="px-2">
-                                            <button
-                                                onClick={() => {
-                                                    setShowUserDropdown(false);
-                                                    handleLogout();
-                                                }}
-                                                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            >
-                                                <LogOut size={16} />
-                                                <span>Logout</span>
-                                            </button>
-                                        </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger>
+                                    <button className="size-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm hover:border-primary/20 transition-all">
+                                        {currentBranchLogo ? (
+                                            <img src={currentBranchLogo} alt="Branch Logo" className="size-full object-cover p-1" />
+                                        ) : (
+                                            <div className="text-primary font-black text-[10px] uppercase">
+                                                {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+                                            </div>
+                                        )}
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56 mt-2" align="end">
+                                    <div className="px-3 py-2 border-b border-gray-50 mb-1">
+                                        <p className="text-xs font-black text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
+                                        <p className="text-[10px] font-bold text-gray-400 truncate">{user?.email}</p>
                                     </div>
-                                </>
-                            )}
+                                    <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/settings/profile'))}>
+                                        <User size={14} />
+                                        <span>My Profile</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/settings'))}>
+                                        <Settings size={14} />
+                                        <span>Settings</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/support'))}>
+                                        <HelpCircle size={14} />
+                                        <span>Help & Support</span>
+                                    </DropdownMenuItem>
+                                    <div className="h-px bg-gray-50 my-1" />
+                                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 hover:bg-red-50 hover:text-red-600">
+                                        <LogOut size={14} />
+                                        <span>Logout</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
                 </header>
 
-                {/* Page Content */}
-                <main
-                    ref={mainRef}
-                    className={`flex-1 bg-gray-50 min-h-0 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto pb-16 lg:pb-0'}`}
-                >
+                <main ref={mainRef} className={`flex-1 bg-gray-50 min-h-0 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto'}`}>
                     {children}
                 </main>
             </div>
 
-            {/* Only show Mobile Nav if NOT on an active chat conversation */}
+            <UpgradeModal isOpen={upgradeModal.isOpen} onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} featureName={upgradeModal.featureName} />
+            <SubscriptionExpiredModal isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')} />
             {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
-            
-            <UpgradeModal
-                isOpen={upgradeModal.isOpen}
-                onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
-                featureName={upgradeModal.featureName}
-            />
-
-            <SubscriptionExpiredModal
-                isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')}
-            />
         </div>
     );
 }

@@ -95,7 +95,8 @@ const GoogleLoginWrapper = ({ onSuccess, label, isLoading }: any) => {
                 <GoogleLogin
                     onSuccess={onSuccess}
                     onError={() => toast.error('Google Login Failed')}
-                    useOneTap
+                    useOneTap={false}
+                    auto_select={false}
                     theme="outline"
                     size="large"
                     shape="rectangular"

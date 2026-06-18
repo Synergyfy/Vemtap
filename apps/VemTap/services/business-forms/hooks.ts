@@ -31,12 +31,14 @@ const toList = <T,>(payload: unknown): T[] => {
 type BusinessFormsQuery = {
   branchId?: string;
   allBranches?: boolean;
+  enabled?: boolean;
 };
 
 export const useBusinessForms = (params: BusinessFormsQuery = {}) => {
   const { activeBranchId, isAllBranches } = useActiveBranch();
   const resolvedBranchId = params.branchId || activeBranchId;
   const resolvedAllBranches = params.allBranches !== undefined ? params.allBranches : (params.branchId ? false : isAllBranches);
+  const isEnabled = params.enabled !== undefined ? params.enabled : true;
 
   return useQuery<BusinessForm[], Error>({
     queryKey: ['business-forms', resolvedBranchId || 'all', resolvedAllBranches ? 'all-branches' : 'scoped'],
@@ -48,6 +50,7 @@ export const useBusinessForms = (params: BusinessFormsQuery = {}) => {
       const response = await api.get(`/business-forms${suffix ? `?${suffix}` : ''}`);
       return toList<BusinessForm>(response);
     },
+    enabled: isEnabled,
   });
 };
 

@@ -1,146 +1,172 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Archive, Download, QrCode, Plus, BarChart2, Settings, 
-  FileText, Palette, Layout, Smartphone, CreditCard, 
-  Layers, StickyNote, Image as ImageIcon, Map, Monitor, 
-  ChevronRight, ArrowRight, Sparkles
+  Download, QrCode, Plus, Layout, Monitor, 
+  ChevronRight, ArrowRight, TrendingUp,
+  Image as ImageIcon, Layers, StickyNote, Map,
+  FileText, Smartphone, ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   useMarketingAssets,
   useAnalyticsOverview,
-  useBrandProfile,
 } from '@/services/marketing-assets/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import Modal from '@/components/ui/Modal';
 
 const assetCategories = [
-  { id: 'posters', label: 'Posters', desc: 'A4, A3, A2 high-resolution prints.', icon: ImageIcon, color: 'bg-blue-50 text-blue-600' },
+  { id: 'posters', label: 'Posters', desc: 'A4, A3, A2 high-resolution prints.', icon: ImageIcon, color: 'bg-blue-50 text-[#066CF4]' },
   { id: 'counter_displays', label: 'Counter Displays', desc: 'Perfect for checkout areas.', icon: Monitor, color: 'bg-emerald-50 text-emerald-600' },
   { id: 'table_tents', label: 'Table Tents', desc: 'Dine-in QR experience.', icon: Layers, color: 'bg-amber-50 text-amber-600' },
   { id: 'flyers', label: 'Flyers', desc: 'Promotional handouts.', icon: StickyNote, color: 'bg-indigo-50 text-indigo-600' },
-  { id: 'stickers', label: 'Stickers', desc: 'Window and door decals.', icon: Map, color: 'bg-pink-50 text-pink-600' },
-  { id: 'business_cards', label: 'Business Cards', desc: 'Personal QR connections.', icon: CreditCard, color: 'bg-purple-50 text-purple-600' },
-  { id: 'social_media', label: 'Social Media', desc: 'Instagram, FB, WhatsApp posts.', icon: Smartphone, color: 'bg-rose-50 text-rose-600' },
+  { id: 'banners', label: 'Roll-Up Banners', desc: 'Large format event branding.', icon: Map, color: 'bg-purple-50 text-purple-600' },
 ];
 
 export default function MarketingAssetsOverviewPage() {
+  const router = useRouter();
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
   const { data: assets, isLoading: assetsLoading } = useMarketingAssets();
-  const { data: analytics, isLoading: analyticsLoading } = useAnalyticsOverview();
+  const { data: analytics } = useAnalyticsOverview();
   const { data: business } = useMyBusiness();
+  const { data: branches = [] } = useBranches();
+  const { activeBranchId } = useActiveBranch();
+  const activeBranch = branches.find((b: any) => b.id === activeBranchId) || branches[0];
 
   const totals = analytics?.totals || { scans: 0, views: 0, conversionRate: 0, downloads: 0 };
+  const branchName = activeBranch?.name || business?.name || 'Vemtap';
+
+  if (assetsLoading) {
+    return (
+        <div className="flex items-center justify-center h-screen bg-gray-50">
+            <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        </div>
+    );
+  }
 
   return (
-    <div className="pb-24 md:pb-10 space-y-8 max-w-4xl mx-auto p-4">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 leading-tight">Marketing Assets</h1>
-          <p className="text-sm font-medium text-gray-500 mt-1">
-            Create professional QR marketing materials for your business.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/marketing-assets/library">
-            <Button variant="outline" className="rounded-2xl border-gray-100 text-[10px] font-black uppercase tracking-widest">
-              <Archive className="mr-2 size-4" />
-              Library
-            </Button>
-          </Link>
-          <Link href="/dashboard/marketing-assets/create">
-            <Button className="rounded-2xl bg-[#066CF4] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
-              <Plus className="mr-2 size-4" />
-              Create New
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <div className="pb-32 space-y-10">
+      {/* Top Section: Branding & Explanation */}
+      <section className="text-center space-y-4">
+        <h1 className="text-3xl font-black text-gray-900 leading-tight">
+            {branchName} Marketing
+        </h1>
+        <p className="text-sm font-medium text-gray-500 max-w-lg mx-auto leading-relaxed">
+            Marketing Assets are professionally designed materials that automatically include your <span className="text-[#066CF4] font-black uppercase tracking-widest bg-[#066CF4]/5 px-2 py-1 rounded-md">Business QR</span>. Customers can scan them to interact with your business.
+        </p>
+      </section>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Assets Created', value: assets?.length || 0, icon: Layout, color: 'text-[#066CF4]' },
-          { label: 'Total Downloads', value: totals.downloads || 0, icon: Download, color: 'text-emerald-500' },
-          { label: 'QR Scans', value: totals.scans || 0, icon: QrCode, color: 'text-amber-500' },
-          { label: 'Active Goals', value: 3, icon: Sparkles, color: 'text-purple-500' },
+          { label: 'Created', value: assets?.filter((a: any) => !a.isMock).length || 0, icon: Layout, color: 'bg-blue-50 text-[#066CF4]' },
+          { label: 'Downloads', value: totals.downloads || 0, icon: Download, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'QR Scans', value: totals.scans || 0, icon: QrCode, color: 'bg-amber-50 text-amber-600' },
+          { label: 'Conversion', value: `${totals.conversionRate || 0}%`, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
         ].map((stat, i) => (
-          <div key={i} className="rounded-[32px] bg-white p-5 shadow-sm border border-gray-100">
-            <div className={cn("size-10 rounded-2xl bg-gray-50 flex items-center justify-center mb-3", stat.color.replace('text-', 'bg-').replace('500', '50'))}>
-              <stat.icon size={20} className={stat.color} />
+          <div 
+            key={i} 
+            className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-100 flex flex-col items-center text-center gap-2"
+          >
+            <div className={cn("size-10 rounded-xl flex items-center justify-center", stat.color)}>
+              <stat.icon size={18} />
             </div>
-            <div className="text-2xl font-black text-gray-900">{stat.value}</div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">{stat.label}</div>
+            <div>
+                <div className="text-xl font-black text-gray-900">{stat.value}</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-gray-400">{stat.label}</div>
+            </div>
           </div>
         ))}
-      </div>
+      </section>
 
-      {/* Categories Grid */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest flex items-center gap-3">
-          Asset Categories
-          <span className="h-0.5 flex-1 bg-gray-100" />
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assetCategories.map((cat) => (
-            <motion.div 
-              key={cat.id}
-              whileHover={{ y: -5 }}
-              className="group relative rounded-[32px] bg-white p-6 shadow-sm border border-gray-100 transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5"
-            >
-              <div className={cn("size-14 rounded-[22px] flex items-center justify-center mb-6 shadow-sm", cat.color)}>
-                <cat.icon size={28} />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">{cat.label}</h3>
-              <p className="text-xs font-medium text-gray-500 mt-2 leading-relaxed">
-                {cat.desc}
-              </p>
-              
-              <Link href={`/dashboard/marketing-assets/create?type=${cat.id}`} className="mt-8 block">
-                <Button className="w-full h-12 rounded-2xl bg-gray-900 text-[10px] font-black uppercase tracking-widest group-hover:bg-[#066CF4] transition-all">
-                  Create {cat.label.slice(0, -1)}
-                  <ChevronRight size={16} className="ml-2" />
-                </Button>
-              </Link>
-            </motion.div>
-          ))}
+      {/* Asset Category Chooser Button */}
+      <section className="flex flex-col items-center gap-8 pt-6">
+        <Button 
+            onClick={() => setIsTypeModalOpen(true)}
+            className="h-20 px-12 rounded-[2rem] bg-[#066CF4] text-white text-sm font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-500/40 hover:bg-[#0556c5] transition-all active:scale-95 group"
+        >
+            <Plus className="mr-3 size-6 group-hover:rotate-90 transition-transform duration-300" />
+            Choose Asset Type
+        </Button>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full opacity-40 grayscale pointer-events-none blur-[1px]">
+            {assetCategories.slice(0, 2).map((cat) => (
+                <div key={cat.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 flex items-center gap-6">
+                    <div className={cn("size-12 rounded-2xl flex items-center justify-center", cat.color)}>
+                        <cat.icon size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-base font-black text-gray-900">{cat.label}</h3>
+                    </div>
+                </div>
+            ))}
         </div>
-      </div>
+      </section>
 
-      {/* Main CTA Banner */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-[40px] bg-gradient-to-br from-[#066CF4] to-[#4293FF] p-10 text-white shadow-2xl shadow-blue-500/20"
+      {/* Type Selection Modal */}
+      <Modal 
+        isOpen={isTypeModalOpen} 
+        onClose={() => setIsTypeModalOpen(false)}
+        size="lg"
       >
-        <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-black/10 blur-3xl" />
+        <div className="space-y-8">
+            <div className="text-center space-y-2">
+                <h2 className="text-2xl font-black text-gray-900">Choose Asset Type</h2>
+                <p className="text-sm text-gray-500 font-medium">Select the format you want to create today</p>
+            </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center max-w-lg mx-auto">
-          <Badge className="bg-white/20 text-white border-none px-4 py-1.5 font-black uppercase tracking-widest mb-6">
-            New Templates Available
-          </Badge>
-          <h2 className="text-4xl font-black leading-tight mb-4">
-            Transform Your Physical Space Into A Growth Engine
-          </h2>
-          <p className="text-lg font-medium text-white/80 mb-10">
-            Generate professional posters, table tents, and social media assets in seconds.
-          </p>
-          <Link href="/dashboard/marketing-assets/create">
-            <Button className="h-16 px-12 rounded-3xl bg-white text-gray-900 text-sm font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/10 hover:bg-gray-50 active:scale-95 transition-all">
-              Create New Marketing Asset
-              <ArrowRight className="ml-3 size-5" />
-            </Button>
-          </Link>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {assetCategories.map((cat) => (
+                    <Link 
+                        key={cat.id} 
+                        href={`/dashboard/marketing-assets/create?type=${cat.id}`}
+                        onClick={() => setIsTypeModalOpen(false)}
+                    >
+                        <motion.div 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="bg-gray-50 hover:bg-white p-6 rounded-[2rem] border-2 border-transparent hover:border-[#066CF4]/20 hover:shadow-xl transition-all flex flex-col gap-4 group"
+                        >
+                            <div className={cn("h-32 rounded-2xl flex items-center justify-center relative overflow-hidden", cat.color.replace('text-', 'bg-').replace('50', '100'))}>
+                                <cat.icon size={48} className="opacity-20 group-hover:scale-110 transition-transform duration-500" />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm flex items-center gap-2">
+                                        <cat.icon size={16} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Sample View</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900">{cat.label}</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{cat.desc}</p>
+                                </div>
+                                <div className="size-10 rounded-full bg-white flex items-center justify-center text-gray-300 group-hover:text-[#066CF4] shadow-sm">
+                                    <ChevronRight size={20} />
+                                </div>
+                            </div>
+                        </motion.div>
+                    </Link>
+                ))}
+            </div>
         </div>
-      </motion.div>
+      </Modal>
+
+      {/* Footer CTA */}
+      <div className="pt-12">
+        <Link href="/dashboard/marketing-assets/library">
+            <Button variant="ghost" className="w-full h-16 rounded-[2rem] bg-white border-2 border-dashed border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400 shadow-sm hover:bg-gray-50 hover:border-[#066CF4]/20 hover:text-[#066CF4] transition-all">
+                <FileText className="mr-2 size-4" />
+                View My Asset Library
+            </Button>
+        </Link>
+      </div>
     </div>
   );
 }

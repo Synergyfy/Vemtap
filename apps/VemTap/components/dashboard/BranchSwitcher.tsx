@@ -15,6 +15,7 @@ export default function BranchSwitcher() {
     const createBranchMutation = useCreateBranch();
     const deleteBranchMutation = useDeleteBranch();
     const businessName = useAuthStore((state) => state.user?.businessName);
+    const businessLogo = useAuthStore((state) => state.user?.businessLogo);
 
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -86,17 +87,21 @@ export default function BranchSwitcher() {
 
     if (!isLoading && branches.length <= 1) {
         return (
-            <div className="flex items-center gap-2">
-                <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 transition-all duration-200">
-                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                        <Building2 size={18} />
+            <div className="flex items-center gap-2 w-full">
+                <div className="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 transition-all duration-200">
+                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary overflow-hidden shrink-0">
+                        {businessLogo ? (
+                            <img src={businessLogo} alt="Logo" className="size-full object-cover p-1" />
+                        ) : (
+                            <Building2 size={18} />
+                        )}
                     </div>
-                    <div className="text-left hidden sm:block">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
+                    <div className="text-left hidden sm:block flex-1 min-w-0">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1 truncate">
                             Location
                         </p>
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
+                            <span className="text-sm font-bold text-text-main truncate">
                                 {formatBranchName(branches[0]?.name, branches[0]?.isMainBranch)}
                             </span>
                         </div>
@@ -123,33 +128,33 @@ export default function BranchSwitcher() {
     };
 
     return (
-        <div className="relative" ref={dropdownRef}>
-            <div className="flex items-center gap-2">
+        <div className="relative w-full" ref={dropdownRef}>
+            <div className="flex items-center gap-2 w-full">
                 <button
                     onClick={() => { setIsOpen(!isOpen); setIsCreating(false); }}
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/20 transition-all duration-200 group"
+                    className="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/20 transition-all duration-200 group"
                 >
-                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
                     </div>
-                    <div className="text-left hidden sm:block">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
+                    <div className="text-left hidden sm:block flex-1 min-w-0">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1 truncate">
                             Active Location
                         </p>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-text-main truncate">
                                 {displayName}
                             </span>
                             <ChevronDown
                                 size={14}
-                                className={`text-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                                className={`text-text-secondary shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                             />
                         </div>
                     </div>
                 </button>
                 <Link
                     href="/dashboard/settings/branches"
-                    className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group"
+                    className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group shrink-0"
                     title="Manage Locations"
                 >
                     <span className="material-icons-round text-lg">settings</span>
@@ -162,7 +167,7 @@ export default function BranchSwitcher() {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
+                        className="absolute bottom-full left-0 mb-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
                     >
                         {!isCreating ? (
                             <>
