@@ -42,7 +42,9 @@ export function BusinessProfileCard({ business }: { business: any }) {
                     {business?.logoUrl ? <img src={business.logoUrl} className="size-full object-cover" /> : <Building2 size={40} className="text-gray-300" />}
                 </div>
                 <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#066CF4] mb-2">{business?.category || 'Business Category'}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#066CF4] mb-2">
+                        {(typeof business?.category === 'string' ? business.category : business?.category?.name) || 'Business Category'}
+                    </p>
                     <h2 className="text-2xl font-black text-gray-900 leading-none mb-4">{business?.name || 'Your Business'}</h2>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest">

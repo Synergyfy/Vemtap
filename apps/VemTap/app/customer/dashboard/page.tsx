@@ -190,7 +190,7 @@ export default function CustomerDashboardPage() {
                                     className="bg-white text-primary px-8 py-4 rounded-xl font-black text-sm shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-3"
                                 >
                                     <Scan size={20} />
-                                    Show My Digital ID
+                                    View My QR
                                 </button>
                                 <Link
                                     href="/customer/rewards"
@@ -212,6 +212,14 @@ export default function CustomerDashboardPage() {
                                         size={140}
                                         level="H"
                                         includeMargin={true}
+                                        imageSettings={{
+                                            src: businessLogo,
+                                            x: undefined,
+                                            y: undefined,
+                                            height: 24,
+                                            width: 24,
+                                            excavate: true,
+                                        }}
                                         className="bg-white"
                                     />
                                 ) : (
@@ -368,7 +376,7 @@ export default function CustomerDashboardPage() {
             <Modal
                 isOpen={showIdModal}
                 onClose={() => setShowIdModal(false)}
-                title="Your Digital Member ID"
+                title="View My QR"
                 size="md"
             >
                 <div className="space-y-8 p-4">
@@ -381,6 +389,14 @@ export default function CustomerDashboardPage() {
                                     size={180}
                                     level="H"
                                     includeMargin={true}
+                                    imageSettings={{
+                                        src: businessLogo,
+                                        x: undefined,
+                                        y: undefined,
+                                        height: 32,
+                                        width: 32,
+                                        excavate: true,
+                                    }}
                                     className="bg-white"
                                 />
                             ) : (

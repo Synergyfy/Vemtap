@@ -14,6 +14,8 @@ export interface BannerSlide {
     actionLabel?: string;
     actionUrl?: string;
     color?: string;
+    tag?: string;
+    isLight?: boolean;
 }
 
 interface DashboardBannerProps {
@@ -37,6 +39,9 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
 
     if (!slides.length) return null;
 
+    const currentSlide = slides[currentIndex];
+    const isLight = currentSlide.isLight;
+
     return (
         <div 
             className="relative w-full overflow-hidden group mb-4"
@@ -45,52 +50,85 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
         >
             <AnimatePresence mode="wait">
                 <motion.div
-                    key={slides[currentIndex].id}
+                    key={currentSlide.id}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     className={cn(
-                        "rounded-[1.5rem] p-4 md:p-5 border-none shadow-lg shadow-blue-500/10 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all duration-500",
-                        slides[currentIndex].color || "bg-gradient-to-r from-[#066CF4] to-[#4293FF]"
+                        "rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-10 border-none shadow-lg shadow-blue-500/5 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 transition-all duration-500 min-h-[140px] md:min-h-[220px]",
+                        currentSlide.color || "bg-gradient-to-r from-[#066CF4] to-[#4293FF]"
                     )}
                 >
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex items-start gap-3 md:gap-6 flex-1 min-w-0">
+                        {currentSlide.icon && (
+                            <div className={cn(
+                                "size-10 md:size-16 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                                isLight ? "bg-[#066CF4]/5 text-[#066CF4]" : "bg-white/20 text-white"
+                            )}>
+                                <currentSlide.icon size={isLight ? 24 : 20} className="md:hidden" />
+                                <currentSlide.icon size={isLight ? 32 : 28} className="hidden md:block" />
+                            </div>
+                        )}
                         <div className="min-w-0">
-                            <h2 className="text-sm font-black text-white leading-tight flex items-center gap-2 mb-1">
-                                <span className="text-[8px] font-black uppercase tracking-[0.15em] text-[#066CF4] bg-white px-1.5 py-0.5 rounded-md shrink-0 shadow-sm">NEWS</span>
-                                <span className="truncate">{slides[currentIndex].title}</span>
+                            <h2 className={cn(
+                                "text-base md:text-2xl font-black leading-tight flex flex-wrap items-center gap-2 mb-1 md:mb-2",
+                                isLight ? "text-gray-900" : "text-white"
+                            )}>
+                                {currentSlide.tag && (
+                                    <span className={cn(
+                                        "text-[8px] md:text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 shadow-sm",
+                                        currentSlide.tag === 'SETUP' ? "text-emerald-600 bg-emerald-50" : "text-[#066CF4] bg-white"
+                                    )}>
+                                        {currentSlide.tag}
+                                    </span>
+                                )}
+                                <span className="truncate">{currentSlide.title}</span>
                             </h2>
-                            <p className="text-[10px] font-medium text-white/80 uppercase tracking-wider leading-snug">
-                                {slides[currentIndex].description}
+                            <p className={cn(
+                                "text-[10px] md:text-sm font-medium leading-snug md:leading-relaxed max-w-[450px] opacity-90",
+                                isLight ? "text-gray-400" : "text-white/80"
+                            )}>
+                                {currentSlide.description}
                             </p>
                         </div>
                     </div>
                     
-                    <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
+                    <div className="flex items-center justify-between md:flex-col md:items-end gap-4 md:gap-6 shrink-0">
+                        {currentSlide.actionLabel && (
+                            <button 
+                                onClick={() => currentSlide.actionUrl && (window.location.href = currentSlide.actionUrl)}
+                                className={cn(
+                                    "h-10 md:h-14 px-6 md:px-8 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs shadow-xl active:scale-95 transition-all flex items-center gap-2",
+                                    isLight ? "bg-[#066CF4] text-white shadow-blue-500/20" : "bg-white text-[#066CF4] shadow-black/10"
+                                )}
+                            >
+                                {currentSlide.actionLabel}
+                                <ArrowRight size={14} className="md:hidden" />
+                                <ArrowRight size={16} className="hidden md:block" />
+                            </button>
+                        )}
+
                         {slides.length > 1 && (
-                            <div className="flex gap-1">
+                            <div className="flex gap-1.5 md:mt-2">
                                 {slides.map((_, i) => (
                                     <div 
                                         key={i} 
                                         className={cn(
                                             "h-1 rounded-full transition-all duration-300",
-                                            currentIndex === i ? "w-4 bg-white" : "w-1 bg-white/30"
+                                            currentIndex === i 
+                                                ? (isLight ? "w-6 bg-[#066CF4]" : "w-6 bg-white") 
+                                                : (isLight ? "w-1.5 bg-gray-200" : "w-1.5 bg-white/30")
                                         )} 
                                     />
                                 ))}
                             </div>
                         )}
-                        
-                        {slides[currentIndex].actionLabel && (
-                            <button 
-                                onClick={() => slides[currentIndex].actionUrl && (window.location.href = slides[currentIndex].actionUrl)}
-                                className="text-[9px] font-black uppercase tracking-[0.15em] text-white hover:text-white/80 transition-all active:scale-95 flex items-center gap-1.5 underline underline-offset-4 decoration-1"
-                            >
-                                {slides[currentIndex].actionLabel}
-                                <ArrowRight size={12} className="no-underline" />
-                            </button>
-                        )}
                     </div>
+
+                    {/* Decorative background element for Light mode */}
+                    {isLight && (
+                        <div className="absolute -right-12 -top-12 size-48 bg-[#066CF4]/5 rounded-full blur-3xl pointer-events-none" />
+                    )}
                 </motion.div>
             </AnimatePresence>
         </div>

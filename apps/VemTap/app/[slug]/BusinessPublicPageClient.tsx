@@ -127,21 +127,11 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
                     <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-primary/10 rounded-full blur-3xl" />
                 </div>
 
-                <div className="absolute top-6 left-4 right-4 md:top-8 md:left-8 md:right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
-                    {isBusinessAccount ? (
-                        <button
-                            onClick={() => router.back()}
-                            className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors"
-                        >
-                            <ChevronRight size={14} className="rotate-180" /> Back
-                        </button>
-                    ) : (
-                        <div />
-                    )}
+                <div className="absolute top-6 left-4 right-4 md:top-8 md:left-8 md:right-8 flex items-center justify-center z-10 font-bold uppercase tracking-widest text-[10px]">
                     <div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary tracking-[0.3em] font-black">
                         {businessName}
                     </div>
-                    <button className="text-slate-400 hover:text-primary transition-colors">
+                    <button className="absolute right-0 text-slate-400 hover:text-primary transition-colors">
                         <Share2 size={16} />
                     </button>
                 </div>
@@ -482,7 +472,11 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
                     <div className="mt-12 flex items-center gap-4 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by</span>
                         <div className="h-6 w-px bg-slate-200" />
-                        <span className="text-lg font-black tracking-tighter text-slate-900">VemTap</span>
+                        {logoUrl ? (
+                            <img src={logoUrl} alt={businessName} className="h-6 object-contain" />
+                        ) : (
+                            <span className="text-lg font-black tracking-tighter text-slate-900">{businessName}</span>
+                        )}
                     </div>
                 </div>
             </div>

@@ -26,8 +26,8 @@ const CHECKLIST_ITEMS: {
     },
     {
         id: 'qr',
-        title: 'Generate QR Code',
-        description: 'Create your customer capture QR code.',
+        title: 'My Business QR',
+        description: 'Manage your primary business QR and customer experience.',
         icon: QrCode,
     },
     {

@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils"
 
 interface DropdownMenuProps {
   children: React.ReactNode
+  className?: string
 }
 
-export function DropdownMenu({ children }: DropdownMenuProps) {
+export function DropdownMenu({ children, className }: DropdownMenuProps) {
   const [open, setOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
 
@@ -23,7 +24,7 @@ export function DropdownMenu({ children }: DropdownMenuProps) {
   }, [])
 
   return (
-    <div className="relative inline-block" ref={containerRef}>
+    <div className={cn("relative inline-block", className)} ref={containerRef}>
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
           if ((child.type as any).displayName === "DropdownMenuTrigger") {
@@ -59,7 +60,7 @@ export function DropdownMenuContent({ children, onClose, className, align = "end
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 10 }}
       className={cn(
-        "absolute z-50 min-w-[8rem] overflow-hidden rounded-2xl border border-gray-100 bg-white p-1 shadow-xl",
+        "absolute z-[100] min-w-[8rem] overflow-hidden rounded-2xl border border-gray-100 bg-white p-1 shadow-xl",
         align === "end" ? "right-0" : "left-0",
         className
       )}

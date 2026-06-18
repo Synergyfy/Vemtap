@@ -21,7 +21,7 @@ export default function WelcomeAutomationPage() {
     const [isActive, setIsActive] = useState(true);
 
     return (
-        <div className="pb-32 md:pb-20 max-w-5xl mx-auto p-4 md:p-8">
+        <div className="pb-32 md:pb-20 max-w-7xl mx-auto p-4 md:p-8">
             <Link href="/dashboard/automations" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4] transition-colors mb-6">
                 <ArrowLeft size={14} />
                 Back to Center

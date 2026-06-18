@@ -20,7 +20,9 @@ export function ProfileSettingsView({ business }: { business: any }) {
                     <div className="flex-1 w-full space-y-4">
                         <input defaultValue={business?.name} className="w-full h-16 bg-gray-50 border-none rounded-2xl px-6 text-sm font-bold text-gray-900" placeholder="Business Name" />
                         <select className="w-full h-16 bg-gray-50 border-none rounded-2xl px-6 text-sm font-bold text-gray-900 appearance-none">
-                            <option>{business?.category || 'Select Category'}</option>
+                            <option>
+                                {(typeof business?.category === 'string' ? business.category : business?.category?.name) || 'Select Category'}
+                            </option>
                         </select>
                     </div>
                 </div>

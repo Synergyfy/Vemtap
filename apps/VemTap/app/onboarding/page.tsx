@@ -293,7 +293,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
             <div className="space-y-4 py-4">
                 {[
                     'Complete your business profile',
-                    'Generate your business presence',
+                    'Manage your business presence',
                     'Choose a subscription plan',
                     'Get access to your dashboard',
                     'Start capturing customers'
@@ -1362,7 +1362,7 @@ function CompleteStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                     Your Vemtap account has been successfully configured.
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                    {['Generate QR Codes', 'Capture Customers', 'Build Database', 'Marketing Campaigns', 'Track Growth'].map((item, i) => (
+                    {['My Business QR', 'Capture Customers', 'Build Database', 'Marketing Campaigns', 'Track Growth'].map((item, i) => (
                         <Badge key={i} variant="secondary" className="bg-gray-100 text-text-main text-[10px] font-black uppercase tracking-widest px-4 py-2 border-0">
                             ✓ {item}
                         </Badge>
@@ -1390,7 +1390,7 @@ function CompleteStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                     variant="outline"
                     className="w-full border-2 border-gray-100 text-text-secondary font-black uppercase tracking-widest text-[10px] py-8 rounded-2xl hover:bg-gray-50 transition-all"
                 >
-                    Generate First QR Code
+                    Manage My Business QR
                 </Button>
             </div>
         </motion.div>

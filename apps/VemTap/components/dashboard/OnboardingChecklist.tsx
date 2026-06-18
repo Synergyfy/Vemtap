@@ -1,144 +1,79 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
 import { 
-    CheckCircle2, Circle, ArrowRight, Sparkles, 
-    Edit, QrCode, Download, UserPlus, Send,
-    PartyPopper
+    CheckCircle2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useMyBusiness } from '@/services/businesses/hooks';
-import { useMarketingAssets, useAnalyticsOverview } from '@/services/marketing-assets/hooks';
-import { useDashboardAnalytics } from '@/services/analytics/hooks';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 
 export default function OnboardingChecklist() {
     const router = useRouter();
-    const { data: myBusiness } = useMyBusiness();
-    const { data: assets } = useMarketingAssets();
-    const { data: marketingAnalytics } = useAnalyticsOverview();
-    const { data: dashboardAnalytics } = useDashboardAnalytics();
+    const { checklistItems, isComplete, percentage } = useOnboarding();
+    const [isMinimized, setIsMinimized] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
 
-    const checklistItems = useMemo(() => {
-        const stats = dashboardAnalytics?.stats || [];
-        const visitorsCount = stats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
-        
-        return [
-            {
-                id: 'profile',
-                title: 'Complete Profile',
-                description: 'Add your brand logo and business details.',
-                icon: Edit,
-                isCompleted: !!myBusiness?.logoUrl,
-                route: '/dashboard/settings/profile'
-            },
-            {
-                id: 'qr',
-                title: 'Generate QR Code',
-                description: 'Create your first custom QR code for taps.',
-                icon: QrCode,
-                isCompleted: !!assets && assets.length > 0,
-                route: '/dashboard/marketing-assets/create'
-            },
-            {
-                id: 'assets',
-                title: 'Get Marketing Assets',
-                description: 'Download print-ready posters and cards.',
-                icon: Download,
-                isCompleted: (marketingAnalytics?.totals?.downloads || 0) > 0,
-                route: '/dashboard/marketing-assets'
-            },
-            {
-                id: 'customer',
-                title: 'Capture First Customer',
-                description: 'See the magic. Capture your first digital lead.',
-                icon: UserPlus,
-                isCompleted: visitorsCount !== '0',
-                route: '/dashboard/visitors'
-            },
-            {
-                id: 'campaign',
-                title: 'Send First Campaign',
-                description: 'Reward customers with a welcome offer.',
-                icon: Send,
-                isCompleted: false, // Placeholder for now
-                route: '/dashboard/messaging'
-            }
-        ];
-    }, [myBusiness, assets, marketingAnalytics, dashboardAnalytics]);
+    // Use effect to handle mounting and hydration
+    useEffect(() => {
+        setIsMounted(true);
+        const saved = sessionStorage.getItem('vemtap_checklist_minimized');
+        // If 'false' was explicitly saved, then we expand it. Otherwise default to true.
+        if (saved === 'false') setIsMinimized(false);
+        else setIsMinimized(true);
+    }, []);
 
-    const completedCount = checklistItems.filter(i => i.isCompleted).length;
-    const totalCount = checklistItems.length;
-    const percentage = Math.round((completedCount / totalCount) * 100);
+    const toggleMinimize = () => {
+        const newState = !isMinimized;
+        setIsMinimized(newState);
+        sessionStorage.setItem('vemtap_checklist_minimized', newState.toString());
+    };
 
-    if (percentage === 100) return null;
+    if (!isMounted || isComplete) return null;
+
+    if (isMinimized) {
+        return (
+            <button 
+                onClick={toggleMinimize}
+                className="w-full bg-white p-4 rounded-[1.5rem] border border-gray-100 shadow-sm flex items-center justify-between hover:border-[#066CF4]/30 transition-all"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                        <CheckCircle2 size={16} />
+                    </div>
+                    <div className="text-left">
+                        <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Activation Progress</h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <div className="h-1 w-20 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary" style={{ width: `${percentage}%` }} />
+                            </div>
+                            <span className="text-[9px] font-black text-primary">{percentage}%</span>
+                        </div>
+                    </div>
+                </div>
+                <ChevronDown size={16} className="text-gray-400" />
+            </button>
+        );
+    }
 
     return (
         <div className="space-y-6">
-            {/* Welcome Hero Card */}
-            <section className="bg-white rounded-[2.5rem] overflow-hidden relative border border-gray-100 shadow-sm">
-                <div className="p-8 flex flex-col gap-6 relative z-10">
-                    <div className="flex justify-between items-start">
-                        <span className="bg-[#066CF4]/10 text-[#066CF4] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                            {percentage}% Setup Complete
-                        </span>
-                        <div className="size-12 bg-[#066CF4]/5 rounded-2xl flex items-center justify-center text-[#066CF4]">
-                            <PartyPopper size={28} />
-                        </div>
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">Welcome to Vemtap</h2>
-                        <p className="text-sm font-medium text-gray-400 max-w-[280px] leading-relaxed">
-                            Your journey to seamless customer engagement starts here. Let's get your first tap ready.
-                        </p>
-                    </div>
-                    <Button 
-                        onClick={() => router.push(checklistItems.find(i => !i.isCompleted)?.route || '/dashboard')}
-                        className="h-14 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 w-full sm:w-fit px-8"
-                    >
-                        Continue Setup
-                        <ArrowRight size={18} />
-                    </Button>
-                </div>
-                {/* Decorative background element */}
-                <div className="absolute -right-12 -top-12 size-48 bg-[#066CF4]/5 rounded-full blur-3xl pointer-events-none" />
-            </section>
-
-            {/* Activation Progress */}
-            <section className="bg-white rounded-[2.5rem] p-8 flex items-center gap-8 border border-gray-100 shadow-sm">
-                <div className="relative size-20 flex-shrink-0">
-                    <svg className="size-full -rotate-90" viewBox="0 0 36 36">
-                        <circle className="stroke-gray-50" cx="18" cy="18" fill="none" r="16" strokeWidth="3"></circle>
-                        <circle 
-                            className="stroke-[#066CF4] transition-all duration-1000" 
-                            cx="18" cy="18" 
-                            fill="none" 
-                            r="16" 
-                            strokeDasharray={`${percentage} 100`} 
-                            strokeLinecap="round" 
-                            strokeWidth="3"
-                        ></circle>
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-lg font-black text-[#066CF4]">{percentage}%</span>
-                    </div>
-                </div>
-                <div>
-                    <h3 className="text-[10px] font-black text-gray-900 uppercase tracking-[0.2em] mb-1">Activation Progress</h3>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight leading-relaxed">
-                        Complete the checklist below to activate your account features.
-                    </p>
-                </div>
-            </section>
-
             {/* Activation Checklist */}
             <section className="flex flex-col gap-4">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">Activation Checklist</h4>
+                <div className="flex items-center justify-between px-1">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Activation Checklist</h4>
+                    <button 
+                        onClick={toggleMinimize}
+                        className="p-1 hover:bg-gray-100 rounded-md transition-colors text-gray-400"
+                        title="Minimize"
+                    >
+                        <ChevronUp size={14} />
+                    </button>
+                </div>
                 
                 <div className="space-y-3">
-                    {checklistItems.map((item, i) => (
+                    {checklistItems.map((item) => (
                         <div 
                             key={item.id} 
                             className={cn(

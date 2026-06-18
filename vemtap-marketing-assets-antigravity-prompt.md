@@ -1,14 +1,16 @@
 # ANTIGRAVITY AI PROMPT
+
 # VEMTAP — MARKETING ASSETS MODULE
+
 # Full Build Specification
 
 ---
 
 ## CONTEXT
 
-You are building a new module called **Marketing Assets** inside the Vemtap platform.
+You are building a new module called **Marketing Assets** inside this Vemtap platform.
 
-Vemtap is a business management platform used by restaurants, eye clinics, pharmacies, salons, fashion stores, hotels, schools, and other business categories. Businesses already have a registered account with the following data stored:
+Businesses already have a registered account with the following data stored:
 
 - Business Name
 - Business Logo
@@ -43,6 +45,7 @@ Build them in this order. The business-facing experience is the priority.
 ---
 
 # PART 1: BUSINESS DASHBOARD
+
 # MARKETING ASSETS PAGE
 
 ---
@@ -83,7 +86,7 @@ Business Type: Restaurant
 or
 
 ```
-Business Type: Eye Clinic
+Business Type: Fashion Store
 ```
 
 This must be **auto-detected** from the business account. It is not user-selectable on this page.
@@ -133,8 +136,8 @@ This is non-negotiable. It must be enforced at the data and UI level.
 - Fashion Store accounts see only Fashion Store templates
 - Hotel accounts see only Hotel templates
 
-A restaurant must never see a Patient Check-In template.
-A clinic must never see a Food Ordering template.
+A restaurant must never see a Fashion store template.
+A salon shop must never see a Food Ordering template.
 
 If the business category does not match any available template category, display a friendly message:
 
@@ -307,16 +310,19 @@ CTA: **Next — Customise Text**
 Display three editable fields, pre-filled automatically based on the selected template:
 
 **Headline**
+
 ```
 Ready To Order?
 ```
 
 **Subheadline**
+
 ```
 Scan to view our full menu.
 ```
 
 **Call To Action**
+
 ```
 Fast • Easy • Contactless
 ```
@@ -342,6 +348,7 @@ CTA: **Next — Choose Style**
 Display style options as visual cards with sample previews.
 
 Each style card shows:
+
 - Style name
 - Small visual example of that style applied to a sample design
 - Brief one-line description
@@ -603,6 +610,7 @@ Include filters:
 ---
 
 # PART 2: ADMIN DASHBOARD
+
 # MARKETING ASSETS MANAGER
 
 ---
@@ -1073,6 +1081,7 @@ Pre-populate the following sizes on first setup:
 ### Phase 2 — AI Content Assistant
 
 When activated:
+
 - A button labelled **Generate Creative Version** appears in Step 2 (Customise Text)
 - Clicking it calls the AI service with the category-specific prompt from `ai_prompts` table
 - AI returns an improved headline, subheadline, and CTA
@@ -1085,6 +1094,7 @@ The `ai_prompts` table and the disabled UI button must be built now as placehold
 ### Phase 3 — Print & Deliver
 
 When activated:
+
 - After downloading, an option to **Order Print** appears
 - Business selects quantity, material, and delivery address
 - Vemtap connects to print partner API
@@ -1097,6 +1107,7 @@ Architecture note: The `generated_assets` table must store final file paths acce
 ### Phase 4 — Seasonal Campaign Packs
 
 Predefined template bundles for:
+
 - Ramadan
 - Christmas
 - Valentine's Day

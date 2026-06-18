@@ -211,7 +211,7 @@ export default function UserExperienceAppearancePage() {
                                     <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Instant Service</span>
                                 </div>
                                 <p className="text-center text-[7px] font-medium text-slate-400">
-                                    Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                                    Powered by <span className="font-bold" style={{ color: brandColor }}>{previewBusinessName}</span>
                                 </p>
                             </div>
                         </PhoneFrame>

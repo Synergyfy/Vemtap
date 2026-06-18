@@ -29,28 +29,44 @@ const PERMISSIONS = [
     { id: 'chat', label: 'In-App Chat', icon: MessageCircle },
     { id: 'messages', label: 'Channels', icon: MessageSquare },
     { id: 'loyalty', label: 'Loyalty', icon: Gift },
-    { id: 'engagement', label: 'Engagement', icon: Zap },
+    { id: 'engagement', label: 'Forms', icon: Zap },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'staff', label: 'Team', icon: UsersIcon },
     { id: 'catalogue', label: 'Catalogue', icon: ShoppingBag },
+    { id: 'inventory', label: 'Inventory', icon: ShoppingBag },
+    { id: 'pos', label: 'POS', icon: ShoppingBag },
+    { id: 'marketing', label: 'Marketing Assets', icon: Wand2 },
     { id: 'qrthrive', label: 'QRThrive', icon: QrCode },
     { id: 'customer-experience', label: 'Customer Experience', icon: Wand2 },
-    { id: 'automations', label: 'Automations', icon: Cpu },
+    { id: 'discovery', label: 'Discovery Network', icon: Smartphone },
     { id: 'support', label: 'Support', icon: HelpCircle },
-    { id: 'tutorial', label: 'Tutorial', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     Manager: [
         'dashboard', 'visitors', 'chat', 'messages', 'loyalty',
-        'engagement', 'analytics', 'staff', 'catalogue',
-        'qrthrive', 'customer-experience', 'automations',
-        'support', 'tutorial', 'settings',
+        'engagement', 'analytics', 'staff', 'catalogue', 'inventory', 'pos',
+        'marketing', 'qrthrive', 'customer-experience', 'discovery',
+        'support', 'settings',
+    ],
+    Cashier: [
+        'dashboard', 'pos', 'support',
+    ],
+    Inventory: [
+        'dashboard', 'inventory', 'catalogue', 'support',
+    ],
+    Marketing: [
+        'dashboard', 'customer-experience', 'marketing', 'messages',
+        'discovery', 'qrthrive', 'support',
+    ],
+    'Customer Service': [
+        'dashboard', 'visitors', 'chat', 'messages', 'loyalty',
+        'engagement', 'support',
     ],
     Staff: [
         'dashboard', 'visitors', 'chat', 'loyalty',
-        'support', 'tutorial',
+        'support',
     ],
 };
 
@@ -291,7 +307,7 @@ export default function StaffManagementPage() {
                             <Shield className="text-primary" size={24} />
                         </div>
                         <div>
-                            <h4 className="font-display font-bold text-text-main mb-2 text-lg">Permissions Overview</h4>
+                            <h4 className="font-display font-bold text-text-main mb-2 text-lg">Roles & Access Overview</h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-1">
                                     <p className="text-sm font-black text-primary uppercase tracking-tighter">Business Owner</p>
@@ -299,11 +315,23 @@ export default function StaffManagementPage() {
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-sm font-black text-blue-600 uppercase tracking-tighter">Manager</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Manage visitors, issue rewards, and view detailed analytics.</p>
+                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Full dashboard access across all modules. Cannot manage billing.</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm font-black text-gray-600 uppercase tracking-tighter">Staff Member</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Restricted to visitor check-ins and basic loyalty actions.</p>
+                                    <p className="text-sm font-black text-purple-600 uppercase tracking-tighter">Cashier</p>
+                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">POS-focused. Process sales, receipts, and transaction history.</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-black text-emerald-600 uppercase tracking-tighter">Inventory Officer</p>
+                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Manage stock levels, catalogue, and inventory adjustments.</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-black text-amber-600 uppercase tracking-tighter">Marketing Officer</p>
+                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Marketing assets, channels, discovery, and QRThrive.</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-black text-rose-600 uppercase tracking-tighter">Customer Service</p>
+                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Visitors, chat, loyalty, forms, and channel management.</p>
                                 </div>
                             </div>
                         </div>
@@ -350,7 +378,11 @@ export default function StaffManagementPage() {
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
                             <select name="role" value={selectedRole} onChange={(e) => { setSelectedRole(e.target.value); setSelectedPermissions(ROLE_DEFAULT_PERMISSIONS[e.target.value] || []); }} className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
-                                <option value="Staff">Staff Member (Limited Access)</option>
+                                <option value="Cashier">Cashier (POS Only)</option>
+                                <option value="Inventory">Inventory Officer</option>
+                                <option value="Marketing">Marketing Officer</option>
+                                <option value="Customer Service">Customer Service Officer</option>
+                                <option value="Staff">Staff Member (Limited)</option>
                                 <option value="Manager">Manager (Full Dashboard)</option>
                             </select>
                         </div>
@@ -417,7 +449,7 @@ export default function StaffManagementPage() {
                     <div className="space-y-3">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Staff Role</label>
                         <div className="grid grid-cols-3 gap-3">
-                            {['Staff', 'Manager', 'Owner'].map((role) => (
+                            {['Cashier', 'Inventory', 'Marketing', 'Customer Service', 'Staff', 'Manager', 'Owner'].map((role) => (
                                 <button
                                     key={role}
                                     onClick={() => {

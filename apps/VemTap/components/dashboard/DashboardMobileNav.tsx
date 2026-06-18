@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, ShoppingBag, TrendingUp, MoreHorizontal } from 'lucide-react';
+import { Home, Users, ShoppingBag, TrendingUp, MoreHorizontal, Wand2, Settings } from 'lucide-react';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useSudoStore } from '@/store/useSudoStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -19,36 +19,31 @@ export default function DashboardMobileNav() {
             label: 'Home',
             icon: Home,
             href: '/dashboard',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'dashboard',
+            roles: ['owner', 'manager', 'cashier', 'inventory', 'marketing', 'customer_service', 'staff'],
         },
         {
             label: 'Customers',
             icon: Users,
             href: '/dashboard/visitors',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'visitors',
+            roles: ['owner', 'manager', 'customer_service', 'staff'],
         },
         {
-            label: 'Sales',
+            label: 'Commerce',
             icon: ShoppingBag,
-            href: '/dashboard/catalogue',
-            roles: ['owner', 'manager'],
-            permission: 'catalogue',
+            href: '/dashboard/commerce',
+            roles: ['owner', 'manager', 'inventory', 'cashier', 'staff'],
         },
         {
-            label: 'Growth',
-            icon: TrendingUp,
-            href: '/dashboard/marketing-assets',
-            roles: ['owner', 'manager'],
-            permission: 'messages', // Using existing permission
+            label: 'Experience',
+            icon: Wand2,
+            href: '/dashboard/customer-experience',
+            roles: ['owner', 'manager', 'marketing', 'staff'],
         },
         {
             label: 'More',
             icon: MoreHorizontal,
-            href: '/dashboard/settings',
-            roles: ['owner', 'manager', 'staff'],
-            permission: 'settings',
+            href: '/dashboard/more',
+            roles: ['owner', 'manager', 'cashier', 'inventory', 'marketing', 'customer_service', 'staff'],
         },
     ];
 
@@ -74,6 +69,19 @@ export default function DashboardMobileNav() {
                 {filteredNavItems.map((item) => {
                     const isActive = (() => {
                         if (item.label === 'Home') return pathname === '/dashboard' || pathname === '/dashboard/';
+                        if (item.label === 'Commerce') {
+                            return pathname.startsWith('/dashboard/commerce') || 
+                                   pathname.startsWith('/dashboard/catalogue') || 
+                                   pathname.startsWith('/dashboard/inventory') || 
+                                   pathname.startsWith('/dashboard/pos');
+                        }
+                        if (item.label === 'More') {
+                            return pathname.startsWith('/dashboard/more') || 
+                                   pathname.startsWith('/dashboard/analytics') || 
+                                   pathname.startsWith('/dashboard/explore-qrthrive') || 
+                                   pathname.startsWith('/dashboard/settings') || 
+                                   pathname.startsWith('/dashboard/staff');
+                        }
                         return pathname.startsWith(item.href);
                     })();
                     const Icon = item.icon;

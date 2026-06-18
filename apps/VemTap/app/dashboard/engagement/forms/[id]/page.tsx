@@ -297,7 +297,7 @@ export default function FormPreviewPage() {
 
                             {/* Powered-by footer */}
                             <p className="text-center text-[8px] font-medium text-slate-400">
-                                Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                                Powered by <span className="font-bold" style={{ color: brandColor }}>{businessName || 'VemTap'}</span>
                             </p>
                         </div>
                     </PhoneFrame>
