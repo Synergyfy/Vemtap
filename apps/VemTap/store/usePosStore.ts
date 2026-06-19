@@ -290,6 +290,7 @@ export const usePosStore = create<PosState>()(
             change: 0,
           },
           customer: t.customerId && t.customerName ? { id: t.customerId, name: t.customerName, phone: '' } : null,
+          hideCustomerInfoOnReceipt: false,
           cashierName: t.cashierName,
           createdAt: t.createdAt,
           status: t.status,
