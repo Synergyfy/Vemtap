@@ -124,6 +124,14 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 href: '/dashboard/inventory',
                 roles: ['owner', 'manager', 'inventory'],
                 permission: 'inventory',
+                submenu: [
+                    { label: 'Overview', href: '/dashboard/inventory' },
+                    { label: 'Stock List', href: '/dashboard/inventory/stock' },
+                    { label: 'Receive Stock', href: '/dashboard/inventory/receiving' },
+                    { label: 'Adjustments', href: '/dashboard/inventory/adjustments' },
+                    { label: 'Low Stock', href: '/dashboard/inventory/low-stock' },
+                    { label: 'Movement History', href: '/dashboard/inventory/history' },
+                ],
                 keywords: ['stock', 'items', 'products', 'inventory', 'warehouse', 'reorder'],
             },
             {
@@ -133,6 +141,16 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 href: '/dashboard/pos',
                 roles: ['owner', 'manager', 'cashier', 'staff'],
                 permission: 'pos',
+                submenu: [
+                    { label: 'New Sale', href: '/dashboard/pos' },
+                    { label: 'Products', href: '/dashboard/pos/products' },
+                    { label: 'Sales History', href: '/dashboard/pos/sales' },
+                    { label: 'Orders', href: '/dashboard/pos/orders' },
+                    { label: 'Customers', href: '/dashboard/pos/customers' },
+                    { label: 'Register', href: '/dashboard/pos/register' },
+                    { label: 'Settings', href: '/dashboard/pos/settings' },
+                    { label: 'Help & Support', href: '/dashboard/pos/support' },
+                ],
                 keywords: ['pos', 'checkout', 'register', 'sales', 'transaction'],
             },
         ]
@@ -181,7 +199,26 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 href: '/dashboard/analytics',
                 roles: ['owner', 'manager'],
                 permission: 'analytics',
+                submenu: [
+                    { label: 'Overview', href: '/dashboard/analytics' },
+                    { label: 'Sales Reports', href: '/dashboard/analytics/sales' },
+                    { label: 'Inventory Reports', href: '/dashboard/analytics/inventory' },
+                ],
                 keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts']
+            },
+            {
+                id: 'staff',
+                label: 'Staff',
+                icon: Users2,
+                href: '/dashboard/staff',
+                roles: ['owner', 'manager'],
+                permission: 'staff',
+                submenu: [
+                    { label: 'Directory', href: '/dashboard/staff' },
+                    { label: 'Roles & Permissions', href: '/dashboard/staff/roles' },
+                    { label: 'Activity Log', href: '/dashboard/staff/activity' },
+                ],
+                keywords: ['team', 'employees', 'cashiers', 'managers', 'roles', 'permissions']
             }
         ]
     },

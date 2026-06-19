@@ -15,16 +15,16 @@ import { Button } from '@/components/ui/button';
 
 export default function ProductsPage() {
     const { data: business } = useMyBusiness();
-    const { items, services } = useProductStore();
+    const { products } = useProductStore();
 
     const businessCategory = (typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Retail';
     const isProductBased = !['salon', 'spa', 'gym', 'service'].includes(businessCategory.toLowerCase());
-    const displayItems = isProductBased ? items : services;
+    const displayItems = products;
     const isLoading = false; // Mock loading state
 
     const stats = [
         { label: `Total ${isProductBased ? 'Products' : 'Services'}`, value: displayItems.length || '48', icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Active Items', value: displayItems.filter(i => i.status === 'available').length || '40', icon: ShoppingBag, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Active Items', value: displayItems.filter((i: any) => i.status === 'active').length || '40', icon: ShoppingBag, color: 'text-emerald-600', bg: 'bg-emerald-50' },
         { label: 'Low Stock', value: '12', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
         { label: 'Categories', value: '6', icon: LayoutGrid, color: 'text-purple-600', bg: 'bg-purple-50' },
     ];

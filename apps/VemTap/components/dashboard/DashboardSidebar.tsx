@@ -55,8 +55,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         
         // Load collapsed state
         const savedCollapsed = localStorage.getItem('vt-sidebar-collapsed');
-        if (savedCollapsed === 'true') setIsCollapsed(true);
-    }, []);
+        
+        // Collapse by default on POS route, otherwise respect saved state
+        if (pathname?.includes('/dashboard/pos')) {
+            setIsCollapsed(true);
+        } else if (savedCollapsed === 'true') {
+            setIsCollapsed(true);
+        }
+    }, [pathname]);
 
     const toggleCollapse = () => {
         const newState = !isCollapsed;
