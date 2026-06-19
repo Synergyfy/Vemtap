@@ -1,551 +1,100 @@
 'use client';
 
-import React, { useState } from 'react';
-import PageHeader from '@/components/dashboard/PageHeader';
-import DataTable, { Column } from '@/components/dashboard/DataTable';
-import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
-import { StaffMember, UserRole } from '@/services/users/types';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useBusinessStore } from '@/store/useBusinessStore';
-import toast from 'react-hot-toast';
-import { 
-    UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, 
-    BarChart3, Users as UsersIcon, Settings as SettingsIcon, 
-    Building2, Loader2, Lock, Home, MessageCircle, Gift, Zap, HelpCircle,
-    Cpu, Bell, BookOpen, Wand2, Smartphone, ShoppingBag, QrCode
-} from 'lucide-react';
-import { useBranches } from '@/services/branches/hooks';
-import Modal from '@/components/ui/Modal';
-import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-import UsageIndicator from '@/components/dashboard/UsageIndicator';
-import UpgradeModal from '@/components/dashboard/UpgradeModal';
-import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
-import SudoActionGuard from '@/components/shared/SudoActionGuard';
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
+import { Users, Shield, Activity, Plus, MoreVertical } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const PERMISSIONS = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'visitors', label: 'Visitors', icon: UsersIcon },
-    { id: 'chat', label: 'In-App Chat', icon: MessageCircle },
-    { id: 'messages', label: 'Channels', icon: MessageSquare },
-    { id: 'loyalty', label: 'Loyalty', icon: Gift },
-    { id: 'engagement', label: 'Forms', icon: Zap },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'staff', label: 'Team', icon: UsersIcon },
-    { id: 'catalogue', label: 'Catalogue', icon: ShoppingBag },
-    { id: 'inventory', label: 'Inventory', icon: ShoppingBag },
-    { id: 'pos', label: 'POS', icon: ShoppingBag },
-    { id: 'marketing', label: 'Marketing Assets', icon: Wand2 },
-    { id: 'qrthrive', label: 'QRThrive', icon: QrCode },
-    { id: 'customer-experience', label: 'Customer Experience', icon: Wand2 },
-    { id: 'discovery', label: 'Discovery Network', icon: Smartphone },
-    { id: 'support', label: 'Support', icon: HelpCircle },
-    { id: 'settings', label: 'Settings', icon: SettingsIcon },
-];
+export default function StaffDirectory() {
+  const router = useRouter();
 
-const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
-    Manager: [
-        'dashboard', 'visitors', 'chat', 'messages', 'loyalty',
-        'engagement', 'analytics', 'staff', 'catalogue', 'inventory', 'pos',
-        'marketing', 'qrthrive', 'customer-experience', 'discovery',
-        'support', 'settings',
-    ],
-    Cashier: [
-        'dashboard', 'pos', 'support',
-    ],
-    Inventory: [
-        'dashboard', 'inventory', 'catalogue', 'support',
-    ],
-    Marketing: [
-        'dashboard', 'customer-experience', 'marketing', 'messages',
-        'discovery', 'qrthrive', 'support',
-    ],
-    'Customer Service': [
-        'dashboard', 'visitors', 'chat', 'messages', 'loyalty',
-        'engagement', 'support',
-    ],
-    Staff: [
-        'dashboard', 'visitors', 'chat', 'loyalty',
-        'support',
-    ],
-};
+  const mockStaff = [
+    { id: '1', name: 'John Doe', role: 'Owner', email: 'john@vemtap.com', phone: '08000000001', status: 'active', lastActive: '2 mins ago' },
+    { id: '2', name: 'Sarah Manager', role: 'Manager', email: 'sarah@vemtap.com', phone: '08000000002', status: 'active', lastActive: '1 hr ago' },
+    { id: '3', name: 'Mike Cashier', role: 'Cashier', email: 'mike@vemtap.com', phone: '08000000003', status: 'active', lastActive: 'Now' },
+    { id: '4', name: 'Jane Stock', role: 'Inventory', email: 'jane@vemtap.com', phone: '08000000004', status: 'inactive', lastActive: '2 days ago' },
+  ];
 
-export default function StaffManagementPage() {
-    const router = useRouter();
-    const pathname = usePathname();
-    const { user, activeBranchId } = useAuthStore();
-    const businessName = user?.businessName || 'Business';
-    const { capabilities, isLimitReached } = useSubscriptionStore();
-    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-    const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-    const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
-    const [selectedRole, setSelectedRole] = useState<string>('Staff');
-    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(ROLE_DEFAULT_PERMISSIONS['Staff']);
-
-    const teamLimitReached = isLimitReached('teamMembers');
-
-    const { data: realBranches = [] } = useBranches();
-    const branches = realBranches;
-
-    const isOwner = user?.role?.toLowerCase() === 'owner';
-
-    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined, isOwner);
-    const inviteMutation = useInviteStaff();
-    const updateMutation = useUpdateStaff();
-    const removeMutation = useRemoveStaff(activeBranchId || undefined);
-
-    const isLoading = isStaffLoading;
-
-    // Close upgrade modal on navigation
-    React.useEffect(() => {
-        setShowUpgradeModal(false);
-    }, [pathname]);
-
-    React.useEffect(() => {
-        if (!isLoading && user && !['owner', 'manager'].includes((user.role as string)?.toLowerCase())) {
-            router.push('/dashboard');
+  return (
+    <div className="max-w-7xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
+      <POSPageHeader 
+        title="Staff Directory" 
+        subtitle="Manage user access and roles"
+        actions={
+          <div className="flex gap-2">
+            <button 
+              onClick={() => router.push('/dashboard/staff/roles')}
+              className="h-10 md:h-12 px-4 rounded-2xl bg-gray-100 text-gray-600 flex items-center gap-2 hover:bg-gray-200 transition-colors"
+            >
+              <Shield size={18} />
+              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Roles & Permissions</span>
+            </button>
+            <button className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all">
+              <Plus size={18} />
+              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Invite Staff</span>
+            </button>
+          </div>
         }
-    }, [user, isLoading, router]);
+      />
 
-    const handleInviteStaff = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        // Check limits
-        if (teamLimitReached) {
-            setShowUpgradeModal(true);
-            toast.error('Team member limit reached. Please upgrade your plan.');
-            return;
-        }
-
-        const formData = new FormData(e.currentTarget);
-        const roleValue = formData.get('role') as string;
-        const branchId = formData.get('branchId') as string;
-
-        const staffData = {
-            firstName: (formData.get('firstName') as string).trim(),
-            lastName: (formData.get('lastName') as string).trim(),
-            email: (formData.get('email') as string).trim(),
-            phone: (formData.get('phone') as string)?.trim() || undefined,
-            jobTitle: (formData.get('jobTitle') as string)?.trim() || undefined,
-            role: roleValue as UserRole,
-            branchId: branchId || activeBranchId || user?.branchId || '',
-            permissions: selectedPermissions,
-        };
-
-        if (!staffData.branchId) {
-            toast.error('Please select a branch for the staff member');
-            return;
-        }
-
-        inviteMutation.mutate(staffData, {
-            onSuccess: () => {
-                setIsInviteModalOpen(false);
-                setSelectedRole('Staff');
-                setSelectedPermissions(ROLE_DEFAULT_PERMISSIONS['Staff']);
-                toast.success('Staff member invited successfully');
-            },
-            onError: (error: any) => {
-                const message = error.message || 'Failed to invite staff member';
-                toast.error(message);
-            }
-        });
-    };
-
-
-    const confirmDelete = () => {
-        if (staffToDelete) {
-            removeMutation.mutate(staffToDelete.id, {
-                onSuccess: () => {
-                    setStaffToDelete(null);
-                    toast.success('Staff member removed');
-                }
-            });
-        }
-    };
-
-    const columns: Column<StaffMember>[] = [
-        {
-            header: 'Staff Member',
-            accessor: (item: StaffMember) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase border border-primary/20">
-                        {item.firstName?.[0] || '?'}{item.lastName?.[0] || '?'}
+      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden flex-1 flex flex-col">
+        <div className="flex-1 overflow-y-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-gray-50/90 backdrop-blur border-b border-gray-100 z-10">
+              <tr>
+                <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Staff Member</th>
+                <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Role</th>
+                <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hidden sm:table-cell">Contact</th>
+                <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-center">Status</th>
+                <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {mockStaff.map(staff => (
+                <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="size-10 rounded-[12px] bg-blue-50 text-blue-600 font-black flex items-center justify-center border border-blue-100 shrink-0">
+                         {staff.name.charAt(0)}
+                      </div>
+                      <div>
+                        <span className="text-sm font-black text-gray-900 block">{staff.name}</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active {staff.lastActive}</span>
+                      </div>
                     </div>
-                    <div>
-                        <p className="font-bold text-text-main leading-none mb-1">{item.firstName} {item.lastName}</p>
-                        <p className="text-xs text-text-secondary font-medium">{item.email}</p>
-                    </div>
-                </div>
-            )
-        },
-        {
-            header: 'Role',
-            accessor: (item: StaffMember) => (
-                <div className="flex items-center gap-2">
-                    <Shield size={14} className={item.role?.toLowerCase() === 'owner' ? 'text-primary' : 'text-gray-400'} />
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.role?.toLowerCase() === 'owner' ? 'bg-primary/10 text-primary' :
-                        item.role?.toLowerCase() === 'manager' ? 'bg-blue-50 text-blue-600' :
-                            'bg-gray-100 text-gray-700'
-                        }`}>
-                        {item.role}
+                  </td>
+                  <td className="p-4">
+                    <span className={cn(
+                      "inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest",
+                      staff.role === 'Owner' ? "bg-purple-100 text-purple-600" :
+                      staff.role === 'Manager' ? "bg-blue-100 text-blue-600" :
+                      "bg-gray-100 text-gray-600"
+                    )}>
+                      {staff.role}
                     </span>
-                </div>
-            )
-        },
-        {
-            header: 'Branch',
-            accessor: (item: StaffMember) => {
-                const branch = branches.find(b => b.id === item.branchId);
-                return (
-                    <div className="flex items-center gap-2">
-                        <Building2 size={14} className="text-gray-400" />
-                        <span className="text-sm font-bold text-text-main leading-none">
-                            {branch?.name && branch?.name !== 'Main Branch' ? branch.name : businessName}
-                        </span>
-                    </div>
-                );
-            }
-        },
-        {
-            header: 'Status',
-            accessor: (item: StaffMember) => {
-                const status = item.status?.toLowerCase();
-                const statusColors: Record<string, string> = {
-                    'active': 'bg-green-500',
-                    'pending': 'bg-amber-500',
-                    'invited': 'bg-blue-400',
-                    'suspended': 'bg-red-500',
-                    'inactive': 'bg-gray-400',
-                };
-
-                return (
-                    <div className="flex items-center gap-2">
-                        <div className={`size-1.5 rounded-full ${statusColors[status] || 'bg-gray-300'} ${status === 'active' ? 'animate-pulse' : ''}`}></div>
-                        <span className="text-sm font-bold text-text-main capitalize">{status || item.status}</span>
-                    </div>
-                );
-            }
-        },
-        {
-            header: 'Actions',
-            accessor: (item: StaffMember) => (
-                isOwner ? (
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setEditingStaff(item)}
-                            className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                            title="Edit Staff Access"
-                        >
-                            <Edit3 size={18} />
-                        </button>
-                        <SudoActionGuard action="Delete Staff">
-                            <button
-                                onClick={() => setStaffToDelete({ id: item.id, name: `${item.firstName} ${item.lastName}` })}
-                                className="p-2 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                title="Remove Staff"
-                            >
-                                <Trash2 size={18} />
-                            </button>
-                        </SudoActionGuard>
-                    </div>
-                ) : (
-                    <span className="text-xs text-text-secondary font-medium">View Only</span>
-                )
-            )
-        }
-    ];
-
-    return (
-        <>
-            <div className="p-8">
-                <PageHeader
-                    title="Staff Management"
-                    description="Invite and manage your team members and their permissions"
-                    actions={
-                        isOwner ? (
-                            <button
-                                onClick={() => {
-                                    if (teamLimitReached) {
-                                        setShowUpgradeModal(true);
-                                    } else {
-                                        setSelectedRole('Staff');
-                                        setSelectedPermissions(ROLE_DEFAULT_PERMISSIONS['Staff']);
-                                        setIsInviteModalOpen(true);
-                                    }
-                                }}
-                                className={`flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 active:scale-95 ${teamLimitReached ? 'opacity-70 grayscale-[0.5]' : ''}`}
-                            >
-                                {teamLimitReached ? <Lock size={18} /> : <UserPlus size={18} />}
-                                Invite Staff
-                            </button>
-                        ) : undefined
-                    }
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <UsageIndicator 
-                        label="Team Members" 
-                        usage={capabilities?.capabilities.teamMembers} 
-                        icon={<UsersIcon size={20} />} 
-                    />
-                </div>
-
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                    {isLoading ? (
-                        <div className="p-20 flex justify-center">
-                            <Loader2 className="animate-spin text-primary" size={40} />
-                        </div>
-                    ) : (
-                        <DataTable columns={columns} data={staffMembers || []} />
-                    )}
-                </div>
-
-                <div className="mt-8 bg-linear-to-r from-primary/5 to-transparent border border-primary/10 rounded-2xl p-6">
-                    <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Shield className="text-primary" size={24} />
-                        </div>
-                        <div>
-                            <h4 className="font-display font-bold text-text-main mb-2 text-lg">Roles & Access Overview</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-black text-primary uppercase tracking-tighter">Business Owner</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Full administrative access, billing, and settings control.</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-black text-blue-600 uppercase tracking-tighter">Manager</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Full dashboard access across all modules. Cannot manage billing.</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-black text-purple-600 uppercase tracking-tighter">Cashier</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">POS-focused. Process sales, receipts, and transaction history.</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-black text-emerald-600 uppercase tracking-tighter">Inventory Officer</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Manage stock levels, catalogue, and inventory adjustments.</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-black text-amber-600 uppercase tracking-tighter">Marketing Officer</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Marketing assets, channels, discovery, and QRThrive.</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-black text-rose-600 uppercase tracking-tighter">Customer Service</p>
-                                    <p className="text-xs text-text-secondary leading-relaxed font-medium">Visitors, chat, loyalty, forms, and channel management.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Invite Modal */}
-            <Modal
-                isOpen={isInviteModalOpen}
-                onClose={() => setIsInviteModalOpen(false)}
-                title="Invite Staff Member"
-                description="Add a new teammate to your business and define their access."
-                size="lg"
-            >
-                <form onSubmit={handleInviteStaff} className="space-y-6 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">First Name</label>
-                            <input name="firstName" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. John" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Last Name</label>
-                            <input name="lastName" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Doe" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Email Address</label>
-                            <input name="email" type="email" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="john@example.com" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
-                            <input name="phone" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="+1234567890" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Job Title</label>
-                            <input name="jobTitle" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Head of Sales" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
-                            <select name="role" value={selectedRole} onChange={(e) => { setSelectedRole(e.target.value); setSelectedPermissions(ROLE_DEFAULT_PERMISSIONS[e.target.value] || []); }} className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
-                                <option value="Cashier">Cashier (POS Only)</option>
-                                <option value="Inventory">Inventory Officer</option>
-                                <option value="Marketing">Marketing Officer</option>
-                                <option value="Customer Service">Customer Service Officer</option>
-                                <option value="Staff">Staff Member (Limited)</option>
-                                <option value="Manager">Manager (Full Dashboard)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
-                        <select
-                            name="branchId"
-                            required
-                            defaultValue={activeBranchId || branches[0]?.id}
-                            className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
-                        >
-                            <option value="">Select a branch</option>
-                            {branches.map((b) => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Module Access & Permissions</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {PERMISSIONS.map((p) => {
-                                const Icon = p.icon;
-                                const isSelected = selectedPermissions.includes(p.id);
-                                return (
-                                    <button
-                                        key={p.id}
-                                        type="button"
-                                        onClick={() => setSelectedPermissions(prev =>
-                                            isSelected ? prev.filter(id => id !== p.id) : [...prev, p.id]
-                                        )}
-                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all group ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
-                                    >
-                                        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-white text-text-secondary border border-gray-100'}`}>
-                                            <Icon size={14} />
-                                        </div>
-                                        <span className={`text-[11px] font-bold ${isSelected ? 'text-primary' : 'text-text-secondary'}`}>{p.label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                        <button type="button" onClick={() => setIsInviteModalOpen(false)} className="flex-1 h-14 border border-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-50 transition-all text-base active:scale-95">Cancel</button>
-                        <button disabled={inviteMutation.isPending} className="flex-2 h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 text-base">
-                            {inviteMutation.isPending ? (<Loader2 size={20} className="animate-spin text-white" />) : (<><UserPlus size={20} />Send Invitation</>)}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* Edit Role & Permissions Modal */}
-            <Modal
-                isOpen={!!editingStaff}
-                onClose={() => setEditingStaff(null)}
-                title="Edit Access & Permissions"
-                description={`Modify access levels for ${editingStaff?.firstName} ${editingStaff?.lastName}`}
-                size="lg"
-            >
-                <div className="space-y-6 py-4">
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Staff Role</label>
-                        <div className="grid grid-cols-3 gap-3">
-                            {['Cashier', 'Inventory', 'Marketing', 'Customer Service', 'Staff', 'Manager', 'Owner'].map((role) => (
-                                <button
-                                    key={role}
-                                    onClick={() => {
-                                        if (editingStaff) {
-                                            setEditingStaff({ ...editingStaff, role: role as UserRole });
-                                        }
-                                    }}
-                                    className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${editingStaff?.role?.toLowerCase() === role.toLowerCase() ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
-                                >
-                                    <Shield size={20} className={editingStaff?.role?.toLowerCase() === role.toLowerCase() ? 'text-primary' : 'text-gray-300'} />
-                                    <span className={`text-[11px] font-black uppercase mt-2 ${editingStaff?.role?.toLowerCase() === role.toLowerCase() ? 'text-primary' : 'text-text-secondary'}`}>{role}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Module Access</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {PERMISSIONS.map((p) => {
-                                const Icon = p.icon;
-                                const isSelected = editingStaff?.permissions?.includes(p.id);
-                                return (
-                                    <button
-                                        key={p.id}
-                                        type="button"
-                                        onClick={() => {
-                                            if (editingStaff) {
-                                                const newPerms = isSelected
-                                                    ? editingStaff.permissions.filter(id => id !== p.id)
-                                                    : [...editingStaff.permissions, p.id];
-                                                setEditingStaff({ ...editingStaff, permissions: newPerms });
-                                            }
-                                        }}
-                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all group ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
-                                    >
-                                        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-white text-text-secondary border border-gray-100'}`}>
-                                            <Icon size={14} />
-                                        </div>
-                                        <span className={`text-[11px] font-bold ${isSelected ? 'text-primary' : 'text-text-secondary'}`}>{p.label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="pt-4">
-                        <button
-                            disabled={updateMutation.isPending}
-                            onClick={() => {
-                                if (editingStaff) {
-                                    updateMutation.mutate({
-                                        id: editingStaff.id,
-                                        updates: {
-                                            role: editingStaff.role,
-                                            permissions: editingStaff.permissions
-                                        },
-                                        branchId: activeBranchId || undefined
-                                    }, {
-                                        onSuccess: () => {
-                                            toast.success('Staff access updated');
-                                            setEditingStaff(null);
-                                        }
-                                    });
-                                }
-                            }}
-                            className="w-full h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl active:scale-95 text-base flex items-center justify-center disabled:opacity-50"
-                        >
-                            {updateMutation.isPending ? 'Updating...' : 'Save Changes'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Delete Confirmation Modal */}
-            <Modal
-                isOpen={!!staffToDelete}
-                onClose={() => setStaffToDelete(null)}
-                title="Remove Staff Member"
-                description={`Are you sure you want to remove ${staffToDelete?.name}? This action cannot be undone.`}
-            >
-                <div className="flex gap-3 py-4">
-                    <button onClick={() => setStaffToDelete(null)} className="flex-1 h-12 border-2 border-primary/20 text-primary font-bold rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-all text-sm">
-                        Cancel
+                  </td>
+                  <td className="p-4 hidden sm:table-cell">
+                    <p className="text-xs font-bold text-gray-900">{staff.phone}</p>
+                    <p className="text-[10px] font-bold text-gray-400">{staff.email}</p>
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className={cn(
+                      "inline-block px-2 py-1 rounded-full size-3",
+                      staff.status === 'active' ? "bg-emerald-500" : "bg-gray-300"
+                    )} />
+                  </td>
+                  <td className="p-4 text-right">
+                    <button className="p-2 rounded-xl hover:bg-gray-200 text-gray-400 transition-colors">
+                      <MoreVertical size={18} />
                     </button>
-                    <button onClick={confirmDelete} disabled={removeMutation.isPending} className="flex-1 h-12 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 text-sm disabled:opacity-50">
-                        {removeMutation.isPending ? 'Removing...' : 'Remove'}
-                    </button>
-                </div>
-            </Modal>
-
-            <UpgradeModal 
-                isOpen={showUpgradeModal} 
-                onClose={() => setShowUpgradeModal(false)} 
-                featureName="Team Members" 
-            />
-        </>
-    );
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }

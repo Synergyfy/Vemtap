@@ -1,33 +1,30 @@
-"use client";
+'use client';
 
 import React from 'react';
-import { AnalyticsStatsCards } from '@/components/dashboard/analytics/AnalyticsDashboard';
-import { Package, AlertCircle, Archive, LayoutGrid } from 'lucide-react';
+import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
+import { Package, Activity } from 'lucide-react';
 
-export default function InventoryAnalyticsPage() {
-    const stats = [
-        { label: 'Total Products', value: '142', icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Stock Value', value: '₦8.4M', icon: Archive, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Low Stock Items', value: '12', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
-        { label: 'Out of Stock', value: '4', icon: XCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
-    ];
+export default function InventoryReports() {
+  return (
+    <div className="max-w-5xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
+      <POSPageHeader 
+        title="Inventory Valuation & Reports" 
+        subtitle="COGS, Shrinkage, and Stock Velocity"
+      />
 
-    return (
-        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
-            <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Inventory Analytics</h2>
-            <AnalyticsStatsCards stats={stats} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="rounded-[40px] bg-white border border-gray-100 p-10 shadow-sm min-h-[300px] flex items-center justify-center">
-                   <p className="text-gray-300 font-black uppercase tracking-[0.2em] text-xs">Inventory Value Trend</p>
-                </div>
-                <div className="rounded-[40px] bg-white border border-gray-100 p-10 flex items-center justify-center min-h-[300px]">
-                   <p className="text-gray-300 font-black uppercase tracking-[0.2em] text-xs">Reorder Recommendations</p>
-                </div>
-            </div>
+      <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-white border border-gray-100 rounded-[32px] shadow-sm">
+        <div className="size-24 bg-emerald-50 rounded-[32px] flex items-center justify-center mb-6 border border-emerald-100">
+          <Package size={48} className="text-emerald-500" />
         </div>
-    );
-}
-
-function XCircle({ size, className }: any) {
-    return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
+        <h2 className="text-2xl font-black text-gray-900 mb-2">Inventory Analytics</h2>
+        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest max-w-sm leading-relaxed mb-8">
+          This module tracks Cost of Goods Sold (COGS), historical inventory valuation, shrinkage rates from adjustments, and identifies slow-moving stock.
+        </p>
+        
+        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg">
+          Advanced Analytics - Phase 5b
+        </p>
+      </div>
+    </div>
+  );
 }

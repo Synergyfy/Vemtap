@@ -20,6 +20,7 @@ export default function FloatingBackButton() {
                        pathname === '/dashboard/catalogue' ||
                        pathname === '/dashboard/commerce' ||
                        pathname === '/dashboard/customer-experience' ||
+                       pathname?.startsWith('/dashboard/pos') ||
                        pathname === '/dashboard/more' ||
                        pathname === '/dashboard/settings';
 
