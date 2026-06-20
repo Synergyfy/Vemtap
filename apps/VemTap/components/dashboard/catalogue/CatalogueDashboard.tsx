@@ -64,7 +64,7 @@ export function CatalogueStatsCards({ stats }: { stats: any[] }) {
 
 export function CatalogueActionCards({ isProductBased }: { isProductBased: boolean }) {
     const actions = isProductBased ? [
-        { label: 'Product Catalog', desc: 'Manage your full inventory, stock levels and pricing.', icon: ShoppingBag, href: '/dashboard/catalogue/products', color: 'bg-blue-50 text-[#066CF4]' },
+        { label: 'Product Catalog', desc: 'Manage your full inventory, stock levels and pricing.', icon: ShoppingBag, href: '/dashboard/pos/products', color: 'bg-blue-50 text-[#066CF4]' },
         { label: 'Digital Menu', desc: 'Create a sleek, interactive view for dine-in customers.', icon: Utensils, href: '/dashboard/catalogue/menus', color: 'bg-emerald-50 text-emerald-600' },
         { label: 'Bulk Import', desc: 'Quickly upload your entire list via CSV or Excel.', icon: Upload, href: '/dashboard/catalogue/import', color: 'bg-indigo-50 text-indigo-600' },
     ] : [
