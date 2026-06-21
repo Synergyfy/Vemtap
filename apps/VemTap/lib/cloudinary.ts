@@ -24,14 +24,19 @@ export async function uploadToCloudinary(fileOrBase64: string | File): Promise<s
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to upload image to Cloudinary');
+            console.warn('Cloudinary upload failed, falling back to base64 encoding.');
+            return fileData as string;
         }
 
         const data = await response.json();
-        return data.url;
+        return data.url || (fileData as string);
     } catch (error: any) {
         console.error('Cloudinary upload error:', error);
-        throw new Error(error.message || 'An error occurred while uploading to Cloudinary');
+        console.warn('Falling back to base64 encoding due to upload error.');
+        // If fileData is somehow not resolved to base64 string, we do it here
+        if (fileOrBase64 instanceof File) {
+            return await fileToBase64(fileOrBase64);
+        }
+        return fileOrBase64 as string;
     }
 }

@@ -95,7 +95,6 @@ export default function RootLayout({
                         <GoogleAuthProvider>
                             <ToastProvider />
                             <AdminViewerBanner />
-                            <FloatingBackButton />
                             {children}
                             <CookieBanner />
                             <SupportChatbot />

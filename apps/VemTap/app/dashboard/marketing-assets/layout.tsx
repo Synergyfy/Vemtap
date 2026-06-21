@@ -1,24 +1,11 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Palette, Layers, Grid, BarChart2, ChevronLeft } from 'lucide-react';
+import { Palette, ChevronLeft } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
-
-interface TabItem {
-  label: string;
-  href: string;
-  icon: any;
-}
-
-const TABS: TabItem[] = [
-  { label: 'Overview', href: '/dashboard/marketing-assets', icon: Grid },
-  { label: 'Templates', href: '/dashboard/marketing-assets/templates', icon: Layers },
-  { label: 'My Library', href: '/dashboard/marketing-assets/library', icon: Palette },
-  { label: 'Insights', href: '/dashboard/marketing-assets/analytics', icon: BarChart2 },
-];
+import Link from 'next/link';
 
 export default function MarketingAssetsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -72,7 +59,7 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
             </div>
             <h2 className="text-xl font-extrabold text-gray-900">Access Restricted</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
-              Your business category (<span className="font-bold text-gray-700">{bizCat}</span>) has specialized operational systems and is excluded from the self-service Marketing Materials module.
+              Your business category (<span className="font-bold text-gray-700">{bizCat}</span>) has specialized operational systems and is excluded from the self-service Marketing Kit module.
             </p>
             <Link href="/dashboard" className="pt-2">
               <button className="bg-primary hover:bg-primary/95 text-white font-extrabold rounded-xl px-6 py-2.5 shadow-lg shadow-primary/20 border-none transition-all hover:scale-[1.02]">
@@ -86,53 +73,29 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className={isCreatePage ? '' : 'space-y-5 md:space-y-8 pb-24 md:pb-10 px-4 sm:px-6 md:px-10 pt-4 md:pt-5'}>
+    <div className={isCreatePage ? '' : 'space-y-8 pb-24 md:pb-10 px-4 sm:px-6 md:px-10 pt-4 md:pt-5'}>
       {!isCreatePage && (
-        <>
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center">
-              <button 
-                  onClick={() => router.back()} 
-                  className="size-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
-              >
-                  <ChevronLeft size={20} />
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <Palette size={24} />
-                  </div>
-                  Marketing Materials
-                </h1>
-              </div>
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center">
+            <button 
+                onClick={() => router.back()} 
+                className="size-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
+            >
+                <ChevronLeft size={20} />
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Palette size={24} />
+                </div>
+                Marketing Kit
+              </h1>
             </div>
           </div>
-
-          <nav className="flex items-center justify-around md:justify-start md:gap-1 bg-gray-50 rounded-2xl p-1 border border-gray-100 shadow-sm max-w-2xl">
-            {TABS.map((tab) => {
-              const isActive = pathname === tab.href || (tab.href !== '/dashboard/marketing-assets' && pathname?.startsWith(tab.href));
-              const Icon = tab.icon;
-
-              return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  className={`relative flex flex-col md:flex-row items-center gap-0.5 md:gap-2 py-2 px-3 md:px-5 md:py-2.5 rounded-xl transition-all text-[10px] md:text-xs font-bold ${
-                    isActive
-                      ? 'text-primary bg-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  <Icon size={20} />
-                  <span>{tab.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </>
+        </div>
       )}
 
       {isCreatePage ? (

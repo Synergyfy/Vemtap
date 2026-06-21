@@ -160,11 +160,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     };
 
     const toggleMenu = (menuId: string) => {
-        setExpandedMenus(prev => prev.includes(menuId) ? prev.filter(id => id !== menuId) : [...prev, menuId]);
+        setExpandedMenus(prev => prev.includes(menuId) ? [] : [menuId]);
     };
 
     const toggleSection = (sectionId: string) => {
-        setExpandedSections(prev => prev.includes(sectionId) ? prev.filter(id => id !== sectionId) : [...prev, sectionId]);
+        setExpandedSections(prev => prev.includes(sectionId) ? [] : [sectionId]);
     };
 
     const userPermissions = user?.permissions || [];
@@ -284,45 +284,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* Navigation Content */}
                 <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar space-y-6">
                     
-                    {/* Quick Access Area */}
-                    {!searchQuery && favoriteItems.length > 0 && (
-                        <div className="space-y-2 px-1">
-                            {!isCollapsed && (
-                                <div className="flex items-center justify-between px-3">
-                                    <p className="text-[11px] md:text-xs font-black uppercase tracking-[0.15em] text-gray-500">Quick Access</p>
-                                    <Star size={10} className="text-amber-400 fill-current" />
-                                </div>
-                            )}
-                            <div className="space-y-1">
-                                {favoriteItems.map(item => {
-                                    const Icon = item.icon;
-                                    const active = isActive(item.href || '');
-                                    return (
-                                        <Link 
-                                            key={`fav-${item.id}`}
-                                            href={withBranch(item.href || '')}
-                                            className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative ${
-                                                active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                                            }`}
-                                        >
-                                            <div className="shrink-0"><Icon size={18} /></div>
-                                            {!isCollapsed && <span className="text-sm font-black truncate">{item.label}</span>}
-                                            {isCollapsed && (
-                                                <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none z-50 whitespace-nowrap">
-                                                    {item.label}
-                                                </div>
-                                            )}
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
                     {/* Main Sections */}
                     {isMounted && filteredSections.map((section) => (
                         <div key={section.id} className="space-y-2">
-                            {!isCollapsed && !searchQuery && (
+                            {!isCollapsed && !searchQuery && section.label && (
                                 <button 
                                     onClick={() => toggleSection(section.id)}
                                     className="w-full flex items-center justify-between px-4 py-1 group"
@@ -334,7 +299,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 </button>
                             )}
                             
-                            {(searchQuery || expandedSections.includes(section.id) || isCollapsed) && (
+                            {(searchQuery || expandedSections.includes(section.id) || isCollapsed || !section.label) && (
                                 <div className="space-y-1">
                                     {section.items.map((item) => {
                                         const Icon = item.icon;
@@ -353,7 +318,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-3">
-                                                                <div className="shrink-0"><Icon size={18} /></div>
+                                                                {Icon && <div className="shrink-0"><Icon size={18} /></div>}
                                                                 {!isCollapsed && <span className="text-sm font-black">{item.label}</span>}
                                                             </div>
                                                             {!isCollapsed && <ChevronDown size={14} className={`transition-transform ${isMenuExpanded ? 'rotate-180' : ''}`} />}
@@ -382,7 +347,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         }`}
                                                     >
                                                         <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="shrink-0"><Icon size={18} /></div>
+                                                            {Icon && <div className="shrink-0"><Icon size={18} /></div>}
                                                             {!isCollapsed && <span className="text-sm font-black truncate">{item.label}</span>}
                                                         </div>
                                                         {!isCollapsed && (

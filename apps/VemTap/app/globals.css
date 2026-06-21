@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-    --font-display: var(--font-geist-sans), sans-serif;
-    --font-body: var(--font-geist-sans), sans-serif;
-    --font-sans: var(--font-geist-sans), sans-serif;
+    --font-display: var(--font-geist-sans), "Geist", sans-serif;
+    --font-body: var(--font-geist-sans), "Geist", sans-serif;
+    --font-sans: var(--font-geist-sans), "Geist", sans-serif;
 
     --color-primary: #004ac6;
     --color-secondary: #0060ac;
@@ -194,5 +194,8 @@
 body {
     color: var(--foreground);
     background: var(--background);
-    font-family: var(--font-body);
+    font-family: var(--font-geist-sans), "Geist", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }

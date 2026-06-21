@@ -36,7 +36,7 @@ export interface NavSection {
 export const NAVIGATION_SECTIONS: NavSection[] = [
     {
         id: 'section-dashboard',
-        label: 'Main',
+        label: '',
         items: [
             {
                 id: 'overview',
@@ -50,18 +50,59 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
         ]
     },
     {
-        id: 'section-customers',
-        label: 'Customers',
+        id: 'section-commerce',
+        label: 'My Store',
         items: [
             {
-                id: 'visitors',
-                label: 'Visitors',
-                icon: Users,
-                roles: ['owner', 'manager', 'customer_service', 'staff'],
-                permission: 'visitors',
-                href: '/dashboard/visitors',
-                keywords: ['customers', 'contacts', 'users', 'shoppers', 'database', 'audience']
+                id: 'products-stock',
+                label: 'Products & Stock',
+                icon: Package,
+                href: '/dashboard/products-stock',
+                roles: ['owner', 'manager', 'inventory'],
+                permission: 'inventory',
+                submenu: [
+                    { label: 'Overview', href: '/dashboard/products-stock' },
+                    { label: 'Catalogue', href: '/dashboard/catalogue' },
+                    { label: 'Inventory', href: '/dashboard/inventory' },
+                ],
+                keywords: ['products', 'stock', 'inventory', 'warehouse', 'reorder', 'catalogue']
             },
+            {
+                id: 'sales',
+                label: 'Sales',
+                icon: CreditCard,
+                href: '/dashboard/sales',
+                roles: ['owner', 'manager', 'cashier', 'staff'],
+                permission: 'pos',
+                submenu: [
+                    { label: 'Sales Dashboard', href: '/dashboard/sales' },
+                    { label: 'POS Home', href: '/dashboard/pos' },
+                    { label: 'Settings', href: '/dashboard/pos/settings' },
+                    { label: 'Help', href: '/dashboard/pos/support' },
+                ],
+                keywords: ['pos', 'checkout', 'register', 'sales', 'transaction', 'orders']
+            },
+            {
+                id: 'commerce-customers',
+                label: 'Customers',
+                icon: Users,
+                href: '/dashboard/customers',
+                roles: ['owner', 'manager', 'cashier', 'customer_service', 'staff'],
+                permission: 'visitors',
+                submenu: [
+                    { label: 'Overview', href: '/dashboard/customers' },
+                    { label: 'Customer List', href: '/dashboard/pos/customers' },
+                    { label: 'Loyalty', href: '/dashboard/loyalty' },
+                    { label: 'Visitors', href: '/dashboard/visitors' },
+                ],
+                keywords: ['customers', 'contacts', 'users', 'shoppers', 'database', 'audience', 'loyalty']
+            }
+        ]
+    },
+    {
+        id: 'section-engagement',
+        label: 'Customer Engagement',
+        items: [
             {
                 id: 'in-app-chat',
                 label: 'In-App Chat',
@@ -81,17 +122,6 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 keywords: ['qr', 'setup', 'capture', 'link', 'shortlink', 'generator', 'customize'],
             },
             {
-                id: 'loyalty',
-                label: 'Loyalty',
-                icon: Gift,
-                href: '/dashboard/loyalty',
-                roles: ['owner', 'manager', 'customer_service', 'staff'],
-                permission: 'loyalty',
-                feature: 'loyalty',
-                featureName: 'Loyalty Programs',
-                keywords: ['rewards', 'points', 'stamps', 'cards', 'memberships', 'gift', 'coupons', 'discounts']
-            },
-            {
                 id: 'manage-forms',
                 label: 'Forms',
                 icon: FileText,
@@ -100,59 +130,6 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 permission: 'engagement',
                 keywords: ['submissions', 'questionnaires', 'feedback', 'surveys', 'signups', 'templates']
             }
-        ]
-    },
-    {
-        id: 'section-commerce',
-        label: 'Commerce',
-        items: [
-            {
-                id: 'catalogue',
-                label: 'Catalogue',
-                icon: ShoppingBag,
-                href: '/dashboard/catalogue',
-                roles: ['owner', 'manager', 'inventory'],
-                permission: 'catalogue',
-                feature: 'catalogue',
-                featureName: 'Catalogue',
-                keywords: ['products', 'offers', 'categories', 'orders', 'bookings', 'shop', 'storefront', 'items']
-            },
-            {
-                id: 'inventory',
-                label: 'Inventory',
-                icon: Package,
-                href: '/dashboard/inventory',
-                roles: ['owner', 'manager', 'inventory'],
-                permission: 'inventory',
-                submenu: [
-                    { label: 'Overview', href: '/dashboard/inventory' },
-                    { label: 'Stock List', href: '/dashboard/inventory/stock' },
-                    { label: 'Receive Stock', href: '/dashboard/inventory/receiving' },
-                    { label: 'Adjustments', href: '/dashboard/inventory/adjustments' },
-                    { label: 'Low Stock', href: '/dashboard/inventory/low-stock' },
-                    { label: 'Movement History', href: '/dashboard/inventory/history' },
-                ],
-                keywords: ['stock', 'items', 'products', 'inventory', 'warehouse', 'reorder'],
-            },
-            {
-                id: 'pos',
-                label: 'POS',
-                icon: CreditCard,
-                href: '/dashboard/pos',
-                roles: ['owner', 'manager', 'cashier', 'staff'],
-                permission: 'pos',
-                submenu: [
-                    { label: 'New Sale', href: '/dashboard/pos' },
-                    { label: 'Products', href: '/dashboard/pos/products' },
-                    { label: 'Sales History', href: '/dashboard/pos/sales' },
-                    { label: 'Orders', href: '/dashboard/pos/orders' },
-                    { label: 'Customers', href: '/dashboard/pos/customers' },
-                    { label: 'Register', href: '/dashboard/pos/register' },
-                    { label: 'Settings', href: '/dashboard/pos/settings' },
-                    { label: 'Help & Support', href: '/dashboard/pos/support' },
-                ],
-                keywords: ['pos', 'checkout', 'register', 'sales', 'transaction'],
-            },
         ]
     },
     {
@@ -170,17 +147,23 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
             },
             {
                 id: 'marketing-assets',
-                label: 'Marketing Assets',
+                label: 'Marketing Kit',
                 icon: Palette,
                 href: '/dashboard/marketing-assets',
                 roles: ['owner', 'manager', 'marketing', 'staff'],
                 permission: 'marketing',
                 keywords: ['assets', 'printables', 'flyers', 'stickers', 'posters']
-            },
+            }
+        ]
+    },
+    {
+        id: 'section-discovery',
+        label: '',
+        items: [
             {
                 id: 'discovery',
-                label: 'Discovery Network',
-                icon: Globe,
+                label: 'Get Customers',
+                icon: null,
                 href: '/dashboard/discovery',
                 roles: ['owner', 'manager', 'marketing'],
                 permission: 'discovery',

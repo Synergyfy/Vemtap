@@ -70,51 +70,27 @@ export interface SeedSupplier {
 
 // ─── CATEGORIES ──────────────────────────────────────────────
 export const SEED_CATEGORIES: SeedCategory[] = [
-  { id: 'cat-drinks', name: 'Drinks', description: 'Beverages and refreshments', icon: '🥤', productCount: 4, color: 'bg-blue-500' },
-  { id: 'cat-food', name: 'Food & Snacks', description: 'Packaged food and snacks', icon: '🍔', productCount: 4, color: 'bg-amber-500' },
-  { id: 'cat-fashion', name: 'Fashion', description: 'Clothing and accessories', icon: '👕', productCount: 4, color: 'bg-purple-500' },
-  { id: 'cat-electronics', name: 'Electronics', description: 'Gadgets and accessories', icon: '📱', productCount: 4, color: 'bg-cyan-500' },
-  { id: 'cat-beauty', name: 'Beauty & Care', description: 'Skincare and beauty products', icon: '💄', productCount: 4, color: 'bg-pink-500' },
-  { id: 'cat-pharmacy', name: 'Pharmacy', description: 'Health and wellness', icon: '💊', productCount: 4, color: 'bg-emerald-500' },
+  { id: 'cat-fastfood', name: 'Fast Food', description: 'Burgers and wraps', icon: '🍔', productCount: 3, color: 'bg-amber-500' },
+  { id: 'cat-drinks', name: 'Beverages', description: 'Cold and hot drinks', icon: '🥤', productCount: 3, color: 'bg-blue-500' },
+  { id: 'cat-desserts', name: 'Desserts', description: 'Sweet treats', icon: '🍰', productCount: 3, color: 'bg-pink-500' },
 ];
 
 // ─── PRODUCTS ────────────────────────────────────────────────
 export const SEED_PRODUCTS: SeedProduct[] = [
-  // Drinks
-  { id: 'p1', name: 'Coca-Cola 50cl', sku: 'DRK-001', barcode: 'VMT0001', category: 'Drinks', categoryId: 'cat-drinks', brand: 'Coca-Cola', sellingPrice: 350, costPrice: 250, quantity: 120, minStock: 20, status: 'active', description: 'Classic Coca-Cola 50cl bottle', tags: ['cold', 'beverage'] },
-  { id: 'p2', name: 'Fanta Orange 50cl', sku: 'DRK-002', barcode: 'VMT0002', category: 'Drinks', categoryId: 'cat-drinks', brand: 'Fanta', sellingPrice: 350, costPrice: 250, quantity: 85, minStock: 20, status: 'active', description: 'Fanta Orange 50cl bottle', tags: ['cold', 'beverage'] },
-  { id: 'p3', name: 'Hollandia Yoghurt 500ml', sku: 'DRK-003', barcode: 'VMT0003', category: 'Drinks', categoryId: 'cat-drinks', brand: 'Hollandia', sellingPrice: 800, costPrice: 600, quantity: 40, minStock: 15, status: 'active', description: 'Hollandia yoghurt drink 500ml', tags: ['dairy', 'yoghurt'] },
-  { id: 'p4', name: 'Peak Milk 400g', sku: 'DRK-004', barcode: 'VMT0004', category: 'Drinks', categoryId: 'cat-drinks', brand: 'Peak', sellingPrice: 2800, costPrice: 2200, quantity: 5, minStock: 10, status: 'low_stock', description: 'Peak powdered milk tin 400g', tags: ['dairy', 'milk'] },
+  // Fast Food
+  { id: 'p1', name: 'Classic Beef Burger', sku: 'FF-001', barcode: 'VMT0001', category: 'Fast Food', categoryId: 'cat-fastfood', brand: 'House Made', sellingPrice: 4500, costPrice: 2500, quantity: 50, minStock: 10, status: 'active', description: 'Classic beef patty with cheese', tags: ['burger', 'beef'] },
+  { id: 'p2', name: 'Chicken Wrap', sku: 'FF-002', barcode: 'VMT0002', category: 'Fast Food', categoryId: 'cat-fastfood', brand: 'House Made', sellingPrice: 3500, costPrice: 1800, quantity: 45, minStock: 10, status: 'active', description: 'Grilled chicken wrap', tags: ['wrap', 'chicken'] },
+  { id: 'p3', name: 'Large French Fries', sku: 'FF-003', barcode: 'VMT0003', category: 'Fast Food', categoryId: 'cat-fastfood', brand: 'House Made', sellingPrice: 2000, costPrice: 800, quantity: 100, minStock: 20, status: 'active', description: 'Crispy salted french fries', tags: ['sides', 'fries'] },
 
-  // Food & Snacks
-  { id: 'p5', name: 'Indomie Noodles (Carton)', sku: 'FD-001', barcode: 'VMT0005', category: 'Food & Snacks', categoryId: 'cat-food', brand: 'Indomie', sellingPrice: 5500, costPrice: 4800, quantity: 30, minStock: 5, status: 'active', description: 'Indomie instant noodles — 40 packs carton', tags: ['noodles', 'instant'] },
-  { id: 'p6', name: 'Golden Penny Spaghetti 500g', sku: 'FD-002', barcode: 'VMT0006', category: 'Food & Snacks', categoryId: 'cat-food', brand: 'Golden Penny', sellingPrice: 800, costPrice: 600, quantity: 60, minStock: 10, status: 'active', description: 'Golden Penny spaghetti 500g pack', tags: ['pasta', 'spaghetti'] },
-  { id: 'p7', name: 'Gala Sausage Roll', sku: 'FD-003', barcode: 'VMT0007', category: 'Food & Snacks', categoryId: 'cat-food', brand: 'UAC', sellingPrice: 300, costPrice: 220, quantity: 200, minStock: 30, status: 'active', description: 'Gala sausage roll', tags: ['snack', 'roll'] },
-  { id: 'p8', name: 'Dangote Sugar 1kg', sku: 'FD-004', barcode: 'VMT0008', category: 'Food & Snacks', categoryId: 'cat-food', brand: 'Dangote', sellingPrice: 1500, costPrice: 1200, quantity: 0, minStock: 10, status: 'out_of_stock', description: 'Dangote granulated sugar 1kg', tags: ['sugar', 'seasoning'] },
+  // Beverages
+  { id: 'p4', name: 'Coca-Cola 50cl', sku: 'BV-001', barcode: 'VMT0004', category: 'Beverages', categoryId: 'cat-drinks', brand: 'Coca-Cola', sellingPrice: 800, costPrice: 500, quantity: 120, minStock: 20, status: 'active', description: 'Chilled Coca-Cola', tags: ['soda', 'cold'] },
+  { id: 'p5', name: 'Iced Lemon Tea', sku: 'BV-002', barcode: 'VMT0005', category: 'Beverages', categoryId: 'cat-drinks', brand: 'House Made', sellingPrice: 1500, costPrice: 600, quantity: 60, minStock: 15, status: 'active', description: 'Freshly brewed iced lemon tea', tags: ['tea', 'cold'] },
+  { id: 'p6', name: 'Bottled Water 75cl', sku: 'BV-003', barcode: 'VMT0006', category: 'Beverages', categoryId: 'cat-drinks', brand: 'Eva', sellingPrice: 300, costPrice: 150, quantity: 200, minStock: 50, status: 'active', description: 'Chilled table water', tags: ['water', 'cold'] },
 
-  // Fashion
-  { id: 'p9', name: 'Ankara Shirt (XL)', sku: 'FSH-001', barcode: 'VMT0009', category: 'Fashion', categoryId: 'cat-fashion', brand: 'VemWear', sellingPrice: 15000, costPrice: 8000, quantity: 20, minStock: 5, status: 'active', description: 'Premium Ankara print shirt — XL', variants: [{ type: 'Size', value: 'XL' }, { type: 'Color', value: 'Multicolor' }], tags: ['shirt', 'ankara'] },
-  { id: 'p10', name: 'Black Chinos Trouser', sku: 'FSH-002', barcode: 'VMT0010', category: 'Fashion', categoryId: 'cat-fashion', brand: 'VemWear', sellingPrice: 12000, costPrice: 6500, quantity: 15, minStock: 5, status: 'active', description: 'Slim-fit black chinos trouser', variants: [{ type: 'Size', value: '32' }], tags: ['trouser', 'chinos'] },
-  { id: 'p11', name: 'Leather Belt (Brown)', sku: 'FSH-003', barcode: 'VMT0011', category: 'Fashion', categoryId: 'cat-fashion', brand: 'VemWear', sellingPrice: 5000, costPrice: 2500, quantity: 30, minStock: 8, status: 'active', description: 'Genuine leather belt — brown', variants: [{ type: 'Color', value: 'Brown' }], tags: ['belt', 'leather'] },
-  { id: 'p12', name: 'Canvas Sneakers', sku: 'FSH-004', barcode: 'VMT0012', category: 'Fashion', categoryId: 'cat-fashion', brand: 'VemWear', sellingPrice: 8500, costPrice: 4000, quantity: 3, minStock: 5, status: 'low_stock', description: 'Casual white canvas sneakers', variants: [{ type: 'Size', value: '42' }], tags: ['shoes', 'sneakers'] },
-
-  // Electronics
-  { id: 'p13', name: 'Type-C Charger Cable', sku: 'EL-001', barcode: 'VMT0013', category: 'Electronics', categoryId: 'cat-electronics', brand: 'Oraimo', sellingPrice: 3500, costPrice: 1800, quantity: 50, minStock: 10, status: 'active', description: 'Fast charging Type-C cable — 1m', tags: ['charger', 'cable'] },
-  { id: 'p14', name: 'Bluetooth Earbuds', sku: 'EL-002', barcode: 'VMT0014', category: 'Electronics', categoryId: 'cat-electronics', brand: 'Oraimo', sellingPrice: 12000, costPrice: 7000, quantity: 25, minStock: 5, status: 'active', description: 'Wireless bluetooth earbuds with charging case', tags: ['audio', 'wireless'] },
-  { id: 'p15', name: 'Power Bank 10000mAh', sku: 'EL-003', barcode: 'VMT0015', category: 'Electronics', categoryId: 'cat-electronics', brand: 'Oraimo', sellingPrice: 15000, costPrice: 9000, quantity: 18, minStock: 5, status: 'active', description: '10000mAh portable power bank — dual USB', tags: ['power', 'battery'] },
-  { id: 'p16', name: 'Phone Screen Protector', sku: 'EL-004', barcode: 'VMT0016', category: 'Electronics', categoryId: 'cat-electronics', brand: 'Generic', sellingPrice: 1500, costPrice: 500, quantity: 100, minStock: 20, status: 'active', description: 'Tempered glass screen protector — universal', tags: ['protector', 'screen'] },
-
-  // Beauty & Care
-  { id: 'p17', name: 'Nivea Body Lotion 400ml', sku: 'BT-001', barcode: 'VMT0017', category: 'Beauty & Care', categoryId: 'cat-beauty', brand: 'Nivea', sellingPrice: 4500, costPrice: 3200, quantity: 35, minStock: 8, status: 'active', description: 'Nivea nourishing body lotion — 400ml', tags: ['skincare', 'lotion'] },
-  { id: 'p18', name: 'Cantu Shea Butter Leave-In', sku: 'BT-002', barcode: 'VMT0018', category: 'Beauty & Care', categoryId: 'cat-beauty', brand: 'Cantu', sellingPrice: 6500, costPrice: 4000, quantity: 20, minStock: 5, status: 'active', description: 'Cantu shea butter leave-in conditioning repair cream', tags: ['hair', 'cream'] },
-  { id: 'p19', name: 'MAC Lipstick Ruby Woo', sku: 'BT-003', barcode: 'VMT0019', category: 'Beauty & Care', categoryId: 'cat-beauty', brand: 'MAC', sellingPrice: 18000, costPrice: 12000, quantity: 8, minStock: 3, status: 'active', description: 'MAC matte lipstick — Ruby Woo', tags: ['makeup', 'lipstick'] },
-  { id: 'p20', name: 'Dove Deodorant Spray', sku: 'BT-004', barcode: 'VMT0020', category: 'Beauty & Care', categoryId: 'cat-beauty', brand: 'Dove', sellingPrice: 2800, costPrice: 1800, quantity: 0, minStock: 10, status: 'out_of_stock', description: 'Dove invisible dry deodorant spray', tags: ['deodorant', 'spray'] },
-
-  // Pharmacy
-  { id: 'p21', name: 'Paracetamol (Pack of 96)', sku: 'PH-001', barcode: 'VMT0021', category: 'Pharmacy', categoryId: 'cat-pharmacy', brand: 'Emzor', sellingPrice: 1200, costPrice: 800, quantity: 45, minStock: 10, status: 'active', description: 'Emzor paracetamol 500mg — 96 tablets', tags: ['painkiller', 'tablet'] },
-  { id: 'p22', name: 'Vitamin C 1000mg', sku: 'PH-002', barcode: 'VMT0022', category: 'Pharmacy', categoryId: 'cat-pharmacy', brand: 'Mason Natural', sellingPrice: 5500, costPrice: 3500, quantity: 22, minStock: 5, status: 'active', description: 'Vitamin C 1000mg — 60 capsules', tags: ['vitamin', 'supplement'] },
-  { id: 'p23', name: 'Lonart Antimalarial', sku: 'PH-003', barcode: 'VMT0023', category: 'Pharmacy', categoryId: 'cat-pharmacy', brand: 'Bliss GVS', sellingPrice: 2500, costPrice: 1500, quantity: 7, minStock: 10, status: 'low_stock', description: 'Lonart artemether-lumefantrine antimalarial', tags: ['malaria', 'antimalarial'] },
-  { id: 'p24', name: 'First Aid Kit', sku: 'PH-004', barcode: 'VMT0024', category: 'Pharmacy', categoryId: 'cat-pharmacy', brand: 'Generic', sellingPrice: 8000, costPrice: 4500, quantity: 12, minStock: 3, status: 'active', description: 'Complete first aid kit — 50 pieces', tags: ['first-aid', 'emergency'] },
+  // Desserts
+  { id: 'p7', name: 'Chocolate Fudge Cake', sku: 'DS-001', barcode: 'VMT0007', category: 'Desserts', categoryId: 'cat-desserts', brand: 'House Made', sellingPrice: 3000, costPrice: 1200, quantity: 20, minStock: 5, status: 'active', description: 'Rich chocolate cake slice', tags: ['cake', 'chocolate'] },
+  { id: 'p8', name: 'Vanilla Ice Cream', sku: 'DS-002', barcode: 'VMT0008', category: 'Desserts', categoryId: 'cat-desserts', brand: 'House Made', sellingPrice: 2500, costPrice: 1000, quantity: 30, minStock: 10, status: 'active', description: 'Two scoops of vanilla ice cream', tags: ['ice-cream', 'vanilla'] },
+  { id: 'p9', name: 'Warm Apple Pie', sku: 'DS-003', barcode: 'VMT0009', category: 'Desserts', categoryId: 'cat-desserts', brand: 'House Made', sellingPrice: 2800, costPrice: 1100, quantity: 15, minStock: 5, status: 'active', description: 'Freshly baked apple pie', tags: ['pie', 'apple'] },
 ];
 
 // ─── TRANSACTIONS ────────────────────────────────────────────
