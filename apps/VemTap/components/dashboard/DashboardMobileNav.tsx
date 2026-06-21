@@ -28,7 +28,7 @@ export default function DashboardMobileNav() {
             roles: ['owner', 'manager', 'customer_service', 'staff'],
         },
         {
-            label: 'Commerce',
+            label: 'My Store',
             icon: ShoppingBag,
             href: '/dashboard/commerce',
             roles: ['owner', 'manager', 'inventory', 'cashier', 'staff'],
@@ -69,7 +69,7 @@ export default function DashboardMobileNav() {
                 {filteredNavItems.map((item) => {
                     const isActive = (() => {
                         if (item.label === 'Home') return pathname === '/dashboard' || pathname === '/dashboard/';
-                        if (item.label === 'Commerce') {
+                        if (item.label === 'My Store') {
                             return pathname.startsWith('/dashboard/commerce') || 
                                    pathname.startsWith('/dashboard/catalogue') || 
                                    pathname.startsWith('/dashboard/inventory') || 

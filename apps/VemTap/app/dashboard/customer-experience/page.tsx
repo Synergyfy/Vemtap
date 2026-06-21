@@ -584,7 +584,7 @@ function ScreenHub({
                                 onClick={onToDeploy}
                                 className="w-full md:w-auto h-14 bg-[#066CF4] text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl shadow-blue-500/20 px-10 hover:bg-[#0556c5] transition-all"
                             >
-                                Get Marketing Assets <ArrowRight className="ml-3 size-4" />
+                                Get Marketing Kit <ArrowRight className="ml-3 size-4" />
                             </Button>
                         </div>
                     </div>
@@ -929,7 +929,7 @@ function ScreenDeploy({ businessName, publicUrl, onBack, onToMarketing }: any) {
                         <Monitor size={48} />
                     </div>
                     <div className="space-y-3">
-                        <h3 className="text-2xl font-black text-gray-900 leading-none">Use Marketing Assets</h3>
+                        <h3 className="text-2xl font-black text-gray-900 leading-none">Use Marketing Kit</h3>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-tight leading-relaxed px-4">
                             Use ready-made printable materials that already include your Business QR.
                         </p>

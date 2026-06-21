@@ -158,7 +158,7 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
     },
     {
         id: 'marketing-assets',
-        label: 'Marketing Assets',
+        label: 'Marketing Kit',
         icon: Palette,
         href: '/admin/marketing-assets',
         permission: 'admin:all',

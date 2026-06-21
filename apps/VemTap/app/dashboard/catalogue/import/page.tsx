@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
     UploadCloud, FileSpreadsheet, AlertCircle, 
@@ -13,6 +13,27 @@ import Link from 'next/link';
 export default function ConfigureBulkImportPage() {
     const [step, setStep] = useState(1);
     const [isHoveringDropzone, setIsHoveringDropzone] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleDownloadTemplate = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const csvContent = "data:text/csv;charset=utf-8,Name,Price,Short Description,Description,Category,Stock Quantity\nExample Product,99.99,A short description,A much longer description of the product.,Electronics,50";
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "vemtap_catalogue_template.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // In a real app we would parse the CSV here
+            setStep(2);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50/30 pb-24 md:pb-10 max-w-5xl mx-auto p-4 md:p-8 space-y-8">
@@ -71,22 +92,30 @@ export default function ConfigureBulkImportPage() {
                         <h2 className="text-2xl font-black text-gray-900 mb-4">Upload your catalogue data</h2>
                         <p className="text-sm font-medium text-gray-500 max-w-md mx-auto mb-10 leading-relaxed">
                             Upload a CSV or Excel file containing your products or services. Need help formatting? 
-                            <a href="#" className="text-[#066CF4] hover:underline ml-1 font-bold">Download our template.</a>
+                            <button onClick={handleDownloadTemplate} className="text-[#066CF4] hover:underline ml-1 font-bold">Download our template.</button>
                         </p>
 
                         <div 
+                            onClick={() => fileInputRef.current?.click()}
                             onDragEnter={() => setIsHoveringDropzone(true)}
                             onDragLeave={() => setIsHoveringDropzone(false)}
-                            onDrop={() => setIsHoveringDropzone(false)}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                setIsHoveringDropzone(false);
+                                if (e.dataTransfer.files?.length) {
+                                    setStep(2);
+                                }
+                            }}
                             onDragOver={(e) => e.preventDefault()}
                             className={`border-2 border-dashed rounded-[32px] p-16 transition-all duration-300 max-w-2xl mx-auto cursor-pointer ${
                                 isHoveringDropzone ? 'border-[#066CF4] bg-blue-50/50 scale-[0.98]' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
                             }`}
                         >
+                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv, .xlsx, .xls" className="hidden" />
                             <UploadCloud size={48} className={`mx-auto mb-4 ${isHoveringDropzone ? 'text-[#066CF4] animate-bounce' : 'text-gray-400'}`} />
                             <h3 className="text-lg font-black text-gray-900 mb-2">Drag and drop your file here</h3>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">or click to browse</p>
-                            <Button className="rounded-xl bg-gray-900 text-white font-black text-xs uppercase tracking-widest px-8 shadow-lg">
+                            <Button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-xl bg-gray-900 text-white font-black text-xs uppercase tracking-widest px-8 shadow-lg">
                                 Select File
                             </Button>
                         </div>
