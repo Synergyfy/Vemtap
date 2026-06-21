@@ -3,9 +3,9 @@
 import React from 'react';
 import { 
     CatalogueOverviewHeader, 
-    CatalogueStatsCards, 
-    CatalogueActionCards 
+    CatalogueStatsCards
 } from '@/components/dashboard/catalogue/CatalogueDashboard';
+import { CatalogueQRModal } from '@/components/dashboard/catalogue/CatalogueQRModal';
 import { useCatalogueItems, useCatalogueCategories, useCatalogueOrders } from '@/services/catalogue/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { ShoppingBag, LayoutGrid, Clock, ClipboardList, Plus } from 'lucide-react';
@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function CatalogueOverviewPage() {
+    const [isQRModalOpen, setIsQRModalOpen] = React.useState(false);
     const { data: business } = useMyBusiness();
     const { data: items = [], isLoading: isLoadingItems } = useCatalogueItems();
     const { data: categories = [], isLoading: isLoadingCats } = useCatalogueCategories();
@@ -24,10 +25,10 @@ export default function CatalogueOverviewPage() {
     const isProductBased = !['salon', 'spa', 'gym', 'service'].includes(businessCategory.toLowerCase());
 
     const stats = [
-        { label: 'Total Items', value: items.length || '48', icon: ShoppingBag },
-        { label: 'Categories', value: categories.length || '6', icon: LayoutGrid },
-        { label: 'Pending Requests', value: '12', icon: Clock },
-        { label: 'Total Transactions', value: (ordersData as any)?.total || '1,240', icon: ClipboardList },
+        { label: 'Total Items', value: items.length || '48', icon: ShoppingBag, href: '/dashboard/catalogue/products' },
+        { label: 'Categories', value: categories.length || '6', icon: LayoutGrid, href: '/dashboard/catalogue/categories' },
+        { label: 'Pending Requests', value: '12', icon: Clock, href: '/dashboard/catalogue/orders' },
+        { label: 'Total Transactions', value: (ordersData as any)?.total || '1,240', icon: ClipboardList, href: '/dashboard/catalogue/orders' },
     ];
 
     if (isLoading) {
@@ -46,9 +47,6 @@ export default function CatalogueOverviewPage() {
 
             {/* QUICK STATS */}
             <CatalogueStatsCards stats={stats} />
-
-            {/* SETUP OPTIONS */}
-            <CatalogueActionCards isProductBased={isProductBased} />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* LEFT COLUMN: Recent Activity */}
@@ -93,10 +91,14 @@ export default function CatalogueOverviewPage() {
                     <div className="rounded-[40px] bg-gray-900 p-10 text-white relative overflow-hidden shadow-2xl shadow-blue-500/20">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[#066CF4]/20 rounded-full blur-2xl -mr-16 -mt-16" />
                         <h3 className="text-2xl font-black mb-4 leading-tight">Generate <br /> Catalog QR</h3>
-                        <p className="text-sm font-medium text-white/70 mb-8">Download a specialized QR code that opens your menu or service list directly.</p>
-                        <Button className="w-full h-14 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl hover:bg-[#4293FF] transition-all">
-                           Generate Link
-                        </Button>
+                        <p className="text-sm font-medium text-white/70 mb-8">Create a specialized QR code that opens your menu or service list, and customize it in Marketing Kit.</p>
+                        <Link href="/dashboard/marketing-assets/create">
+                            <Button 
+                                className="w-full h-14 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl hover:bg-[#4293FF] transition-all"
+                            >
+                                Generate QR
+                            </Button>
+                        </Link>
                     </div>
                 </div>
             </div>

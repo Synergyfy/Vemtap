@@ -105,3 +105,10 @@ export function DropdownMenuItem({ children, onClick, className }: { children: R
   )
 }
 DropdownMenuItem.displayName = "DropdownMenuItem"
+
+export function DropdownMenuSeparator({ className }: { className?: string }) {
+  return (
+    <div className={cn("-mx-1 my-1 h-px bg-gray-100", className)} />
+  )
+}
+DropdownMenuSeparator.displayName = "DropdownMenuSeparator"

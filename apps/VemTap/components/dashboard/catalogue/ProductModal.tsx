@@ -10,13 +10,14 @@ import {
     useCreateCatalogueItem,
     useUpdateCatalogueItem,
     useCatalogueCategories,
+    useCreateCatalogueCategory,
     DiscountType,
     CatalogueItemType
 } from '@/services/catalogue/hooks';
+import Link from 'next/link';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import toast from 'react-hot-toast';
 import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Box, Cog, Coins, HelpCircle } from 'lucide-react';
-import Tooltip from '@/components/ui/Tooltip';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { cn } from '@/lib/utils';
 import Cropper, { Point, Area } from 'react-easy-crop';
@@ -134,9 +135,13 @@ interface ProductModalProps {
 export default function ProductModal({ isOpen, onClose, product, activeBranchId }: ProductModalProps) {
     const createMutation = useCreateCatalogueItem();
     const updateMutation = useUpdateCatalogueItem();
+    const createCategoryMutation = useCreateCatalogueCategory();
     const { data: categories = [] } = useCatalogueCategories();
     const { data: myBusiness } = useMyBusiness();
     const branches = myBusiness?.branches || [];
+
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     const [isUploading, setIsUploading] = useState(false);
     const [localMainFile, setLocalMainFile] = useState<File | null>(null);
@@ -253,6 +258,19 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
         reader.readAsDataURL(blob);
     };
 
+    const handleCreateCategory = async () => {
+        if (!newCategoryName.trim() || !activeBranchId) return;
+        try {
+            await createCategoryMutation.mutateAsync({ name: newCategoryName.trim() });
+            toast.success('Category created');
+            setNewCategoryName('');
+            setIsCreatingCategory(false);
+            // Ideally we would set the new category ID here, but we rely on the refetch to populate the list.
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to create category');
+        }
+    };
+
     const onSubmit: SubmitHandler<ProductFormValues> = async (values) => {
         setIsUploading(true);
         let toastId: string | undefined;
@@ -332,46 +350,11 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Core Info */}
                         <div className="space-y-6 md:col-span-2">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
+                                <div className="space-y-2 md:col-span-2">
                                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Product Name *</label>
-                                    <input {...register('name')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-bold text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
+                                    <input {...register('name')} className={cn("w-full h-14 px-4 bg-gray-50 border rounded-2xl font-bold text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
                                     {errors.name && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.name.message}</p>}
                                 </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Item Type *</label>
-                                        <Tooltip content="Products are physical goods, while Services are time-based bookings.">
-                                            <HelpCircle size={14} className="text-text-secondary cursor-help" />
-                                        </Tooltip>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
-                                        <button
-                                            type="button"
-                                            onClick={() => setValue('itemType', 'product')}
-                                            className={cn(
-                                                "h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase transition-all",
-                                                selectedItemType === 'product' ? "bg-white text-primary shadow-sm" : "text-text-secondary hover:text-text-main"
-                                            )}
-                                        >
-                                            <Box size={14} />
-                                            Product
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setValue('itemType', 'service')}
-                                            className={cn(
-                                                "h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase transition-all",
-                                                selectedItemType === 'service' ? "bg-white text-primary shadow-sm" : "text-text-secondary hover:text-text-main"
-                                            )}
-                                        >
-                                            <Cog size={14} />
-                                            Service
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -380,22 +363,34 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     <p className="text-[10px] text-text-secondary font-medium ml-1">Base price before any discounts are applied.</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Category *</label>
-                                    <select {...register('categoryId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer">
-                                        <option value="">Select Category</option>
-                                        {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                                    </select>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Category *</label>
+                                        <button type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)} className="text-[10px] text-primary font-bold uppercase tracking-widest hover:underline flex items-center gap-1">
+                                            <Plus size={10} /> {isCreatingCategory ? 'Cancel' : 'New Category'}
+                                        </button>
+                                    </div>
+                                    {isCreatingCategory ? (
+                                        <div className="flex gap-2">
+                                            <input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="Category Name" />
+                                            <button type="button" onClick={handleCreateCategory} disabled={!newCategoryName || createCategoryMutation.isPending} className="h-12 px-4 bg-primary text-white rounded-xl font-bold text-sm disabled:opacity-50">Add</button>
+                                        </div>
+                                    ) : (
+                                        <select {...register('categoryId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer">
+                                            <option value="">Select Category</option>
+                                            {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                                        </select>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Discount Section */}
                             <div className="p-6 bg-primary/5 rounded-xl border border-primary/10 space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <Tag size={16} className="text-primary" />
-                                    <h4 className="text-xs font-black text-primary uppercase tracking-widest">Pricing & Discounts</h4>
-                                    <Tooltip content="Percentage Off (%) reduces price by a fraction, Fixed Price (₦) sets a specific discounted amount.">
-                                        <HelpCircle size={14} className="text-primary cursor-help" />
-                                    </Tooltip>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <Tag size={16} className="text-primary" />
+                                        <h4 className="text-xs font-black text-primary uppercase tracking-widest">Pricing & Discounts</h4>
+                                    </div>
+                                    <p className="text-[10px] text-primary/70 font-bold">Percentage Off reduces price by a fraction, Fixed Price sets a specific discounted amount.</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -517,11 +512,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <label className="text-xs font-black text-text-secondary uppercase tracking-widest flex items-center gap-2">
                                     <Coins size={14} className="text-amber-500" />
                                     Loyalty Points
-                                    <Tooltip content="Customers earn these points upon successful order completion.">
-                                        <HelpCircle size={14} className="text-text-secondary cursor-help" />
-                                    </Tooltip>
                                 </label>
                                 <input type="number" {...register('loyaltyPoints')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="Points on purchase" />
+                                <p className="text-[10px] text-text-secondary font-medium ml-1">Customers earn these points upon successful order completion.</p>
                             </div>
                         </div>
 

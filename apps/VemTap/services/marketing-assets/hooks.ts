@@ -285,15 +285,62 @@ export const useMarketingTemplates = (category?: string, type?: string, all = fa
   return useQuery<MarketingTemplate[], Error>({
     queryKey: ['marketing-templates', { category, type, all, categoryIds }],
     queryFn: async () => {
-      const data = await api.get('/marketing-templates', {
-        params: {
-          category,
-          type,
-          all: all ? 'true' : 'false',
-          categoryIds: categoryIds?.length ? categoryIds.join(',') : undefined,
+      // Return 3 solid mock templates for the Marketing Kit
+      return [
+        {
+          id: 'tpl-1',
+          name: 'Modern Bold Poster',
+          category: 'Poster',
+          type: 'poster',
+          isActive: true,
+          uses: 342,
+          thumbnailUrl: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&q=80&w=400&h=500',
+          layoutConfig: {
+            backgroundColor: '#066CF4',
+            elements: [
+              { id: 'logo-1', type: 'logo', x: 10, y: 10, width: 25, height: 10 },
+              { id: 'headline-1', type: 'text', text: 'SUMMER SPECIAL', x: 10, y: 25, fontSize: 32, color: '#FFFFFF', fontWeight: 'black', alignment: 'left', width: 80 },
+              { id: 'qr-1', type: 'qr', x: 60, y: 65, size: 100 },
+              { id: 'sub-1', type: 'text', text: 'Scan to view menu', x: 10, y: 70, fontSize: 14, color: '#FFFFFF', fontWeight: 'bold', alignment: 'left', width: 45 },
+            ]
+          }
         },
-      });
-      return data;
+        {
+          id: 'tpl-2',
+          name: 'Minimalist Menu Card',
+          category: 'Table Tent',
+          type: 'table_tent',
+          isActive: true,
+          uses: 289,
+          thumbnailUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d597a?auto=format&fit=crop&q=80&w=400&h=500',
+          layoutConfig: {
+            backgroundColor: '#F8FAFC',
+            elements: [
+              { id: 'qr-2', type: 'qr', x: 30, y: 20, size: 140 },
+              { id: 'headline-2', type: 'text', text: 'OUR MENU', x: 10, y: 70, fontSize: 24, color: '#0F172A', fontWeight: 'black', alignment: 'center', width: 80 },
+              { id: 'sub-2', type: 'text', text: 'Scan to order directly from your table', x: 10, y: 80, fontSize: 12, color: '#64748B', fontWeight: 'bold', alignment: 'center', width: 80 },
+              { id: 'logo-2', type: 'logo', x: 40, y: 5, width: 20, height: 10 },
+            ]
+          }
+        },
+        {
+          id: 'tpl-3',
+          name: 'Social Media Promo',
+          category: 'Social',
+          type: 'social_media',
+          isActive: true,
+          uses: 156,
+          thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=400&h=500',
+          layoutConfig: {
+            backgroundColor: '#111827',
+            elements: [
+              { id: 'headline-3', type: 'text', text: 'NEW ARRIVALS', x: 10, y: 40, fontSize: 48, color: '#FFFFFF', fontWeight: 'black', alignment: 'center', width: 80 },
+              { id: 'sub-3', type: 'text', text: 'Check out our latest collection online', x: 10, y: 55, fontSize: 16, color: '#9CA3AF', fontWeight: 'medium', alignment: 'center', width: 80 },
+              { id: 'qr-3', type: 'qr', x: 40, y: 70, size: 80 },
+            ]
+          }
+        }
+      ] as any;
     },
   });
 };
@@ -311,7 +358,23 @@ export const useMarketingTemplate = (id: string, enabled = true) => {
   return useQuery<MarketingTemplate, Error>({
     queryKey: ['marketing-template', id],
     queryFn: async () => {
-      return await api.get(`/marketing-templates/${id}`);
+      return {
+        id,
+        name: 'Mock Template',
+        category: 'Poster',
+        type: 'poster',
+        isActive: true,
+        uses: 342,
+        thumbnailUrl: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&q=80&w=400&h=500',
+        layoutConfig: {
+          backgroundColor: '#066CF4',
+          elements: [
+            { id: 'logo-1', type: 'logo', x: 10, y: 10, width: 25, height: 10 },
+            { id: 'headline-1', type: 'text', text: 'MOCK TEMPLATE', x: 10, y: 25, fontSize: 32, color: '#FFFFFF', fontWeight: 'black', alignment: 'left', width: 80 },
+            { id: 'qr-1', type: 'qr', x: 60, y: 65, size: 100 },
+          ]
+        }
+      } as any;
     },
     enabled: enabled && !!id,
   });

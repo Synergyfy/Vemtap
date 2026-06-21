@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProductStore } from '@/store/useProductStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Package, Tag, Banknote, Image as ImageIcon, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Package, Tag, Banknote, Image as ImageIcon, CheckCircle2, ArrowRight, ArrowLeft, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateBarcode } from '@/lib/mock/pos-seed-data';
 
@@ -17,8 +17,10 @@ const STEPS = [
 
 export default function AddProductWizard() {
   const router = useRouter();
-  const { addProduct, categories } = useProductStore();
+  const { addProduct, addCategory, categories } = useProductStore();
   const [currentStep, setCurrentStep] = useState(1);
+  const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -131,13 +133,66 @@ export default function AddProductWizard() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Category *</label>
-                <select
-                  name="categoryId" value={formData.categoryId} onChange={handleChange}
-                  className="w-full h-14 px-4 rounded-2xl border border-gray-200 bg-gray-50/50 text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4] transition-all"
-                >
-                  <option value="" disabled>Select Category</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-                </select>
+                {showNewCategoryForm ? (
+                  <div className="space-y-3 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                    <input
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      autoFocus
+                      className="w-full h-12 px-4 rounded-xl border border-blue-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4] transition-all placeholder:font-medium"
+                      placeholder="Category name..."
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newCategoryName.trim()) {
+                            addCategory({ name: newCategoryName.trim(), description: '', icon: '📦', color: 'bg-blue-500' });
+                            // Select the newly created category
+                            setTimeout(() => {
+                              const cats = useProductStore.getState().categories;
+                              const newCat = cats[cats.length - 1];
+                              if (newCat) setFormData(f => ({ ...f, categoryId: newCat.id }));
+                            }, 50);
+                            setNewCategoryName('');
+                            setShowNewCategoryForm(false);
+                          }
+                        }}
+                        disabled={!newCategoryName.trim()}
+                        className={cn(
+                          "flex-1 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                          newCategoryName.trim() ? "bg-[#066CF4] text-white hover:bg-blue-600" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        )}
+                      >
+                        Create
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNewCategoryForm(false); setNewCategoryName(''); }}
+                        className="h-10 px-4 rounded-xl border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      name="categoryId" value={formData.categoryId} onChange={handleChange}
+                      className="w-full h-14 px-4 rounded-2xl border border-gray-200 bg-gray-50/50 text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4] transition-all"
+                    >
+                      <option value="" disabled>Select Category</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewCategoryForm(true)}
+                      className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-[#066CF4] hover:border-[#066CF4]/30 hover:bg-[#066CF4]/5 transition-all"
+                    >
+                      <Plus size={14} /> New Category
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Brand</label>

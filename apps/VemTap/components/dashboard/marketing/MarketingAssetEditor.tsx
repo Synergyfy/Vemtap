@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Trash2, 
@@ -19,7 +19,8 @@ import {
   QrCode as QrIcon,
   Layers,
   ShieldCheck,
-  Grid
+  Grid,
+  Copy
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export interface EditorElement {
   fontWeight?: string;
   alignment?: 'left' | 'center' | 'right';
   locked?: boolean;
+  qrContent?: string;
 }
 
 interface MarketingAssetEditorProps {
@@ -63,24 +65,62 @@ export default function MarketingAssetEditor({
   onChange,
   onExport
 }: MarketingAssetEditorProps) {
-  const [elements, setElements] = useState<EditorElement[]>(initialElements);
-  const [bgColor, setBgColor] = useState(initialBgColor);
-  const [bgImage, setBgImage] = useState(initialBgImage);
+  const [elements, setElementsRaw] = useState<EditorElement[]>(initialElements);
+  const [bgColor, setBgColorRaw] = useState(initialBgColor);
+  const [bgImage, setBgImageRaw] = useState(initialBgImage);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [guides, setGuides] = useState<{ x?: number; y?: number } | null>(null);
   const [showGrid, setShowGrid] = useState(true);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Sync back to parent
-  useEffect(() => {
-    onChange({ elements, backgroundColor: bgColor, backgroundImage: bgImage });
-  }, [elements, bgColor, bgImage]);
+  // Keep a stable ref to onChange so we can call it without re-render loops
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Wrapped setters that notify parent without triggering circular updates
+  const setElements = useCallback((updater: EditorElement[] | ((prev: EditorElement[]) => EditorElement[])) => {
+    setElementsRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Defer sync to parent to avoid render-during-render
+      queueMicrotask(() => onChangeRef.current({ elements: next, backgroundColor: bgColorRef.current, backgroundImage: bgImageRef.current }));
+      return next;
+    });
+  }, []);
+
+  const bgColorRef = useRef(bgColor);
+  const bgImageRef = useRef(bgImage);
+
+  const setBgColor = useCallback((val: string) => {
+    bgColorRef.current = val;
+    setBgColorRaw(val);
+    queueMicrotask(() => onChangeRef.current({ elements: elementsRef.current, backgroundColor: val, backgroundImage: bgImageRef.current }));
+  }, []);
+
+  const setBgImage = useCallback((val: string | undefined) => {
+    bgImageRef.current = val;
+    setBgImageRaw(val);
+    queueMicrotask(() => onChangeRef.current({ elements: elementsRef.current, backgroundColor: bgColorRef.current, backgroundImage: val }));
+  }, []);
+
+  // Stable refs for current values (used inside deferred callbacks)
+  const elementsRef = useRef(elements);
+  useEffect(() => { elementsRef.current = elements; }, [elements]);
+  useEffect(() => { bgColorRef.current = bgColor; }, [bgColor]);
+  useEffect(() => { bgImageRef.current = bgImage; }, [bgImage]);
 
   const selectedElement = useMemo(() => elements.find(el => el.id === selectedElementId), [elements, selectedElementId]);
 
-  // Handle Drag
+  // Duplicate an element
+  const duplicateElement = useCallback((el: EditorElement) => {
+    const newId = `${el.type}-${Date.now()}`;
+    const clone: EditorElement = { ...el, id: newId, x: Math.min(el.x + 5, 90), y: Math.min(el.y + 5, 90) };
+    setElements(prev => [...prev, clone]);
+    setSelectedElementId(newId);
+    toast.success('Element duplicated');
+  }, []);
+
+  // Handle Drag — uses a 4px dead-zone so simple clicks never trigger movement
   const handleDragStart = (el: EditorElement, startEvent: React.MouseEvent | React.TouchEvent) => {
-    if (el.locked && mode === 'business') return;
     startEvent.stopPropagation();
     if (!canvasRef.current) return;
 
@@ -93,6 +133,8 @@ export default function MarketingAssetEditor({
     const initialY = el.y;
     const elWidth = el.width || (el.type === 'qr' ? (el.size! / canvasRect.width) * 100 : 30);
     const elHeight = el.height || (el.type === 'qr' ? (el.size! / canvasRect.height) * 100 : 8);
+    let hasMoved = false;
+    const DRAG_THRESHOLD = 4; // pixels before we consider it a drag
 
     const handleDragMove = (moveEvent: MouseEvent | TouchEvent) => {
       if (!canvasRef.current) return;
@@ -101,6 +143,13 @@ export default function MarketingAssetEditor({
 
       const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
       const currentY = isTouchMove ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      // Dead-zone: don't start moving until we exceed the threshold
+      if (!hasMoved) {
+        const dist = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+        if (dist < DRAG_THRESHOLD) return;
+        hasMoved = true;
+      }
 
       const deltaXPct = ((currentX - startX) / canvasRect.width) * 100;
       const deltaYPct = ((currentY - startY) / canvasRect.height) * 100;
@@ -268,13 +317,11 @@ export default function MarketingAssetEditor({
 
           {/* Element Tabs */}
           <div className="space-y-4">
-            {mode === 'admin' && (
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => addElement('text')} size="sm" variant="outline" className="rounded-xl gap-2 text-[10px] uppercase font-black"><Type size={14} /> Text</Button>
-                <Button onClick={() => addElement('logo')} size="sm" variant="outline" className="rounded-xl gap-2 text-[10px] uppercase font-black"><ImageIcon size={14} /> Logo</Button>
-                <Button onClick={() => addElement('qr')} size="sm" variant="outline" className="rounded-xl gap-2 text-[10px] uppercase font-black"><QrIcon size={14} /> QR</Button>
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => addElement('text')} size="sm" variant="outline" className="rounded-xl gap-2 text-[10px] uppercase font-black hover:bg-[#066CF4] hover:text-white hover:border-[#066CF4]"><Type size={14} /> Text</Button>
+              <Button onClick={() => addElement('logo')} size="sm" variant="outline" className="rounded-xl gap-2 text-[10px] uppercase font-black hover:bg-[#066CF4] hover:text-white hover:border-[#066CF4]"><ImageIcon size={14} /> Logo</Button>
+              <Button onClick={() => addElement('qr')} size="sm" variant="outline" className="rounded-xl gap-2 text-[10px] uppercase font-black hover:bg-[#066CF4] hover:text-white hover:border-[#066CF4]"><QrIcon size={14} /> QR</Button>
+            </div>
 
             {selectedElement ? (
               <motion.div 
@@ -287,11 +334,14 @@ export default function MarketingAssetEditor({
                     <span className="text-[10px] font-black uppercase tracking-widest text-primary">
                         {selectedElement.type} Settings
                     </span>
-                    {(!selectedElement.locked || mode === 'admin') && (
-                        <button onClick={() => setElements(elements.filter(e => e.id !== selectedElement.id))} className="text-red-400 hover:text-red-500">
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => duplicateElement(selectedElement)} className="text-gray-400 hover:text-[#066CF4] transition-colors" title="Duplicate">
+                            <Copy size={14} />
+                        </button>
+                        <button onClick={() => { setElements(elements.filter(e => e.id !== selectedElement.id)); setSelectedElementId(null); }} className="text-red-400 hover:text-red-500 transition-colors" title="Delete">
                             <Trash2 size={14} />
                         </button>
-                    )}
+                    </div>
                 </div>
 
                 {selectedElement.type === 'text' && (
@@ -329,9 +379,24 @@ export default function MarketingAssetEditor({
                 )}
 
                 {selectedElement.type === 'qr' && (
-                    <div className="space-y-2">
-                        <span className="text-[8px] font-black uppercase text-gray-400">QR Size</span>
-                        <input type="range" min="40" max="300" value={selectedElement.size} onChange={(e) => setElements(elements.map(el => el.id === selectedElement.id ? { ...el, size: Number(e.target.value) } : el))} className="w-full accent-primary" />
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <span className="text-[8px] font-black uppercase text-gray-400">QR Code Source</span>
+                            <select 
+                                value={selectedElement.qrContent || qrUrl}
+                                onChange={(e) => setElements(elements.map(el => el.id === selectedElement.id ? { ...el, qrContent: e.target.value } : el))}
+                                className="w-full p-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold bg-white"
+                            >
+                                <option value={qrUrl}>My Business Profile</option>
+                                <option value={`${qrUrl}/catalogue`}>Product & Catalogue</option>
+                                <option value="https://qrthrive.com/v/campaign-123">Summer Promo (QRThrive)</option>
+                                <option value="https://qrthrive.com/v/feedback">Customer Feedback (QRThrive)</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <span className="text-[8px] font-black uppercase text-gray-400">QR Size</span>
+                            <input type="range" min="40" max="300" value={selectedElement.size} onChange={(e) => setElements(elements.map(el => el.id === selectedElement.id ? { ...el, size: Number(e.target.value) } : el))} className="w-full accent-primary" />
+                        </div>
                     </div>
                 )}
 
@@ -386,13 +451,16 @@ export default function MarketingAssetEditor({
       </div>
 
       {/* Main Canvas Area */}
-      <div className="flex-1 bg-gray-200/50 rounded-[3rem] p-8 md:p-12 flex items-center justify-center min-h-[600px] relative overflow-hidden shadow-inner border-4 border-white">
+      <div 
+        className="flex-1 bg-gray-200/50 rounded-[3rem] p-8 md:p-12 flex items-center justify-center min-h-[600px] relative overflow-hidden shadow-inner border-4 border-white"
+        onMouseDown={() => setSelectedElementId(null)}
+      >
         {/* Safe Print Zone Boundary Indicators */}
         <div className="absolute inset-0 pointer-events-none opacity-20 border-[24px] border-dashed border-gray-400" />
         
         <div
           ref={canvasRef}
-          onClick={() => setSelectedElementId(null)}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
           style={{
             backgroundColor: bgColor,
             backgroundImage: bgImage ? `url(${bgImage})` : 'none',
@@ -415,13 +483,15 @@ export default function MarketingAssetEditor({
           {/* Elements Renderer */}
           {elements.map((el) => {
             const isSelected = selectedElementId === el.id;
-            const isLocked = el.locked && mode === 'business';
+            // Ignore locked flag so users can edit default content freely
+            const isLocked = false; 
 
             return (
               <motion.div
                 key={el.id}
-                onMouseDown={(e) => { setSelectedElementId(el.id); handleDragStart(el, e); }}
-                onTouchStart={(e) => { setSelectedElementId(el.id); handleDragStart(el, e); }}
+                onClick={(e) => { e.stopPropagation(); setSelectedElementId(el.id); }}
+                onMouseDown={(e) => { e.stopPropagation(); setSelectedElementId(el.id); handleDragStart(el, e); }}
+                onTouchStart={(e) => { e.stopPropagation(); setSelectedElementId(el.id); handleDragStart(el, e); }}
                 style={{
                   position: 'absolute',
                   left: `${el.x}%`,
@@ -429,11 +499,11 @@ export default function MarketingAssetEditor({
                   width: el.width ? `${el.width}%` : (el.type === 'qr' ? 'auto' : 'auto'),
                   height: el.height ? `${el.height}%` : 'auto',
                   cursor: isLocked ? 'default' : 'move',
-                  zIndex: el.type === 'logo' ? 30 : (el.type === 'qr' ? 20 : 10),
+                  zIndex: isSelected ? 50 : (el.type === 'logo' ? 30 : (el.type === 'qr' ? 20 : 10)),
                   border: isSelected ? '2px dashed #066CF4' : '1px dashed transparent',
                   padding: '4px'
                 }}
-                className={cn("group transition-all select-none", isSelected && "bg-white/5 backdrop-blur-[1px]")}
+                className={cn("group transition-all select-none", isSelected && "bg-white/5 backdrop-blur-[1px] ring-4 ring-[#066CF4]/10 rounded-xl")}
               >
                 {/* Element Content */}
                 {el.type === 'text' && (
@@ -453,7 +523,7 @@ export default function MarketingAssetEditor({
                 {el.type === 'qr' && (
                   <div className="bg-white p-2 rounded-2xl shadow-xl flex items-center justify-center">
                     <QRCodeSVG 
-                        value={qrUrl} 
+                        value={el.qrContent || qrUrl} 
                         size={el.size} 
                         level="H" 
                         includeMargin={false}
