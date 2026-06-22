@@ -2,14 +2,60 @@
 
 import React, { useState } from 'react';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Store, Receipt, Barcode, Calculator, Bell, Save, ChevronRight } from 'lucide-react';
+import { Store, Receipt, Calculator, Bell, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
 
 type SettingsTab = 'business' | 'receipt' | 'tax' | 'notifications';
 
 export default function POSSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('business');
   const [saved, setSaved] = useState(false);
+
+  const settings = usePosSettingsStore();
+  const [localSettings, setLocalSettings] = useState({
+    businessName: '',
+    businessAddress: '',
+    phoneNumber: '',
+    currency: 'NGN',
+    receiptHeader: '',
+    receiptFooter: '',
+    autoPrintReceipt: false,
+    showLogo: true,
+    taxEnabled: false,
+    taxRate: 7.5,
+    taxLabel: 'VAT',
+    pricesIncludeTax: true,
+    lowStockAlerts: true,
+    dailySalesSummary: true,
+    newOrderAlert: false,
+    staffActivityAlerts: false,
+  });
+
+  React.useEffect(() => {
+    setLocalSettings({
+      businessName: settings.businessName,
+      businessAddress: settings.businessAddress,
+      phoneNumber: settings.phoneNumber,
+      currency: settings.currency,
+      receiptHeader: settings.receiptHeader,
+      receiptFooter: settings.receiptFooter,
+      autoPrintReceipt: settings.autoPrintReceipt,
+      showLogo: settings.showLogo,
+      taxEnabled: settings.taxEnabled,
+      taxRate: settings.taxRate,
+      taxLabel: settings.taxLabel,
+      pricesIncludeTax: settings.pricesIncludeTax,
+      lowStockAlerts: settings.lowStockAlerts,
+      dailySalesSummary: settings.dailySalesSummary,
+      newOrderAlert: settings.newOrderAlert,
+      staffActivityAlerts: settings.staffActivityAlerts,
+    });
+  }, [settings]);
+
+  const updateField = (field: string, value: any) => {
+    setLocalSettings(prev => ({ ...prev, [field]: value }));
+  };
 
   const tabs: { id: SettingsTab; label: string; icon: any }[] = [
     { id: 'business', label: 'Business Info', icon: Store },
@@ -19,6 +65,7 @@ export default function POSSettingsPage() {
   ];
 
   const handleSave = () => {
+    settings.updateSettings(localSettings);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -65,10 +112,10 @@ export default function POSSettingsPage() {
 
       {/* Content Area */}
       <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
-        {activeTab === 'business' && <BusinessInfoSettings />}
-        {activeTab === 'receipt' && <ReceiptSettings />}
-        {activeTab === 'tax' && <TaxSettings />}
-        {activeTab === 'notifications' && <AlertSettings />}
+        {activeTab === 'business' && <BusinessInfoSettings values={localSettings} onChange={updateField} />}
+        {activeTab === 'receipt' && <ReceiptSettings values={localSettings} onChange={updateField} />}
+        {activeTab === 'tax' && <TaxSettings values={localSettings} onChange={updateField} />}
+        {activeTab === 'notifications' && <AlertSettings values={localSettings} onChange={updateField} />}
       </div>
     </div>
   );
@@ -86,20 +133,44 @@ function SettingsField({ label, description, children }: { label: string; descri
   );
 }
 
-function BusinessInfoSettings() {
+interface SettingsProps {
+  values: any;
+  onChange: (field: string, value: any) => void;
+}
+
+function BusinessInfoSettings({ values, onChange }: SettingsProps) {
   return (
     <div>
       <SettingsField label="Business Name" description="Appears on receipts and reports">
-        <input type="text" defaultValue="VemTap Retail Store" className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" />
+        <input 
+          type="text" 
+          value={values.businessName} 
+          onChange={(e) => onChange('businessName', e.target.value)}
+          className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" 
+        />
       </SettingsField>
       <SettingsField label="Business Address" description="Shown on printed receipts">
-        <textarea defaultValue="123 Lagos Rd, Victoria Island, Lagos" rows={2} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10 resize-none" />
+        <textarea 
+          value={values.businessAddress} 
+          onChange={(e) => onChange('businessAddress', e.target.value)}
+          rows={2} 
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10 resize-none" 
+        />
       </SettingsField>
       <SettingsField label="Phone Number">
-        <input type="tel" defaultValue="+234 800 000 0000" className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" />
+        <input 
+          type="tel" 
+          value={values.phoneNumber} 
+          onChange={(e) => onChange('phoneNumber', e.target.value)}
+          className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" 
+        />
       </SettingsField>
       <SettingsField label="Currency" description="Default currency for all transactions">
-        <select defaultValue="NGN" className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] bg-white">
+        <select 
+          value={values.currency} 
+          onChange={(e) => onChange('currency', e.target.value)}
+          className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] bg-white"
+        >
           <option value="NGN">₦ Nigerian Naira (NGN)</option>
           <option value="USD">$ US Dollar (USD)</option>
           <option value="GBP">£ British Pound (GBP)</option>
@@ -110,76 +181,96 @@ function BusinessInfoSettings() {
   );
 }
 
-function ReceiptSettings() {
+function ReceiptSettings({ values, onChange }: SettingsProps) {
   return (
     <div>
       <SettingsField label="Receipt Header" description="Custom text at the top of every receipt">
-        <input type="text" defaultValue="Thank you for shopping with us!" className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" />
+        <input 
+          type="text" 
+          value={values.receiptHeader} 
+          onChange={(e) => onChange('receiptHeader', e.target.value)}
+          className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" 
+        />
       </SettingsField>
       <SettingsField label="Receipt Footer" description="Shown at the bottom of every receipt">
-        <input type="text" defaultValue="No returns after 7 days. Receipt required." className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" />
+        <input 
+          type="text" 
+          value={values.receiptFooter} 
+          onChange={(e) => onChange('receiptFooter', e.target.value)}
+          className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" 
+        />
       </SettingsField>
       <SettingsField label="Auto-Print Receipt" description="Automatically print after each sale">
-        <ToggleSwitch defaultChecked={false} />
+        <ToggleSwitch checked={values.autoPrintReceipt} onChange={(val) => onChange('autoPrintReceipt', val)} />
       </SettingsField>
       <SettingsField label="Show Business Logo" description="Display your logo on digital receipts">
-        <ToggleSwitch defaultChecked={true} />
+        <ToggleSwitch checked={values.showLogo} onChange={(val) => onChange('showLogo', val)} />
       </SettingsField>
     </div>
   );
 }
 
-function TaxSettings() {
+function TaxSettings({ values, onChange }: SettingsProps) {
   return (
     <div>
       <SettingsField label="Enable Tax" description="Apply tax to all transactions">
-        <ToggleSwitch defaultChecked={false} />
+        <ToggleSwitch checked={values.taxEnabled} onChange={(val) => onChange('taxEnabled', val)} />
       </SettingsField>
       <SettingsField label="Tax Rate (%)" description="Default tax percentage applied to products">
-        <input type="number" defaultValue="7.5" className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" />
+        <input 
+          type="number" 
+          value={values.taxRate} 
+          onChange={(e) => onChange('taxRate', parseFloat(e.target.value) || 0)}
+          className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" 
+        />
       </SettingsField>
       <SettingsField label="Tax Label" description="How tax is labeled on receipts">
-        <input type="text" defaultValue="VAT" className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" />
+        <input 
+          type="text" 
+          value={values.taxLabel} 
+          onChange={(e) => onChange('taxLabel', e.target.value)}
+          className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10" 
+        />
       </SettingsField>
       <SettingsField label="Prices Include Tax" description="Whether listed prices already include tax">
-        <ToggleSwitch defaultChecked={true} />
+        <ToggleSwitch checked={values.pricesIncludeTax} onChange={(val) => onChange('pricesIncludeTax', val)} />
       </SettingsField>
     </div>
   );
 }
 
-function AlertSettings() {
+function AlertSettings({ values, onChange }: SettingsProps) {
   return (
     <div>
       <SettingsField label="Low Stock Alerts" description="Get notified when products drop below minimum">
-        <ToggleSwitch defaultChecked={true} />
+        <ToggleSwitch checked={values.lowStockAlerts} onChange={(val) => onChange('lowStockAlerts', val)} />
       </SettingsField>
       <SettingsField label="Daily Sales Summary" description="Receive end-of-day revenue report">
-        <ToggleSwitch defaultChecked={true} />
+        <ToggleSwitch checked={values.dailySalesSummary} onChange={(val) => onChange('dailySalesSummary', val)} />
       </SettingsField>
       <SettingsField label="New Order Alert" description="Notify when a new order is placed">
-        <ToggleSwitch defaultChecked={false} />
+        <ToggleSwitch checked={values.newOrderAlert} onChange={(val) => onChange('newOrderAlert', val)} />
       </SettingsField>
       <SettingsField label="Staff Activity Alerts" description="Notify on refunds, voids, and drawer openings">
-        <ToggleSwitch defaultChecked={false} />
+        <ToggleSwitch checked={values.staffActivityAlerts} onChange={(val) => onChange('staffActivityAlerts', val)} />
       </SettingsField>
     </div>
   );
 }
 
-function ToggleSwitch({ defaultChecked }: { defaultChecked: boolean }) {
-  const [on, setOn] = useState(defaultChecked);
+function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) {
   return (
     <button
-      onClick={() => setOn(!on)}
+      onClick={() => onChange(!checked)}
+      type="button"
       className={cn(
         "w-12 h-7 rounded-full transition-colors relative shrink-0",
-        on ? "bg-[#066CF4]" : "bg-gray-200"
+        checked ? "bg-[#066CF4]" : "bg-gray-200"
       )}
     >
       <div className={cn(
         "size-5 bg-white rounded-full shadow absolute top-1 transition-all",
-        on ? "left-6" : "left-1"
+        checked ? "left-6" : "left-1"
       )} />
     </button>
   );

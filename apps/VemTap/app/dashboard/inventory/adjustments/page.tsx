@@ -3,22 +3,24 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
+import { useCatalogueItems, useUpdateCatalogueItem } from '@/services/catalogue/hooks';
 import { useInventoryStore } from '@/store/useInventoryStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Search, Plus, Settings2, Package, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 export default function StockAdjustmentsScreen() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
-  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
-  const products = productsData?.data ?? [];
+  const { data: products = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
   const { adjustStock } = useInventoryStore();
+  const updateProduct = useUpdateCatalogueItem();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; currentQty: number; quantityChange: number; reason: string }[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeProducts = products.filter((p: any) => p.status !== 'suspended');
   const filteredProducts = activeProducts.filter((p: any) =>
@@ -44,22 +46,40 @@ export default function StockAdjustmentsScreen() {
     ));
   };
 
-  const handleAdjust = () => {
+  const handleAdjust = async () => {
     const validItems = selectedItems.filter(i => i.quantityChange !== 0);
     if (validItems.length === 0) return;
 
-    adjustStock(validItems.map(i => ({
-      productId: i.productId,
-      productName: i.name,
-      quantityChange: i.quantityChange,
-      reason: i.reason,
-      currentQty: i.currentQty,
-    })));
+    setIsSubmitting(true);
+    try {
+      for (const item of validItems) {
+        await updateProduct.mutateAsync({
+          id: item.productId,
+          data: {
+            stockQuantity: Math.max(0, item.currentQty + item.quantityChange),
+            branchId: activeBranchId ?? undefined,
+            applyGlobally: false,
+          },
+        });
+      }
 
-    setIsSuccess(true);
-    setTimeout(() => {
-      router.push('/dashboard/inventory');
-    }, 2000);
+      adjustStock(validItems.map(i => ({
+        productId: i.productId,
+        productName: i.name,
+        quantityChange: i.quantityChange,
+        reason: i.reason,
+        currentQty: i.currentQty,
+      })));
+
+      setIsSuccess(true);
+      setTimeout(() => {
+        router.push('/dashboard/inventory');
+      }, 2000);
+    } catch (error) {
+      toast.error('Failed to adjust stock');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const reasons = ['Damage', 'Theft', 'Expired', 'Internal Use', 'Found Items'];
@@ -177,16 +197,16 @@ export default function StockAdjustmentsScreen() {
           </p>
           <button
             onClick={handleAdjust}
-            disabled={selectedItems.length === 0 || !selectedItems.some(i => i.quantityChange !== 0)}
+            disabled={selectedItems.length === 0 || !selectedItems.some(i => i.quantityChange !== 0) || isSubmitting}
             className={cn(
               "h-14 px-8 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[11px] transition-all shadow-xl",
-              selectedItems.length > 0 && selectedItems.some(i => i.quantityChange !== 0)
+              selectedItems.length > 0 && selectedItems.some(i => i.quantityChange !== 0) && !isSubmitting
                 ? "bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600 active:scale-95"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
             )}
           >
             <Settings2 size={16} />
-            Apply Adjustments
+            {isSubmitting ? 'Adjusting...' : 'Apply Adjustments'}
           </button>
         </div>
       </div>

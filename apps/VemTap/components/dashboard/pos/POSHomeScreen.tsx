@@ -8,7 +8,7 @@ import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/service
 import { cn } from '@/lib/utils';
 import POSPageHeader from './shared/POSPageHeader';
 
-export default function POSHomeScreen() {
+export default function POSHomeScreen({ onOpenCart }: { onOpenCart?: () => void }) {
   const { cart, addToCart } = usePosStore();
   const { activeBranchId } = useActiveBranch();
   const { data: productsData, isLoading: loadingProducts } = useCatalogueItemsPublic(activeBranchId ?? '');
@@ -158,6 +158,7 @@ export default function POSHomeScreen() {
 
       <div className="fixed bottom-[80px] left-0 right-0 p-4 md:hidden z-20 pointer-events-none">
         <button
+          onClick={onOpenCart}
           className={cn(
             "w-full h-14 rounded-[20px] shadow-xl flex items-center justify-between px-6 transition-all pointer-events-auto active:scale-[0.98]",
             cartItemCount > 0

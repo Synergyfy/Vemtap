@@ -1,20 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
+import { useCatalogueItems, useUpdateCatalogueItem } from '@/services/catalogue/hooks';
 import { useInventoryStore } from '@/store/useInventoryStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Search, Plus, ArrowDownToLine, Package, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 export default function ReceiveStockScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeBranchId } = useActiveBranch();
-  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
-  const products = productsData?.data ?? [];
+  const { data: products = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
   const { receiveStock } = useInventoryStore();
+  const updateProduct = useUpdateCatalogueItem();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; currentQty: number; receiveQty: number }[]>([]);
@@ -22,6 +24,7 @@ export default function ReceiveStockScreen() {
   const [poNumber, setPoNumber] = useState('');
 
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeProducts = products.filter((p: any) => p.status !== 'suspended');
   const filteredProducts = activeProducts.filter((p: any) =>
@@ -30,7 +33,7 @@ export default function ReceiveStockScreen() {
 
   const handleSelectProduct = (product: any) => {
     if (!selectedItems.find(i => i.productId === product.id)) {
-      setSelectedItems([...selectedItems, {
+      setSelectedItems(prev => [...prev, {
         productId: product.id,
         name: product.name,
         currentQty: product.stockQuantity || 0,
@@ -40,26 +43,54 @@ export default function ReceiveStockScreen() {
     setSearchQuery('');
   };
 
+  const preselectedProductId = searchParams.get('product');
+  React.useEffect(() => {
+    if (preselectedProductId && products.length > 0) {
+      const prod = products.find((p: any) => p.id === preselectedProductId);
+      if (prod) {
+        handleSelectProduct(prod);
+      }
+    }
+  }, [preselectedProductId, products]);
+
   const updateItem = (productId: string, field: 'receiveQty', value: number) => {
     setSelectedItems(items => items.map(i =>
       i.productId === productId ? { ...i, [field]: value } : i
     ));
   };
 
-  const handleReceive = () => {
+  const handleReceive = async () => {
     const validItems = selectedItems.filter(i => i.receiveQty > 0);
     if (validItems.length === 0) return;
 
-    receiveStock(
-      validItems.map(i => ({ productId: i.productId, productName: i.name, quantity: i.receiveQty, currentQty: i.currentQty })),
-      supplier,
-      poNumber
-    );
+    setIsSubmitting(true);
+    try {
+      for (const item of validItems) {
+        await updateProduct.mutateAsync({
+          id: item.productId,
+          data: {
+            stockQuantity: item.currentQty + item.receiveQty,
+            branchId: activeBranchId ?? undefined,
+            applyGlobally: false,
+          },
+        });
+      }
 
-    setIsSuccess(true);
-    setTimeout(() => {
-      router.push('/dashboard/inventory');
-    }, 2000);
+      receiveStock(
+        validItems.map(i => ({ productId: i.productId, productName: i.name, quantity: i.receiveQty, currentQty: i.currentQty })),
+        supplier,
+        poNumber
+      );
+
+      setIsSuccess(true);
+      setTimeout(() => {
+        router.push('/dashboard/inventory');
+      }, 2000);
+    } catch (error) {
+      toast.error('Failed to receive stock');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSuccess) {
@@ -176,16 +207,16 @@ export default function ReceiveStockScreen() {
           </p>
           <button
             onClick={handleReceive}
-            disabled={selectedItems.length === 0 || !selectedItems.some(i => i.receiveQty > 0)}
+            disabled={selectedItems.length === 0 || !selectedItems.some(i => i.receiveQty > 0) || isSubmitting}
             className={cn(
               "h-14 px-8 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[11px] transition-all shadow-xl",
-              selectedItems.length > 0 && selectedItems.some(i => i.receiveQty > 0)
+              selectedItems.length > 0 && selectedItems.some(i => i.receiveQty > 0) && !isSubmitting
                 ? "bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
             )}
           >
             <ArrowDownToLine size={16} />
-            Receive Stock
+            {isSubmitting ? 'Receiving...' : 'Receive Stock'}
           </button>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
+import { useCatalogueItems } from '@/services/catalogue/hooks';
 import { useInventoryStore } from '@/store/useInventoryStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Package, AlertTriangle, ArrowDownToLine, Plus, Box, ShieldCheck, ArrowRight } from 'lucide-react';
@@ -12,8 +12,7 @@ import { motion } from 'framer-motion';
 export default function ProductsAndStockDashboard() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
-  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
-  const products = productsData?.data ?? [];
+  const { data: products = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
 
   const activeProducts = products.filter((p: any) => p.status !== 'suspended');
   const totalProducts = activeProducts.length;

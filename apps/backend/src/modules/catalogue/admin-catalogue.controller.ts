@@ -32,7 +32,7 @@ import { UserRole } from '../users/entities/user.entity';
 @ApiTags('Admin Catalogue')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-@Controller('admin/catalogue')
+@Controller('catalogue')
 export class AdminCatalogueController {
   constructor(private readonly catalogueService: CatalogueService) {}
 

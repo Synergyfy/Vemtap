@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/services/catalogue/hooks';
+import { useCatalogueItems, useCatalogueCategoriesPublic } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Package, AlertTriangle, Plus, Tag, Search, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,9 +18,8 @@ function CheckCircleIcon(props: any) {
 export default function ProductsDashboard() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
-  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
+  const { data: products = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
   const { data: categoriesData = [] } = useCatalogueCategoriesPublic(activeBranchId ?? '');
-  const products = productsData?.data ?? [];
   const categories = categoriesData ?? [];
 
   const activeProducts = products.filter((p: any) => p.status !== 'suspended');

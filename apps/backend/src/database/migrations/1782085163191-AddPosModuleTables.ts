@@ -37,12 +37,12 @@ export class AddPosModuleTables1782085163191 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "pos_held_sale_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "heldSaleId" uuid NOT NULL, "productId" uuid, "productName" character varying NOT NULL, "sku" character varying, "barcode" character varying, "unitPrice" numeric(12,2) NOT NULL, "costPrice" numeric(12,2), "quantity" integer NOT NULL, "discount" numeric(12,2) NOT NULL DEFAULT '0', "totalPrice" numeric(12,2) NOT NULL, CONSTRAINT "PK_cef0ad4ade98493e0ba62c9debe" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "pos_held_sales" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "businessId" uuid NOT NULL, "branchId" uuid NOT NULL, "cashierId" uuid NOT NULL, "customerId" uuid, "subtotal" numeric(12,2) NOT NULL, "discountAmount" numeric(12,2) NOT NULL DEFAULT '0', "tax" numeric(12,2) NOT NULL DEFAULT '0', "total" numeric(12,2) NOT NULL, "note" text, "heldAt" TIMESTAMP NOT NULL, CONSTRAINT "PK_7cc60423b71e67aefe25aaa8cd7" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_c5828239305ec6c7f3dfade864" ON "pos_held_sales" ("businessId", "cashierId") `);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD "barcode" character varying`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD "costPrice" numeric(12,2)`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD "minStock" integer`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD "brand" character varying`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD "variants" jsonb`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD "tags" text`);
+        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "barcode" character varying`);
+        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "costPrice" numeric(12,2)`);
+        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "minStock" integer`);
+        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "brand" character varying`);
+        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "variants" jsonb`);
+        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "tags" text`);
         await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "socials"`);
         await queryRunner.query(`ALTER TABLE "businesses" ADD "socials" json`);
         await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "openingHours"`);

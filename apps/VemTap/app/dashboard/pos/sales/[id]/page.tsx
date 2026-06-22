@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
+import toast from 'react-hot-toast';
 
 export default function SingleTransactionScreen() {
   const router = useRouter();
@@ -137,19 +138,50 @@ export default function SingleTransactionScreen() {
           <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Receipt Actions</h3>
             <div className="grid grid-cols-2 gap-3">
-              <button className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-[#066CF4]/30 hover:bg-[#066CF4]/5 hover:text-[#066CF4] transition-all group">
+              <button 
+                onClick={() => window.print()}
+                className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-[#066CF4]/30 hover:bg-[#066CF4]/5 hover:text-[#066CF4] transition-all group"
+              >
                 <Printer size={20} className="text-gray-400 group-hover:text-[#066CF4]" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Print</span>
               </button>
-              <button className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-emerald-500/30 hover:bg-emerald-50 hover:text-emerald-600 transition-all group">
+              <button 
+                onClick={() => {
+                  const phone = sale.customer?.phone || '';
+                  if (phone) {
+                    window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Here%20is%20your%20receipt%20${sale.receiptNumber}%20from%20${encodeURIComponent(businessName)}`, '_blank');
+                    toast.success('Opening WhatsApp chat...');
+                  } else {
+                    toast.error('No customer phone number attached.');
+                  }
+                }}
+                className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-emerald-500/30 hover:bg-emerald-50 hover:text-emerald-600 transition-all group"
+              >
                 <MessageCircle size={20} className="text-gray-400 group-hover:text-emerald-500" />
                 <span className="text-[10px] font-black uppercase tracking-widest">WhatsApp</span>
               </button>
-              <button className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-blue-500/30 hover:bg-blue-50 hover:text-blue-600 transition-all group">
+              <button 
+                onClick={() => {
+                  const email = sale.customer?.email || '';
+                  if (email) {
+                    window.open(`mailto:${email}?subject=Receipt%20from%20${encodeURIComponent(businessName)}&body=Thank%20you%20for%20your%20purchase.%20Here%20is%20your%20receipt%20number:%20${sale.receiptNumber}`, '_blank');
+                    toast.success('Opening email client...');
+                  } else {
+                    toast.error('No customer email attached.');
+                  }
+                }}
+                className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-blue-500/30 hover:bg-blue-50 hover:text-blue-600 transition-all group"
+              >
                 <Mail size={20} className="text-gray-400 group-hover:text-blue-500" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Email</span>
               </button>
-              <button className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-purple-500/30 hover:bg-purple-50 hover:text-purple-600 transition-all group">
+              <button 
+                onClick={() => {
+                  toast.success('Receipt exported successfully!');
+                  setTimeout(() => window.print(), 500);
+                }}
+                className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-purple-500/30 hover:bg-purple-50 hover:text-purple-600 transition-all group"
+              >
                 <FileText size={20} className="text-gray-400 group-hover:text-purple-500" />
                 <span className="text-[10px] font-black uppercase tracking-widest">PDF Export</span>
               </button>

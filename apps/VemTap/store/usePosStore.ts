@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { PosSaleResponse } from '@/services/pos/types';
+import { usePosSettingsStore } from './usePosSettingsStore';
 
 export interface PosCartItem {
   id: string;
@@ -92,7 +93,14 @@ export const usePosStore = create<PosState>()(
         return cartDiscount.value;
       },
 
-      getCartTax: () => 0,
+      getCartTax: () => {
+        const settings = usePosSettingsStore.getState();
+        if (settings.taxEnabled && !settings.pricesIncludeTax) {
+          const taxableAmount = get().getCartSubtotal() - get().getCartDiscountAmount();
+          return Math.round(taxableAmount * (settings.taxRate / 100));
+        }
+        return 0;
+      },
 
       getCartTotal: () => {
         return get().getCartSubtotal() - get().getCartDiscountAmount() + get().getCartTax();

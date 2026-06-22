@@ -21,10 +21,26 @@ export default function PaymentScreen() {
   const [hideCustomerInfoOnReceipt, setHideCustomerInfoOnReceipt] = useState(true);
   const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
 
+  // Split payment details
+  const [splitCash, setSplitCash] = useState<string>('');
+  const [splitCard, setSplitCard] = useState<string>('');
+  const [splitTransfer, setSplitTransfer] = useState<string>('');
+
   const total = getCartTotal();
   const receivedNum = parseFloat(amountReceived.replace(/,/g, '')) || 0;
   const change = Math.max(0, receivedNum - total);
-  const isSufficient = selectedMethod === 'cash' ? receivedNum >= total : selectedMethod !== null;
+
+  const splitCashNum = parseFloat(splitCash.replace(/,/g, '')) || 0;
+  const splitCardNum = parseFloat(splitCard.replace(/,/g, '')) || 0;
+  const splitTransferNum = parseFloat(splitTransfer.replace(/,/g, '')) || 0;
+  const splitSum = splitCashNum + splitCardNum + splitTransferNum;
+  const splitRemaining = total - splitSum;
+
+  const isSufficient = selectedMethod === 'cash' 
+    ? receivedNum >= total 
+    : selectedMethod === 'split'
+      ? Math.abs(splitSum - total) < 0.01
+      : selectedMethod !== null;
 
   if (cart.length === 0 && !createSale.isPending) {
     router.replace('/dashboard/pos');
@@ -40,10 +56,17 @@ export default function PaymentScreen() {
       discount: item.discount > 0 ? item.discount : undefined,
     }));
 
+    const splitDetails = selectedMethod === 'split' ? [
+      { method: 'cash' as const, amount: splitCashNum },
+      { method: 'card' as const, amount: splitCardNum },
+      { method: 'transfer' as const, amount: splitTransferNum }
+    ].filter(d => d.amount > 0) : undefined;
+
     const payment = {
       method: selectedMethod,
       amountPaid: selectedMethod === 'cash' ? receivedNum : total,
       change: selectedMethod === 'cash' ? change : 0,
+      splitDetails,
     };
 
     createSale.mutate(
@@ -162,6 +185,87 @@ export default function PaymentScreen() {
                 </span>
               </div>
             )}
+          </div>
+        )}
+
+        {selectedMethod === 'split' && (
+          <div className="mb-8 p-6 bg-gray-50 rounded-[24px] border border-gray-100 space-y-4">
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-1">Split Payment Details</label>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-1">Cash Amount (₦)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
+                  <input
+                    type="text"
+                    value={splitCash}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setSplitCash(val ? Number(val).toLocaleString() : '');
+                    }}
+                    className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-purple-500 mb-1">Card Amount (₦)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
+                  <input
+                    type="text"
+                    value={splitCard}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setSplitCard(val ? Number(val).toLocaleString() : '');
+                    }}
+                    className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Transfer Amount (₦)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
+                  <input
+                    type="text"
+                    value={splitTransfer}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setSplitTransfer(val ? Number(val).toLocaleString() : '');
+                    }}
+                    className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200 flex justify-between items-center text-xs">
+              <div>
+                <span className="font-bold text-gray-500 uppercase tracking-widest">Split Sum: </span>
+                <span className="font-black text-gray-900">₦{splitSum.toLocaleString()}</span>
+              </div>
+              <div>
+                {splitRemaining > 0 ? (
+                  <>
+                    <span className="font-bold text-amber-500 uppercase tracking-widest">Remaining: </span>
+                    <span className="font-black text-amber-500">₦{splitRemaining.toLocaleString()}</span>
+                  </>
+                ) : splitRemaining < 0 ? (
+                  <>
+                    <span className="font-bold text-red-500 uppercase tracking-widest">Overpaid: </span>
+                    <span className="font-black text-red-500">₦{Math.abs(splitRemaining).toLocaleString()}</span>
+                  </>
+                ) : (
+                  <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md font-black uppercase tracking-widest">Balanced</span>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

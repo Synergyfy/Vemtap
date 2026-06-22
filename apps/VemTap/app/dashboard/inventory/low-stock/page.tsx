@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
+import { useCatalogueItems } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { AlertTriangle, ArrowDownToLine, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,8 +11,7 @@ import { cn } from '@/lib/utils';
 export default function LowStockCenter() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
-  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
-  const products = productsData?.data ?? [];
+  const { data: products = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
 
   const alerts = products.filter((p: any) =>
     p.status !== 'suspended' && p.stockQuantity <= (p.minStock ?? 5)
