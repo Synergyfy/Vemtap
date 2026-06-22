@@ -199,3 +199,10 @@ body {
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
 }
+
+/* Enforce normal weight and Geist font strictly in the dashboard */
+.dashboard-typography-override,
+.dashboard-typography-override * {
+    font-weight: 400 !important;
+    font-family: var(--font-geist-sans), "Geist", sans-serif !important;
+}
