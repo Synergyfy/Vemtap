@@ -102,23 +102,19 @@ export default function DashboardPage() {
                 <section>
                     <div className="flex items-center justify-between mb-4 px-1">
                         <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Snapshot</h2>
-                        <div className="flex gap-1">
-                            <div className="size-1.5 bg-primary rounded-full shadow-[0_0_8px_rgba(6,108,244,0.4)]" />
-                            <div className="size-1.5 bg-gray-200 rounded-full" />
-                        </div>
                     </div>
-                    <div className="flex overflow-x-auto no-scrollbar gap-4 -mx-6 px-6 snap-x pb-2">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                         {kpis.map((kpi, i) => (
                             <div 
                                 key={i}
-                                className="min-w-[190px] bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm snap-center flex flex-col justify-between h-36 group hover:border-primary/20 transition-all hover:shadow-md"
+                                className="w-full bg-white rounded-3xl md:rounded-[2rem] p-4 md:p-6 border border-gray-100 shadow-sm flex flex-col justify-between h-28 md:h-36 group hover:border-primary/20 transition-all hover:shadow-md"
                             >
-                                <div className={`size-10 rounded-2xl ${kpi.color} text-white flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg shadow-current/10`}>
-                                    <kpi.icon size={20} />
+                                <div className={`size-8 md:size-10 rounded-xl md:rounded-2xl ${kpi.color} text-white flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg shadow-current/10`}>
+                                    <kpi.icon size={16} className="md:w-5 md:h-5" />
                                 </div>
                                 <div>
-                                    <p className="text-3xl font-black text-gray-900 mb-0.5 leading-none tracking-tight">{kpi.value}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none">{kpi.label}</p>
+                                    <p className="text-2xl md:text-3xl font-black text-gray-900 mb-0.5 leading-none tracking-tight">{kpi.value}</p>
+                                    <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none truncate">{kpi.label}</p>
                                 </div>
                             </div>
                         ))}
@@ -130,7 +126,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between mb-4 px-1">
                         <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Quick Actions</h2>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                         {useMemo(() => {
                             const role = (user?.role as string)?.toLowerCase() || 'owner';
                             if (role === 'cashier') {
@@ -176,12 +172,12 @@ export default function DashboardPage() {
                             <button 
                                 key={i}
                                 onClick={() => router.push(action.route)}
-                                className={`bg-white border border-gray-100 p-6 rounded-[2.5rem] flex flex-col items-center gap-4 active:scale-95 transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
+                                className={`bg-white border border-gray-100 p-4 md:p-6 rounded-3xl md:rounded-[2.5rem] flex flex-col items-center justify-center gap-3 md:gap-4 active:scale-95 transition-all shadow-sm group hover:border-primary/20 hover:shadow-md aspect-square md:aspect-auto`}
                             >
-                                <div className={`size-16 rounded-[1.5rem] ${action.color} border flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}>
-                                    <action.icon size={28} />
+                                <div className={`size-12 md:size-16 rounded-2xl md:rounded-[1.5rem] ${action.color} border flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}>
+                                    <action.icon size={20} className="md:w-7 md:h-7" />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">{action.label}</span>
+                                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-700 text-center leading-tight">{action.label}</span>
                             </button>
                         ))}
                     </div>
@@ -377,17 +373,17 @@ export default function DashboardPage() {
                         <button 
                             key={i}
                             onClick={() => router.push(module.route)}
-                            className="w-full bg-white border border-gray-100 p-8 rounded-[3rem] flex items-center gap-6 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
+                            className="w-full bg-white border border-gray-100 p-4 md:p-8 rounded-3xl md:rounded-[3rem] flex items-center gap-4 md:gap-6 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
                         >
-                            <div className={`size-16 rounded-[1.5rem] ${module.color} shrink-0 flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm`}>
-                                <module.icon size={32} />
+                            <div className={`size-12 md:size-16 rounded-2xl md:rounded-[1.5rem] ${module.color} shrink-0 flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm`}>
+                                <module.icon size={24} className="md:w-8 md:h-8" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-base font-black text-gray-900 mb-1">{module.title}</h3>
-                                <p className="text-[11px] font-bold text-gray-400 leading-relaxed uppercase tracking-widest">{module.desc}</p>
+                                <h3 className="text-sm md:text-base font-black text-gray-900 mb-0.5 md:mb-1">{module.title}</h3>
+                                <p className="text-[9px] md:text-[11px] font-bold text-gray-400 leading-relaxed uppercase tracking-widest truncate md:whitespace-normal">{module.desc}</p>
                             </div>
-                            <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:text-primary group-hover:bg-primary/5 transition-all">
-                                <ChevronRight size={20} />
+                            <div className="size-8 md:size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:text-primary group-hover:bg-primary/5 transition-all">
+                                <ChevronRight size={16} className="md:w-5 md:h-5" />
                             </div>
                         </button>
                     ))}

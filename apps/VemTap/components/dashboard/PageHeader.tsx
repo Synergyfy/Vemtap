@@ -9,13 +9,14 @@ interface PageHeaderProps {
     description?: string;
     actions?: React.ReactNode;
     showBack?: boolean;
+    isSticky?: boolean;
 }
 
-export default function PageHeader({ title, description, actions, showBack = false }: PageHeaderProps) {
+export default function PageHeader({ title, description, actions, showBack = false, isSticky = true }: PageHeaderProps) {
     const router = useRouter();
 
     return (
-        <div className="mb-8 sticky top-16 md:top-0 z-30 bg-gray-50/90 md:bg-gray-50 backdrop-blur-md py-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent sm:backdrop-blur-none transition-all">
+        <div className={`mb-8 transition-all ${isSticky ? "sticky top-16 md:top-0 z-30 bg-gray-50/90 md:bg-gray-50 backdrop-blur-md py-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent sm:backdrop-blur-none" : ""}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     {showBack && (
