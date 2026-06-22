@@ -22,12 +22,13 @@ export default function DiscoveryPage() {
             <PageHeader 
                 title="Discovery Network" 
                 description="Get more customers from nearby businesses."
+                isSticky={false}
             />
             
             {!isCreatingPromo ? (
                 <>
                     {/* Navigation */}
-                    <div className="mt-8 flex overflow-x-auto no-scrollbar border-b border-gray-200 mb-8 pb-0.5 space-x-6 sticky top-0 z-10 bg-gray-50/90 backdrop-blur-md pt-4 -mx-4 px-4 md:mx-0 md:px-0 md:static md:bg-transparent md:pt-0">
+                    <div className="mt-4 md:mt-8 flex overflow-x-auto no-scrollbar mb-6 md:mb-8 sticky top-0 z-10 bg-white/90 backdrop-blur-md py-3 -mx-4 px-4 md:mx-0 md:px-0 md:static md:bg-transparent md:py-0 md:border-b md:border-gray-200 space-x-2 md:space-x-6">
                         {[
                             { id: 'overview', label: 'Overview' },
                             { id: 'promotions', label: 'Promotions' },
@@ -40,13 +41,15 @@ export default function DiscoveryPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as TabId)}
                                 className={cn(
-                                    "pb-4 text-sm font-bold whitespace-nowrap transition-colors relative",
-                                    activeTab === tab.id ? "text-primary" : "text-gray-500 hover:text-gray-800"
+                                    "px-4 py-2 md:px-0 md:pb-4 md:py-0 text-[13px] md:text-sm font-bold whitespace-nowrap transition-all relative rounded-full md:rounded-none shrink-0",
+                                    activeTab === tab.id 
+                                        ? "bg-primary text-white md:bg-transparent md:text-primary shadow-md shadow-primary/20 md:shadow-none" 
+                                        : "bg-gray-50 text-gray-500 md:bg-transparent hover:text-gray-800"
                                 )}
                             >
                                 {tab.label}
                                 {activeTab === tab.id && (
-                                    <span className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full"></span>
+                                    <span className="hidden md:block absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full"></span>
                                 )}
                             </button>
                         ))}
@@ -523,6 +526,14 @@ function PartnersTab() {
 function CustomersTab() {
     const [filter, setFilter] = useState('all');
 
+    const customersList = [
+        { name: 'Sarah Jenkins', phone: '+234 800 123 4567', email: 'sarah@example.com', origin: 'From Partner: ABC Fashion', date: 'Oct 12, 2023', promo: 'Free Coffee', status: 'Purchased' },
+        { name: 'Michael Chen', phone: '+234 800 987 6543', email: 'michael@example.com', origin: 'Sent To: FitLife Gym', date: 'Oct 12, 2023', promo: '15% Lunch Discount', status: 'Visited' },
+        { name: 'Emma Davis', phone: '+234 800 555 1234', email: 'emma@example.com', origin: 'Direct Customer', date: 'Oct 11, 2023', promo: 'BOGO Offer', status: 'Purchased' },
+        { name: 'James Wilson', phone: '+234 800 444 9876', email: 'james@example.com', origin: 'From Partner: Glow Salon', date: 'Oct 11, 2023', promo: '15% Lunch Discount', status: 'Visited' },
+        { name: 'Olivia Martinez', phone: '+234 800 222 3333', email: 'olivia@example.com', origin: 'From Partner: ABC Fashion', date: 'Oct 10, 2023', promo: 'Free Coffee', status: 'Purchased' }
+    ];
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="hidden md:flex bg-gray-100 p-1 rounded-full w-fit">
@@ -548,49 +559,72 @@ function CustomersTab() {
                 </select>
             </div>
 
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
-                <table className="w-full text-left min-w-[800px]">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                        <tr>
-                            <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Customer Name</th>
-                            <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Contact Info</th>
-                            <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Origin / Source</th>
-                            <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Visit Date</th>
-                            <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {[
-                            { name: 'Sarah Jenkins', phone: '+234 800 123 4567', email: 'sarah@example.com', origin: 'From Partner: ABC Fashion', date: 'Oct 12, 2023', promo: 'Free Coffee', status: 'Purchased' },
-                            { name: 'Michael Chen', phone: '+234 800 987 6543', email: 'michael@example.com', origin: 'Sent To: FitLife Gym', date: 'Oct 12, 2023', promo: '15% Lunch Discount', status: 'Visited' },
-                            { name: 'Emma Davis', phone: '+234 800 555 1234', email: 'emma@example.com', origin: 'Direct Customer', date: 'Oct 11, 2023', promo: 'BOGO Offer', status: 'Purchased' },
-                            { name: 'James Wilson', phone: '+234 800 444 9876', email: 'james@example.com', origin: 'From Partner: Glow Salon', date: 'Oct 11, 2023', promo: '15% Lunch Discount', status: 'Visited' },
-                            { name: 'Olivia Martinez', phone: '+234 800 222 3333', email: 'olivia@example.com', origin: 'From Partner: ABC Fashion', date: 'Oct 10, 2023', promo: 'Free Coffee', status: 'Purchased' }
-                        ].map((row, i) => (
-                            <tr key={i} className="hover:bg-gray-50/50">
-                                <td className="px-6 py-4 font-bold text-gray-800">{row.name}</td>
-                                <td className="px-6 py-4">
-                                    <div className="text-sm font-medium text-gray-800">{row.phone}</div>
-                                    <div className="text-xs text-gray-500">{row.email}</div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={cn("text-xs font-bold px-3 py-1 rounded-full", row.origin.includes('From Partner') ? "bg-purple-50 text-purple-600" : row.origin.includes('Sent To') ? "bg-orange-50 text-orange-600" : "bg-gray-100 text-gray-600")}>
+            <div className="bg-white md:rounded-3xl border-y md:border border-gray-100 shadow-sm overflow-hidden -mx-4 md:mx-0">
+                {/* Mobile Cards View */}
+                <div className="md:hidden divide-y divide-gray-200">
+                    {customersList.map((row, i) => (
+                        <div key={i} className="py-5 px-4 hover:bg-gray-50/50">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <div className="font-bold text-gray-800 text-[13px]">{row.name}</div>
+                                    <div className="text-[11px] text-gray-500 mt-0.5">{row.phone} • {row.email}</div>
+                                </div>
+                                <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full", row.status === 'Purchased' ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-600")}>
+                                    {row.status}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-end mt-4">
+                                <div className="space-y-1.5">
+                                    <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full block w-fit", row.origin.includes('From Partner') ? "bg-purple-50 text-purple-600" : row.origin.includes('Sent To') ? "bg-orange-50 text-orange-600" : "bg-gray-100 text-gray-600")}>
                                         {row.origin}
                                     </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="text-sm text-gray-500">{row.date}</div>
-                                    <div className="text-xs font-bold text-blue-600 mt-1">{row.promo}</div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={cn("text-xs font-bold px-3 py-1 rounded-full", row.status === 'Purchased' ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-600")}>
-                                        {row.status}
-                                    </span>
-                                </td>
+                                    <div className="text-[11px] font-bold text-blue-600">{row.promo}</div>
+                                </div>
+                                <div className="text-[11px] font-semibold text-gray-400">{row.date}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left min-w-[800px]">
+                        <thead className="bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Customer Name</th>
+                                <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Contact Info</th>
+                                <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Origin / Source</th>
+                                <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Visit Date</th>
+                                <th className="px-6 py-4 text-[11px] font-semibold uppercase text-gray-400 tracking-wider">Status</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {customersList.map((row, i) => (
+                                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-6 py-4 font-bold text-gray-800 text-sm">{row.name}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="text-sm font-medium text-gray-800">{row.phone}</div>
+                                        <div className="text-xs text-gray-500 mt-0.5">{row.email}</div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={cn("text-xs font-bold px-3 py-1 rounded-full", row.origin.includes('From Partner') ? "bg-purple-50 text-purple-600" : row.origin.includes('Sent To') ? "bg-orange-50 text-orange-600" : "bg-gray-100 text-gray-600")}>
+                                            {row.origin}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="text-sm font-medium text-gray-600">{row.date}</div>
+                                        <div className="text-[11px] font-bold text-blue-600 mt-1">{row.promo}</div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={cn("text-[11px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider", row.status === 'Purchased' ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-600")}>
+                                            {row.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

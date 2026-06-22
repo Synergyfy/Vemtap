@@ -31,9 +31,11 @@ export default function DashboardLayout({
                 </div>
             </div>
         }>
-            <DashboardSidebar>
-                {children}
-            </DashboardSidebar>
+            <div className="dashboard-typography-override h-full w-full">
+                <DashboardSidebar>
+                    {children}
+                </DashboardSidebar>
+            </div>
         </Suspense>
     );
 }
