@@ -7,6 +7,8 @@ export enum FosTransactionType {
   COMMISSION = 'COMMISSION',
   EXPENSE = 'EXPENSE',
   REFUND = 'REFUND',
+  POS_SALE = 'POS_SALE',
+  POS_REFUND = 'POS_REFUND',
 }
 
 export enum FosPlatform {

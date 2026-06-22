@@ -504,6 +504,11 @@ export class CatalogueOrderService {
       if (item.stockQuantity <= 0) {
         item.stockQuantity = 0;
         item.status = CatalogueItemStatus.OUT_OF_STOCK;
+      } else if (
+        item.minStock !== null &&
+        item.stockQuantity <= item.minStock
+      ) {
+        item.status = CatalogueItemStatus.LOW_STOCK;
       }
       await this.itemRepository.save(item);
     }
@@ -512,9 +517,17 @@ export class CatalogueOrderService {
   private async restoreStock(item: CatalogueItem, quantity: number) {
     if (item.stockQuantity !== null) {
       item.stockQuantity += quantity;
-      if (
+      if (item.stockQuantity <= 0) {
+        item.status = CatalogueItemStatus.OUT_OF_STOCK;
+      } else if (
+        item.minStock !== null &&
+        item.stockQuantity <= item.minStock
+      ) {
+        item.status = CatalogueItemStatus.LOW_STOCK;
+      } else if (
         item.stockQuantity > 0 &&
-        item.status === CatalogueItemStatus.OUT_OF_STOCK
+        (item.status === CatalogueItemStatus.OUT_OF_STOCK ||
+          item.status === CatalogueItemStatus.LOW_STOCK)
       ) {
         item.status = CatalogueItemStatus.ACTIVE;
       }

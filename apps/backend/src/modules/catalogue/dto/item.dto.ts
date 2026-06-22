@@ -88,6 +88,40 @@ export class CreateCatalogueItemDto {
   @Min(0)
   stockQuantity?: number;
 
+  @ApiPropertyOptional({ example: 'VMT0001' })
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @ApiPropertyOptional({ example: 500 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  costPrice?: number;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minStock?: number;
+
+  @ApiPropertyOptional({ example: 'House Made' })
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @ApiPropertyOptional({ example: [{ type: 'size', value: 'large' }] })
+  @IsOptional()
+  variants?: { type: string; value: string }[];
+
+  @ApiPropertyOptional({ example: ['burger', 'beef'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
@@ -178,6 +212,40 @@ export class UpdateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   stockQuantity?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  costPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minStock?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  variants?: { type: string; value: string }[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { LifeBuoy, MessageCircle, BookOpen, Mail, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function HelpSupportPage() {
+  const router = useRouter();
   const supportOptions = [
     {
       icon: MessageCircle,
@@ -14,6 +16,7 @@ export default function HelpSupportPage() {
       action: 'Start Chat',
       color: 'bg-blue-50 text-blue-600 border-blue-100',
       hoverColor: 'hover:border-blue-300',
+      onClick: () => router.push('/dashboard/messaging/chat'),
     },
     {
       icon: Mail,
@@ -22,6 +25,7 @@ export default function HelpSupportPage() {
       action: 'Send Email',
       color: 'bg-purple-50 text-purple-600 border-purple-100',
       hoverColor: 'hover:border-purple-300',
+      onClick: () => window.open('mailto:support@vemtap.com'),
     },
     {
       icon: BookOpen,
@@ -30,6 +34,7 @@ export default function HelpSupportPage() {
       action: 'Browse Articles',
       color: 'bg-emerald-50 text-emerald-600 border-emerald-100',
       hoverColor: 'hover:border-emerald-300',
+      onClick: () => window.open('https://docs.vemtap.com', '_blank'),
     },
   ];
 
@@ -66,6 +71,7 @@ export default function HelpSupportPage() {
         {supportOptions.map((opt, i) => (
           <button
             key={i}
+            onClick={opt.onClick}
             className={cn(
               "bg-white border rounded-[24px] p-6 text-left transition-all group",
               opt.color,

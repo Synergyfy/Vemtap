@@ -24,11 +24,15 @@ export default function CatalogueOverviewPage() {
     const businessCategory = (typeof business?.category === 'string' ? business.category : (business?.category as any)?.name) || 'Restaurant';
     const isProductBased = !['salon', 'spa', 'gym', 'service'].includes(businessCategory.toLowerCase());
 
+    const pendingRequestsCount = (ordersData?.data || []).filter(
+        (order: any) => order.status === 'new' || order.status === 'processing'
+    ).length;
+
     const stats = [
-        { label: 'Total Items', value: items.length || '48', icon: ShoppingBag, href: '/dashboard/catalogue/products' },
-        { label: 'Categories', value: categories.length || '6', icon: LayoutGrid, href: '/dashboard/catalogue/categories' },
-        { label: 'Pending Requests', value: '12', icon: Clock, href: '/dashboard/catalogue/orders' },
-        { label: 'Total Transactions', value: (ordersData as any)?.total || '1,240', icon: ClipboardList, href: '/dashboard/catalogue/orders' },
+        { label: 'Total Items', value: items.length.toString(), icon: ShoppingBag, href: '/dashboard/catalogue/products' },
+        { label: 'Categories', value: categories.length.toString(), icon: LayoutGrid, href: '/dashboard/catalogue/categories' },
+        { label: 'Pending Requests', value: pendingRequestsCount.toString(), icon: Clock, href: '/dashboard/catalogue/orders' },
+        { label: 'Total Transactions', value: (ordersData?.total || 0).toString(), icon: ClipboardList, href: '/dashboard/catalogue/orders' },
     ];
 
     if (isLoading) {
@@ -66,7 +70,7 @@ export default function CatalogueOverviewPage() {
                                 </div>
                                 <h4 className="text-lg font-black text-gray-900 mb-2">No items yet</h4>
                                 <p className="text-sm font-medium text-gray-400 mb-8">Start adding your {isProductBased ? 'products' : 'services'} to grow.</p>
-                                <Button className="bg-[#066CF4] rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs">Add First Item</Button>
+                                <Link href="/dashboard/catalogue/products"><Button className="bg-[#066CF4] rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs">Add First Item</Button></Link>
                             </div>
                         ) : (
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

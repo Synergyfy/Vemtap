@@ -1,27 +1,24 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { usePosStore } from '@/store/usePosStore';
+import { usePosSales, useHeldPosSales } from '@/services/pos/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { CreditCard, ShoppingCart, TrendingUp, Clock, Plus, ArrowRight, Receipt, Activity } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { CreditCard, ShoppingCart, TrendingUp, Plus, ArrowRight, Receipt, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function SalesDashboard() {
   const router = useRouter();
-  const { completedSales, heldSales, isSeeded, seedSales } = usePosStore();
+  const { data: completedSalesData } = usePosSales();
+  const { data: heldSalesData } = useHeldPosSales();
+  const completedSales = (completedSalesData as any)?.data ?? completedSalesData ?? [];
+  const heldSales = heldSalesData ?? [];
 
-  useEffect(() => {
-    if (!isSeeded) seedSales();
-  }, [isSeeded, seedSales]);
-
-  // Derived stats
   const today = new Date().toLocaleDateString();
-  const todaysSales = completedSales.filter(s => new Date(s.createdAt).toLocaleDateString() === today);
-  const totalRevenue = todaysSales.reduce((sum, s) => sum + s.total, 0);
+  const todaysSales = completedSales.filter((s: any) => new Date(s.createdAt).toLocaleDateString() === today);
+  const totalRevenue = todaysSales.reduce((sum: number, s: any) => sum + (s.total ?? 0), 0);
 
-  const recentSales = [...completedSales].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+  const recentSales = [...completedSales].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">

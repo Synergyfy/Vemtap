@@ -38,6 +38,7 @@ export interface CatalogueItem {
     discountType: DiscountType;
     discountValue: number | null;
     stockQuantity?: number;
+    minStock?: number;
     allowBackOrder: boolean;
     isSuspended: boolean;
     suspensionNote?: string;
@@ -189,7 +190,7 @@ export interface CreateOrderDto {
 
 // Categories
 export const getCategories = async () => {
-    return await api.get('/admin/catalogue/categories');
+    return await api.get('/catalogue/categories');
 };
 
 export const getCategoriesPublic = async (branchId: string) => {
@@ -197,21 +198,21 @@ export const getCategoriesPublic = async (branchId: string) => {
 };
 
 export const createCategory = async (data: CreateCategoryDto) => {
-    return await api.post('/admin/catalogue/categories', data);
+    return await api.post('/catalogue/categories', data);
 };
 
 export const updateCategory = async (id: string, data: Partial<CreateCategoryDto>) => {
-    return await api.patch(`/admin/catalogue/categories/${id}`, data);
+    return await api.patch(`/catalogue/categories/${id}`, data);
 };
 
 export const deleteCategory = async (id: string) => {
-    return await api.delete(`/admin/catalogue/categories/${id}`);
+    return await api.delete(`/catalogue/categories/${id}`);
 };
 
 // Items
 export const getItems = async (params: { branchId?: string, categoryId?: string, search?: string } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
-    return await api.get(`/admin/catalogue/items${qs ? `?${qs}` : ''}`);
+    return await api.get(`/catalogue/items${qs ? `?${qs}` : ''}`);
 };
 
 export const getItemsPublic = async (branchId: string, params: { categoryId?: string, search?: string } = {}) => {
@@ -225,11 +226,11 @@ export const getCatalogueItem = async (id: string, branchId?: string) => {
 };
 
 export const createItem = async (data: CreateItemDto) => {
-    return await api.post('/admin/catalogue/items', data);
+    return await api.post('/catalogue/items', data);
 };
 
 export const updateItem = async (id: string, data: UpdateItemDto) => {
-    return await api.patch(`/admin/catalogue/items/${id}`, data);
+    return await api.patch(`/catalogue/items/${id}`, data);
 };
 
 export const deleteItem = async (id: string, params: { branchId: string, applyGlobally?: boolean }) => {
@@ -237,15 +238,15 @@ export const deleteItem = async (id: string, params: { branchId: string, applyGl
         branchId: params.branchId, 
         applyGlobally: String(!!params.applyGlobally) 
     }).toString();
-    return await api.delete(`/admin/catalogue/items/${id}?${qs}`);
+    return await api.delete(`/catalogue/items/${id}?${qs}`);
 };
 
 export const importItem = async (id: string, targetBranchId: string) => {
-    return await api.post(`/admin/catalogue/items/${id}/import`, { targetBranchId });
+    return await api.post(`/catalogue/items/${id}/import`, { targetBranchId });
 };
 
 // Orders
-export const getOrders = async (params: { branchId?: string, status?: string, search?: string } = {}) => {
+export const getOrders = async (params: { branchId?: string, status?: string, search?: string, type?: string, page?: number, limit?: number } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
     return await api.get(`/catalogue/orders${qs ? `?${qs}` : ''}`);
 };
@@ -418,7 +419,7 @@ export const useImportCatalogueItem = () => {
     });
 };
 
-export const useCatalogueOrders = (params: { branchId?: string, status?: string, search?: string, type?: string } = {}) => {
+export const useCatalogueOrders = (params: { branchId?: string, status?: string, search?: string, type?: string, page?: number, limit?: number } = {}) => {
     return useQuery<PaginatedResponse<Order>>({
         queryKey: ['catalogue', 'orders', params],
         queryFn: () => getOrders(params),

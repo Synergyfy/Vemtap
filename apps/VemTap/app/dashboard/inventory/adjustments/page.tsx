@@ -2,24 +2,29 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useCatalogueItems, useUpdateCatalogueItem } from '@/services/catalogue/hooks';
 import { useInventoryStore } from '@/store/useInventoryStore';
-import { useProductStore } from '@/store/useProductStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Search, Plus, Settings2, Package, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 export default function StockAdjustmentsScreen() {
   const router = useRouter();
+  const { activeBranchId } = useActiveBranch();
+  const { data: products = [] } = useCatalogueItems({ branchId: activeBranchId ?? undefined });
   const { adjustStock } = useInventoryStore();
-  const { products } = useProductStore();
-  
+  const updateProduct = useUpdateCatalogueItem();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; currentQty: number; quantityChange: number; reason: string }[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredProducts = products.filter(p => 
-    p.status !== 'archived' && 
-    (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+  const activeProducts = products.filter((p: any) => p.status !== 'suspended');
+  const filteredProducts = activeProducts.filter((p: any) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku || '').toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 5);
 
   const handleSelectProduct = (product: any) => {
@@ -27,7 +32,7 @@ export default function StockAdjustmentsScreen() {
       setSelectedItems([...selectedItems, {
         productId: product.id,
         name: product.name,
-        currentQty: product.quantity,
+        currentQty: product.stockQuantity || 0,
         quantityChange: 0,
         reason: 'Damage'
       }]);
@@ -36,25 +41,45 @@ export default function StockAdjustmentsScreen() {
   };
 
   const updateItem = (productId: string, field: 'quantityChange' | 'reason', value: any) => {
-    setSelectedItems(items => items.map(i => 
+    setSelectedItems(items => items.map(i =>
       i.productId === productId ? { ...i, [field]: value } : i
     ));
   };
 
-  const handleAdjust = () => {
+  const handleAdjust = async () => {
     const validItems = selectedItems.filter(i => i.quantityChange !== 0);
     if (validItems.length === 0) return;
 
-    adjustStock(validItems.map(i => ({ 
-      productId: i.productId, 
-      quantityChange: i.quantityChange, 
-      reason: i.reason 
-    })));
+    setIsSubmitting(true);
+    try {
+      for (const item of validItems) {
+        await updateProduct.mutateAsync({
+          id: item.productId,
+          data: {
+            stockQuantity: Math.max(0, item.currentQty + item.quantityChange),
+            branchId: activeBranchId ?? undefined,
+            applyGlobally: false,
+          },
+        });
+      }
 
-    setIsSuccess(true);
-    setTimeout(() => {
-      router.push('/dashboard/inventory');
-    }, 2000);
+      adjustStock(validItems.map(i => ({
+        productId: i.productId,
+        productName: i.name,
+        quantityChange: i.quantityChange,
+        reason: i.reason,
+        currentQty: i.currentQty,
+      })));
+
+      setIsSuccess(true);
+      setTimeout(() => {
+        router.push('/dashboard/inventory');
+      }, 2000);
+    } catch (error) {
+      toast.error('Failed to adjust stock');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const reasons = ['Damage', 'Theft', 'Expired', 'Internal Use', 'Found Items'];
@@ -73,14 +98,13 @@ export default function StockAdjustmentsScreen() {
 
   return (
     <div className="max-w-4xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
-      <POSPageHeader 
-        title="Stock Adjustments" 
+      <POSPageHeader
+        title="Stock Adjustments"
         subtitle="Correct stock levels due to damage, loss, or expiration"
       />
 
       <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex-1 flex flex-col">
-        
-        {/* Product Search */}
+
         <div className="mb-6 relative">
           <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Find Product to Adjust</label>
           <div className="relative">
@@ -91,17 +115,17 @@ export default function StockAdjustmentsScreen() {
               placeholder="Search product by name or barcode..."
             />
           </div>
-          
+
           {searchQuery && (
             <div className="absolute z-10 w-full mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
-              {filteredProducts.length > 0 ? filteredProducts.map(p => (
-                <button 
+              {filteredProducts.length > 0 ? filteredProducts.map((p: any) => (
+                <button
                   key={p.id} onClick={() => handleSelectProduct(p)}
                   className="w-full text-left p-4 hover:bg-gray-50 border-b border-gray-50 flex items-center justify-between"
                 >
                   <div>
                     <p className="text-sm font-black text-gray-900">{p.name}</p>
-                    <p className="text-[10px] font-bold text-gray-400 mt-0.5">Current Stock: {p.quantity}</p>
+                    <p className="text-[10px] font-bold text-gray-400 mt-0.5">Current Stock: {p.stockQuantity || 0}</p>
                   </div>
                   <Plus size={18} className="text-amber-500" />
                 </button>
@@ -112,7 +136,6 @@ export default function StockAdjustmentsScreen() {
           )}
         </div>
 
-        {/* Selected Items */}
         <div className="flex-1 overflow-y-auto mb-6">
           {selectedItems.length > 0 ? (
             <div className="space-y-3">
@@ -126,7 +149,7 @@ export default function StockAdjustmentsScreen() {
                       </span>
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 w-full md:w-auto flex-wrap md:flex-nowrap">
                     <div className="w-full md:w-32">
                       <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">Reason</label>
@@ -143,19 +166,18 @@ export default function StockAdjustmentsScreen() {
                         type="number" value={item.quantityChange || ''} onChange={(e) => updateItem(item.productId, 'quantityChange', Number(e.target.value))}
                         className={cn(
                           "w-full h-10 px-3 rounded-xl border-2 text-xs font-black focus:outline-none",
-                          item.quantityChange < 0 ? "border-red-200 bg-red-50 text-red-700 focus:border-red-500" : 
+                          item.quantityChange < 0 ? "border-red-200 bg-red-50 text-red-700 focus:border-red-500" :
                           item.quantityChange > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-700 focus:border-emerald-500" :
                           "border-gray-200 bg-white text-gray-900 focus:border-amber-500"
                         )}
                         placeholder="e.g. -2 or 5"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => setSelectedItems(items => items.filter(i => i.productId !== item.productId))}
                       className="size-10 shrink-0 rounded-xl bg-gray-200 text-gray-500 flex items-center justify-center mt-4"
                     >
-                      <CheckCircle2 size={16} className="rotate-45" /> 
-                      <span className="sr-only">Remove</span>
+                      <span className="text-lg">✕</span>
                     </button>
                   </div>
                 </div>
@@ -169,26 +191,24 @@ export default function StockAdjustmentsScreen() {
           )}
         </div>
 
-        {/* Footer Actions */}
         <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
             {selectedItems.length} items to adjust
           </p>
           <button
             onClick={handleAdjust}
-            disabled={selectedItems.length === 0 || !selectedItems.some(i => i.quantityChange !== 0)}
+            disabled={selectedItems.length === 0 || !selectedItems.some(i => i.quantityChange !== 0) || isSubmitting}
             className={cn(
               "h-14 px-8 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[11px] transition-all shadow-xl",
-              selectedItems.length > 0 && selectedItems.some(i => i.quantityChange !== 0)
+              selectedItems.length > 0 && selectedItems.some(i => i.quantityChange !== 0) && !isSubmitting
                 ? "bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600 active:scale-95"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
             )}
           >
             <Settings2 size={16} />
-            Apply Adjustments
+            {isSubmitting ? 'Adjusting...' : 'Apply Adjustments'}
           </button>
         </div>
-
       </div>
     </div>
   );
