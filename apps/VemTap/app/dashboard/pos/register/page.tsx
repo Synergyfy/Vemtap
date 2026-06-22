@@ -1,44 +1,57 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePosStore } from '@/store/usePosStore';
+import { useRegisterStatus, useOpenRegister, useCloseRegister, usePosDashboard } from '@/services/pos/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Lock, Unlock, Banknote, Calculator, FileText, CheckCircle2 } from 'lucide-react';
+import { Lock, Unlock, Banknote, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 export default function RegisterManagementScreen() {
   const router = useRouter();
-  const { isRegisterOpen, registerOpenedAt, openingCash, openRegister, closeRegister, getTodaysSales } = usePosStore();
-  
-  const [openingAmount, setOpeningAmount] = useState('50000');
-  
-  // For closing
+  const { data: registerStatus } = useRegisterStatus();
+  const openRegisterMut = useOpenRegister();
+  const closeRegisterMut = useCloseRegister();
+  const { activeBranchId } = useActiveBranch();
+  const { data: dashboard } = usePosDashboard(activeBranchId ?? undefined);
+
+  const [openingAmount, setOpeningAmount] = useState('');
   const [actualCash, setActualCash] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [closeReport, setCloseReport] = useState<{ expectedCash: number; totalSales: number; transactionCount: number } | null>(null);
 
-  // Auto update expected cash logic
-  const todaySales = getTodaysSales();
-  const cashSalesTotal = todaySales.filter(s => s.payment.method === 'cash').reduce((acc, s) => acc + s.total, 0);
-  const expectedCashAmount = openingCash + cashSalesTotal;
+  const isRegisterOpen = registerStatus?.isOpen ?? false;
+  const session = registerStatus?.session;
+  const openingCash = session?.openingCash ?? 0;
+  const registerOpenedAt = session?.openedAt;
 
   const handleOpen = () => {
-    openRegister(Number(openingAmount));
-    router.push('/dashboard/pos');
+    openRegisterMut.mutate(
+      { openingCash: Number(openingAmount) },
+      { onSuccess: () => router.push('/dashboard/pos') }
+    );
   };
 
   const handleClose = () => {
     if (actualCash === '') return;
-    const report = closeRegister();
-    setCloseReport(report);
-    setIsClosing(true);
+    closeRegisterMut.mutate(undefined, {
+      onSuccess: (data) => {
+        const totalSales = data.expectedCash - data.openingCash;
+        setCloseReport({
+          expectedCash: data.expectedCash,
+          totalSales: totalSales > 0 ? totalSales : 0,
+          transactionCount: data.transactionCount || 0,
+        });
+        setIsClosing(true);
+      },
+    });
   };
 
   if (isClosing && closeReport) {
     const variance = Number(actualCash) - closeReport.expectedCash;
-    
+
     return (
       <div className="max-w-2xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0">
         <div className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col items-center text-center mt-12">
@@ -103,7 +116,7 @@ export default function RegisterManagementScreen() {
             </div>
           </div>
 
-          <button onClick={handleOpen} className="w-full h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 hover:bg-emerald-600 transition-all active:scale-95">
+          <button onClick={handleOpen} disabled={!openingAmount || openRegisterMut.isPending} className="w-full h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 hover:bg-emerald-600 transition-all active:scale-95">
             <Unlock size={20} />
             <span className="text-[12px] font-black uppercase tracking-widest">Open Shift</span>
           </button>
@@ -114,13 +127,12 @@ export default function RegisterManagementScreen() {
 
   return (
     <div className="max-w-4xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
-      <POSPageHeader 
-        title="Register Management" 
+      <POSPageHeader
+        title="Register Management"
         subtitle="Manage the current cash drawer shift"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Col - Status */}
         <div className="space-y-6">
           <div className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm">
             <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
@@ -129,7 +141,7 @@ export default function RegisterManagementScreen() {
               </div>
               <div>
                 <h3 className="text-sm font-black text-gray-900">Register is Open</h3>
-                <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Since {new Date(registerOpenedAt!).toLocaleTimeString()}</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Since {registerOpenedAt ? new Date(registerOpenedAt).toLocaleTimeString() : ''}</p>
               </div>
             </div>
 
@@ -139,12 +151,12 @@ export default function RegisterManagementScreen() {
                 <span className="text-sm font-bold text-gray-900">₦{openingCash.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Cash Sales</span>
-                <span className="text-sm font-bold text-emerald-500">+₦{cashSalesTotal.toLocaleString()}</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Total Sales</span>
+                <span className="text-sm font-bold text-emerald-500">+₦{(dashboard?.revenue ?? 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-900">Expected Cash in Drawer</span>
-                <span className="text-xl font-black text-[#066CF4]">₦{expectedCashAmount.toLocaleString()}</span>
+                <span className="text-xl font-black text-[#066CF4]">₦{((dashboard?.revenue ?? 0) + openingCash).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -164,7 +176,6 @@ export default function RegisterManagementScreen() {
           </div>
         </div>
 
-        {/* Right Col - Close Form */}
         <div className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex flex-col">
           <h3 className="text-lg font-black text-gray-900 mb-2">Close Register</h3>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-8">Count the physical cash in the drawer to close the shift.</p>
@@ -183,11 +194,11 @@ export default function RegisterManagementScreen() {
 
           <button
             onClick={handleClose}
-            disabled={actualCash === ''}
+            disabled={actualCash === '' || closeRegisterMut.isPending}
             className={cn(
               "w-full h-16 mt-auto rounded-2xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all shadow-xl",
-              actualCash !== '' 
-                ? "bg-red-500 text-white shadow-red-500/25 hover:bg-red-600 active:scale-95" 
+              actualCash !== '' && !closeRegisterMut.isPending
+                ? "bg-red-500 text-white shadow-red-500/25 hover:bg-red-600 active:scale-95"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
             )}
           >

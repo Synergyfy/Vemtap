@@ -21,6 +21,7 @@ import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { getQueueToken } from '@nestjs/bullmq';
 
 describe('CatalogueOrderService', () => {
   let service: CatalogueOrderService;
@@ -92,6 +93,12 @@ describe('CatalogueOrderService', () => {
             count: jest.fn().mockResolvedValue(0),
             create: jest.fn(),
             save: jest.fn(),
+          },
+        },
+        {
+          provide: getQueueToken('order-notifications'),
+          useValue: {
+            add: jest.fn().mockResolvedValue({}),
           },
         },
         CatalogueOrderService,

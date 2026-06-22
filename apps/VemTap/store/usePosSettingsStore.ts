@@ -1,0 +1,57 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+export interface POSSettingsState {
+  businessName: string;
+  businessAddress: string;
+  phoneNumber: string;
+  currency: string;
+  receiptHeader: string;
+  receiptFooter: string;
+  autoPrintReceipt: boolean;
+  showLogo: boolean;
+  taxEnabled: boolean;
+  taxRate: number;
+  taxLabel: string;
+  pricesIncludeTax: boolean;
+  lowStockAlerts: boolean;
+  dailySalesSummary: boolean;
+  newOrderAlert: boolean;
+  staffActivityAlerts: boolean;
+
+  updateSettings: (updates: Partial<Omit<POSSettingsState, 'updateSettings'>>) => void;
+  resetStore: () => void;
+}
+
+const DEFAULT_SETTINGS = {
+  businessName: 'VemTap Retail Store',
+  businessAddress: '123 Lagos Rd, Victoria Island, Lagos',
+  phoneNumber: '+234 800 000 0000',
+  currency: 'NGN',
+  receiptHeader: 'Thank you for shopping with us!',
+  receiptFooter: 'No returns after 7 days. Receipt required.',
+  autoPrintReceipt: false,
+  showLogo: true,
+  taxEnabled: false,
+  taxRate: 7.5,
+  taxLabel: 'VAT',
+  pricesIncludeTax: true,
+  lowStockAlerts: true,
+  dailySalesSummary: true,
+  newOrderAlert: false,
+  staffActivityAlerts: false,
+};
+
+export const usePosSettingsStore = create<POSSettingsState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_SETTINGS,
+
+      updateSettings: (updates) => set((state) => ({ ...state, ...updates })),
+      resetStore: () => set({ ...DEFAULT_SETTINGS }),
+    }),
+    {
+      name: 'vemtap-pos-settings-storage',
+    }
+  )
+);

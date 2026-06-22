@@ -13,23 +13,32 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Spinner from '@/components/ui/Spinner';
+import { useCatalogueOrders } from '@/services/catalogue/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export default function BookingsDashboardPage() {
+    const { activeBranchId } = useActiveBranch();
     const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-    const isLoading = false;
+    
+    const { data: bookingsData, isLoading } = useCatalogueOrders({ 
+        type: 'booking', 
+        branchId: activeBranchId || undefined 
+    });
+
+    const bookings = bookingsData?.data || [];
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    const todayBookingsCount = bookings.filter((b: any) => b.bookingDate === todayStr).length;
+    const upcomingBookingsCount = bookings.filter((b: any) => b.bookingDate && b.bookingDate > todayStr).length;
+    const confirmedCount = bookings.filter((b: any) => b.status === 'completed' || b.status === 'processing').length;
+    const cancelledCount = bookings.filter((b: any) => b.status === 'cancelled' || b.status === 'rejected').length;
 
     const stats = [
-        { label: "Today's Bookings", value: '14', icon: CalendarIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: "Upcoming", value: '42', icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
-        { label: "Confirmed", value: '38', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: "Cancelled", value: '3', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
-    ];
-
-    const mockBookings = [
-        { id: '1', customer: 'Sarah Jenkins', service: 'Premium Haircut', date: 'Today', time: '02:00 PM', duration: '45m', status: 'Confirmed' },
-        { id: '2', customer: 'Michael K.', service: 'Beard Trim & Style', date: 'Today', time: '03:15 PM', duration: '30m', status: 'Pending' },
-        { id: '3', customer: 'Elena R.', service: 'Full Color Treatment', date: 'Tomorrow', time: '10:00 AM', duration: '2h', status: 'Confirmed' },
-        { id: '4', customer: 'David W.', service: 'Quick Trim', date: 'Tomorrow', time: '12:30 PM', duration: '15m', status: 'Cancelled' },
+        { label: "Today's Bookings", value: todayBookingsCount.toString(), icon: CalendarIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: "Upcoming", value: upcomingBookingsCount.toString(), icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { label: "Confirmed", value: confirmedCount.toString(), icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: "Cancelled", value: cancelledCount.toString(), icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
     ];
 
     if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Spinner size="lg" /></div>;
@@ -45,13 +54,13 @@ export default function BookingsDashboardPage() {
                 <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm">
                    <button 
                        onClick={() => setViewMode('list')}
-                       className={cn("px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'list' ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-600")}
+                       className={cn("px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer", viewMode === 'list' ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-600")}
                    >
                       <List size={14} className="inline mr-2" /> List
                    </button>
                    <button 
                        onClick={() => setViewMode('calendar')}
-                       className={cn("px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'calendar' ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-600")}
+                       className={cn("px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer", viewMode === 'calendar' ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-600")}
                    >
                       <CalendarIcon size={14} className="inline mr-2" /> Calendar
                    </button>
@@ -79,36 +88,59 @@ export default function BookingsDashboardPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                    {mockBookings.map((bk) => (
-                        <div key={bk.id} className="group p-6 rounded-[32px] bg-white border border-gray-100 shadow-sm hover:border-[#066CF4]/20 hover:shadow-xl transition-all">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                <div className="flex items-center gap-5">
-                                    <div className="size-14 rounded-2xl bg-gray-50 flex flex-col items-center justify-center shrink-0 border border-gray-100">
-                                       <span className="text-[10px] font-black text-[#066CF4] uppercase">{bk.time.split(' ')[1]}</span>
-                                       <span className="text-sm font-black text-gray-900">{bk.time.split(' ')[0]}</span>
+                    {bookings.map((bk: any) => {
+                        const timeParts = (bk.bookingTime || '12:00 PM').split(' ');
+                        const timeStr = timeParts[0] || '12:00';
+                        const periodStr = timeParts[1] || 'PM';
+                        const customerName = bk.customer ? `${bk.customer.firstName} ${bk.customer.lastName}`.trim() : 'Walk-in Customer';
+                        const servicesList = bk.items?.map((i: any) => i.item?.name || i.name || 'Service Item').join(', ') || 'No Services Selected';
+                        
+                        return (
+                            <div key={bk.id} className="group p-6 rounded-[32px] bg-white border border-gray-100 shadow-sm hover:border-[#066CF4]/20 hover:shadow-xl transition-all">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                    <div className="flex items-center gap-5">
+                                        <div className="size-14 rounded-2xl bg-gray-50 flex flex-col items-center justify-center shrink-0 border border-gray-100">
+                                           <span className="text-[10px] font-black text-[#066CF4] uppercase">{periodStr}</span>
+                                           <span className="text-sm font-black text-gray-900">{timeStr}</span>
+                                        </div>
+                                        <div>
+                                           <h4 className="text-base font-black text-gray-900">{customerName}</h4>
+                                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{servicesList} • {bk.bookingDate || 'No Date'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                       <h4 className="text-base font-black text-gray-900">{bk.customer}</h4>
-                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{bk.service} • {bk.duration}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <Badge className={cn(
-                                        "border-none font-black text-[8px] uppercase px-4 py-1.5",
-                                        bk.status === 'Confirmed' ? "bg-emerald-50 text-emerald-600" :
-                                        bk.status === 'Pending' ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600"
-                                    )}>
-                                        {bk.status}
-                                    </Badge>
-                                    <div className="flex items-center gap-2">
-                                       <button className="size-10 rounded-xl bg-blue-50 text-[#066CF4] flex items-center justify-center hover:scale-110 transition-all"><Phone size={16} /></button>
-                                       <button className="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center hover:scale-110 transition-all"><Smartphone size={16} /></button>
-                                       <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center"><MoreVertical size={16} /></button>
+                                    <div className="flex items-center gap-4">
+                                        <Badge className={cn(
+                                            "border-none font-black text-[8px] uppercase px-4 py-1.5",
+                                            bk.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
+                                            bk.status === 'processing' ? "bg-blue-50 text-blue-600" :
+                                            bk.status === 'new' ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600"
+                                        )}>
+                                            {bk.status === 'completed' ? 'Confirmed' : bk.status === 'processing' ? 'Active' : bk.status === 'new' ? 'Pending' : bk.status}
+                                        </Badge>
+                                        <div className="flex items-center gap-2">
+                                           {bk.customer?.phone && (
+                                               <>
+                                                   <a href={`tel:${bk.customer.phone}`} className="size-10 rounded-xl bg-blue-50 text-[#066CF4] flex items-center justify-center hover:scale-110 transition-all cursor-pointer"><Phone size={16} /></a>
+                                                   <a href={`https://wa.me/${bk.customer.phone}`} target="_blank" rel="noreferrer" className="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center hover:scale-110 transition-all cursor-pointer"><Smartphone size={16} /></a>
+                                               </>
+                                           )}
+                                           <Link href={`/dashboard/catalogue/orders/${bk.id}`} className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:text-primary transition-all"><MoreVertical size={16} /></Link>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        );
+                    })}
+
+                    {bookings.length === 0 && (
+                        <div className="py-20 text-center bg-white rounded-[32px] border border-dashed border-gray-200">
+                           <div className="size-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+                              <CalendarIcon size={40} />
+                           </div>
+                           <h4 className="text-lg font-black text-gray-900 mb-2">No bookings found</h4>
+                           <p className="text-sm font-medium text-gray-400">Your branch schedule is currently clear.</p>
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
 

@@ -2,36 +2,45 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useProductStore } from '@/store/useProductStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Search, Filter, AlertTriangle, ArrowDownToLine, Settings2, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function InventoryStockList() {
   const router = useRouter();
-  const { products } = useProductStore();
+  const { activeBranchId } = useActiveBranch();
+  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
+  const products = productsData?.data ?? [];
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredProducts = products.filter(p => 
-    p.status !== 'archived' && 
-    (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+  const activeProducts = products.filter((p: any) => p.status !== 'suspended');
+  const filteredProducts = activeProducts.filter((p: any) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const getStatus = (p: any) => {
+    if (p.stockQuantity === 0) return 'out_of_stock';
+    if (p.stockQuantity <= (p.minStock || 5)) return 'low_stock';
+    return 'active';
+  };
 
   return (
     <div className="max-w-7xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
-      <POSPageHeader 
-        title="Master Stock List" 
+      <POSPageHeader
+        title="Master Stock List"
         subtitle="View and manage all inventory quantities"
         actions={
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => router.push('/dashboard/inventory/adjustments')}
               className="h-10 md:h-12 px-4 rounded-2xl bg-amber-50 text-amber-600 flex items-center gap-2 hover:bg-amber-100 transition-colors"
             >
               <Settings2 size={18} />
               <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Adjust Stock</span>
             </button>
-            <button 
+            <button
               onClick={() => router.push('/dashboard/inventory/receiving')}
               className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-emerald-500 text-white flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all"
             >
@@ -46,11 +55,11 @@ export default function InventoryStockList() {
         <div className="p-4 border-b border-gray-100 flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, SKU, or barcode..." 
+              placeholder="Search by name or SKU..."
               className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 text-sm font-bold placeholder:font-medium focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10 bg-gray-50/50"
             />
           </div>
@@ -72,31 +81,32 @@ export default function InventoryStockList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredProducts.map(product => {
-                  const isLow = product.status === 'low_stock';
-                  const isOut = product.status === 'out_of_stock';
+                {filteredProducts.map((product: any) => {
+                  const status = getStatus(product);
+                  const isLow = status === 'low_stock';
+                  const isOut = status === 'out_of_stock';
 
                   return (
                     <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-4">
                           <div className="size-10 rounded-[12px] bg-gray-50 flex items-center justify-center border border-gray-100 overflow-hidden shrink-0">
-                             {product.image ? <img src={product.image} className="w-full h-full object-cover" /> : <Package size={16} className="text-gray-300" />}
+                            {product.mainImage ? <img src={product.mainImage} className="w-full h-full object-cover" /> : <Package size={16} className="text-gray-300" />}
                           </div>
                           <span className="text-sm font-black text-gray-900 line-clamp-1">{product.name}</span>
                         </div>
                       </td>
                       <td className="p-4">
-                        <p className="text-xs font-bold text-gray-900">{product.sku}</p>
-                        <p className="text-[10px] font-bold text-gray-400">{product.barcode}</p>
+                        <p className="text-xs font-bold text-gray-900">{product.sku || '-'}</p>
+                        <p className="text-[10px] font-bold text-gray-400">{product.barcode || '-'}</p>
                       </td>
                       <td className="p-4 text-right">
-                        <span className="text-sm font-bold text-gray-900">₦{product.costPrice.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-gray-900">₦{(product.costPrice || 0).toLocaleString()}</span>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex flex-col items-end">
                           <span className={cn("text-lg font-black", isOut ? "text-red-500" : isLow ? "text-amber-500" : "text-emerald-500")}>
-                            {product.quantity}
+                            {product.stockQuantity}
                           </span>
                         </div>
                       </td>
@@ -105,7 +115,7 @@ export default function InventoryStockList() {
                           "inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest",
                           isOut ? "bg-red-100 text-red-600" : isLow ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"
                         )}>
-                          {product.status.replace('_', ' ')}
+                          {status.replace('_', ' ')}
                         </span>
                       </td>
                     </tr>

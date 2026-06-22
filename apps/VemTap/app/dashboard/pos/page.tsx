@@ -13,9 +13,9 @@ export default function POSPage() {
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <div className="h-full flex flex-col md:flex-row relative">
+    <div className="h-full flex flex-col md:flex-row relative p-4 md:p-6">
       <div className="flex-1 overflow-y-auto">
-        <POSHomeScreen />
+        <POSHomeScreen onOpenCart={() => setMobileCartOpen(true)} />
       </div>
 
       {/* Desktop side-panel (unchanged) */}

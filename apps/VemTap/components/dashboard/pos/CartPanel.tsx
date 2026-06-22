@@ -2,14 +2,19 @@
 
 import React, { useState } from 'react';
 import { usePosStore } from '@/store/usePosStore';
+import { useHoldPosSale } from '@/services/pos/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { Trash2, UserPlus, Tag, Plus, Minus, X, ArrowRight, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { CustomerSelectorModal } from './CustomerSelectorModal';
 import { DiscountModal } from './DiscountModal';
+import toast from 'react-hot-toast';
 
 export function CartPanel({ onNavigate }: { onNavigate?: () => void } = {}) {
   const router = useRouter();
+  const { activeBranchId } = useActiveBranch();
+  const holdSale = useHoldPosSale();
   const { 
     cart, 
     removeFromCart, 
@@ -20,7 +25,6 @@ export function CartPanel({ onNavigate }: { onNavigate?: () => void } = {}) {
     getCartDiscountAmount,
     attachedCustomer,
     attachCustomer,
-    holdCurrentSale,
     cartDiscount,
     setCartDiscount
   } = usePosStore();
@@ -178,7 +182,28 @@ export function CartPanel({ onNavigate }: { onNavigate?: () => void } = {}) {
 
         <div className="grid grid-cols-4 gap-2">
           <button 
-            onClick={() => holdCurrentSale('Held by cashier')}
+            onClick={() => {
+              holdSale.mutate({
+                branchId: activeBranchId ?? '',
+                customerId: attachedCustomer?.id ?? undefined,
+                note: 'Held by cashier',
+                subtotal,
+                discountAmount: discount,
+                items: cart.map(i => ({
+                  productId: i.productId,
+                  productName: i.name,
+                  unitPrice: i.price,
+                  quantity: i.quantity,
+                  discount: i.discount,
+                  totalPrice: i.price * i.quantity - i.discount,
+                })),
+              }, {
+                onSuccess: () => {
+                  clearCart();
+                  toast.success('Sale held');
+                },
+              });
+            }}
             className="col-span-1 h-14 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-[20px] flex items-center justify-center transition-colors border border-gray-200"
             title="Hold Sale"
           >

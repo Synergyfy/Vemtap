@@ -53,6 +53,8 @@ import { FosRevenueAnalyticsModule } from './modules/fos-revenue-analytics/fos-r
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
+import { PosModule } from './modules/pos/pos.module';
+import { InventoryCountingModule } from './modules/inventory-counting/inventory-counting.module';
 
 @Module({
   imports: [
@@ -92,7 +94,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
       useFactory: (config: ConfigService) => [
         {
           ttl: config.get<number>('THROTTLE_TTL', 60000),
-          limit: config.get<number>('THROTTLE_LIMIT', 10),
+          limit: config.get<number>('THROTTLE_LIMIT', 60),
         },
       ],
     }),
@@ -162,6 +164,8 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     FosFinancialPlanningModule,
     FosForecastingModule,
     FosRevenueAnalyticsModule,
+    PosModule,
+    InventoryCountingModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

@@ -9,7 +9,7 @@ import {
     ShieldCheck, 
     Zap, AlertCircle
 } from 'lucide-react';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -92,13 +92,7 @@ export default function LoginPage() {
         }
     }, [storeLogin, routeAfterLogin]);
 
-    const googleLogin = useGoogleLogin({
-        onSuccess: handleGoogleSuccess,
-        onError: () => {
-            setGeneralError('Google sign-in was cancelled or failed. Please try again.');
-        },
-        flow: 'implicit',
-    });
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -278,19 +272,31 @@ export default function LoginPage() {
                             <span className="relative px-4 bg-white text-[10px] font-black uppercase tracking-widest text-gray-300">Or continue with</span>
                         </div>
                         
-                        <Button
-                            variant="outline"
-                            disabled={isLoggingIn}
-                            onClick={() => googleLogin()}
-                            className="w-full h-16 rounded-2xl border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50"
-                        >
+                        <div className="relative w-full h-16 rounded-2xl border-2 border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50 transition-all cursor-pointer overflow-hidden">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="size-5" alt="Google" />
                             {isLoggingIn ? (
                                 <div className="size-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                             ) : (
                                 'Sign in with Google'
                             )}
-                        </Button>
+                            
+                            {!isLoggingIn && (
+                                <div className="absolute inset-0 opacity-0 cursor-pointer overflow-hidden rounded-2xl">
+                                    <GoogleLogin
+                                        onSuccess={handleGoogleSuccess}
+                                        onError={() => {
+                                            setGeneralError('Google sign-in was cancelled or failed. Please try again.');
+                                        }}
+                                        useOneTap={false}
+                                        auto_select={false}
+                                        theme="outline"
+                                        size="large"
+                                        shape="rectangular"
+                                        width="400px"
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Sign Up Link */}
