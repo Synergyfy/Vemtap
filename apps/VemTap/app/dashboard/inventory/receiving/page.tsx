@@ -2,44 +2,46 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
 import { useInventoryStore } from '@/store/useInventoryStore';
-import { useProductStore } from '@/store/useProductStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Search, Filter, Plus, ArrowDownToLine, Settings2, Package, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, ArrowDownToLine, Package, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ReceiveStockScreen() {
   const router = useRouter();
+  const { activeBranchId } = useActiveBranch();
+  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
+  const products = productsData?.data ?? [];
   const { receiveStock } = useInventoryStore();
-  const { products } = useProductStore();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; currentQty: number; receiveQty: number; costPrice: number }[]>([]);
+  const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; currentQty: number; receiveQty: number }[]>([]);
   const [supplier, setSupplier] = useState('');
   const [poNumber, setPoNumber] = useState('');
-  
+
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const filteredProducts = products.filter(p => 
-    p.status !== 'archived' && 
-    (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
-  ).slice(0, 5); // Limit search results visually
+  const activeProducts = products.filter((p: any) => p.status !== 'suspended');
+  const filteredProducts = activeProducts.filter((p: any) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku || '').toLowerCase().includes(searchQuery.toLowerCase())
+  ).slice(0, 5);
 
   const handleSelectProduct = (product: any) => {
     if (!selectedItems.find(i => i.productId === product.id)) {
       setSelectedItems([...selectedItems, {
         productId: product.id,
         name: product.name,
-        currentQty: product.quantity,
+        currentQty: product.stockQuantity || 0,
         receiveQty: 0,
-        costPrice: product.costPrice
       }]);
     }
     setSearchQuery('');
   };
 
-  const updateItem = (productId: string, field: 'receiveQty' | 'costPrice', value: number) => {
-    setSelectedItems(items => items.map(i => 
+  const updateItem = (productId: string, field: 'receiveQty', value: number) => {
+    setSelectedItems(items => items.map(i =>
       i.productId === productId ? { ...i, [field]: value } : i
     ));
   };
@@ -49,7 +51,7 @@ export default function ReceiveStockScreen() {
     if (validItems.length === 0) return;
 
     receiveStock(
-      validItems.map(i => ({ productId: i.productId, quantity: i.receiveQty, costPrice: i.costPrice })),
+      validItems.map(i => ({ productId: i.productId, productName: i.name, quantity: i.receiveQty, currentQty: i.currentQty })),
       supplier,
       poNumber
     );
@@ -74,14 +76,13 @@ export default function ReceiveStockScreen() {
 
   return (
     <div className="max-w-4xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
-      <POSPageHeader 
-        title="Receive Stock" 
+      <POSPageHeader
+        title="Receive Stock"
         subtitle="Log incoming deliveries from suppliers"
       />
 
       <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex-1 flex flex-col">
-        
-        {/* Meta Info */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b border-gray-100">
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Supplier (Optional)</label>
@@ -101,7 +102,6 @@ export default function ReceiveStockScreen() {
           </div>
         </div>
 
-        {/* Product Search */}
         <div className="mb-6 relative">
           <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Add Products to Receive</label>
           <div className="relative">
@@ -112,17 +112,17 @@ export default function ReceiveStockScreen() {
               placeholder="Search product by name or barcode..."
             />
           </div>
-          
+
           {searchQuery && (
             <div className="absolute z-10 w-full mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
-              {filteredProducts.length > 0 ? filteredProducts.map(p => (
-                <button 
+              {filteredProducts.length > 0 ? filteredProducts.map((p: any) => (
+                <button
                   key={p.id} onClick={() => handleSelectProduct(p)}
                   className="w-full text-left p-4 hover:bg-gray-50 border-b border-gray-50 flex items-center justify-between"
                 >
                   <div>
                     <p className="text-sm font-black text-gray-900">{p.name}</p>
-                    <p className="text-[10px] font-bold text-gray-400 mt-0.5">Current Stock: {p.quantity}</p>
+                    <p className="text-[10px] font-bold text-gray-400 mt-0.5">Current Stock: {p.stockQuantity || 0}</p>
                   </div>
                   <Plus size={18} className="text-[#066CF4]" />
                 </button>
@@ -133,7 +133,6 @@ export default function ReceiveStockScreen() {
           )}
         </div>
 
-        {/* Selected Items */}
         <div className="flex-1 overflow-y-auto mb-6">
           {selectedItems.length > 0 ? (
             <div className="space-y-3">
@@ -143,16 +142,9 @@ export default function ReceiveStockScreen() {
                     <h4 className="text-sm font-black text-gray-900 line-clamp-1">{item.name}</h4>
                     <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-widest">Current: {item.currentQty} → New: {item.currentQty + item.receiveQty}</p>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className="w-1/2 md:w-28">
-                      <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">Unit Cost (₦)</label>
-                      <input
-                        type="number" value={item.costPrice || ''} onChange={(e) => updateItem(item.productId, 'costPrice', Number(e.target.value))}
-                        className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-900 focus:border-[#066CF4] focus:outline-none"
-                      />
-                    </div>
-                    <div className="w-1/2 md:w-28">
+                    <div className="w-full md:w-28">
                       <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-1">Qty to Receive</label>
                       <input
                         type="number" value={item.receiveQty || ''} onChange={(e) => updateItem(item.productId, 'receiveQty', Number(e.target.value))}
@@ -160,12 +152,11 @@ export default function ReceiveStockScreen() {
                         placeholder="0"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => setSelectedItems(items => items.filter(i => i.productId !== item.productId))}
                       className="size-10 shrink-0 rounded-xl bg-red-50 text-red-500 flex items-center justify-center mt-4"
                     >
-                      <CheckCircle2 size={16} className="rotate-45" /> {/* Use CheckCircle rotated for X, or standard X if available, falling back to basic text if needed */}
-                      <span className="sr-only">Remove</span>
+                      <span className="text-lg">✕</span>
                     </button>
                   </div>
                 </div>
@@ -179,7 +170,6 @@ export default function ReceiveStockScreen() {
           )}
         </div>
 
-        {/* Footer Actions */}
         <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
             {selectedItems.length} items ready
@@ -198,7 +188,6 @@ export default function ReceiveStockScreen() {
             Receive Stock
           </button>
         </div>
-
       </div>
     </div>
   );

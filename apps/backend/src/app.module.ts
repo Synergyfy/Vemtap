@@ -53,6 +53,7 @@ import { FosRevenueAnalyticsModule } from './modules/fos-revenue-analytics/fos-r
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
+import { PosModule } from './modules/pos/pos.module';
 
 @Module({
   imports: [
@@ -162,6 +163,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     FosFinancialPlanningModule,
     FosForecastingModule,
     FosRevenueAnalyticsModule,
+    PosModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

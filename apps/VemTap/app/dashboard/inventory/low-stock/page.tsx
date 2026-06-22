@@ -2,30 +2,35 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useProductStore } from '@/store/useProductStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { AlertTriangle, ArrowDownToLine, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function LowStockCenter() {
   const router = useRouter();
-  const { getLowStockProducts } = useProductStore();
-  
-  const alerts = getLowStockProducts();
+  const { activeBranchId } = useActiveBranch();
+  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
+  const products = productsData?.data ?? [];
+
+  const alerts = products.filter((p: any) =>
+    p.status !== 'suspended' && p.stockQuantity <= (p.minStock ?? 5)
+  );
 
   return (
     <div className="max-w-5xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
-      <POSPageHeader 
-        title="Low Stock Alerts" 
+      <POSPageHeader
+        title="Low Stock Alerts"
         subtitle="Items that have fallen below their minimum threshold"
       />
 
       <div className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-1 flex flex-col">
         {alerts.length > 0 ? (
           <div className="space-y-4">
-            {alerts.map(item => {
-              const isOut = item.status === 'out_of_stock';
-              
+            {alerts.map((item: any) => {
+              const isOut = item.stockQuantity === 0;
+
               return (
                 <div key={item.id} className="p-4 md:p-6 bg-gray-50 rounded-[24px] border border-gray-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between hover:bg-white hover:shadow-md transition-all">
                   <div className="flex items-center gap-4">
@@ -38,24 +43,24 @@ export default function LowStockCenter() {
                     <div>
                       <h4 className="text-sm font-black text-gray-900">{item.name}</h4>
                       <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-widest">
-                        SKU: {item.sku} • Cost: ₦{item.costPrice.toLocaleString()}
+                        SKU: {item.sku || '-'} • Cost: ₦{(item.costPrice || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-6 w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t border-gray-200 md:border-0">
                     <div className="flex-1 md:flex-none">
                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Current Stock</p>
                       <p className={cn("text-xl font-black", isOut ? "text-red-500" : "text-amber-500")}>
-                        {item.quantity}
+                        {item.stockQuantity}
                       </p>
                     </div>
                     <div className="flex-1 md:flex-none">
                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Min Threshold</p>
-                      <p className="text-xl font-black text-gray-900">{item.minStock}</p>
+                      <p className="text-xl font-black text-gray-900">{item.minStock || 5}</p>
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => router.push(`/dashboard/inventory/receiving?product=${item.id}`)}
                       className="h-10 px-4 rounded-xl bg-[#066CF4] text-white flex items-center gap-2 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
                     >

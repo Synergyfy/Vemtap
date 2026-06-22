@@ -2,19 +2,22 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePosStore, type PaymentMethodType } from '@/store/usePosStore';
+import { usePosStore } from '@/store/usePosStore';
+import { useCreatePosSale } from '@/services/pos/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2 } from 'lucide-react';
+import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { CustomerSelectorModal } from '@/components/dashboard/pos/CustomerSelectorModal';
 
 export default function PaymentScreen() {
   const router = useRouter();
-  const { getCartTotal, completeSale, attachedCustomer, attachCustomer, cart } = usePosStore();
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
+  const { activeBranchId } = useActiveBranch();
+  const { getCartTotal, getCartSubtotal, getCartDiscountAmount, attachedCustomer, attachCustomer, cart, clearCart, setLastCompletedSale, cartDiscount } = usePosStore();
+  const createSale = useCreatePosSale();
+  const [selectedMethod, setSelectedMethod] = useState<'cash' | 'transfer' | 'card' | 'split' | null>(null);
   const [amountReceived, setAmountReceived] = useState<string>('');
-  const [isCompleting, setIsCompleting] = useState(false);
   const [hideCustomerInfoOnReceipt, setHideCustomerInfoOnReceipt] = useState(true);
   const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
 
@@ -23,27 +26,48 @@ export default function PaymentScreen() {
   const change = Math.max(0, receivedNum - total);
   const isSufficient = selectedMethod === 'cash' ? receivedNum >= total : selectedMethod !== null;
 
-  if (cart.length === 0 && !isCompleting) {
+  if (cart.length === 0 && !createSale.isPending) {
     router.replace('/dashboard/pos');
     return null;
   }
 
   const executePayment = () => {
-    setIsCompleting(true);
-    completeSale(
+    if (!selectedMethod || !activeBranchId) return;
+
+    const items = cart.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      discount: item.discount > 0 ? item.discount : undefined,
+    }));
+
+    const payment = {
+      method: selectedMethod,
+      amountPaid: selectedMethod === 'cash' ? receivedNum : total,
+      change: selectedMethod === 'cash' ? change : 0,
+    };
+
+    createSale.mutate(
       {
-        method: selectedMethod!,
-        amountPaid: selectedMethod === 'cash' ? receivedNum : total,
-        change: selectedMethod === 'cash' ? change : 0,
+        items,
+        payment,
+        branchId: activeBranchId,
+        customerId: attachedCustomer?.id,
+        cartDiscountAmount: cartDiscount ? (cartDiscount.type === 'percentage' ? getCartDiscountAmount() : cartDiscount.value) : undefined,
+        hideCustomerInfoOnReceipt,
       },
-      hideCustomerInfoOnReceipt
+      {
+        onSuccess: (sale) => {
+          setLastCompletedSale(sale);
+          clearCart();
+          router.push('/dashboard/pos/success');
+        },
+      }
     );
-    router.push('/dashboard/pos/success');
   };
 
   const handleComplete = () => {
-    if (!selectedMethod || !isSufficient || isCompleting) return;
-    
+    if (!selectedMethod || !isSufficient || createSale.isPending) return;
+
     if (!attachedCustomer) {
       setShowCustomerPrompt(true);
       return;
@@ -64,7 +88,6 @@ export default function PaymentScreen() {
       <POSPageHeader title="Payment" subtitle={`Total: ₦${total.toLocaleString()}`} />
 
       <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm mb-20">
-        {/* Total Display */}
         <div className="text-center mb-10">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Amount Due</p>
           <h2 className="text-5xl font-black text-[#066CF4] tracking-tight">₦{total.toLocaleString()}</h2>
@@ -75,18 +98,17 @@ export default function PaymentScreen() {
           )}
         </div>
 
-        {/* Method Selection */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           {paymentMethods.map((method) => {
             const isSelected = selectedMethod === method.id;
             return (
               <button
                 key={method.id}
-                onClick={() => setSelectedMethod(method.id as PaymentMethodType)}
+                onClick={() => setSelectedMethod(method.id as typeof selectedMethod)}
                 className={cn(
-                  "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all active:scale-95",
-                  isSelected 
-                    ? "border-[#066CF4] bg-[#066CF4]/5 shadow-md shadow-[#066CF4]/10" 
+                  "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all active:scale-95 relative",
+                  isSelected
+                    ? "border-[#066CF4] bg-[#066CF4]/5 shadow-md shadow-[#066CF4]/10"
                     : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
                 )}
               >
@@ -102,7 +124,6 @@ export default function PaymentScreen() {
           })}
         </div>
 
-        {/* Cash Input (Only visible if cash selected) */}
         {selectedMethod === 'cash' && (
           <div className="mb-8 p-6 bg-gray-50 rounded-[24px] border border-gray-100">
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3">Amount Received</label>
@@ -120,8 +141,7 @@ export default function PaymentScreen() {
                 autoFocus
               />
             </div>
-            
-            {/* Quick amounts */}
+
             <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
               {[total, 1000, 5000, 10000, 20000].filter(a => a >= total).map((amt, i) => (
                 <button
@@ -145,14 +165,13 @@ export default function PaymentScreen() {
           </div>
         )}
 
-        {/* Privacy Toggle */}
         {attachedCustomer && (
           <div className="mt-6 mb-8 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
             <div>
               <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Hide Customer Info</p>
               <p className="text-[10px] font-bold text-gray-500">Do not display name on receipt</p>
             </div>
-            <button 
+            <button
               onClick={() => setHideCustomerInfoOnReceipt(!hideCustomerInfoOnReceipt)}
               className={cn(
                 "w-12 h-6 rounded-full transition-colors relative",
@@ -170,27 +189,30 @@ export default function PaymentScreen() {
         <div className="mt-8">
           <button
             onClick={handleComplete}
-            disabled={!selectedMethod || !isSufficient}
+            disabled={!selectedMethod || !isSufficient || createSale.isPending}
             className={cn(
               "w-full h-16 rounded-[24px] flex items-center justify-center text-[12px] font-black uppercase tracking-[0.2em] transition-all shadow-xl",
-              selectedMethod && isSufficient
+              selectedMethod && isSufficient && !createSale.isPending
                 ? "bg-[#066CF4] text-white shadow-blue-500/25 hover:bg-blue-600 active:scale-[0.98]"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
             )}
           >
-            Complete Payment
+            {createSale.isPending ? (
+              <><Loader2 size={20} className="animate-spin mr-2" /> Processing...</>
+            ) : (
+              'Complete Payment'
+            )}
           </button>
         </div>
       </div>
 
-      <CustomerSelectorModal 
+      <CustomerSelectorModal
         isOpen={showCustomerPrompt}
         onClose={() => setShowCustomerPrompt(false)}
         selectedCustomerId={attachedCustomer?.id}
         onSelectCustomer={(c) => {
           attachCustomer(c);
           setShowCustomerPrompt(false);
-          // Wait for state to settle, then execute
           setTimeout(executePayment, 50);
         }}
         onSkip={() => {

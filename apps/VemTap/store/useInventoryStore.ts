@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useProductStore } from './useProductStore';
 
 export type MovementType = 'receive' | 'adjust' | 'transfer' | 'sale' | 'return' | 'count_variance';
 
@@ -9,11 +8,11 @@ export interface StockMovement {
   productId: string;
   productName: string;
   type: MovementType;
-  quantityChange: number; // positive or negative
+  quantityChange: number;
   previousQuantity: number;
   newQuantity: number;
   reason: string;
-  referenceId?: string; // e.g. receipt number, PO number
+  referenceId?: string;
   createdAt: string;
   user: string;
 }
@@ -30,29 +29,27 @@ export interface StockCountSession {
 interface InventoryState {
   movements: StockMovement[];
   countSessions: StockCountSession[];
-  
-  // Actions
+
   recordMovement: (
-    productId: string, 
-    type: MovementType, 
-    quantityChange: number, 
-    reason: string, 
+    productId: string,
+    productName: string,
+    type: MovementType,
+    quantityChange: number,
+    reason: string,
+    previousQuantity: number,
     referenceId?: string,
     user?: string
   ) => void;
-  
-  // Bulk Actions
-  receiveStock: (items: { productId: string; quantity: number; costPrice?: number }[], supplierId?: string, poNumber?: string) => void;
-  adjustStock: (items: { productId: string; quantityChange: number; reason: string }[]) => void;
-  
-  // Queries
+
+  receiveStock: (items: { productId: string; productName: string; quantity: number; currentQty: number }[], supplierId?: string, poNumber?: string) => void;
+  adjustStock: (items: { productId: string; productName: string; quantityChange: number; reason: string; currentQty: number }[]) => void;
+
   getMovementsForProduct: (productId: string) => StockMovement[];
   getRecentMovements: (limit?: number) => StockMovement[];
-  
-  // Seed
+
   seedMovements: () => void;
   isSeeded: boolean;
-  
+
   resetStore: () => void;
 }
 
@@ -63,19 +60,13 @@ export const useInventoryStore = create<InventoryState>()(
       countSessions: [],
       isSeeded: false,
 
-      recordMovement: (productId, type, quantityChange, reason, referenceId, user = 'System') => {
-        const productStore = useProductStore.getState();
-        const product = productStore.getProduct(productId);
-        
-        if (!product) return;
-
-        const previousQuantity = product.quantity;
+      recordMovement: (productId, productName, type, quantityChange, reason, previousQuantity, referenceId, user = 'System') => {
         const newQuantity = Math.max(0, previousQuantity + quantityChange);
 
         const movement: StockMovement = {
           id: `mov-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
           productId,
-          productName: product.name,
+          productName,
           type,
           quantityChange,
           previousQuantity,
@@ -86,9 +77,6 @@ export const useInventoryStore = create<InventoryState>()(
           user,
         };
 
-        // Important: Update the actual product store!
-        productStore.updateStock(productId, quantityChange);
-
         set((state) => ({
           movements: [movement, ...state.movements],
         }));
@@ -96,21 +84,15 @@ export const useInventoryStore = create<InventoryState>()(
 
       receiveStock: (items, supplierId, poNumber) => {
         const { recordMovement } = get();
-        // In a real app with API, this would be a single bulk endpoint
         items.forEach(item => {
-          recordMovement(item.productId, 'receive', item.quantity, 'Supplier Delivery', poNumber);
-          
-          // Optionally update cost price if provided
-          if (item.costPrice) {
-             useProductStore.getState().updateProduct(item.productId, { costPrice: item.costPrice });
-          }
+          recordMovement(item.productId, item.productName, 'receive', item.quantity, 'Supplier Delivery', item.currentQty, poNumber);
         });
       },
 
       adjustStock: (items) => {
         const { recordMovement } = get();
         items.forEach(item => {
-          recordMovement(item.productId, 'adjust', item.quantityChange, item.reason);
+          recordMovement(item.productId, item.productName, 'adjust', item.quantityChange, item.reason, item.currentQty);
         });
       },
 
@@ -124,31 +106,7 @@ export const useInventoryStore = create<InventoryState>()(
 
       seedMovements: () => {
         if (get().isSeeded) return;
-        
-        const seededMovements: StockMovement[] = [];
-        const now = new Date();
-        const h = (hoursAgo: number) => new Date(now.getTime() - hoursAgo * 60 * 60 * 1000).toISOString();
-
-        // Add some realistic seed movements for products we know exist in seed data
-        seededMovements.push({
-          id: 'mov-seed-1', productId: 'p1', productName: 'Coca-Cola 50cl', type: 'receive',
-          quantityChange: 100, previousQuantity: 20, newQuantity: 120, reason: 'Weekly restock',
-          referenceId: 'PO-2026-001', createdAt: h(48), user: 'Manager'
-        });
-        
-        seededMovements.push({
-          id: 'mov-seed-2', productId: 'p8', productName: 'Dangote Sugar 1kg', type: 'adjust',
-          quantityChange: -2, previousQuantity: 2, newQuantity: 0, reason: 'Damaged packaging',
-          createdAt: h(24), user: 'Adewale'
-        });
-
-        seededMovements.push({
-          id: 'mov-seed-3', productId: 'p9', productName: 'Ankara Shirt (XL)', type: 'sale',
-          quantityChange: -1, previousQuantity: 21, newQuantity: 20, reason: 'POS Sale',
-          referenceId: 'RCT-20260619-002', createdAt: h(1), user: 'System'
-        });
-
-        set({ movements: seededMovements, isSeeded: true });
+        set({ isSeeded: true, movements: [] });
       },
 
       resetStore: () => set({ movements: [], countSessions: [], isSeeded: false }),

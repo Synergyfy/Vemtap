@@ -1,45 +1,46 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { ShoppingBag, Search, Plus, Filter, LayoutGrid } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingBag, Search, Plus, Filter, LayoutGrid, Loader2 } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
-import { useProductStore, type Product } from '@/store/useProductStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/services/catalogue/hooks';
 import { cn } from '@/lib/utils';
 import POSPageHeader from './shared/POSPageHeader';
 
 export default function POSHomeScreen() {
-  const { cart, addToCart, isRegisterOpen, openingCash } = usePosStore();
-  const { products, categories, seedProducts, isSeeded } = useProductStore();
+  const { cart, addToCart } = usePosStore();
+  const { activeBranchId } = useActiveBranch();
+  const { data: productsData, isLoading: loadingProducts } = useCatalogueItemsPublic(activeBranchId ?? '');
+  const { data: categoriesData = [] } = useCatalogueCategoriesPublic(activeBranchId ?? '');
+  const products = productsData?.data ?? [];
+  const categories = categoriesData ?? [];
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  useEffect(() => {
-    if (!isSeeded) {
-      seedProducts();
-    }
-  }, [isSeeded, seedProducts]);
-
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.barcode.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredProducts = products.filter((p: any) => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = activeCategory === 'all' || p.categoryId === activeCategory;
-    return matchesSearch && matchesCategory && p.status !== 'archived';
+    return matchesSearch && matchesCategory && p.status !== 'suspended' && p.status !== 'out_of_stock';
   });
 
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
+  if (loadingProducts) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-80px)]">
+        <Loader2 size={32} className="animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] md:h-full relative pb-24">
-      {/* Header */}
       <div className="px-4 pt-4 md:px-0 md:pt-0">
-        <POSPageHeader 
-          title="Point of Sale" 
-          subtitle={isRegisterOpen ? `Register Open • Cash: ₦${openingCash.toLocaleString()}` : 'Register Closed'}
-          showBack={false}
-        />
+        <POSPageHeader title="Point of Sale" showBack={false} />
       </div>
 
-      {/* Search & Filter Bar */}
       <div className="px-4 md:px-0 mb-6 space-y-4">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -55,27 +56,26 @@ export default function POSHomeScreen() {
           </button>
         </div>
 
-        {/* Categories */}
         <div className="flex overflow-x-auto no-scrollbar gap-2 pb-2 -mx-4 px-4 md:mx-0 md:px-0">
           <button
             onClick={() => setActiveCategory('all')}
             className={cn(
               "px-5 h-10 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border",
-              activeCategory === 'all' 
-                ? "bg-gray-900 text-white border-gray-900 shadow-md" 
+              activeCategory === 'all'
+                ? "bg-gray-900 text-white border-gray-900 shadow-md"
                 : "bg-white text-gray-600 border-gray-100 hover:border-gray-300"
             )}
           >
             All Items
           </button>
-          {categories.map(cat => (
+          {categories.map((cat: any) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
               className={cn(
                 "px-5 h-10 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border flex items-center gap-2",
-                activeCategory === cat.id 
-                  ? "bg-[#066CF4] text-white border-[#066CF4] shadow-md shadow-[#066CF4]/20" 
+                activeCategory === cat.id
+                  ? "bg-[#066CF4] text-white border-[#066CF4] shadow-md shadow-[#066CF4]/20"
                   : "bg-white text-gray-600 border-gray-100 hover:border-gray-300"
               )}
             >
@@ -86,13 +86,12 @@ export default function POSHomeScreen() {
         </div>
       </div>
 
-      {/* Product Grid */}
       <div className="flex-1 overflow-y-auto px-4 md:px-0 pb-32">
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-            {filteredProducts.map(product => {
-              const stockWarning = product.quantity <= product.minStock && product.quantity > 0;
-              const outOfStock = product.quantity === 0;
+            {filteredProducts.map((product: any) => {
+              const stockWarning = product.stockQuantity <= (product.minStock || 5) && product.stockQuantity > 0;
+              const outOfStock = product.stockQuantity === 0;
               const inCart = cart.some(item => item.productId === product.id);
 
               return (
@@ -103,23 +102,22 @@ export default function POSHomeScreen() {
                     id: product.id,
                     productId: product.id,
                     name: product.name,
-                    price: product.sellingPrice,
-                    costPrice: product.costPrice,
+                    price: product.price,
+                    costPrice: product.costPrice || 0,
                     quantity: 1,
                     sku: product.sku,
                     barcode: product.barcode,
-                    image: product.image
+                    image: product.mainImage
                   })}
                   className={cn(
                     "flex flex-col text-left bg-white border rounded-[28px] p-3 shadow-sm transition-all relative group",
-                    outOfStock 
-                      ? "opacity-50 cursor-not-allowed grayscale border-gray-100" 
-                      : inCart 
-                        ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 cursor-default" 
+                    outOfStock
+                      ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
+                      : inCart
+                        ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 cursor-default"
                         : "border-gray-100 hover:border-[#066CF4]/30 hover:shadow-md active:scale-95"
                   )}
                 >
-                  {/* Stock Badges */}
                   <div className="absolute top-3 right-3 flex gap-1 z-10">
                     {outOfStock && (
                       <span className="bg-red-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">Empty</span>
@@ -130,8 +128,8 @@ export default function POSHomeScreen() {
                   </div>
 
                   <div className="w-full aspect-square bg-gray-50 rounded-[20px] mb-3 flex items-center justify-center border border-gray-100 overflow-hidden relative group-hover:bg-[#066CF4]/5 transition-colors">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    {product.mainImage ? (
+                      <img src={product.mainImage} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
                       <LayoutGrid size={32} className="text-gray-300 group-hover:text-[#066CF4]/30 transition-colors" />
                     )}
@@ -139,8 +137,8 @@ export default function POSHomeScreen() {
                   <div className="px-1 flex-1 flex flex-col justify-between">
                     <h3 className="text-xs font-black text-gray-900 leading-snug line-clamp-2 mb-1">{product.name}</h3>
                     <div className="flex items-center justify-between mt-auto pt-1">
-                      <span className="text-[11px] font-black text-[#066CF4]">₦{product.sellingPrice.toLocaleString()}</span>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{product.quantity} left</span>
+                      <span className="text-[11px] font-black text-[#066CF4]">₦{product.price.toLocaleString()}</span>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{product.stockQuantity} left</span>
                     </div>
                   </div>
                 </button>
@@ -158,13 +156,12 @@ export default function POSHomeScreen() {
         )}
       </div>
 
-      {/* Floating Cart Button (Mobile Only) */}
       <div className="fixed bottom-[80px] left-0 right-0 p-4 md:hidden z-20 pointer-events-none">
-        <button 
+        <button
           className={cn(
             "w-full h-14 rounded-[20px] shadow-xl flex items-center justify-between px-6 transition-all pointer-events-auto active:scale-[0.98]",
-            cartItemCount > 0 
-              ? "bg-[#066CF4] text-white shadow-[#066CF4]/30" 
+            cartItemCount > 0
+              ? "bg-[#066CF4] text-white shadow-[#066CF4]/30"
               : "bg-gray-900 text-white shadow-gray-900/20"
           )}
         >

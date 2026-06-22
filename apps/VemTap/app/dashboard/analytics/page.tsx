@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { usePosStore } from '@/store/usePosStore';
-import { useProductStore } from '@/store/useProductStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { usePosDashboard } from '@/services/pos/hooks';
+import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { TrendingUp, Banknote, Package, Users, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,33 +12,32 @@ import { motion } from 'framer-motion';
 
 export default function AnalyticsDashboard() {
   const router = useRouter();
-  
-  // Real stats where possible
-  const { completedSales, getTodaysRevenue } = usePosStore();
-  const { getTotalRetailValue } = useProductStore();
-  
-  const todayRev = getTodaysRevenue();
-  const totalRev = completedSales.reduce((acc, s) => acc + s.total, 0);
-  const inventoryValue = getTotalRetailValue();
+  const { activeBranchId } = useActiveBranch();
+  const { data: dashboard } = usePosDashboard(activeBranchId ?? undefined);
+  const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
+  const products = productsData?.data ?? [];
+
+  const totalRevenue = dashboard?.revenue ?? 0;
+  const transactionCount = dashboard?.transactionCount ?? 0;
+  const inventoryValue = products.reduce((acc: number, p: any) => acc + ((p.price || 0) * (p.stockQuantity || 0)), 0);
 
   const metrics = [
-    { label: "Today's Revenue", value: `₦${todayRev.toLocaleString()}`, trend: '+14.5%', isUp: true, icon: Banknote, color: 'text-emerald-500 bg-emerald-50' },
-    { label: "Total Period Revenue", value: `₦${totalRev.toLocaleString()}`, trend: '+5.2%', isUp: true, icon: TrendingUp, color: 'text-blue-500 bg-blue-50' },
+    { label: "Total Revenue", value: `₦${totalRevenue.toLocaleString()}`, trend: '+14.5%', isUp: true, icon: Banknote, color: 'text-emerald-500 bg-emerald-50' },
+    { label: "Transactions", value: transactionCount.toString(), trend: '+5.2%', isUp: true, icon: TrendingUp, color: 'text-blue-500 bg-blue-50' },
     { label: "Inventory Retail Value", value: `₦${inventoryValue.toLocaleString()}`, trend: '-2.1%', isUp: false, icon: Package, color: 'text-purple-500 bg-purple-50' },
-    { label: "Total Transactions", value: completedSales.length.toString(), trend: '+8.4%', isUp: true, icon: Activity, color: 'text-amber-500 bg-amber-50' },
+    { label: "Total Products", value: products.length.toString(), trend: '+8.4%', isUp: true, icon: Activity, color: 'text-amber-500 bg-amber-50' },
   ];
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-8 pb-24">
-      <POSPageHeader 
-        title="Analytics & Reports" 
+      <POSPageHeader
+        title="Analytics & Reports"
         subtitle="Business performance at a glance"
       />
 
-      {/* Top Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {metrics.map((metric, i) => (
-          <motion.div 
+          <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -60,8 +60,6 @@ export default function AnalyticsDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Main Chart Area Placeholder */}
         <div className="lg:col-span-2 bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex flex-col min-h-[400px]">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -74,26 +72,24 @@ export default function AnalyticsDashboard() {
               <option>This Year</option>
             </select>
           </div>
-          
+
           <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-100 rounded-[24px] bg-gray-50/50 relative overflow-hidden">
-             {/* Decorative mock chart bars */}
-             <div className="absolute inset-x-8 bottom-8 flex items-end justify-between gap-2 opacity-20">
-               {[40, 70, 45, 90, 65, 80, 100].map((h, i) => (
-                 <div key={i} className="w-full bg-[#066CF4] rounded-t-lg transition-all duration-1000" style={{ height: `${h}%` }} />
-               ))}
-             </div>
-             <div className="text-center relative z-10">
-               <TrendingUp size={32} className="mx-auto mb-3 text-gray-400" />
-               <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Interactive Charts Loading...</p>
-             </div>
+            <div className="absolute inset-x-8 bottom-8 flex items-end justify-between gap-2 opacity-20">
+              {[40, 70, 45, 90, 65, 80, 100].map((h, i) => (
+                <div key={i} className="w-full bg-[#066CF4] rounded-t-lg transition-all duration-1000" style={{ height: `${h}%` }} />
+              ))}
+            </div>
+            <div className="text-center relative z-10">
+              <TrendingUp size={32} className="mx-auto mb-3 text-gray-400" />
+              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Interactive Charts Loading...</p>
+            </div>
           </div>
         </div>
 
-        {/* Deep Dive Links */}
         <div className="space-y-6">
           <div className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Detailed Reports</h3>
-            
+
             <div className="space-y-3">
               <button onClick={() => router.push('/dashboard/analytics/sales')} className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-100 transition-all group">
                 <div className="flex items-center gap-4">
@@ -133,7 +129,6 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

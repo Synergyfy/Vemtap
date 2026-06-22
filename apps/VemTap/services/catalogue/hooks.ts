@@ -38,6 +38,7 @@ export interface CatalogueItem {
     discountType: DiscountType;
     discountValue: number | null;
     stockQuantity?: number;
+    minStock?: number;
     allowBackOrder: boolean;
     isSuspended: boolean;
     suspensionNote?: string;
