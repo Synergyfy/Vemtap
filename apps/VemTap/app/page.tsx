@@ -381,7 +381,7 @@ export default function Homepage() {
                 <X size={20} />
               </button>
               <video
-                src="/assets/videos/vemtap-exp.mp4"
+                src="/assets/videos/vemtap-exp.webm"
                 autoPlay
                 controls
                 className="w-full h-full object-contain"
