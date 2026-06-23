@@ -108,6 +108,23 @@ export default function MarketingAssetEditor({
   useEffect(() => { bgColorRef.current = bgColor; }, [bgColor]);
   useEffect(() => { bgImageRef.current = bgImage; }, [bgImage]);
 
+  // Sync props → internal state when parent re-renders with new values
+  useEffect(() => {
+    setElementsRaw(initialElements);
+    elementsRef.current = initialElements;
+  }, [initialElements]);
+
+  useEffect(() => {
+    setBgColorRaw(initialBgColor);
+    bgColorRef.current = initialBgColor;
+  }, [initialBgColor]);
+
+  useEffect(() => {
+    const val = initialBgImage || '';
+    setBgImageRaw(val);
+    bgImageRef.current = val;
+  }, [initialBgImage]);
+
   const selectedElement = useMemo(() => elements.find(el => el.id === selectedElementId), [elements, selectedElementId]);
 
   // Duplicate an element

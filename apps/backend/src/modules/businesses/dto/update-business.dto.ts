@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID, IsObject, IsUrl, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsObject, IsUrl, IsBoolean, IsNumber, Min, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class UpdateBusinessDto {
@@ -56,6 +56,20 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @ApiPropertyOptional({ example: 6.5244, description: 'Latitude coordinate' })
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiPropertyOptional({ example: 3.3792, description: 'Longitude coordinate' })
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 
   @ApiPropertyOptional({ example: 'A premium restaurant...' })
   @IsOptional()

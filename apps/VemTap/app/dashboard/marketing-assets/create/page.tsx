@@ -9,14 +9,20 @@ import {
   Layout,
   Download,
   Printer,
-  Save
+  ImageIcon,
+  Save,
+  ArrowLeft,
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { Button } from '@/components/ui/button';
+import Modal from '@/components/ui/Modal';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import MarketingAssetEditor, { EditorElement } from '@/components/dashboard/marketing/MarketingAssetEditor';
 import {
   useCreateMarketingAsset,
   useMarketingTemplates,
+  useMarketingAsset,
 } from '@/services/marketing-assets/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
@@ -30,7 +36,11 @@ export default function CreateAssetWizardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const type = searchParams.get('type') || 'poster';
-  const templateId = searchParams.get('templateId');
+  const rawTemplateId = searchParams.get('templateId');
+  const templateId = rawTemplateId && rawTemplateId !== 'null' && rawTemplateId !== 'undefined' ? rawTemplateId : null;
+  const qrSource = searchParams.get('qrSource');
+  const exportParam = searchParams.get('export');
+  const assetId = searchParams.get('id');
 
   // API Hooks
   const { data: templates = [], isLoading: templatesLoading } = useMarketingTemplates(undefined, type);
@@ -51,10 +61,32 @@ export default function CreateAssetWizardPage() {
 
   const qrUrl = useMemo(() => {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://vemtap.com';
+      if (qrSource === 'catalogue') return `${origin}/dashboard/catalogue`;
       return activeBranch?.uniqueCode ? `${origin}/${activeBranch.uniqueCode}` : `${origin}/your-business`;
-  }, [activeBranch]);
+  }, [activeBranch, qrSource]);
 
   const businessLogo = activeBranch?.logoUrl || business?.logoUrl || '';
+
+  const { data: existingAsset } = useMarketingAsset(assetId || '', !!assetId);
+
+  // Populate editor from existing asset when id param is present
+  useEffect(() => {
+    if (existingAsset) {
+      const cfg = existingAsset.customConfig || {};
+      setElements(cfg.elements || []);
+      setBgColor(cfg.backgroundColor || '#FFFFFF');
+      setBgImage(cfg.backgroundImage || '');
+      setSelectedTemplate(existingAsset);
+      setStep('preview');
+    }
+  }, [existingAsset]);
+
+  // Auto-open export dialog when export param is present
+  useEffect(() => {
+    if (exportParam && step === 'preview') {
+      setShowExportDialog(true);
+    }
+  }, [exportParam, step]);
 
   // Initial template load if templateId provided
   useEffect(() => {
@@ -76,6 +108,14 @@ export default function CreateAssetWizardPage() {
     }
   };
 
+  // Reset save state when user goes back to editor (design may change)
+  useEffect(() => {
+    if (step === 'editor' && !existingAsset) {
+      isSavedRef.current = false;
+      setHasSaved(false);
+    }
+  }, [step]);
+
   const handleSelectTemplate = (tpl: any) => {
     setSelectedTemplate(tpl);
     const config = tpl.layoutConfig || {};
@@ -92,47 +132,131 @@ export default function CreateAssetWizardPage() {
   };
 
   const [isExporting, setIsGeneratingExport] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+  const isSavedRef = useRef(!!existingAsset);
   const downloadRef = useRef<HTMLDivElement>(null);
 
-  const handleSaveAndExport = async (format: 'png' | 'pdf') => {
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'png' | 'jpg' | 'pdf'>('png');
+  const [selectedPreset, setSelectedPreset] = useState('social_media');
+  const [customExportW, setCustomExportW] = useState(1080);
+  const [customExportH, setCustomExportH] = useState(1080);
+
+  const exportPresets = [
+    { id: 'social_media', label: 'Social Media', w: 1080, h: 1080 },
+    { id: 'poster', label: 'Poster (18×24 in)', w: 2400, h: 3200 },
+    { id: 'flyer', label: 'Flyer (8.5×11 in)', w: 2400, h: 3106 },
+    { id: 'table_tent', label: 'Table Tent (5×7 in)', w: 1500, h: 2100 },
+    { id: 'custom', label: 'Custom Size', w: 0, h: 0 },
+  ];
+
+  const getExportDims = () => {
+    if (selectedPreset === 'custom') return { w: customExportW || 1080, h: customExportH || 1080 };
+    const p = exportPresets.find(x => x.id === selectedPreset);
+    return { w: p?.w || 1080, h: p?.h || 1080 };
+  };
+
+  const saveToLibrary = async (): Promise<string | null> => {
+    if (existingAsset) return existingAsset.id;
+    if (isSavedRef.current) return null;
+    setIsSaving(true);
+    try {
+      const result = await createAssetMutation.mutateAsync({
+        name: selectedTemplate?.name || `${type.replace('_', ' ')} Design`,
+        type: type,
+        branchId: activeBranchId as string,
+        customConfig: { elements, backgroundColor: bgColor, backgroundImage: bgImage },
+        qrCodeContent: qrUrl
+      });
+      isSavedRef.current = true;
+      setHasSaved(true);
+      return result.id;
+    } catch {
+      toast.error('Failed to save to library');
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveToLibrary = async () => {
+    if (existingAsset) { toast.success('Already in your library'); return; }
+    if (isSavedRef.current) { toast.success('Already saved!'); return; }
+    const toastId = toast.loading('Saving...');
+    const id = await saveToLibrary();
+    if (id) toast.success('Saved to library!', { id: toastId });
+    else if (!isSavedRef.current) toast.error('Failed to save', { id: toastId });
+    else toast.dismiss(toastId);
+  };
+
+  const handleSaveAndExport = async (format: 'png' | 'jpg' | 'pdf', targetW: number, targetH: number) => {
     if (!downloadRef.current) return;
     setIsGeneratingExport(true);
-    const toastId = toast.loading(format === 'pdf' ? 'Preparing PDF...' : 'Saving & Exporting...');
+    const toastId = toast.loading(format === 'pdf' ? 'Preparing PDF...' : 'Exporting...');
 
     try {
-        const dataUrl = await htmlToImage.toPng(downloadRef.current, { quality: 1, pixelRatio: 3 });
-        
+        // Auto-save first if it's a new unsaved design
+        if (!existingAsset && !isSavedRef.current) {
+          await saveToLibrary();
+        }
+
+        const el = downloadRef.current;
+        const inner = el.firstElementChild as HTMLElement | null;
+
+        const origOuterW = el.style.width;
+        const origInnerStyle = inner?.getAttribute('style') || '';
+
+        const DISPLAY_MAX_W = 600;
+        const displayW = Math.min(targetW, DISPLAY_MAX_W);
+        const displayH = Math.round((displayW * targetH) / targetW);
+        const pixelRatio = targetW / displayW;
+
+        el.style.width = `${displayW}px`;
+        if (inner) {
+          inner.style.aspectRatio = `${displayW} / ${displayH}`;
+        }
+
+        await new Promise(r => requestAnimationFrame(r));
+        await new Promise(r => setTimeout(r, 30));
+
+        let dataUrl: string;
+        if (format === 'jpg') {
+            dataUrl = await htmlToImage.toJpeg(el, { quality: 0.92, pixelRatio, backgroundColor: '#FFFFFF' });
+        } else {
+            dataUrl = await htmlToImage.toPng(el, { quality: 1, pixelRatio });
+        }
+
+        el.style.width = origOuterW;
+        if (inner) inner.setAttribute('style', origInnerStyle);
+
         if (format === 'pdf') {
             const win = window.open('', '_blank');
             win?.document.write(`<html><body style="margin:0;display:flex;justify-content:center;"><img src="${dataUrl}" style="max-width:100%; height:auto;" onload="window.print(); window.close();"/></body></html>`);
             win?.document.close();
         } else {
+            const ext = format === 'jpg' ? 'jpg' : 'png';
             const link = document.createElement('a');
-            link.download = `${type}-asset.png`;
+            link.download = `${type}-asset.${ext}`;
             link.href = dataUrl;
             link.click();
         }
 
-        // Save to Library seamlessly
-        await createAssetMutation.mutateAsync({
-            name: selectedTemplate?.name || `${type.replace('_', ' ')} Design`,
-            templateId: selectedTemplate?.id,
-            type: type,
-            branchId: activeBranchId as string,
-            customConfig: { elements, backgroundColor: bgColor, backgroundImage: bgImage },
-            qrCodeContent: qrUrl
-        });
-
-        toast.success('Asset saved to library!', { id: toastId });
-        
-        if (format === 'png') {
-            router.push('/dashboard/marketing-assets');
-        }
+        toast.success(isSavedRef.current || existingAsset ? `Exported as ${format.toUpperCase()}!` : 'Saved & exported!', { id: toastId });
     } catch (err) {
         toast.error('Export failed', { id: toastId });
     } finally {
         setIsGeneratingExport(false);
     }
+  };
+
+  const handleSaveAndExit = async () => {
+    const toastId = toast.loading('Saving...');
+    if (!existingAsset && !isSavedRef.current) {
+      await saveToLibrary();
+    }
+    toast.success('Saved!', { id: toastId });
+    router.push('/dashboard/marketing-assets');
   };
 
   return (
@@ -199,7 +323,7 @@ export default function CreateAssetWizardPage() {
           )}
 
           {/* STEP 2: EDITOR */}
-          {step === 'editor' && (
+          {step === 'editor' && (!templateId || selectedTemplate) && (
             <motion.div key="editor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full">
                 <div className="min-h-[700px]">
                     <MarketingAssetEditor 
@@ -243,22 +367,28 @@ export default function CreateAssetWizardPage() {
                               <p className="text-xs text-gray-500 font-medium">Your design is ready to be shared with the world.</p>
                             </div>
                             
-                            <div className="space-y-3 pt-4 border-t border-gray-50">
+                            <div className="space-y-2 pt-4 border-t border-gray-50">
                               <Button 
-                                onClick={() => handleSaveAndExport('png')} 
+                                onClick={handleSaveToLibrary}
+                                disabled={isSaving}
+                                variant="outline"
+                                className="w-full h-12 border-2 border-gray-100 text-gray-700 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-gray-50 gap-2"
+                              >
+                                  <Save size={14} /> {hasSaved || existingAsset ? 'Saved' : 'Save to Library'}
+                              </Button>
+                              <Button 
+                                onClick={() => setShowExportDialog(true)} 
                                 disabled={isExporting}
                                 className="w-full h-14 bg-[#066CF4] hover:bg-[#0556c5] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl gap-3 shadow-xl shadow-blue-500/20"
                               >
-                                  <Download size={16} /> Download Image
+                                  <Download size={16} /> Download
                               </Button>
-                              <Button 
-                                onClick={() => handleSaveAndExport('pdf')} 
-                                disabled={isExporting}
-                                variant="outline" 
-                                className="w-full h-14 border-2 border-gray-100 text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-gray-50 gap-3"
+                              <button
+                                onClick={handleSaveAndExit}
+                                className="w-full flex items-center justify-center gap-2 py-3 text-[10px] font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-widest"
                               >
-                                  <Printer size={16} /> Print as PDF
-                              </Button>
+                                <ArrowLeft size={12} /> Save & Exit
+                              </button>
                             </div>
                         </div>
                         <button onClick={() => setStep('editor')} className="w-full flex items-center justify-center gap-2 text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors">
@@ -271,6 +401,94 @@ export default function CreateAssetWizardPage() {
 
         </AnimatePresence>
       </main>
+
+      {/* Export Options Dialog */}
+      <Modal isOpen={showExportDialog} onClose={() => setShowExportDialog(false)} title="Export Options" description="Choose format and size for your export." size="lg">
+        <div className="space-y-6">
+          {/* Format Selector */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">Format</label>
+            <div className="flex gap-2">
+              {([{ id: 'png', icon: Download, label: 'PNG' }, { id: 'jpg', icon: ImageIcon, label: 'JPG' }, { id: 'pdf', icon: Printer, label: 'PDF' }] as const).map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setExportFormat(id)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border-2",
+                    exportFormat === id
+                      ? "bg-[#066CF4] text-white border-[#066CF4] shadow-lg shadow-blue-500/20"
+                      : "bg-white text-gray-500 border-gray-100 hover:border-gray-200"
+                  )}
+                >
+                  <Icon size={16} /> {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Size Presets */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">Size</label>
+            <div className="grid grid-cols-2 gap-2">
+              {exportPresets.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPreset(p.id)}
+                  className={cn(
+                    "p-4 rounded-2xl border-2 text-left transition-all",
+                    selectedPreset === p.id
+                      ? "border-[#066CF4] bg-blue-50/50 shadow-sm"
+                      : "border-gray-100 bg-white hover:border-gray-200"
+                  )}
+                >
+                  <div className="text-sm font-black text-gray-900">{p.label}</div>
+                  {p.w > 0 && (
+                    <div className="text-[10px] font-bold text-gray-400 mt-0.5">{p.w}×{p.h} px</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom Dimensions */}
+          {selectedPreset === 'custom' && (
+            <div className="flex items-end gap-3">
+              <div className="flex-1 space-y-1">
+                <span className="text-[8px] font-black uppercase text-gray-400">Width</span>
+                <Input type="number" value={customExportW} onChange={e => setCustomExportW(Math.max(100, Number(e.target.value)))} min={100} className="text-sm" />
+              </div>
+              <span className="text-gray-300 font-black text-lg pb-2">×</span>
+              <div className="flex-1 space-y-1">
+                <span className="text-[8px] font-black uppercase text-gray-400">Height</span>
+                <Input type="number" value={customExportH} onChange={e => setCustomExportH(Math.max(100, Number(e.target.value)))} min={100} className="text-sm" />
+              </div>
+              <span className="text-[10px] font-bold text-gray-400 pb-2">px</span>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
+            <Button
+              onClick={() => setShowExportDialog(false)}
+              variant="outline"
+              className="flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                const { w, h } = getExportDims();
+                await handleSaveAndExport(exportFormat, w, h);
+                setShowExportDialog(false);
+              }}
+              disabled={isExporting}
+              className="flex-1 h-12 bg-[#066CF4] hover:bg-[#0556c5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20"
+            >
+              {isExporting ? 'Exporting...' : `Export ${exportFormat.toUpperCase()}`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

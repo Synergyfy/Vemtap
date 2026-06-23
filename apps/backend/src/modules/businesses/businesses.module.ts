@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { Business } from './entities/business.entity';
 import { BusinessesService } from './businesses.service';
 import { BusinessesController } from './businesses.controller';
@@ -14,16 +15,20 @@ import { Reward } from '../loyalty/entities/reward.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { GeocodingProcessor, GEOCODING_QUEUE } from './processors/geocoding.processor';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Business, User, Branch, Visit, Reward, Subscription, Plan]),
+    BullModule.registerQueue({
+      name: GEOCODING_QUEUE,
+    }),
     MailModule,
     DevicesModule,
     forwardRef(() => BranchesModule),
     forwardRef(() => SubscriptionsModule),
   ],
-  providers: [BusinessesService],
+  providers: [BusinessesService, GeocodingProcessor],
   controllers: [BusinessesController, PublicBusinessesController],
   exports: [BusinessesService],
 })
