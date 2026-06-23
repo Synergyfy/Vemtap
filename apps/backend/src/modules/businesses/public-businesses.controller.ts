@@ -1,7 +1,8 @@
-import { Controller, Get, Param, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Param, Query, ParseUUIDPipe } from '@nestjs/common';
 import { BusinessesService } from './businesses.service';
 import { BranchesService } from '../branches/branches.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { NearbyBranchesQueryDto } from '../branches/dto/nearby-branches-query.dto';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Public Businesses')
@@ -75,5 +76,37 @@ export class PublicBusinessesController {
   })
   async getBranchByCode(@Param('code') code: string) {
     return this.branchesService.findByCode(code);
+  }
+
+  @Public()
+  @Get('branches/nearby')
+  @ApiOperation({
+    summary: 'Find nearby branches within a radius of a given branch',
+  })
+  @ApiQuery({
+    name: 'branchId',
+    required: true,
+    description: 'UUID of the source branch',
+  })
+  @ApiQuery({
+    name: 'distance',
+    required: false,
+    description: 'Search radius in meters (default 500)',
+  })
+  @ApiQuery({
+    name: 'withPromotions',
+    required: false,
+    description: 'Only include branches with active promotions (default false)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max results (default 20)',
+  })
+  async findNearbyBranches(
+    @Query('branchId', ParseUUIDPipe) branchId: string,
+    @Query() query: NearbyBranchesQueryDto,
+  ) {
+    return this.branchesService.findNearbyBranches(branchId, query);
   }
 }
