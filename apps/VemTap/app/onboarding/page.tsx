@@ -65,10 +65,11 @@ import { useSubscribe } from '@/services/subscriptions/hooks';
 import type { SubscribeRequest } from '@/services/subscriptions/types';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { useAuthStore } from '@/store/useAuthStore';
+import LocationStep from './components/LocationStep';
 import toast from 'react-hot-toast';
 
 // --- Types ---
-type Step = 1 | 2 | '2A' | 3 | 4 | 5 | '5A' | 6 | 7;
+type Step = 1 | 2 | '2A' | 3 | '3A' | 4 | 5 | '5A' | 6 | 7;
 
 interface OnboardingData {
     category: string;
@@ -103,6 +104,8 @@ interface OnboardingData {
     isVisible: boolean;
     planId: string;
     billingCycle?: 'monthly' | 'quarterly' | 'yearly';
+    latitude?: number;
+    longitude?: number;
 }
 
 // --- Steps Data ---
@@ -110,7 +113,8 @@ const STEPS = [
     { id: 1, label: 'Welcome', progress: 14 },
     { id: 2, label: 'Category', progress: 28 },
     { id: '2A', label: 'Confirmation', progress: 30 },
-    { id: 3, label: 'Business Details', progress: 42 },
+    { id: 3, label: 'Business Details', progress: 38 },
+    { id: '3A', label: 'Business Location', progress: 48 },
     { id: 4, label: 'Operating Details', progress: 57 },
     { id: 5, label: 'Subscription', progress: 71 },
     { id: '5A', label: 'Plan Confirmation', progress: 75 },
@@ -130,7 +134,8 @@ export default function OnboardingPage() {
             '1': 2,
             '2': '2A',
             '2A': 3,
-            '3': 4,
+            '3': '3A',
+            '3A': 4,
             '4': 5,
             '5': '5A',
             '5A': 6,
@@ -152,7 +157,8 @@ export default function OnboardingPage() {
             '2': 1,
             '2A': 2,
             '3': '2A',
-            '4': 3,
+            '3A': 3,
+            '4': '3A',
             '5': 4,
             '5A': 5,
             '6': '5A',
@@ -191,7 +197,7 @@ export default function OnboardingPage() {
                     </div>
                     
                     {/* Progress Bar Section */}
-                    {currentStep !== 7 && currentStep !== '2A' && currentStep !== '5A' && (
+                    {currentStep !== 7 && currentStep !== '2A' && currentStep !== '3A' && currentStep !== '5A' && (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">
@@ -221,6 +227,12 @@ export default function OnboardingPage() {
                         {currentStep === 2 && <CategoryStep data={data} onNext={handleNext} />}
                         {currentStep === '2A' && <CategoryConfirmation onNext={() => handleNext()} />}
                         {currentStep === 3 && <DetailsStep data={data} onNext={handleNext} />}
+                        {currentStep === '3A' && (
+                            <LocationStep
+                                address={data.address || { street: '', city: '', state: '', country: '', zip: '' }}
+                                onNext={(locationData) => handleNext(locationData)}
+                            />
+                        )}
                         {currentStep === 4 && <OperatingStep data={data} onNext={handleNext} />}
                         {currentStep === 5 && <SubscriptionStep data={data} onNext={handleNext} />}
                         {currentStep === '5A' && <PlanConfirmation data={data} onNext={handleNext} onBack={handleBack} />}

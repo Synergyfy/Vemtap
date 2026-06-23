@@ -10,6 +10,8 @@ export interface Branch {
     username?: string;
     name: string;
     address: string;
+    latitude?: number;
+    longitude?: number;
     phone: string;
     isActive: boolean;
     isMainBranch: boolean;
@@ -84,6 +86,8 @@ export interface Business {
     emailSettings?: any;
     ownerId: string;
     address?: string;
+    latitude?: number;
+    longitude?: number;
     state?: string;
     city?: string;
     website?: string;

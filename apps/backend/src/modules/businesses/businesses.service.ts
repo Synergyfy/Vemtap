@@ -7,6 +7,8 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Repository, In } from 'typeorm';
 import { Business, BusinessStatus } from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
@@ -22,6 +24,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
+import { GEOCODING_QUEUE, GeocodingJobData } from './processors/geocoding.processor';
 
 @Injectable()
 export class BusinessesService {
@@ -44,6 +47,8 @@ export class BusinessesService {
     private subscriptionRepository: Repository<Subscription>,
     @InjectRepository(Plan)
     private planRepository: Repository<Plan>,
+    @InjectQueue(GEOCODING_QUEUE)
+    private readonly geocodingQueue: Queue<GeocodingJobData>,
   ) {}
 
   async create(
@@ -53,6 +58,8 @@ export class BusinessesService {
       website?: string;
       state?: string;
       city?: string;
+      latitude?: number;
+      longitude?: number;
       whatsappNumber?: string;
       officialEmail?: string;
       engagement?: Record<string, any>;
@@ -81,6 +88,8 @@ export class BusinessesService {
       website,
       state,
       city,
+      latitude,
+      longitude,
       whatsappNumber,
       officialEmail,
       phone,
@@ -97,6 +106,8 @@ export class BusinessesService {
       website,
       state,
       city,
+      latitude,
+      longitude,
       whatsappNumber,
     } as Partial<Business>);
     const savedBusiness = await this.businessesRepository.save(business);
@@ -110,6 +121,8 @@ export class BusinessesService {
       address,
       state,
       city,
+      latitude,
+      longitude,
       website,
       whatsappNumber,
       officialEmail: officialEmail,
@@ -260,7 +273,49 @@ export class BusinessesService {
     }
 
     Object.assign(business, updateBusinessDto);
-    return this.businessesRepository.save(business);
+    const saved = await this.businessesRepository.save(business);
+
+    if (updateBusinessDto.latitude !== undefined || updateBusinessDto.longitude !== undefined) {
+      const mainBranch = await this.findMainBranch(id);
+      if (mainBranch) {
+        if (updateBusinessDto.latitude !== undefined) {
+          mainBranch.latitude = updateBusinessDto.latitude;
+        }
+        if (updateBusinessDto.longitude !== undefined) {
+          mainBranch.longitude = updateBusinessDto.longitude;
+        }
+        await this.branchRepository.save(mainBranch);
+      }
+    }
+
+    return saved;
+  }
+
+  async enqueueGeocode(businessId: string): Promise<void> {
+    const business = await this.findById(businessId);
+    const mainBranch = await this.findMainBranch(businessId);
+
+    if (!mainBranch) {
+      throw new NotFoundException('Main branch not found for this business');
+    }
+
+    await this.geocodingQueue.add(
+      'geocode-address',
+      {
+        businessId,
+        branchId: mainBranch.id,
+        addressLine: business.address,
+        city: business.city,
+        state: business.state,
+        country: 'Nigeria',
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: 100,
+      },
+    );
   }
 
   async importCustomers(branchId: string, importDto: ImportCustomersDto) {
