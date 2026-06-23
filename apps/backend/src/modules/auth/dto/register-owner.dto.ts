@@ -9,6 +9,9 @@ import {
   IsArray,
   IsStrongPassword,
   IsUUID,
+  IsNumber,
+  Min,
+  Max,
   ValidateIf,
 } from 'class-validator';
 
@@ -158,6 +161,26 @@ export class RegisterOwnerDto {
   @IsOptional()
   @IsString()
   city?: string;
+
+  @ApiPropertyOptional({
+    example: 6.5244,
+    description: 'Business latitude coordinate',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiPropertyOptional({
+    example: 3.3792,
+    description: 'Business longitude coordinate',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 
   @ApiPropertyOptional({
     example: 'https://greenterrace.com',

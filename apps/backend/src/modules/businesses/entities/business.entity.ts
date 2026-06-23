@@ -118,6 +118,12 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   city: string;
 
+  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  latitude: number;
+
+  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  longitude: number;
+
   @Column({ nullable: true })
   whatsappNumber: string;
 

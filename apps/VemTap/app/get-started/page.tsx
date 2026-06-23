@@ -104,7 +104,7 @@ export default function GetStartedPage() {
         try {
             await requestOwnerOtp({
                 email: formData.email,
-                phone: formData.phone,
+                ...(formData.phone ? { phone: formData.phone } : {}),
                 role: 'Owner'
             });
             setStep(2);
@@ -139,7 +139,7 @@ export default function GetStartedPage() {
         try {
             await requestOwnerOtp({
                 email: formData.email,
-                phone: formData.phone,
+                ...(formData.phone ? { phone: formData.phone } : {}),
                 role: 'Owner'
             });
             setResendTimer(30);
@@ -175,7 +175,7 @@ export default function GetStartedPage() {
         try {
             const response = await registerOwner({
                 email: formData.email,
-                businessNumber: formData.phone,
+                ...(formData.phone ? { businessNumber: formData.phone } : {}),
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 businessName: formData.businessName,
@@ -201,7 +201,7 @@ export default function GetStartedPage() {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 businessName: formData.businessName,
-                businessNumber: formData.phone,
+                ...(formData.phone ? { businessNumber: formData.phone } : {}),
             });
 
             // Log user in

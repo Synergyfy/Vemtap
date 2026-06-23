@@ -297,6 +297,7 @@ export const useMarketingTemplates = (category?: string, type?: string, all = fa
           thumbnailUrl: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&q=80&w=400&h=500',
           layoutConfig: {
             backgroundColor: '#066CF4',
+            backgroundImage: 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=400&h=600',
             elements: [
               { id: 'logo-1', type: 'logo', x: 10, y: 10, width: 25, height: 10 },
               { id: 'headline-1', type: 'text', text: 'SUMMER SPECIAL', x: 10, y: 25, fontSize: 32, color: '#FFFFFF', fontWeight: 'black', alignment: 'left', width: 80 },
@@ -315,6 +316,7 @@ export const useMarketingTemplates = (category?: string, type?: string, all = fa
           thumbnailUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d597a?auto=format&fit=crop&q=80&w=400&h=500',
           layoutConfig: {
             backgroundColor: '#F8FAFC',
+            backgroundImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=400&h=600',
             elements: [
               { id: 'qr-2', type: 'qr', x: 30, y: 20, size: 140 },
               { id: 'headline-2', type: 'text', text: 'OUR MENU', x: 10, y: 70, fontSize: 24, color: '#0F172A', fontWeight: 'black', alignment: 'center', width: 80 },
@@ -333,6 +335,7 @@ export const useMarketingTemplates = (category?: string, type?: string, all = fa
           thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=400&h=500',
           layoutConfig: {
             backgroundColor: '#111827',
+            backgroundImage: 'https://images.unsplash.com/photo-1550684376-efcbd6e3f031?auto=format&fit=crop&q=80&w=400&h=600',
             elements: [
               { id: 'headline-3', type: 'text', text: 'NEW ARRIVALS', x: 10, y: 40, fontSize: 48, color: '#FFFFFF', fontWeight: 'black', alignment: 'center', width: 80 },
               { id: 'sub-3', type: 'text', text: 'Check out our latest collection online', x: 10, y: 55, fontSize: 16, color: '#9CA3AF', fontWeight: 'medium', alignment: 'center', width: 80 },

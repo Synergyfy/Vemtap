@@ -75,6 +75,24 @@ export class BusinessesController {
     return this.businessesService.update(businessId, updateBusinessDto);
   }
 
+  @Post('my-business/enqueue-geocode')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({
+    summary: 'Enqueue a background geocoding job to resolve lat/lng from the business address',
+  })
+  @ApiOkResponse({
+    description: 'Geocoding job queued',
+    schema: { example: { queued: true } },
+  })
+  async enqueueGeocode(@Request() req: RequestWithUser) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    await this.businessesService.enqueueGeocode(businessId);
+    return { queued: true };
+  }
+
   @Post('import-customers')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({
@@ -210,6 +228,18 @@ export class BusinessesController {
   })
   async findPendingVerificationAdmin(@Query() query: FindBusinessesAdminDto) {
     return this.businessesService.findPendingVerificationAdmin(query);
+  }
+
+  @Post('admin/backfill-geocodes')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Trigger backfill geocoding for branches with null coordinates' })
+  @ApiOkResponse({
+    description: 'Backfill geocoding job dispatched',
+    schema: { example: { queued: true } },
+  })
+  async triggerBackfillGeocodes() {
+    await this.businessesService.backfillMissingGeocodes();
+    return { queued: true };
   }
 
   @Post('admin')

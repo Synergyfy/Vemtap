@@ -89,7 +89,11 @@ export default function MarketingAssetsDashboardPage() {
 
   const handleDownload = async (asset: any) => {
     toast.success(`Opening print export for ${asset.name}`);
-    window.location.href = `/dashboard/marketing-assets/create?templateId=${asset.templateId}&id=${asset.id}&export=png`;
+    const params = new URLSearchParams();
+    if (asset.templateId) params.set('templateId', asset.templateId);
+    params.set('id', asset.id);
+    params.set('export', 'png');
+    router.push(`/dashboard/marketing-assets/create?${params.toString()}`);
   };
 
   const handleDuplicate = async (asset: any) => {
@@ -231,7 +235,7 @@ export default function MarketingAssetsDashboardPage() {
                                 >
                                     Download
                                 </Button>
-                                <Link href={`/dashboard/marketing-assets/create?templateId=${asset.templateId}&id=${asset.id}`} className="flex-1">
+                                <Link href={`/dashboard/marketing-assets/create?${asset.templateId ? `templateId=${asset.templateId}&` : ''}id=${asset.id}`} className="flex-1">
                                     <Button className="w-full rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 font-black h-10 text-[10px] uppercase tracking-widest">
                                         Edit
                                     </Button>
@@ -332,7 +336,7 @@ export default function MarketingAssetsDashboardPage() {
                     Download PNG
                   </Button>
                   <Link 
-                    href={`/dashboard/marketing-assets/create?templateId=${selectedAsset.templateId}&id=${selectedAsset.id}`}
+                    href={`/dashboard/marketing-assets/create?${selectedAsset.templateId ? `templateId=${selectedAsset.templateId}&` : ''}id=${selectedAsset.id}`}
                     className="w-full"
                   >
                     <Button 

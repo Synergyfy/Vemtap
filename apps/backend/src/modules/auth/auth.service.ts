@@ -532,7 +532,7 @@ export class AuthService {
 
     const firstName = dto.firstName || registrationData.firstName || '';
     const lastName = dto.lastName || registrationData.lastName || '';
-    const phone = registrationData.phone || dto.businessNumber || '';
+    const phone = registrationData.phone || dto.businessNumber || undefined;
 
     if (existingUser) {
       // Update existing user (could be PENDING manual or ACTIVE google)
