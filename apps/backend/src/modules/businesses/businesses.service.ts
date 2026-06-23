@@ -9,7 +9,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Repository, In } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import { Business, BusinessStatus } from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
@@ -316,6 +317,41 @@ export class BusinessesService {
         removeOnFail: 100,
       },
     );
+  }
+
+  @Cron('*/10 * * * *')
+  async backfillMissingGeocodes() {
+    const BATCH_SIZE = 10;
+
+    const branches = await this.branchRepository.find({
+      where: { latitude: IsNull() },
+      take: BATCH_SIZE,
+      order: { createdAt: 'ASC' },
+    });
+
+    if (branches.length === 0) return;
+
+    for (const branch of branches) {
+      const business = await this.businessesRepository.findOne({
+        where: { id: branch.businessId },
+        select: ['id', 'address', 'city', 'state'],
+      });
+      if (!business) continue;
+
+      const addressLine = branch.address || business.address;
+      const city = branch.city || business.city;
+      if (!addressLine) continue;
+
+      await this.geocodingQueue.add('geocode-address', {
+        businessId: business.id,
+        branchId: branch.id,
+        addressLine,
+        city,
+        state: business.state,
+        country: 'Nigeria',
+        updateBusiness: branch.isMainBranch,
+      });
+    }
   }
 
   async importCustomers(branchId: string, importDto: ImportCustomersDto) {

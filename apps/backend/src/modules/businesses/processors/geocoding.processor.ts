@@ -15,6 +15,7 @@ export interface GeocodingJobData {
   city?: string;
   state?: string;
   country?: string;
+  updateBusiness?: boolean;
 }
 
 interface NominatimResult {
@@ -80,10 +81,11 @@ export class GeocodingProcessor extends WorkerHost {
       lng = result.lng;
     }
 
-    await Promise.all([
-      this.businessesRepository.update(businessId, { latitude: lat, longitude: lng }),
-      this.branchRepository.update(branchId, { latitude: lat, longitude: lng }),
-    ]);
+    const promises = [this.branchRepository.update(branchId, { latitude: lat, longitude: lng })];
+    if (job.data.updateBusiness !== false) {
+      promises.push(this.businessesRepository.update(businessId, { latitude: lat, longitude: lng }));
+    }
+    await Promise.all(promises);
 
     this.logger.log(`Updated lat/lng for business ${businessId} (${lat}, ${lng})`);
   }

@@ -230,6 +230,18 @@ export class BusinessesController {
     return this.businessesService.findPendingVerificationAdmin(query);
   }
 
+  @Post('admin/backfill-geocodes')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Trigger backfill geocoding for branches with null coordinates' })
+  @ApiOkResponse({
+    description: 'Backfill geocoding job dispatched',
+    schema: { example: { queued: true } },
+  })
+  async triggerBackfillGeocodes() {
+    await this.businessesService.backfillMissingGeocodes();
+    return { queued: true };
+  }
+
   @Post('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Manually create a business' })
