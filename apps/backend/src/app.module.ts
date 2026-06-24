@@ -25,6 +25,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { SubscriptionGuard } from './modules/subscriptions/guards/subscription.guard';
 import { SettingsModule } from './modules/settings/settings.module';
 import { BranchesModule } from './modules/branches/branches.module';
+import { PartnershipsModule } from './modules/partnerships/partnerships.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { SupportModule } from './modules/support/support.module';
 import { SystemModule } from './modules/system/system.module';
@@ -141,6 +142,7 @@ import { InventoryCountingModule } from './modules/inventory-counting/inventory-
     SubscriptionsModule,
     SettingsModule,
     BranchesModule,
+    PartnershipsModule,
     LoyaltyModule,
     SupportModule,
     SystemModule,
