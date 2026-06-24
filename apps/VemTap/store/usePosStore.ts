@@ -21,7 +21,7 @@ export type PaymentMethodType = 'cash' | 'transfer' | 'card' | 'split';
 interface PosState {
   cart: PosCartItem[];
   cartDiscount: { type: 'percentage' | 'fixed'; value: number } | null;
-  attachedCustomer: { id: string; name: string; phone: string } | null;
+  attachedCustomer: { id: string; name: string; phone: string; email?: string } | null;
   lastCompletedSale: PosSaleResponse | null;
 
   addToCart: (item: Omit<PosCartItem, 'discount'>) => void;
@@ -29,7 +29,7 @@ interface PosState {
   updateCartItemQuantity: (id: string, quantity: number) => void;
   updateCartItemDiscount: (id: string, discount: number) => void;
   setCartDiscount: (discount: { type: 'percentage' | 'fixed'; value: number } | null) => void;
-  attachCustomer: (customer: { id: string; name: string; phone: string } | null) => void;
+  attachCustomer: (customer: { id: string; name: string; phone: string; email?: string } | null) => void;
   clearCart: () => void;
 
   getCartSubtotal: () => number;
