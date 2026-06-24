@@ -30,7 +30,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
 
-type CreateStep = 'gallery' | 'editor' | 'preview';
+type CreateStep = 'gallery' | 'size_selection' | 'editor' | 'preview';
 
 export default function CreateAssetWizardPage() {
   const router = useRouter();
@@ -59,6 +59,32 @@ export default function CreateAssetWizardPage() {
   const [bgImage, setBgImage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
 
+  // Design Dimensions State
+  const [sizeType, setSizeType] = useState<'portrait'|'landscape'|'square'>('portrait');
+  const [designW, setDesignW] = useState(1080);
+  const [designH, setDesignH] = useState(1350);
+
+  const handleSizeTypeChange = (t: 'portrait'|'landscape'|'square') => {
+      setSizeType(t);
+      if (t === 'square') { setDesignW(1080); setDesignH(1080); }
+      else if (t === 'portrait') { setDesignW(1080); setDesignH(1350); }
+      else if (t === 'landscape') { setDesignW(1920); setDesignH(1080); }
+  };
+
+  const handleWidthChange = (val: number) => {
+      setDesignW(val);
+      if (sizeType === 'square') setDesignH(val);
+      else if (sizeType === 'portrait') setDesignH(Math.round(val * (1350/1080)));
+      else if (sizeType === 'landscape') setDesignH(Math.round(val * (1080/1920)));
+  };
+
+  const handleHeightChange = (val: number) => {
+      setDesignH(val);
+      if (sizeType === 'square') setDesignW(val);
+      else if (sizeType === 'portrait') setDesignW(Math.round(val * (1080/1350)));
+      else if (sizeType === 'landscape') setDesignW(Math.round(val * (1920/1080)));
+  };
+
   const qrUrl = useMemo(() => {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://vemtap.com';
       if (qrSource === 'catalogue') return `${origin}/dashboard/catalogue`;
@@ -76,6 +102,9 @@ export default function CreateAssetWizardPage() {
       setElements(cfg.elements || []);
       setBgColor(cfg.backgroundColor || '#FFFFFF');
       setBgImage(cfg.backgroundImage || '');
+      if (cfg.designW) setDesignW(cfg.designW);
+      if (cfg.designH) setDesignH(cfg.designH);
+      if (cfg.sizeType) setSizeType(cfg.sizeType);
       setSelectedTemplate(existingAsset);
       setStep('preview');
     }
@@ -101,7 +130,9 @@ export default function CreateAssetWizardPage() {
   const handleBack = () => {
     if (step === 'preview') {
       setStep('editor');
-    } else if (step === 'editor' && !templateId) {
+    } else if (step === 'editor') {
+      setStep('size_selection');
+    } else if (step === 'size_selection' && !templateId) {
       setStep('gallery');
     } else {
       router.push('/dashboard/marketing-assets');
@@ -122,7 +153,7 @@ export default function CreateAssetWizardPage() {
     setElements(config.elements || []);
     setBgColor(config.backgroundColor || '#FFFFFF');
     setBgImage(config.backgroundImage || '');
-    setStep('editor');
+    setStep('size_selection');
     window.scrollTo(0, 0);
   };
 
@@ -166,7 +197,7 @@ export default function CreateAssetWizardPage() {
         name: selectedTemplate?.name || `${type.replace('_', ' ')} Design`,
         type: type,
         branchId: activeBranchId as string,
-        customConfig: { elements, backgroundColor: bgColor, backgroundImage: bgImage },
+        customConfig: { elements, backgroundColor: bgColor, backgroundImage: bgImage, designW, designH, sizeType },
         qrCodeContent: qrUrl
       });
       isSavedRef.current = true;
@@ -270,7 +301,7 @@ export default function CreateAssetWizardPage() {
           <div className="flex flex-col">
               <h1 className="text-sm font-black text-gray-900 uppercase tracking-widest leading-none">Create Kit</h1>
               <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tight">
-                {step === 'gallery' ? 'STEP 1: CHOOSE TEMPLATE' : step === 'editor' ? 'STEP 2: CUSTOMIZE' : 'STEP 3: PREVIEW & DOWNLOAD'}
+                {step === 'gallery' ? 'STEP 1: CHOOSE TEMPLATE' : step === 'size_selection' ? 'STEP 2: SIZE SELECTION' : step === 'editor' ? 'STEP 3: CUSTOMIZE' : 'STEP 4: PREVIEW & DOWNLOAD'}
               </p>
           </div>
         </div>
@@ -322,7 +353,48 @@ export default function CreateAssetWizardPage() {
             </motion.div>
           )}
 
-          {/* STEP 2: EDITOR */}
+          {/* STEP 2: SIZE SELECTION */}
+          {step === 'size_selection' && (
+            <motion.div key="size_selection" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto space-y-8 bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm mt-8">
+                <div className="text-center space-y-2 mb-8">
+                    <h2 className="text-2xl font-black text-gray-900">Choose Design Size</h2>
+                    <p className="text-sm font-medium text-gray-500">Select an orientation and adjust the dimensions for your asset.</p>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                    {(['square', 'portrait', 'landscape'] as const).map(t => (
+                        <button 
+                            key={t}
+                            onClick={() => handleSizeTypeChange(t)}
+                            className={cn("p-4 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all", sizeType === t ? "border-[#066CF4] bg-[#066CF4]/5 text-[#066CF4]" : "border-gray-100 text-gray-400 hover:border-gray-200")}
+                        >
+                            <div className={cn("border-2 rounded-md", sizeType === t ? "border-[#066CF4]" : "border-gray-300", t === 'square' ? "w-8 h-8" : t === 'portrait' ? "w-6 h-8" : "w-8 h-6")} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{t}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-4 py-8">
+                    <div className="flex-1 space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Width (px)</label>
+                        <Input type="number" value={designW} onChange={(e) => handleWidthChange(Number(e.target.value))} className="h-14 rounded-2xl text-lg font-bold bg-gray-50 border-gray-100" />
+                    </div>
+                    <div className="text-gray-300 font-black text-xl pt-6">×</div>
+                    <div className="flex-1 space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Height (px)</label>
+                        <Input type="number" value={designH} onChange={(e) => handleHeightChange(Number(e.target.value))} className="h-14 rounded-2xl text-lg font-bold bg-gray-50 border-gray-100" />
+                    </div>
+                </div>
+
+                <div className="pt-4">
+                    <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} className="w-full h-14 rounded-2xl bg-[#066CF4] hover:bg-[#0556c5] text-white font-black uppercase tracking-widest shadow-xl shadow-blue-500/20">
+                        Continue to Editor <ChevronRight className="ml-2" size={18} />
+                    </Button>
+                </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: EDITOR */}
           {step === 'editor' && (!templateId || selectedTemplate) && (
             <motion.div key="editor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full">
                 <div className="min-h-[700px]">
@@ -333,6 +405,8 @@ export default function CreateAssetWizardPage() {
                         businessLogo={businessLogo}
                         qrUrl={qrUrl}
                         mode="business"
+                        designW={designW}
+                        designH={designH}
                         onChange={(data) => {
                             setElements(data.elements);
                             setBgColor(data.backgroundColor);
@@ -343,13 +417,13 @@ export default function CreateAssetWizardPage() {
             </motion.div>
           )}
 
-          {/* STEP 3: PREVIEW & DOWNLOAD */}
+          {/* STEP 4: PREVIEW & DOWNLOAD */}
           {step === 'preview' && (
             <motion.div key="preview" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto space-y-12 pb-20">
                 <div className="flex flex-col lg:flex-row items-start gap-12">
                     <div className="flex-1 w-full flex justify-center">
                         <div id="export-container" ref={downloadRef} className="shadow-2xl ring-[16px] ring-white rounded-[2rem] overflow-hidden" style={{ width: 320, backgroundColor: bgColor }}>
-                            <div className="w-full aspect-[4/6] relative overflow-hidden" style={{ backgroundColor: bgColor, backgroundImage: bgImage ? `url(${bgImage})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                            <div className="w-full relative overflow-hidden" style={{ aspectRatio: `${designW} / ${designH}`, backgroundColor: bgColor, backgroundImage: bgImage ? `url(${bgImage})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
                                 {elements.map(el => (
                                     <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: el.width ? `${el.width}%` : 'auto', zIndex: el.type === 'logo' ? 30 : 10 }}>
                                         {el.type === 'text' && <div style={{ color: el.color, fontSize: `${el.fontSize}px`, fontWeight: el.fontWeight, textAlign: el.alignment }} className="w-full leading-tight">{el.text}</div>}
