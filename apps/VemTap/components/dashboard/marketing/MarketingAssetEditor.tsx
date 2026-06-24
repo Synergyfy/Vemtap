@@ -53,6 +53,8 @@ interface MarketingAssetEditorProps {
   mode: 'admin' | 'business';
   onChange: (data: { elements: EditorElement[], backgroundColor: string, backgroundImage?: string }) => void;
   onExport?: () => void;
+  designW?: number;
+  designH?: number;
 }
 
 export default function MarketingAssetEditor({
@@ -62,6 +64,8 @@ export default function MarketingAssetEditor({
   businessLogo,
   qrUrl,
   mode = 'business',
+  designW,
+  designH,
   onChange,
   onExport
 }: MarketingAssetEditorProps) {
@@ -479,12 +483,13 @@ export default function MarketingAssetEditor({
           ref={canvasRef}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
           style={{
+            aspectRatio: `${designW || 1080} / ${designH || 1350}`,
             backgroundColor: bgColor,
             backgroundImage: bgImage ? `url(${bgImage})` : 'none',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
-          className="w-[320px] aspect-[4/6] rounded-[2rem] shadow-2xl relative overflow-hidden ring-[12px] ring-white/50"
+          className="w-[320px] rounded-[2rem] shadow-2xl relative overflow-hidden ring-[12px] ring-white/50"
         >
           {/* Alignment Guides */}
           {guides?.x !== undefined && <div className="absolute top-0 bottom-0 w-px bg-pink-500 z-50" style={{ left: `${guides.x}%` }} />}

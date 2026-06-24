@@ -35,8 +35,20 @@ export default function AddProductWizard() {
     sku: '',
   });
 
+  const [productImage, setProductImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (e.target.type === 'file') {
+      const target = e.target as HTMLInputElement;
+      if (target.files?.[0]) {
+        const file = target.files[0];
+        setProductImage(file);
+        setImagePreview(URL.createObjectURL(file));
+      }
+    } else {
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    }
   };
 
   const handleNext = () => {
@@ -58,7 +70,7 @@ export default function AddProductWizard() {
       shortDescription: formData.description,
       description: formData.description,
       price: Number(formData.price) || 0,
-      mainImage: '',
+      mainImage: imagePreview || '',
       stockQuantity: Number(formData.stockQuantity) || 0,
       sku: formData.sku || `SKU-${Math.floor(Math.random() * 9000) + 1000}`,
       branchId: activeBranchId,
@@ -242,10 +254,37 @@ export default function AddProductWizard() {
 
         {currentStep === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 text-center py-6">
-            <div className="size-40 mx-auto bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:text-[#066CF4] hover:bg-[#066CF4]/5 hover:border-[#066CF4]/30 transition-all cursor-pointer group">
-              <ImageIcon size={40} className="mb-3 group-hover:scale-110 transition-transform" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Upload Image</span>
-            </div>
+            {imagePreview ? (
+              <div className="relative inline-block">
+                <img
+                  src={imagePreview}
+                  alt="Product preview"
+                  className="size-40 mx-auto rounded-[32px] object-cover border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductImage(null);
+                    setImagePreview(null);
+                  }}
+                  className="absolute top-2 right-2 size-8 rounded-full bg-white/90 flex items-center justify-center hover:bg-white shadow-md transition-all"
+                >
+                  <ImageIcon size={16} className="text-gray-600" />
+                </button>
+              </div>
+            ) : (
+              <label className="size-40 mx-auto block bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:text-[#066CF4] hover:bg-[#066CF4]/5 hover:border-[#066CF4]/30 transition-all cursor-pointer group">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  name="mainImage"
+                  onChange={handleChange}
+                  className="hidden"
+                />
+                <ImageIcon size={40} className="mb-3 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Upload Image (Optional)</span>
+              </label>
+            )}
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Supported: JPG, PNG (Max 5MB)</p>
           </div>
         )}
