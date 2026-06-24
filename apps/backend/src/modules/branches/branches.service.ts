@@ -19,6 +19,7 @@ import { isValidUsername, RESERVED_USERNAMES, generateUsernameFromName } from '.
 
 import { User } from '../users/entities/user.entity';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
+import { Visit } from '../visitors/entities/visit.entity';
 
 @Injectable()
 export class BranchesService {
@@ -439,6 +440,42 @@ Object.assign(branch, updateBranchDto);
       source: { id: sourceBranch.id, name: sourceBranch.name },
       distanceMeters: distance,
       results: rows,
+    };
+  }
+
+  async getLastTopRecentCustomer(branchId: string) {
+    const branch = await this.branchesRepository.findOne({
+      where: { id: branchId },
+    });
+    if (!branch) {
+      throw new NotFoundException(`Branch with ID ${branchId} not found`);
+    }
+
+    const rawResult = await this.branchesRepository.manager
+      .createQueryBuilder(Visit, 'visit')
+      .select('visit.customerId', 'customerId')
+      .addSelect('COUNT(visit.id)', 'visitCount')
+      .addSelect('MAX(visit.createdAt)', 'lastVisitAt')
+      .where('visit.branchId = :branchId', { branchId })
+      .groupBy('visit.customerId')
+      .orderBy('"visitCount"', 'DESC')
+      .addOrderBy('"lastVisitAt"', 'DESC')
+      .limit(1)
+      .getRawOne();
+
+    if (!rawResult) {
+      return null;
+    }
+
+    const customer = await this.branchesRepository.manager.findOne(User, {
+      where: { id: rawResult.customerId },
+      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'avatar', 'uniqueCode', 'createdAt'],
+    });
+
+    return {
+      customer,
+      visitCount: parseInt(rawResult.visitCount, 10),
+      lastVisitAt: new Date(rawResult.lastVisitAt),
     };
   }
 }

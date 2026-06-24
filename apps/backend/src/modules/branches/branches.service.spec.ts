@@ -26,6 +26,10 @@ describe('BranchesService', () => {
       andWhere: jest.fn().mockReturnThis(),
       getOne: jest.fn(),
     })),
+    manager: {
+      createQueryBuilder: jest.fn(),
+      findOne: jest.fn(),
+    },
   };
 
   const mockBusinessRepository = {
@@ -576,4 +580,52 @@ describe('BranchesService', () => {
       });
     });
   });
+
+  describe('getLastTopRecentCustomer', () => {
+    it('should return null if no customer visits exist', async () => {
+      mockBranchRepository.findOne.mockResolvedValue({ id: 'branch-1' });
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue(null),
+      };
+      
+      mockBranchRepository.manager.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.getLastTopRecentCustomer('branch-1');
+      expect(result).toBeNull();
+    });
+
+    it('should return the top customer when visits exist', async () => {
+      mockBranchRepository.findOne.mockResolvedValue({ id: 'branch-1' });
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ customerId: 'cust-1', visitCount: '5', lastVisitAt: '2026-06-24T10:00:00Z' }),
+      };
+      mockBranchRepository.manager.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const mockCustomer = { id: 'cust-1', firstName: 'John', lastName: 'Doe' };
+      mockBranchRepository.manager.findOne.mockResolvedValue(mockCustomer as any);
+
+      const result = await service.getLastTopRecentCustomer('branch-1');
+      expect(result).toEqual({
+        customer: mockCustomer,
+        visitCount: 5,
+        lastVisitAt: new Date('2026-06-24T10:00:00Z'),
+      });
+    });
+  });
+
 });
+
