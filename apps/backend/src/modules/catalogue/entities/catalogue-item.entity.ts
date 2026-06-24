@@ -59,16 +59,16 @@ export class CatalogueItem extends AbstractBaseEntity {
   @Column({ type: 'text' })
   description: string;
 
-  @ApiProperty({ example: 'https://image.com/main.jpg' })
-  @Column()
-  mainImage: string;
+  @ApiProperty({ example: 'https://image.com/main.jpg', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  mainImage?: string | null;
 
   @ApiProperty({
     example: ['https://image.com/1.jpg', 'https://image.com/2.jpg'],
     nullable: true,
   })
   @Column({ type: 'jsonb', nullable: true })
-  galleryImages: string[];
+  galleryImages?: string[] | null;
 
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })

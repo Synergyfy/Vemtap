@@ -112,6 +112,46 @@ export class BranchesController {
     };
   }
 
+  @Get(':id/last-top-recent-customer')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Get the last top recent customer of a branch',
+    description: 'Returns the customer who has visited this branch the most, with tie-breaks for the most recent visit.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the branch',
+    example: 'branch-uuid-here',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The top recent customer detail or null if the branch has no visitors yet.',
+    schema: {
+      example: {
+        customer: {
+          id: 'uuid-string',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '+2348012345678',
+          avatar: 'https://example.com/avatar.jpg',
+          uniqueCode: 'CUST-123456',
+          createdAt: '2023-10-25T10:00:00.000Z',
+        },
+        visitCount: 12,
+        lastVisitAt: '2023-10-25T10:00:00.000Z',
+      },
+    },
+  })
+  async getLastTopRecentCustomer(@Request() req, @Param('id') id: string) {
+    const hasAccess = await this.branchesService.checkBranchAccess(req.user, id);
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this branch');
+    }
+    return this.branchesService.getLastTopRecentCustomer(id);
+  }
+
+
   private async getBusinessId(user: any): Promise<string> {
     if (user.businessId) return user.businessId;
 

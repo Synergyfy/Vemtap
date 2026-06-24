@@ -21,7 +21,7 @@ describe('Catalogue Orders (E2E)', () => {
 
     // Create a category
     const categoryRes = await request(app.getHttpServer())
-      .post('/api/v1/admin/catalogue/categories')
+      .post('/api/v1/catalogue/categories')
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ name: 'Burgers' })
       .expect(201);
@@ -29,7 +29,7 @@ describe('Catalogue Orders (E2E)', () => {
 
     // Create a product for ordering
     const itemRes = await request(app.getHttpServer())
-      .post('/api/v1/admin/catalogue/items')
+      .post('/api/v1/catalogue/items')
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         name: 'Classic Burger',
