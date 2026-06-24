@@ -40,10 +40,10 @@ export class CreateCatalogueItemDto {
   @IsString()
   description: string;
 
-  @ApiProperty({ example: 'https://image.com/main.jpg' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'https://image.com/main.jpg' })
+  @IsOptional()
   @IsString()
-  mainImage: string;
+  mainImage?: string;
 
   @ApiPropertyOptional({ example: ['https://image.com/1.jpg'] })
   @IsOptional()

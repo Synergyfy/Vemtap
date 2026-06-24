@@ -5,6 +5,7 @@ import {
   OneToMany,
   JoinColumn,
   BeforeInsert,
+  Index,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
@@ -50,6 +51,15 @@ export class Branch extends AbstractBaseEntity {
 
   @Column('decimal', { precision: 10, scale: 7, nullable: true })
   longitude: number;
+
+  @Index('idx_branches_location', { spatial: true })
+  @Column({
+    type: 'geography',
+    spatialFeatureType: 'Point',
+    srid: 4326,
+    nullable: true,
+  })
+  location: any;
 
   @Column({ nullable: true })
   phone: string;

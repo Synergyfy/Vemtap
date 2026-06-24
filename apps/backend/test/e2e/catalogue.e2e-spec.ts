@@ -27,7 +27,7 @@ describe('Catalogue (E2E)', () => {
   describe('Catalogue Management (Admin)', () => {
     it('should create a category', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/admin/catalogue/categories')
+        .post('/api/v1/catalogue/categories')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({ name: 'Drinks' })
         .expect(201);
@@ -38,7 +38,7 @@ describe('Catalogue (E2E)', () => {
 
     it('should create an item', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/admin/catalogue/items')
+        .post('/api/v1/catalogue/items')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           name: 'Coca Cola',
@@ -57,7 +57,7 @@ describe('Catalogue (E2E)', () => {
 
     it('should list items for the branch', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/api/v1/admin/catalogue/items?branchId=${branchId}`)
+        .get(`/api/v1/catalogue/items?branchId=${branchId}`)
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
 
@@ -67,7 +67,7 @@ describe('Catalogue (E2E)', () => {
 
     it('should update an item globally', async () => {
       await request(app.getHttpServer())
-        .patch(`/api/v1/admin/catalogue/items/${itemId}`)
+        .patch(`/api/v1/catalogue/items/${itemId}`)
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           name: 'Coca Cola Zero',
