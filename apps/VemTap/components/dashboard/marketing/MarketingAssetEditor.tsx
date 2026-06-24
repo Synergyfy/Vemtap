@@ -75,7 +75,23 @@ export default function MarketingAssetEditor({
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [guides, setGuides] = useState<{ x?: number; y?: number } | null>(null);
   const [showGrid, setShowGrid] = useState(true);
+  const [zoom, setZoom] = useState(100);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const zoomStep = 10;
+  const minZoom = 25;
+  const maxZoom = 300;
+
+  const displayWidth = useMemo(() => {
+    if (!designW || !designH) return 320;
+    const containerEl = containerRef.current;
+    const maxW = containerEl ? containerEl.clientWidth * 0.85 : 600;
+    const ratio = designW / designH;
+    if (ratio > 1) return Math.min(maxW, 800);
+    return Math.min(maxW * ratio, 600);
+  }, [designW, designH]);
+
+  const displayHeight = designW && designH ? Math.round(displayWidth / (designW / designH)) : Math.round(displayWidth / (1080/1350));
 
   // Keep a stable ref to onChange so we can call it without re-render loops
   const onChangeRef = useRef(onChange);
@@ -443,15 +459,15 @@ export default function MarketingAssetEditor({
 
           <div className="space-y-4 pt-4 border-t border-gray-100">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Page Background</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
                 <div className="space-y-1">
                     <span className="text-[8px] font-black uppercase text-gray-400">Color</span>
-                    <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-full h-10 rounded-xl cursor-pointer border border-gray-200" />
+                    <input type="color" value={bgColor} onChange={(e) => { const v = e.target.value; setBgColorRaw(v); bgColorRef.current = v; setBgImageRaw(''); bgImageRef.current = ''; }} onBlur={() => onChangeRef.current({ elements: elementsRef.current, backgroundColor: bgColorRef.current, backgroundImage: '' })} className="w-full h-10 rounded-xl cursor-pointer border border-gray-200" />
                 </div>
                 {mode === 'admin' && (
                     <div className="space-y-1">
                         <span className="text-[8px] font-black uppercase text-gray-400">Image URL</span>
-                        <input type="text" value={bgImage} onChange={(e) => setBgImage(e.target.value)} className="w-full px-2 py-1.5 text-[10px] rounded-xl border border-gray-200" placeholder="https://..." />
+                        <input type="text" value={bgImage} onChange={(e) => setBgImage(e.target.value || undefined)} className="w-full px-2 py-1.5 text-[10px] rounded-xl border border-gray-200" placeholder="Paste image URL to use as background..." />
                     </div>
                 )}
             </div>
@@ -472,24 +488,59 @@ export default function MarketingAssetEditor({
       </div>
 
       {/* Main Canvas Area */}
-      <div 
-        className="flex-1 bg-gray-200/50 rounded-[3rem] p-8 md:p-12 flex items-center justify-center min-h-[600px] relative overflow-hidden shadow-inner border-4 border-white"
+      <div
+        ref={containerRef}
+        className="flex-1 bg-gray-200/50 rounded-[3rem] p-8 md:p-12 flex items-start justify-center min-h-[600px] relative overflow-auto shadow-inner border-4 border-white"
         onMouseDown={() => setSelectedElementId(null)}
       >
         {/* Safe Print Zone Boundary Indicators */}
         <div className="absolute inset-0 pointer-events-none opacity-20 border-[24px] border-dashed border-gray-400" />
-        
+
+        {/* Zoom Controls */}
+        <div className="sticky top-0 z-[60] flex items-center gap-1 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-100 p-1.5">
+          <button
+            onClick={() => setZoom(z => Math.max(minZoom, z - zoomStep))}
+            disabled={zoom <= minZoom}
+            className="size-8 rounded-xl hover:bg-gray-100 text-gray-600 disabled:opacity-30 flex items-center justify-center transition-all text-sm font-black"
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <span className="text-[10px] font-black text-gray-800 min-w-[40px] text-center tabular-nums">{zoom}%</span>
+          <button
+            onClick={() => setZoom(z => Math.min(maxZoom, z + zoomStep))}
+            disabled={zoom >= maxZoom}
+            className="size-8 rounded-xl hover:bg-gray-100 text-gray-600 disabled:opacity-30 flex items-center justify-center transition-all text-sm font-black"
+            title="Zoom In"
+          >
+            +
+          </button>
+          <div className="w-px h-5 bg-gray-200 mx-1" />
+          <button
+            onClick={() => setZoom(100)}
+            className="px-2.5 h-7 rounded-xl hover:bg-gray-100 text-gray-500 text-[9px] font-black uppercase tracking-widest transition-all"
+          >
+            Fit
+          </button>
+          <div className="text-[9px] font-bold text-gray-400 ml-1 whitespace-nowrap">
+            {designW || 1080}×{designH || 1350}
+          </div>
+        </div>
+
         <div
           ref={canvasRef}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
           style={{
-            aspectRatio: `${designW || 1080} / ${designH || 1350}`,
+            width: `${displayWidth}px`,
+            height: `${displayHeight}px`,
+            transform: `scale(${zoom / 100})`,
+            transformOrigin: 'top center',
             backgroundColor: bgColor,
             backgroundImage: bgImage ? `url(${bgImage})` : 'none',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
-          className="w-[320px] rounded-[2rem] shadow-2xl relative overflow-hidden ring-[12px] ring-white/50"
+          className="shrink-0 rounded-[2rem] shadow-2xl relative overflow-hidden ring-[12px] ring-white/50"
         >
           {/* Alignment Guides */}
           {guides?.x !== undefined && <div className="absolute top-0 bottom-0 w-px bg-pink-500 z-50" style={{ left: `${guides.x}%` }} />}
@@ -505,7 +556,6 @@ export default function MarketingAssetEditor({
           {/* Elements Renderer */}
           {elements.map((el) => {
             const isSelected = selectedElementId === el.id;
-            // Ignore locked flag so users can edit default content freely
             const isLocked = false; 
 
             return (
@@ -527,7 +577,6 @@ export default function MarketingAssetEditor({
                 }}
                 className={cn("group transition-all select-none", isSelected && "bg-white/5 backdrop-blur-[1px] ring-4 ring-[#066CF4]/10 rounded-xl")}
               >
-                {/* Element Content */}
                 {el.type === 'text' && (
                   <div 
                     style={{ 
@@ -569,7 +618,6 @@ export default function MarketingAssetEditor({
                   </div>
                 )}
 
-                {/* Resize Handles (8-way) */}
                 {isSelected && !isLocked && (
                     <>
                         {['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(dir => (
@@ -600,7 +648,6 @@ export default function MarketingAssetEditor({
                     </>
                 )}
 
-                {/* Locked Indicator */}
                 {isLocked && (
                     <div className="absolute -top-4 -right-4 size-6 rounded-full bg-gray-900/80 backdrop-blur-md flex items-center justify-center text-white shadow-lg border border-white/20">
                         <ShieldCheck size={10} />

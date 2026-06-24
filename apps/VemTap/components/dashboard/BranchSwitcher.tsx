@@ -88,8 +88,8 @@ export default function BranchSwitcher() {
 
     if (!isLoading && branches.length <= 1) {
         return (
-            <div className="flex items-center gap-2 w-full">
-                <div className="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 transition-all duration-200">
+            <button onClick={() => router.push('/dashboard/settings/branches')} className="flex items-center gap-2 w-full cursor-pointer">
+                <div className="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/20 transition-all duration-200">
                     <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary overflow-hidden shrink-0">
                         {businessLogo ? (
                             <img src={businessLogo} alt="Logo" className="size-full object-cover p-1" />
@@ -108,7 +108,7 @@ export default function BranchSwitcher() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </button>
         );
     }
 
@@ -231,7 +231,16 @@ export default function BranchSwitcher() {
                                     ))}
                                 </div>
 
-                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                                    <button
+                                        onClick={() => { setIsOpen(false); router.push('/dashboard/settings/branches'); }}
+                                        className="w-full flex items-center gap-3 p-3 rounded-xl text-gray-500 hover:bg-gray-50 transition-all duration-200"
+                                    >
+                                        <div className="size-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                                            <Layers size={18} className="text-gray-500" />
+                                        </div>
+                                        <span className="text-sm font-bold">Manage Locations</span>
+                                    </button>
                                     <button
                                         onClick={() => setIsCreating(true)}
                                         className="w-full flex items-center gap-3 p-3 rounded-xl text-primary hover:bg-primary/5 transition-all duration-200"

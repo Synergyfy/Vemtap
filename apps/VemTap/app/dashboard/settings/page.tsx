@@ -11,6 +11,8 @@ import { TeamSettingsView } from '@/components/dashboard/settings/TeamSettings';
 import { SubscriptionSettingsView } from '@/components/dashboard/settings/SubscriptionSettings';
 import { BillingSettingsView } from '@/components/dashboard/settings/BillingSettings';
 import { NotificationSettingsView, SecuritySettingsView } from '@/components/dashboard/settings/OtherSettings';
+import { DocumentsSettingsView } from '@/components/dashboard/settings/DocumentsSettings';
+import { KycSettingsView } from '@/components/dashboard/settings/KycSettings';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import Spinner from '@/components/ui/Spinner';
@@ -37,11 +39,13 @@ export default function SettingsPage() {
             case 'billing': return <BillingSettingsView />;
             case 'notifications': return <NotificationSettingsView />;
             case 'security': return <SecuritySettingsView />;
+            case 'documents': return <DocumentsSettingsView />;
+            case 'kyc': return <KycSettingsView />;
             default: return <SettingsNavigationCards />;
         }
     };
 
-    const isHubView = activeTab === 'profile' || activeTab === 'team' || activeTab === 'subscription' || activeTab === 'billing' || activeTab === 'notifications' || activeTab === 'security';
+    const isHubView = ['profile', 'team', 'subscription', 'billing', 'notifications', 'security', 'documents', 'kyc'].includes(activeTab);
 
     return (
         <div className="pb-24 md:pb-10 max-w-5xl mx-auto p-4 md:p-8">

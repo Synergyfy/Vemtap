@@ -47,7 +47,16 @@ export const usePosSettingsStore = create<POSSettingsState>()(
     (set) => ({
       ...DEFAULT_SETTINGS,
 
-      updateSettings: (updates) => set((state) => ({ ...state, ...updates })),
+      updateSettings: (updates) => set((state) => {
+        const merged = { ...state, ...updates };
+        if ('taxEnabled' in updates && updates.taxEnabled) {
+          merged.pricesIncludeTax = false;
+        }
+        if ('pricesIncludeTax' in updates && updates.pricesIncludeTax) {
+          merged.taxEnabled = false;
+        }
+        return merged;
+      }),
       resetStore: () => set({ ...DEFAULT_SETTINGS }),
     }),
     {

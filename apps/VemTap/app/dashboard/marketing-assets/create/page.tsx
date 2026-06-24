@@ -63,6 +63,9 @@ export default function CreateAssetWizardPage() {
   const [sizeType, setSizeType] = useState<'portrait'|'landscape'|'square'>('portrait');
   const [designW, setDesignW] = useState(1080);
   const [designH, setDesignH] = useState(1350);
+  const [maintainAspectRatio, setMaintainAspectRatio] = useState(true);
+
+  const RATIOS: Record<string, number> = { square: 1, portrait: 1350/1080, landscape: 1080/1920 };
 
   const handleSizeTypeChange = (t: 'portrait'|'landscape'|'square') => {
       setSizeType(t);
@@ -73,17 +76,34 @@ export default function CreateAssetWizardPage() {
 
   const handleWidthChange = (val: number) => {
       setDesignW(val);
-      if (sizeType === 'square') setDesignH(val);
-      else if (sizeType === 'portrait') setDesignH(Math.round(val * (1350/1080)));
-      else if (sizeType === 'landscape') setDesignH(Math.round(val * (1080/1920)));
+      if (maintainAspectRatio) {
+          const r = RATIOS[sizeType];
+          if (sizeType === 'square') setDesignH(val);
+          else if (sizeType === 'portrait') setDesignH(Math.round(val * r));
+          else if (sizeType === 'landscape') setDesignH(Math.round(val * r));
+      }
   };
 
   const handleHeightChange = (val: number) => {
       setDesignH(val);
-      if (sizeType === 'square') setDesignW(val);
-      else if (sizeType === 'portrait') setDesignW(Math.round(val * (1080/1350)));
-      else if (sizeType === 'landscape') setDesignW(Math.round(val * (1920/1080)));
+      if (maintainAspectRatio) {
+          const r = RATIOS[sizeType];
+          if (sizeType === 'square') setDesignW(val);
+          else if (sizeType === 'portrait') setDesignW(Math.round(val / r));
+          else if (sizeType === 'landscape') setDesignW(Math.round(val / r));
+      }
   };
+
+  const detectActualType = (w: number, h: number): 'square' | 'portrait' | 'landscape' => {
+      if (w === 0 || h === 0) return sizeType;
+      const ratio = w / h;
+      if (ratio > 1.1) return 'landscape';
+      if (ratio < 0.9) return 'portrait';
+      return 'square';
+  };
+
+  const actualType = detectActualType(designW, designH);
+  const showSizeWarning = !maintainAspectRatio && actualType !== sizeType;
 
   const qrUrl = useMemo(() => {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://vemtap.com';
@@ -374,7 +394,20 @@ export default function CreateAssetWizardPage() {
                     ))}
                 </div>
 
-                <div className="flex items-center gap-4 py-8">
+                <div className="flex items-center justify-center gap-2 py-2">
+                    <input
+                        type="checkbox"
+                        id="maintain-ratio"
+                        checked={maintainAspectRatio}
+                        onChange={(e) => setMaintainAspectRatio(e.target.checked)}
+                        className="size-4 rounded border-gray-300 text-[#066CF4] focus:ring-[#066CF4]/20"
+                    />
+                    <label htmlFor="maintain-ratio" className="text-[11px] font-bold text-gray-600 cursor-pointer select-none">
+                        Maintain aspect ratio
+                    </label>
+                </div>
+
+                <div className="flex items-center gap-4">
                     <div className="flex-1 space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Width (px)</label>
                         <Input type="number" value={designW} onChange={(e) => handleWidthChange(Number(e.target.value))} className="h-14 rounded-2xl text-lg font-bold bg-gray-50 border-gray-100" />
@@ -385,6 +418,18 @@ export default function CreateAssetWizardPage() {
                         <Input type="number" value={designH} onChange={(e) => handleHeightChange(Number(e.target.value))} className="h-14 rounded-2xl text-lg font-bold bg-gray-50 border-gray-100" />
                     </div>
                 </div>
+
+                {showSizeWarning && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                        <div className="size-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="text-amber-600 text-xs font-black">!</span>
+                        </div>
+                        <div className="text-[11px] font-medium text-amber-800 leading-relaxed">
+                            The dimensions you entered ({designW}×{designH}) don't match the <strong>{sizeType}</strong> orientation you selected. 
+                            You can either adjust the values or change the size type to <strong>{actualType}</strong>.
+                        </div>
+                    </div>
+                )}
 
                 <div className="pt-4">
                     <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} className="w-full h-14 rounded-2xl bg-[#066CF4] hover:bg-[#0556c5] text-white font-black uppercase tracking-widest shadow-xl shadow-blue-500/20">

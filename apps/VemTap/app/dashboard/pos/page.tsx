@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import POSHomeScreen from '@/components/dashboard/pos/POSHomeScreen';
 import { CartPanel } from '@/components/dashboard/pos/CartPanel';
 import { usePosStore } from '@/store/usePosStore';
-import { ShoppingCart, X, Share2, ExternalLink } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ShoppingCart, X, Share2, ExternalLink, ShoppingBag } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import toast from 'react-hot-toast';
 
 export default function POSPage() {
+  const router = useRouter();
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const { cart } = usePosStore();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -45,6 +46,27 @@ export default function POSPage() {
 
       {/* Desktop side-panel */}
       <div className="hidden md:block w-[380px] lg:w-[420px] border-l border-gray-100 bg-white h-full relative">
+        {/* Quick Navigation */}
+        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+          <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Quick Access</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/dashboard/pos/orders')}
+              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
+            >
+              <ShoppingBag size={14} />
+              Orders
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/pos/register')}
+              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
+            >
+              <span className="text-[10px]">₦</span>
+              Register
+            </button>
+          </div>
+        </div>
+
         {/* Share Public POS Link */}
         <div className="p-4 border-b border-gray-100 bg-gray-50/50">
           <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Share with customers</p>
