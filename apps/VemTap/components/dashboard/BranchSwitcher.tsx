@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, MapPin, Building2, Check, Plus, Layers, X, Save, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -16,6 +16,7 @@ export default function BranchSwitcher() {
     const deleteBranchMutation = useDeleteBranch();
     const businessName = useAuthStore((state) => state.user?.businessName);
     const businessLogo = useAuthStore((state) => state.user?.businessLogo);
+    const router = useRouter();
 
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -107,13 +108,6 @@ export default function BranchSwitcher() {
                         </div>
                     </div>
                 </div>
-                <Link
-                    href="/dashboard/settings/branches"
-                    className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group"
-                    title="Manage Locations"
-                >
-                    <span className="material-icons-round text-lg">settings</span>
-                </Link>
             </div>
         );
     }
@@ -125,6 +119,7 @@ export default function BranchSwitcher() {
     const handleSelectBranch = (branchId: string | null) => {
         setActiveBranch(branchId);
         setIsOpen(false);
+        router.push('/dashboard/settings/branches');
     };
 
     return (
@@ -152,13 +147,6 @@ export default function BranchSwitcher() {
                         </div>
                     </div>
                 </button>
-                <Link
-                    href="/dashboard/settings/branches"
-                    className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group shrink-0"
-                    title="Manage Locations"
-                >
-                    <span className="material-icons-round text-lg">settings</span>
-                </Link>
             </div>
 
             <AnimatePresence>

@@ -8,11 +8,21 @@ import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/service
 import { cn } from '@/lib/utils';
 import POSPageHeader from './shared/POSPageHeader';
 
-export default function POSHomeScreen({ onOpenCart }: { onOpenCart?: () => void }) {
+interface POSHomeScreenProps {
+  onOpenCart?: () => void;
+  businessCode?: string;
+  isPublic?: boolean;
+}
+
+export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = false }: POSHomeScreenProps) {
   const { cart, addToCart } = usePosStore();
   const { activeBranchId } = useActiveBranch();
-  const { data: productsData, isLoading: loadingProducts } = useCatalogueItemsPublic(activeBranchId ?? '');
-  const { data: categoriesData = [] } = useCatalogueCategoriesPublic(activeBranchId ?? '');
+  
+  // Use businessCode for public mode, activeBranchId for admin mode
+  const branchId = isPublic ? businessCode : activeBranchId;
+  
+  const { data: productsData, isLoading: loadingProducts } = useCatalogueItemsPublic(branchId ?? '');
+  const { data: categoriesData = [] } = useCatalogueCategoriesPublic(branchId ?? '');
   const products = productsData?.data ?? [];
   const categories = categoriesData ?? [];
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,7 +48,7 @@ export default function POSHomeScreen({ onOpenCart }: { onOpenCart?: () => void 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] md:h-full relative pb-24">
       <div className="px-4 pt-4 md:px-0 md:pt-0">
-        <POSPageHeader title="Point of Sale" showBack={false} />
+        <POSPageHeader title={isPublic ? 'Menu' : 'Point of Sale'} showBack={false} />
       </div>
 
       <div className="px-4 md:px-0 mb-6 space-y-4">

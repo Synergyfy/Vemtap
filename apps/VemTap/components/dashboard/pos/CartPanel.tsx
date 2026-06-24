@@ -10,11 +10,18 @@ import { useRouter } from 'next/navigation';
 import { CustomerSelectorModal } from './CustomerSelectorModal';
 import { DiscountModal } from './DiscountModal';
 import toast from 'react-hot-toast';
+import { useCreateCatalogueOrder } from '@/services/catalogue/hooks';
 
-export function CartPanel({ onNavigate }: { onNavigate?: () => void } = {}) {
+interface CartPanelProps {
+  onNavigate?: () => void;
+  isPublic?: boolean;
+}
+
+export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
   const holdSale = useHoldPosSale();
+  const createOrder = useCreateCatalogueOrder();
   const { 
     cart, 
     removeFromCart, 
@@ -32,11 +39,44 @@ export function CartPanel({ onNavigate }: { onNavigate?: () => void } = {}) {
   const [showOptions, setShowOptions] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subtotal = getCartSubtotal();
   const total = getCartTotal();
   const discount = getCartDiscountAmount();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handlePlaceOrder = async () => {
+    if (!attachedCustomer) {
+      setIsCustomerModalOpen(true);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await createOrder.mutateAsync({
+        firstName: attachedCustomer.name.split(' ')[0] || 'Customer',
+        lastName: attachedCustomer.name.split(' ').slice(1).join(' ') || '',
+        phone: attachedCustomer.phone,
+        email: undefined,
+        branchId: isPublic ? '' : (activeBranchId ?? ''),
+        tableNumber: undefined,
+        notes: 'Public POS Order',
+        items: cart.map(i => ({
+          itemId: i.productId,
+          quantity: i.quantity,
+        })),
+      });
+      
+      clearCart();
+      toast.success('Order placed successfully!');
+      onNavigate?.();
+    } catch (error) {
+      toast.error('Failed to place order');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (cart.length === 0) {
     return (
@@ -180,43 +220,66 @@ export function CartPanel({ onNavigate }: { onNavigate?: () => void } = {}) {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        {!isPublic ? (
+          <div className="grid grid-cols-4 gap-2">
+            <button 
+              onClick={() => {
+                holdSale.mutate({
+                  branchId: activeBranchId ?? '',
+                  customerId: attachedCustomer?.id ?? undefined,
+                  note: 'Held by cashier',
+                  subtotal,
+                  discountAmount: discount,
+                  items: cart.map(i => ({
+                    productId: i.productId,
+                    productName: i.name,
+                    unitPrice: i.price,
+                    quantity: i.quantity,
+                    discount: i.discount,
+                    totalPrice: i.price * i.quantity - i.discount,
+                  })),
+                }, {
+                  onSuccess: () => {
+                    clearCart();
+                    toast.success('Sale held');
+                  },
+                });
+              }}
+              className="col-span-1 h-14 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-[20px] flex items-center justify-center transition-colors border border-gray-200"
+              title="Hold Sale"
+            >
+              <span className="text-[9px] font-black uppercase tracking-widest">Hold</span>
+            </button>
+            <button 
+              onClick={() => { onNavigate?.(); router.push('/dashboard/pos/payment'); }}
+              className="col-span-3 h-14 bg-[#066CF4] text-white rounded-[20px] flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all"
+            >
+              <span className="text-[12px] font-black uppercase tracking-[0.15em]">Charge ₦{total.toLocaleString()}</span>
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        ) : (
           <button 
-            onClick={() => {
-              holdSale.mutate({
-                branchId: activeBranchId ?? '',
-                customerId: attachedCustomer?.id ?? undefined,
-                note: 'Held by cashier',
-                subtotal,
-                discountAmount: discount,
-                items: cart.map(i => ({
-                  productId: i.productId,
-                  productName: i.name,
-                  unitPrice: i.price,
-                  quantity: i.quantity,
-                  discount: i.discount,
-                  totalPrice: i.price * i.quantity - i.discount,
-                })),
-              }, {
-                onSuccess: () => {
-                  clearCart();
-                  toast.success('Sale held');
-                },
-              });
-            }}
-            className="col-span-1 h-14 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-[20px] flex items-center justify-center transition-colors border border-gray-200"
-            title="Hold Sale"
+            onClick={handlePlaceOrder}
+            disabled={isSubmitting}
+            className="w-full h-14 bg-[#066CF4] text-white rounded-[20px] flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all disabled:opacity-50"
           >
-            <span className="text-[9px] font-black uppercase tracking-widest">Hold</span>
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-[12px] font-black uppercase tracking-[0.15em]">Placing Order...</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[12px] font-black uppercase tracking-[0.15em]">Place Order ₦{total.toLocaleString()}</span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
-          <button 
-            onClick={() => { onNavigate?.(); router.push('/dashboard/pos/payment'); }}
-            className="col-span-3 h-14 bg-[#066CF4] text-white rounded-[20px] flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all"
-          >
-            <span className="text-[12px] font-black uppercase tracking-[0.15em]">Charge ₦{total.toLocaleString()}</span>
-            <ArrowRight size={18} />
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

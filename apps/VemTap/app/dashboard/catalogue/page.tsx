@@ -96,16 +96,23 @@ export default function CatalogueOverviewPage() {
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[#066CF4]/20 rounded-full blur-2xl -mr-16 -mt-16" />
                         <h3 className="text-2xl font-black mb-4 leading-tight">Generate <br /> Catalog QR</h3>
                         <p className="text-sm font-medium text-white/70 mb-8">Create a specialized QR code that opens your menu or service list, and customize it in Marketing Kit.</p>
-                        <Link href="/dashboard/marketing-assets/create?qrSource=catalogue">
-                            <Button 
-                                className="w-full h-14 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl hover:bg-[#4293FF] transition-all"
-                            >
-                                Generate QR
-                            </Button>
-                        </Link>
+                        <Button 
+                            onClick={() => setIsQRModalOpen(true)}
+                            className="w-full h-14 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl hover:bg-[#4293FF] transition-all"
+                        >
+                            Generate QR
+                        </Button>
                     </div>
                 </div>
             </div>
+
+            <CatalogueQRModal 
+                isOpen={isQRModalOpen} 
+                onClose={() => setIsQRModalOpen(false)} 
+                businessCode={business?.id || 'demo'} 
+                businessName={business?.name || 'My Business'} 
+                logoUrl={business?.logoUrl} 
+            />
         </div>
     );
 }
