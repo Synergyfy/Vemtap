@@ -155,7 +155,7 @@ export class CatalogueCartService {
         throw new BadRequestException('Item is not active');
       price = Number(item.price);
       name = item.name;
-      image = item.mainImage;
+      image = item.mainImage ?? null;
     } else if (dto.offerId) {
       const offer = await this.offerRepository.findOne({
         where: { id: dto.offerId, branchId },
@@ -169,8 +169,9 @@ export class CatalogueCartService {
         throw new BadRequestException('Offer is not active');
       price = Number(offer.calculatedPrice);
       name = offer.name;
-      image = offer.mainImage;
+      image = offer.mainImage ?? null;
     }
+
 
     let existingItem = cart.items?.find(
       (i) =>
