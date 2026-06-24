@@ -99,6 +99,34 @@ export class CatalogueOffer extends AbstractBaseEntity {
   })
   status: CatalogueOfferStatus;
 
+  @ApiProperty({ example: '2026-06-01T00:00:00.000Z', description: 'Promotion start date', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  startDate: Date | null;
+
+  @ApiProperty({ example: '2026-06-30T23:59:59.000Z', description: 'Promotion end date', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  endDate: Date | null;
+
+  @ApiProperty({ example: 'discount', description: 'Type of promotion offer', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  offerType: string | null;
+
+  @ApiProperty({ example: 'everyone_nearby', description: 'Target audience for promotion', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  audience: string | null;
+
+  @ApiProperty({ example: 120, description: 'Number of times this offer was viewed' })
+  @Column({ type: 'int', default: 0 })
+  views: number;
+
+  @ApiProperty({ example: 45, description: 'Number of times this offer was redeemed/visited' })
+  @Column({ type: 'int', default: 0 })
+  visits: number;
+
+  @ApiProperty({ example: 12500.50, description: 'Revenue generated from this offer' })
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) } })
+  revenue: number;
+
   @ManyToMany(() => CatalogueItem)
   @JoinTable({
     name: 'catalogue_offer_items',

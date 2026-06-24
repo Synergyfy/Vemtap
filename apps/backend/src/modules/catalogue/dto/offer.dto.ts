@@ -88,6 +88,26 @@ export class CreateCatalogueOfferDto {
   @IsArray()
   @IsUUID(undefined, { each: true })
   itemIds: string[];
+
+  @ApiPropertyOptional({ example: '2026-06-01T00:00:00.000Z' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30T23:59:59.000Z' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ example: 'discount' })
+  @IsOptional()
+  @IsString()
+  offerType?: string;
+
+  @ApiPropertyOptional({ example: 'everyone_nearby' })
+  @IsOptional()
+  @IsString()
+  audience?: string;
 }
 
 export class UpdateCatalogueOfferDto {
@@ -160,6 +180,26 @@ export class UpdateCatalogueOfferDto {
   @IsArray()
   @IsUUID(undefined, { each: true })
   itemIds?: string[];
+
+  @ApiPropertyOptional({ example: '2026-06-01T00:00:00.000Z' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30T23:59:59.000Z' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ example: 'discount' })
+  @IsOptional()
+  @IsString()
+  offerType?: string;
+
+  @ApiPropertyOptional({ example: 'everyone_nearby' })
+  @IsOptional()
+  @IsString()
+  audience?: string;
 }
 
 export class CatalogueOfferQueryDto {
