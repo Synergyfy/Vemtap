@@ -57,14 +57,15 @@ export default function OrdersDashboard() {
     return allOrders.filter((o: any) => o.status === statusFilter);
   }, [allOrders, statusFilter]);
 
-  const stats = useMemo(() => {
-    const counts: Record<string, number> = { new: 0, processing: 0, completed: 0, cancelled: 0, rejected: 0 };
-    let revenue = 0;
+  interface Stats { new: number; processing: number; completed: number; cancelled: number; rejected: number; total: number; revenue: number; }
+  const stats: Stats = useMemo(() => {
+    const counts: Stats = { new: 0, processing: 0, completed: 0, cancelled: 0, rejected: 0, total: 0, revenue: 0 };
     allOrders.forEach((o: any) => {
-      if (counts[o.status] !== undefined) counts[o.status]++;
-      if (o.status === 'completed') revenue += Number(o.totalAmount || 0);
+      const key = o.status as keyof Stats;
+      if (key in counts && key !== 'total' && key !== 'revenue') counts[key]++;
+      if (o.status === 'completed') counts.revenue += Number(o.totalAmount || 0);
     });
-    return { ...counts, total: allOrders.length, revenue };
+    return { ...counts, total: allOrders.length };
   }, [allOrders]);
 
   const chartDataByStatus = useMemo(() => [
@@ -252,7 +253,7 @@ export default function OrdersDashboard() {
                 <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12, fontWeight: 700 }}
-                  formatter={(value: number) => [value, 'Orders']}
+                  formatter={(value: number | undefined) => [value ?? 0, 'Orders']}
                 />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]} />
               </BarChart>

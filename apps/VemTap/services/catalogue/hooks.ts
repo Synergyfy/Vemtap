@@ -36,6 +36,8 @@ export interface CatalogueItem {
     itemType: CatalogueItemType;
     sku?: string;
     barcode?: string;
+    weight?: string;
+    dimensions?: string;
     discountType: DiscountType;
     discountValue: number | null;
     stockQuantity?: number;
@@ -133,6 +135,8 @@ export interface CreateItemDto {
     branchId: string;
     sku?: string;
     barcode?: string;
+    weight?: string;
+    dimensions?: string;
     itemType?: CatalogueItemType;
     discountType?: DiscountType;
     discountValue?: number;
