@@ -404,6 +404,8 @@ Object.assign(branch, updateBranchDto);
         AND b.latitude IS NOT NULL
         AND b.longitude IS NOT NULL
         AND b.is_active = true
+        AND b.join_discovery_network = true
+        AND b.receive_partner_requests = true
         AND ST_DWithin(b.location, source.location, $2)
         ${promotionsJoin}
       ORDER BY "distanceMeters"

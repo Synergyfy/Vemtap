@@ -250,6 +250,36 @@ export class UpdateBranchDto {
   @IsOptional()
   showFeedback?: boolean;
 
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  joinDiscoveryNetwork?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  receivePartnerRequests?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  allowPromotions?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  pushNotifications?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  smsAlerts?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  emailSummary?: boolean;
+
   @ApiPropertyOptional({ example: false })
   @IsBoolean()
   @IsOptional()

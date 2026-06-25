@@ -21,6 +21,7 @@ import { Device, DeviceStatus } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import {
   VisitorResponseDto,
   PaginatedVisitorResponseDto,
@@ -1053,8 +1054,10 @@ export class VisitorsService {
     sessionToken: string;
     ipAddress?: string;
     userAgent?: string;
+    referredByBranchId?: string;
+    catalogueOfferId?: string;
   }): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
-    const { customerId, deviceCode, sessionToken, ipAddress, userAgent } =
+    const { customerId, deviceCode, sessionToken, ipAddress, userAgent, referredByBranchId, catalogueOfferId } =
       params;
 
     // --- Prevent Admins from being recorded as visitors ---
@@ -1135,9 +1138,17 @@ export class VisitorsService {
       sessionToken,
       ipAddress: ipAddress ?? null,
       userAgent: userAgent ?? null,
+      referredByBranchId: referredByBranchId ?? null,
+      catalogueOfferId: catalogueOfferId ?? null,
     } as any) as unknown as Visit;
 
     const saved = await this.visitRepository.save(visit);
+
+    // Increment views on CatalogueOffer if associated
+    if (catalogueOfferId) {
+      const offerRepo = this.dataSource.getRepository(CatalogueOffer);
+      await offerRepo.increment({ id: catalogueOfferId }, 'views', 1);
+    }
 
     return { visitId: saved.id, sessionToken, isNewVisit: true };
   }
@@ -1156,6 +1167,8 @@ export class VisitorsService {
     branchId: string;
     businessId: string;
     deviceId?: string;
+    referredByBranchId?: string;
+    catalogueOfferId?: string;
   }): Promise<void> {
     const {
       sessionToken,
@@ -1164,6 +1177,8 @@ export class VisitorsService {
       branchId,
       businessId,
       deviceId,
+      referredByBranchId,
+      catalogueOfferId,
     } = params;
 
     if (sessionToken) {
@@ -1180,6 +1195,19 @@ export class VisitorsService {
         visit.orderId = orderId;
         visit.upgradedAt = new Date();
         await this.visitRepository.save(visit);
+
+        // Discovery attribution update — atomic increments to avoid race conditions
+        if (visit.catalogueOfferId) {
+          const offerRepo = this.dataSource.getRepository(CatalogueOffer);
+          await offerRepo.increment({ id: visit.catalogueOfferId }, 'visits', 1);
+          if (orderId) {
+            const orderRepo = this.dataSource.getRepository('CatalogueOrder');
+            const order = await orderRepo.findOne({ where: { id: orderId } }) as any;
+            if (order?.totalAmount) {
+              await offerRepo.increment({ id: visit.catalogueOfferId }, 'revenue', Number(order.totalAmount));
+            }
+          }
+        }
         return;
       }
     }
@@ -1201,9 +1229,24 @@ export class VisitorsService {
       visitType: 'patronage',
       sessionToken: newSessionToken,
       upgradedAt: new Date(),
+      referredByBranchId: referredByBranchId ?? null,
+      catalogueOfferId: catalogueOfferId ?? null,
     } as any) as unknown as Visit;
 
     await this.visitRepository.save(fallbackVisit);
+
+    // Increment metrics on CatalogueOffer atomically — avoids race conditions
+    if (catalogueOfferId) {
+      const offerRepo = this.dataSource.getRepository(CatalogueOffer);
+      await offerRepo.increment({ id: catalogueOfferId }, 'visits', 1);
+      if (orderId) {
+        const orderRepo = this.dataSource.getRepository('CatalogueOrder');
+        const order = await orderRepo.findOne({ where: { id: orderId } }) as any;
+        if (order?.totalAmount) {
+          await offerRepo.increment({ id: catalogueOfferId }, 'revenue', Number(order.totalAmount));
+        }
+      }
+    }
   }
 
   /**
