@@ -403,6 +403,16 @@ export class VisitorsController {
           example: 'uuid-v4',
           description: 'Optional: if omitted, the server generates one.',
         },
+        referredByBranchId: {
+          type: 'string',
+          example: 'uuid-v4',
+          description: 'Optional: ID of the partner branch that referred this customer.',
+        },
+        catalogueOfferId: {
+          type: 'string',
+          example: 'uuid-v4',
+          description: 'Optional: ID of the Catalogue Offer (Promotion) that drove this visit.',
+        },
       },
       required: ['deviceCode'],
     },
@@ -422,7 +432,7 @@ export class VisitorsController {
   })
   async recordPortalVisit(
     @Req() req: any,
-    @Body() body: { deviceCode: string; sessionToken?: string },
+    @Body() body: { deviceCode: string; sessionToken?: string; referredByBranchId?: string; catalogueOfferId?: string },
   ): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
     const customerId = req.user.id as string;
     const ipAddress: string =
@@ -440,6 +450,8 @@ export class VisitorsController {
       sessionToken,
       ipAddress,
       userAgent,
+      referredByBranchId: body.referredByBranchId,
+      catalogueOfferId: body.catalogueOfferId,
     });
   }
 

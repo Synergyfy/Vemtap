@@ -47,6 +47,8 @@ export class PartnershipsService {
       .where('b.id != :sourceBranchId', { sourceBranchId: branchId })
       .andWhere('b.businessId != :sourceBusinessId', { sourceBusinessId: sourceBranch.businessId })
       .andWhere('b.isActive = :isActive', { isActive: true })
+      .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', { joinDiscoveryNetwork: true })
+      .andWhere('b.receivePartnerRequests = :receivePartnerRequests', { receivePartnerRequests: true })
       .andWhere('b.latitude IS NOT NULL')
       .andWhere('b.longitude IS NOT NULL')
       .andWhere(`ST_DWithin(b.location, ${sourceLocation}, :distance)`, { distance });
@@ -83,6 +85,8 @@ export class PartnershipsService {
       .where('b.id != :sourceBranchId', { sourceBranchId: branchId })
       .andWhere('b.businessId != :sourceBusinessId', { sourceBusinessId: sourceBranch.businessId })
       .andWhere('b.isActive = :isActive', { isActive: true })
+      .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', { joinDiscoveryNetwork: true })
+      .andWhere('b.receivePartnerRequests = :receivePartnerRequests', { receivePartnerRequests: true })
       .andWhere('b.latitude IS NOT NULL')
       .andWhere('b.longitude IS NOT NULL')
       .andWhere(`ST_DWithin(b.location, ${sourceLocation}, :distance)`, { distance });
