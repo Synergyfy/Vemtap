@@ -60,19 +60,9 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
             <h2 className="text-xl font-black text-gray-900">Attach Customer</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Capture details before checkout</p>
           </div>
-          <div className="flex items-center gap-3">
-            {onSkip && (
-              <button
-                onClick={onSkip}
-                className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                Skip / Walk-in
-              </button>
-            )}
-            <button onClick={onClose} className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
-              <X size={18} />
-            </button>
-          </div>
+          <button onClick={onClose} className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+            <X size={18} />
+          </button>
         </div>
 
         <div className="flex border-b border-gray-100 px-6 shrink-0 gap-6">
@@ -144,6 +134,16 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
                 <UserPlus size={16} />
                 Save & Attach Customer
               </button>
+
+              {onSkip && (
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  className="w-full h-10 mt-2 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 hover:text-gray-700 transition-all flex items-center justify-center"
+                >
+                  Skip / Walk-in
+                </button>
+              )}
             </form>
           )}
 

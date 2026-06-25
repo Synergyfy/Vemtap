@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type SettingsTab = 'profile' | 'team' | 'subscription' | 'billing' | 'notifications' | 'security';
+export type SettingsTab = 'profile' | 'team' | 'subscription' | 'billing' | 'notifications' | 'security' | 'documents' | 'kyc';
 
 interface SettingsState {
   activeTab: SettingsTab;

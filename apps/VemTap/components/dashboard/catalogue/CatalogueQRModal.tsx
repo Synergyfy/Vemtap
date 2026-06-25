@@ -15,7 +15,7 @@ interface CatalogueQRModalProps {
 }
 
 export function CatalogueQRModal({ isOpen, onClose, businessCode, businessName, logoUrl }: CatalogueQRModalProps) {
-    const qrUrl = `https://vemtap.com/menu/${businessCode}`;
+    const qrUrl = typeof window !== 'undefined' ? `${window.location.origin}/b/${businessCode}/pos` : `https://vemtap.com/b/${businessCode}/pos`;
     const qrRef = useRef<HTMLDivElement>(null);
     const [viewState, setViewState] = useState<'initial' | 'download' | 'design'>('initial');
 
@@ -79,7 +79,7 @@ export function CatalogueQRModal({ isOpen, onClose, businessCode, businessName, 
                                         {viewState === 'design' ? 'Design Your QR' : 'Your Menu QR'}
                                     </h3>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                                        {viewState === 'design' ? 'Customize appearance' : 'Scan to view catalogue'}
+                                        {viewState === 'design' ? 'Customize appearance' : 'Scan to start ordering'}
                                     </p>
                                 </div>
                             </div>

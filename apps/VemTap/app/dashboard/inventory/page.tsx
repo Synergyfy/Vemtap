@@ -1,24 +1,38 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCatalogueItems } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Package, Plus, Search, Edit2, Archive, AlertTriangle, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
+import AddProductMethodModal from '@/components/dashboard/catalogue/AddProductMethodModal';
+import BarcodeScanner from '@/components/dashboard/catalogue/BarcodeScanner';
 import { useMyBusiness } from '@/services/businesses/hooks';
 
 export default function InventoryDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: business } = useMyBusiness();
   const activeBranchId = business?.branches?.[0]?.id || '';
   const { data: items = [], isLoading } = useCatalogueItems({ branchId: activeBranchId });
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showMethodModal, setShowMethodModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [scannedProductData, setScannedProductData] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Open method chooser if ?add=true in URL
+  useEffect(() => {
+    if (searchParams.get('add') === 'true') {
+      setShowMethodModal(true);
+      router.replace('/dashboard/inventory', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const filteredItems = items.filter((item: any) => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -32,12 +46,58 @@ export default function InventoryDashboard() {
 
   const handleEdit = (product: any) => {
     setSelectedProduct(product);
-    setIsModalOpen(true);
+    setShowProductModal(true);
   };
 
   const handleAdd = () => {
     setSelectedProduct(null);
-    setIsModalOpen(true);
+    setScannedProductData(null);
+    setShowMethodModal(true);
+  };
+
+  const handleMethodSelect = (method: 'manual' | 'bulk' | 'barcode') => {
+    setShowMethodModal(false);
+    if (method === 'manual') {
+      setShowProductModal(true);
+    } else if (method === 'bulk') {
+      router.push('/dashboard/catalogue/import');
+    } else if (method === 'barcode') {
+      setShowBarcodeScanner(true);
+    }
+  };
+
+  const handleBarcodeScan = (product: any) => {
+    if (product) {
+      setScannedProductData({
+        name: product.name,
+        price: product.price,
+        description: '',
+        categoryId: '',
+        branchId: activeBranchId,
+        sku: product.sku,
+        barcode: product.barcode,
+        itemType: 'product' as const,
+        discountType: 'none' as const,
+        discountValue: 0,
+        stockQuantity: 0,
+        loyaltyPoints: 0,
+        allowBackOrder: true,
+        applyGlobally: false,
+        mainImage: '',
+        galleryImages: [],
+      });
+      setShowBarcodeScanner(false);
+      setShowProductModal(true);
+    } else {
+      setShowBarcodeScanner(false);
+      setShowMethodModal(true);
+    }
+  };
+
+  const handleCloseProductModal = () => {
+    setShowProductModal(false);
+    setSelectedProduct(null);
+    setScannedProductData(null);
   };
 
   return (
@@ -155,7 +215,14 @@ export default function InventoryDashboard() {
                         </div>
                         <div>
                           <div className="text-sm font-black text-gray-900">{item.name}</div>
-                          <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">SKU: {item.sku || 'N/A'}</div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">SKU: {item.sku || 'N/A'}</span>
+                            {item.barcode ? (
+                              <span className="text-[9px] font-mono font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">BC: {item.barcode}</span>
+                            ) : (
+                              <span className="text-[9px] font-bold text-amber-500 uppercase">No Barcode</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -188,10 +255,31 @@ export default function InventoryDashboard() {
         </div>
       </div>
 
+      <AddProductMethodModal
+        isOpen={showMethodModal}
+        onSelectMethod={handleMethodSelect}
+        onClose={() => setShowMethodModal(false)}
+      />
+
+      <BarcodeScanner
+        isOpen={showBarcodeScanner}
+        products={items.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          barcode: item.barcode || '',
+          image: item.mainImage,
+          categoryId: item.categoryId,
+          sku: item.sku,
+        }))}
+        onScan={handleBarcodeScan}
+        onClose={() => { setShowBarcodeScanner(false); setShowMethodModal(true); }}
+      />
+
       <ProductModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        product={selectedProduct} 
+        isOpen={showProductModal} 
+        onClose={handleCloseProductModal} 
+        product={selectedProduct || scannedProductData} 
         activeBranchId={activeBranchId} 
       />
     </div>

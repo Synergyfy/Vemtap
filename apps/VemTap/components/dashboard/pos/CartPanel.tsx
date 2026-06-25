@@ -4,13 +4,15 @@ import React, { useState } from 'react';
 import { usePosStore } from '@/store/usePosStore';
 import { useHoldPosSale } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { Trash2, UserPlus, Tag, Plus, Minus, X, ArrowRight, User } from 'lucide-react';
+import { UserPlus, Tag, Plus, Minus, X, ArrowRight, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { CustomerSelectorModal } from './CustomerSelectorModal';
 import { DiscountModal } from './DiscountModal';
+import PublicCustomerForm from './PublicCustomerForm';
 import toast from 'react-hot-toast';
 import { useCreateCatalogueOrder } from '@/services/catalogue/hooks';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
 
 interface CartPanelProps {
   onNavigate?: () => void;
@@ -29,12 +31,15 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
     clearCart,
     getCartSubtotal,
     getCartTotal,
+    getCartTax,
     getCartDiscountAmount,
     attachedCustomer,
     attachCustomer,
     cartDiscount,
     setCartDiscount
   } = usePosStore();
+
+  const posSettings = usePosSettingsStore();
 
   const [showOptions, setShowOptions] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -44,6 +49,7 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
   const subtotal = getCartSubtotal();
   const total = getCartTotal();
   const discount = getCartDiscountAmount();
+  const tax = getCartTax();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   const handlePlaceOrder = async () => {
@@ -58,7 +64,7 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
         firstName: attachedCustomer.name.split(' ')[0] || 'Customer',
         lastName: attachedCustomer.name.split(' ').slice(1).join(' ') || '',
         phone: attachedCustomer.phone,
-        email: undefined,
+        email: attachedCustomer.email || undefined,
         branchId: isPublic ? '' : (activeBranchId ?? ''),
         tableNumber: undefined,
         notes: 'Public POS Order',
@@ -112,39 +118,25 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
         </button>
       </div>
 
-      {/* Customer & Discount Bar */}
-      <div className="p-4 border-b border-gray-100 grid grid-cols-2 gap-3 shrink-0 bg-gray-50/30">
-        <button 
-          onClick={() => setIsCustomerModalOpen(true)}
-          className={cn(
-            "flex items-center justify-center gap-2 p-3 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
-            attachedCustomer 
-              ? "bg-blue-50 border-blue-100 text-blue-600" 
-              : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-          )}
-        >
-          {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
-          {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Add Customer'}
-        </button>
-        <button 
-          onClick={() => setIsDiscountModalOpen(true)}
-          className={cn(
-          "flex items-center justify-center gap-2 p-3 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
-          discount > 0 
-            ? "bg-emerald-50 border-emerald-100 text-emerald-600" 
-            : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-        )}>
-          <Tag size={14} />
-          {discount > 0 ? `Discount Applied` : 'Add Discount'}
-        </button>
-      </div>
-
-      <CustomerSelectorModal 
-        isOpen={isCustomerModalOpen}
-        onClose={() => setIsCustomerModalOpen(false)}
-        onSelectCustomer={(customer) => attachCustomer(customer)}
-        selectedCustomerId={attachedCustomer?.id}
-      />
+      {isPublic ? (
+        <PublicCustomerForm
+          isOpen={isCustomerModalOpen}
+          onSubmit={(customer) => {
+            attachCustomer({ id: '', name: customer.name, phone: customer.phone, email: customer.email });
+            setIsCustomerModalOpen(false);
+            // Delayed call to let state settle
+            setTimeout(() => handlePlaceOrder(), 50);
+          }}
+          onClose={() => setIsCustomerModalOpen(false)}
+        />
+      ) : (
+        <CustomerSelectorModal 
+          isOpen={isCustomerModalOpen}
+          onClose={() => setIsCustomerModalOpen(false)}
+          onSelectCustomer={(customer) => attachCustomer(customer)}
+          selectedCustomerId={attachedCustomer?.id}
+        />
+      )}
 
       <DiscountModal
         isOpen={isDiscountModalOpen}
@@ -158,6 +150,12 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {cart.map((item) => (
           <div key={item.id} className="flex flex-col p-4 bg-white border border-gray-100 rounded-[24px] shadow-sm relative group hover:border-[#066CF4]/30 transition-colors">
+            <button
+              onClick={() => removeFromCart(item.id)}
+              className="absolute -top-2 -right-2 size-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm z-10"
+            >
+              <X size={11} />
+            </button>
             <div className="flex items-start gap-3">
               <div className="size-12 bg-gray-50 rounded-[14px] flex items-center justify-center shrink-0 border border-gray-100 overflow-hidden">
                 {item.image ? (
@@ -203,7 +201,7 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
 
       {/* Footer / Summary */}
       <div className="p-6 bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)] shrink-0 rounded-t-[32px] relative z-10">
-        <div className="space-y-3 mb-6">
+        <div className="space-y-3 mb-4">
           <div className="flex justify-between text-[11px] font-bold text-gray-500">
             <span>Subtotal</span>
             <span className="text-gray-900">₦{subtotal.toLocaleString()}</span>
@@ -214,10 +212,44 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
               <span>-₦{discount.toLocaleString()}</span>
             </div>
           )}
+          {posSettings.taxEnabled && !posSettings.pricesIncludeTax && tax > 0 && (
+            <div className="flex justify-between text-[11px] font-bold text-gray-500">
+              <span>{posSettings.taxLabel || 'Tax'}</span>
+              <span className="text-gray-900">₦{tax.toLocaleString()}</span>
+            </div>
+          )}
           <div className="flex justify-between items-end pt-3 border-t border-gray-100">
             <span className="text-[12px] font-black uppercase tracking-widest text-gray-900">Total</span>
             <span className="text-2xl font-black text-[#066CF4] tracking-tight">₦{total.toLocaleString()}</span>
           </div>
+        </div>
+
+        {/* Customer & Discount */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            onClick={() => setIsCustomerModalOpen(true)}
+            className={cn(
+              "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
+              attachedCustomer
+                ? "bg-blue-50 border-blue-100 text-blue-600"
+                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+            )}
+          >
+            {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
+            {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Add Customer'}
+          </button>
+          <button
+            onClick={() => setIsDiscountModalOpen(true)}
+            className={cn(
+              "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
+              discount > 0
+                ? "bg-emerald-50 border-emerald-100 text-emerald-600"
+                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+            )}
+          >
+            <Tag size={14} />
+            {discount > 0 ? `Discount Applied` : 'Add Discount'}
+          </button>
         </div>
 
         {!isPublic ? (

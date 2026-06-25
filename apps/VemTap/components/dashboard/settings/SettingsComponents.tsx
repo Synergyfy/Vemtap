@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { 
     User, Users, CreditCard, Bell, 
     ShieldCheck, HelpCircle, Building2, ChevronRight,
-    LayoutGrid
+    LayoutGrid, FileText, Shield
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,6 +72,8 @@ export function SettingsNavigationCards() {
         { id: 'billing', label: 'Billing & History', desc: 'Download invoices and update payment methods.', icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-50' },
         { id: 'notifications', label: 'Notifications', desc: 'Configure email and WhatsApp alert preferences.', icon: Bell, color: 'text-rose-600', bg: 'bg-rose-50' },
         { id: 'security', label: 'Account Security', desc: 'Update password and manage authentication.', icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { id: 'documents', label: 'Documents', desc: 'Upload required business verification documents.', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { id: 'kyc', label: 'KYC Verification', desc: 'Complete Know Your Customer verification to unlock features.', icon: Shield, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     ];
 
     return (
