@@ -432,7 +432,7 @@ export default function CreateAssetWizardPage() {
                 )}
 
                 <div className="pt-4">
-                    <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} className="w-full h-14 rounded-2xl bg-[#066CF4] hover:bg-[#0556c5] text-white font-black uppercase tracking-widest shadow-xl shadow-blue-500/20">
+                    <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} disabled={showSizeWarning} className={cn("w-full h-14 rounded-2xl text-white font-black uppercase tracking-widest shadow-xl transition-all", showSizeWarning ? "bg-gray-300 cursor-not-allowed shadow-none" : "bg-[#066CF4] hover:bg-[#0556c5] shadow-blue-500/20")}>
                         Continue to Editor <ChevronRight className="ml-2" size={18} />
                     </Button>
                 </div>

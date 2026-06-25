@@ -30,6 +30,7 @@
     "geist": "^1.7.2",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
+    "jsbarcode": "^3.12.3",
     "jspdf": "^4.1.0",
     "jwt-decode": "^4.0.0",
     "leaflet": "^1.9.4",

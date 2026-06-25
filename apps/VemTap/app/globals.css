@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Material+Icons+Round&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -205,4 +206,10 @@ body {
 .dashboard-typography-override * {
     font-weight: 400 !important;
     font-family: var(--font-geist-sans), "Geist", sans-serif !important;
+}
+
+/* Preserve icon font for Material Icons inside dashboard */
+.dashboard-typography-override .material-icons-round,
+.dashboard-typography-override .material-icons {
+    font-family: 'Material Icons Round', 'Material Icons', sans-serif !important;
 }

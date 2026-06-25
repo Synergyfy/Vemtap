@@ -12,12 +12,12 @@ import {
     useCatalogueCategories,
     useCreateCatalogueCategory,
     DiscountType,
-    CatalogueItemType
 } from '@/services/catalogue/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import toast from 'react-hot-toast';
-import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Box, Cog, Coins, HelpCircle, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Coins, HelpCircle, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { generateBarcodeValue, isValidBarcode } from '@/lib/barcode';
 import { cn } from '@/lib/utils';
 import Cropper, { Point, Area } from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
@@ -108,12 +108,13 @@ const CropperModal: React.FC<{
 const productSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     price: z.coerce.number().min(0, 'Price must be positive'),
-    shortDescription: z.string().min(1, 'Short description is required'),
-    description: z.string().min(1, 'Full description is required'),
+    description: z.string().min(1, 'Description is required'),
     categoryId: z.string().min(1, 'Category is required'),
     branchId: z.string().min(1, 'Branch is required'),
     sku: z.string().optional(),
-    itemType: z.enum(['product', 'service']).default('product'),
+    barcode: z.string().optional(),
+    weight: z.string().optional(),
+    dimensions: z.string().optional(),
     discountType: z.enum(['none', 'percentage', 'fixed']).default('none'),
     discountValue: z.coerce.number().min(0, 'Value must be positive').optional(),
     stockQuantity: z.coerce.number().min(0, 'Stock must be positive').optional(),
@@ -158,18 +159,21 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
     const mainInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
+    const barcodeCanvasRef = useRef<HTMLCanvasElement>(null);
+    const [barcodePreview, setBarcodePreview] = useState<string>('');
 
     const { register, handleSubmit, reset, watch, setValue, trigger, formState: { errors } } = useForm<ProductFormValues>({
         resolver: zodResolver(productSchema) as any,
         defaultValues: {
             name: '',
             price: 0,
-            shortDescription: '',
             description: '',
             categoryId: '',
             branchId: activeBranchId || '',
             sku: '',
-            itemType: 'product',
+            barcode: '',
+            weight: '',
+            dimensions: '',
             discountType: 'none',
             discountValue: 0,
             stockQuantity: 0,
@@ -188,12 +192,13 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                 reset({
                     name: product.name,
                     price: product.price,
-                    shortDescription: product.shortDescription || '',
                     description: product.description || '',
                     categoryId: product.categoryId,
                     branchId: activeBranchId || product.businessId,
                     sku: product.sku || '',
-                    itemType: product.itemType || 'product',
+                    barcode: product.barcode || '',
+                    weight: product.weight || '',
+                    dimensions: product.dimensions || '',
                     discountType: product.discountType || 'none',
                     discountValue: product.discountValue || 0,
                     stockQuantity: product.stockQuantity || 0,
@@ -207,12 +212,13 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                 reset({
                     name: '',
                     price: 0,
-                    shortDescription: '',
                     description: '',
                     categoryId: '',
                     branchId: activeBranchId || '',
                     sku: '',
-                    itemType: 'product',
+                    barcode: '',
+                    weight: '',
+                    dimensions: '',
                     discountType: 'none',
                     discountValue: 0,
                     stockQuantity: 0,
@@ -225,6 +231,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             }
             setLocalMainFile(null);
             setLocalGalleryFiles([]);
+            setBarcodePreview('');
             setIsUploading(false);
         }
     }, [isOpen, product, reset, activeBranchId]);
@@ -276,10 +283,37 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
         }
     };
 
+    const handleGenerateBarcode = () => {
+        const barcode = generateBarcodeValue(activeBranchId || 'product', watch('name'));
+        setValue('barcode', barcode, { shouldValidate: true });
+    };
+
+    const watchedBarcode = watch('barcode');
+
+    useEffect(() => {
+        if (watchedBarcode && barcodeCanvasRef.current) {
+            try {
+                const JsBarcode = require('jsbarcode');
+                JsBarcode(barcodeCanvasRef.current, watchedBarcode, {
+                    format: 'CODE128',
+                    width: 2,
+                    height: 50,
+                    displayValue: true,
+                    fontSize: 12,
+                    margin: 5,
+                    background: '#ffffff',
+                });
+                setBarcodePreview(barcodeCanvasRef.current.toDataURL('image/png'));
+            } catch { }
+        } else {
+            setBarcodePreview('');
+        }
+    }, [watchedBarcode]);
+
     const validateStep = async (step: number) => {
         switch (step) {
             case 0:
-                return await trigger(['name', 'itemType', 'categoryId', 'shortDescription', 'description']);
+                return await trigger(['name', 'categoryId', 'description']);
             case 1:
                 return await trigger(['price', 'discountType', 'discountValue', 'stockQuantity', 'branchId', 'loyaltyPoints']);
             default:
@@ -321,8 +355,14 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
             const { applyGlobally, ...restValues } = values;
 
+            if (!restValues.barcode) {
+                restValues.barcode = generateBarcodeValue(activeBranchId || 'product', restValues.name);
+            }
+
             const submissionData = {
                 ...restValues,
+                shortDescription: restValues.description?.slice(0, 200) || '',
+                itemType: 'product' as const,
                 mainImage: mainImageUrl,
                 galleryImages: finalGalleryUrls
             };
@@ -407,29 +447,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Product Name *</label>
                                     <input {...register('name')} className={cn("w-full h-14 px-4 bg-gray-50 border rounded-2xl font-bold text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
+                                    <p className="text-[10px] text-text-secondary font-medium ml-1">The name customers will see on your menu and receipts.</p>
                                     {errors.name && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.name.message}</p>}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Item Type</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <label className={cn(
-                                            "h-14 flex items-center justify-center gap-2 border rounded-2xl font-bold text-sm cursor-pointer transition-all",
-                                            watch('itemType') === 'product' ? "border-[#066CF4] bg-[#066CF4]/5 text-[#066CF4]" : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-white"
-                                        )}>
-                                            <Box size={18} />
-                                            Product
-                                            <input type="radio" {...register('itemType')} value="product" className="hidden" />
-                                        </label>
-                                        <label className={cn(
-                                            "h-14 flex items-center justify-center gap-2 border rounded-2xl font-bold text-sm cursor-pointer transition-all",
-                                            watch('itemType') === 'service' ? "border-[#066CF4] bg-[#066CF4]/5 text-[#066CF4]" : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-white"
-                                        )}>
-                                            <Cog size={18} />
-                                            Service
-                                            <input type="radio" {...register('itemType')} value="service" className="hidden" />
-                                        </label>
-                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -451,17 +470,26 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                         </select>
                                     )}
                                     {errors.categoryId && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.categoryId.message}</p>}
+                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Group this product under a category for easier browsing.</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Weight</label>
+                                        <input {...register('weight')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="e.g. 500g, 1kg, 2lbs" />
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Product weight with unit (kg, g, lb, oz).</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Dimensions</label>
+                                        <input {...register('dimensions')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="e.g. 10x15x5 cm, M, L, XL" />
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Product size, dimensions, or variant label.</p>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Short Description *</label>
-                                    <input {...register('shortDescription')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="One line summary" />
-                                    {errors.shortDescription && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.shortDescription.message}</p>}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Full Description *</label>
-                                    <textarea {...register('description')} rows={3} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none resize-none" placeholder="Detailed product information..." />
+                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Description *</label>
+                                    <textarea {...register('description')} rows={3} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none resize-none" placeholder="Detailed product information about ingredients, preparation, or usage..." />
+                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Detailed information about ingredients, preparation, or usage.</p>
                                     {errors.description && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.description.message}</p>}
                                 </div>
                             </motion.div>
@@ -487,9 +515,26 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <h4 className="text-xs font-black text-primary uppercase tracking-widest">Pricing & Discounts</h4>
                                         </div>
                                         <p className="text-[10px] text-primary/70 font-bold">Percentage Off reduces price by a fraction, Fixed Price sets a specific discounted amount.</p>
-                                    </div>
+                                </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Barcode</label>
+                                    <div className="flex gap-2">
+                                        <input {...register('barcode')} className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
+                                        <button type="button" onClick={handleGenerateBarcode} className="h-12 px-5 bg-[#066CF4]/10 text-[#066CF4] rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#066CF4]/20 transition-all whitespace-nowrap">
+                                            Auto-Generate
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Unique barcode for this product. Scanned at POS to auto-add to cart. Leave empty to auto-generate on save.</p>
+                                    <canvas ref={barcodeCanvasRef} className="hidden" />
+                                    {barcodePreview && (
+                                        <div className="mt-2 p-3 bg-white border border-gray-100 rounded-xl flex items-center justify-center">
+                                            <img src={barcodePreview} alt="Barcode" className="h-14" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">Discount Type</label>
                                             <select
@@ -527,6 +572,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">SKU</label>
                                         <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="Optional" />
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Stock Keeping Unit — your internal product reference code.</p>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Branch *</label>
@@ -535,13 +581,15 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             {branches.map((branch: any) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
                                         </select>
                                         {errors.branchId && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.branchId.message}</p>}
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">The branch where this product will be available for sale.</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Stock Quantity</label>
-                                        <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" />
+                                        <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="0" />
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Current inventory count. Leave at 0 for unlimited or digital products.</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -609,6 +657,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             </div>
                                         )}
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Upload a square image. This will be the primary photo displayed on your menu.</p>
                                 </div>
 
                                 <div className="space-y-4">
@@ -617,6 +666,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                         <span className="text-[10px] font-bold text-gray-400 uppercase">{galleryPreviews.length} Images</span>
                                     </div>
                                     <input type="file" ref={galleryInputRef} onChange={handleGalleryUpload} accept="image/*" className="hidden" />
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-2 ml-1">Additional photos to showcase your product from different angles.</p>
                                     <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
                                         {galleryPreviews.map((url, idx) => (
                                             <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm group">

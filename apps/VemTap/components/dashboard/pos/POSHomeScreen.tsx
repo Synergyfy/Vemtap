@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShoppingBag, Search, Plus, Filter, LayoutGrid, Loader2 } from 'lucide-react';
+import { ShoppingBag, Search, LayoutGrid, Loader2, ScanLine } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/services/catalogue/hooks';
 import { cn } from '@/lib/utils';
 import POSPageHeader from './shared/POSPageHeader';
+import BarcodeScanner from '@/components/dashboard/catalogue/BarcodeScanner';
+import toast from 'react-hot-toast';
 
 interface POSHomeScreenProps {
   onOpenCart?: () => void;
@@ -27,6 +29,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   const categories = categoriesData ?? [];
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
   const filteredProducts = products.filter((p: any) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -36,6 +39,34 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   });
 
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handleBarcodeScan = (product: any) => {
+    if (product) {
+      addToCart({
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        costPrice: product.costPrice || 0,
+        quantity: 1,
+        sku: product.sku || '',
+        barcode: product.barcode || '',
+        image: product.image || '',
+      });
+      toast.success(`${product.name} added to cart`);
+    }
+    setShowBarcodeScanner(false);
+  };
+
+  const scannedProducts = products.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    barcode: p.barcode || '',
+    image: p.mainImage || '',
+    categoryId: p.categoryId,
+    sku: p.sku || '',
+  }));
 
   if (loadingProducts) {
     return (
@@ -61,8 +92,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-14 pl-12 pr-4 rounded-[24px] border border-gray-200 bg-white shadow-sm focus:outline-none focus:border-[#066CF4]/50 focus:ring-4 focus:ring-[#066CF4]/10 text-sm font-bold text-gray-900 transition-all placeholder:font-medium placeholder:text-gray-400"
           />
-          <button className="absolute right-3 top-1/2 -translate-y-1/2 size-8 bg-gray-50 rounded-xl flex items-center justify-center text-gray-500 hover:text-[#066CF4] hover:bg-[#066CF4]/5 transition-colors">
-            <Filter size={16} />
+          <button onClick={() => setShowBarcodeScanner(true)} className="absolute right-3 top-1/2 -translate-y-1/2 size-8 bg-[#066CF4]/10 rounded-xl flex items-center justify-center text-[#066CF4] hover:bg-[#066CF4]/20 transition-colors">
+            <ScanLine size={16} />
           </button>
         </div>
 
@@ -194,6 +225,13 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
           )}
         </button>
       </div>
+
+      <BarcodeScanner
+        isOpen={showBarcodeScanner}
+        products={scannedProducts}
+        onScan={handleBarcodeScan}
+        onClose={() => setShowBarcodeScanner(false)}
+      />
     </div>
   );
 }

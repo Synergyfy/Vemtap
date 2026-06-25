@@ -115,9 +115,12 @@ export default function PaymentScreen() {
       <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm mb-20">
         <div className="text-center mb-10">
           {cashier && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-500 mb-3">
-              <User size={10} />
-              {cashier.firstName} {cashier.lastName}
+            <div className="inline-flex flex-col items-center gap-1 mb-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-500">
+                <User size={10} />
+                {cashier.firstName} {cashier.lastName}
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">{cashier.role || 'staff'}</span>
             </div>
           )}
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Amount Due</p>
