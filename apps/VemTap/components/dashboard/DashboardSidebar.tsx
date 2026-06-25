@@ -8,7 +8,6 @@ import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 const defaultLogo = '/VEMTAP_PNG.png';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
-import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
@@ -116,14 +115,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const { data } = useQuery({
         queryKey: ['dashboard', activeBranchId],
-        queryFn: dashboardApi.fetchDashboardData,
+        queryFn: () => dashboardApi.fetchDashboardData(activeBranchId),
         refetchInterval: 5000,
     });
 
-    const notifications = (data?.notifications || []).filter((n: Notification) => n.scope === 'DASHBOARD');
-    const redemptionRequests = data?.redemptionRequests || [];
-    const unreadCount = notifications.filter((n: Notification) => !n.read).length;
-    const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
+    const notifications = (data?.notifications || []).filter((n: any) => n.scope === 'DASHBOARD');
+    const unreadCount = notifications.filter((n: any) => !n.read).length;
+    const pendingRedemptions = 0;
 
     const { data: assets } = useMarketingAssets();
     const { data: marketingAnalytics } = useAnalyticsOverview();
@@ -132,7 +130,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         if (!myBusiness?.logoUrl) count++;
         if (!assets || assets.length === 0) count++;
         if (!((marketingAnalytics?.totals?.downloads ?? 0) > 0)) count++;
-        const visitorsCount = (Array.isArray(data?.stats) ? data.stats : []).find((s: any) => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        const visitorsCount = data?.stats?.totalVisitors?.toString() || '0';
         if (visitorsCount === '0') count++;
         count++; 
         return count;

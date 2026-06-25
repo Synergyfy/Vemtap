@@ -21,7 +21,8 @@ import DashboardBannerWrapper from '@/components/dashboard/DashboardBannerWrappe
 import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import { Button } from '@/components/ui/button';
 
-import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardApi } from '@/lib/api/dashboard';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -33,6 +34,10 @@ export default function DashboardPage() {
     const { data: branches = [] } = useBranches();
     const { data: analytics, isLoading: isAnalyticsLoading } = useDashboardAnalytics();
     const { data: loyaltyStats } = useBusinessLoyaltyStats();
+    const { data: dashboard } = useQuery({
+        queryKey: ['dashboard', activeBranchId],
+        queryFn: () => dashboardApi.fetchDashboardData(activeBranchId),
+    });
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
     const businessName = user?.businessName || myBusiness?.name;
@@ -44,40 +49,41 @@ export default function DashboardPage() {
         if (activeBranch?.isMainBranch && (isDefaultLabel || !normalized) && businessName) return businessName;
         return normalized || businessName || 'Main Branch';
     }, [activeBranch, activeBranchId, businessName]);
-    
-    // Fallback Mock Data
-    const mockStats = useMockDashboardStore((state) => state.stats);
-    const mockVisitors = useMockDashboardStore((state) => state.visitors);
 
     // KPI Data Mapping
     const kpis = useMemo(() => {
-        // Use real analytics if available, otherwise fallback to mock data
-        const stats = analytics?.stats || [
-            { label: 'Total Visitors', value: mockStats.totalVisitors.toString() },
-            { label: 'New Customers Today', value: mockStats.todaysVisits.toString() }
-        ];
+        const stats = analytics?.stats || (dashboard ? [
+            { label: 'Total Visitors', value: dashboard.stats.totalVisitors.toString() },
+            { label: 'New Customers Today', value: dashboard.stats.todaysVisits.toString() }
+        ] : [
+            { label: 'Total Visitors', value: '0' },
+            { label: 'New Customers Today', value: '0' }
+        ]);
         
-        const visitorsToday = stats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || mockStats.todaysVisits.toString();
-        const customersCaptured = stats.find(s => s.label.toLowerCase().includes('new customers'))?.value || (mockStats.todaysVisits * 0.7).toFixed(0);
-        const activeLoyalty = loyaltyStats?.stats?.find(s => s.label.toLowerCase().includes('active'))?.value || '124';
+        const visitorsToday = stats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        const customersCaptured = stats.find(s => s.label.toLowerCase().includes('new customers'))?.value || '0';
+        const activeLoyalty = loyaltyStats?.stats?.find(s => s.label.toLowerCase().includes('active'))?.value || '0';
         
         return [
             { label: "Today's Visitors", value: visitorsToday, icon: Users, color: 'bg-blue-500' },
             { label: "Customers Captured", value: customersCaptured, icon: UserPlus, color: 'bg-emerald-500' },
-            { label: "Sales Today", value: "₦45,200", icon: ShoppingBag, color: 'bg-purple-500' }, 
+            { label: "Sales Today", value: "₦45,200", icon: ShoppingBag, color: 'bg-purple-500' },
             { label: "Active Loyalty Members", value: activeLoyalty, icon: Gift, color: 'bg-amber-500' }
         ];
-    }, [analytics, loyaltyStats, mockStats]);
+    }, [analytics, loyaltyStats, dashboard]);
 
-    // Format recent activity from analytics or mock data
+    // Format recent activity
     const recentActivity = useMemo(() => {
         if (analytics?.recentVisitors && analytics.recentVisitors.length > 0) return analytics.recentVisitors;
-        return mockVisitors.slice(0, 5).map(v => ({
-            name: v.name,
-            status: v.status === 'new' ? 'new' : 'returning',
-            time: v.time
-        }));
-    }, [analytics, mockVisitors]);
+        if (dashboard?.recentVisitors && dashboard.recentVisitors.length > 0) {
+            return dashboard.recentVisitors.slice(0, 5).map((v: any) => ({
+                name: v.name,
+                status: v.status === 'new' ? 'new' : 'returning',
+                time: v.time
+            }));
+        }
+        return [];
+    }, [analytics, dashboard]);
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">

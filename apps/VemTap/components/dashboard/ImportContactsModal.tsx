@@ -6,7 +6,6 @@ import {
     AlertCircle, Search, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMockDashboardStore, Visitor } from '@/lib/store/mockDashboardStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -30,7 +29,6 @@ export default function ImportContactsModal({ isOpen, onClose }: ImportContactsM
     const [isProcessing, setIsProcessing] = useState(false);
     const [preview, setPreview] = useState<CustomerRow[]>([]);
     const [step, setStep] = useState<'upload' | 'preview' | 'success'>('upload');
-    const importVisitors = useMockDashboardStore(state => state.importVisitors);
     const activeBranchId = useAuthStore(state => state.activeBranchId);
     const activeBranch = useBusinessStore(state => state.getActiveBranch)();
     const queryClient = useQueryClient();
@@ -120,19 +118,7 @@ export default function ImportContactsModal({ isOpen, onClose }: ImportContactsM
 
             await api.post('/businesses/import-customers', { customers });
 
-            const newVisitors: Visitor[] = preview.map((p, idx) => ({
-                id: `IMP-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-                name: `${p.firstName} ${p.lastName}`.trim(),
-                phone: p.phone,
-                email: p.email,
-                time: 'Imported',
-                timestamp: Date.now(),
-                status: 'new',
-                branchId: activeBranchId || undefined,
-                location: activeBranch?.address || 'Imported'
-            }));
-
-            importVisitors(newVisitors);
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             queryClient.invalidateQueries({ queryKey: ['visitors'] });
             
             setStep('success');

@@ -37,14 +37,6 @@ export default function LocationStep({ address, onNext }: Props) {
     setCoordinates({ lat, lng });
   };
 
-  const enqueueBackgroundGeocode = async () => {
-    try {
-      await api.post('/businesses/my-business/enqueue-geocode', {});
-    } catch {
-      // silently fail — the background job is best-effort
-    }
-  };
-
   const handleYes = async () => {
     setState('locating');
     setMessage('Getting your current location...');
@@ -72,14 +64,18 @@ export default function LocationStep({ address, onNext }: Props) {
       setMessage('Location found from your address!');
       setTimeout(() => onNext({ latitude: pos.lat, longitude: pos.lng }), 1200);
     } catch (err: any) {
-      await enqueueBackgroundGeocode();
-      setMessage(err.message || 'Could not find your address. We will look it up in the background.');
-      setState('error');
+      try {
+        await api.post('/businesses/my-business/enqueue-geocode', {});
+        onNext({});
+      } catch {
+        setMessage(err.message || 'Could not find your address. We will look it up in the background.');
+        setState('error');
+      }
     }
   };
 
   const handleSkip = () => {
-    enqueueBackgroundGeocode();
+    api.post('/businesses/my-business/enqueue-geocode', {}).catch(() => {});
     onNext({});
   };
 
