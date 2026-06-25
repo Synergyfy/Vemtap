@@ -42,6 +42,7 @@ import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-order
 import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
 import { TrainingModule } from './modules/training/training.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
@@ -157,6 +158,7 @@ import { InventoryCountingModule } from './modules/inventory-counting/inventory-
     BusinessProfilingModule,
     AffiliatesModule,
     TrainingModule,
+    DiscoveryModule,
     QrThriveModule,
     BannersModule,
     MarketingAssetsModule,
