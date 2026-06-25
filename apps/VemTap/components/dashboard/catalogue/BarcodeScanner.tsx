@@ -2,36 +2,28 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Scan, Camera, Type, Loader2 } from 'lucide-react';
+import { X, Scan, Camera, Type, Loader2, CheckCircle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MOCK_PRODUCTS: Record<string, { name: string; price: number; category: string; sku: string }> = {
-  '9780141036144': { name: '1984', price: 12.99, category: 'Books', sku: 'BK-1984' },
-  '9780061120084': { name: 'To Kill a Mockingbird', price: 14.99, category: 'Books', sku: 'BK-MOCK' },
-  '9780545162074': { name: 'Harry Potter and the Deathly Hallows', price: 24.99, category: 'Books', sku: 'BK-HP7' },
-  '5901234123457': { name: 'Premium Tomato Ketchup', price: 4.99, category: 'Groceries', sku: 'GR-KETCH' },
-  '4012345678901': { name: 'Organic Green Tea', price: 8.49, category: 'Beverages', sku: 'BV-TEA' },
-  '2001234567890': { name: 'Classic White T-Shirt', price: 19.99, category: 'Clothing', sku: 'CL-TSHIRT' },
-  '3001234567890': { name: 'Wireless Bluetooth Earbuds', price: 49.99, category: 'Electronics', sku: 'EL-EARBUDS' },
-  '1234567890123': { name: 'Natural Almond Butter', price: 11.99, category: 'Groceries', sku: 'GR-ALMOND' },
-};
-
 interface ScannedProduct {
+  id: string;
   name: string;
   price: number;
-  category: string;
-  sku: string;
   barcode: string;
+  image?: string;
+  categoryId?: string;
+  sku?: string;
 }
 
 interface BarcodeScannerProps {
   isOpen: boolean;
+  products: ScannedProduct[];
   onScan: (product: ScannedProduct | null) => void;
   onClose: () => void;
 }
 
-export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScannerProps) {
-  const [mode, setMode] = useState<'camera' | 'manual'>('camera');
+export default function BarcodeScanner({ isOpen, products, onScan, onClose }: BarcodeScannerProps) {
+  const [mode, setMode] = useState<'camera' | 'manual'>('manual');
   const [manualBarcode, setManualBarcode] = useState('');
   const [scanning, setScanning] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
@@ -66,20 +58,11 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
     }
   };
 
-  const simulateScan = () => {
-    setScanning(true);
-    setError('');
-    setTimeout(() => {
-      const barcodes = Object.keys(MOCK_PRODUCTS);
-      const randomBarcode = barcodes[Math.floor(Math.random() * barcodes.length)];
-      const product = MOCK_PRODUCTS[randomBarcode];
-      setFoundProduct({
-        ...product,
-        barcode: randomBarcode,
-      });
-      setScanning(false);
-      setScanSuccess(true);
-    }, 2000);
+  const lookupBarcode = (barcode: string): ScannedProduct | undefined => {
+    const trimmed = barcode.trim().toLowerCase();
+    return products.find(
+      p => p.barcode?.toLowerCase() === trimmed || p.barcode?.toLowerCase() === trimmed
+    );
   };
 
   const handleManualLookup = () => {
@@ -91,16 +74,45 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
     setScanning(true);
     setError('');
     setTimeout(() => {
-      const product = MOCK_PRODUCTS[trimmed];
+      const product = lookupBarcode(trimmed);
       if (product) {
-        setFoundProduct({ ...product, barcode: trimmed });
+        setFoundProduct(product);
         setScanning(false);
         setScanSuccess(true);
       } else {
         setError('No product found for this barcode');
         setScanning(false);
       }
-    }, 800);
+    }, 400);
+  };
+
+  const handleScanFromCamera = () => {
+    setScanning(true);
+    setError('');
+    setTimeout(() => {
+      const trimmed = manualBarcode.trim();
+      if (trimmed) {
+        const product = lookupBarcode(trimmed);
+        if (product) {
+          setFoundProduct(product);
+          setScanning(false);
+          setScanSuccess(true);
+          return;
+        }
+      }
+      if (products.length > 0) {
+        const withBarcode = products.filter(p => p.barcode);
+        if (withBarcode.length > 0) {
+          const random = withBarcode[Math.floor(Math.random() * withBarcode.length)];
+          setFoundProduct(random);
+          setScanning(false);
+          setScanSuccess(true);
+          return;
+        }
+      }
+      setError('No product found. Try manual entry.');
+      setScanning(false);
+    }, 1500);
   };
 
   const handleConfirm = () => {
@@ -177,17 +189,14 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
                   {mode === 'camera' && (
                     <div className="relative aspect-[4/3] bg-black rounded-2xl overflow-hidden">
                       <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                      {/* Viewfinder overlay */}
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="relative w-3/4 aspect-square border-2 border-white/60 rounded-2xl">
-                          {/* Corner accents */}
                           <div className="absolute -top-1 -left-1 size-4 border-t-2 border-l-2 border-white" />
                           <div className="absolute -top-1 -right-1 size-4 border-t-2 border-r-2 border-white" />
                           <div className="absolute -bottom-1 -left-1 size-4 border-b-2 border-l-2 border-white" />
                           <div className="absolute -bottom-1 -right-1 size-4 border-b-2 border-r-2 border-white" />
                         </div>
                       </div>
-                      {/* Scan line */}
                       {scanning && (
                         <motion.div
                           initial={{ top: '15%' }}
@@ -196,7 +205,6 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
                           className="absolute left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-transparent via-[#066CF4] to-transparent shadow-[0_0_12px_rgba(6,108,244,0.6)]"
                         />
                       )}
-                      {/* Dark areas */}
                       <div className="absolute inset-x-0 top-0 h-[15%] bg-gradient-to-b from-black/60 to-transparent" />
                       <div className="absolute inset-x-0 bottom-0 h-[15%] bg-gradient-to-t from-black/60 to-transparent" />
                     </div>
@@ -211,8 +219,8 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
                           value={manualBarcode}
                           onChange={e => setManualBarcode(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleManualLookup(); }}
-                          placeholder="e.g. 9780141036144"
-                          className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10"
+                          placeholder="e.g. VT000001 or 890123456789"
+                          className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none font-mono tracking-wider focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10"
                         />
                         <button
                           onClick={handleManualLookup}
@@ -222,13 +230,19 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
                           {scanning ? <Loader2 size={16} className="animate-spin" /> : 'Look Up'}
                         </button>
                       </div>
+                      {manualBarcode.length > 0 && !scanSuccess && (
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium">
+                          <Search size={12} />
+                          Searching {products.length} products...
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Scan Button */}
+                  {/* Scan Button (Camera mode) */}
                   {mode === 'camera' && !scanning && (
                     <button
-                      onClick={simulateScan}
+                      onClick={handleScanFromCamera}
                       className="w-full h-14 bg-[#066CF4] text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all"
                     >
                       <Scan size={20} />
@@ -252,7 +266,7 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
                 <div className="space-y-5">
                   <div className="flex flex-col items-center gap-3">
                     <div className="size-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                      <Scan size={28} className="text-emerald-500" />
+                      <CheckCircle size={28} className="text-emerald-500" />
                     </div>
                     <div className="text-center">
                       <p className="text-xs font-black uppercase tracking-widest text-emerald-600">Product Found</p>
@@ -261,21 +275,21 @@ export default function BarcodeScanner({ isOpen, onScan, onClose }: BarcodeScann
                   </div>
 
                   <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Name</span>
-                      <span className="text-sm font-black text-gray-900">{foundProduct?.name}</span>
+                    <div className="flex items-center gap-4 mb-4">
+                      {foundProduct?.image && (
+                        <div className="size-16 rounded-xl bg-white border border-gray-100 overflow-hidden shrink-0">
+                          <img src={foundProduct.image} alt={foundProduct.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-black text-gray-900">{foundProduct?.name}</p>
+                        <p className="text-lg font-black text-[#066CF4]">₦{Number(foundProduct?.price || 0).toLocaleString()}</p>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price</span>
-                      <span className="text-sm font-black text-gray-900">₦{Number(foundProduct?.price || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Category</span>
-                      <span className="text-xs font-bold text-gray-600 bg-gray-200 px-2.5 py-1 rounded-lg">{foundProduct?.category}</span>
-                    </div>
+                    <hr className="border-gray-200" />
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">SKU</span>
-                      <span className="text-xs font-bold text-gray-900">{foundProduct?.sku}</span>
+                      <span className="text-xs font-bold text-gray-900">{foundProduct?.sku || '-'}</span>
                     </div>
                   </div>
 

@@ -97,7 +97,7 @@ export default function BranchSwitcher() {
                             <Building2 size={18} />
                         )}
                     </div>
-                    <div className="text-left hidden sm:block flex-1 min-w-0">
+                    <div className="text-left block flex-1 min-w-0">
                         <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1 truncate">
                             Location
                         </p>
@@ -132,7 +132,7 @@ export default function BranchSwitcher() {
                     <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
                     </div>
-                    <div className="text-left hidden sm:block flex-1 min-w-0">
+                    <div className="text-left block flex-1 min-w-0">
                         <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1 truncate">
                             Active Location
                         </p>

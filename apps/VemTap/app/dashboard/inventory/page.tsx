@@ -71,11 +71,11 @@ export default function InventoryDashboard() {
       setScannedProductData({
         name: product.name,
         price: product.price,
-        shortDescription: '',
         description: '',
         categoryId: '',
         branchId: activeBranchId,
         sku: product.sku,
+        barcode: product.barcode,
         itemType: 'product' as const,
         discountType: 'none' as const,
         discountValue: 0,
@@ -215,7 +215,14 @@ export default function InventoryDashboard() {
                         </div>
                         <div>
                           <div className="text-sm font-black text-gray-900">{item.name}</div>
-                          <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">SKU: {item.sku || 'N/A'}</div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">SKU: {item.sku || 'N/A'}</span>
+                            {item.barcode ? (
+                              <span className="text-[9px] font-mono font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">BC: {item.barcode}</span>
+                            ) : (
+                              <span className="text-[9px] font-bold text-amber-500 uppercase">No Barcode</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -256,6 +263,15 @@ export default function InventoryDashboard() {
 
       <BarcodeScanner
         isOpen={showBarcodeScanner}
+        products={items.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          barcode: item.barcode || '',
+          image: item.mainImage,
+          categoryId: item.categoryId,
+          sku: item.sku,
+        }))}
         onScan={handleBarcodeScan}
         onClose={() => { setShowBarcodeScanner(false); setShowMethodModal(true); }}
       />

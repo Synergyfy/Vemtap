@@ -314,7 +314,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         <button
                                                             onClick={(e) => handleItemClick(e, item)}
                                                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                                                                active ? 'bg-primary/5 text-primary' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                                                active ? 'bg-primary/5 text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-3">
@@ -329,8 +329,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                     <Link 
                                                                         key={idx}
                                                                         href={withBranch(sub.href)}
+                                                                        onClick={() => setIsMobileOpen(false)}
                                                                         className={`block text-xs md:text-sm font-bold py-1.5 transition-colors ${
-                                                                            isActive(sub.href) ? 'text-primary' : 'text-gray-400 hover:text-gray-700'
+                                                                            isActive(sub.href) ? 'text-primary' : 'text-gray-500 hover:text-gray-700'
                                                                         }`}
                                                                     >
                                                                         {sub.label}
@@ -342,8 +343,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                 ) : (
                                                     <Link
                                                         href={withBranch(item.href!)}
+                                                        onClick={() => setIsMobileOpen(false)}
                                                         className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                                                            active ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                                            active ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                                         }`}
                                                     >
                                                         <div className="flex items-center gap-3 min-w-0">
