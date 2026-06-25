@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 // Mock data for initial development
 const MOCK_DISCOVERY_STATS = {
@@ -68,5 +70,34 @@ export const useDiscoveryBusinesses = (params?: any) => {
                 meta: { total: 2 }
             };
         },
+    });
+};
+
+export interface DiscoveryOverviewResponse {
+    stats: {
+        peopleReached: number;
+        customersVisited: number;
+        offersRedeemed: number;
+        revenueGenerated: number;
+    };
+    highlights: {
+        bestPromotion: { name: string; visits: number };
+        topPartner: { name: string; visits: number };
+    };
+    recentVisits: Array<{ name: string; time: string; promo: string }>;
+}
+
+/**
+ * Fetches real Discovery Network overview stats for the active branch.
+ * Maps to GET /discovery/overview/:branchId
+ */
+export const useDiscoveryOverview = () => {
+    const { activeBranchId } = useActiveBranch();
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+    return useQuery<DiscoveryOverviewResponse, Error>({
+        queryKey: ['discovery-overview', activeBranchId],
+        queryFn: () => api.get(`/discovery/overview/${activeBranchId}`),
+        enabled: !!isAuthenticated && !!activeBranchId,
     });
 };

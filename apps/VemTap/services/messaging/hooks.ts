@@ -505,7 +505,16 @@ export const useAutomationPerformance = (branchId?: string, startDate?: string, 
             const params = new URLSearchParams(contextParams);
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
-            return await api.get(`/messaging/automations/performance?${params.toString()}`);
+            const raw = await api.get(`/messaging/automations/performance?${params.toString()}`);
+            // Normalise backend field names → frontend AutomationPerformance type
+            return {
+                totalMessagesSent: raw?.totalMessagesSent ?? 0,
+                totalReplies: raw?.totalRepliesReceived ?? raw?.totalReplies ?? 0,
+                replyRate: raw?.replyRate ?? 0,
+                loyaltyPointsIssued: raw?.loyaltyPointsIssued ?? 0,
+                topAutomations: raw?.topAutomations ?? [],
+                dailyStats: raw?.dailyStats ?? [],
+            } as AutomationPerformance;
         },
         enabled: isAuthenticated,
         staleTime: STALE_TIME,

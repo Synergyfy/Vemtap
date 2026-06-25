@@ -24,12 +24,7 @@ export default function CustomersDashboard() {
         bg: s.color === 'blue' ? 'bg-blue-50' : s.color === 'green' ? 'bg-emerald-50' : s.color === 'purple' ? 'bg-purple-50' : 'bg-amber-50',
         color: s.color === 'blue' ? 'text-blue-600' : s.color === 'green' ? 'text-emerald-600' : s.color === 'purple' ? 'text-purple-600' : 'text-amber-600',
         icon: s.icon === 'group' ? Users : s.icon === 'person_add' ? UserPlus : s.icon === 'repeat' ? Repeat : Activity
-    })) : [
-        { label: 'Total Customers', value: '1,250', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: { value: '+12%', isUp: true } },
-        { label: 'New This Month', value: '120', icon: UserPlus, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: { value: '+5%', isUp: true } },
-        { label: 'Returning', value: '740', icon: Repeat, color: 'text-purple-600', bg: 'bg-purple-50', trend: { value: '+8%', isUp: true } },
-        { label: 'Active Today', value: '580', icon: Activity, color: 'text-amber-600', bg: 'bg-amber-50', trend: { value: '-2%', isUp: false } },
-    ];
+    })) : [];
 
     if (isLoading) {
         return (
@@ -74,11 +69,7 @@ export default function CustomersDashboard() {
                          <div className="flex items-center justify-between mb-6 px-1">
                             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Latest Members</h2>
                         </div>
-                        <CRMRecentCustomers customers={visitors.length > 0 ? visitors : [
-                            { id: '1', name: 'Sarah Jenkins', phone: '+234 801 234 5678', status: 'VIP', joinedDate: '2 hours ago' },
-                            { id: '2', name: 'Michael K.', phone: '+234 802 345 6789', status: 'New', joinedDate: '5 hours ago' },
-                            { id: '3', name: 'Elena Rodriguez', phone: '+234 803 456 7890', status: 'Active', joinedDate: 'Yesterday' },
-                        ]} />
+                        <CRMRecentCustomers customers={visitors} />
                     </section>
 
                     <section>

@@ -128,12 +128,7 @@ export default function NewVisitorsPage() {
                     : s.icon === 'tag'
                         ? Tag
                         : Timer
-    })) : [
-        { label: 'New Today', value: newVisitors.length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+0%', isUp: true } },
-        { label: 'Weekly New', value: '0', icon: Calendar, color: 'blue' as const, trend: { value: '+0%', isUp: true } },
-        { label: 'Conv. Rate', value: '0%', icon: TrendingUp, color: 'purple' as const, trend: { value: '+0%', isUp: true } },
-        { label: 'Avg. Wait', value: '0m', icon: Timer, color: 'yellow' as const, trend: { value: '-0s', isUp: true } },
-    ];
+    })) : [];
 
     const columns: Column<Visitor>[] = [
         {

@@ -115,7 +115,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const { data } = useQuery({
         queryKey: ['dashboard', activeBranchId],
-        queryFn: () => dashboardApi.fetchDashboardData(activeBranchId),
+        queryFn: () => dashboardApi.fetchDashboardData(activeBranchId ?? undefined),
         refetchInterval: 5000,
     });
 

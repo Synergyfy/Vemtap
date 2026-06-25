@@ -36,7 +36,7 @@ export default function DashboardPage() {
     const { data: loyaltyStats } = useBusinessLoyaltyStats();
     const { data: dashboard } = useQuery({
         queryKey: ['dashboard', activeBranchId],
-        queryFn: () => dashboardApi.fetchDashboardData(activeBranchId),
+        queryFn: () => dashboardApi.fetchDashboardData(activeBranchId ?? undefined),
     });
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
@@ -52,22 +52,23 @@ export default function DashboardPage() {
 
     // KPI Data Mapping
     const kpis = useMemo(() => {
-        const stats = analytics?.stats || (dashboard ? [
+        const analyticsStats = analytics?.stats || [];
+        const dashboardStats = dashboard ? [
             { label: 'Total Visitors', value: dashboard.stats.totalVisitors.toString() },
             { label: 'New Customers Today', value: dashboard.stats.todaysVisits.toString() }
-        ] : [
-            { label: 'Total Visitors', value: '0' },
-            { label: 'New Customers Today', value: '0' }
-        ]);
+        ] : [];
+        const allStats = analyticsStats.length > 0 ? analyticsStats : dashboardStats;
         
-        const visitorsToday = stats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
-        const customersCaptured = stats.find(s => s.label.toLowerCase().includes('new customers'))?.value || '0';
+        const visitorsToday = allStats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        const customersCaptured = allStats.find(s => s.label.toLowerCase().includes('new customers'))?.value || '0';
+        const salesValue = allStats.find(s => s.label.toLowerCase().includes('sales'))?.value ||
+                          allStats.find(s => s.label.toLowerCase().includes('revenue'))?.value || '₦0';
         const activeLoyalty = loyaltyStats?.stats?.find(s => s.label.toLowerCase().includes('active'))?.value || '0';
         
         return [
             { label: "Today's Visitors", value: visitorsToday, icon: Users, color: 'bg-blue-500' },
             { label: "Customers Captured", value: customersCaptured, icon: UserPlus, color: 'bg-emerald-500' },
-            { label: "Sales Today", value: "₦45,200", icon: ShoppingBag, color: 'bg-purple-500' },
+            { label: "Sales Today", value: salesValue, icon: ShoppingBag, color: 'bg-purple-500' },
             { label: "Active Loyalty Members", value: activeLoyalty, icon: Gift, color: 'bg-amber-500' }
         ];
     }, [analytics, loyaltyStats, dashboard]);
@@ -203,11 +204,14 @@ export default function DashboardPage() {
                         </div>
                     </div>
                     {(() => {
-                        const healthMetrics = [
+                        const healthMetrics = analytics?.topPerformers?.length ? analytics.topPerformers.map(p => ({
+                            label: p.label,
+                            value: p.type === 'up' ? 75 : 45,
+                            color: 'bg-blue-500',
+                            trend: p.type === 'up' ? '+12%' : '+5%'
+                        })) : [
                             { label: 'Customer Growth', value: 75, color: 'bg-blue-500', trend: '+12%' },
-                            { label: 'Sales Growth', value: 45, color: 'bg-purple-500', trend: '+5%' },
                             { label: 'QR Scan Activity', value: 90, color: 'bg-emerald-500', trend: '+28%' },
-                            { label: 'Referral Activity', value: 30, color: 'bg-amber-500', trend: '+2%' }
                         ];
                         const renderItem = (item: any) => (
                             <div key={item.label} className="space-y-3">

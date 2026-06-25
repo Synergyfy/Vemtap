@@ -70,27 +70,8 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addons, businessId
         const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
         if (!publicKey || publicKey.includes('placeholder')) {
-            // Fallback for demo
-            setTimeout(() => {
-                purchaseMutation.mutate({
-                    addonIds: addons.map(a => a.id),
-                    paymentReference: `mock-addon-ref-${Date.now()}`
-                }, {
-                    onSuccess: () => {
-                        toast.success(`${addons.length > 1 ? 'Bundle' : addons[0].name} activated!`);
-                        setIsProcessing(false);
-                        if (onSuccess) {
-                            onSuccess();
-                        } else {
-                            onClose();
-                        }
-                    },
-                    onError: (error) => {
-                        setIsProcessing(false);
-                        toast.error(error instanceof Error ? error.message : 'Activation failed. Please contact support.');
-                    }
-                });
-            }, 1500);
+            setIsProcessing(false);
+            toast.error('Payment system is not configured. Please set up your Paystack key in environment variables or contact support.');
             return;
         }
 

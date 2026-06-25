@@ -38,10 +38,10 @@ export const dashboardApi = {
   },
 
   markNotificationRead: async (id: string) => {
-    return api.patch(`/notifications/${id}/read`);
+    return api.patch(`/notifications/${id}/read`, undefined);
   },
 
   markAllNotificationsRead: async () => {
-    return api.post('/notifications/read-all');
+    return api.post('/notifications/read-all', undefined);
   },
 };
