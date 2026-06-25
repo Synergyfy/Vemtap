@@ -4,14 +4,12 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Loader2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
-import { Template } from '@/lib/store/mockDashboardStore';
-
 interface CreateTemplateModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: any) => void;
     isLoading: boolean;
-    initialData?: Template | null;
+    initialData?: { title: string; category: string; type: string; content: string; } | null;
 }
 
 export default function CreateTemplateModal({ isOpen, onClose, onSubmit, isLoading, initialData }: CreateTemplateModalProps) {

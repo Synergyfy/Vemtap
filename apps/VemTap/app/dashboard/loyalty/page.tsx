@@ -15,40 +15,37 @@ import {
 import RewardStatCard from '@/components/loyalty/RewardStatCard';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
+import Spinner from '@/components/ui/Spinner';
 
 export default function LoyaltyOverviewPage() {
+    const { data: loyaltyStats, isLoading } = useBusinessLoyaltyStats();
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
+
+    const statsCards = loyaltyStats?.stats ? [
+        { label: 'Total Customers', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('total'))?.value || '0', icon: Users, trend: { value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('total'))?.trend || '+0%', isUp: true }, color: 'blue' as const },
+        { label: 'Points Issued', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('point'))?.value || '0', icon: Zap, trend: { value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('point'))?.trend || '+0%', isUp: true }, color: 'yellow' as const },
+        { label: 'Rewards Redeemed', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('redeem'))?.value || '0', icon: TicketCheck, trend: { value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('redeem'))?.trend || '+0%', isUp: true }, color: 'green' as const },
+        { label: 'Active Programs', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('active') || s.label.toLowerCase().includes('program'))?.value || '0', icon: Gift, color: 'purple' as const },
+    ] : [];
+
     return (
         <div className="space-y-6 md:space-y-10 pb-10">
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <RewardStatCard
-                    label="Total Customers"
-                    value="1,284"
-                    icon={Users}
-                    trend={{ value: "+12.5%", isUp: true }}
-                    color="blue"
-                />
-                <RewardStatCard
-                    label="Points Issued"
-                    value="45,290"
-                    icon={Zap}
-                    trend={{ value: "+8.2%", isUp: true }}
-                    color="yellow"
-                />
-                <RewardStatCard
-                    label="Rewards Redeemed"
-                    value="342"
-                    icon={TicketCheck}
-                    trend={{ value: "+14.1%", isUp: true }}
-                    color="green"
-                />
-                <RewardStatCard
-                    label="Active Programs"
-                    value="8"
-                    icon={Gift}
-                    color="purple"
-                />
-            </div>
+            {statsCards.length > 0 && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    {statsCards.map((card, i) => (
+                        <RewardStatCard key={i} {...card} />
+                    ))}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                 {/* Quick Actions & Recent Activity */}

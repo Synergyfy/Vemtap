@@ -114,9 +114,7 @@ export const useRecommendBusiness = () => {
     });
 };
 
-// ==========================================
-// Legacy admin mock hooks (to be replaced)
-// ==========================================
+// Legacy admin mock hooks (to be replaced with real API)
 
 const MOCK_DISCOVERY_STATS = {
     totalBusinesses: 124,
@@ -181,3 +179,5 @@ export const useDiscoveryBusinesses = (params?: any) => {
         },
     });
 };
+
+
