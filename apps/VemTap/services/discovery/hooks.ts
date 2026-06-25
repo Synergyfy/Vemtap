@@ -1,7 +1,123 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import type {
+    DiscoveryOverviewResponse,
+    DiscoveryResultsResponse,
+    DiscoverySettingsResponse,
+    UpdateDiscoverySettingsDto,
+    ActivePartnersList,
+    PaginatedDiscoveryCustomersResponse,
+    RecommendBusinessDto,
+    RecommendBusinessResponse,
+    NearbyPartner,
+} from './types';
 
-// Mock data for initial development
+function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
+    const resolvedBranchId = branchId || urlBranchId;
+    if (resolvedBranchId === 'all' || !resolvedBranchId) {
+        return { allBranches: true };
+    }
+    return { branchId: resolvedBranchId };
+}
+
+export const useDiscoveryOverview = (branchId?: string) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useQuery<DiscoveryOverviewResponse>({
+        queryKey: ['discovery', 'overview', resolvedBranchId],
+        queryFn: () => api.get(`/discovery/overview/${resolvedBranchId}`),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useDiscoveryResults = (range: string = '7days', branchId?: string) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useQuery<DiscoveryResultsResponse>({
+        queryKey: ['discovery', 'results', resolvedBranchId, range],
+        queryFn: () => api.get(`/discovery/results/${resolvedBranchId}?range=${range}`),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useDiscoverySettings = (branchId?: string) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useQuery<DiscoverySettingsResponse>({
+        queryKey: ['discovery', 'settings', resolvedBranchId],
+        queryFn: () => api.get(`/discovery/settings/${resolvedBranchId}`),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useUpdateDiscoverySettings = () => {
+    const queryClient = useQueryClient();
+    const { branchId: resolvedBranchId } = useResolvedBranchParams();
+
+    return useMutation({
+        mutationFn: (data: UpdateDiscoverySettingsDto) =>
+            api.patch(`/discovery/settings/${resolvedBranchId}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['discovery', 'settings'] });
+        },
+    });
+};
+
+export const useActivePartners = (branchId?: string) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useQuery<ActivePartnersList>({
+        queryKey: ['discovery', 'partners', 'active', resolvedBranchId],
+        queryFn: () => api.get(`/discovery/partners/${resolvedBranchId}`),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useNearbyPartners = (branchId?: string) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useQuery<NearbyPartner[]>({
+        queryKey: ['discovery', 'partners', 'nearby', resolvedBranchId],
+        queryFn: () => api.get(`/partnerships/nearby?branchId=${resolvedBranchId}`),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useDiscoveryCustomers = (
+    params: { page?: number; limit?: number; filter?: string; branchId?: string } = {}
+) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(params.branchId);
+    const { page = 1, limit = 10, filter = 'all' } = params;
+
+    return useQuery<PaginatedDiscoveryCustomersResponse>({
+        queryKey: ['discovery', 'customers', resolvedBranchId, page, limit, filter],
+        queryFn: () =>
+            api.get(
+                `/discovery/customers/${resolvedBranchId}?page=${page}&limit=${limit}&filter=${filter}`
+            ),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useRecommendBusiness = () => {
+    const queryClient = useQueryClient();
+    const { branchId: resolvedBranchId } = useResolvedBranchParams();
+
+    return useMutation<RecommendBusinessResponse, Error, RecommendBusinessDto>({
+        mutationFn: (data: RecommendBusinessDto) =>
+            api.post(`/discovery/recommend/${resolvedBranchId}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['discovery', 'partners'] });
+        },
+    });
+};
+
+// ==========================================
+// Legacy admin mock hooks (to be replaced)
+// ==========================================
+
 const MOCK_DISCOVERY_STATS = {
     totalBusinesses: 124,
     activeOffers: 342,
@@ -23,11 +139,7 @@ const MOCK_DISCOVERY_STATS = {
 export const useDiscoveryStats = () => {
     return useQuery({
         queryKey: ['discovery-stats'],
-        queryFn: async () => {
-            // In production, this would be an API call
-            // return api.get('/admin/discovery/stats');
-            return MOCK_DISCOVERY_STATS;
-        },
+        queryFn: async () => MOCK_DISCOVERY_STATS,
     });
 };
 
@@ -35,7 +147,6 @@ export const useDiscoveryBusinesses = (params?: any) => {
     return useQuery({
         queryKey: ['discovery-businesses', params],
         queryFn: async () => {
-            // Mocking the business list
             return {
                 data: [
                     {

@@ -68,6 +68,13 @@ export interface CatalogueOffer {
     status: CatalogueOfferStatus;
     items: CatalogueItem[];
     reward?: Reward;
+    views?: number;
+    visits?: number;
+    revenue?: number;
+    startDate?: string;
+    endDate?: string;
+    offerType?: string;
+    audience?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -163,6 +170,10 @@ export interface CreateCatalogueOfferDto {
     rewardId?: string;
     branchId: string;
     itemIds: string[];
+    startDate?: string;
+    endDate?: string;
+    offerType?: string;
+    audience?: string;
 }
 
 export interface UpdateCatalogueOfferDto extends Partial<CreateCatalogueOfferDto> {
