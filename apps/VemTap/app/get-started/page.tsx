@@ -428,36 +428,47 @@ export default function GetStartedPage() {
                                     <p className="text-sm font-medium text-gray-400">{isGoogleUser ? 'Just a few more details to get started.' : 'Set up your business details and password.'}</p>
                                 </div>
                                 <div className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">First Name</label>
+                                        <div className="relative">
+                                            <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                            <input 
+                                                type="text" 
+                                                value={formData.firstName} 
+                                                onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
+                                                placeholder="First Name" 
+                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Last Name</label>
+                                        <div className="relative">
+                                            <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                            <input 
+                                                type="text" 
+                                                value={formData.lastName} 
+                                                onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
+                                                placeholder="Last Name" 
+                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                            />
+                                        </div>
+                                    </div>
+                                    {!isGoogleUser && (
+                                        <>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">First Name</label>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
                                             <div className="relative">
-                                                <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                                                 <input 
-                                                    type="text" 
-                                                    value={formData.firstName} 
-                                                    onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
-                                                    placeholder="First Name" 
+                                                    type="tel" 
+                                                    value={formData.phone} 
+                                                    onChange={(e) => setFormData({...formData, phone: e.target.value})} 
+                                                    placeholder="Phone Number" 
                                                     className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
                                                 />
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Last Name</label>
-                                            <div className="relative">
-                                                <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                                <input 
-                                                    type="text" 
-                                                    value={formData.lastName} 
-                                                    onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
-                                                    placeholder="Last Name" 
-                                                    className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                    {!isGoogleUser && (
                                         <div className="border-t border-gray-100 pt-6">
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Create Password</label>
@@ -484,12 +495,19 @@ export default function GetStartedPage() {
                                                 <div className="relative">
                                                     <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                                                     <input 
-                                                        type="password" 
+                                                        type={showPassword ? 'text' : 'password'} 
                                                         value={formData.confirmPassword} 
                                                         onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
                                                         placeholder="••••••••" 
-                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                        className="w-full pl-14 pr-14 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
                                                     />
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setShowPassword(!showPassword)} 
+                                                        className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#066CF4]"
+                                                    >
+                                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -516,6 +534,7 @@ export default function GetStartedPage() {
                                                 ))}
                                             </div>
                                         </div>
+                                        </>
                                     )}
 
                                     {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}

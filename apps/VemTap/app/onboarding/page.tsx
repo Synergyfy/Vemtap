@@ -47,7 +47,18 @@ import {
     Shield,
     Star,
     Crown,
-    Play
+    Play,
+    Building2,
+    Music,
+    Coins,
+    Sprout,
+    Factory,
+    Heart,
+    Landmark,
+    ChevronDown,
+    Trash2,
+    Plus,
+    X
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import LogoIcon from '@/components/brand/LogoIcon';
@@ -106,6 +117,19 @@ interface OnboardingData {
     latitude?: number;
     longitude?: number;
 }
+
+// Social Media Platforms Configuration
+const SOCIAL_PLATFORMS = [
+    { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', placeholder: 'yourbrand', prefix: 'https://instagram.com/' },
+    { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', placeholder: 'yourbrand', prefix: 'https://facebook.com/' },
+    { id: 'x', name: 'X / Twitter', icon: Twitter, color: 'text-slate-900', bg: 'bg-slate-50', placeholder: 'yourhandle', prefix: 'https://x.com/' },
+    { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', placeholder: 'company/yourbrand', prefix: 'https://linkedin.com/' },
+    { id: 'tiktok', name: 'TikTok', icon: Smartphone, color: 'text-slate-900', bg: 'bg-slate-50', placeholder: 'yourbrand', prefix: 'https://tiktok.com/@' },
+    { id: 'whatsapp', name: 'WhatsApp', icon: MessageCircle, color: 'text-green-600', bg: 'bg-green-50', placeholder: '2348012345678', prefix: 'https://wa.me/' },
+    { id: 'youtube', name: 'YouTube', icon: Play, color: 'text-red-600', bg: 'bg-red-50', placeholder: 'channel/yourid', prefix: 'https://youtube.com/' },
+    { id: 'google', name: 'Google Review', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', placeholder: 'https://g.page/r/...' },
+    { id: 'custom', name: 'Custom Link', icon: Globe, color: 'text-slate-600', bg: 'bg-slate-50', placeholder: 'https://...' },
+];
 
 // --- Steps Data ---
 const STEPS = [
@@ -345,9 +369,28 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
     const rawCategories: Category[] = categoriesData?.items || [];
 
     const CATEGORY_ICONS: Record<string, React.ElementType> = {
+        // Parent category matchers
+        'retail': ShoppingBag,
+        'food': Utensils,
+        'beauty': Sparkles,
+        'health': Stethoscope,
+        'professional services': Briefcase,
+        'technology': Tv,
+        'education': GraduationCap,
+        'real estate': Home,
+        'automotive': Wrench,
+        'logistics': Truck,
+        'construction': Building2,
+        'events': Music,
+        'finance': Coins,
+        'agriculture': Sprout,
+        'manufacturing': Factory,
+        'religious': Heart,
+        'government': Landmark,
+        'others': MoreHorizontal,
+        // Subcategory matchers (more specific)
         'restaurant': Utensils,
         'salon & barbershop': Scissors,
-        'retail & fashion': ShoppingBag,
         'gym & fitness': Dumbbell,
         'hotel & hospitality': Hotel,
         'electronics': Tv,
@@ -359,9 +402,6 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
         'cafe': Coffee,
         'laundry': Truck,
         'auto service': Wrench,
-        'real estate': Home,
-        'education': GraduationCap,
-        'professional services': Briefcase,
         'healthcare': Stethoscope,
     };
 
@@ -512,10 +552,46 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
         description: data.description || '',
         website: data.website || '',
         address: data.address || { street: '', city: '', state: '', country: '', zip: '' },
-        socials: data.socials || { facebook: '', instagram: '', tiktok: '', x: '', linkedin: '', whatsapp: '' }
+        socials: data.socials || {}
     });
     const [isSaving, setIsSaving] = useState(false);
     const updateBusiness = useUpdateBusiness();
+    const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
+    const [selectedSocial, setSelectedSocial] = useState<typeof SOCIAL_PLATFORMS[0] | null>(null);
+    const [socialHandle, setSocialHandle] = useState('');
+    const [activeSocials, setActiveSocials] = useState<{ id: string; name: string; icon: React.ElementType; color: string; bg: string; url: string }[]>(() => {
+        const existing = data.socials || {};
+        const items: { id: string; name: string; icon: React.ElementType; color: string; bg: string; url: string }[] = [];
+        const platformMap: Record<string, (typeof SOCIAL_PLATFORMS[0])> = {};
+        SOCIAL_PLATFORMS.forEach(p => { platformMap[p.id] = p; });
+        Object.entries(existing).forEach(([id, url]) => {
+            if (url && platformMap[id]) {
+                const p = platformMap[id];
+                items.push({ id: p.id, name: p.name, icon: p.icon, color: p.color, bg: p.bg, url: url as string });
+            }
+        });
+        return items;
+    });
+
+    const handleAddSocial = () => {
+        if (!selectedSocial || !socialHandle.trim()) return;
+        const fullUrl = selectedSocial.prefix ? selectedSocial.prefix + socialHandle.trim() : socialHandle.trim();
+        if (!activeSocials.some(s => s.id === selectedSocial.id)) {
+            setActiveSocials(prev => [...prev, { id: selectedSocial.id, name: selectedSocial.name, icon: selectedSocial.icon, color: selectedSocial.color, bg: selectedSocial.bg, url: fullUrl }]);
+        }
+        setSelectedSocial(null);
+        setSocialHandle('');
+    };
+
+    const removeSocial = (id: string) => {
+        setActiveSocials(prev => prev.filter(s => s.id !== id));
+    };
+
+    useEffect(() => {
+        const socialsMap: Record<string, string> = {};
+        activeSocials.forEach(s => { socialsMap[s.id] = s.url; });
+        setLocalData(prev => ({ ...prev, socials: socialsMap }));
+    }, [activeSocials]);
 
     const handleContinue = async () => {
         if (!localData.businessName || !localData.address.street) return;
@@ -681,26 +757,150 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             {/* Social Media Section */}
             <div className="space-y-6">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Social Media</label>
-                <div className="space-y-4">
-                    {[
-                        { id: 'facebook', icon: Facebook, label: 'Facebook' },
-                        { id: 'instagram', icon: Instagram, label: 'Instagram' },
-                        { id: 'tiktok', icon: Smartphone, label: 'TikTok' },
-                        { id: 'x', icon: Twitter, label: 'X (Twitter)' },
-                        { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
-                        { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp Business' },
-                    ].map((platform) => (
-                        <div key={platform.id} className="relative">
-                            <platform.icon className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input 
-                                type="text"
-                                value={(localData.socials as any)[platform.id]}
-                                onChange={(e) => setLocalData({ ...localData, socials: { ...localData.socials, [platform.id]: e.target.value } })}
-                                placeholder={`${platform.label} Username/URL`}
-                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-xs"
-                            />
+                <div className="space-y-6">
+                    <div className="relative">
+                        <div className="flex gap-3">
+                            <div className="relative flex-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
+                                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 flex items-center justify-between text-sm font-bold text-text-main hover:bg-gray-100 transition-all"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {selectedSocial ? (
+                                            <>
+                                                <div className={`p-1.5 rounded-lg bg-white shadow-sm ${selectedSocial.color}`}>
+                                                    <selectedSocial.icon size={16} />
+                                                </div>
+                                                <span>{selectedSocial.name}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="p-1.5 rounded-lg bg-white shadow-sm text-gray-400">
+                                                    <Plus size={16} />
+                                                </div>
+                                                <span className="text-gray-400">Select Platform</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${isSocialDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {isSocialDropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-[9999] overflow-hidden py-2"
+                                    >
+                                        {SOCIAL_PLATFORMS.map((platform) => {
+                                            const isAlreadyAdded = activeSocials.some(s => s.id === platform.id);
+                                            return (
+                                                <button
+                                                    key={platform.id}
+                                                    type="button"
+                                                    disabled={isAlreadyAdded && platform.id !== 'custom'}
+                                                    onClick={() => {
+                                                        setSelectedSocial(platform);
+                                                        setIsSocialDropdownOpen(false);
+                                                    }}
+                                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:grayscale"
+                                                >
+                                                    <div className={`p-2 rounded-xl ${platform.bg} ${platform.color}`}>
+                                                        <platform.icon size={18} />
+                                                    </div>
+                                                    <div className="flex-1 text-left text-sm font-bold text-text-main">
+                                                        {platform.name}
+                                                        {isAlreadyAdded && platform.id !== 'custom' && (
+                                                            <span className="ml-2 text-[9px] uppercase tracking-widest text-green-500 font-black">Added</span>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </motion.div>
+                                )}
+                            </div>
                         </div>
-                    ))}
+                        {selectedSocial && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="mt-4 space-y-3 overflow-hidden"
+                            >
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            value={socialHandle}
+                                            onChange={(e) => setSocialHandle(e.target.value)}
+                                            placeholder={selectedSocial.placeholder}
+                                            className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                            autoFocus
+                                        />
+                                        {selectedSocial.prefix && (
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase tracking-tighter">
+                                                Handle Only
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddSocial}
+                                        disabled={!socialHandle.trim()}
+                                        className="h-12 px-6 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50"
+                                    >
+                                        Add
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSelectedSocial(null); setSocialHandle(''); }}
+                                        className="h-12 w-12 flex items-center justify-center bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-colors"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                                {selectedSocial.prefix && (
+                                    <p className="text-[10px] text-gray-400 ml-1">
+                                        Your profile link will be: <span className="text-primary font-bold">{selectedSocial.prefix}{socialHandle || 'handle'}</span>
+                                    </p>
+                                )}
+                            </motion.div>
+                        )}
+                    </div>
+                    {activeSocials.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Active Links</label>
+                            <div className="grid grid-cols-1 gap-2">
+                                {activeSocials.map((social) => (
+                                    <motion.div
+                                        layout
+                                        key={social.id}
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm"
+                                    >
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <div className={`p-2 rounded-xl ${social.bg} ${social.color} shrink-0`}>
+                                                <social.icon size={18} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-black text-text-main uppercase tracking-tighter leading-none">{social.name}</p>
+                                                <p className="text-[11px] text-text-secondary font-medium truncate mt-1">
+                                                    {social.url}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeSocial(social.id)}
+                                            className="p-2 text-gray-300 hover:text-rose-500 transition-colors"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -724,10 +924,10 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                             {localData.description || 'Your business description will appear here for customers to see.'}
                         </p>
                         <div className="flex justify-center gap-3">
-                            {Object.values(localData.socials).some(Boolean) ? (
-                                Object.entries(localData.socials).map(([id, val]) => val && (
-                                    <div key={id} className="size-8 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary">
-                                        <Smartphone size={14} />
+                            {activeSocials.length > 0 ? (
+                                activeSocials.map(social => (
+                                    <div key={social.id} className="size-8 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary">
+                                        <social.icon size={14} />
                                     </div>
                                 ))
                             ) : (
