@@ -4,10 +4,13 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PosService } from './pos.service';
 import { CreatePosSaleDto } from './dto/create-pos-sale.dto';
+import { CreatePosOrderDto } from './dto/create-pos-order.dto';
+import { ProcessPosOrderPaymentDto } from './dto/process-pos-order-payment.dto';
 import { PosSaleQueryDto } from './dto/pos-sale-query.dto';
 import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
 import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
+import { Public } from '../../common/decorators/public.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -141,5 +144,36 @@ export class PosController {
     @Req() req: RequestWithUser,
   ) {
     return this.posService.adjustStock(id, req.user.businessId, quantity);
+  }
+
+  @Public()
+  @Post('orders')
+  @ApiOperation({
+    summary: 'Place a POS order (public or staff)',
+    description:
+      'Dual-mode endpoint. If a valid JWT is provided, the order is placed by a staff member ' +
+      '(can link existing customers via customerId). If no token is provided, acts as a public ' +
+      'walk-in order requiring customer name and phone. Select catalogue items or offers by UUID.',
+  })
+  async placeOrder(@Body() dto: CreatePosOrderDto, @Req() req: any) {
+    const staff: User | undefined = req.user?.id ? req.user : undefined;
+    return this.posService.placeOrder(dto, staff);
+  }
+
+  @Post('orders/:id/process-payment')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Process payment for a pending POS order',
+    description:
+      'Takes payment for a "new" or "processing" order. Creates a completed POS sale linked to the order, ' +
+      'updates the order status to "completed", awards loyalty points, sends notifications, and records the ' +
+      'financial transaction.',
+  })
+  async processOrderPayment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ProcessPosOrderPaymentDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.processOrderPayment(id, dto, req.user);
   }
 }

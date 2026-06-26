@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, ILike } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { PosSale } from './entities/pos-sale.entity';
 import { PaymentMethod, SaleStatus } from './entities/pos-enums';
 import { PosSaleItem } from './entities/pos-sale-item.entity';
@@ -12,16 +13,23 @@ import { PosHeldSaleItem } from './entities/pos-held-sale-item.entity';
 import { PosRegisterSession } from './entities/pos-register-session.entity';
 import { RegisterSessionStatus } from './entities/pos-enums';
 import { CatalogueItem, CatalogueItemStatus } from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
+import { CatalogueOrder, CatalogueOrderStatus } from '../catalogue-orders/entities/catalogue-order.entity';
+import { CatalogueOrderItem } from '../catalogue-orders/entities/catalogue-order-item.entity';
+import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
 import { CreatePosSaleDto } from './dto/create-pos-sale.dto';
+import { CreatePosOrderDto } from './dto/create-pos-order.dto';
+import { ProcessPosOrderPaymentDto } from './dto/process-pos-order-payment.dto';
 import { PosSaleQueryDto } from './dto/pos-sale-query.dto';
 import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
 import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
 import { Branch } from '../branches/entities/branch.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import {
   FinancialTransaction, FosTransactionType, FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
+import { PushNotificationService } from '../notifications/push-notification.service';
 
 @Injectable()
 export class PosService {
@@ -40,12 +48,20 @@ export class PosService {
     private readonly registerSessionRepository: Repository<PosRegisterSession>,
     @InjectRepository(CatalogueItem)
     private readonly productRepository: Repository<CatalogueItem>,
+    @InjectRepository(CatalogueOffer)
+    private readonly offerRepository: Repository<CatalogueOffer>,
+    @InjectRepository(CatalogueOrder)
+    private readonly orderRepository: Repository<CatalogueOrder>,
+    @InjectRepository(CatalogueOrderItem)
+    private readonly orderItemRepository: Repository<CatalogueOrderItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(FinancialTransaction)
     private readonly fosTransactionRepository: Repository<FinancialTransaction>,
+    private readonly pushNotificationService: PushNotificationService,
+    private readonly catalogueOrderService: CatalogueOrderService,
   ) {}
 
   async completeSale(dto: CreatePosSaleDto, cashier: User) {
@@ -179,6 +195,321 @@ export class PosService {
     }
 
     return this.findOneSale(savedSale.id, branch.businessId);
+  }
+
+  async placeOrder(dto: CreatePosOrderDto, staff?: User): Promise<CatalogueOrder> {
+    const branch = await this.branchRepository.findOne({ where: { id: dto.branchId } });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    // Resolve customer
+    let customer: User | null = null;
+
+    if (staff && dto.customerId) {
+      customer = await this.userRepository.findOne({ where: { id: dto.customerId } });
+      if (!customer) throw new NotFoundException('Customer not found');
+    } else if (dto.phone) {
+      if (!dto.firstName || !dto.lastName) {
+        throw new BadRequestException('Customer first name and last name are required when providing a phone number');
+      }
+      customer = await this.userRepository.findOne({ where: { phone: dto.phone } });
+      if (!customer && dto.email) {
+        customer = await this.userRepository.findOne({ where: { email: dto.email } });
+      }
+      if (!customer) {
+        const defaultPassword = '123456';
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+        const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
+        customer = this.userRepository.create({
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.phone,
+          email: dto.email || dummyEmail,
+          role: UserRole.CUSTOMER,
+          password: hashedPassword,
+          uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
+        });
+        await this.userRepository.save(customer);
+      }
+    } else {
+      throw new BadRequestException('Customer information is required — provide phone (for new/guest) or customerId (for existing)');
+    }
+
+    // Process items and calculate total
+    let totalAmount = 0;
+    const orderItems: CatalogueOrderItem[] = [];
+
+    for (const itemDto of dto.items) {
+      if (!itemDto.itemId && !itemDto.offerId) {
+        throw new BadRequestException('Each order item must have either itemId or offerId');
+      }
+
+      if (itemDto.itemId && itemDto.offerId) {
+        throw new BadRequestException('Each order item must have either itemId or offerId, not both');
+      }
+
+      if (itemDto.itemId) {
+        const item = await this.productRepository.findOne({
+          where: { id: itemDto.itemId, businessId: branch.businessId },
+          relations: ['branches'],
+        });
+
+        if (!item) throw new NotFoundException(`Item ${itemDto.itemId} not found`);
+        if (!item.branches?.some((b) => b.id === branch.id)) {
+          throw new BadRequestException(`Item ${item.name} is not available in this branch`);
+        }
+        if (item.status === CatalogueItemStatus.SUSPENDED || item.isSuspended) {
+          throw new BadRequestException(`Item ${item.name} is currently suspended`);
+        }
+        if (item.stockQuantity !== null && !item.allowBackOrder) {
+          if (item.stockQuantity < itemDto.quantity) {
+            throw new BadRequestException(`Insufficient stock for ${item.name}`);
+          }
+        }
+
+        const orderItem = this.orderItemRepository.create({
+          itemId: item.id,
+          quantity: itemDto.quantity,
+          priceAtOrder: Number(item.price),
+          loyaltyPointsAtOrder: item.loyaltyPoints,
+        });
+        orderItems.push(orderItem);
+        totalAmount += Number(item.price) * itemDto.quantity;
+      } else if (itemDto.offerId) {
+        const offer = await this.offerRepository.findOne({
+          where: { id: itemDto.offerId, branchId: branch.id },
+          relations: ['items'],
+        });
+
+        if (!offer) throw new NotFoundException(`Offer ${itemDto.offerId} not found in this branch`);
+        if (offer.status !== CatalogueOfferStatus.ACTIVE) {
+          throw new BadRequestException(`Offer ${offer.name} is not active`);
+        }
+        if (offer.quantity !== null && offer.quantity < itemDto.quantity) {
+          throw new BadRequestException(`Insufficient stock for offer ${offer.name}`);
+        }
+
+        for (const offerItem of offer.items) {
+          if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {
+            if (offerItem.stockQuantity < itemDto.quantity) {
+              throw new BadRequestException(`Insufficient stock for item ${offerItem.name} in offer ${offer.name}`);
+            }
+          }
+        }
+
+        const orderItem = this.orderItemRepository.create({
+          offerId: offer.id,
+          quantity: itemDto.quantity,
+          priceAtOrder: Number(offer.calculatedPrice),
+          loyaltyPointsAtOrder: offer.loyaltyPoints,
+        });
+        orderItems.push(orderItem);
+        totalAmount += Number(offer.calculatedPrice) * itemDto.quantity;
+      }
+    }
+
+    if (orderItems.length === 0) {
+      throw new BadRequestException('Order must contain at least one item');
+    }
+
+    // Create the order
+    const order = this.orderRepository.create({
+      businessId: branch.businessId,
+      branchId: branch.id,
+      customerId: customer.id,
+      notes: dto.notes,
+      tableNumber: dto.tableNumber,
+      totalAmount,
+      items: orderItems,
+      stockDeducted: true,
+    });
+
+    const savedOrder = await this.orderRepository.save(order);
+
+    // Deduct stock immediately
+    for (const orderItem of savedOrder.items) {
+      if (orderItem.itemId) {
+        const item = await this.productRepository.findOne({ where: { id: orderItem.itemId } });
+        if (item) {
+          this.deductStock(item, orderItem.quantity);
+          await this.productRepository.save(item);
+        }
+      } else if (orderItem.offerId) {
+        const offer = await this.offerRepository.findOne({
+          where: { id: orderItem.offerId },
+          relations: ['items'],
+        });
+        if (offer) {
+          if (offer.quantity !== null) {
+            offer.quantity -= orderItem.quantity;
+            if (offer.quantity <= 0) {
+              offer.quantity = 0;
+              offer.status = CatalogueOfferStatus.INACTIVE;
+            }
+            await this.offerRepository.save(offer);
+          }
+          for (const offerItem of offer.items) {
+            this.deductStock(offerItem, orderItem.quantity);
+            await this.productRepository.save(offerItem);
+          }
+        }
+      }
+    }
+
+    // Notify branch staff
+    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : `${customer.firstName} ${customer.lastName}`.trim();
+    this.pushNotificationService
+      .sendToBranchStaff(
+        branch.id,
+        'New POS Order',
+        `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
+        { orderId: savedOrder.id, type: 'NEW_POS_ORDER' },
+      )
+      .catch((err) => console.error('Failed to send staff notification:', err));
+
+    const result = await this.orderRepository.findOne({
+      where: { id: savedOrder.id },
+      relations: ['items', 'items.item', 'items.offer', 'customer', 'branch'],
+    });
+    return result!;
+  }
+
+  async processOrderPayment(
+    orderId: string,
+    dto: ProcessPosOrderPaymentDto,
+    staff: User,
+  ): Promise<{ sale: PosSale; order: CatalogueOrder }> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId, businessId: staff.businessId },
+      relations: ['items', 'items.item', 'items.offer', 'customer', 'branch'],
+    });
+    if (!order) throw new NotFoundException('Order not found');
+
+    if (order.status !== CatalogueOrderStatus.NEW && order.status !== CatalogueOrderStatus.PROCESSING) {
+      throw new BadRequestException(
+        `Cannot process payment for order with status "${order.status}". Only "new" or "processing" orders can be paid.`,
+      );
+    }
+
+    // Validate payment details
+    if (dto.paymentMethod === PaymentMethod.SPLIT) {
+      if (!dto.splitDetails || dto.splitDetails.length < 2) {
+        throw new BadRequestException('Split payment requires at least 2 payment methods');
+      }
+      const splitTotal = dto.splitDetails.reduce((acc, s) => acc + s.amount, 0);
+      if (Math.abs(splitTotal - dto.amountPaid) > 0.01) {
+        throw new BadRequestException('Split payment amounts must sum to the total amount paid');
+      }
+    }
+
+    // Build PosSale from order items
+    const saleItems: PosSaleItem[] = [];
+    let subtotal = 0;
+
+    for (const orderItem of order.items) {
+      const itemName = orderItem.item?.name || orderItem.offer?.name || 'Unknown';
+      const unitPrice = Number(orderItem.priceAtOrder);
+      const lineTotal = unitPrice * orderItem.quantity;
+
+      const saleItem = this.saleItemRepository.create({
+        productId: orderItem.itemId || undefined,
+        productName: itemName,
+        sku: orderItem.item?.sku || '',
+        barcode: orderItem.item?.barcode || '',
+        unitPrice,
+        costPrice: orderItem.item?.costPrice ? Number(orderItem.item.costPrice) : 0,
+        quantity: orderItem.quantity,
+        discount: 0,
+        totalPrice: lineTotal,
+      });
+      saleItems.push(saleItem);
+      subtotal += lineTotal;
+    }
+
+    const receiptNumber = await this.generateReceiptNumber(order.businessId);
+    const cashierName = `${staff.firstName} ${staff.lastName}`.trim() || staff.email;
+
+    const splitPayments: PosSplitPayment[] = [];
+    if (dto.paymentMethod === PaymentMethod.SPLIT && dto.splitDetails) {
+      for (const sp of dto.splitDetails) {
+        splitPayments.push(
+          this.splitPaymentRepository.create({ method: sp.method, amount: sp.amount }),
+        );
+      }
+    }
+
+    const sale = this.saleRepository.create({
+      businessId: order.businessId,
+      branchId: order.branchId,
+      cashierId: staff.id,
+      cashierName,
+      customerId: order.customerId,
+      receiptNumber,
+      subtotal,
+      discountAmount: 0,
+      tax: 0,
+      total: Number(order.totalAmount),
+      paymentMethod: dto.paymentMethod,
+      amountPaid: dto.amountPaid,
+      change: dto.change || 0,
+      hideCustomerInfoOnReceipt: dto.hideCustomerInfoOnReceipt || false,
+      notes: null,
+      status: SaleStatus.COMPLETED,
+      items: saleItems,
+      splitPayments,
+      orderId: order.id,
+    } as unknown as PosSale);
+
+    const savedSale = await this.saleRepository.save(sale);
+
+    // Update order status to COMPLETED (awards loyalty, generates rewards, sends notifications)
+    await this.catalogueOrderService.updateStatus(
+      orderId,
+      CatalogueOrderStatus.COMPLETED,
+      staff.businessId,
+      staff,
+    );
+
+    // Record FOS transaction
+    await this.recordFosTransaction({
+      businessId: order.businessId,
+      amount: Number(order.totalAmount),
+      paymentMethod: dto.paymentMethod,
+      referenceId: savedSale.id,
+      description: `POS Order Payment ${receiptNumber}`,
+    });
+
+    // Update register session
+    const openRegister = await this.registerSessionRepository.findOne({
+      where: {
+        cashierId: staff.id,
+        status: RegisterSessionStatus.OPEN,
+        branchId: order.branchId,
+      },
+    });
+
+    if (openRegister) {
+      openRegister.totalSales = Number(openRegister.totalSales) + Number(order.totalAmount);
+      openRegister.transactionCount = Number(openRegister.transactionCount) + 1;
+      if (dto.paymentMethod === PaymentMethod.CASH) {
+        openRegister.expectedCash = Number(openRegister.expectedCash) + dto.amountPaid;
+      }
+      await this.registerSessionRepository.save(openRegister);
+    }
+
+    // Update customer lastActive
+    if (order.customer) {
+      order.customer.lastActive = new Date();
+      await this.userRepository.save(order.customer);
+    }
+
+    const updatedOrder = await this.orderRepository.findOne({
+      where: { id: order.id },
+      relations: ['items', 'items.item', 'items.offer', 'customer', 'branch'],
+    });
+    return {
+      sale: await this.findOneSale(savedSale.id, order.businessId),
+      order: updatedOrder!,
+    };
   }
 
   async adjustStock(id: string, businessId: string, quantity: number) {
