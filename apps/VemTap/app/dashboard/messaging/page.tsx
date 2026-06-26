@@ -24,18 +24,12 @@ export default function MessagingPage() {
 
     const isLoading = campaignsLoading || analyticsLoading;
 
-    const stats = [
-        { label: 'Total Campaigns', value: '120', icon: Megaphone, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%' },
-        { label: 'Messages Sent', value: '25,400', icon: Send, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+18%' },
-        { label: 'Open Rate', value: '67%', icon: MailOpen, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+5%' },
-        { label: 'Click Rate', value: '22%', icon: MousePointer, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+2%' },
-    ];
-
-    const mockCampaigns = [
-        { id: '1', name: 'Weekend Special Offer', audience: 'All Customers', channel: 'WhatsApp', status: 'Sent', date: 'Oct 25, 2024' },
-        { id: '2', name: 'New Product Launch', audience: 'VIP Segment', channel: 'Email', status: 'Scheduled', date: 'Oct 28, 2024' },
-        { id: '3', name: 'Flash Sale Alert', audience: 'Inactive (>30d)', channel: 'SMS', status: 'Draft', date: 'Oct 24, 2024' },
-    ];
+    const stats = analytics ? [
+        { label: 'Total Campaigns', value: campaigns.length.toString(), icon: Megaphone, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+0%' },
+        { label: 'Messages Sent', value: analytics.sent?.toLocaleString() || '0', icon: Send, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+0%' },
+        { label: 'Open Rate', value: analytics?.openRate ? `${analytics.openRate}%` : '0%', icon: MailOpen, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+0%' },
+        { label: 'Click Rate', value: analytics?.globalStats?.clickRate ? `${analytics.globalStats.clickRate}%` : '0%', icon: MousePointer, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+0%' },
+    ] : [];
 
     if (isLoading) {
         return (
@@ -60,7 +54,7 @@ export default function MessagingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* LEFT COLUMN: Recent Campaigns */}
                 <div className="lg:col-span-8 space-y-8">
-                    <RecentCampaignsList campaigns={campaigns?.length > 0 ? campaigns : mockCampaigns} />
+                    <RecentCampaignsList campaigns={campaigns} />
                 </div>
 
                 {/* RIGHT COLUMN: Templates & Small Actions */}

@@ -22,10 +22,10 @@ export default function AnalyticsDashboard() {
   const inventoryValue = products.reduce((acc: number, p: any) => acc + ((p.price || 0) * (p.stockQuantity || 0)), 0);
 
   const metrics = [
-    { label: "Total Revenue", value: `₦${totalRevenue.toLocaleString()}`, trend: '+14.5%', isUp: true, icon: Banknote, color: 'text-emerald-500 bg-emerald-50' },
-    { label: "Transactions", value: transactionCount.toString(), trend: '+5.2%', isUp: true, icon: TrendingUp, color: 'text-blue-500 bg-blue-50' },
-    { label: "Inventory Retail Value", value: `₦${inventoryValue.toLocaleString()}`, trend: '-2.1%', isUp: false, icon: Package, color: 'text-purple-500 bg-purple-50' },
-    { label: "Total Products", value: products.length.toString(), trend: '+8.4%', isUp: true, icon: Activity, color: 'text-amber-500 bg-amber-50' },
+    { label: "Total Revenue", value: `₦${totalRevenue.toLocaleString()}`, trend: null, isUp: null, icon: Banknote, color: 'text-emerald-500 bg-emerald-50' },
+    { label: "Transactions", value: transactionCount.toString(), trend: null, isUp: null, icon: TrendingUp, color: 'text-blue-500 bg-blue-50' },
+    { label: "Inventory Retail Value", value: `₦${inventoryValue.toLocaleString()}`, trend: null, isUp: null, icon: Package, color: 'text-purple-500 bg-purple-50' },
+    { label: "Total Products", value: products.length.toString(), trend: null, isUp: null, icon: Activity, color: 'text-amber-500 bg-amber-50' },
   ];
 
   return (
@@ -48,10 +48,12 @@ export default function AnalyticsDashboard() {
               <div className={cn("size-12 rounded-[16px] flex items-center justify-center border border-white/50", metric.color)}>
                 <metric.icon size={20} />
               </div>
-              <div className={cn("flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg", metric.isUp ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600")}>
-                {metric.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                {metric.trend}
-              </div>
+              {metric.trend != null && (
+                <div className={cn("flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg", metric.isUp ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600")}>
+                  {metric.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                  {metric.trend}
+                </div>
+              )}
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">{metric.label}</p>
             <h3 className="text-2xl font-black text-gray-900 group-hover:text-[#066CF4] transition-colors">{metric.value}</h3>

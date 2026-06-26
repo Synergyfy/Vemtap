@@ -117,17 +117,11 @@ export function QRThriveManagementView({ codes }: { codes: any[] }) {
                 {codes.length > 0 ? codes.map((qr) => (
                     <QRManagerCard key={qr.id} qr={qr} mode={viewMode} />
                 )) : (
-                    // Mock data if empty
-                    [1, 2, 3, 4, 5, 6].map(i => (
-                        <QRManagerCard key={i} qr={{
-                            id: `${i}`,
-                            name: `Experience ${i}`,
-                            type: i % 2 === 0 ? 'Website' : 'Menu',
-                            scans: 124 * i,
-                            status: i % 3 === 0 ? 'Paused' : 'Active',
-                            date: 'Oct 24, 2024'
-                        }} mode={viewMode} />
-                    ))
+                    <div className="col-span-full py-20 text-center bg-white rounded-[40px] border border-dashed border-gray-200">
+                        <QrCode size={48} className="mx-auto mb-4 text-gray-200" />
+                        <h4 className="text-lg font-black text-gray-900 mb-2">No QR codes yet</h4>
+                        <p className="text-sm font-medium text-gray-400">Create your first QR experience to get started.</p>
+                    </div>
                 )}
             </div>
         </div>

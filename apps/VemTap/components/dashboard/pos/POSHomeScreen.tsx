@@ -52,6 +52,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         sku: product.sku || '',
         barcode: product.barcode || '',
         image: product.image || '',
+        enableLoyaltyPoints: product.enableLoyaltyPoints || false,
+        loyaltyPointsValue: product.loyaltyPointsValue || 0,
       });
       toast.success(`${product.name} added to cart`);
     }
@@ -148,7 +150,9 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     quantity: 1,
                     sku: product.sku,
                     barcode: product.barcode,
-                    image: product.mainImage
+                    image: product.mainImage,
+                    enableLoyaltyPoints: product.enableLoyaltyPoints || false,
+                    loyaltyPointsValue: product.loyaltyPointsValue || 0,
                   })}
                   className={cn(
                     "flex flex-col text-left bg-white border rounded-[28px] p-3 shadow-sm transition-all relative group",

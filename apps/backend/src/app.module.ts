@@ -45,6 +45,7 @@ import { TrainingModule } from './modules/training/training.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { BusinessDashboardModule } from './modules/business-dashboard/business-dashboard.module';
 import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
 import { FosCoreModule } from './modules/fos-core/fos-core.module';
 import { FosDashboardModule } from './modules/fos-dashboard/fos-dashboard.module';
@@ -161,6 +162,7 @@ import { InventoryCountingModule } from './modules/inventory-counting/inventory-
     DiscoveryModule,
     QrThriveModule,
     BannersModule,
+    BusinessDashboardModule,
     MarketingAssetsModule,
     FosCoreModule,
     FosDashboardModule,

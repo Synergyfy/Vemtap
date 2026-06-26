@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useQrThriveStore } from '@/store/useQrThriveStore';
+import { useQrThriveStats } from '@/services/qr-thrive/hooks';
 
 export function QRThriveOverviewHeader() {
     return (
@@ -37,13 +38,14 @@ export function QRThriveOverviewHeader() {
 }
 
 export function QRThriveMetrics() {
-    const stats = [
-        { label: 'QR Experiences', value: '42', icon: QrCode, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Total Scans', value: '18.2k', icon: Scan, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Active QRs', value: '35', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
-        { label: 'Conversions', value: '2.4k', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { label: 'Engagement', value: '68%', icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50' },
-    ];
+    const { data: statsData } = useQrThriveStats();
+    const stats = statsData ? [
+        { label: 'QR Experiences', value: statsData.totalQrCodes?.toLocaleString() || '0', icon: QrCode, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Total Scans', value: statsData.totalScans ? `${(statsData.totalScans / 1000).toFixed(1)}k` : '0', icon: Scan, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Scans (24h)', value: statsData.scansLast24h?.toLocaleString() || '0', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { label: 'Unique Visitors', value: statsData.uniqueVisitors?.toLocaleString() || '0', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Countries', value: Object.keys(statsData.countryDist || {}).length.toString(), icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50' },
+    ] : [];
 
     return (
         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 md:mx-0 md:px-0">

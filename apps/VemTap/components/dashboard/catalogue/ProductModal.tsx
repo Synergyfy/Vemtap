@@ -118,7 +118,8 @@ const productSchema = z.object({
     discountType: z.enum(['none', 'percentage', 'fixed']).default('none'),
     discountValue: z.coerce.number().min(0, 'Value must be positive').optional(),
     stockQuantity: z.coerce.number().min(0, 'Stock must be positive').optional(),
-    loyaltyPoints: z.coerce.number().min(0, 'Points must be positive').optional(),
+    enableLoyaltyPoints: z.boolean().default(false),
+    loyaltyPointsValue: z.coerce.number().min(0, 'Value must be positive').optional(),
     allowBackOrder: z.boolean().default(true),
     applyGlobally: z.boolean().default(false),
 });
@@ -177,7 +178,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             discountType: 'none',
             discountValue: 0,
             stockQuantity: 0,
-            loyaltyPoints: 0,
+            enableLoyaltyPoints: false,
+            loyaltyPointsValue: 0,
             allowBackOrder: true,
             applyGlobally: false,
         },
@@ -202,7 +204,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     discountType: product.discountType || 'none',
                     discountValue: product.discountValue || 0,
                     stockQuantity: product.stockQuantity || 0,
-                    loyaltyPoints: product.loyaltyPoints || 0,
+                    enableLoyaltyPoints: product.enableLoyaltyPoints || false,
+                    loyaltyPointsValue: product.loyaltyPointsValue || product.loyaltyPoints || 0,
                     allowBackOrder: product.allowBackOrder,
                     applyGlobally: false,
                 });
@@ -222,7 +225,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     discountType: 'none',
                     discountValue: 0,
                     stockQuantity: 0,
-                    loyaltyPoints: 0,
+                    enableLoyaltyPoints: false,
+                    loyaltyPointsValue: 0,
                     allowBackOrder: true,
                     applyGlobally: false,
                 });
@@ -315,7 +319,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             case 0:
                 return await trigger(['name', 'categoryId', 'description']);
             case 1:
-                return await trigger(['price', 'discountType', 'discountValue', 'stockQuantity', 'branchId', 'loyaltyPoints']);
+                return await trigger(['price', 'discountType', 'discountValue', 'stockQuantity', 'branchId', 'loyaltyPointsValue']);
             default:
                 return true;
         }
@@ -364,7 +368,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                 shortDescription: restValues.description?.slice(0, 200) || '',
                 itemType: 'product' as const,
                 mainImage: mainImageUrl,
-                galleryImages: finalGalleryUrls
+                galleryImages: finalGalleryUrls,
+                loyaltyPoints: restValues.enableLoyaltyPoints ? (restValues.loyaltyPointsValue || 0) : 0,
             };
 
             if (product) {
@@ -592,13 +597,24 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                         <p className="text-[10px] text-text-secondary font-medium ml-1">Current inventory count. Leave at 0 for unlimited or digital products.</p>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest flex items-center gap-2">
-                                            <Coins size={14} className="text-amber-500" />
-                                            Loyalty Points
+                                    <div className="space-y-3">
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <input type="checkbox" {...register('enableLoyaltyPoints')} className="size-5 accent-amber-500 cursor-pointer" />
+                                            <div>
+                                                <p className="text-sm font-bold text-text-main group-hover:text-amber-600 transition-colors flex items-center gap-2">
+                                                    <Coins size={14} className="text-amber-500" />
+                                                    Enable Loyalty Points
+                                                </p>
+                                                <p className="text-[10px] text-text-secondary font-medium">Award points to customers when this product is purchased</p>
+                                            </div>
                                         </label>
-                                        <input type="number" {...register('loyaltyPoints')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="Points on purchase" />
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Customers earn these points upon successful order completion.</p>
+                                        {watch('enableLoyaltyPoints') && (
+                                            <div className="pl-8 space-y-2">
+                                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Points to Award</label>
+                                                <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
+                                                <p className="text-[10px] text-amber-700 font-medium ml-1">Points awarded per unit sold. Customer earns this × quantity.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

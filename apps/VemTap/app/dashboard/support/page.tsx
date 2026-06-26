@@ -15,13 +15,9 @@ import {
     Circle,
     X
 } from 'lucide-react';
-
-const stats = [
-    { label: 'Total Requests', value: '1,542', change: '+12.5%', trend: 'up', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Open Tickets', value: '48', sub: 'High Priority', trend: 'neutral', icon: Ticket, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Avg. Response', value: '2h 15m', change: '-15m', trend: 'down', icon: Timer, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Satisfaction', value: '4.8/5.0', change: '+0.2', trend: 'up', icon: Star, color: 'text-purple-600', bg: 'bg-purple-50' },
-];
+import { useUserSupportTickets } from '@/services/support/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
+import Spinner from '@/components/ui/Spinner';
 
 const supportCategories = [
     { id: 'tech', name: 'Technical Issue' },
@@ -32,6 +28,8 @@ const supportCategories = [
 ];
 
 export default function SupportDashboard() {
+    const { data: ticketsData, isLoading } = useUserSupportTickets();
+    const tickets = Array.isArray(ticketsData?.data) ? ticketsData.data : (Array.isArray(ticketsData) ? ticketsData : []);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('');
     const [message, setMessage] = useState('');
@@ -56,6 +54,23 @@ export default function SupportDashboard() {
         handleCloseModal();
     };
 
+    const openTickets = tickets.filter((t: any) => t.status === 'open' || t.status === 'new' || t.status === 'pending').length;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
+
+    const stats = [
+        { label: 'Total Requests', value: tickets.length.toString(), change: '+0%', trend: 'up', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Open Tickets', value: openTickets.toString(), sub: `${openTickets} open`, trend: 'neutral', icon: Ticket, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Avg. Response', value: 'N/A', change: '', trend: 'neutral', icon: Timer, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Satisfaction', value: 'N/A', change: '', trend: 'up', icon: Star, color: 'text-purple-600', bg: 'bg-purple-50' },
+    ];
+
     return (
         <div className="p-8 space-y-8">
             {/* Header */}
@@ -75,6 +90,19 @@ export default function SupportDashboard() {
                 </div>
             </div>
 
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {stats.map((stat, i) => (
+                    <div key={i} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                        <div className={`size-10 rounded-xl flex items-center justify-center mb-4 shadow-sm ${stat.bg}`}>
+                            <stat.icon size={20} className={stat.color} />
+                        </div>
+                        <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
+                    </div>
+                ))}
+            </div>
+
             {/* My Tickets List */}
             <div className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -90,12 +118,42 @@ export default function SupportDashboard() {
                 </div>
 
                 <div className="overflow-x-auto">
-                    {/* This will be replaced with a dynamic list of tickets */}
-                    <div className="p-8 text-center text-slate-500">
-                        <Ticket size={48} className="mx-auto mb-4 text-slate-300" />
-                        <h3 className="font-bold text-lg">No tickets yet</h3>
-                        <p className="text-sm">Click "New Ticket" to create your first support request.</p>
-                    </div>
+                    {tickets.length > 0 ? (
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-slate-50">
+                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Subject</th>
+                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
+                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {tickets.map((ticket: any) => (
+                                    <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-4 text-sm font-bold text-slate-900">{ticket.subject || 'Untitled'}</td>
+                                        <td className="p-4 text-xs font-medium text-slate-500">{ticket.category || 'General'}</td>
+                                        <td className="p-4">
+                                            <span className={`inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                                                ticket.status === 'open' || ticket.status === 'new' ? 'bg-amber-50 text-amber-600' :
+                                                ticket.status === 'closed' || ticket.status === 'resolved' ? 'bg-emerald-50 text-emerald-600' :
+                                                'bg-blue-50 text-blue-600'
+                                            }`}>
+                                                {ticket.status || 'Unknown'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-xs font-medium text-slate-500">{ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="p-8 text-center text-slate-500">
+                            <Ticket size={48} className="mx-auto mb-4 text-slate-300" />
+                            <h3 className="font-bold text-lg">No tickets yet</h3>
+                            <p className="text-sm">Click "New Ticket" to create your first support request.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -36,19 +36,7 @@ export default function AllCustomersPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {visitors.length > 0 ? visitors.map((v) => (
                     <CRMCustomerCard key={v.id} customer={v} />
-                )) : (
-                    // Mock data if empty
-                    [1, 2, 3, 4, 5, 6].map(i => (
-                        <CRMCustomerCard key={i} customer={{
-                            id: `${i}`,
-                            name: `Customer ${i}`,
-                            phone: '+234 800 000 0000',
-                            email: `customer${i}@example.com`,
-                            status: i % 3 === 0 ? 'VIP' : 'Active',
-                            lastActivity: '3 days ago'
-                        }} />
-                    ))
-                )}
+                )) : null}
             </div>
 
             <div className="mt-12 flex justify-center">
