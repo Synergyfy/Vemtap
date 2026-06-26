@@ -9,10 +9,15 @@ import { PosHeldSale } from './entities/pos-held-sale.entity';
 import { PosHeldSaleItem } from './entities/pos-held-sale-item.entity';
 import { PosRegisterSession } from './entities/pos-register-session.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { CatalogueOrder } from '../catalogue-orders/entities/catalogue-order.entity';
+import { CatalogueOrderItem } from '../catalogue-orders/entities/catalogue-order-item.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { User } from '../users/entities/user.entity';
 import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
+import { CatalogueOrderModule } from '../catalogue-orders/catalogue-orders.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,11 +29,16 @@ import { FinancialTransaction } from '../fos-core/entities/financial-transaction
       PosHeldSaleItem,
       PosRegisterSession,
       CatalogueItem,
+      CatalogueOffer,
+      CatalogueOrder,
+      CatalogueOrderItem,
       Business,
       Branch,
       User,
       FinancialTransaction,
     ]),
+    CatalogueOrderModule,
+    NotificationsModule,
   ],
   controllers: [PosController],
   providers: [PosService],
