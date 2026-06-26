@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiParam, ApiQuery }
 import { DiscoveryService } from './discovery.service';
 import { BranchesService } from '../branches/branches.service';
 import { UpdateDiscoverySettingsDto, RecommendBusinessDto, DiscoveryQueryDto } from './dto/discovery.dto';
+import { DiscoveryAdminStatsResponseDto, DiscoveryAdminBusinessesResponseDto } from './dto/discovery-admin-responses.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -111,6 +112,37 @@ export class DiscoveryController {
   ) {
     await this.validateAccess(req.user, branchId);
     return this.discoveryService.submitRecommendation(branchId, dto);
+  }
+
+  @Get('admin/stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get platform-wide Discovery Network KPI statistics' })
+  @ApiResponse({
+    status: 200,
+    description: 'Aggregated platform discovery metrics retrieved successfully',
+    type: DiscoveryAdminStatsResponseDto,
+  })
+  async getAdminStats() {
+    return this.discoveryService.getAdminStats();
+  }
+
+  @Get('admin/businesses')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all businesses with their discovery metrics' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'restaurant' })
+  @ApiResponse({
+    status: 200,
+    description: 'Businesses with discovery metrics retrieved successfully',
+    type: DiscoveryAdminBusinessesResponseDto,
+  })
+  async getAdminBusinesses(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.discoveryService.getAdminBusinesses({ page, limit, search });
   }
 
   private async validateAccess(user: any, branchId: string) {
