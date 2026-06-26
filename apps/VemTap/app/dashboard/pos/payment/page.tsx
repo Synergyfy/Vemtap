@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePosStore } from '@/store/usePosStore';
+import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
 import { useCreatePosSale } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User } from 'lucide-react';
+import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { CustomerSelectorModal } from '@/components/dashboard/pos/CustomerSelectorModal';
@@ -16,7 +18,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
   const cashier = useAuthStore((state) => state.user);
-  const { getCartTotal, getCartSubtotal, getCartDiscountAmount, attachedCustomer, attachCustomer, cart, clearCart, setLastCompletedSale, cartDiscount } = usePosStore();
+  const { getCartTotal, getCartSubtotal, getCartDiscountAmount, attachedCustomer, attachCustomer, cart, clearCart, setLastCompletedSale, cartDiscount, manualLoyaltyPoints } = usePosStore();
   const createSale = useCreatePosSale();
   const [selectedMethod, setSelectedMethod] = useState<'cash' | 'transfer' | 'card' | 'split' | null>(null);
   const [amountReceived, setAmountReceived] = useState<string>('');
@@ -81,12 +83,23 @@ export default function PaymentScreen() {
         hideCustomerInfoOnReceipt,
       },
       {
-        onSuccess: (sale) => {
-          setLastCompletedSale(sale);
-          clearCart();
-          router.push('/dashboard/pos/success');
-        },
-      }
+         onSuccess: (sale) => {
+           setLastCompletedSale(sale);
+           // Award loyalty points
+           if (attachedCustomer) {
+             const autoPoints = cart.reduce((sum, item) =>
+               item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
+             const totalPoints = autoPoints + manualLoyaltyPoints;
+             if (totalPoints > 0) {
+               const { addPoints, setLastEarned } = usePosLoyaltyStore.getState();
+               addPoints(attachedCustomer.id, totalPoints);
+               setLastEarned(attachedCustomer.id, totalPoints);
+             }
+           }
+           clearCart();
+           router.push('/dashboard/pos/success');
+         },
+       }
     );
   };
 
@@ -131,6 +144,41 @@ export default function PaymentScreen() {
             </div>
           )}
         </div>
+
+        {/* Loyalty Points Section */}
+        {(() => {
+          const settings = usePosSettingsStore.getState();
+          if (!settings.loyaltyEnabled) return null;
+          const { getPointsBalance, redemptionThreshold } = usePosLoyaltyStore.getState();
+          const balance = attachedCustomer ? getPointsBalance(attachedCustomer.id) : 0;
+          const autoPts = cart.reduce((sum, item) =>
+            item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
+          const effectiveThreshold = settings.loyaltyRedeemThreshold || redemptionThreshold;
+          if (attachedCustomer && balance > 0) {
+            return (
+              <div className="mb-6 p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Coins size={16} className="text-amber-600" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Loyalty Points</span>
+                  </div>
+                  <span className="text-sm font-black text-amber-700">{balance} pts</span>
+                </div>
+                {autoPts > 0 && (
+                  <p className="text-xs font-medium text-amber-600 mt-1 ml-7">
+                    +{autoPts} pts from this order
+                  </p>
+                )}
+                {balance >= effectiveThreshold && (
+                  <button className="mt-3 w-full h-10 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-amber-600 transition-all">
+                    <Gift size={14} /> Redeem Points for Discount
+                  </button>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <div className="grid grid-cols-2 gap-4 mb-8">
           {paymentMethods.map((method) => {

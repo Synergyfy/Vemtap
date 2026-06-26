@@ -3,7 +3,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { usePosStore } from '@/store/usePosStore';
-import { CheckCircle2, Printer, MessageCircle, Mail, ArrowRight, Share2 } from 'lucide-react';
+import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
+import { CheckCircle2, Printer, MessageCircle, Mail, ArrowRight, Share2, Coins } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -49,6 +50,26 @@ export default function POSSuccessScreen() {
             Receipt: {lastCompletedSale.receiptNumber}
           </p>
 
+          {/* Loyalty Points Earned */}
+          {(() => {
+            const { lastEarnedPoints, lastEarnedCustomerId, customers, clearLastEarned } = usePosLoyaltyStore.getState();
+            const customer = customers.find(c => c.id === lastEarnedCustomerId);
+            if (lastEarnedPoints > 0 && customer) {
+              return (
+                <div className="mb-8 p-4 rounded-2xl bg-amber-50/70 border border-amber-100 flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <Coins size={20} className="text-amber-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-black text-amber-800">+{lastEarnedPoints} Points Earned!</p>
+                    <p className="text-[10px] font-medium text-amber-600">{customer.name} — New balance: {customer.totalPoints} pts</p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           <div className="grid grid-cols-2 gap-3 mb-8">
             <button className="flex flex-col items-center justify-center gap-3 bg-white border border-gray-100 p-4 rounded-[24px] hover:border-emerald-500/30 hover:shadow-md transition-all active:scale-95 group">
               <div className="size-12 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-emerald-50 text-gray-400 group-hover:text-emerald-500 transition-colors">
@@ -77,7 +98,7 @@ export default function POSSuccessScreen() {
           </div>
 
           <button
-            onClick={() => router.push('/dashboard/pos')}
+            onClick={() => { usePosLoyaltyStore.getState().clearLastEarned(); router.push('/dashboard/pos'); }}
             className="w-full h-16 bg-gray-900 text-white rounded-[24px] flex items-center justify-center gap-2 shadow-xl shadow-gray-900/20 hover:bg-black active:scale-[0.98] transition-all"
           >
             <span className="text-[12px] font-black uppercase tracking-[0.15em]">New Sale</span>
