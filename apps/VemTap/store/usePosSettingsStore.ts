@@ -14,6 +14,8 @@ export interface POSSettingsState {
   taxRate: number;
   taxLabel: string;
   pricesIncludeTax: boolean;
+  loyaltyEnabled: boolean;
+  loyaltyRedeemThreshold: number;
   lowStockAlerts: boolean;
   dailySalesSummary: boolean;
   newOrderAlert: boolean;
@@ -36,6 +38,8 @@ const DEFAULT_SETTINGS = {
   taxRate: 7.5,
   taxLabel: 'VAT',
   pricesIncludeTax: true,
+  loyaltyEnabled: false,
+  loyaltyRedeemThreshold: 100,
   lowStockAlerts: true,
   dailySalesSummary: true,
   newOrderAlert: false,

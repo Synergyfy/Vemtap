@@ -203,7 +203,7 @@ export default function OrdersDashboard() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24 overflow-hidden">
+    <div className="max-w-5xl mx-auto pt-4 px-4 md:px-0 pb-24">
       <POSPageHeader
         title="Orders"
         subtitle="Manage incoming orders from your public POS"
@@ -311,7 +311,7 @@ export default function OrdersDashboard() {
 
       {/* Orders List vs Detail View */}
       {selectedOrderId && orderDetail ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-gray-100 rounded-[32px] shadow-sm overflow-y-auto flex-1 min-h-0">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-gray-100 rounded-[32px] shadow-sm">
           {/* Detail Header */}
           <div className="p-6 border-b border-gray-100 flex items-center gap-4">
             <button onClick={() => setSelectedOrderId(null)} className="size-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-all">

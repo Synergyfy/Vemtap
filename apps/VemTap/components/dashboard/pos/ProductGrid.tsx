@@ -21,7 +21,10 @@ export function ProductGrid({ items }: { items: any[] }) {
                         costPrice: item.costPrice || 0,
                         quantity: 1, 
                         sku: item.sku || '',
-                        barcode: item.barcode || ''
+                        barcode: item.barcode || '',
+                        image: item.image || item.mainImage || '',
+                        enableLoyaltyPoints: item.enableLoyaltyPoints || false,
+                        loyaltyPointsValue: item.loyaltyPointsValue || 0,
                     })}
                     className="flex flex-col items-center text-center gap-3 p-4 rounded-3xl bg-white border border-gray-100 shadow-sm transition-all hover:border-[#066CF4]/20 hover:shadow-lg active:scale-95"
                 >

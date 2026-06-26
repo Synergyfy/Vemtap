@@ -46,6 +46,8 @@ export interface CatalogueItem {
     isSuspended: boolean;
     suspensionNote?: string;
     loyaltyPoints?: number | null;
+    enableLoyaltyPoints?: boolean;
+    loyaltyPointsValue?: number;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -150,6 +152,8 @@ export interface CreateItemDto {
     stockQuantity?: number;
     allowBackOrder?: boolean;
     loyaltyPoints?: number;
+    enableLoyaltyPoints?: boolean;
+    loyaltyPointsValue?: number;
 }
 
 export interface UpdateItemDto extends Partial<CreateItemDto> {

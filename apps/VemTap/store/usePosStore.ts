@@ -14,6 +14,8 @@ export interface PosCartItem {
   barcode: string;
   image?: string;
   discount: number;
+  enableLoyaltyPoints?: boolean;
+  loyaltyPointsValue?: number;
 }
 
 export type PaymentMethodType = 'cash' | 'transfer' | 'card' | 'split';
@@ -23,6 +25,7 @@ interface PosState {
   cartDiscount: { type: 'percentage' | 'fixed'; value: number } | null;
   attachedCustomer: { id: string; name: string; phone: string; email?: string } | null;
   lastCompletedSale: PosSaleResponse | null;
+  manualLoyaltyPoints: number;
 
   addToCart: (item: Omit<PosCartItem, 'discount'>) => void;
   removeFromCart: (id: string) => void;
@@ -39,6 +42,7 @@ interface PosState {
   getCartItemCount: () => number;
 
   setLastCompletedSale: (sale: PosSaleResponse) => void;
+  setManualLoyaltyPoints: (points: number) => void;
 }
 
 export const usePosStore = create<PosState>()(
@@ -48,6 +52,7 @@ export const usePosStore = create<PosState>()(
       cartDiscount: null,
       attachedCustomer: null,
       lastCompletedSale: null,
+      manualLoyaltyPoints: 0,
 
       addToCart: (item) => set((state) => {
         const existing = state.cart.find(i => i.id === item.id);
@@ -79,7 +84,7 @@ export const usePosStore = create<PosState>()(
 
       attachCustomer: (attachedCustomer) => set({ attachedCustomer }),
 
-      clearCart: () => set({ cart: [], cartDiscount: null, attachedCustomer: null }),
+      clearCart: () => set({ cart: [], cartDiscount: null, attachedCustomer: null, manualLoyaltyPoints: 0 }),
 
       getCartSubtotal: () => {
         return get().cart.reduce((acc, item) => acc + (item.price * item.quantity) - item.discount, 0);
@@ -109,6 +114,7 @@ export const usePosStore = create<PosState>()(
       getCartItemCount: () => get().cart.reduce((acc, i) => acc + i.quantity, 0),
 
       setLastCompletedSale: (sale) => set({ lastCompletedSale: sale }),
+      setManualLoyaltyPoints: (points) => set({ manualLoyaltyPoints: Math.max(0, points) }),
     }),
     { name: 'vemtap-pos-storage-v2' }
   )
