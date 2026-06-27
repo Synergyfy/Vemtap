@@ -158,6 +158,16 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
     const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
     const [croppingImage, setCroppingImage] = useState<{ url: string, isGallery?: boolean } | null>(null);
 
+    // Weight & Dimension state for segmented inputs
+    const [weightValue, setWeightValue] = useState('');
+    const [weightUnit, setWeightUnit] = useState('kg');
+    const [dimLength, setDimLength] = useState('');
+    const [dimWidth, setDimWidth] = useState('');
+    const [dimHeight, setDimHeight] = useState('');
+    const [dimUnit, setDimUnit] = useState('cm');
+    const weightUnits = ['kg', 'g', 'lb', 'oz'];
+    const dimUnits = ['cm', 'm', 'in', 'ft'];
+
     const mainInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
     const barcodeCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -239,6 +249,35 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             setIsUploading(false);
         }
     }, [isOpen, product, reset, activeBranchId]);
+
+    // Sync weight/dimension segmented state from product data
+    useEffect(() => {
+        if (product?.weight) {
+            const match = product.weight.match(/^([\d.]+)\s*(kg|g|lb|oz)$/i);
+            if (match) {
+                setWeightValue(match[1]);
+                setWeightUnit(match[2].toLowerCase());
+            }
+        }
+        if (product?.dimensions) {
+            const match = product.dimensions.match(/^([\d.]+)x([\d.]+)x([\d.]+)\s*(cm|m|in|ft)$/i);
+            if (match) {
+                setDimLength(match[1]);
+                setDimWidth(match[2]);
+                setDimHeight(match[3]);
+                setDimUnit(match[4].toLowerCase());
+            }
+        }
+    }, [product]);
+
+    useEffect(() => {
+        setValue('weight', weightValue ? `${weightValue} ${weightUnit}` : '');
+    }, [weightValue, weightUnit, setValue]);
+
+    useEffect(() => {
+        const parts = [dimLength, dimWidth, dimHeight].filter(Boolean);
+        setValue('dimensions', parts.length > 0 ? `${parts.join('x')} ${dimUnit}` : '');
+    }, [dimLength, dimWidth, dimHeight, dimUnit, setValue]);
 
     const handleMainUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -481,13 +520,67 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Weight</label>
-                                        <input {...register('weight')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="e.g. 500g, 1kg, 2lbs" />
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Product weight with unit (kg, g, lb, oz).</p>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                min={0}
+                                                value={weightValue}
+                                                onChange={e => setWeightValue(e.target.value)}
+                                                className="w-24 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                placeholder="0"
+                                            />
+                                            <select
+                                                value={weightUnit}
+                                                onChange={e => setWeightUnit(e.target.value)}
+                                                className="flex-1 h-12 px-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer"
+                                            >
+                                                {weightUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                        </div>
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Enter a number and select the unit.</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Dimensions</label>
-                                        <input {...register('dimensions')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="e.g. 10x15x5 cm, M, L, XL" />
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Product size, dimensions, or variant label.</p>
+                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Dimensions (L × W × H)</label>
+                                        <div className="flex gap-1.5 items-center">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                min={0}
+                                                value={dimLength}
+                                                onChange={e => setDimLength(e.target.value)}
+                                                className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                placeholder="L"
+                                            />
+                                            <span className="text-gray-400 font-black text-xs">×</span>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                min={0}
+                                                value={dimWidth}
+                                                onChange={e => setDimWidth(e.target.value)}
+                                                className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                placeholder="W"
+                                            />
+                                            <span className="text-gray-400 font-black text-xs">×</span>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                min={0}
+                                                value={dimHeight}
+                                                onChange={e => setDimHeight(e.target.value)}
+                                                className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                placeholder="H"
+                                            />
+                                            <select
+                                                value={dimUnit}
+                                                onChange={e => setDimUnit(e.target.value)}
+                                                className="w-16 h-12 px-1 bg-gray-50 border border-gray-200 rounded-xl font-bold text-xs outline-none cursor-pointer"
+                                            >
+                                                {dimUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                        </div>
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Length × Width × Height with unit.</p>
                                     </div>
                                 </div>
 

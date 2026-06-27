@@ -6,9 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ChevronLeft, 
     CheckCircle2, 
-    QrCode, 
-    Users, 
-    BarChart3, 
     Smartphone,
     ArrowRight,
     Save,
@@ -49,7 +46,19 @@ import {
     Zap,
     Shield,
     Star,
-    Crown
+    Crown,
+    Play,
+    Building2,
+    Music,
+    Coins,
+    Sprout,
+    Factory,
+    Heart,
+    Landmark,
+    ChevronDown,
+    Trash2,
+    Plus,
+    X
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import LogoIcon from '@/components/brand/LogoIcon';
@@ -65,6 +74,7 @@ import { useSubscribe } from '@/services/subscriptions/hooks';
 import type { SubscribeRequest } from '@/services/subscriptions/types';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
 import LocationStep from './components/LocationStep';
 import toast from 'react-hot-toast';
 
@@ -107,6 +117,19 @@ interface OnboardingData {
     latitude?: number;
     longitude?: number;
 }
+
+// Social Media Platforms Configuration
+const SOCIAL_PLATFORMS = [
+    { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', placeholder: 'yourbrand', prefix: 'https://instagram.com/' },
+    { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', placeholder: 'yourbrand', prefix: 'https://facebook.com/' },
+    { id: 'x', name: 'X / Twitter', icon: Twitter, color: 'text-slate-900', bg: 'bg-slate-50', placeholder: 'yourhandle', prefix: 'https://x.com/' },
+    { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', placeholder: 'company/yourbrand', prefix: 'https://linkedin.com/' },
+    { id: 'tiktok', name: 'TikTok', icon: Smartphone, color: 'text-slate-900', bg: 'bg-slate-50', placeholder: 'yourbrand', prefix: 'https://tiktok.com/@' },
+    { id: 'whatsapp', name: 'WhatsApp', icon: MessageCircle, color: 'text-green-600', bg: 'bg-green-50', placeholder: '2348012345678', prefix: 'https://wa.me/' },
+    { id: 'youtube', name: 'YouTube', icon: Play, color: 'text-red-600', bg: 'bg-red-50', placeholder: 'channel/yourid', prefix: 'https://youtube.com/' },
+    { id: 'google', name: 'Google Review', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', placeholder: 'https://g.page/r/...' },
+    { id: 'custom', name: 'Custom Link', icon: Globe, color: 'text-slate-600', bg: 'bg-slate-50', placeholder: 'https://...' },
+];
 
 // --- Steps Data ---
 const STEPS = [
@@ -174,9 +197,9 @@ export default function OnboardingPage() {
         <div className="min-h-screen bg-white flex flex-col font-sans text-text-main">
             {/* Top Navigation */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-3 sm:py-4">
-                <div className="max-w-xl mx-auto space-y-2 sm:space-y-4">
+                <div className="max-w-xl mx-auto space-y-4 sm:space-y-6">
                     {/* Top Row: Logo and Save & Exit */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between pb-2 sm:pb-3">
                         <div className="flex items-center gap-4">
                             {currentStep !== 1 && currentStep !== 7 && (
                                 <button 
@@ -247,6 +270,7 @@ export default function OnboardingPage() {
 
 // --- Screen 1: Welcome ---
 function WelcomeStep({ onNext }: { onNext: () => void }) {
+    const onboardingVideoUrl = useSystemSettingsStore((s) => s.onboardingVideoUrl);
     const checklist = [
         { label: 'Business Category', id: 2 },
         { label: 'Business Details', id: 3 },
@@ -264,32 +288,6 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-8"
         >
-            <div className="relative flex justify-center py-12">
-                <div className="relative size-48">
-                    <motion.div 
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="absolute inset-0 bg-primary/5 rounded-[3rem] rotate-6" 
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="size-16 bg-white rounded-2xl shadow-xl flex items-center justify-center text-primary">
-                                <QrCode size={32} />
-                            </div>
-                            <div className="size-16 bg-white rounded-2xl shadow-xl flex items-center justify-center text-primary">
-                                <Users size={32} />
-                            </div>
-                            <div className="size-16 bg-white rounded-2xl shadow-xl flex items-center justify-center text-primary">
-                                <BarChart3 size={32} />
-                            </div>
-                            <div className="size-16 bg-white rounded-2xl shadow-xl flex items-center justify-center text-primary">
-                                <Smartphone size={32} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div className="space-y-4">
                 <h1 className="text-4xl font-display font-black text-text-main tracking-tight">
                     Welcome To Vemtap 👋
@@ -315,6 +313,27 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
                     </div>
                 ))}
             </div>
+
+            {onboardingVideoUrl && (
+                <div className="rounded-[2rem] overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
+                    <div className="aspect-video bg-black">
+                        <iframe
+                            src={onboardingVideoUrl.replace('watch?v=', 'embed/')}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    </div>
+                </div>
+            )}
+
+            {!onboardingVideoUrl && (
+                <div className="bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 p-12 flex flex-col items-center justify-center text-center">
+                    <Play size={48} className="text-gray-300 mb-4" />
+                    <p className="text-sm font-bold text-text-secondary">Onboarding Video</p>
+                    <p className="text-xs text-text-secondary opacity-60 mt-1">Video will appear here once set by admin</p>
+                </div>
+            )}
 
             <div className="bg-gray-50 rounded-[2rem] p-8 border border-gray-100">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-6">Setup Checklist</h3>
@@ -350,9 +369,28 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
     const rawCategories: Category[] = categoriesData?.items || [];
 
     const CATEGORY_ICONS: Record<string, React.ElementType> = {
+        // Parent category matchers
+        'retail': ShoppingBag,
+        'food': Utensils,
+        'beauty': Sparkles,
+        'health': Stethoscope,
+        'professional services': Briefcase,
+        'technology': Tv,
+        'education': GraduationCap,
+        'real estate': Home,
+        'automotive': Wrench,
+        'logistics': Truck,
+        'construction': Building2,
+        'events': Music,
+        'finance': Coins,
+        'agriculture': Sprout,
+        'manufacturing': Factory,
+        'religious': Heart,
+        'government': Landmark,
+        'others': MoreHorizontal,
+        // Subcategory matchers (more specific)
         'restaurant': Utensils,
         'salon & barbershop': Scissors,
-        'retail & fashion': ShoppingBag,
         'gym & fitness': Dumbbell,
         'hotel & hospitality': Hotel,
         'electronics': Tv,
@@ -364,19 +402,27 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
         'cafe': Coffee,
         'laundry': Truck,
         'auto service': Wrench,
-        'real estate': Home,
-        'education': GraduationCap,
-        'professional services': Briefcase,
         'healthcare': Stethoscope,
     };
 
     const categories = rawCategories.map((cat: Category) => {
         const key = cat.name.toLowerCase();
         const icon = Object.entries(CATEGORY_ICONS).find(([k]) => key.includes(k))?.[1] || MoreHorizontal;
-        return { id: cat.id, label: cat.name, icon };
+        const subNames = (cat.subcategories || []).map(s => s.name.toLowerCase());
+        return { id: cat.id, label: cat.name, description: cat.description, icon, subNames };
     });
 
-    const filtered = categories.filter(c => c.label.toLowerCase().includes(search.toLowerCase()));
+    const filtered = categories.filter(c => 
+        c.label.toLowerCase().includes(search.toLowerCase()) ||
+        c.subNames.some(s => s.includes(search.toLowerCase()))
+    );
+
+    // If search matches exactly one category, auto-select it
+    useEffect(() => {
+        if (search && filtered.length === 1) {
+            setSelected(filtered[0].id);
+        }
+    }, [search, filtered]);
 
     return (
         <motion.div
@@ -411,7 +457,7 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                     <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </div>
             ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {filtered.map((cat) => (
                     <button
                         key={cat.id}
@@ -422,14 +468,21 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                             : 'border-gray-100 bg-white hover:border-gray-200'
                         }`}
                     >
-                        <div className={`size-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
-                            selected === cat.id ? 'bg-primary text-white' : 'bg-gray-50 text-text-secondary group-hover:bg-gray-100'
-                        }`}>
-                            <cat.icon size={24} />
+                        <div className="flex items-start gap-4">
+                            <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                                selected === cat.id ? 'bg-primary text-white' : 'bg-gray-50 text-text-secondary group-hover:bg-gray-100'
+                            }`}>
+                                <cat.icon size={24} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <span className={`text-sm font-bold block ${selected === cat.id ? 'text-primary' : 'text-text-main'}`}>
+                                    {cat.label}
+                                </span>
+                                <span className="text-[10px] text-text-secondary/60 font-medium mt-0.5 block line-clamp-1">
+                                    {cat.description.replace(/^(Businesses that|Business Involves)\s+/i, '')}
+                                </span>
+                            </div>
                         </div>
-                        <span className={`text-sm font-bold block ${selected === cat.id ? 'text-primary' : 'text-text-main'}`}>
-                            {cat.label}
-                        </span>
                         {selected === cat.id && (
                             <motion.div 
                                 layoutId="check"
@@ -499,10 +552,46 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
         description: data.description || '',
         website: data.website || '',
         address: data.address || { street: '', city: '', state: '', country: '', zip: '' },
-        socials: data.socials || { facebook: '', instagram: '', tiktok: '', x: '', linkedin: '', whatsapp: '' }
+        socials: data.socials || {}
     });
     const [isSaving, setIsSaving] = useState(false);
     const updateBusiness = useUpdateBusiness();
+    const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
+    const [selectedSocial, setSelectedSocial] = useState<typeof SOCIAL_PLATFORMS[0] | null>(null);
+    const [socialHandle, setSocialHandle] = useState('');
+    const [activeSocials, setActiveSocials] = useState<{ id: string; name: string; icon: React.ElementType; color: string; bg: string; url: string }[]>(() => {
+        const existing = data.socials || {};
+        const items: { id: string; name: string; icon: React.ElementType; color: string; bg: string; url: string }[] = [];
+        const platformMap: Record<string, (typeof SOCIAL_PLATFORMS[0])> = {};
+        SOCIAL_PLATFORMS.forEach(p => { platformMap[p.id] = p; });
+        Object.entries(existing).forEach(([id, url]) => {
+            if (url && platformMap[id]) {
+                const p = platformMap[id];
+                items.push({ id: p.id, name: p.name, icon: p.icon, color: p.color, bg: p.bg, url: url as string });
+            }
+        });
+        return items;
+    });
+
+    const handleAddSocial = () => {
+        if (!selectedSocial || !socialHandle.trim()) return;
+        const fullUrl = selectedSocial.prefix ? selectedSocial.prefix + socialHandle.trim() : socialHandle.trim();
+        if (!activeSocials.some(s => s.id === selectedSocial.id)) {
+            setActiveSocials(prev => [...prev, { id: selectedSocial.id, name: selectedSocial.name, icon: selectedSocial.icon, color: selectedSocial.color, bg: selectedSocial.bg, url: fullUrl }]);
+        }
+        setSelectedSocial(null);
+        setSocialHandle('');
+    };
+
+    const removeSocial = (id: string) => {
+        setActiveSocials(prev => prev.filter(s => s.id !== id));
+    };
+
+    useEffect(() => {
+        const socialsMap: Record<string, string> = {};
+        activeSocials.forEach(s => { socialsMap[s.id] = s.url; });
+        setLocalData(prev => ({ ...prev, socials: socialsMap }));
+    }, [activeSocials]);
 
     const handleContinue = async () => {
         if (!localData.businessName || !localData.address.street) return;
@@ -668,26 +757,150 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             {/* Social Media Section */}
             <div className="space-y-6">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Social Media</label>
-                <div className="space-y-4">
-                    {[
-                        { id: 'facebook', icon: Facebook, label: 'Facebook' },
-                        { id: 'instagram', icon: Instagram, label: 'Instagram' },
-                        { id: 'tiktok', icon: Smartphone, label: 'TikTok' },
-                        { id: 'x', icon: Twitter, label: 'X (Twitter)' },
-                        { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
-                        { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp Business' },
-                    ].map((platform) => (
-                        <div key={platform.id} className="relative">
-                            <platform.icon className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input 
-                                type="text"
-                                value={(localData.socials as any)[platform.id]}
-                                onChange={(e) => setLocalData({ ...localData, socials: { ...localData.socials, [platform.id]: e.target.value } })}
-                                placeholder={`${platform.label} Username/URL`}
-                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-xs"
-                            />
+                <div className="space-y-6">
+                    <div className="relative">
+                        <div className="flex gap-3">
+                            <div className="relative flex-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
+                                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 flex items-center justify-between text-sm font-bold text-text-main hover:bg-gray-100 transition-all"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {selectedSocial ? (
+                                            <>
+                                                <div className={`p-1.5 rounded-lg bg-white shadow-sm ${selectedSocial.color}`}>
+                                                    <selectedSocial.icon size={16} />
+                                                </div>
+                                                <span>{selectedSocial.name}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="p-1.5 rounded-lg bg-white shadow-sm text-gray-400">
+                                                    <Plus size={16} />
+                                                </div>
+                                                <span className="text-gray-400">Select Platform</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${isSocialDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {isSocialDropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-[9999] overflow-hidden py-2"
+                                    >
+                                        {SOCIAL_PLATFORMS.map((platform) => {
+                                            const isAlreadyAdded = activeSocials.some(s => s.id === platform.id);
+                                            return (
+                                                <button
+                                                    key={platform.id}
+                                                    type="button"
+                                                    disabled={isAlreadyAdded && platform.id !== 'custom'}
+                                                    onClick={() => {
+                                                        setSelectedSocial(platform);
+                                                        setIsSocialDropdownOpen(false);
+                                                    }}
+                                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:grayscale"
+                                                >
+                                                    <div className={`p-2 rounded-xl ${platform.bg} ${platform.color}`}>
+                                                        <platform.icon size={18} />
+                                                    </div>
+                                                    <div className="flex-1 text-left text-sm font-bold text-text-main">
+                                                        {platform.name}
+                                                        {isAlreadyAdded && platform.id !== 'custom' && (
+                                                            <span className="ml-2 text-[9px] uppercase tracking-widest text-green-500 font-black">Added</span>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </motion.div>
+                                )}
+                            </div>
                         </div>
-                    ))}
+                        {selectedSocial && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="mt-4 space-y-3 overflow-hidden"
+                            >
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            value={socialHandle}
+                                            onChange={(e) => setSocialHandle(e.target.value)}
+                                            placeholder={selectedSocial.placeholder}
+                                            className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                            autoFocus
+                                        />
+                                        {selectedSocial.prefix && (
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase tracking-tighter">
+                                                Handle Only
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddSocial}
+                                        disabled={!socialHandle.trim()}
+                                        className="h-12 px-6 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50"
+                                    >
+                                        Add
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSelectedSocial(null); setSocialHandle(''); }}
+                                        className="h-12 w-12 flex items-center justify-center bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-colors"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                                {selectedSocial.prefix && (
+                                    <p className="text-[10px] text-gray-400 ml-1">
+                                        Your profile link will be: <span className="text-primary font-bold">{selectedSocial.prefix}{socialHandle || 'handle'}</span>
+                                    </p>
+                                )}
+                            </motion.div>
+                        )}
+                    </div>
+                    {activeSocials.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Active Links</label>
+                            <div className="grid grid-cols-1 gap-2">
+                                {activeSocials.map((social) => (
+                                    <motion.div
+                                        layout
+                                        key={social.id}
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm"
+                                    >
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <div className={`p-2 rounded-xl ${social.bg} ${social.color} shrink-0`}>
+                                                <social.icon size={18} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-black text-text-main uppercase tracking-tighter leading-none">{social.name}</p>
+                                                <p className="text-[11px] text-text-secondary font-medium truncate mt-1">
+                                                    {social.url}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeSocial(social.id)}
+                                            className="p-2 text-gray-300 hover:text-rose-500 transition-colors"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -711,10 +924,10 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                             {localData.description || 'Your business description will appear here for customers to see.'}
                         </p>
                         <div className="flex justify-center gap-3">
-                            {Object.values(localData.socials).some(Boolean) ? (
-                                Object.entries(localData.socials).map(([id, val]) => val && (
-                                    <div key={id} className="size-8 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary">
-                                        <Smartphone size={14} />
+                            {activeSocials.length > 0 ? (
+                                activeSocials.map(social => (
+                                    <div key={social.id} className="size-8 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary">
+                                        <social.icon size={14} />
                                     </div>
                                 ))
                             ) : (
@@ -744,6 +957,7 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
 // --- Screen 4: Business Operating Details ---
 function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const currentUser = useAuthStore((state) => state.user);
     
     const [localData, setLocalData] = useState({
         contact: data.contact || { phone: '', secondaryPhone: '', email: '', supportEmail: '', whatsapp: '' },
@@ -756,14 +970,32 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
     });
     const [isSaving, setIsSaving] = useState(false);
     const updateBusiness = useUpdateBusiness();
+    const [useSignupEmail, setUseSignupEmail] = useState(true);
+    const [useSignupPhone, setUseSignupPhone] = useState(true);
+
+    // Sync contact fields when toggles change
+    useEffect(() => {
+        if (useSignupEmail && currentUser?.email) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, email: currentUser.email } }));
+        } else if (!useSignupEmail && localData.contact.email === currentUser?.email) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, email: '' } }));
+        }
+    }, [useSignupEmail]);
+
+    useEffect(() => {
+        if (useSignupPhone && currentUser?.phone) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, whatsapp: currentUser.phone } }));
+        } else if (!useSignupPhone && localData.contact.whatsapp === currentUser?.phone) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, whatsapp: '' } }));
+        }
+    }, [useSignupPhone]);
 
     const handleContinue = async () => {
-        if (!localData.contact.phone || !localData.contact.email) return;
+        if (!localData.contact.email) return;
         setIsSaving(true);
         try {
             await updateBusiness.mutateAsync({
                 updates: {
-                    phone: localData.contact.phone,
                     officialEmail: localData.contact.email,
                     whatsappNumber: localData.contact.whatsapp || undefined,
                     businessHours: Object.entries(localData.hours).reduce((acc, [day, h]) => ({
@@ -819,35 +1051,53 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
             <div className="space-y-6">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Contact Information</label>
                 <div className="space-y-4">
-                    <div className="relative">
-                        <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                            type="tel"
-                            placeholder="Primary Phone Number"
-                            value={localData.contact.phone}
-                            onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, phone: e.target.value } })}
-                            className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
-                        />
+                    {/* Business Email */}
+                    <div className="space-y-2">
+                        <div className="relative">
+                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input 
+                                type="email"
+                                placeholder="Business Email"
+                                value={localData.contact.email}
+                                onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, email: e.target.value } })}
+                                disabled={useSignupEmail}
+                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 ml-1">
+                            <button
+                                type="button"
+                                onClick={() => setUseSignupEmail(!useSignupEmail)}
+                                className={`w-9 h-5 rounded-full transition-colors relative ${useSignupEmail ? 'bg-primary' : 'bg-gray-200'}`}
+                            >
+                                <div className={`size-3.5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${useSignupEmail ? 'translate-x-4 left-[2px]' : 'translate-x-0.5 left-0'}`} />
+                            </button>
+                            <span className="text-[10px] font-medium text-text-secondary">Same as signup email{useSignupEmail && currentUser?.email ? ` (${currentUser.email})` : ''}</span>
+                        </div>
                     </div>
-                    <div className="relative">
-                        <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                            type="email"
-                            placeholder="Business Email"
-                            value={localData.contact.email}
-                            onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, email: e.target.value } })}
-                            className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
-                        />
-                    </div>
-                    <div className="relative">
-                        <MessageCircle className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                            type="tel"
-                            placeholder="WhatsApp Business Number"
-                            value={localData.contact.whatsapp}
-                            onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, whatsapp: e.target.value } })}
-                            className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
-                        />
+                    {/* WhatsApp Business Number */}
+                    <div className="space-y-2">
+                        <div className="relative">
+                            <MessageCircle className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input 
+                                type="tel"
+                                placeholder="WhatsApp Business Number"
+                                value={localData.contact.whatsapp}
+                                onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, whatsapp: e.target.value } })}
+                                disabled={useSignupPhone}
+                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 ml-1">
+                            <button
+                                type="button"
+                                onClick={() => setUseSignupPhone(!useSignupPhone)}
+                                className={`w-9 h-5 rounded-full transition-colors relative ${useSignupPhone ? 'bg-primary' : 'bg-gray-200'}`}
+                            >
+                                <div className={`size-3.5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${useSignupPhone ? 'translate-x-4 left-[2px]' : 'translate-x-0.5 left-0'}`} />
+                            </button>
+                            <span className="text-[10px] font-medium text-text-secondary">Same as signup phone{useSignupPhone && currentUser?.phone ? ` (${currentUser.phone})` : ''}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -950,7 +1200,7 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto">
                     <Button 
-                        disabled={!localData.contact.phone || !localData.contact.email || isSaving}
+                        disabled={!localData.contact.email || isSaving}
                         onClick={handleContinue}
                         className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
@@ -969,20 +1219,6 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
     const plans = useSubscriptionStore((s) => s.plans);
     const pricingLoading = useSubscriptionStore((s) => s.isLoading);
 
-    const getPlanMeta = (plan: PricingPlan) => {
-        const name = plan.name.toLowerCase();
-        if (plan.isFree || name.includes('starter') || name.includes('free')) {
-            return { icon: Zap, color: 'bg-gray-50 text-text-secondary', badge: 'Free', badgeColor: 'border-gray-300 text-gray-500' };
-        }
-        if (plan.isPopular || name.includes('professional') || name.includes('silver')) {
-            return { icon: Shield, color: 'bg-blue-50 text-primary', badge: 'Popular', badgeColor: 'border-primary/20 text-primary' };
-        }
-        if (name.includes('ultimate') || name.includes('gold') || name.includes('premium')) {
-            return { icon: Star, color: 'bg-yellow-50 text-yellow-600', badge: 'Best Value', badgeColor: 'border-yellow-300 text-yellow-700' };
-        }
-        return { icon: Crown, color: 'bg-purple-50 text-purple-600', badge: 'Premium', badgeColor: 'border-purple-300 text-purple-700' };
-    };
-
     const formatPrice = (plan: PricingPlan) => {
         if (plan.isFree) return '₦0';
         let price: number;
@@ -992,19 +1228,146 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
         return `₦${price.toLocaleString()}`;
     };
 
-    const uiPlans = plans.map((plan: PricingPlan) => {
-        const meta = getPlanMeta(plan);
-        return {
-            id: plan.id,
-            name: plan.name,
-            price: formatPrice(plan),
-            badge: meta.badge,
-            icon: meta.icon,
-            color: meta.color,
-            badgeColor: meta.badgeColor,
-            features: plan.features,
-        };
-    });
+    const getBillingTotal = (plan: PricingPlan) => {
+        if (plan.isFree) return '';
+        if (billingCycle === 'yearly') return `₦${(plan.yearlyPrice || plan.monthlyPrice * 12).toLocaleString()} billed annually`;
+        if (billingCycle === 'quarterly') return `₦${(plan.quarterlyPrice || plan.monthlyPrice * 3).toLocaleString()} billed quarterly`;
+        return '';
+    };
+
+    const getBillingPeriodLabel = (plan: PricingPlan) => {
+        if (plan.isFree) return '';
+        return billingCycle === 'yearly' ? '/yr' : billingCycle === 'quarterly' ? '/qtr' : '/mo';
+    };
+
+    const renderHighlightedCard = (plan: PricingPlan, idx: number) => {
+        const isSelected = selectedPlan === plan.id;
+        const isHighlighted = plan.isPopular;
+
+        return (
+            <motion.button
+                key={plan.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                onClick={() => setSelectedPlan(plan.id)}
+                className={`relative flex flex-col text-left rounded-[2.5rem] border-2 transition-all duration-200 overflow-hidden ${
+                    isSelected
+                        ? 'border-primary ring-4 ring-primary/10 shadow-xl shadow-primary/10'
+                        : isHighlighted
+                            ? 'border-primary/30 shadow-lg hover:shadow-xl'
+                            : 'border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200'
+                } ${isSelected ? (isHighlighted ? 'bg-primary' : 'bg-primary/5') : isHighlighted ? 'bg-white' : 'bg-white'}`}
+            >
+                {/* Most Popular Badge */}
+                {isHighlighted && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div className="px-4 py-1 bg-primary text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-primary/30">
+                            Most Popular
+                        </div>
+                    </div>
+                )}
+
+                <div className="p-8 space-y-6">
+                    {/* Plan Name & Description */}
+                    <div className="space-y-2">
+                        <h3 className={`text-lg font-black ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
+                            {plan.name}
+                        </h3>
+                        {plan.description && (
+                            <p className={`text-xs font-medium leading-relaxed ${isSelected && isHighlighted ? 'text-white/80' : 'text-text-secondary'}`}>
+                                {plan.description}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Pricing */}
+                    <div className="space-y-1">
+                        <div className={`flex items-baseline gap-1 ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
+                            <span className="text-4xl font-black tracking-tight">{formatPrice(plan)}</span>
+                            <span className={`text-sm font-bold ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                                {getBillingPeriodLabel(plan)}
+                            </span>
+                        </div>
+                        {getBillingTotal(plan) && (
+                            <p className={`text-xs font-medium ${isSelected && isHighlighted ? 'text-white/60' : 'text-text-secondary/60'}`}>
+                                {getBillingTotal(plan)}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Free Trial Badge */}
+                    {plan.trialDurationDays > 0 && !plan.isFree && (
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                            isSelected && isHighlighted ? 'bg-white/20 text-white' : 'bg-green-50 text-green-700'
+                        }`}>
+                            <Zap size={12} />
+                            {plan.trialDurationDays}-Day Free Trial
+                        </div>
+                    )}
+
+                    {/* Divider */}
+                    <div className={`border-t ${isSelected && isHighlighted ? 'border-white/20' : 'border-gray-100'}`} />
+
+                    {/* Features */}
+                    <div className="space-y-3">
+                        <p className={`text-[10px] font-black uppercase tracking-[0.15em] ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                            What's Included
+                        </p>
+                        <div className="space-y-2.5">
+                            {plan.features.map((feature: string, i: number) => (
+                                <div key={i} className="flex items-start gap-3">
+                                    <CheckCircle2 
+                                        size={14} 
+                                        className={`shrink-0 mt-0.5 ${isSelected && isHighlighted ? 'text-white' : 'text-green-500'}`} 
+                                    />
+                                    <span className={`text-xs font-medium leading-snug ${isSelected && isHighlighted ? 'text-white/90' : 'text-text-main'}`}>
+                                        {feature}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Usage Limits */}
+                    <div className={`space-y-2 pt-2 ${isSelected && isHighlighted ? 'border-t border-white/20' : ''}`}>
+                        <div className="grid grid-cols-2 gap-2">
+                            {plan.messagingEnabled && (
+                                <div className={`text-[10px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                                    SMS: {plan.smsCredits === -1 ? 'Unlimited' : `${plan.smsCredits}/mo`}
+                                </div>
+                            )}
+                            {plan.teamMembersEnabled && (
+                                <div className={`text-[10px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                                    Team: {plan.teamMembersLimit === -1 ? 'Unlimited' : `${plan.teamMembersLimit} members`}
+                                </div>
+                            )}
+                            {plan.branchesEnabled && (
+                                <div className={`text-[10px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                                    Branches: {plan.branchLimit === -1 ? 'Unlimited' : `${plan.branchLimit}`}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Selected Indicator */}
+                {isSelected && (
+                    <div className={`px-8 py-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest ${
+                        isHighlighted ? 'bg-white/15 text-white' : 'bg-primary/10 text-primary'
+                    }`}>
+                        <CheckCircle2 size={14} />
+                        Selected
+                    </div>
+                )}
+            </motion.button>
+        );
+    };
+
+    const renderRegularCard = (plan: PricingPlan, idx: number) => {
+        return renderHighlightedCard(plan, idx);
+    };
 
     return (
         <motion.div
@@ -1012,39 +1375,46 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-12 pb-20"
+            className="space-y-10 pb-20"
         >
-            <div className="space-y-4">
-                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+            <div className="text-center space-y-3">
+                <span className="inline-block px-3 py-1 bg-primary/5 text-primary text-[9px] font-black uppercase tracking-[0.2em] rounded-full">
+                    Transparent Pricing
+                </span>
+                <h1 className="text-3xl sm:text-4xl font-display font-black text-text-main tracking-tight">
                     Choose Your Plan
                 </h1>
-                <p className="text-text-secondary font-medium">
-                    Select the plan that best fits your business growth needs.
+                <p className="text-text-secondary font-medium max-w-md mx-auto">
+                    Select the plan that best fits your business growth needs. Upgrade or cancel anytime.
                 </p>
             </div>
 
-            {/* Pricing Toggle */}
+            {/* Billing Toggle */}
             <div className="flex justify-center">
-                <div className="bg-gray-100 p-1 rounded-2xl flex items-center gap-1 relative">
-                    <button 
-                        onClick={() => setBillingCycle('monthly')}
-                        className={`px-4 sm:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative z-10 ${billingCycle === 'monthly' ? 'bg-white shadow-sm text-primary' : 'text-text-secondary opacity-50'}`}
-                    >
-                        Monthly
-                    </button>
-                    <button 
-                        onClick={() => setBillingCycle('quarterly')}
-                        className={`px-4 sm:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative z-10 ${billingCycle === 'quarterly' ? 'bg-white shadow-sm text-primary' : 'text-text-secondary opacity-50'}`}
-                    >
-                        Quarterly
-                    </button>
-                    <button 
-                        onClick={() => setBillingCycle('yearly')}
-                        className={`px-4 sm:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative z-10 ${billingCycle === 'yearly' ? 'bg-white shadow-sm text-primary' : 'text-text-secondary opacity-50'}`}
-                    >
-                        Yearly
-                    </button>
-                    <Badge className="absolute -top-3 -right-6 bg-green-500 text-[8px] font-black uppercase tracking-widest border-0">Save 20%</Badge>
+                <div className="bg-gray-100/80 p-1.5 rounded-2xl flex items-center gap-1 relative">
+                    {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
+                        <button
+                            key={cycle}
+                            onClick={() => setBillingCycle(cycle)}
+                            className={`relative px-5 sm:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                billingCycle === cycle
+                                    ? 'bg-white shadow-lg shadow-black/5 text-primary scale-[1.02]'
+                                    : 'text-text-secondary hover:text-text-main'
+                            }`}
+                        >
+                            {cycle}
+                            {cycle === 'yearly' && (
+                                <span className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-green-500 text-white text-[7px] font-black uppercase tracking-widest rounded-full">
+                                    -20%
+                                </span>
+                            )}
+                            {cycle === 'quarterly' && (
+                                <span className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-green-500 text-white text-[7px] font-black uppercase tracking-widest rounded-full">
+                                    -10%
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -1052,42 +1422,12 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                 <div className="flex items-center justify-center py-20">
                     <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </div>
-            ) : uiPlans.length === 0 ? (
-                <div className="text-center py-20 text-text-secondary font-medium">No plans available</div>
             ) : (
-            <div className="space-y-4">
-                {uiPlans.map((plan) => (
-                    <button
-                        key={plan.id}
-                        onClick={() => setSelectedPlan(plan.id)}
-                        className={`w-full text-left p-6 rounded-[2rem] border-2 transition-all group relative overflow-hidden ${
-                            selectedPlan === plan.id 
-                            ? 'border-primary bg-primary/5 shadow-lg' 
-                            : 'border-gray-100 bg-white hover:border-gray-200'
-                        }`}
-                    >
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-                            <div className={`size-12 sm:size-14 rounded-2xl flex items-center justify-center shrink-0 ${plan.color}`}>
-                                <plan.icon size={24} className="sm:size-[28px]" />
-                            </div>
-                            <div className="flex-1 w-full space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                    <h3 className="font-black text-base sm:text-lg text-text-main leading-tight">{plan.name}</h3>
-                                    <span className="text-primary font-black text-base sm:text-lg whitespace-nowrap">{plan.price}</span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                    <Badge variant="outline" className={`text-[8px] font-black uppercase tracking-widest shrink-0 ${plan.badgeColor}`}>
-                                        {plan.badge}
-                                    </Badge>
-                                    <p className="text-[10px] text-text-secondary font-medium opacity-50 line-clamp-1 sm:line-clamp-none">
-                                        {plan.features.join(' • ')}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </button>
-                ))}
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                    {plans.map((plan: PricingPlan, idx: number) => (
+                        plan.isPopular ? renderHighlightedCard(plan, idx) : renderRegularCard(plan, idx)
+                    ))}
+                </div>
             )}
 
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
@@ -1097,7 +1437,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                         onClick={() => onNext({ planId: selectedPlan, billingCycle })}
                         className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
-                        Continue
+                        {plans.find(p => p.id === selectedPlan)?.isFree ? 'Continue' : 'Continue to Payment'} <ArrowRight size={18} />
                     </Button>
                 </div>
             </div>

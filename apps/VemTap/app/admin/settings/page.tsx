@@ -13,7 +13,8 @@ import {
     Save,
     History,
     RefreshCw,
-    Link
+    Link,
+    Play
 } from 'lucide-react';
 import { useRegisterPushToken } from '@/services/notifications/hooks';
 import toast from 'react-hot-toast';
@@ -30,7 +31,8 @@ export default function AdminSettingsPage() {
         timezone: settings.timezone,
         messagingCosts: { ...settings.messagingCosts },
         enforce2FA: settings.enforce2FA,
-        passwordExpiry: settings.passwordExpiry
+        passwordExpiry: settings.passwordExpiry,
+        onboardingVideoUrl: settings.onboardingVideoUrl
     });
 
     useEffect(() => {
@@ -41,9 +43,10 @@ export default function AdminSettingsPage() {
             timezone: settings.timezone,
             messagingCosts: { ...settings.messagingCosts },
             enforce2FA: settings.enforce2FA,
-            passwordExpiry: settings.passwordExpiry
+            passwordExpiry: settings.passwordExpiry,
+            onboardingVideoUrl: settings.onboardingVideoUrl
         });
-    }, [settings.platformName, settings.supportEmail, settings.currency, settings.timezone, settings.messagingCosts, settings.enforce2FA, settings.passwordExpiry]);
+    }, [settings.platformName, settings.supportEmail, settings.currency, settings.timezone, settings.messagingCosts, settings.enforce2FA, settings.passwordExpiry, settings.onboardingVideoUrl]);
 
     const handleSave = () => {
         settings.updateSettings(localSettings);
@@ -79,6 +82,7 @@ export default function AdminSettingsPage() {
                                 { id: 'security', label: 'Security & Access', icon: ShieldCheck },
                                 { id: 'payment', label: 'Payment Gateways', icon: CreditCard },
                                 { id: 'notifications', label: 'Notifications', icon: Bell },
+                                { id: 'onboarding', label: 'Onboarding Branding', icon: Play },
                             ].map((item) => (
                                 <button
                                     key={item.id}
@@ -365,6 +369,48 @@ export default function AdminSettingsPage() {
                                             </p>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'onboarding' && (
+                                <div className="bg-white rounded-3xl border border-gray-100 p-8 space-y-8 shadow-sm">
+                                    <div className="flex items-center gap-3 border-b border-gray-50 pb-6">
+                                        <div className="size-10 bg-primary/5 text-primary rounded-xl flex items-center justify-center">
+                                            <Play size={20} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-sm font-black text-text-main uppercase tracking-tight">Onboarding Branding</h2>
+                                            <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Onboarding welcome video settings</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Onboarding Video URL</label>
+                                        <input 
+                                            type="url" 
+                                            value={localSettings.onboardingVideoUrl} 
+                                            onChange={(e) => setLocalSettings({ ...localSettings, onboardingVideoUrl: e.target.value })}
+                                            placeholder="https://www.youtube.com/watch?v=..."
+                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all" 
+                                        />
+                                        <p className="text-[10px] text-gray-400 font-medium ml-1">
+                                            Enter a YouTube or Vimeo URL. This video will be displayed on the onboarding welcome screen.
+                                        </p>
+                                    </div>
+
+                                    {localSettings.onboardingVideoUrl && (
+                                        <div className="rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 p-4">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">Preview</p>
+                                            <div className="aspect-video bg-black rounded-xl flex items-center justify-center">
+                                                <iframe
+                                                    src={localSettings.onboardingVideoUrl.replace('watch?v=', 'embed/')}
+                                                    className="w-full h-full rounded-xl"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    allowFullScreen
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

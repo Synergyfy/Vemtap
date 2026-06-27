@@ -188,7 +188,13 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                     { label: 'Inventory Reports', href: '/dashboard/analytics/inventory' },
                 ],
                 keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts']
-            },
+            }
+        ]
+    },
+    {
+        id: 'section-manage',
+        label: 'Manage Location',
+        items: [
             {
                 id: 'staff',
                 label: 'Staff',
@@ -202,6 +208,15 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                     { label: 'Activity Log', href: '/dashboard/staff/activity' },
                 ],
                 keywords: ['team', 'employees', 'cashiers', 'managers', 'roles', 'permissions']
+            },
+            {
+                id: 'branches',
+                label: 'Locations',
+                icon: Globe,
+                href: '/dashboard/settings/branches',
+                roles: ['owner', 'manager'],
+                permission: 'settings',
+                keywords: ['branches', 'locations', 'outlets', 'address', 'stores']
             }
         ]
     },

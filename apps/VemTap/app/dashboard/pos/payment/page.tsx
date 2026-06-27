@@ -9,7 +9,7 @@ import { useCreatePosSale } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift } from 'lucide-react';
+import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { CustomerSelectorModal } from '@/components/dashboard/pos/CustomerSelectorModal';
@@ -18,12 +18,13 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
   const cashier = useAuthStore((state) => state.user);
-  const { getCartTotal, getCartSubtotal, getCartDiscountAmount, attachedCustomer, attachCustomer, cart, clearCart, setLastCompletedSale, cartDiscount, manualLoyaltyPoints } = usePosStore();
+  const { getCartTotal, getCartSubtotal, getCartDiscountAmount, attachedCustomer, attachCustomer, cart, clearCart, setLastCompletedSale, cartDiscount, manualLoyaltyPoints, setManualLoyaltyPoints } = usePosStore();
   const createSale = useCreatePosSale();
   const [selectedMethod, setSelectedMethod] = useState<'cash' | 'transfer' | 'card' | 'split' | null>(null);
   const [amountReceived, setAmountReceived] = useState<string>('');
   const [hideCustomerInfoOnReceipt, setHideCustomerInfoOnReceipt] = useState(true);
   const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
+  const [localLoyaltyEnabled, setLocalLoyaltyEnabled] = useState(() => usePosSettingsStore.getState().loyaltyEnabled);
 
   // Split payment details
   const [splitCash, setSplitCash] = useState<string>('');
@@ -146,39 +147,77 @@ export default function PaymentScreen() {
         </div>
 
         {/* Loyalty Points Section */}
-        {(() => {
-          const settings = usePosSettingsStore.getState();
-          if (!settings.loyaltyEnabled) return null;
+        {localLoyaltyEnabled && attachedCustomer && (() => {
           const { getPointsBalance, redemptionThreshold } = usePosLoyaltyStore.getState();
-          const balance = attachedCustomer ? getPointsBalance(attachedCustomer.id) : 0;
+          const settings = usePosSettingsStore.getState();
+          const balance = getPointsBalance(attachedCustomer.id);
           const autoPts = cart.reduce((sum, item) =>
             item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
           const effectiveThreshold = settings.loyaltyRedeemThreshold || redemptionThreshold;
-          if (attachedCustomer && balance > 0) {
-            return (
-              <div className="mb-6 p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Coins size={16} className="text-amber-600" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Loyalty Points</span>
-                  </div>
-                  <span className="text-sm font-black text-amber-700">{balance} pts</span>
+          const totalEarned = autoPts + manualLoyaltyPoints;
+          return (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Coins size={16} className="text-amber-600" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Loyalty Points</span>
                 </div>
-                {autoPts > 0 && (
-                  <p className="text-xs font-medium text-amber-600 mt-1 ml-7">
-                    +{autoPts} pts from this order
-                  </p>
-                )}
-                {balance >= effectiveThreshold && (
-                  <button className="mt-3 w-full h-10 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-amber-600 transition-all">
-                    <Gift size={14} /> Redeem Points for Discount
-                  </button>
-                )}
+                <span className="text-sm font-black text-amber-700">{balance} pts</span>
               </div>
-            );
-          }
-          return null;
+
+              {autoPts > 0 && (
+                <p className="text-xs font-medium text-amber-600 mb-2 ml-1">
+                  +{autoPts} pts from products in this order
+                </p>
+              )}
+
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="number"
+                  min={0}
+                  value={manualLoyaltyPoints || ''}
+                  onChange={e => setManualLoyaltyPoints(Math.max(0, Number(e.target.value)))}
+                  placeholder="Add extra points..."
+                  className="flex-1 h-10 px-3 rounded-xl bg-white border border-amber-200 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
+                />
+              </div>
+
+              {totalEarned > 0 && (
+                <p className="text-xs font-bold text-amber-700 mb-2 ml-1">
+                  Total to earn: <span className="text-amber-600">+{totalEarned} pts</span>
+                </p>
+              )}
+
+              {balance >= effectiveThreshold && (
+                <button className="mt-2 w-full h-10 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-amber-600 transition-all">
+                  <Gift size={14} /> Redeem Points for Discount
+                </button>
+              )}
+            </div>
+          );
         })()}
+
+        {/* Loyalty Toggle */}
+        {attachedCustomer && (
+          <div className="mt-6 mb-8 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Loyalty Points</p>
+              <p className="text-[10px] font-bold text-gray-500">Enable loyalty for this transaction</p>
+            </div>
+            <button
+              onClick={() => setLocalLoyaltyEnabled(!localLoyaltyEnabled)}
+              className={cn(
+                "w-12 h-6 rounded-full transition-colors relative",
+                localLoyaltyEnabled ? "bg-amber-500" : "bg-gray-200"
+              )}
+            >
+              <div className={cn(
+                "size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform",
+                localLoyaltyEnabled ? "translate-x-6.5 left-[2px]" : "translate-x-0.5 left-0"
+              )} />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 mb-8">
           {paymentMethods.map((method) => {

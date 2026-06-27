@@ -22,6 +22,7 @@ export interface SystemSettingsState {
   enforce2FA: boolean;
   passwordExpiry: boolean;
   addOnBundleDiscounts: BundleDiscountTier[];
+  onboardingVideoUrl: string;
 
   setMessagingCosts: (costs: MessagingCosts) => void;
   updateSettings: (updates: Partial<SystemSettingsState>) => void;
@@ -42,6 +43,7 @@ export const useSystemSettingsStore = create<SystemSettingsState>()(
       enforce2FA: true,
       passwordExpiry: false,
       addOnBundleDiscounts: [],
+      onboardingVideoUrl: '',
 
       setMessagingCosts: (costs) => set({ messagingCosts: costs }),
       updateSettings: (updates) => set((state) => ({ ...state, ...updates })),
