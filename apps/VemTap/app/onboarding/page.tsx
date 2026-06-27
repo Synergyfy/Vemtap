@@ -957,6 +957,7 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
 // --- Screen 4: Business Operating Details ---
 function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const currentUser = useAuthStore((state) => state.user);
     
     const [localData, setLocalData] = useState({
         contact: data.contact || { phone: '', secondaryPhone: '', email: '', supportEmail: '', whatsapp: '' },
@@ -969,14 +970,32 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
     });
     const [isSaving, setIsSaving] = useState(false);
     const updateBusiness = useUpdateBusiness();
+    const [useSignupEmail, setUseSignupEmail] = useState(true);
+    const [useSignupPhone, setUseSignupPhone] = useState(true);
+
+    // Sync contact fields when toggles change
+    useEffect(() => {
+        if (useSignupEmail && currentUser?.email) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, email: currentUser.email } }));
+        } else if (!useSignupEmail && localData.contact.email === currentUser?.email) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, email: '' } }));
+        }
+    }, [useSignupEmail]);
+
+    useEffect(() => {
+        if (useSignupPhone && currentUser?.phone) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, whatsapp: currentUser.phone } }));
+        } else if (!useSignupPhone && localData.contact.whatsapp === currentUser?.phone) {
+            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, whatsapp: '' } }));
+        }
+    }, [useSignupPhone]);
 
     const handleContinue = async () => {
-        if (!localData.contact.phone || !localData.contact.email) return;
+        if (!localData.contact.email) return;
         setIsSaving(true);
         try {
             await updateBusiness.mutateAsync({
                 updates: {
-                    phone: localData.contact.phone,
                     officialEmail: localData.contact.email,
                     whatsappNumber: localData.contact.whatsapp || undefined,
                     businessHours: Object.entries(localData.hours).reduce((acc, [day, h]) => ({
@@ -1032,35 +1051,53 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
             <div className="space-y-6">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Contact Information</label>
                 <div className="space-y-4">
-                    <div className="relative">
-                        <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                            type="tel"
-                            placeholder="Primary Phone Number"
-                            value={localData.contact.phone}
-                            onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, phone: e.target.value } })}
-                            className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
-                        />
+                    {/* Business Email */}
+                    <div className="space-y-2">
+                        <div className="relative">
+                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input 
+                                type="email"
+                                placeholder="Business Email"
+                                value={localData.contact.email}
+                                onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, email: e.target.value } })}
+                                disabled={useSignupEmail}
+                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 ml-1">
+                            <button
+                                type="button"
+                                onClick={() => setUseSignupEmail(!useSignupEmail)}
+                                className={`w-9 h-5 rounded-full transition-colors relative ${useSignupEmail ? 'bg-primary' : 'bg-gray-200'}`}
+                            >
+                                <div className={`size-3.5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${useSignupEmail ? 'translate-x-4 left-[2px]' : 'translate-x-0.5 left-0'}`} />
+                            </button>
+                            <span className="text-[10px] font-medium text-text-secondary">Same as signup email{useSignupEmail && currentUser?.email ? ` (${currentUser.email})` : ''}</span>
+                        </div>
                     </div>
-                    <div className="relative">
-                        <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                            type="email"
-                            placeholder="Business Email"
-                            value={localData.contact.email}
-                            onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, email: e.target.value } })}
-                            className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
-                        />
-                    </div>
-                    <div className="relative">
-                        <MessageCircle className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                            type="tel"
-                            placeholder="WhatsApp Business Number"
-                            value={localData.contact.whatsapp}
-                            onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, whatsapp: e.target.value } })}
-                            className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
-                        />
+                    {/* WhatsApp Business Number */}
+                    <div className="space-y-2">
+                        <div className="relative">
+                            <MessageCircle className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input 
+                                type="tel"
+                                placeholder="WhatsApp Business Number"
+                                value={localData.contact.whatsapp}
+                                onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, whatsapp: e.target.value } })}
+                                disabled={useSignupPhone}
+                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 ml-1">
+                            <button
+                                type="button"
+                                onClick={() => setUseSignupPhone(!useSignupPhone)}
+                                className={`w-9 h-5 rounded-full transition-colors relative ${useSignupPhone ? 'bg-primary' : 'bg-gray-200'}`}
+                            >
+                                <div className={`size-3.5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${useSignupPhone ? 'translate-x-4 left-[2px]' : 'translate-x-0.5 left-0'}`} />
+                            </button>
+                            <span className="text-[10px] font-medium text-text-secondary">Same as signup phone{useSignupPhone && currentUser?.phone ? ` (${currentUser.phone})` : ''}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1163,7 +1200,7 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto">
                     <Button 
-                        disabled={!localData.contact.phone || !localData.contact.email || isSaving}
+                        disabled={!localData.contact.email || isSaving}
                         onClick={handleContinue}
                         className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
