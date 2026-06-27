@@ -96,22 +96,24 @@ export default function AdminCategoriesPage() {
         }
     };
 
-    const filteredCategories = categories.filter((c: Category) =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredCategories = categories.filter((c: Category) => {
+        const nameMatch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const subMatch = (c.subcategories || []).some(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        return nameMatch || subMatch;
+    });
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
             <PageHeader
-                title="Business Categories"
-                description="Manage the categories and subcategories available for business onboarding."
+                title="Business Sectors & Types"
+                description="Manage business sectors/types and the categories within each."
                 actions={
                     <button
                         onClick={() => setIsAddingCategory(true)}
                         className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20"
                     >
                         <Plus size={18} />
-                        Add New Category
+                        Add New Sector/Type
                     </button>
                 }
             />
@@ -122,7 +124,7 @@ export default function AdminCategoriesPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
                         type="text"
-                        placeholder="Search categories..."
+                        placeholder="Search sectors/types..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full h-11 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all outline-none"
@@ -131,7 +133,7 @@ export default function AdminCategoriesPage() {
                 <div className="flex gap-4">
                     <div className="px-4 py-2 bg-primary/5 text-primary rounded-xl text-xs font-bold border border-primary/10 flex items-center gap-2 uppercase tracking-tight">
                         <LayoutGrid size={14} />
-                        {categories.length} Total Categories
+                        {categories.length} Total Sectors/Types
                     </div>
                 </div>
             </div>
@@ -144,7 +146,7 @@ export default function AdminCategoriesPage() {
                             <Loader2 size={32} className="animate-spin text-primary" />
                         </div>
                     ) : (
-                        categories.map((category: Category) => (
+                        filteredCategories.map((category: Category) => (
                             <motion.div
                                 layout
                                 key={category.id}
@@ -164,7 +166,7 @@ export default function AdminCategoriesPage() {
                                                     {category.name}
                                                 </h3>
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
-                                                    {category.subcategories.length} Subcategories
+                                                    {category.subcategories.length} Categories
                                                 </span>
                                             </div>
                                         </div>
@@ -193,7 +195,7 @@ export default function AdminCategoriesPage() {
                                     </div>
 
                                     <div className="space-y-3">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Available Subcategories</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Categories Under This Sector</label>
                                         <div className="flex flex-wrap gap-2">
                                             {category.subcategories.map((sub) => (
                                                 <span
@@ -212,12 +214,12 @@ export default function AdminCategoriesPage() {
             </div>
 
             {/* Empty State */}
-            {!isLoading && categories.length === 0 && (
+            {!isLoading && filteredCategories.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-24 bg-white rounded-4xl border-2 border-dashed border-gray-100">
                     <div className="size-20 rounded-3xl bg-gray-50 flex items-center justify-center text-gray-300 mb-6">
                         <LayoutGrid size={40} />
                     </div>
-                    <h3 className="font-bold text-text-main text-xl">No categories found</h3>
+                    <h3 className="font-bold text-text-main text-xl">No sectors/types found</h3>
                     <p className="text-sm text-text-secondary mt-2">Try searching for something else or create a new one.</p>
                 </div>
             )}
@@ -245,7 +247,7 @@ export default function AdminCategoriesPage() {
                                         <Plus size={24} />
                                     </div>
                                     <div>
-                                        <h3 className="font-display font-bold text-text-main text-xl">Create Business Category</h3>
+                                        <h3 className="font-display font-bold text-text-main text-xl">Create Business Sector/Type</h3>
                                         <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mt-1">Platform Settings • VemTap Engine</p>
                                     </div>
                                 </div>
@@ -259,7 +261,7 @@ export default function AdminCategoriesPage() {
 
                             <div className="p-10 space-y-8">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Category Title</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Sector/Type Name</label>
                                     <input
                                         type="text"
                                         placeholder="e.g., Technology & Digital Services"
@@ -273,7 +275,7 @@ export default function AdminCategoriesPage() {
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Short Description (Customer-facing)</label>
                                     <textarea
                                         rows={3}
-                                        placeholder="Describe what kind of businesses fall into this category..."
+                                        placeholder="e.g. Restaurants, cafes, bakeries, catering services, food trucks, meal prep services"
                                         value={newCategory.description}
                                         onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-8 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
@@ -282,7 +284,7 @@ export default function AdminCategoriesPage() {
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between px-1">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Subcategories List</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Categories List</label>
                                         <span className="text-[10px] text-primary font-black uppercase">Separate entries by commas</span>
                                     </div>
                                     <textarea
@@ -312,7 +314,7 @@ export default function AdminCategoriesPage() {
                                     ) : (
                                         <Save size={20} />
                                     )}
-                                    Save & Publish Category
+                                    Save & Publish Sector/Type
                                 </button>
                             </div>
                         </motion.div>
