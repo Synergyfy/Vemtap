@@ -15,9 +15,9 @@ export default function EmailOverviewPage() {
     const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
 
     const channelStats = [
-        { label: 'Emails Sent', value: analytics?.sent?.toLocaleString() ?? '—', icon: Send, color: 'text-purple-600', bg: 'bg-purple-50' },
-        { label: 'Open Rate', value: analytics?.openRate != null ? `${analytics.openRate.toFixed(1)}%` : '—', icon: Eye, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Delivered', value: analytics?.delivered?.toLocaleString() ?? '—', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+        { label: 'Emails Sent', value: analytics?.sent?.toLocaleString() ?? '0', icon: Send, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { label: 'Open Rate', value: analytics?.openRate != null ? `${analytics.openRate.toFixed(1)}%` : '0%', icon: Eye, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Delivered', value: analytics?.delivered?.toLocaleString() ?? '0', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
     ];
 
     return (

@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan, LessThan, Not, IsNull, In } from 'typeorm';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
-import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
 import { Partnership, PartnershipStatus } from '../partnerships/entities/partnership.entity';
+import { Business, BusinessStatus } from '../businesses/entities/business.entity';
+import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import { Plan } from '../subscriptions/entities/plan.entity';
+import { Notification } from '../notifications/entities/notification.entity';
 import { UpdateDiscoverySettingsDto } from './dto/discovery.dto';
 
 @Injectable()
@@ -18,6 +22,14 @@ export class DiscoveryService {
     private readonly partnershipRepository: Repository<Partnership>,
     @InjectRepository(CatalogueOffer)
     private readonly offerRepository: Repository<CatalogueOffer>,
+    @InjectRepository(Business)
+    private readonly businessRepository: Repository<Business>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepository: Repository<Subscription>,
+    @InjectRepository(Notification)
+    private readonly notificationRepository: Repository<Notification>,
+    @InjectRepository(Plan)
+    private readonly planRepository: Repository<Plan>,
   ) {}
 
   async getOverview(branchId: string) {
@@ -354,6 +366,214 @@ export class DiscoveryService {
       success: true,
       message: 'Recommendation submitted successfully',
       data: dto,
+    };
+  }
+
+  async getAdminStats() {
+    const now = new Date();
+
+    const totalBusinesses = await this.businessRepository.count({
+      where: { status: BusinessStatus.ACTIVE },
+    });
+
+    const activeOffers = await this.offerRepository.count({
+      where: { status: CatalogueOfferStatus.ACTIVE },
+    });
+
+    const scheduledOffers = await this.offerRepository.count({
+      where: {
+        status: CatalogueOfferStatus.ACTIVE,
+        startDate: MoreThan(now),
+      },
+    });
+
+    const expiredOffers = await this.offerRepository.count({
+      where: {
+        endDate: LessThan(now),
+      },
+    });
+
+    const viewsResult = await this.offerRepository.createQueryBuilder('offer')
+      .select('SUM(offer.views)', 'total')
+      .getRawOne();
+    const totalOfferViews = parseInt(viewsResult?.total || '0', 10);
+
+    const totalOfferClicks = await this.visitRepository.count({
+      where: {
+        catalogueOfferId: Not(IsNull()),
+      },
+    });
+
+    const referralsGenerated = await this.visitRepository.count({
+      where: {
+        referredByBranchId: Not(IsNull()),
+      },
+    });
+
+    const referralsCompleted = await this.visitRepository.count({
+      where: {
+        referredByBranchId: Not(IsNull()),
+        visitType: 'patronage',
+      },
+    });
+
+    const couponsRedeemed = await this.visitRepository.count({
+      where: {
+        catalogueOfferId: Not(IsNull()),
+        visitType: 'patronage',
+      },
+    });
+
+    const attributedSales = await this.visitRepository.count({
+      where: {
+        referredByBranchId: Not(IsNull()),
+        visitType: 'patronage',
+        orderId: Not(IsNull()),
+      },
+    });
+
+    const revenueResult = await this.visitRepository.createQueryBuilder('visit')
+      .innerJoin('catalogue_orders', 'order', 'order.id = visit.orderId')
+      .select('SUM(order.totalAmount)', 'total')
+      .where('visit.referredByBranchId IS NOT NULL')
+      .andWhere("visit.visitType = 'patronage'")
+      .getRawOne();
+    const attributedRevenue = parseFloat(revenueResult?.total || '0');
+
+    const activePartnerships = await this.partnershipRepository.count({
+      where: {
+        status: PartnershipStatus.ACCEPTED,
+      },
+    });
+
+    const notificationsSent = await this.notificationRepository.count();
+
+    const avgConversionRate = totalOfferViews > 0
+      ? parseFloat(((referralsCompleted / totalOfferViews) * 100).toFixed(2))
+      : 0;
+
+    return {
+      totalBusinesses,
+      activeOffers,
+      scheduledOffers,
+      expiredOffers,
+      totalOfferViews,
+      totalOfferClicks,
+      referralsGenerated,
+      referralsCompleted,
+      couponsRedeemed,
+      attributedSales,
+      attributedRevenue,
+      sponsoredRevenue: 0,
+      activePartnerships,
+      notificationsSent,
+      avgConversionRate,
+    };
+  }
+
+  async getAdminBusinesses(query: { page?: number; limit?: number; search?: string }) {
+    const page = Number(query.page || 1);
+    const limit = Number(query.limit || 10);
+    const search = query.search || '';
+
+    const qb = this.businessRepository.createQueryBuilder('business')
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.branches', 'branches')
+      .orderBy('business.createdAt', 'DESC');
+
+    if (search) {
+      qb.andWhere('business.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    const [businesses, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const data = await Promise.all(
+      businesses.map(async (business) => {
+        // 1. Get active plan
+        const sub = await this.subscriptionRepository.findOne({
+          where: {
+            businessId: business.id,
+            status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
+          },
+          relations: ['plan'],
+          order: { createdAt: 'DESC' },
+        });
+        const plan = sub?.plan?.name || 'Free';
+
+        // 2. Main branch location
+        const mainBranch = business.branches?.find((b) => b.isMainBranch) || business.branches?.[0];
+        const location = mainBranch ? (mainBranch.city || mainBranch.state || 'N/A') : 'N/A';
+
+        // 3. Active offers count
+        const branchIds = business.branches?.map((b) => b.id) || [];
+        let activeOffers = 0;
+        if (branchIds.length > 0) {
+          activeOffers = await this.offerRepository.count({
+            where: {
+              branchId: In(branchIds),
+              status: CatalogueOfferStatus.ACTIVE,
+            },
+          });
+        }
+
+        // 4. Referrals Sent (visits referred by this business's branches to other branches)
+        let referralsSent = 0;
+        if (branchIds.length > 0) {
+          referralsSent = await this.visitRepository.count({
+            where: {
+              referredByBranchId: In(branchIds),
+            },
+          });
+        }
+
+        // 5. Referrals Received (visits referred to this business's branches by others)
+        let referralsReceived = 0;
+        if (branchIds.length > 0) {
+          referralsReceived = await this.visitRepository.count({
+            where: {
+              branchId: In(branchIds),
+              referredByBranchId: Not(IsNull()),
+            },
+          });
+        }
+
+        // 6. Revenue Generated (revenue generated from referrals received)
+        let revenueGenerated = 0;
+        if (branchIds.length > 0) {
+          const revenueResult = await this.visitRepository.createQueryBuilder('visit')
+            .innerJoin('catalogue_orders', 'order', 'order.id = visit.orderId')
+            .select('SUM(order.totalAmount)', 'total')
+            .where('visit.branchId IN (:...branchIds)', { branchIds })
+            .andWhere('visit.referredByBranchId IS NOT NULL')
+            .andWhere("visit.visitType = 'patronage'")
+            .getRawOne();
+          revenueGenerated = parseFloat(revenueResult?.total || '0');
+        }
+
+        return {
+          id: business.id,
+          name: business.name,
+          category: business.category?.name || 'N/A',
+          plan,
+          location,
+          status: business.status,
+          activeOffers,
+          referralsSent,
+          referralsReceived,
+          revenueGenerated,
+          dateJoined: business.createdAt,
+        };
+      }),
+    );
+
+    return {
+      data,
+      meta: {
+        total,
+      },
     };
   }
 }

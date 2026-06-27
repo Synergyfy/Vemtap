@@ -38,9 +38,9 @@ export default function WhatsAppOverviewPage() {
     });
 
     const channelStats = [
-        { label: 'Messages Sent', value: analytics?.sent?.toLocaleString() ?? '—', icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Delivered', value: analytics?.delivered?.toLocaleString() ?? '—', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-        { label: 'Delivery Rate', value: analytics?.deliveryRate != null ? `${analytics.deliveryRate.toFixed(1)}%` : '—', icon: Wallet, color: 'text-primary', bg: 'bg-primary/5' },
+        { label: 'Messages Sent', value: analytics?.sent?.toLocaleString() ?? '0', icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Delivered', value: analytics?.delivered?.toLocaleString() ?? '0', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+        { label: 'Delivery Rate', value: analytics?.deliveryRate != null ? `${analytics.deliveryRate.toFixed(1)}%` : '0%', icon: Wallet, color: 'text-primary', bg: 'bg-primary/5' },
     ];
 
     return (

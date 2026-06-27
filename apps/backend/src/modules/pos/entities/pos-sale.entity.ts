@@ -7,12 +7,14 @@ import { PosSaleItem } from './pos-sale-item.entity';
 import { PosSplitPayment } from './pos-split-payment.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { PaymentMethod, SaleStatus } from './pos-enums';
+import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.entity';
 
 @Entity('pos_sales')
 @Index(['businessId', 'createdAt'])
 @Index(['receiptNumber'], { unique: true })
 @Index(['cashierId'])
 @Index(['customerId'])
+@Index(['orderId'])
 export class PosSale extends AbstractBaseEntity {
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
@@ -97,6 +99,13 @@ export class PosSale extends AbstractBaseEntity {
   @ApiProperty({ example: false })
   @Column({ default: false })
   hideCustomerInfoOnReceipt: boolean;
+
+  @ManyToOne(() => CatalogueOrder, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'orderId' })
+  order: CatalogueOrder;
+
+  @Column({ type: 'uuid', nullable: true })
+  orderId: string;
 
   @ApiProperty({ example: 'Paid with NGN 5000 note', nullable: true })
   @Column({ type: 'text', nullable: true })

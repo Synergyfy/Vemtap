@@ -5,16 +5,20 @@ import { useRouter } from 'next/navigation';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Users, Shield, Activity, Plus, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useStaff } from '@/services/users/hooks';
+import Spinner from '@/components/ui/Spinner';
 
 export default function StaffDirectory() {
   const router = useRouter();
+  const { data: staffMembers = [], isLoading } = useStaff();
 
-  const mockStaff = [
-    { id: '1', name: 'John Doe', role: 'Owner', email: 'john@vemtap.com', phone: '08000000001', status: 'active', lastActive: '2 mins ago' },
-    { id: '2', name: 'Sarah Manager', role: 'Manager', email: 'sarah@vemtap.com', phone: '08000000002', status: 'active', lastActive: '1 hr ago' },
-    { id: '3', name: 'Mike Cashier', role: 'Cashier', email: 'mike@vemtap.com', phone: '08000000003', status: 'active', lastActive: 'Now' },
-    { id: '4', name: 'Jane Stock', role: 'Inventory', email: 'jane@vemtap.com', phone: '08000000004', status: 'inactive', lastActive: '2 days ago' },
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-20 min-h-[60vh]">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
@@ -51,16 +55,19 @@ export default function StaffDirectory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {mockStaff.map(staff => (
+              {staffMembers.length > 0 ? staffMembers.map(staff => {
+                const displayName = `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || staff.email || 'Unnamed';
+                const isActive = staff.status === 'Active' || staff.status === 'ACTIVE';
+                return (
                 <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-4">
                       <div className="size-10 rounded-[12px] bg-blue-50 text-blue-600 font-black flex items-center justify-center border border-blue-100 shrink-0">
-                         {staff.name.charAt(0)}
+                         {displayName.charAt(0)}
                       </div>
                       <div>
-                        <span className="text-sm font-black text-gray-900 block">{staff.name}</span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active {staff.lastActive}</span>
+                        <span className="text-sm font-black text-gray-900 block">{displayName}</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active {staff.lastActive || 'N/A'}</span>
                       </div>
                     </div>
                   </td>
@@ -71,17 +78,17 @@ export default function StaffDirectory() {
                       staff.role === 'Manager' ? "bg-blue-100 text-blue-600" :
                       "bg-gray-100 text-gray-600"
                     )}>
-                      {staff.role}
+                      {staff.role || 'Staff'}
                     </span>
                   </td>
                   <td className="p-4 hidden sm:table-cell">
-                    <p className="text-xs font-bold text-gray-900">{staff.phone}</p>
-                    <p className="text-[10px] font-bold text-gray-400">{staff.email}</p>
+                    <p className="text-xs font-bold text-gray-900">{staff.phone || 'N/A'}</p>
+                    <p className="text-[10px] font-bold text-gray-400">{staff.email || 'N/A'}</p>
                   </td>
                   <td className="p-4 text-center">
                     <span className={cn(
                       "inline-block px-2 py-1 rounded-full size-3",
-                      staff.status === 'active' ? "bg-emerald-500" : "bg-gray-300"
+                      isActive ? "bg-emerald-500" : "bg-gray-300"
                     )} />
                   </td>
                   <td className="p-4 text-right">
@@ -90,7 +97,16 @@ export default function StaffDirectory() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              }) : (
+                <tr>
+                  <td colSpan={5} className="p-12 text-center">
+                    <Users size={48} className="mx-auto mb-4 text-gray-200" />
+                    <p className="text-sm font-bold text-gray-400">No staff members yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Invite team members to get started.</p>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

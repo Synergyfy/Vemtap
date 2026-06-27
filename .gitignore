@@ -78,3 +78,6 @@ endpoint.log
 
 # opencode
 opencode.json
+
+# Mocked data audit
+DASHBOARD-MOCKED-DATA-AUDIT.md

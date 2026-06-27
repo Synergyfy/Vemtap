@@ -5,15 +5,32 @@ import {
     AnalyticsOverviewHeader, 
     AnalyticsStatsCards 
 } from '@/components/dashboard/analytics/AnalyticsDashboard';
-import { Users, UserPlus, Repeat, Zap } from 'lucide-react';
-import { useAnalyticsStore } from '@/store/useAnalyticsStore';
+import { Users, UserPlus, Repeat, Zap, Loader2 } from 'lucide-react';
+import { useDashboardAnalytics } from '@/services/analytics/hooks';
 
 export default function CustomerAnalyticsPage() {
+    const { data: analytics, isLoading } = useDashboardAnalytics();
+
+    if (isLoading) {
+        return (
+            <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 flex items-center justify-center min-h-[300px]">
+                <Loader2 className="animate-spin text-gray-400" size={32} />
+            </div>
+        );
+    }
+
+    // Backend returns stats[] array with labels - find them by label
+    const findStat = (label: string) => analytics?.stats?.find((s: any) => s.label === label);
+    const totalVisitors = findStat('Total Visitors')?.value ?? '0';
+    const newVisitors = findStat('New Visitors')?.value ?? '0';
+    const totalTaps = findStat('Total Taps')?.value ?? '0';
+    const messagesSent = findStat('Messages Sent')?.value ?? '0';
+
     const stats = [
-        { label: 'Total Customers', value: '5,240', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%' },
-        { label: 'New Customers', value: '340', icon: UserPlus, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+8%' },
-        { label: 'Returning', value: '2,100', icon: Repeat, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+10%' },
-        { label: 'Inactive', value: '145', icon: Zap, color: 'text-red-600', bg: 'bg-red-50', trend: '-2%' },
+        { label: 'Total Customers', value: totalVisitors.toString(), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'New Visitors', value: newVisitors.toString(), icon: UserPlus, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'Total Taps / Visits', value: totalTaps.toString(), icon: Repeat, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Messages Sent', value: messagesSent.toString(), icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
     ];
 
     return (
