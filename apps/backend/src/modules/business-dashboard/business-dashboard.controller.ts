@@ -1,19 +1,30 @@
 import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { BusinessDashboardService } from './business-dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 import { BusinessDashboardResponseDto } from './dto/business-dashboard.dto';
 import type { Request } from 'express';
 
 @ApiTags('Business Dashboard')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('business-dashboard')
 export class BusinessDashboardController {
   constructor(private readonly dashboardService: BusinessDashboardService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get business dashboard data (stats, visitors, devices, etc.)' })
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Get business dashboard data (stats, visitors, devices, etc.)',
+  })
   @ApiQuery({ name: 'branchId', required: false })
   async getDashboard(
     @Req() req: Request,

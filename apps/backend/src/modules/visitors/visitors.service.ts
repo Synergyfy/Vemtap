@@ -54,6 +54,10 @@ import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
 import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
 import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
+import {
+  ActivityFeedItemDto,
+  PaginatedActivityFeedResponseDto,
+} from './dto/activity-feed-response.dto';
 
 @Injectable()
 export class VisitorsService {
@@ -1036,6 +1040,89 @@ export class VisitorsService {
       page,
       limit,
     };
+  }
+
+  async getActivityFeed(
+    context: { branchId?: string; businessId?: string },
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedActivityFeedResponseDto> {
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .leftJoinAndSelect('visit.customer', 'customer')
+      .leftJoinAndSelect('visit.branch', 'branch')
+      .leftJoinAndSelect('visit.order', 'order')
+      .where('visit.deletedAt IS NULL');
+
+    if (context.branchId) {
+      qb.andWhere('visit.branchId = :branchId', {
+        branchId: context.branchId,
+      });
+    } else if (context.businessId) {
+      qb.andWhere('visit.businessId = :businessId', {
+        businessId: context.businessId,
+      });
+    }
+
+    const [visits, total] = await qb
+      .orderBy('visit.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const data: ActivityFeedItemDto[] = visits.map((visit) => {
+      const customerName = visit.customer
+        ? `${visit.customer.firstName || ''} ${(visit.customer.lastName || '')[0] || ''}`
+            .trim() || 'Unknown'
+        : 'Unknown';
+
+      const shortName = customerName
+        .split(' ')
+        .map((p, i) => (i === 0 ? p : `${p[0]}.`))
+        .join(' ');
+
+      if (visit.orderId) {
+        return {
+          id: visit.id,
+          type: 'order',
+          userName: shortName,
+          description: `Placed an order`,
+          timestamp: visit.createdAt,
+          branchId: visit.branchId,
+          metadata: { orderId: visit.orderId },
+        };
+      }
+
+      if (visit.status === 'new') {
+        return {
+          id: visit.id,
+          type: 'registration',
+          userName: shortName,
+          description: visit.deviceId
+            ? `Registered via device`
+            : `Registered via portal`,
+          timestamp: visit.createdAt,
+          branchId: visit.branchId,
+          metadata: { deviceId: visit.deviceId },
+        };
+      }
+
+      return {
+        id: visit.id,
+        type: 'visit',
+        userName: shortName,
+        description: visit.deviceId
+          ? `Visited via device`
+          : `Returning visit`,
+        timestamp: visit.createdAt,
+        branchId: visit.branchId,
+        metadata: { deviceId: visit.deviceId, status: visit.status },
+      };
+    });
+
+    return { data, total, page, limit };
   }
 
   // ─── Smart Visit Recording ────────────────────────────────────────────────
