@@ -40,7 +40,11 @@ describe('AddonsController', () => {
     isActive: true,
     targetCapability: null,
     additionalLimit: null,
-    serviceDetails: { agentType: 'dashboard_manager', description: 'Manages your dashboard', deliverables: ['Weekly report'] },
+    serviceDetails: {
+      agentType: 'dashboard_manager',
+      description: 'Manages your dashboard',
+      deliverables: ['Weekly report'],
+    },
     isOneTime: false,
     isRecurring: true,
     createdAt: new Date(),
@@ -94,7 +98,10 @@ describe('AddonsController', () => {
 
   describe('findAll', () => {
     it('should return active add-ons', async () => {
-      mockAddonsService.findAll.mockResolvedValue([mockAddon, mockServiceAddon]);
+      mockAddonsService.findAll.mockResolvedValue([
+        mockAddon,
+        mockServiceAddon,
+      ]);
       const result = await controller.findAll();
       expect(mockAddonsService.findAll).toHaveBeenCalledWith(true);
       expect(result).toHaveLength(2);
@@ -113,7 +120,9 @@ describe('AddonsController', () => {
   describe('purchaseAddons', () => {
     it('should call service to purchase add-ons for user business', async () => {
       mockAddonsService.purchaseAddons.mockResolvedValue([mockBusinessAddon]);
-      const req = { user: { id: 'u1', businessId: 'b1', role: UserRole.OWNER } } as any;
+      const req = {
+        user: { id: 'u1', businessId: 'b1', role: UserRole.OWNER },
+      } as any;
       const dto = { addonIds: ['addon-1'], paymentReference: 'TRF_123' };
 
       const result = await controller.purchaseAddons(req, dto);
@@ -129,7 +138,9 @@ describe('AddonsController', () => {
 
   describe('getMyAddons', () => {
     it('should return purchased add-ons for current business', async () => {
-      mockAddonsService.getBusinessAddons.mockResolvedValue([mockBusinessAddon]);
+      mockAddonsService.getBusinessAddons.mockResolvedValue([
+        mockBusinessAddon,
+      ]);
       const req = { user: { businessId: 'b1' } } as any;
 
       const result = await controller.getMyAddons(req);
@@ -157,7 +168,11 @@ describe('AddonsController', () => {
   describe('create (Admin)', () => {
     it('should create a new add-on', async () => {
       mockAddonsService.create.mockResolvedValue(mockAddon);
-      const dto = { name: 'New Add-on', type: AddOnType.RESOURCE, price: 15000 };
+      const dto = {
+        name: 'New Add-on',
+        type: AddOnType.RESOURCE,
+        price: 15000,
+      };
 
       const result = await controller.create(dto);
 
@@ -168,7 +183,10 @@ describe('AddonsController', () => {
 
   describe('findAllAdmin', () => {
     it('should return all add-ons for admin', async () => {
-      mockAddonsService.findAllAdmin.mockResolvedValue([mockAddon, mockServiceAddon]);
+      mockAddonsService.findAllAdmin.mockResolvedValue([
+        mockAddon,
+        mockServiceAddon,
+      ]);
       const result = await controller.findAllAdmin();
       expect(mockAddonsService.findAllAdmin).toHaveBeenCalled();
       expect(result).toHaveLength(2);
@@ -188,7 +206,9 @@ describe('AddonsController', () => {
       const updated = { ...mockAddon, name: 'Updated' };
       mockAddonsService.update.mockResolvedValue(updated);
       const result = await controller.update('addon-1', { name: 'Updated' });
-      expect(mockAddonsService.update).toHaveBeenCalledWith('addon-1', { name: 'Updated' });
+      expect(mockAddonsService.update).toHaveBeenCalledWith('addon-1', {
+        name: 'Updated',
+      });
       expect(result.name).toBe('Updated');
     });
   });

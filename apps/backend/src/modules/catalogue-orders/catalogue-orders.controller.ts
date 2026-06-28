@@ -104,7 +104,7 @@ export class CatalogueOrdersController {
   ) {
     return this.orderService.updateStatus(
       id,
-      dto.status,
+      dto,
       req.user.businessId,
       req.user,
     );

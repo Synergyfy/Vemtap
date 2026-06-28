@@ -16,7 +16,10 @@ export class MarketingMockup extends AbstractBaseEntity {
   @Column()
   imageUrl: string;
 
-  @ApiProperty({ description: 'Overlay details (x, y, width, height, rotateX, rotateY, perspective) for dynamic preview scaling/skewing' })
+  @ApiProperty({
+    description:
+      'Overlay details (x, y, width, height, rotateX, rotateY, perspective) for dynamic preview scaling/skewing',
+  })
   @Column({ type: 'jsonb' })
   overlayConfig: any;
 

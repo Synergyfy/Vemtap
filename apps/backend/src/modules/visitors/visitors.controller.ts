@@ -56,6 +56,8 @@ import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
 import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
 import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
+import { ActivityFeedQueryDto } from './dto/activity-feed-query.dto';
+import { PaginatedActivityFeedResponseDto } from './dto/activity-feed-response.dto';
 import { RewardCategory } from '../loyalty/entities/reward-template.entity';
 
 @ApiTags('Visitors')
@@ -267,6 +269,30 @@ export class VisitorsController {
     return this.visitorsService.findAdminVisitorActivities(query);
   }
 
+  @Get('activity-feed')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('visitors')
+  @ApiOperation({
+    summary:
+      'Get unified activity feed (registrations, visits, orders) for the dashboard',
+  })
+  @ApiResponse({ type: PaginatedActivityFeedResponseDto })
+  async getActivityFeed(
+    @Req() req: any,
+    @Query() query: ActivityFeedQueryDto,
+    @Query() filter: BranchFilterDto,
+  ): Promise<PaginatedActivityFeedResponseDto> {
+    const context = await this.getResolvedContext(req, {
+      ...filter,
+      branchId: filter.branchId || query.branchId,
+    });
+    return this.visitorsService.getActivityFeed(
+      context,
+      query.page,
+      query.limit,
+    );
+  }
+
   @Get(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('visitors')
@@ -406,12 +432,14 @@ export class VisitorsController {
         referredByBranchId: {
           type: 'string',
           example: 'uuid-v4',
-          description: 'Optional: ID of the partner branch that referred this customer.',
+          description:
+            'Optional: ID of the partner branch that referred this customer.',
         },
         catalogueOfferId: {
           type: 'string',
           example: 'uuid-v4',
-          description: 'Optional: ID of the Catalogue Offer (Promotion) that drove this visit.',
+          description:
+            'Optional: ID of the Catalogue Offer (Promotion) that drove this visit.',
         },
       },
       required: ['deviceCode'],
@@ -432,7 +460,13 @@ export class VisitorsController {
   })
   async recordPortalVisit(
     @Req() req: any,
-    @Body() body: { deviceCode: string; sessionToken?: string; referredByBranchId?: string; catalogueOfferId?: string },
+    @Body()
+    body: {
+      deviceCode: string;
+      sessionToken?: string;
+      referredByBranchId?: string;
+      catalogueOfferId?: string;
+    },
   ): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
     const customerId = req.user.id as string;
     const ipAddress: string =

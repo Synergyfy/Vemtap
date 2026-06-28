@@ -46,7 +46,10 @@ export class UsersService {
       .findOne({ where: { id: branchId } });
 
     const trimmedFirstName = dto.firstName.trim();
-    const hashedPassword = await bcrypt.hash(trimmedFirstName.toLowerCase(), 10);
+    const hashedPassword = await bcrypt.hash(
+      trimmedFirstName.toLowerCase(),
+      10,
+    );
     const user = this.usersRepository.create({
       firstName: trimmedFirstName,
       lastName: dto.lastName.trim(),

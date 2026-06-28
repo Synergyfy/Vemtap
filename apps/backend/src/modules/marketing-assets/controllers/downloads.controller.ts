@@ -46,10 +46,7 @@ export class DownloadsController {
   @Get()
   @ApiOperation({ summary: 'Get print downloads log history for business' })
   @ApiResponse({ status: 200, type: [MarketingDownload] })
-  findAll(
-    @Req() req: RequestWithUser,
-    @Query('assetId') assetId?: string,
-  ) {
+  findAll(@Req() req: RequestWithUser, @Query('assetId') assetId?: string) {
     return this.downloadsService.getDownloads(req.user, assetId);
   }
 }

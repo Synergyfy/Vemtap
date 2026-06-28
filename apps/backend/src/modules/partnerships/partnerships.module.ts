@@ -6,10 +6,7 @@ import { PartnershipsController } from './partnerships.controller';
 import { BranchesModule } from '../branches/branches.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Partnership]),
-    BranchesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Partnership]), BranchesModule],
   controllers: [PartnershipsController],
   providers: [PartnershipsService],
   exports: [PartnershipsService],

@@ -11,7 +11,10 @@ import { Repository, In, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { AddOn, AddOnType } from '../entities/addon.entity';
-import { BusinessAddOn, BusinessAddOnStatus } from '../entities/business-addon.entity';
+import {
+  BusinessAddOn,
+  BusinessAddOnStatus,
+} from '../entities/business-addon.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { PaymentsService } from '../../payments/payments.service';
 import {
@@ -23,7 +26,6 @@ import { UpdateAddonDto } from '../dto/addons/update-addon.dto';
 import { PurchaseAddonDto } from '../dto/addons/purchase-addon.dto';
 import { SettingsService } from '../../settings/settings.service';
 import { BundleDiscountsService } from './bundle-discounts.service';
-
 
 export interface AddOnCapability {
   name: string;
@@ -83,7 +85,7 @@ export class AddonsService {
     addon.isOneTime = createAddonDto.isOneTime ?? false;
     addon.isRecurring = createAddonDto.isRecurring ?? false;
     addon.imageUrl = createAddonDto.imageUrl ?? '';
-    
+
     const saved = await this.addonRepository.save(addon);
     await this.invalidateCache();
     return saved;
@@ -91,7 +93,9 @@ export class AddonsService {
 
   async findAll(onlyActive: boolean = false): Promise<AddOn[]> {
     if (onlyActive) {
-      const cached = await this.cacheManager.get<AddOn[]>(CACHE_KEY_ADDONS_PUBLIC);
+      const cached = await this.cacheManager.get<AddOn[]>(
+        CACHE_KEY_ADDONS_PUBLIC,
+      );
       if (cached) return cached;
     }
 
@@ -167,12 +171,10 @@ export class AddonsService {
     return {
       totalAddons: allAddons.length,
       activeAddons: allAddons.filter((a) => a.isActive).length,
-      resourceAddons: allAddons.filter(
-        (a) => a.type === AddOnType.RESOURCE,
-      ).length,
-      serviceAddons: allAddons.filter(
-        (a) => a.type === AddOnType.SERVICE,
-      ).length,
+      resourceAddons: allAddons.filter((a) => a.type === AddOnType.RESOURCE)
+        .length,
+      serviceAddons: allAddons.filter((a) => a.type === AddOnType.SERVICE)
+        .length,
       totalPurchases: await this.businessAddonRepository.count(),
       activePurchases: allPurchases.length,
     };
@@ -195,9 +197,7 @@ export class AddonsService {
     });
 
     if (addons.length !== addonIds.length) {
-      throw new NotFoundException(
-        'One or more add-ons not found or inactive',
-      );
+      throw new NotFoundException('One or more add-ons not found or inactive');
     }
 
     if (paymentReference) {
@@ -208,15 +208,23 @@ export class AddonsService {
       }
     }
 
-    const totalQuantity = addons.reduce((sum, _, i) => sum + (quantities?.[i] ?? quantity), 0);
-    const activeDiscounts = await this.bundleDiscountsService.getActiveDiscounts();
+    const totalQuantity = addons.reduce(
+      (sum, _, i) => sum + (quantities?.[i] ?? quantity),
+      0,
+    );
+    const activeDiscounts =
+      await this.bundleDiscountsService.getActiveDiscounts();
     let discountPercent = 0;
 
     if (activeDiscounts.length > 0) {
       const applicableTier = activeDiscounts
-        .filter(tier => totalQuantity >= tier.minQuantity && (!tier.maxQuantity || totalQuantity <= tier.maxQuantity))
+        .filter(
+          (tier) =>
+            totalQuantity >= tier.minQuantity &&
+            (!tier.maxQuantity || totalQuantity <= tier.maxQuantity),
+        )
         .sort((a, b) => b.discountPercent - a.discountPercent)[0];
-      
+
       if (applicableTier) {
         discountPercent = applicableTier.discountPercent;
       }
@@ -226,7 +234,7 @@ export class AddonsService {
     for (let i = 0; i < addons.length; i++) {
       const addon = addons[i];
       const qty = quantities?.[i] ?? quantity;
-      
+
       const basePrice = Number(addon.price) * qty;
       const discountAmount = (basePrice * discountPercent) / 100;
       const finalPrice = basePrice - discountAmount;
@@ -340,9 +348,7 @@ export class AddonsService {
     });
   }
 
-  async getActiveBusinessAddons(
-    businessId: string,
-  ): Promise<BusinessAddOn[]> {
+  async getActiveBusinessAddons(businessId: string): Promise<BusinessAddOn[]> {
     const now = new Date();
     return this.businessAddonRepository.find({
       where: {
@@ -360,9 +366,11 @@ export class AddonsService {
 
     const map: AddOnCapabilityMap = {};
     for (const ba of activeAddons) {
-      const targetCapability = ba.metadata?.targetCapability ?? ba.addon.targetCapability;
-      const additionalLimit = ba.metadata?.additionalLimit ?? ba.addon.additionalLimit ?? 0;
-      
+      const targetCapability =
+        ba.metadata?.targetCapability ?? ba.addon.targetCapability;
+      const additionalLimit =
+        ba.metadata?.additionalLimit ?? ba.addon.additionalLimit ?? 0;
+
       if (targetCapability) {
         if (ba.addon.type === AddOnType.RESOURCE) {
           const addonLimit = additionalLimit * ba.quantity;
@@ -378,9 +386,7 @@ export class AddonsService {
 
   async getServiceAddons(businessId: string): Promise<BusinessAddOn[]> {
     const active = await this.getActiveBusinessAddons(businessId);
-    return active.filter(
-      (ba) => ba.addon.type === AddOnType.SERVICE,
-    );
+    return active.filter((ba) => ba.addon.type === AddOnType.SERVICE);
   }
 
   async cancelAddon(
@@ -444,7 +450,9 @@ export class AddonsService {
       }
 
       if (!ba.paystackAuthorizationCode) {
-        this.logger.warn(`Recurring Add-on ${ba.id} has no auth code. Expiring...`);
+        this.logger.warn(
+          `Recurring Add-on ${ba.id} has no auth code. Expiring...`,
+        );
         ba.status = BusinessAddOnStatus.EXPIRED;
         await this.businessAddonRepository.save(ba);
         continue;
@@ -453,12 +461,17 @@ export class AddonsService {
       const amount = Number(ba.addon.price) * ba.quantity;
       if (amount <= 0) {
         ba.expiresAt = new Date(now);
-        ba.expiresAt.setDate(ba.expiresAt.getDate() + (ba.addon.durationDays || 30));
+        ba.expiresAt.setDate(
+          ba.expiresAt.getDate() + (ba.addon.durationDays || 30),
+        );
         await this.businessAddonRepository.save(ba);
         continue;
       }
 
-      const ownerEmail = ba.business?.officialEmail || ba.business?.owner?.email || 'billing@latap.com';
+      const ownerEmail =
+        ba.business?.officialEmail ||
+        ba.business?.owner?.email ||
+        'billing@latap.com';
       const charge: any = await this.paymentsService.chargeAuthorization(
         amount,
         ownerEmail,
@@ -478,7 +491,9 @@ export class AddonsService {
         });
 
         ba.expiresAt = new Date(now);
-        ba.expiresAt.setDate(ba.expiresAt.getDate() + (ba.addon.durationDays || 30));
+        ba.expiresAt.setDate(
+          ba.expiresAt.getDate() + (ba.addon.durationDays || 30),
+        );
         await this.businessAddonRepository.save(ba);
       } else {
         this.logger.error(`Failed to renew add-on ${ba.id}. Expiring.`);
@@ -488,4 +503,3 @@ export class AddonsService {
     }
   }
 }
-

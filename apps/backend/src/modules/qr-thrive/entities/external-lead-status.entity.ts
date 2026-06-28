@@ -1,4 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum ExternalLeadStatus {
@@ -14,7 +21,9 @@ export class ExternalLeadStatusEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ApiProperty({ description: 'The ID of the lead from the external system (QR Thrive)' })
+  @ApiProperty({
+    description: 'The ID of the lead from the external system (QR Thrive)',
+  })
   @Column({ unique: true })
   @Index()
   externalLeadId: string;

@@ -1,5 +1,15 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, ParseUUIDPipe,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  ParseUUIDPipe,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PosService } from './pos.service';
@@ -27,21 +37,41 @@ export class PosController {
   @Post('sales')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Complete a POS sale' })
-  async completeSale(@Body() dto: CreatePosSaleDto, @Req() req: RequestWithUser) {
+  async completeSale(
+    @Body() dto: CreatePosSaleDto,
+    @Req() req: RequestWithUser,
+  ) {
     return this.posService.completeSale(dto, req.user);
+  }
+
+  @Post('sales/batch-sync')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Batch sync offline POS sales' })
+  async batchSyncSales(
+    @Body(new ParseArrayPipe({ items: CreatePosSaleDto }))
+    dtos: CreatePosSaleDto[],
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.batchSyncSales(dtos, req.user);
   }
 
   @Get('sales')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'List POS sales with pagination and filters' })
-  async listSales(@Query() query: PosSaleQueryDto, @Req() req: RequestWithUser) {
+  async listSales(
+    @Query() query: PosSaleQueryDto,
+    @Req() req: RequestWithUser,
+  ) {
     return this.posService.findAllSales(req.user.businessId, query);
   }
 
   @Get('sales/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get a single sale by ID' })
-  async getSale(@Param('id', ParseUUIDPipe) id: string, @Req() req: RequestWithUser) {
+  async getSale(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
     return this.posService.findOneSale(id, req.user.businessId);
   }
 
@@ -53,7 +83,12 @@ export class PosController {
     @Body() dto: UpdatePosSaleStatusDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.posService.updateSaleStatus(id, dto, req.user.businessId);
+    return this.posService.updateSaleStatus(
+      id,
+      dto,
+      req.user.businessId,
+      req.user.id,
+    );
   }
 
   @Post('sales/hold')
@@ -76,21 +111,30 @@ export class PosController {
   @Get('sales/held/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get held sale details (resume data)' })
-  async getHeldSale(@Param('id', ParseUUIDPipe) id: string, @Req() req: RequestWithUser) {
+  async getHeldSale(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
     return this.posService.resumeHeldSale(id, req.user.businessId);
   }
 
   @Delete('sales/held/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Delete a held sale' })
-  async deleteHeldSale(@Param('id', ParseUUIDPipe) id: string, @Req() req: RequestWithUser) {
+  async deleteHeldSale(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
     return this.posService.deleteHeldSale(id, req.user.businessId);
   }
 
   @Post('register/open')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Open cash register' })
-  async openRegister(@Body() dto: OpenRegisterDto, @Req() req: RequestWithUser) {
+  async openRegister(
+    @Body() dto: OpenRegisterDto,
+    @Req() req: RequestWithUser,
+  ) {
     return this.posService.openRegister(dto, req.user);
   }
 
@@ -111,7 +155,10 @@ export class PosController {
   @Get('register/history')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get register session history' })
-  async getRegisterHistory(@Query() query: RegisterHistoryQueryDto, @Req() req: RequestWithUser) {
+  async getRegisterHistory(
+    @Query() query: RegisterHistoryQueryDto,
+    @Req() req: RequestWithUser,
+  ) {
     return this.posService.getRegisterHistory(req.user.businessId, query);
   }
 
@@ -155,7 +202,10 @@ export class PosController {
       '(can link existing customers via customerId). If no token is provided, acts as a public ' +
       'walk-in order requiring customer name and phone. Select catalogue items or offers by UUID.',
   })
-  async placeOrder(@Body() dto: CreatePosOrderDto, @Req() req: any) {
+  async placeOrder(
+    @Body() dto: CreatePosOrderDto,
+    @Req() req: Partial<RequestWithUser>,
+  ) {
     const staff: User | undefined = req.user?.id ? req.user : undefined;
     return this.posService.placeOrder(dto, staff);
   }

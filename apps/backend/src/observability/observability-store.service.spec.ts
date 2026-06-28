@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ObservabilityStoreService, ObservabilityRequestLog } from './observability-store.service';
+import {
+  ObservabilityStoreService,
+  ObservabilityRequestLog,
+} from './observability-store.service';
 import { take } from 'rxjs/operators';
 
 describe('ObservabilityStoreService', () => {
@@ -262,7 +265,11 @@ describe('ObservabilityStoreService', () => {
       // Method distribution: 3 GET, 1 POST
       expect(stats.methodDistribution).toEqual({ GET: 3, POST: 1 });
       // Status code distribution: 2xx: 2 (200, 201), 4xx: 1 (400), 5xx: 1 (500)
-      expect(stats.statusCodeDistribution).toEqual({ '2xx': 2, '4xx': 1, '5xx': 1 });
+      expect(stats.statusCodeDistribution).toEqual({
+        '2xx': 2,
+        '4xx': 1,
+        '5xx': 1,
+      });
       // P95 latency: sorted latencies are [10, 50, 190, 550]. Index of 95% is Math.floor(4 * 0.95) = 3. Latency at index 3 is 550ms
       expect(stats.p95Latency).toBe(550);
       // Recent volume chart should have compiled up to 10 intervals

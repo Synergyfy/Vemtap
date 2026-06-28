@@ -1,9 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsString,
-  IsOptional,
-} from 'class-validator';
+import { IsArray, IsString, IsOptional } from 'class-validator';
 import { SubscribeDto } from '../subscribe.dto';
 
 export class SubscribeWithAddonsDto extends SubscribeDto {

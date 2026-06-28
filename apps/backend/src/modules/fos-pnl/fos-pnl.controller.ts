@@ -53,7 +53,9 @@ export class FosPnlController {
 
   @Get('cashflows')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'List cash flows with pagination and optional type filter' })
+  @ApiOperation({
+    summary: 'List cash flows with pagination and optional type filter',
+  })
   async listCashflows(@Query() query: ListCashFlowsQueryDto) {
     return this.pnlService.listCashflows(query);
   }
@@ -69,7 +71,9 @@ export class FosPnlController {
 
   @Get('cashflow-runway')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get cash flow runway analysis from cash_flows table' })
+  @ApiOperation({
+    summary: 'Get cash flow runway analysis from cash_flows table',
+  })
   async getCashFlowRunway() {
     return this.pnlService.getCashFlowRunway();
   }
@@ -78,7 +82,9 @@ export class FosPnlController {
 
   @Get('cost-break-even')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get cost-based break-even analysis from expenses and cash_flows' })
+  @ApiOperation({
+    summary: 'Get cost-based break-even analysis from expenses and cash_flows',
+  })
   async getCostBreakEven() {
     return this.pnlService.getCostBreakEven();
   }

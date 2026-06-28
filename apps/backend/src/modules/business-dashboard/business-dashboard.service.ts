@@ -50,7 +50,9 @@ export class BusinessDashboardService {
     const staffMembers = await this.getStaff(businessId, branchId);
     const devices = await this.getDevices(businessId, branchId);
 
-    const business = await this.businessRepo.findOne({ where: { id: businessId } });
+    const business = await this.businessRepo.findOne({
+      where: { id: businessId },
+    });
     const businessName = business?.name || '';
     const businessLogo = business?.logoUrl || '';
 
@@ -75,8 +77,12 @@ export class BusinessDashboardService {
     const where: any = branchId ? { branchId } : { businessId };
 
     const totalVisitors = await this.visitRepo.count({ where });
-    const newVisitors = await this.visitRepo.count({ where: { ...where, status: 'new' } });
-    const repeatVisitors = await this.visitRepo.count({ where: { ...where, status: 'returning' } });
+    const newVisitors = await this.visitRepo.count({
+      where: { ...where, status: 'new' },
+    });
+    const repeatVisitors = await this.visitRepo.count({
+      where: { ...where, status: 'returning' },
+    });
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -87,10 +93,7 @@ export class BusinessDashboardService {
     return { totalVisitors, newVisitors, repeatVisitors, todaysVisits };
   }
 
-  private async getRecentVisitors(
-    businessId: string,
-    branchId?: string,
-  ) {
+  private async getRecentVisitors(businessId: string, branchId?: string) {
     const where: any = branchId ? { branchId } : { businessId };
     const visits = await this.visitRepo.find({
       where,
@@ -102,7 +105,8 @@ export class BusinessDashboardService {
     return visits.map((v) => ({
       id: v.id,
       name: v.customer
-        ? `${v.customer.firstName || ''} ${v.customer.lastName || ''}`.trim() || v.customer.email
+        ? `${v.customer.firstName || ''} ${v.customer.lastName || ''}`.trim() ||
+          v.customer.email
         : 'Unknown',
       phone: v.customer?.phone || '',
       email: v.customer?.email,
@@ -114,10 +118,7 @@ export class BusinessDashboardService {
     }));
   }
 
-  private async getActivityData(
-    businessId: string,
-    branchId?: string,
-  ) {
+  private async getActivityData(businessId: string, branchId?: string) {
     const where: any = branchId ? { branchId } : { businessId };
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -129,7 +130,14 @@ export class BusinessDashboardService {
     const hourBuckets: Record<string, number> = {};
     for (const v of visits) {
       const hour = v.createdAt.getHours();
-      const label = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+      const label =
+        hour === 0
+          ? '12 AM'
+          : hour < 12
+            ? `${hour} AM`
+            : hour === 12
+              ? '12 PM'
+              : `${hour - 12} PM`;
       hourBuckets[label] = (hourBuckets[label] || 0) + 1;
     }
 
@@ -198,19 +206,16 @@ export class BusinessDashboardService {
       status: c.status,
       sent: c.sent,
       delivered: c.delivered,
-      deliveryRate: c.sent ? Math.round(c.clicks / c.sent * 100) : 0,
+      deliveryRate: c.sent ? Math.round((c.clicks / c.sent) * 100) : 0,
       clicks: c.clicks,
       opens: 0,
-      ctr: c.sent ? Math.round(c.clicks / c.sent * 10000) / 100 : 0,
+      ctr: c.sent ? Math.round((c.clicks / c.sent) * 10000) / 100 : 0,
       timestamp: c.createdAt.getTime(),
       branchId: c.branchId,
     }));
   }
 
-  private async getStaff(
-    businessId: string,
-    branchId?: string,
-  ) {
+  private async getStaff(businessId: string, branchId?: string) {
     const where: any = { businessId };
     if (branchId) {
       where.branchId = branchId;
@@ -233,15 +238,15 @@ export class BusinessDashboardService {
     }));
   }
 
-  private async getDevices(
-    businessId: string,
-    branchId?: string,
-  ) {
+  private async getDevices(businessId: string, branchId?: string) {
     let deviceWhere: any;
     if (branchId) {
       deviceWhere = { branchId };
     } else {
-      const branches = await this.branchRepo.find({ where: { businessId }, select: ['id'] });
+      const branches = await this.branchRepo.find({
+        where: { businessId },
+        select: ['id'],
+      });
       const branchIds = branches.map((b) => b.id);
       if (branchIds.length === 0) return [];
       deviceWhere = { branchId: In(branchIds) };

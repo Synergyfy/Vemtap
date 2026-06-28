@@ -1,15 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DataSource, Repository } from 'typeorm';
-import { FinancialTransaction, FosTransactionType } from './modules/fos-core/entities/financial-transaction.entity';
-import { CashFlow, CashFlowType } from './modules/fos-core/entities/cash-flow.entity';
+import {
+  FinancialTransaction,
+  FosTransactionType,
+} from './modules/fos-core/entities/financial-transaction.entity';
+import {
+  CashFlow,
+  CashFlowType,
+} from './modules/fos-core/entities/cash-flow.entity';
 import { Expense } from './modules/fos-core/entities/expense.entity';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const dataSource = app.get(DataSource);
 
-  const fosRepo: Repository<FinancialTransaction> = dataSource.getRepository(FinancialTransaction);
+  const fosRepo: Repository<FinancialTransaction> =
+    dataSource.getRepository(FinancialTransaction);
   const cashFlowRepo: Repository<CashFlow> = dataSource.getRepository(CashFlow);
   const expenseRepo: Repository<Expense> = dataSource.getRepository(Expense);
 
@@ -34,13 +41,20 @@ async function bootstrap() {
       .getRawMany();
     console.log('\n--- fos_transactions breakdown ---');
     for (const row of byType) {
-      console.log(`  ${row.type}: ${row.count} records, amount=${row.totalAmount}, cost=${row.totalCost}, profit=${row.totalProfit}`);
+      console.log(
+        `  ${row.type}: ${row.count} records, amount=${row.totalAmount}, cost=${row.totalCost}, profit=${row.totalProfit}`,
+      );
     }
 
-    const samples = await fosRepo.find({ take: 3, order: { createdAt: 'DESC' } });
+    const samples = await fosRepo.find({
+      take: 3,
+      order: { createdAt: 'DESC' },
+    });
     console.log('\n--- Sample records ---');
     for (const s of samples) {
-      console.log(`  ${s.type} | ${s.platform} | amt=${s.amount} | cost=${s.cost} | profit=${s.profit} | date=${s.date} | biz=${s.businessId ?? '-'} | desc=${s.description ?? '-'}`);
+      console.log(
+        `  ${s.type} | ${s.platform} | amt=${s.amount} | cost=${s.cost} | profit=${s.profit} | date=${s.date} | biz=${s.businessId ?? '-'} | desc=${s.description ?? '-'}`,
+      );
     }
   }
 
@@ -56,7 +70,9 @@ async function bootstrap() {
       .getRawMany();
     console.log('\n--- cash_flows breakdown ---');
     for (const row of cfByType) {
-      console.log(`  ${row.type} | ${row.category}: ${row.count} records, total=${row.totalAmount}`);
+      console.log(
+        `  ${row.type} | ${row.category}: ${row.count} records, total=${row.totalAmount}`,
+      );
     }
   }
 
@@ -70,7 +86,9 @@ async function bootstrap() {
       .getRawMany();
     console.log('\n--- expenses breakdown ---');
     for (const row of expByCat) {
-      console.log(`  ${row.category}: ${row.count} records, total=${row.totalAmount}`);
+      console.log(
+        `  ${row.category}: ${row.count} records, total=${row.totalAmount}`,
+      );
     }
   }
 

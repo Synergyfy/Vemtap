@@ -4,11 +4,18 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, QueryBuilder, SelectQueryBuilder } from 'typeorm';
 import { Branch } from './entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
-import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferStatus,
+} from '../catalogue/entities/catalogue-offer.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DevicesService } from '../devices/devices.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
-import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 
 describe('BranchesService', () => {
   let service: BranchesService;
@@ -208,7 +215,11 @@ describe('BranchesService', () => {
 
   describe('findByUsername', () => {
     it('should return branch when username exists', async () => {
-      const branch = { id: 'branch-1', username: 'main-office', isActive: true };
+      const branch = {
+        id: 'branch-1',
+        username: 'main-office',
+        isActive: true,
+      };
       mockBranchRepository.findOne.mockResolvedValue(branch);
 
       const result = await service.findByUsername('main-office');
@@ -305,11 +316,13 @@ describe('BranchesService', () => {
     it('should auto-generate username if not provided', async () => {
       const ownerId = 'owner-1';
       const business = { id: 'bus-1' };
-      
+
       mockBusinessRepository.findOne.mockResolvedValue(business);
       mockBranchRepository.find.mockResolvedValue([]);
       mockBranchRepository.create.mockImplementation((data) => data);
-      mockBranchRepository.save.mockImplementation((branch) => Promise.resolve(branch));
+      mockBranchRepository.save.mockImplementation((branch) =>
+        Promise.resolve(branch),
+      );
 
       mockBranchRepository.createQueryBuilder.mockImplementation(() => ({
         where: jest.fn().mockReturnThis(),
@@ -327,11 +340,13 @@ describe('BranchesService', () => {
     it('should validate provided username', async () => {
       const ownerId = 'owner-1';
       const business = { id: 'bus-1' };
-      
+
       mockBusinessRepository.findOne.mockResolvedValue(business);
       mockBranchRepository.find.mockResolvedValue([]);
       mockBranchRepository.create.mockImplementation((data) => data);
-      mockBranchRepository.save.mockImplementation((branch) => Promise.resolve(branch));
+      mockBranchRepository.save.mockImplementation((branch) =>
+        Promise.resolve(branch),
+      );
 
       mockBranchRepository.createQueryBuilder.mockImplementation(() => ({
         where: jest.fn().mockReturnThis(),
@@ -348,13 +363,15 @@ describe('BranchesService', () => {
     it('should throw error for invalid username', async () => {
       const ownerId = 'owner-1';
       const business = { id: 'bus-1' };
-      
+
       mockBusinessRepository.findOne.mockResolvedValue(business);
       mockBranchRepository.find.mockResolvedValue([]);
 
       const dto = { name: 'New Branch', username: 'AB' };
-      
-      await expect(service.create(ownerId, dto)).rejects.toThrow(BadRequestException);
+
+      await expect(service.create(ownerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -387,8 +404,8 @@ describe('BranchesService', () => {
       address: '100 Test Avenue',
       city: 'Lagos',
       state: 'Lagos',
-      latitude: 6.5300,
-      longitude: 3.3850,
+      latitude: 6.53,
+      longitude: 3.385,
       businessId: 'bus-3',
       businessName: 'Far Business',
       businessLogoUrl: null,
@@ -423,9 +440,15 @@ describe('BranchesService', () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([]);
 
-      const result = await service.findNearbyBranches(sourceBranchId, {} as any);
+      const result = await service.findNearbyBranches(
+        sourceBranchId,
+        {} as any,
+      );
 
-      expect(result.source).toEqual({ id: sourceBranchId, name: 'Source Branch' });
+      expect(result.source).toEqual({
+        id: sourceBranchId,
+        name: 'Source Branch',
+      });
       expect(result.distanceMeters).toBe(500);
       expect(result.results).toEqual([]);
     });
@@ -437,7 +460,10 @@ describe('BranchesService', () => {
         fartherBranch,
       ]);
 
-      const result = await service.findNearbyBranches(sourceBranchId, {} as any);
+      const result = await service.findNearbyBranches(
+        sourceBranchId,
+        {} as any,
+      );
 
       expect(result.results).toHaveLength(2);
       expect(result.results[0].id).toBe('nearby-1');
@@ -479,10 +505,15 @@ describe('BranchesService', () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([nearbyBranch]);
 
-      const result = await service.findNearbyBranches(sourceBranchId, {} as any);
+      const result = await service.findNearbyBranches(
+        sourceBranchId,
+        {} as any,
+      );
 
       expect(result.results[0]).not.toHaveProperty('offers');
-      expect(mockCatalogueOfferRepository.createQueryBuilder).not.toHaveBeenCalled();
+      expect(
+        mockCatalogueOfferRepository.createQueryBuilder,
+      ).not.toHaveBeenCalled();
     });
 
     it('should fetch and attach offers when withPromotions is true', async () => {
@@ -501,11 +532,13 @@ describe('BranchesService', () => {
 
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([nearbyBranch]);
-      mockCatalogueOfferRepository.createQueryBuilder.mockImplementation(() => ({
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([offer1, offer2]),
-      }));
+      mockCatalogueOfferRepository.createQueryBuilder.mockImplementation(
+        () => ({
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          getMany: jest.fn().mockResolvedValue([offer1, offer2]),
+        }),
+      );
 
       const result = await service.findNearbyBranches(sourceBranchId, {
         withPromotions: true,
@@ -520,11 +553,13 @@ describe('BranchesService', () => {
     it('should return empty offers array when withPromotions true but no active offers', async () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([nearbyBranch]);
-      mockCatalogueOfferRepository.createQueryBuilder.mockImplementation(() => ({
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([]),
-      }));
+      mockCatalogueOfferRepository.createQueryBuilder.mockImplementation(
+        () => ({
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          getMany: jest.fn().mockResolvedValue([]),
+        }),
+      );
 
       const result = await service.findNearbyBranches(sourceBranchId, {
         withPromotions: true,
@@ -542,12 +577,17 @@ describe('BranchesService', () => {
       };
 
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
-      mockBranchRepository.query.mockResolvedValue([nearbyBranch, fartherBranch]);
-      mockCatalogueOfferRepository.createQueryBuilder.mockImplementation(() => ({
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([offer1]),
-      }));
+      mockBranchRepository.query.mockResolvedValue([
+        nearbyBranch,
+        fartherBranch,
+      ]);
+      mockCatalogueOfferRepository.createQueryBuilder.mockImplementation(
+        () => ({
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          getMany: jest.fn().mockResolvedValue([offer1]),
+        }),
+      );
 
       const result = await service.findNearbyBranches(sourceBranchId, {
         withPromotions: true,
@@ -565,14 +605,19 @@ describe('BranchesService', () => {
         withPromotions: true,
       } as any);
 
-      expect(mockCatalogueOfferRepository.createQueryBuilder).not.toHaveBeenCalled();
+      expect(
+        mockCatalogueOfferRepository.createQueryBuilder,
+      ).not.toHaveBeenCalled();
     });
 
     it('should return source info in response', async () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([nearbyBranch]);
 
-      const result = await service.findNearbyBranches(sourceBranchId, {} as any);
+      const result = await service.findNearbyBranches(
+        sourceBranchId,
+        {} as any,
+      );
 
       expect(result.source).toEqual({
         id: sourceBranchId,
@@ -594,8 +639,10 @@ describe('BranchesService', () => {
         limit: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValue(null),
       };
-      
-      mockBranchRepository.manager.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      mockBranchRepository.manager.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder as any,
+      );
 
       const result = await service.getLastTopRecentCustomer('branch-1');
       expect(result).toBeNull();
@@ -611,12 +658,20 @@ describe('BranchesService', () => {
         orderBy: jest.fn().mockReturnThis(),
         addOrderBy: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({ customerId: 'cust-1', visitCount: '5', lastVisitAt: '2026-06-24T10:00:00Z' }),
+        getRawOne: jest.fn().mockResolvedValue({
+          customerId: 'cust-1',
+          visitCount: '5',
+          lastVisitAt: '2026-06-24T10:00:00Z',
+        }),
       };
-      mockBranchRepository.manager.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+      mockBranchRepository.manager.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder as any,
+      );
 
       const mockCustomer = { id: 'cust-1', firstName: 'John', lastName: 'Doe' };
-      mockBranchRepository.manager.findOne.mockResolvedValue(mockCustomer as any);
+      mockBranchRepository.manager.findOne.mockResolvedValue(
+        mockCustomer as any,
+      );
 
       const result = await service.getLastTopRecentCustomer('branch-1');
       expect(result).toEqual({
@@ -626,6 +681,4 @@ describe('BranchesService', () => {
       });
     });
   });
-
 });
-

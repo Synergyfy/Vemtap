@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BundleDiscount } from '../entities/bundle-discount.entity';
-import { CreateBundleDiscountDto, UpdateBundleDiscountDto } from '../dto/bundle-discount.dto';
+import {
+  CreateBundleDiscountDto,
+  UpdateBundleDiscountDto,
+} from '../dto/bundle-discount.dto';
 
 @Injectable()
 export class BundleDiscountsService {
@@ -18,7 +21,9 @@ export class BundleDiscountsService {
   }
 
   async findOne(id: string): Promise<BundleDiscount> {
-    const discount = await this.bundleDiscountRepository.findOne({ where: { id } });
+    const discount = await this.bundleDiscountRepository.findOne({
+      where: { id },
+    });
     if (!discount) {
       throw new NotFoundException(`Bundle discount with ID ${id} not found`);
     }
@@ -30,7 +35,10 @@ export class BundleDiscountsService {
     return this.bundleDiscountRepository.save(discount);
   }
 
-  async update(id: string, updateDto: UpdateBundleDiscountDto): Promise<BundleDiscount> {
+  async update(
+    id: string,
+    updateDto: UpdateBundleDiscountDto,
+  ): Promise<BundleDiscount> {
     const discount = await this.findOne(id);
     Object.assign(discount, updateDto);
     return this.bundleDiscountRepository.save(discount);

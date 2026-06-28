@@ -20,7 +20,10 @@ export class AuditLogService {
     ipAddress?: string;
   }): Promise<MarketingAuditLog> {
     const normalizedParams = { ...params };
-    if (!normalizedParams.businessId || normalizedParams.businessId.trim() === '') {
+    if (
+      !normalizedParams.businessId ||
+      normalizedParams.businessId.trim() === ''
+    ) {
       normalizedParams.businessId = '00000000-0000-0000-0000-000000000000';
     }
     const entry = this.logRepo.create(normalizedParams);

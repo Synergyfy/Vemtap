@@ -77,8 +77,14 @@ describe('DiscoveryService', () => {
         DiscoveryService,
         { provide: getRepositoryToken(Branch), useValue: mockBranchRepository },
         { provide: getRepositoryToken(Visit), useValue: mockVisitRepository },
-        { provide: getRepositoryToken(Partnership), useValue: mockPartnershipRepository },
-        { provide: getRepositoryToken(CatalogueOffer), useValue: mockOfferRepository },
+        {
+          provide: getRepositoryToken(Partnership),
+          useValue: mockPartnershipRepository,
+        },
+        {
+          provide: getRepositoryToken(CatalogueOffer),
+          useValue: mockOfferRepository,
+        },
       ],
     }).compile();
 
@@ -98,12 +104,16 @@ describe('DiscoveryService', () => {
       expect(result.stats).toBeDefined();
       expect(result.highlights).toBeDefined();
       expect(result.recentVisits).toBeDefined();
-      expect(mockBranchRepository.findOne).toHaveBeenCalledWith({ where: { id: 'branch-1' } });
+      expect(mockBranchRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 'branch-1' },
+      });
     });
 
     it('should throw NotFoundException when branch does not exist', async () => {
       mockBranchRepository.findOne.mockResolvedValueOnce(null);
-      await expect(service.getOverview('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getOverview('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -129,7 +139,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException when branch does not exist', async () => {
       mockBranchRepository.findOne.mockResolvedValueOnce(null);
-      await expect(service.getResults('nonexistent', '7days')).rejects.toThrow(NotFoundException);
+      await expect(service.getResults('nonexistent', '7days')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -143,7 +155,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException when branch does not exist', async () => {
       mockBranchRepository.findOne.mockResolvedValueOnce(null);
-      await expect(service.getSettings('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getSettings('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -161,7 +175,10 @@ describe('DiscoveryService', () => {
 
     it('should NOT overwrite protected fields like id even if passed in dto', async () => {
       // Cast to any to simulate a malicious payload that sneaks extra fields
-      const maliciousDto = { joinDiscoveryNetwork: false, id: 'hacked-id' } as any;
+      const maliciousDto = {
+        joinDiscoveryNetwork: false,
+        id: 'hacked-id',
+      } as any;
       const result = await service.updateSettings('branch-1', maliciousDto);
       // The whitelisted path should not write id onto the saved entity
       expect(result.id).not.toBe('hacked-id');
@@ -169,7 +186,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException when branch does not exist', async () => {
       mockBranchRepository.findOne.mockResolvedValueOnce(null);
-      await expect(service.updateSettings('nonexistent', {})).rejects.toThrow(NotFoundException);
+      await expect(service.updateSettings('nonexistent', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -196,15 +215,21 @@ describe('DiscoveryService', () => {
 
     it('should apply from_partners filter without throwing (Bug 1: missing branchId binding)', async () => {
       // Before the fix this would throw because the :branchId binding was missing
-      await expect(service.getCustomers('branch-1', 'from_partners', 1, 10)).resolves.toBeDefined();
+      await expect(
+        service.getCustomers('branch-1', 'from_partners', 1, 10),
+      ).resolves.toBeDefined();
     });
 
     it('should apply sent_to_partners filter without throwing', async () => {
-      await expect(service.getCustomers('branch-1', 'sent_to_partners', 1, 10)).resolves.toBeDefined();
+      await expect(
+        service.getCustomers('branch-1', 'sent_to_partners', 1, 10),
+      ).resolves.toBeDefined();
     });
 
     it('should apply direct filter without throwing', async () => {
-      await expect(service.getCustomers('branch-1', 'direct', 1, 10)).resolves.toBeDefined();
+      await expect(
+        service.getCustomers('branch-1', 'direct', 1, 10),
+      ).resolves.toBeDefined();
     });
   });
 

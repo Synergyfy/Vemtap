@@ -69,12 +69,16 @@ export class AuthService {
     }
 
     if (dto.phone) {
-      const existingUserByPhone = await this.usersService.findByPhone(dto.phone);
+      const existingUserByPhone = await this.usersService.findByPhone(
+        dto.phone,
+      );
       if (
         existingUserByPhone &&
         existingUserByPhone.status !== UserStatus.PENDING
       ) {
-        throw new ConflictException('User with this phone number already exists');
+        throw new ConflictException(
+          'User with this phone number already exists',
+        );
       }
     }
 
@@ -206,10 +210,15 @@ export class AuthService {
     };
     delete user.password;
     // Background sync subscription to QR-Thrive
-    if (businessId && (user.role === UserRole.OWNER || user.role === UserRole.MANAGER)) {
-      this.subscriptionsService.syncUserSubscriptionToQrThrive(businessId).catch(err => {
-        console.error('Background QR-Thrive sync failed on login:', err);
-      });
+    if (
+      businessId &&
+      (user.role === UserRole.OWNER || user.role === UserRole.MANAGER)
+    ) {
+      this.subscriptionsService
+        .syncUserSubscriptionToQrThrive(businessId)
+        .catch((err) => {
+          console.error('Background QR-Thrive sync failed on login:', err);
+        });
     }
 
     return {
@@ -523,9 +532,9 @@ export class AuthService {
       throw new ConflictException('Email already exists');
     }
 
-      // 2. Create or Update User (Owner)
+    // 2. Create or Update User (Owner)
     let user: User;
-    let isNewUser = !existingUser;
+    const isNewUser = !existingUser;
     const hashedPassword = dto.password
       ? await bcrypt.hash(dto.password, 10)
       : undefined;

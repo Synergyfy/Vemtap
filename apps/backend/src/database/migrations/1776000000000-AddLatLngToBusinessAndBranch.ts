@@ -19,17 +19,9 @@ export class AddLatLngToBusinessAndBranch1776000000000 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "branches" DROP COLUMN "longitude"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "branches" DROP COLUMN "latitude"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "longitude"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "latitude"`,
-    );
+    await queryRunner.query(`ALTER TABLE "branches" DROP COLUMN "longitude"`);
+    await queryRunner.query(`ALTER TABLE "branches" DROP COLUMN "latitude"`);
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "longitude"`);
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "latitude"`);
   }
 }

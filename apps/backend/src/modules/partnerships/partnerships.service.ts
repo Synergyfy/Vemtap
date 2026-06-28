@@ -10,7 +10,10 @@ import { Partnership, PartnershipStatus } from './entities/partnership.entity';
 import { BranchesService } from '../branches/branches.service';
 import { InvitePartnershipDto } from './dto/invite-partnership.dto';
 import { NearbyPartnersQueryDto } from './dto/nearby-partners-query.dto';
-import { InvitationQueryType, PartnershipQueryDto } from './dto/partnership-query.dto';
+import {
+  InvitationQueryType,
+  PartnershipQueryDto,
+} from './dto/partnership-query.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { User } from '../users/entities/user.entity';
 
@@ -22,7 +25,10 @@ export class PartnershipsService {
     private branchesService: BranchesService,
   ) {}
 
-  async findNearbyPartnerableBranches(query: NearbyPartnersQueryDto, user: User) {
+  async findNearbyPartnerableBranches(
+    query: NearbyPartnersQueryDto,
+    user: User,
+  ) {
     const { branchId, distance = 10000, limit = 20, page = 1 } = query;
     const skip = (page - 1) * limit;
 
@@ -31,27 +37,41 @@ export class PartnershipsService {
       throw new NotFoundException('Source branch not found');
     }
 
-    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this branch');
     }
 
     if (sourceBranch.latitude == null || sourceBranch.longitude == null) {
-      throw new BadRequestException('Source branch has no location coordinates');
+      throw new BadRequestException(
+        'Source branch has no location coordinates',
+      );
     }
 
     const sourceLocation = `ST_SetSRID(ST_MakePoint(${sourceBranch.longitude}, ${sourceBranch.latitude}), 4326)::geography`;
 
-    const qb = this.partnershipRepository.manager.createQueryBuilder(Branch, 'b')
+    const qb = this.partnershipRepository.manager
+      .createQueryBuilder(Branch, 'b')
       .innerJoinAndSelect('b.business', 'business')
       .where('b.id != :sourceBranchId', { sourceBranchId: branchId })
-      .andWhere('b.businessId != :sourceBusinessId', { sourceBusinessId: sourceBranch.businessId })
+      .andWhere('b.businessId != :sourceBusinessId', {
+        sourceBusinessId: sourceBranch.businessId,
+      })
       .andWhere('b.isActive = :isActive', { isActive: true })
-      .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', { joinDiscoveryNetwork: true })
-      .andWhere('b.receivePartnerRequests = :receivePartnerRequests', { receivePartnerRequests: true })
+      .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('b.receivePartnerRequests = :receivePartnerRequests', {
+        receivePartnerRequests: true,
+      })
       .andWhere('b.latitude IS NOT NULL')
       .andWhere('b.longitude IS NOT NULL')
-      .andWhere(`ST_DWithin(b.location, ${sourceLocation}, :distance)`, { distance });
+      .andWhere(`ST_DWithin(b.location, ${sourceLocation}, :distance)`, {
+        distance,
+      });
 
     qb.andWhere((sub) => {
       const subQuery = sub
@@ -61,12 +81,17 @@ export class PartnershipsService {
         .where(
           `((p.initiatorBranchId = :sourceBranchId AND p.recipientBranchId = b.id) OR (p.initiatorBranchId = b.id AND p.recipientBranchId = :sourceBranchId))`,
         )
-        .andWhere('p.status IN (:...statuses)', { statuses: [PartnershipStatus.PENDING, PartnershipStatus.ACCEPTED] })
+        .andWhere('p.status IN (:...statuses)', {
+          statuses: [PartnershipStatus.PENDING, PartnershipStatus.ACCEPTED],
+        })
         .getQuery();
       return `NOT EXISTS ${subQuery}`;
     });
 
-    qb.addSelect(`ROUND(ST_Distance(b.location, ${sourceLocation})::numeric, 2)`, 'distanceMeters');
+    qb.addSelect(
+      `ROUND(ST_Distance(b.location, ${sourceLocation})::numeric, 2)`,
+      'distanceMeters',
+    );
     qb.orderBy('"distanceMeters"', 'ASC');
     qb.skip(skip).take(limit);
 
@@ -74,22 +99,33 @@ export class PartnershipsService {
 
     const data = entities.map((entity, index) => {
       const rawRow = raw[index];
-      const distanceMeters = rawRow ? parseFloat(rawRow.distanceMeters || rawRow.distance_meters) : null;
+      const distanceMeters = rawRow
+        ? parseFloat(rawRow.distanceMeters || rawRow.distance_meters)
+        : null;
       return {
         ...entity,
         distanceMeters,
       };
     });
 
-    const totalQb = this.partnershipRepository.manager.createQueryBuilder(Branch, 'b')
+    const totalQb = this.partnershipRepository.manager
+      .createQueryBuilder(Branch, 'b')
       .where('b.id != :sourceBranchId', { sourceBranchId: branchId })
-      .andWhere('b.businessId != :sourceBusinessId', { sourceBusinessId: sourceBranch.businessId })
+      .andWhere('b.businessId != :sourceBusinessId', {
+        sourceBusinessId: sourceBranch.businessId,
+      })
       .andWhere('b.isActive = :isActive', { isActive: true })
-      .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', { joinDiscoveryNetwork: true })
-      .andWhere('b.receivePartnerRequests = :receivePartnerRequests', { receivePartnerRequests: true })
+      .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('b.receivePartnerRequests = :receivePartnerRequests', {
+        receivePartnerRequests: true,
+      })
       .andWhere('b.latitude IS NOT NULL')
       .andWhere('b.longitude IS NOT NULL')
-      .andWhere(`ST_DWithin(b.location, ${sourceLocation}, :distance)`, { distance });
+      .andWhere(`ST_DWithin(b.location, ${sourceLocation}, :distance)`, {
+        distance,
+      });
 
     totalQb.andWhere((sub) => {
       const subQuery = sub
@@ -99,7 +135,9 @@ export class PartnershipsService {
         .where(
           `((p.initiatorBranchId = :sourceBranchId AND p.recipientBranchId = b.id) OR (p.initiatorBranchId = b.id AND p.recipientBranchId = :sourceBranchId))`,
         )
-        .andWhere('p.status IN (:...statuses)', { statuses: [PartnershipStatus.PENDING, PartnershipStatus.ACCEPTED] })
+        .andWhere('p.status IN (:...statuses)', {
+          statuses: [PartnershipStatus.PENDING, PartnershipStatus.ACCEPTED],
+        })
         .getQuery();
       return `NOT EXISTS ${subQuery}`;
     });
@@ -125,18 +163,28 @@ export class PartnershipsService {
     const recipient = await this.branchesService.findById(recipientBranchId);
 
     if (initiator.businessId === recipient.businessId) {
-      throw new BadRequestException('Cannot partner with a branch of the same business');
+      throw new BadRequestException(
+        'Cannot partner with a branch of the same business',
+      );
     }
 
-    const hasAccess = await this.branchesService.checkBranchAccess(user, initiatorBranchId);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      initiatorBranchId,
+    );
     if (!hasAccess) {
-      throw new ForbiddenException('You are not authorized to invite partnerships from this branch');
+      throw new ForbiddenException(
+        'You are not authorized to invite partnerships from this branch',
+      );
     }
 
     const existing = await this.partnershipRepository.findOne({
       where: [
         { initiatorBranchId, recipientBranchId },
-        { initiatorBranchId: recipientBranchId, recipientBranchId: initiatorBranchId },
+        {
+          initiatorBranchId: recipientBranchId,
+          recipientBranchId: initiatorBranchId,
+        },
       ],
     });
 
@@ -145,7 +193,9 @@ export class PartnershipsService {
         throw new BadRequestException('Branches are already partners');
       }
       if (existing.status === PartnershipStatus.PENDING) {
-        throw new BadRequestException('A partnership invitation is already pending');
+        throw new BadRequestException(
+          'A partnership invitation is already pending',
+        );
       }
       if (existing.status === PartnershipStatus.DECLINED) {
         existing.status = PartnershipStatus.PENDING;
@@ -174,7 +224,9 @@ export class PartnershipsService {
     });
 
     if (!partnership) {
-      throw new NotFoundException(`Partnership invitation with ID ${id} not found`);
+      throw new NotFoundException(
+        `Partnership invitation with ID ${id} not found`,
+      );
     }
 
     if (partnership.status !== PartnershipStatus.PENDING) {
@@ -183,9 +235,14 @@ export class PartnershipsService {
       );
     }
 
-    const hasAccess = await this.branchesService.checkBranchAccess(user, partnership.recipientBranchId);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      partnership.recipientBranchId,
+    );
     if (!hasAccess) {
-      throw new ForbiddenException('You are not authorized to respond to this invitation');
+      throw new ForbiddenException(
+        'You are not authorized to respond to this invitation',
+      );
     }
 
     partnership.status = status;
@@ -196,12 +253,18 @@ export class PartnershipsService {
     const { branchId, type, status, page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
-    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
     if (!hasAccess) {
-      throw new ForbiddenException('You are not authorized to view invitations for this branch');
+      throw new ForbiddenException(
+        'You are not authorized to view invitations for this branch',
+      );
     }
 
-    const qb = this.partnershipRepository.createQueryBuilder('p')
+    const qb = this.partnershipRepository
+      .createQueryBuilder('p')
       .leftJoinAndSelect('p.initiatorBranch', 'initiatorBranch')
       .leftJoinAndSelect('p.recipientBranch', 'recipientBranch');
 
@@ -210,16 +273,17 @@ export class PartnershipsService {
     } else if (type === InvitationQueryType.RECEIVED) {
       qb.where('p.recipientBranchId = :branchId', { branchId });
     } else {
-      qb.where('(p.initiatorBranchId = :branchId OR p.recipientBranchId = :branchId)', { branchId });
+      qb.where(
+        '(p.initiatorBranchId = :branchId OR p.recipientBranchId = :branchId)',
+        { branchId },
+      );
     }
 
     if (status) {
       qb.andWhere('p.status = :status', { status });
     }
 
-    qb.orderBy('p.createdAt', 'DESC')
-      .skip(skip)
-      .take(limit);
+    qb.orderBy('p.createdAt', 'DESC').skip(skip).take(limit);
 
     const [data, total] = await qb.getManyAndCount();
 

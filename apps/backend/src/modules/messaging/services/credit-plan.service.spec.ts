@@ -37,9 +37,9 @@ describe('CreditPlanService', () => {
   };
 
   const mockSettings = {
-    creditPriceSms: 15.00,
-    creditPriceWhatsapp: 25.00,
-    creditPriceEmail: 2.00,
+    creditPriceSms: 15.0,
+    creditPriceWhatsapp: 25.0,
+    creditPriceEmail: 2.0,
   };
 
   beforeEach(async () => {
@@ -147,9 +147,15 @@ describe('CreditPlanService', () => {
     });
 
     it('should short-circuit and return wallet if payment reference has already been processed (idempotency)', async () => {
-      jest.spyOn(paymentsService, 'findByReference').mockResolvedValueOnce({ id: 'pmt-123' } as any);
+      jest
+        .spyOn(paymentsService, 'findByReference')
+        .mockResolvedValueOnce({ id: 'pmt-123' } as any);
 
-      const result = await service.purchase('branch-123', 'plan-123', 'ref-processed');
+      const result = await service.purchase(
+        'branch-123',
+        'plan-123',
+        'ref-processed',
+      );
 
       expect(creditService.addCredits).not.toHaveBeenCalled();
       expect(result).toEqual(mockWallet);
@@ -166,7 +172,13 @@ describe('CreditPlanService', () => {
         amount: 60000, // (10 SMS * 15) + (10 WA * 25) + (100 EM * 2) = 150 + 250 + 200 = 600 NGN = 60000 kobo
       });
 
-      const result = await service.purchaseCustom(branchId, reference, 10, 10, 100);
+      const result = await service.purchaseCustom(
+        branchId,
+        reference,
+        10,
+        10,
+        100,
+      );
 
       expect(creditService.addCredits).toHaveBeenCalledTimes(3);
       expect(paymentsService.recordPayment).toHaveBeenCalled();
@@ -198,9 +210,17 @@ describe('CreditPlanService', () => {
     });
 
     it('should short-circuit and return wallet if custom payment reference has already been processed (idempotency)', async () => {
-      jest.spyOn(paymentsService, 'findByReference').mockResolvedValueOnce({ id: 'pmt-456' } as any);
+      jest
+        .spyOn(paymentsService, 'findByReference')
+        .mockResolvedValueOnce({ id: 'pmt-456' } as any);
 
-      const result = await service.purchaseCustom('branch-123', 'ref-custom-processed', 10, 10, 10);
+      const result = await service.purchaseCustom(
+        'branch-123',
+        'ref-custom-processed',
+        10,
+        10,
+        10,
+      );
 
       expect(creditService.addCredits).not.toHaveBeenCalled();
       expect(result).toEqual(mockWallet);
@@ -211,9 +231,9 @@ describe('CreditPlanService', () => {
     it('should retrieve rates from setting service', async () => {
       const result = await service.getRates();
       expect(result).toEqual({
-        creditPriceSms: 15.00,
-        creditPriceWhatsapp: 25.00,
-        creditPriceEmail: 2.00,
+        creditPriceSms: 15.0,
+        creditPriceWhatsapp: 25.0,
+        creditPriceEmail: 2.0,
       });
     });
   });

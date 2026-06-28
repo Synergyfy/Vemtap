@@ -58,6 +58,7 @@ import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
 import { PosModule } from './modules/pos/pos.module';
 import { InventoryCountingModule } from './modules/inventory-counting/inventory-counting.module';
+import { LegalComplianceModule } from './modules/legal-compliance/legal-compliance.module';
 
 @Module({
   imports: [
@@ -172,6 +173,7 @@ import { InventoryCountingModule } from './modules/inventory-counting/inventory-
     FosRevenueAnalyticsModule,
     PosModule,
     InventoryCountingModule,
+    LegalComplianceModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

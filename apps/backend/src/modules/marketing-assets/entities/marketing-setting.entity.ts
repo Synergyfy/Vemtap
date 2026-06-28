@@ -16,7 +16,10 @@ export class MarketingSetting extends AbstractBaseEntity {
   @Column({ nullable: true })
   type?: string;
 
-  @ApiProperty({ example: 'Daily AI generation limit per business', nullable: true })
+  @ApiProperty({
+    example: 'Daily AI generation limit per business',
+    nullable: true,
+  })
   @Column({ nullable: true })
   description?: string;
 }

@@ -34,13 +34,19 @@ export class AnalyticsController {
   @Public()
   @Post('track/:assetId')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Log a scan or view event from QR codes (Public endpoint)' })
+  @ApiOperation({
+    summary: 'Log a scan or view event from QR codes (Public endpoint)',
+  })
   track(
     @Param('assetId') assetId: string,
     @Query('businessId') businessId: string,
     @Query('type') type: 'scan' | 'view',
   ) {
-    return this.analyticsService.trackEvent(assetId, businessId, type || 'scan');
+    return this.analyticsService.trackEvent(
+      assetId,
+      businessId,
+      type || 'scan',
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -59,6 +65,11 @@ export class AnalyticsController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.analyticsService.getAssetPerformance(id, req.user, startDate, endDate);
+    return this.analyticsService.getAssetPerformance(
+      id,
+      req.user,
+      startDate,
+      endDate,
+    );
   }
 }
