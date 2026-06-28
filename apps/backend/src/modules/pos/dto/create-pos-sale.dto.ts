@@ -11,6 +11,7 @@ import {
   IsEnum,
   IsBoolean,
   IsObject,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '../entities/pos-enums';
@@ -107,6 +108,16 @@ export class CreatePosSaleDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-client-offline-sale' })
+  @IsOptional()
+  @IsUUID()
+  clientRef?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-28T10:00:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  orderedAt?: string;
 
   @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()

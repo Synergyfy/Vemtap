@@ -24,6 +24,7 @@ describe('PosController', () => {
     getDashboard: jest.fn(),
     getTopProducts: jest.fn(),
     adjustStock: jest.fn(),
+    batchSyncSales: jest.fn(),
   };
 
   const mockUser: User = {
@@ -215,6 +216,19 @@ describe('PosController', () => {
         'prod-1',
         'bus-1',
         50,
+      );
+    });
+  });
+
+  describe('batchSyncSales', () => {
+    it('should call service.batchSyncSales with dtos and user', async () => {
+      const dtos = [{ items: [], payment: {} as any, branchId: 'br-1' }];
+
+      await controller.batchSyncSales(dtos, mockReq);
+
+      expect(mockPosService.batchSyncSales).toHaveBeenCalledWith(
+        dtos,
+        mockUser,
       );
     });
   });

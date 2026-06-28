@@ -511,7 +511,7 @@ describe('PosService', () => {
         status: CatalogueItemStatus.LOW_STOCK,
       });
 
-      const result = await service.adjustStock('prod-1', 'bus-1', 100);
+      await service.adjustStock('prod-1', 'bus-1', 100);
 
       expect(mockProductRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -846,6 +846,222 @@ describe('PosService', () => {
       expect(result[0].quantity).toBe(10);
       expect(result[1].productId).toBe('p1');
       expect(result[1].quantity).toBe(8);
+    });
+  });
+
+  describe('Offline Sync & Idempotency', () => {
+    let originalFindOne: unknown;
+
+    beforeEach(() => {
+      originalFindOne = mockSaleRepo.findOne;
+      mockSaleRepo.findOne = jest
+        .fn()
+        .mockImplementation(
+          (options: { where?: Record<string, string | null | undefined> }) => {
+            const where = options?.where;
+            if (!where) return Promise.resolve(null);
+
+            // If searching by clientRef (idempotency check)
+            if ('clientRef' in where) {
+              if (where.clientRef === 'existing-sale-uuid') {
+                return Promise.resolve({
+                  id: 'existing-sale-uuid',
+                  businessId: where.businessId,
+                  clientRef: where.clientRef,
+                } as unknown as PosSale);
+              }
+              return Promise.resolve(null);
+            }
+
+            // If searching by id (findOneSale)
+            return Promise.resolve({
+              id: where.id || 'sale-1',
+              businessId: where.businessId,
+              clientRef: where.clientRef || null,
+              items: [],
+              splitPayments: [],
+            } as unknown as PosSale);
+          },
+        );
+    });
+
+    afterEach(() => {
+      mockSaleRepo.findOne = originalFindOne;
+    });
+
+    it('should complete sale and save clientRef and orderedAt when provided', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockProductRepo.findOne.mockResolvedValue({
+        id: 'prod-1',
+        name: 'Product 1',
+        price: 5000,
+        stockQuantity: 10,
+        enableLoyaltyPoints: false,
+      });
+
+      const clientRef = 'e3b8a36c-9411-4770-b1ff-92135c345388';
+      const orderedAtStr = '2026-06-28T10:00:00.000Z';
+
+      const result = await service.completeSale(
+        {
+          items: [{ productId: 'prod-1', quantity: 1, discount: 0 }],
+          payment: {
+            method: PaymentMethod.CASH,
+            amountPaid: 5000,
+            change: 0,
+          },
+          branchId: 'br-1',
+          clientRef,
+          orderedAt: orderedAtStr,
+        },
+        {
+          id: 'cashier-1',
+          businessId: 'bus-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+        } as User,
+      );
+
+      expect(result).toBeDefined();
+      expect(mockSaleRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientRef,
+          orderedAt: new Date(orderedAtStr),
+        }),
+      );
+    });
+
+    it('should return existing sale if clientRef already exists for the business (idempotency)', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+
+      const clientRef = 'existing-sale-uuid';
+
+      const result = await service.completeSale(
+        {
+          items: [{ productId: 'prod-1', quantity: 1, discount: 0 }],
+          payment: {
+            method: PaymentMethod.CASH,
+            amountPaid: 5000,
+            change: 0,
+          },
+          branchId: 'br-1',
+          clientRef,
+        },
+        {
+          id: 'cashier-1',
+          businessId: 'bus-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+        } as User,
+      );
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe('existing-sale-uuid');
+    });
+
+    it('should throw BadRequestException if branch does not belong to the cashier business', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-other',
+      });
+
+      await expect(
+        service.completeSale(
+          {
+            items: [{ productId: 'prod-1', quantity: 1 }],
+            payment: {
+              method: PaymentMethod.CASH,
+              amountPaid: 5000,
+            },
+            branchId: 'br-1',
+          },
+          { id: 'cashier-1', businessId: 'bus-1' } as User,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('batchSyncSales', () => {
+    let originalFindOne: unknown;
+
+    beforeEach(() => {
+      originalFindOne = mockSaleRepo.findOne;
+      mockSaleRepo.findOne = jest
+        .fn()
+        .mockImplementation(
+          (options: { where?: Record<string, string | null | undefined> }) => {
+            const where = options?.where;
+            if (!where) return Promise.resolve(null);
+
+            // If searching by clientRef (idempotency check)
+            if ('clientRef' in where) {
+              return Promise.resolve(null);
+            }
+
+            // If searching by id (findOneSale)
+            return Promise.resolve({
+              id: where.id || 'sale-1',
+              businessId: where.businessId,
+              clientRef: where.clientRef || null,
+              items: [],
+              splitPayments: [],
+            } as unknown as PosSale);
+          },
+        );
+    });
+
+    afterEach(() => {
+      mockSaleRepo.findOne = originalFindOne;
+    });
+
+    it('should process multiple sales and return status list', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockProductRepo.findOne.mockResolvedValue({
+        id: 'prod-1',
+        name: 'Product 1',
+        price: 5000,
+        stockQuantity: 10,
+      });
+
+      const dtos = [
+        {
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          payment: { method: PaymentMethod.CASH, amountPaid: 5000 },
+          branchId: 'br-1',
+          clientRef: 'ref-1',
+        },
+        {
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          payment: { method: PaymentMethod.CASH, amountPaid: 5000 },
+          branchId: 'br-1',
+          clientRef: 'ref-2',
+        },
+      ];
+
+      const results = await service.batchSyncSales(dtos, {
+        id: 'cashier-1',
+        businessId: 'bus-1',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+      } as User);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].success).toBe(true);
+      expect(results[1].success).toBe(true);
+      expect(results[0].clientRef).toBe('ref-1');
+      expect(results[1].clientRef).toBe('ref-2');
     });
   });
 });
