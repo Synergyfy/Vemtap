@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Search, LayoutGrid, Loader2, ScanLine } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import POSPageHeader from './shared/POSPageHeader';
 import BarcodeScanner from '@/components/dashboard/catalogue/BarcodeScanner';
 import toast from 'react-hot-toast';
+import { cacheProducts } from '@/lib/offline/db';
 
 interface POSHomeScreenProps {
   onOpenCart?: () => void;
@@ -39,6 +40,33 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   });
 
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  // Cache products in IndexedDB for offline use
+  useEffect(() => {
+    if (products.length > 0 && navigator.onLine) {
+      const offlineProducts = products.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        description: p.description,
+        categoryId: p.categoryId,
+        mainImage: p.mainImage,
+        galleryImages: p.galleryImages,
+        sku: p.sku,
+        barcode: p.barcode,
+        weight: p.weight,
+        dimensions: p.dimensions,
+        stockQuantity: p.stockQuantity,
+        discountType: p.discountType,
+        discountValue: p.discountValue,
+        enableLoyaltyPoints: p.enableLoyaltyPoints,
+        loyaltyPointsValue: p.loyaltyPointsValue || p.loyaltyPoints,
+        allowBackOrder: p.allowBackOrder,
+        cachedAt: Date.now(),
+      }));
+      cacheProducts(offlineProducts);
+    }
+  }, [products]);
 
   const handleBarcodeScan = (product: any) => {
     if (product) {

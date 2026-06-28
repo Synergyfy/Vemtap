@@ -9,10 +9,12 @@ import { useCreatePosSale } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift, X } from 'lucide-react';
+import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift, X, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 import { CustomerSelectorModal } from '@/components/dashboard/pos/CustomerSelectorModal';
+import OfflineBanner from '@/components/dashboard/pos/OfflineBanner';
+import { saveOfflineOrder, addToSyncQueue } from '@/lib/offline/db';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -52,7 +54,7 @@ export default function PaymentScreen() {
     return null;
   }
 
-  const executePayment = () => {
+  const executePayment = async () => {
     if (!selectedMethod || !activeBranchId) return;
 
     const items = cart.map(item => ({
@@ -74,34 +76,108 @@ export default function PaymentScreen() {
       splitDetails,
     };
 
-    createSale.mutate(
-      {
-        items,
-        payment,
+    const salePayload = {
+      items,
+      payment,
+      branchId: activeBranchId,
+      customerId: attachedCustomer?.id,
+      cartDiscountAmount: cartDiscount ? (cartDiscount.type === 'percentage' ? getCartDiscountAmount() : cartDiscount.value) : undefined,
+      hideCustomerInfoOnReceipt,
+    };
+
+    const awardPoints = () => {
+      if (attachedCustomer) {
+        const autoPoints = cart.reduce((sum, item) =>
+          item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
+        const totalPoints = autoPoints + manualLoyaltyPoints;
+        if (totalPoints > 0) {
+          const { addPoints, setLastEarned } = usePosLoyaltyStore.getState();
+          addPoints(attachedCustomer.id, totalPoints);
+          setLastEarned(attachedCustomer.id, totalPoints);
+        }
+      }
+    };
+
+    const completeOffline = async () => {
+      const orderId = uuidv4();
+      const offlineOrder = {
+        id: orderId,
+        items: cart.map(item => ({
+          productId: item.productId,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          discount: item.discount,
+        })),
+        total,
+        subtotal: getCartSubtotal(),
+        discount: getCartDiscountAmount(),
+        paymentMethod: selectedMethod!,
+        amountReceived: payment.amountPaid,
+        change: payment.change,
+        customer: attachedCustomer ? { id: attachedCustomer.id, name: attachedCustomer.name, phone: attachedCustomer.phone } : null,
+        cashierId: cashier?.id,
+        cashierName: cashier ? `${cashier.firstName} ${cashier.lastName}` : undefined,
         branchId: activeBranchId,
-        customerId: attachedCustomer?.id,
-        cartDiscountAmount: cartDiscount ? (cartDiscount.type === 'percentage' ? getCartDiscountAmount() : cartDiscount.value) : undefined,
+        createdAt: new Date().toISOString(),
+        synced: false,
+      };
+      await saveOfflineOrder(offlineOrder);
+      await addToSyncQueue({
+        id: orderId,
+        type: 'pos-sale',
+        payload: salePayload,
+        createdAt: new Date().toISOString(),
+        retries: 0,
+      });
+      setLastCompletedSale({
+        id: orderId,
+        receiptNumber: `OFFLINE-${orderId.slice(0, 8).toUpperCase()}`,
+        businessId: '',
+        branchId: activeBranchId!,
+        cashierId: cashier?.id ?? '',
+        cashierName: cashier ? `${cashier.firstName} ${cashier.lastName}` : '',
+        customerId: attachedCustomer?.id ?? null,
+        customer: attachedCustomer ? {
+          id: attachedCustomer.id,
+          firstName: attachedCustomer.name.split(' ')[0] || '',
+          lastName: attachedCustomer.name.split(' ').slice(1).join(' ') || '',
+          phone: attachedCustomer.phone,
+          email: attachedCustomer.email || '',
+        } : null,
+        subtotal: getCartSubtotal(),
+        discountAmount: getCartDiscountAmount(),
+        tax: 0,
+        total,
+        paymentMethod: selectedMethod!,
+        amountPaid: payment.amountPaid,
+        change: payment.change,
         hideCustomerInfoOnReceipt,
+        notes: null,
+        status: 'completed' as any,
+        items: [],
+        splitPayments: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      awardPoints();
+      clearCart();
+      router.push('/dashboard/pos/success');
+    };
+
+    createSale.mutate(salePayload, {
+      onSuccess: (sale) => {
+        setLastCompletedSale(sale);
+        awardPoints();
+        clearCart();
+        router.push('/dashboard/pos/success');
       },
-      {
-         onSuccess: (sale) => {
-           setLastCompletedSale(sale);
-           // Award loyalty points
-           if (attachedCustomer) {
-             const autoPoints = cart.reduce((sum, item) =>
-               item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
-             const totalPoints = autoPoints + manualLoyaltyPoints;
-             if (totalPoints > 0) {
-               const { addPoints, setLastEarned } = usePosLoyaltyStore.getState();
-               addPoints(attachedCustomer.id, totalPoints);
-               setLastEarned(attachedCustomer.id, totalPoints);
-             }
-           }
-           clearCart();
-           router.push('/dashboard/pos/success');
-         },
-       }
-    );
+      onError: async () => {
+        if (!navigator.onLine) {
+          await completeOffline();
+        }
+      },
+    });
   };
 
   const handleComplete = () => {

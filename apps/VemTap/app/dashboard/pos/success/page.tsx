@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { usePosStore } from '@/store/usePosStore';
 import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
-import { CheckCircle2, Printer, MessageCircle, Mail, ArrowRight, Share2, Coins } from 'lucide-react';
+import { CheckCircle2, Printer, MessageCircle, Mail, ArrowRight, Share2, Coins, WifiOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -49,6 +49,19 @@ export default function POSSuccessScreen() {
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-8">
             Receipt: {lastCompletedSale.receiptNumber}
           </p>
+
+          {/* Offline order indicator */}
+          {lastCompletedSale.receiptNumber.startsWith('OFFLINE-') && (
+            <div className="mb-8 p-4 rounded-2xl bg-amber-50/70 border border-amber-100 flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <WifiOff size={20} className="text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-black text-amber-800">Order saved offline</p>
+                <p className="text-[10px] font-medium text-amber-600">This order will sync automatically when you&apos;re back online</p>
+              </div>
+            </div>
+          )}
 
           {/* Loyalty Points Earned */}
           {(() => {
