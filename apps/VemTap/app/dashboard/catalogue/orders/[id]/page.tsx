@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
     OrderDetailsSummary, 
@@ -10,6 +10,7 @@ import {
     OrderManagementActions
 } from '@/components/dashboard/catalogue/OrderDetails';
 import { useCatalogueOrderDetails, useUpdateCatalogueOrderStatus, OrderStatus } from '@/services/catalogue/hooks';
+import CatalogueRefundModal from '@/components/dashboard/catalogue/CatalogueRefundModal';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ export default function OrderDetailsPage() {
     const orderId = params?.id || '';
     const { data: order, isLoading } = useCatalogueOrderDetails(orderId);
     const updateStatusMutation = useUpdateCatalogueOrderStatus();
+    const [showRefundModal, setShowRefundModal] = useState(false);
 
     const handleStatusChange = async (newStatus: string) => {
         try {
@@ -31,6 +33,26 @@ export default function OrderDetailsPage() {
             toast.success('Order status updated successfully');
         } catch (error: any) {
             toast.error(error.message || 'Failed to update order status');
+        }
+    };
+
+    const handleRefund = async (reason: string, refundItems: { itemId: string; refundQuantity: number }[]) => {
+        try {
+            const allFull = order?.items?.every(item => {
+                const found = refundItems.find(r => r.itemId === (item.itemId || item.offerId));
+                return found && found.refundQuantity === item.quantity;
+            });
+            const status: OrderStatus = allFull ? 'refunded' : 'partial_refund';
+            await updateStatusMutation.mutateAsync({
+                id: orderId,
+                status,
+                reason: reason || undefined,
+                refundItems,
+            });
+            toast.success('Refund processed successfully');
+            setShowRefundModal(false);
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to process refund');
         }
     };
 
@@ -87,7 +109,18 @@ export default function OrderDetailsPage() {
                 status={order.status} 
                 onStatusChange={handleStatusChange} 
                 isPending={updateStatusMutation.isPending}
+                onRefund={order.status === 'completed' ? () => setShowRefundModal(true) : undefined}
             />
+
+            {order && (
+                <CatalogueRefundModal
+                    isOpen={showRefundModal}
+                    onClose={() => setShowRefundModal(false)}
+                    order={order}
+                    onRefund={handleRefund}
+                    isPending={updateStatusMutation.isPending}
+                />
+            )}
         </div>
     );
 }

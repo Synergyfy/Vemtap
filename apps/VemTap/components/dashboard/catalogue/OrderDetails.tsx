@@ -1,13 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
     Phone, Mail, MessageSquare, Calendar, 
     ChevronRight, MapPin, Star, Clock, 
     ShoppingBag, Info, User, Tag, Edit3,
     ArrowRight, CheckCircle2, ShieldCheck,
     MoreHorizontal, Smartphone, MoreVertical,
-    Check, Play, Send, FileDown, Printer, XCircle
+    Check, Play, Send, FileDown, Printer, XCircle,
+    RotateCcw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -181,7 +182,7 @@ export function OrderTimeline({ status, orderCreatedAt }: { status: string; orde
     );
 }
 
-export function OrderManagementActions({ status, onStatusChange, isPending }: { status: string; onStatusChange: (status: string) => void; isPending?: boolean }) {
+export function OrderManagementActions({ status, onStatusChange, isPending, onRefund }: { status: string; onStatusChange: (status: string) => void; isPending?: boolean; onRefund?: () => void }) {
     const displayStatus = status === 'new' ? 'Pending' : status === 'processing' ? 'Active' : status === 'completed' ? 'Completed' : status;
 
     return (
@@ -210,14 +211,26 @@ export function OrderManagementActions({ status, onStatusChange, isPending }: { 
                         Mark Completed
                     </Button>
                 )}
-                <Button 
-                    variant="ghost" 
-                    disabled={isPending}
-                    onClick={() => onStatusChange('cancelled')}
-                    className="h-14 px-6 rounded-2xl bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-400/10"
-                >
-                    <XCircle size={20} />
-                </Button>
+                {status === 'completed' && onRefund && (
+                    <Button 
+                        disabled={isPending}
+                        onClick={onRefund}
+                        className="h-14 flex-1 rounded-2xl bg-amber-500 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                    >
+                        <RotateCcw size={16} className="mr-2" />
+                        Refund
+                    </Button>
+                )}
+                {(status === 'new' || status === 'processing') && (
+                    <Button 
+                        variant="ghost" 
+                        disabled={isPending}
+                        onClick={() => onStatusChange('cancelled')}
+                        className="h-14 px-6 rounded-2xl bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-400/10"
+                    >
+                        <XCircle size={20} />
+                    </Button>
+                )}
             </div>
         </div>
     );

@@ -6,7 +6,7 @@ import { Reward } from '../loyalty/types';
 
 export type CatalogueItemStatus = 'active' | 'inactive' | 'out_of_stock' | 'suspended';
 export type CatalogueItemType = 'product' | 'service';
-export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'rejected';
+export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'rejected' | 'refunded' | 'partial_refund';
 export type DiscountType = 'percentage' | 'fixed' | 'none';
 export type CatalogueOfferPricingType = 'sum' | 'percentage_discount' | 'fixed_discount_price';
 export type CatalogueOfferStatus = 'active' | 'inactive';
@@ -276,8 +276,16 @@ export const getOrderDetails = async (id: string) => {
     return await api.get(`/catalogue/orders/${id}`);
 };
 
-export const updateOrderStatus = async (id: string, status: OrderStatus) => {
-    return await api.patch(`/catalogue/orders/${id}/status`, { status });
+export interface CatalogueRefundItem {
+    itemId: string;
+    refundQuantity: number;
+}
+
+export const updateOrderStatus = async (id: string, status: OrderStatus, reason?: string, refundItems?: CatalogueRefundItem[]) => {
+    const body: any = { status };
+    if (reason) body.reason = reason;
+    if (refundItems && refundItems.length > 0) body.refundItems = refundItems;
+    return await api.patch(`/catalogue/orders/${id}/status`, body);
 };
 
 export const createOrder = async (data: CreateOrderDto) => {
@@ -465,7 +473,7 @@ export const useCatalogueOrderDetails = (id: string) => {
 export const useUpdateCatalogueOrderStatus = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, status }: { id: string, status: OrderStatus }) => updateOrderStatus(id, status),
+        mutationFn: ({ id, status, reason, refundItems }: { id: string, status: OrderStatus, reason?: string, refundItems?: CatalogueRefundItem[] }) => updateOrderStatus(id, status, reason, refundItems),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'orders'] });
         },

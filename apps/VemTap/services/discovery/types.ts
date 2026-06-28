@@ -127,3 +127,38 @@ export interface NearbyPartner {
   distance: string;
   distanceInMeters?: number;
 }
+
+export type PartnershipStatus = 'Pending' | 'Accepted' | 'Declined';
+
+export interface PartnershipBranch {
+  id: string;
+  name: string;
+  business?: {
+    id: string;
+    name: string;
+    category?: string;
+  };
+}
+
+export interface PartnershipInvitation {
+  id: string;
+  initiatorBranchId: string;
+  recipientBranchId: string;
+  initiatorBranch: PartnershipBranch;
+  recipientBranch: PartnershipBranch;
+  status: PartnershipStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedPartnershipInvitationsResponse {
+  data: PartnershipInvitation[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface InvitePartnershipDto {
+  initiatorBranchId: string;
+  recipientBranchId: string;
+}
