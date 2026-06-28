@@ -21,7 +21,8 @@ export interface POSSettingsState {
   newOrderAlert: boolean;
   staffActivityAlerts: boolean;
 
-  updateSettings: (updates: Partial<Omit<POSSettingsState, 'updateSettings'>>) => void;
+  updateSettings: (updates: Partial<Omit<POSSettingsState, 'updateSettings' | 'loadFromBusiness' | 'resetStore'>>) => void;
+  loadFromBusiness: (business: { name?: string; address?: string; phone?: string; posSettings?: { loyaltyEnabled?: boolean; loyaltyRedeemThreshold?: number } }) => void;
   resetStore: () => void;
 }
 
@@ -61,6 +62,14 @@ export const usePosSettingsStore = create<POSSettingsState>()(
         }
         return merged;
       }),
+      loadFromBusiness: (business) => set((state) => ({
+        ...state,
+        ...(business.name ? { businessName: business.name } : {}),
+        ...(business.address ? { businessAddress: business.address } : {}),
+        ...(business.phone ? { phoneNumber: business.phone } : {}),
+        ...(business.posSettings?.loyaltyEnabled !== undefined ? { loyaltyEnabled: business.posSettings.loyaltyEnabled } : {}),
+        ...(business.posSettings?.loyaltyRedeemThreshold !== undefined ? { loyaltyRedeemThreshold: business.posSettings.loyaltyRedeemThreshold } : {}),
+      })),
       resetStore: () => set({ ...DEFAULT_SETTINGS }),
     }),
     {

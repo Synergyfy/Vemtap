@@ -198,3 +198,14 @@ export interface RegisterHistoryQuery {
   dateFrom?: string;
   dateTo?: string;
 }
+
+export interface RefundItemDto {
+  saleItemId: string;
+  quantity: number;
+}
+
+export interface UpdatePosSaleStatusDto {
+  status: PosSaleStatus;
+  reason?: string;
+  refundItems?: RefundItemDto[];
+}

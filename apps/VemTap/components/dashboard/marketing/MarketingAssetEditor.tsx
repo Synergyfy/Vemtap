@@ -490,40 +490,42 @@ export default function MarketingAssetEditor({
       {/* Main Canvas Area */}
       <div
         ref={containerRef}
-        className="flex-1 bg-gray-200/50 rounded-[3rem] p-8 md:p-12 flex items-start justify-center min-h-[600px] relative overflow-auto shadow-inner border-4 border-white"
+        className="flex-1 bg-gray-200/50 rounded-[3rem] p-8 md:p-12 flex flex-col items-center min-h-[600px] relative overflow-auto shadow-inner border-4 border-white"
         onMouseDown={() => setSelectedElementId(null)}
       >
         {/* Safe Print Zone Boundary Indicators */}
         <div className="absolute inset-0 pointer-events-none opacity-20 border-[24px] border-dashed border-gray-400" />
 
         {/* Zoom Controls */}
-        <div className="sticky top-0 z-[60] flex items-center gap-1 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-100 p-1.5">
-          <button
-            onClick={() => setZoom(z => Math.max(minZoom, z - zoomStep))}
-            disabled={zoom <= minZoom}
-            className="size-8 rounded-xl hover:bg-gray-100 text-gray-600 disabled:opacity-30 flex items-center justify-center transition-all text-sm font-black"
-            title="Zoom Out"
-          >
-            −
-          </button>
-          <span className="text-[10px] font-black text-gray-800 min-w-[40px] text-center tabular-nums">{zoom}%</span>
-          <button
-            onClick={() => setZoom(z => Math.min(maxZoom, z + zoomStep))}
-            disabled={zoom >= maxZoom}
-            className="size-8 rounded-xl hover:bg-gray-100 text-gray-600 disabled:opacity-30 flex items-center justify-center transition-all text-sm font-black"
-            title="Zoom In"
-          >
-            +
-          </button>
-          <div className="w-px h-5 bg-gray-200 mx-1" />
-          <button
-            onClick={() => setZoom(100)}
-            className="px-2.5 h-7 rounded-xl hover:bg-gray-100 text-gray-500 text-[9px] font-black uppercase tracking-widest transition-all"
-          >
-            Fit
-          </button>
-          <div className="text-[9px] font-bold text-gray-400 ml-1 whitespace-nowrap">
-            {designW || 1080}×{designH || 1350}
+        <div className="sticky top-0 z-[60] mb-4">
+          <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-100 p-1.5">
+            <button
+              onClick={() => setZoom(z => Math.max(minZoom, z - zoomStep))}
+              disabled={zoom <= minZoom}
+              className="size-8 rounded-xl hover:bg-gray-100 text-gray-600 disabled:opacity-30 flex items-center justify-center transition-all text-sm font-black"
+              title="Zoom Out"
+            >
+              −
+            </button>
+            <span className="text-[10px] font-black text-gray-800 min-w-[40px] text-center tabular-nums">{zoom}%</span>
+            <button
+              onClick={() => setZoom(z => Math.min(maxZoom, z + zoomStep))}
+              disabled={zoom >= maxZoom}
+              className="size-8 rounded-xl hover:bg-gray-100 text-gray-600 disabled:opacity-30 flex items-center justify-center transition-all text-sm font-black"
+              title="Zoom In"
+            >
+              +
+            </button>
+            <div className="w-px h-5 bg-gray-200 mx-1" />
+            <button
+              onClick={() => setZoom(100)}
+              className="px-2.5 h-7 rounded-xl hover:bg-gray-100 text-gray-500 text-[9px] font-black uppercase tracking-widest transition-all"
+            >
+              Fit
+            </button>
+            <div className="text-[9px] font-bold text-gray-400 ml-1 whitespace-nowrap">
+              {designW || 1080}×{designH || 1350}
+            </div>
           </div>
         </div>
 

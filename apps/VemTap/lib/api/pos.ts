@@ -6,6 +6,7 @@ import type {
   PosSaleStatus,
   PosSalesQuery,
   RegisterHistoryQuery,
+  UpdatePosSaleStatusDto,
 } from '@/services/pos/types';
 
 export const posApi = {
@@ -18,8 +19,8 @@ export const posApi = {
   createSale: (dto: CreatePosSaleDto) =>
     api.post('/pos/sales', dto),
 
-  updateSaleStatus: (id: string, status: PosSaleStatus) =>
-    api.patch(`/pos/sales/${id}/status`, { status }),
+  updateSaleStatus: (id: string, dto: UpdatePosSaleStatusDto) =>
+    api.patch(`/pos/sales/${id}/status`, dto),
 
   holdSale: (dto: HoldPosSaleDto) =>
     api.post('/pos/sales/hold', dto),

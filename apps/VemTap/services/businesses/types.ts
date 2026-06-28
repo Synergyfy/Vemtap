@@ -120,4 +120,8 @@ export interface Business {
     idDocument?: string;
     registrationNumber?: string;
     cacType?: string;
+    posSettings?: {
+        loyaltyEnabled?: boolean;
+        loyaltyRedeemThreshold?: number;
+    };
 }
