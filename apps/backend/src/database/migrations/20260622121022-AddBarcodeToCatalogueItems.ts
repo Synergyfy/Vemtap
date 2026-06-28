@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddBarcodeToCatalogueItems20260622121022
-  implements MigrationInterface
-{
+export class AddBarcodeToCatalogueItems20260622121022 implements MigrationInterface {
   name = 'AddBarcodeToCatalogueItems20260622121022';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

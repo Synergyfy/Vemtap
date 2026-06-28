@@ -45,7 +45,8 @@ export class BannersService {
 
   async findOne(id: string): Promise<Banner> {
     const banner = await this.bannerRepository.findOne({ where: { id } });
-    if (!banner) throw new NotFoundException(`Banner with id "${id}" not found`);
+    if (!banner)
+      throw new NotFoundException(`Banner with id "${id}" not found`);
     return banner;
   }
 
@@ -99,7 +100,8 @@ export class BannersService {
   private async clearCache() {
     try {
       const cacheMgr = this.cacheManager as any;
-      const store = cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
+      const store =
+        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
       if (store && typeof store.keys === 'function') {
         const keys = await store.keys('banners:*');
         for (const key of keys) {
@@ -110,7 +112,9 @@ export class BannersService {
         await this.cacheManager.del(CACHE_KEY_ALL);
       }
     } catch (error) {
-      this.logger.error(`Failed to clear banner cache: ${(error as Error).message}`);
+      this.logger.error(
+        `Failed to clear banner cache: ${(error as Error).message}`,
+      );
     }
   }
 }

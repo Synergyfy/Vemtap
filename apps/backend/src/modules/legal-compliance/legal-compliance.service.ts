@@ -7,7 +7,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LegalAgreement } from './entities/legal-agreement.entity';
 import { LegalAgreementAcceptance } from './entities/legal-agreement-acceptance.entity';
-import { CreateAgreementDto, UpdateAgreementDto } from './dto/create-agreement.dto';
+import {
+  CreateAgreementDto,
+  UpdateAgreementDto,
+} from './dto/create-agreement.dto';
 import {
   AgreementResponseDto,
   AgreementHistoryResponseDto,
@@ -34,9 +37,7 @@ export class LegalComplianceService {
       relations: ['agreement'],
     });
 
-    const acceptanceMap = new Map(
-      acceptances.map((a) => [a.agreementId, a]),
-    );
+    const acceptanceMap = new Map(acceptances.map((a) => [a.agreementId, a]));
 
     return agreements.map((agreement) => {
       const acceptance = acceptanceMap.get(agreement.id);
@@ -189,10 +190,7 @@ export class LegalComplianceService {
     });
   }
 
-  async update(
-    id: string,
-    dto: UpdateAgreementDto,
-  ): Promise<LegalAgreement> {
+  async update(id: string, dto: UpdateAgreementDto): Promise<LegalAgreement> {
     const agreement = await this.agreementRepository.findOne({
       where: { id },
       withDeleted: true,
@@ -221,9 +219,7 @@ export class LegalComplianceService {
     await this.agreementRepository.softDelete(id);
   }
 
-  private parseUserAgent(
-    ua?: string,
-  ): { browser: string; os: string } {
+  private parseUserAgent(ua?: string): { browser: string; os: string } {
     if (!ua) return { browser: 'Unknown', os: 'Unknown' };
 
     let browser = 'Unknown';

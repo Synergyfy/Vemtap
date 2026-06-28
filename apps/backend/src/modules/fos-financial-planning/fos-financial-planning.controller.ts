@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FosFinancialPlanningService } from './fos-financial-planning.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -23,9 +16,7 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('financial-planning')
 export class FosFinancialPlanningController {
-  constructor(
-    private readonly planningService: FosFinancialPlanningService,
-  ) {}
+  constructor(private readonly planningService: FosFinancialPlanningService) {}
 
   @Post('targets')
   @Roles(UserRole.ADMIN)
@@ -43,7 +34,9 @@ export class FosFinancialPlanningController {
 
   @Post('scenarios')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Simulate financial scenarios (best/expected/worst)' })
+  @ApiOperation({
+    summary: 'Simulate financial scenarios (best/expected/worst)',
+  })
   async simulateScenario(@Body() dto: ScenarioSimulationRequestDto) {
     return this.planningService.simulateScenario(dto);
   }

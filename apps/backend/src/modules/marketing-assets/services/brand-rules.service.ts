@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MarketingBrandRule } from '../entities/marketing-brand-rule.entity';
@@ -16,7 +20,9 @@ export class BrandRulesService {
   private async resolveBusinessId(user: User): Promise<string> {
     let businessId = user.businessId || user.ownedBusiness?.id;
     if (!businessId && user.role === 'Admin') {
-      const firstBusiness = await this.ruleRepo.manager.getRepository(Business).findOne({ where: {} });
+      const firstBusiness = await this.ruleRepo.manager
+        .getRepository(Business)
+        .findOne({ where: {} });
       if (firstBusiness) {
         businessId = firstBusiness.id;
       }
@@ -37,7 +43,10 @@ export class BrandRulesService {
     return rules;
   }
 
-  async saveRules(user: User, dto: SaveBrandRuleDto): Promise<MarketingBrandRule> {
+  async saveRules(
+    user: User,
+    dto: SaveBrandRuleDto,
+  ): Promise<MarketingBrandRule> {
     const businessId = await this.resolveBusinessId(user);
     let rules = await this.ruleRepo.findOne({ where: { businessId } });
     if (!rules) {
@@ -47,7 +56,9 @@ export class BrandRulesService {
     return this.ruleRepo.save(rules);
   }
 
-  async getRulesByBusinessId(businessId: string): Promise<MarketingBrandRule | null> {
+  async getRulesByBusinessId(
+    businessId: string,
+  ): Promise<MarketingBrandRule | null> {
     return this.ruleRepo.findOne({ where: { businessId } });
   }
 }

@@ -38,7 +38,8 @@ export class GeocodingProcessor extends WorkerHost {
   }
 
   async process(job: Job<GeocodingJobData, any, string>): Promise<void> {
-    const { businessId, branchId, addressLine, city, state, country } = job.data;
+    const { businessId, branchId, addressLine, city, state, country } =
+      job.data;
 
     const branch = await this.branchRepository.findOne({
       where: { id: branchId },
@@ -46,7 +47,9 @@ export class GeocodingProcessor extends WorkerHost {
     });
 
     if (branch?.latitude && branch?.longitude) {
-      this.logger.log(`Branch ${branchId} already has coordinates — skipping geocoding`);
+      this.logger.log(
+        `Branch ${branchId} already has coordinates — skipping geocoding`,
+      );
       return;
     }
 
@@ -70,7 +73,9 @@ export class GeocodingProcessor extends WorkerHost {
         lng = result.lng;
         this.logger.log(`Geocoded business ${businessId} via Google Maps`);
       } catch (err) {
-        this.logger.warn(`Google Maps geocoding failed for ${businessId}, falling back to Nominatim: ${err.message}`);
+        this.logger.warn(
+          `Google Maps geocoding failed for ${businessId}, falling back to Nominatim: ${err.message}`,
+        );
         const result = await this.geocodeWithNominatim(fullAddress);
         lat = result.lat;
         lng = result.lng;
@@ -81,16 +86,28 @@ export class GeocodingProcessor extends WorkerHost {
       lng = result.lng;
     }
 
-    const promises = [this.branchRepository.update(branchId, { latitude: lat, longitude: lng })];
+    const promises = [
+      this.branchRepository.update(branchId, { latitude: lat, longitude: lng }),
+    ];
     if (job.data.updateBusiness !== false) {
-      promises.push(this.businessesRepository.update(businessId, { latitude: lat, longitude: lng }));
+      promises.push(
+        this.businessesRepository.update(businessId, {
+          latitude: lat,
+          longitude: lng,
+        }),
+      );
     }
     await Promise.all(promises);
 
-    this.logger.log(`Updated lat/lng for business ${businessId} (${lat}, ${lng})`);
+    this.logger.log(
+      `Updated lat/lng for business ${businessId} (${lat}, ${lng})`,
+    );
   }
 
-  private async geocodeWithGoogle(address: string, apiKey: string): Promise<{ lat: number; lng: number }> {
+  private async geocodeWithGoogle(
+    address: string,
+    apiKey: string,
+  ): Promise<{ lat: number; lng: number }> {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
     const res = await fetch(url);
     const data = await res.json();
@@ -103,7 +120,9 @@ export class GeocodingProcessor extends WorkerHost {
     return { lat, lng };
   }
 
-  private async geocodeWithNominatim(address: string): Promise<{ lat: number; lng: number }> {
+  private async geocodeWithNominatim(
+    address: string,
+  ): Promise<{ lat: number; lng: number }> {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
       { headers: { 'Accept-Language': 'en', 'User-Agent': 'VemTap/1.0' } },

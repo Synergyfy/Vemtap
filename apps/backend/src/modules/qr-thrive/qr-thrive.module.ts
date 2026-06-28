@@ -32,7 +32,11 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
     forwardRef(() => BranchesModule),
     forwardRef(() => SubscriptionsModule),
   ],
-  providers: [QrThriveService, QrThriveEncryptionService, SubscriptionTokenService],
+  providers: [
+    QrThriveService,
+    QrThriveEncryptionService,
+    SubscriptionTokenService,
+  ],
   controllers: [QrThriveController, QrThriveCallbackController],
   exports: [QrThriveService, SubscriptionTokenService],
 })

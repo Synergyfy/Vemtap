@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsObject, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsObject,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateAssetDto {
   @ApiProperty({ example: 'Summer BBQ Table Tent' })
@@ -22,7 +28,10 @@ export class CreateAssetDto {
   @IsNotEmpty()
   type: string;
 
-  @ApiProperty({ description: 'Asset specific customized variables, text configurations and style overrides' })
+  @ApiProperty({
+    description:
+      'Asset specific customized variables, text configurations and style overrides',
+  })
   @IsObject()
   @IsNotEmpty()
   customConfig: any;
@@ -32,12 +41,18 @@ export class CreateAssetDto {
   @IsNotEmpty()
   qrCodeContent: string;
 
-  @ApiProperty({ description: 'QR Code display styles custom to this asset', required: false })
+  @ApiProperty({
+    description: 'QR Code display styles custom to this asset',
+    required: false,
+  })
   @IsObject()
   @IsOptional()
   qrCodeConfig?: any;
 
-  @ApiProperty({ example: 'https://cdn.vemtap.com/assets/my-table-tent.png', required: false })
+  @ApiProperty({
+    example: 'https://cdn.vemtap.com/assets/my-table-tent.png',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   thumbnailUrl?: string;

@@ -2,7 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FosFinancialPlanningService } from './fos-financial-planning.service';
-import { FinancialTarget, TargetPeriodType } from './entities/financial-target.entity';
+import {
+  FinancialTarget,
+  TargetPeriodType,
+} from './entities/financial-target.entity';
 import {
   FinancialTransaction,
   FosTransactionType,
@@ -144,8 +147,12 @@ describe('FosFinancialPlanningService', () => {
       expect(result.best.monthlyBreakdown.length).toBe(12);
       expect(result.expected.monthlyBreakdown.length).toBe(12);
       expect(result.worst.monthlyBreakdown.length).toBe(12);
-      expect(result.best.totalProfit).toBeGreaterThan(result.expected.totalProfit);
-      expect(result.expected.totalProfit).toBeGreaterThan(result.worst.totalProfit);
+      expect(result.best.totalProfit).toBeGreaterThan(
+        result.expected.totalProfit,
+      );
+      expect(result.expected.totalProfit).toBeGreaterThan(
+        result.worst.totalProfit,
+      );
     });
 
     it('should handle single month projection', async () => {

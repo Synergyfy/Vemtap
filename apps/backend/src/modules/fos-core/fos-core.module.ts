@@ -5,7 +5,9 @@ import { Expense } from './entities/expense.entity';
 import { CashFlow } from './entities/cash-flow.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FinancialTransaction, Expense, CashFlow])],
+  imports: [
+    TypeOrmModule.forFeature([FinancialTransaction, Expense, CashFlow]),
+  ],
   exports: [TypeOrmModule],
 })
 export class FosCoreModule {}

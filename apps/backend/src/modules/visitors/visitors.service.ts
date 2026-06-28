@@ -162,8 +162,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -514,8 +513,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -664,8 +662,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -1074,8 +1071,8 @@ export class VisitorsService {
 
     const data: ActivityFeedItemDto[] = visits.map((visit) => {
       const customerName = visit.customer
-        ? `${visit.customer.firstName || ''} ${(visit.customer.lastName || '')[0] || ''}`
-            .trim() || 'Unknown'
+        ? `${visit.customer.firstName || ''} ${(visit.customer.lastName || '')[0] || ''}`.trim() ||
+          'Unknown'
         : 'Unknown';
 
       const shortName = customerName
@@ -1113,9 +1110,7 @@ export class VisitorsService {
         id: visit.id,
         type: 'visit',
         userName: shortName,
-        description: visit.deviceId
-          ? `Visited via device`
-          : `Returning visit`,
+        description: visit.deviceId ? `Visited via device` : `Returning visit`,
         timestamp: visit.createdAt,
         branchId: visit.branchId,
         metadata: { deviceId: visit.deviceId, status: visit.status },
@@ -1144,11 +1139,20 @@ export class VisitorsService {
     referredByBranchId?: string;
     catalogueOfferId?: string;
   }): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
-    const { customerId, deviceCode, sessionToken, ipAddress, userAgent, referredByBranchId, catalogueOfferId } =
-      params;
+    const {
+      customerId,
+      deviceCode,
+      sessionToken,
+      ipAddress,
+      userAgent,
+      referredByBranchId,
+      catalogueOfferId,
+    } = params;
 
     // --- Prevent Admins from being recorded as visitors ---
-    const user = await this.userRepository.findOne({ where: { id: customerId } });
+    const user = await this.userRepository.findOne({
+      where: { id: customerId },
+    });
     if (user?.role === UserRole.ADMIN) {
       return { visitId: 'admin-skip', sessionToken, isNewVisit: false };
     }
@@ -1286,12 +1290,22 @@ export class VisitorsService {
         // Discovery attribution update — atomic increments to avoid race conditions
         if (visit.catalogueOfferId) {
           const offerRepo = this.dataSource.getRepository(CatalogueOffer);
-          await offerRepo.increment({ id: visit.catalogueOfferId }, 'visits', 1);
+          await offerRepo.increment(
+            { id: visit.catalogueOfferId },
+            'visits',
+            1,
+          );
           if (orderId) {
             const orderRepo = this.dataSource.getRepository('CatalogueOrder');
-            const order = await orderRepo.findOne({ where: { id: orderId } }) as any;
+            const order = (await orderRepo.findOne({
+              where: { id: orderId },
+            })) as any;
             if (order?.totalAmount) {
-              await offerRepo.increment({ id: visit.catalogueOfferId }, 'revenue', Number(order.totalAmount));
+              await offerRepo.increment(
+                { id: visit.catalogueOfferId },
+                'revenue',
+                Number(order.totalAmount),
+              );
             }
           }
         }
@@ -1328,9 +1342,15 @@ export class VisitorsService {
       await offerRepo.increment({ id: catalogueOfferId }, 'visits', 1);
       if (orderId) {
         const orderRepo = this.dataSource.getRepository('CatalogueOrder');
-        const order = await orderRepo.findOne({ where: { id: orderId } }) as any;
+        const order = (await orderRepo.findOne({
+          where: { id: orderId },
+        })) as any;
         if (order?.totalAmount) {
-          await offerRepo.increment({ id: catalogueOfferId }, 'revenue', Number(order.totalAmount));
+          await offerRepo.increment(
+            { id: catalogueOfferId },
+            'revenue',
+            Number(order.totalAmount),
+          );
         }
       }
     }

@@ -39,7 +39,9 @@ export class MarketingAsset extends AbstractBaseEntity {
   @Column()
   type: string;
 
-  @ApiProperty({ description: 'Asset specific customized variables, layout overrides' })
+  @ApiProperty({
+    description: 'Asset specific customized variables, layout overrides',
+  })
   @Column({ type: 'jsonb' })
   customConfig: any;
 
@@ -51,7 +53,10 @@ export class MarketingAsset extends AbstractBaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   qrCodeConfig: any;
 
-  @ApiProperty({ example: 'https://cdn.vemtap.com/assets/my-table-tent.png', nullable: true })
+  @ApiProperty({
+    example: 'https://cdn.vemtap.com/assets/my-table-tent.png',
+    nullable: true,
+  })
   @Column({ nullable: true })
   thumbnailUrl: string;
 

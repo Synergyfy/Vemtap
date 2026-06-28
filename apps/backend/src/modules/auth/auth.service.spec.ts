@@ -55,9 +55,11 @@ describe('AuthService', () => {
       .fn()
       .mockImplementation((u) => Promise.resolve({ ...u, id: 'user-1' })),
     updatePassword: jest.fn().mockResolvedValue(true),
-    update: jest.fn().mockImplementation((_id, updates) =>
-      Promise.resolve({ id: _id, email: 'test@test.com', ...updates }),
-    ),
+    update: jest
+      .fn()
+      .mockImplementation((_id, updates) =>
+        Promise.resolve({ id: _id, email: 'test@test.com', ...updates }),
+      ),
   };
 
   const mockBusinessesService = {
@@ -72,9 +74,9 @@ describe('AuthService', () => {
     findMainBranch: jest
       .fn()
       .mockResolvedValue({ id: 'br-1', isMainBranch: true }),
-    update: jest.fn().mockImplementation((_id, dto) =>
-      Promise.resolve({ id: _id, ...dto }),
-    ),
+    update: jest
+      .fn()
+      .mockImplementation((_id, dto) => Promise.resolve({ id: _id, ...dto })),
   };
 
   const mockDevicesService = {
@@ -811,7 +813,9 @@ describe('AuthService', () => {
         }),
       );
       expect(mailService.sendWelcomeEmail).toHaveBeenCalled();
-      expect(result).toEqual({ message: 'Setup completed and welcome email sent' });
+      expect(result).toEqual({
+        message: 'Setup completed and welcome email sent',
+      });
     });
 
     it('should throw if user not found', async () => {
@@ -878,7 +882,9 @@ describe('AuthService', () => {
         'Test User',
         '123456',
       );
-      expect(result).toEqual({ message: 'Default password resent successfully' });
+      expect(result).toEqual({
+        message: 'Default password resent successfully',
+      });
     });
 
     it('should throw if password already changed', async () => {
@@ -920,9 +926,9 @@ describe('AuthService', () => {
         role: UserRole.OWNER,
       } as any;
 
-      await expect(
-        service.switchRole(user, UserRole.ADMIN),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.switchRole(user, UserRole.ADMIN)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -988,13 +994,11 @@ describe('AuthService', () => {
       });
 
       await expect(
-        service.resetPassword(
-          {
-            email: 'test@example.com',
-            otp: '1234',
-            newPassword: 'NewPass123!',
-          },
-        ),
+        service.resetPassword({
+          email: 'test@example.com',
+          otp: '1234',
+          newPassword: 'NewPass123!',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });

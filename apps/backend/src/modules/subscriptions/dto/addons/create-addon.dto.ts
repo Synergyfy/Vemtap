@@ -1,7 +1,4 @@
-import {
-  ApiProperty,
-  ApiPropertyOptional,
-} from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
@@ -56,14 +53,16 @@ export class CreateAddonDto {
 
   @ApiPropertyOptional({
     description: 'Detailed description of the add-on',
-    example: 'Adds 3 additional branch slots to your current plan, allowing you to expand your business operations.',
+    example:
+      'Adds 3 additional branch slots to your current plan, allowing you to expand your business operations.',
   })
   @IsString()
   @IsOptional()
   description?: string;
 
   @ApiProperty({
-    description: 'Type of add-on: RESOURCE for extra limits, SERVICE for custom support',
+    description:
+      'Type of add-on: RESOURCE for extra limits, SERVICE for custom support',
     enum: AddOnType,
     example: AddOnType.RESOURCE,
   })
@@ -104,8 +103,7 @@ export class CreateAddonDto {
   isActive?: boolean;
 
   @ApiPropertyOptional({
-    description:
-      'The capability this add-on extends (only for RESOURCE type)',
+    description: 'The capability this add-on extends (only for RESOURCE type)',
     example: 'branches',
   })
   @IsString()

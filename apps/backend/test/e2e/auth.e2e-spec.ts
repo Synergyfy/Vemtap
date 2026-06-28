@@ -294,7 +294,7 @@ describe('Auth & Notifications (e2e)', () => {
       .expect(200);
 
     // 2. Verify OTP
-    let otpRecord = await otpRepository.findOne({
+    const otpRecord = await otpRepository.findOne({
       where: { email: ownerEmail },
       order: { createdAt: 'DESC' },
     });

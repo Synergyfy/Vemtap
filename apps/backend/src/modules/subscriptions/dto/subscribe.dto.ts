@@ -53,7 +53,8 @@ export class SubscribeDto {
   isAdminOverride?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Custom expiration date for manually overridden subscriptions (admin only)',
+    description:
+      'Custom expiration date for manually overridden subscriptions (admin only)',
   })
   @IsString()
   @IsOptional()

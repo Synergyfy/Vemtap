@@ -96,7 +96,9 @@ export class PushNotificationProcessor extends WorkerHost {
       .getMany();
 
     if (users.length === 0) {
-      this.logger.debug(`Fan-out: no push tokens found for ${userIds.length} users`);
+      this.logger.debug(
+        `Fan-out: no push tokens found for ${userIds.length} users`,
+      );
       return;
     }
 
@@ -106,7 +108,9 @@ export class PushNotificationProcessor extends WorkerHost {
 
     // Deliver to all concurrently within this single job
     await Promise.allSettled(
-      users.map((u) => this.deliver(u.id, true, u.pushToken!, title, body, data)),
+      users.map((u) =>
+        this.deliver(u.id, true, u.pushToken!, title, body, data),
+      ),
     );
   }
 
@@ -140,7 +144,9 @@ export class PushNotificationProcessor extends WorkerHost {
         icon: '/logo.png',
         data: {
           ...data,
-          url: data.threadId ? `/dashboard/messaging/${data.threadId}` : undefined,
+          url: data.threadId
+            ? `/dashboard/messaging/${data.threadId}`
+            : undefined,
         },
       },
     });

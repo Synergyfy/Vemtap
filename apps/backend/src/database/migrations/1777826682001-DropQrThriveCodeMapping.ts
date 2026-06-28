@@ -5,7 +5,9 @@ export class DropQrThriveCodeMapping1777826682001 implements MigrationInterface 
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "qr_thrive_code_mappings"`);
-    await queryRunner.query(`DROP TYPE "public"."qr_thrive_code_mappings_type_enum"`);
+    await queryRunner.query(
+      `DROP TYPE "public"."qr_thrive_code_mappings_type_enum"`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

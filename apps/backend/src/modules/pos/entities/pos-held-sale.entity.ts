@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
@@ -39,28 +46,38 @@ export class PosHeldSale extends AbstractBaseEntity {
 
   @ApiProperty({ example: 15000 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   subtotal: number;
 
   @ApiProperty({ example: 0 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2, default: 0,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   discountAmount: number;
 
   @ApiProperty({ example: 0 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2, default: 0,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   tax: number;
 
   @ApiProperty({ example: 15000 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   total: number;

@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID, IsBoolean, IsOptional, IsString, IsArray, IsNumber, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsUUID,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  IsArray,
+  IsNumber,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCountSessionDto {
@@ -23,7 +32,10 @@ export class CreateCountSessionDto {
   @IsString()
   notes?: string;
 
-  @ApiPropertyOptional({ description: 'Limit count to specific item IDs. If empty, counts all items in the branch.' })
+  @ApiPropertyOptional({
+    description:
+      'Limit count to specific item IDs. If empty, counts all items in the branch.',
+  })
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })

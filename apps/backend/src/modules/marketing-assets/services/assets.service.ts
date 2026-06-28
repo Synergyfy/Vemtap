@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MarketingAsset } from '../entities/marketing-asset.entity';
@@ -47,18 +51,20 @@ export class AssetsService {
         'agency',
         'educational',
         'school',
-        'university'
+        'university',
       ];
       const catLower = business.category.name.toLowerCase();
-      const isExcluded = excludedCategories.some(ex => {
+      const isExcluded = excludedCategories.some((ex) => {
         if (ex === 'hospital') {
-          return catLower.includes('hospital') && !catLower.includes('hospitality');
+          return (
+            catLower.includes('hospital') && !catLower.includes('hospitality')
+          );
         }
         return catLower.includes(ex);
       });
       if (isExcluded) {
         throw new ForbiddenException(
-          `Your business category (${business.category.name}) has specialized operational systems and is excluded from the Marketing Assets module.`
+          `Your business category (${business.category.name}) has specialized operational systems and is excluded from the Marketing Assets module.`,
         );
       }
     }
@@ -98,7 +104,11 @@ export class AssetsService {
     return savedAsset;
   }
 
-  async findAll(user: User, branchId?: string, type?: string): Promise<MarketingAsset[]> {
+  async findAll(
+    user: User,
+    branchId?: string,
+    type?: string,
+  ): Promise<MarketingAsset[]> {
     const isAdmin = user.role === 'Admin';
     if (!isAdmin) {
       await this.validateBusinessCategory(user);
@@ -141,17 +151,25 @@ export class AssetsService {
 
     // Only allow access if user belongs to same business (or is Admin)
     if (!isAdmin && asset.businessId !== businessId) {
-      throw new ForbiddenException('You do not have access to this marketing asset');
+      throw new ForbiddenException(
+        'You do not have access to this marketing asset',
+      );
     }
 
     return asset;
   }
 
-  async update(id: string, user: User, updateDto: UpdateAssetDto): Promise<MarketingAsset> {
+  async update(
+    id: string,
+    user: User,
+    updateDto: UpdateAssetDto,
+  ): Promise<MarketingAsset> {
     const asset = await this.findOne(id, user);
-    
+
     const originalConfigString = JSON.stringify(asset.customConfig);
-    const newConfigString = updateDto.customConfig ? JSON.stringify(updateDto.customConfig) : null;
+    const newConfigString = updateDto.customConfig
+      ? JSON.stringify(updateDto.customConfig)
+      : null;
 
     Object.assign(asset, updateDto);
     const savedAsset = await this.assetRepo.save(asset);
@@ -209,14 +227,20 @@ export class AssetsService {
     });
   }
 
-  async restoreVersion(id: string, versionId: string, user: User): Promise<MarketingAsset> {
+  async restoreVersion(
+    id: string,
+    versionId: string,
+    user: User,
+  ): Promise<MarketingAsset> {
     const asset = await this.findOne(id, user);
     const version = await this.versionRepo.findOne({
       where: { id: versionId, assetId: id },
     });
 
     if (!version) {
-      throw new NotFoundException(`Version ${versionId} not found for asset ${id}`);
+      throw new NotFoundException(
+        `Version ${versionId} not found for asset ${id}`,
+      );
     }
 
     asset.customConfig = version.customConfig;

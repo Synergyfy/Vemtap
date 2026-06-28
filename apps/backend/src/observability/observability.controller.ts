@@ -1,4 +1,12 @@
-import { Controller, Get, Sse, MessageEvent, Delete, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Sse,
+  MessageEvent,
+  Delete,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ObservabilityStoreService } from './observability-store.service';

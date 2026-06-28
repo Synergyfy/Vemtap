@@ -121,8 +121,8 @@ describe('Branches (E2E)', () => {
           name: 'Farther Branch',
           businessId: otherBusiness.id,
           isMainBranch: false,
-          latitude: 6.5290,
-          longitude: 3.3840,
+          latitude: 6.529,
+          longitude: 3.384,
           isActive: true,
         }),
       );
@@ -133,8 +133,8 @@ describe('Branches (E2E)', () => {
           name: 'Far Branch',
           businessId: otherBusiness.id,
           isMainBranch: false,
-          latitude: 6.4600,
-          longitude: 3.4500,
+          latitude: 6.46,
+          longitude: 3.45,
           isActive: true,
         }),
       );
@@ -153,9 +153,7 @@ describe('Branches (E2E)', () => {
     });
 
     it('should return 400 when branchId is missing', async () => {
-      await request(server)
-        .get('/api/v1/public/branches/nearby')
-        .expect(400);
+      await request(server).get('/api/v1/public/branches/nearby').expect(400);
     });
 
     it('should return 400 when branchId is not a valid UUID', async () => {
@@ -177,7 +175,7 @@ describe('Branches (E2E)', () => {
         .get(`/api/v1/public/branches/nearby?branchId=${sourceBranchId}`)
         .expect(200);
 
-      const body = res.body as any;
+      const body = res.body;
       expect(body.source).toBeDefined();
       expect(body.source.id).toBe(sourceBranchId);
       expect(body.distanceMeters).toBe(500);

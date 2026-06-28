@@ -1,5 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID, IsObject, IsUrl, IsBoolean, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsObject,
+  IsUrl,
+  IsBoolean,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class UpdateBusinessDto {
@@ -76,12 +86,18 @@ export class UpdateBusinessDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: 'A premium restaurant...', description: 'Alias for description (sent from frontend)' })
+  @ApiPropertyOptional({
+    example: 'A premium restaurant...',
+    description: 'Alias for description (sent from frontend)',
+  })
   @IsOptional()
   @IsString()
   about?: string;
 
-  @ApiPropertyOptional({ example: { Monday: { open: '09:00', close: '18:00' } }, description: 'Alias for openingHours (sent from frontend)' })
+  @ApiPropertyOptional({
+    example: { Monday: { open: '09:00', close: '18:00' } },
+    description: 'Alias for openingHours (sent from frontend)',
+  })
   @IsOptional()
   @IsObject()
   businessHours?: Record<string, any>;
@@ -137,7 +153,9 @@ export class UpdateBusinessDto {
   @IsString()
   whatsappNumber?: string;
 
-  @ApiPropertyOptional({ example: { Monday: { open: '09:00', close: '18:00' } } })
+  @ApiPropertyOptional({
+    example: { Monday: { open: '09:00', close: '18:00' } },
+  })
   @IsOptional()
   @IsObject()
   openingHours?: Record<string, any>;
@@ -150,4 +168,15 @@ export class UpdateBusinessDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   isVisible?: boolean;
+
+  @ApiPropertyOptional({
+    example: { loyaltyEnabled: true, loyaltyRedeemThreshold: 100 },
+    description: 'POS settings for the business',
+  })
+  @IsOptional()
+  @IsObject()
+  posSettings?: {
+    loyaltyEnabled?: boolean;
+    loyaltyRedeemThreshold?: number;
+  };
 }

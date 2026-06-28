@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, Not, IsNull } from 'typeorm';
+import { Repository, Not, IsNull } from 'typeorm';
 import {
   CatalogueOrder,
   CatalogueOrderStatus,
@@ -28,6 +28,7 @@ import {
   CreateCatalogueOrderDto,
   CatalogueOrderQueryDto,
   BulkCheckoutDto,
+  UpdateCatalogueOrderStatusDto,
 } from './dto/catalogue-order.dto';
 import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
@@ -350,10 +351,11 @@ export class CatalogueOrderService {
 
   async updateStatus(
     orderId: string,
-    status: CatalogueOrderStatus,
+    dto: UpdateCatalogueOrderStatusDto,
     businessId: string,
     staff: User,
   ) {
+    const { status, reason, refundItems } = dto;
     const order = await this.orderRepository.findOne({
       where: { id: orderId, businessId },
       relations: ['items', 'items.item', 'items.offer', 'items.offer.items'],
@@ -377,6 +379,83 @@ export class CatalogueOrderService {
         }
       }
       order.stockDeducted = false;
+    }
+
+    // Handle refunds
+    if (status === CatalogueOrderStatus.REFUNDED) {
+      if (order.stockDeducted) {
+        for (const orderItem of order.items) {
+          const remainingQty =
+            orderItem.quantity - (orderItem.refundedQuantity || 0);
+          if (remainingQty > 0) {
+            if (orderItem.itemId && orderItem.item) {
+              await this.restoreStock(orderItem.item, remainingQty);
+            } else if (orderItem.offerId && orderItem.offer) {
+              await this.restoreOfferStock(orderItem.offer, remainingQty);
+              for (const offerItem of orderItem.offer.items) {
+                await this.restoreStock(offerItem, remainingQty);
+              }
+            }
+            orderItem.refundedQuantity = orderItem.quantity;
+            await this.orderItemRepository.save(orderItem);
+          }
+        }
+      }
+      order.refundReason = reason || null;
+      order.refundedById = staff.id;
+      order.refundedAt = new Date();
+      order.status = CatalogueOrderStatus.REFUNDED;
+    } else if (status === CatalogueOrderStatus.PARTIAL_REFUND) {
+      if (!refundItems || refundItems.length === 0) {
+        throw new BadRequestException(
+          'Partial refund requires specifying items to refund',
+        );
+      }
+      if (order.stockDeducted) {
+        for (const refundItemDto of refundItems) {
+          const orderItem = order.items.find(
+            (i) =>
+              (refundItemDto.itemId && i.itemId === refundItemDto.itemId) ||
+              (refundItemDto.offerId && i.offerId === refundItemDto.offerId),
+          );
+          if (!orderItem) {
+            throw new NotFoundException(`Item not found on this order`);
+          }
+          const remainingQty =
+            orderItem.quantity - (orderItem.refundedQuantity || 0);
+          if (refundItemDto.quantity > remainingQty) {
+            throw new BadRequestException(
+              `Cannot refund ${refundItemDto.quantity} of ${orderItem.item?.name || 'Offer'}. Only ${remainingQty} remaining.`,
+            );
+          }
+
+          if (orderItem.itemId && orderItem.item) {
+            await this.restoreStock(orderItem.item, refundItemDto.quantity);
+          } else if (orderItem.offerId && orderItem.offer) {
+            await this.restoreOfferStock(
+              orderItem.offer,
+              refundItemDto.quantity,
+            );
+            for (const offerItem of orderItem.offer.items) {
+              await this.restoreStock(offerItem, refundItemDto.quantity);
+            }
+          }
+          orderItem.refundedQuantity =
+            (orderItem.refundedQuantity || 0) + refundItemDto.quantity;
+          await this.orderItemRepository.save(orderItem);
+        }
+      }
+      const allFullyRefunded = order.items.every(
+        (i) => i.quantity === i.refundedQuantity,
+      );
+      order.refundReason = reason || order.refundReason || null;
+      order.refundedById = staff.id;
+      order.refundedAt = new Date();
+      order.status = allFullyRefunded
+        ? CatalogueOrderStatus.REFUNDED
+        : CatalogueOrderStatus.PARTIAL_REFUND;
+    } else {
+      order.status = status;
     }
 
     // Award loyalty points and rewards if moving to COMPLETED
@@ -421,7 +500,6 @@ export class CatalogueOrderService {
       order.loyaltyAwarded = true;
     }
 
-    order.status = status;
     const updatedOrder = await this.orderRepository.save(order);
 
     // Trigger notification to customer on status change

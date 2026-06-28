@@ -6,7 +6,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('pos_split_payments')
 export class PosSplitPayment extends AbstractBaseEntity {
-  @ManyToOne(() => PosSale, (sale) => sale.splitPayments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => PosSale, (sale) => sale.splitPayments, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'saleId' })
   sale: PosSale;
 
@@ -19,7 +21,9 @@ export class PosSplitPayment extends AbstractBaseEntity {
 
   @ApiProperty({ example: 7500 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   amount: number;

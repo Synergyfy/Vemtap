@@ -23,9 +23,15 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
-import { GEOCODING_QUEUE, GeocodingJobData } from './processors/geocoding.processor';
+import {
+  GEOCODING_QUEUE,
+  GeocodingJobData,
+} from './processors/geocoding.processor';
 
 @Injectable()
 export class BusinessesService {
@@ -252,8 +258,16 @@ export class BusinessesService {
     }
 
     // Merge individual social fields into socials object
-    const socialFields = ['facebookUrl', 'instagramUrl', 'tiktokUrl', 'xUrl', 'linkedinUrl'] as const;
-    const hasIndividualSocials = socialFields.some(f => !!(updateBusinessDto as any)[f]);
+    const socialFields = [
+      'facebookUrl',
+      'instagramUrl',
+      'tiktokUrl',
+      'xUrl',
+      'linkedinUrl',
+    ] as const;
+    const hasIndividualSocials = socialFields.some(
+      (f) => !!(updateBusinessDto as any)[f],
+    );
     if (hasIndividualSocials) {
       const existingSocials = business.socials || {};
       for (const field of socialFields) {
@@ -276,7 +290,10 @@ export class BusinessesService {
     Object.assign(business, updateBusinessDto);
     const saved = await this.businessesRepository.save(business);
 
-    if (updateBusinessDto.latitude !== undefined || updateBusinessDto.longitude !== undefined) {
+    if (
+      updateBusinessDto.latitude !== undefined ||
+      updateBusinessDto.longitude !== undefined
+    ) {
       const mainBranch = await this.findMainBranch(id);
       if (mainBranch) {
         if (updateBusinessDto.latitude !== undefined) {
@@ -798,17 +815,20 @@ export class BusinessesService {
   }
 
   async getStats() {
-    const [totalBusinesses, activeBusinesses, churnedCount, statusRaw] = await Promise.all([
-      this.businessesRepository.count(),
-      this.businessesRepository.count({ where: { status: 'active' as any } }),
-      this.businessesRepository.count({ where: { status: 'suspended' as any } }),
-      this.businessesRepository
-        .createQueryBuilder('b')
-        .select('b.status', 'status')
-        .addSelect('COUNT(b.id)', 'count')
-        .groupBy('b.status')
-        .getRawMany<{ status: string; count: string }>(),
-    ]);
+    const [totalBusinesses, activeBusinesses, churnedCount, statusRaw] =
+      await Promise.all([
+        this.businessesRepository.count(),
+        this.businessesRepository.count({ where: { status: 'active' as any } }),
+        this.businessesRepository.count({
+          where: { status: 'suspended' as any },
+        }),
+        this.businessesRepository
+          .createQueryBuilder('b')
+          .select('b.status', 'status')
+          .addSelect('COUNT(b.id)', 'count')
+          .groupBy('b.status')
+          .getRawMany<{ status: string; count: string }>(),
+      ]);
 
     const statusDistribution = statusRaw.map((r) => ({
       status: r.status,
@@ -839,11 +859,13 @@ export class BusinessesService {
       planMap.set(planName, entry);
     }
 
-    const planDistribution = Array.from(planMap.entries()).map(([plan, data]) => ({
-      plan,
-      count: data.count,
-      totalMrr: data.totalMrr,
-    }));
+    const planDistribution = Array.from(planMap.entries()).map(
+      ([plan, data]) => ({
+        plan,
+        count: data.count,
+        totalMrr: data.totalMrr,
+      }),
+    );
 
     let bestSellingPlan: {
       plan: string;
@@ -852,7 +874,9 @@ export class BusinessesService {
     } | null = null;
 
     if (planDistribution.length > 0) {
-      const sorted = [...planDistribution].sort((a, b) => b.totalMrr - a.totalMrr);
+      const sorted = [...planDistribution].sort(
+        (a, b) => b.totalMrr - a.totalMrr,
+      );
       bestSellingPlan = {
         plan: sorted[0].plan,
         totalMrr: sorted[0].totalMrr,

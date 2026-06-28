@@ -22,6 +22,9 @@ export class LegalAgreement extends AbstractBaseEntity {
   @Column({ default: true })
   isActive: boolean;
 
-  @OneToMany(() => LegalAgreementAcceptance, (acceptance) => acceptance.agreement)
+  @OneToMany(
+    () => LegalAgreementAcceptance,
+    (acceptance) => acceptance.agreement,
+  )
   acceptances: LegalAgreementAcceptance[];
 }

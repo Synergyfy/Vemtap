@@ -93,7 +93,10 @@ export class ObservabilityStoreService {
    * Lower = less RAM; increase if you need more history in the admin dashboard.
    * Can be overridden via the LOG_STORE_MAX_SIZE env var.
    */
-  private readonly MAX_SIZE = parseInt(process.env.LOG_STORE_MAX_SIZE || '200', 10);
+  private readonly MAX_SIZE = parseInt(
+    process.env.LOG_STORE_MAX_SIZE || '200',
+    10,
+  );
 
   // ---------------------------------------------------------------------------
   // Ring buffer — O(1) enqueue and eviction, no array reindexing (no shift()).
@@ -178,16 +181,24 @@ export class ObservabilityStoreService {
    * applying filters in a single pass.
    */
   getLogs(filters: LogFilters) {
-    const limit = filters.limit ? Math.min(Number(filters.limit), this.MAX_SIZE) : 50;
+    const limit = filters.limit
+      ? Math.min(Number(filters.limit), this.MAX_SIZE)
+      : 50;
     const offset = filters.offset ? Number(filters.offset) : 0;
 
     const search = filters.search?.toLowerCase();
-    const method = filters.method && filters.method !== 'ALL' ? filters.method.toUpperCase() : undefined;
+    const method =
+      filters.method && filters.method !== 'ALL'
+        ? filters.method.toUpperCase()
+        : undefined;
     const statusPrefix =
       filters.statusClass && filters.statusClass !== 'ALL'
         ? filters.statusClass.substring(0, 1)
         : undefined;
-    const minLatency = filters.minLatency && filters.minLatency > 0 ? filters.minLatency : undefined;
+    const minLatency =
+      filters.minLatency && filters.minLatency > 0
+        ? filters.minLatency
+        : undefined;
 
     // Iterate from newest to oldest (ring-buffer reverse order)
     const matched: ObservabilityRequestLog[] = [];
@@ -206,11 +217,16 @@ export class ObservabilityStoreService {
           (log.traceId && log.traceId.toLowerCase().includes(search)) ||
           (log.userEmail && log.userEmail.toLowerCase().includes(search)) ||
           (log.userId && log.userId.toLowerCase().includes(search)) ||
-          (log.error?.message && log.error.message.toLowerCase().includes(search));
+          (log.error?.message &&
+            log.error.message.toLowerCase().includes(search));
         if (!hit) continue;
       }
       if (method && log.method !== method) continue;
-      if (statusPrefix && Math.floor(log.statusCode / 100).toString() !== statusPrefix) continue;
+      if (
+        statusPrefix &&
+        Math.floor(log.statusCode / 100).toString() !== statusPrefix
+      )
+        continue;
       if (minLatency && log.responseTime < minLatency) continue;
 
       matched.push(log);
@@ -243,13 +259,21 @@ export class ObservabilityStoreService {
       };
     }
 
-    const { totalLatency, errorCount, slowCount, methodMap, statusMap, sortedLatencies } =
-      this.accumulators;
+    const {
+      totalLatency,
+      errorCount,
+      slowCount,
+      methodMap,
+      statusMap,
+      sortedLatencies,
+    } = this.accumulators;
 
     const averageLatency = Math.round(totalLatency / totalRequests);
     const p95Idx = Math.floor(sortedLatencies.length * 0.95);
     const p95Latency = sortedLatencies[p95Idx] ?? 0;
-    const errorRate = parseFloat(((errorCount / totalRequests) * 100).toFixed(2));
+    const errorRate = parseFloat(
+      ((errorCount / totalRequests) * 100).toFixed(2),
+    );
 
     // Build a 10-bucket volume chart from the current ring contents (newest → oldest)
     const bucketSize = Math.max(1, Math.ceil(this.count / 10));

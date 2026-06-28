@@ -319,7 +319,9 @@ describe('QrThrive (e2e)', () => {
 
     it('should update the status of an external lead', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/qr-thrive/branches/${branchId}/specialized-leads/${leadId}/status`)
+        .patch(
+          `/api/v1/qr-thrive/branches/${branchId}/specialized-leads/${leadId}/status`,
+        )
         .set('Authorization', `Bearer ${jwtToken}`)
         .send({
           status: ExternalLeadStatus.PROCESSING,
@@ -360,7 +362,9 @@ describe('QrThrive (e2e)', () => {
 
     it('should fail (403) when updating status for a forbidden branch', async () => {
       await request(app.getHttpServer())
-        .patch(`/api/v1/qr-thrive/branches/${forbiddenBranchId}/specialized-leads/${leadId}/status`)
+        .patch(
+          `/api/v1/qr-thrive/branches/${forbiddenBranchId}/specialized-leads/${leadId}/status`,
+        )
         .set('Authorization', `Bearer ${jwtToken}`)
         .send({ status: ExternalLeadStatus.COMPLETED })
         .expect(403);

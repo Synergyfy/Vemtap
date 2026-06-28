@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BannersService } from './banners.service';
-import { BannersController, AdminBannersController } from './banners.controller';
+import {
+  BannersController,
+  AdminBannersController,
+} from './banners.controller';
 import { Banner } from './entities/banner.entity';
 
 @Module({

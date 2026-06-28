@@ -5,21 +5,30 @@ import {
   FinancialTransaction,
   FosTransactionType,
 } from './modules/fos-core/entities/financial-transaction.entity';
-import { CashFlow, CashFlowType } from './modules/fos-core/entities/cash-flow.entity';
-import { Expense, ExpenseFrequency } from './modules/fos-core/entities/expense.entity';
+import {
+  CashFlow,
+  CashFlowType,
+} from './modules/fos-core/entities/cash-flow.entity';
+import {
+  Expense,
+  ExpenseFrequency,
+} from './modules/fos-core/entities/expense.entity';
 
 const BATCH_SIZE = 500;
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const dataSource = app.get(DataSource);
-  const fosRepo: Repository<FinancialTransaction> = dataSource.getRepository(FinancialTransaction);
+  const fosRepo: Repository<FinancialTransaction> =
+    dataSource.getRepository(FinancialTransaction);
   const cashFlowRepo: Repository<CashFlow> = dataSource.getRepository(CashFlow);
   const expenseRepo: Repository<Expense> = dataSource.getRepository(Expense);
 
   const existingCashFlows = await cashFlowRepo.count();
   if (existingCashFlows > 0) {
-    console.log(`cash_flows already has ${existingCashFlows} records. Skipping backfill.`);
+    console.log(
+      `cash_flows already has ${existingCashFlows} records. Skipping backfill.`,
+    );
     await app.close();
     return;
   }
@@ -40,10 +49,16 @@ async function bootstrap() {
   const expenseRecords: Partial<Expense>[] = [];
 
   for (const t of allTransactions) {
-    if (t.type === FosTransactionType.SUBSCRIPTION || t.type === FosTransactionType.SMS) {
+    if (
+      t.type === FosTransactionType.SUBSCRIPTION ||
+      t.type === FosTransactionType.SMS
+    ) {
       cashFlowRecords.push({
         type: CashFlowType.INFLOW,
-        category: t.type === FosTransactionType.SUBSCRIPTION ? 'subscription_revenue' : 'sms_revenue',
+        category:
+          t.type === FosTransactionType.SUBSCRIPTION
+            ? 'subscription_revenue'
+            : 'sms_revenue',
         amount: Number(t.amount),
         date: t.date,
       });
@@ -77,7 +92,9 @@ async function bootstrap() {
     const batch = cashFlowRecords.slice(i, i + BATCH_SIZE);
     await cashFlowRepo.save(batch);
     totalCashFlows += batch.length;
-    console.log(`  Inserted cash_flow batch ${Math.floor(i / BATCH_SIZE) + 1} (${totalCashFlows} total)`);
+    console.log(
+      `  Inserted cash_flow batch ${Math.floor(i / BATCH_SIZE) + 1} (${totalCashFlows} total)`,
+    );
   }
 
   // Insert expenses in batches
@@ -86,10 +103,14 @@ async function bootstrap() {
     const batch = expenseRecords.slice(i, i + BATCH_SIZE);
     await expenseRepo.save(batch);
     totalExpenses += batch.length;
-    console.log(`  Inserted expense batch ${Math.floor(i / BATCH_SIZE) + 1} (${totalExpenses} total)`);
+    console.log(
+      `  Inserted expense batch ${Math.floor(i / BATCH_SIZE) + 1} (${totalExpenses} total)`,
+    );
   }
 
-  console.log(`Backfilled ${totalCashFlows} cash_flows and ${totalExpenses} expenses.`);
+  console.log(
+    `Backfilled ${totalCashFlows} cash_flows and ${totalExpenses} expenses.`,
+  );
   await app.close();
 }
 

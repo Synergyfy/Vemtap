@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class EnablePostgisAndAddBranchLocation20260622121023
-  implements MigrationInterface
-{
+export class EnablePostgisAndAddBranchLocation20260622121023 implements MigrationInterface {
   name = 'EnablePostgisAndAddBranchLocation20260622121023';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -46,9 +44,7 @@ export class EnablePostgisAndAddBranchLocation20260622121023
       `DROP TRIGGER IF EXISTS trg_branches_location ON branches`,
     );
     await queryRunner.query(`DROP FUNCTION IF EXISTS update_branch_location()`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_branches_location"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_branches_location"`);
     await queryRunner.query(
       `ALTER TABLE "branches" DROP COLUMN IF EXISTS "location"`,
     );

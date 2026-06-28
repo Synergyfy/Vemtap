@@ -17,7 +17,10 @@ import { User, UserRole } from '../users/entities/user.entity';
 import { CreateCountSessionDto } from './dto/create-count-session.dto';
 import { AddCountItemsDto, UpdateCountItemDto } from './dto/add-count-item.dto';
 import { CompleteCountDto } from './dto/complete-count.dto';
-import { ApproveVarianceDto, RejectVarianceDto } from './dto/approve-variance.dto';
+import {
+  ApproveVarianceDto,
+  RejectVarianceDto,
+} from './dto/approve-variance.dto';
 import { CountSessionQueryDto } from './dto/count-session-query.dto';
 
 @Injectable()
@@ -110,13 +113,7 @@ export class InventoryCountingService {
   async getSession(sessionId: string, businessId: string, user: User) {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, businessId },
-      relations: [
-        'branch',
-        'startedBy',
-        'completedBy',
-        'approvedBy',
-        'items',
-      ],
+      relations: ['branch', 'startedBy', 'completedBy', 'approvedBy', 'items'],
     });
 
     if (!session) throw new NotFoundException('Count session not found');
@@ -133,7 +130,7 @@ export class InventoryCountingService {
         const safeItem = { ...item } as StockCountItem;
         delete (safeItem as any).systemQuantity;
         return safeItem;
-      }) as StockCountItem[];
+      });
     }
 
     return session;
@@ -167,11 +164,7 @@ export class InventoryCountingService {
     return this.sessionRepository.save(session);
   }
 
-  async addItems(
-    sessionId: string,
-    businessId: string,
-    dto: AddCountItemsDto,
-  ) {
+  async addItems(sessionId: string, businessId: string, dto: AddCountItemsDto) {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, businessId },
     });
@@ -225,7 +218,9 @@ export class InventoryCountingService {
     });
 
     session.totalItems = allItems.length;
-    session.countedItems = allItems.filter((i) => i.countedQuantity != null).length;
+    session.countedItems = allItems.filter(
+      (i) => i.countedQuantity != null,
+    ).length;
     await this.sessionRepository.save(session);
 
     return allItems;
@@ -294,12 +289,11 @@ export class InventoryCountingService {
       }
 
       item.variance = (item.countedQuantity ?? 0) - (item.systemQuantity ?? 0);
-      item.varianceValue =
-        (item.variance ?? 0) * (item.unitCost || 0);
+      item.varianceValue = (item.variance ?? 0) * (item.unitCost || 0);
 
       if (item.variance !== 0) {
         itemsWithVariance++;
-        totalVarianceValue += (item.varianceValue ?? 0);
+        totalVarianceValue += item.varianceValue ?? 0;
       }
     }
 
@@ -327,7 +321,9 @@ export class InventoryCountingService {
 
     if (!session) throw new NotFoundException('Count session not found');
     if (session.status !== CountSessionStatus.COMPLETED) {
-      throw new BadRequestException('Session must be completed before approval');
+      throw new BadRequestException(
+        'Session must be completed before approval',
+      );
     }
 
     const isManager =
@@ -354,7 +350,10 @@ export class InventoryCountingService {
 
         const catalogueItem = itemMap.get(countItem.itemId);
         if (catalogueItem) {
-          catalogueItem.stockQuantity = Math.max(0, countItem.countedQuantity ?? 0);
+          catalogueItem.stockQuantity = Math.max(
+            0,
+            countItem.countedQuantity ?? 0,
+          );
         }
       }
 
@@ -393,13 +392,7 @@ export class InventoryCountingService {
   async getReconciliationReport(sessionId: string, businessId: string) {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, businessId },
-      relations: [
-        'branch',
-        'startedBy',
-        'completedBy',
-        'approvedBy',
-        'items',
-      ],
+      relations: ['branch', 'startedBy', 'completedBy', 'approvedBy', 'items'],
     });
 
     if (!session) throw new NotFoundException('Count session not found');

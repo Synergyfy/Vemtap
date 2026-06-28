@@ -22,7 +22,10 @@ import {
 } from '@nestjs/swagger';
 import { LegalComplianceService } from './legal-compliance.service';
 import { AcceptAgreementDto } from './dto/accept-agreement.dto';
-import { CreateAgreementDto, UpdateAgreementDto } from './dto/create-agreement.dto';
+import {
+  CreateAgreementDto,
+  UpdateAgreementDto,
+} from './dto/create-agreement.dto';
 import {
   AgreementResponseDto,
   PaginatedAgreementHistoryDto,
@@ -46,12 +49,14 @@ export class LegalComplianceController {
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({
-    summary: 'List all active legal agreements with current user acceptance status',
+    summary:
+      'List all active legal agreements with current user acceptance status',
   })
-  @ApiResponse({ type: [AgreementResponseDto], description: 'List of active agreements' })
-  async findAll(
-    @Req() req: any,
-  ): Promise<AgreementResponseDto[]> {
+  @ApiResponse({
+    type: [AgreementResponseDto],
+    description: 'List of active agreements',
+  })
+  async findAll(@Req() req: any): Promise<AgreementResponseDto[]> {
     return this.legalComplianceService.findAll(req.user.id);
   }
 
@@ -68,22 +73,26 @@ export class LegalComplianceController {
   @ApiOperation({
     summary: "Get current user's acceptance record for an agreement",
   })
-  @ApiResponse({ type: LegalAgreementAcceptance, description: 'Acceptance record or null' })
-  async getAcceptance(
-    @Param('slug') slug: string,
-    @Req() req: any,
-  ) {
+  @ApiResponse({
+    type: LegalAgreementAcceptance,
+    description: 'Acceptance record or null',
+  })
+  async getAcceptance(@Param('slug') slug: string, @Req() req: any) {
     return this.legalComplianceService.getAcceptance(slug, req.user.id);
   }
 
   @Get(':slug/history')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Get paginated acceptance history for an agreement scoped to the user business',
+    summary:
+      'Get paginated acceptance history for an agreement scoped to the user business',
   })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
-  @ApiResponse({ type: PaginatedAgreementHistoryDto, description: 'Paginated acceptance history' })
+  @ApiResponse({
+    type: PaginatedAgreementHistoryDto,
+    description: 'Paginated acceptance history',
+  })
   async getHistory(
     @Param('slug') slug: string,
     @Req() req: any,
@@ -101,7 +110,10 @@ export class LegalComplianceController {
   @Post(':slug/accept')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Accept a legal agreement' })
-  @ApiResponse({ type: LegalAgreementAcceptance, description: 'Created acceptance record' })
+  @ApiResponse({
+    type: LegalAgreementAcceptance,
+    description: 'Created acceptance record',
+  })
   async accept(
     @Param('slug') slug: string,
     @Body() dto: AcceptAgreementDto,
@@ -127,7 +139,11 @@ export class LegalComplianceController {
   @Post()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: '[Admin] Create a new legal agreement' })
-  @ApiResponse({ type: LegalAgreement, status: 201, description: 'Agreement created' })
+  @ApiResponse({
+    type: LegalAgreement,
+    status: 201,
+    description: 'Agreement created',
+  })
   async create(@Body() dto: CreateAgreementDto) {
     return this.legalComplianceService.create(dto);
   }

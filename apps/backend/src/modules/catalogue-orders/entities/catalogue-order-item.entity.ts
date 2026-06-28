@@ -49,4 +49,11 @@ export class CatalogueOrderItem extends AbstractBaseEntity {
   @ApiProperty({ example: 10, nullable: true })
   @Column({ type: 'int', nullable: true })
   loyaltyPointsAtOrder: number | null;
+
+  @ApiProperty({
+    example: 0,
+    description: 'Number of units refunded for this item',
+  })
+  @Column({ type: 'int', default: 0 })
+  refundedQuantity: number;
 }

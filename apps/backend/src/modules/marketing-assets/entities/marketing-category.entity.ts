@@ -1,11 +1,20 @@
-import { Entity, Column, ManyToMany, BeforeInsert, BeforeUpdate } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToMany,
+  BeforeInsert,
+  BeforeUpdate,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { MarketingTemplate } from './marketing-template.entity';
 
 @Entity('marketing_categories')
 export class MarketingCategory extends AbstractBaseEntity {
-  @ApiProperty({ example: 'Restaurant', description: 'Display name of the category' })
+  @ApiProperty({
+    example: 'Restaurant',
+    description: 'Display name of the category',
+  })
   @Column()
   name: string;
 
@@ -13,7 +22,10 @@ export class MarketingCategory extends AbstractBaseEntity {
   @Column({ unique: true })
   slug: string;
 
-  @ApiProperty({ example: 'Templates suited for restaurants and cafes', nullable: true })
+  @ApiProperty({
+    example: 'Templates suited for restaurants and cafes',
+    nullable: true,
+  })
   @Column({ nullable: true })
   description?: string;
 
@@ -21,7 +33,10 @@ export class MarketingCategory extends AbstractBaseEntity {
   @BeforeUpdate()
   generateSlug() {
     if (!this.slug) {
-      this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      this.slug = this.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     }
   }
 
@@ -41,6 +56,6 @@ export class MarketingCategory extends AbstractBaseEntity {
   @Column({ default: true })
   isActive: boolean;
 
-  @ManyToMany(() => MarketingTemplate, template => template.categories)
+  @ManyToMany(() => MarketingTemplate, (template) => template.categories)
   templates?: MarketingTemplate[];
 }
