@@ -85,7 +85,11 @@ export class Device extends AbstractBaseEntity {
   @Column({ nullable: true })
   branchId: string;
 
-  @ApiProperty({ example: false, description: 'Designates this device as the main/primary device of the branch' })
+  @ApiProperty({
+    example: false,
+    description:
+      'Designates this device as the main/primary device of the branch',
+  })
   @Column({ default: false })
   isMain: boolean;
 

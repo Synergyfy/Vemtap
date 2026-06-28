@@ -9,7 +9,10 @@ import {
 import { MetricsSnapshot } from '../fos-dashboard/entities/metrics-snapshot.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 import {
   RevenueTransactionsQueryDto,
@@ -55,7 +58,16 @@ export class FosRevenueAnalyticsService {
   async getTransactions(
     query: RevenueTransactionsQueryDto,
   ): Promise<TransactionsListResponseDto> {
-    const { page = 1, perPage = 10, type, platform, businessId, agentId, startDate, endDate } = query;
+    const {
+      page = 1,
+      perPage = 10,
+      type,
+      platform,
+      businessId,
+      agentId,
+      startDate,
+      endDate,
+    } = query;
 
     const where: any = {};
 
@@ -80,7 +92,9 @@ export class FosRevenueAnalyticsService {
     });
 
     const businessIds = [
-      ...new Set(transactions.filter((t) => t.businessId).map((t) => t.businessId)),
+      ...new Set(
+        transactions.filter((t) => t.businessId).map((t) => t.businessId),
+      ),
     ];
     const agentIds = [
       ...new Set(transactions.filter((t) => t.agentId).map((t) => t.agentId)),
@@ -111,7 +125,9 @@ export class FosRevenueAnalyticsService {
       referenceId: t.referenceId ?? null,
       date: t.date,
       businessId: t.businessId ?? null,
-      businessName: t.businessId ? (businessMap.get(t.businessId) ?? null) : null,
+      businessName: t.businessId
+        ? (businessMap.get(t.businessId) ?? null)
+        : null,
       agentId: t.agentId ?? null,
       agentName: t.agentId ? (agentMap.get(t.agentId) ?? null) : null,
     }));
@@ -172,7 +188,10 @@ export class FosRevenueAnalyticsService {
   // 3. GET /revenue/trends
   // ────────────────────────────────────────────
 
-  async getTrends(startDate?: string, endDate?: string): Promise<RevenueTrendDto[]> {
+  async getTrends(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<RevenueTrendDto[]> {
     const dateFilter: any = {};
     if (startDate && endDate) {
       dateFilter.date = Between(startDate, endDate);
@@ -210,7 +229,11 @@ export class FosRevenueAnalyticsService {
       qb.andWhere('t.date <= :endDate', { endDate });
     }
 
-    const rows = await qb.getRawMany<{ date: string; revenue: string; profit: string }>();
+    const rows = await qb.getRawMany<{
+      date: string;
+      revenue: string;
+      profit: string;
+    }>();
 
     return rows.map((r) => ({
       date: r.date,
@@ -223,7 +246,9 @@ export class FosRevenueAnalyticsService {
   // 4. GET /revenue/chart-data
   // ────────────────────────────────────────────
 
-  async getChartData(query: ChartDataQueryDto): Promise<RevenueChartDataResponseDto> {
+  async getChartData(
+    query: ChartDataQueryDto,
+  ): Promise<RevenueChartDataResponseDto> {
     const { startDate, endDate, platform, type } = query;
 
     const monthlyQb = this.transactionRepo
@@ -267,16 +292,23 @@ export class FosRevenueAnalyticsService {
     }
 
     const [monthlyRows, typeRows] = await Promise.all([
-      monthlyQb.getRawMany<{ month: string; total: string; vemtap: string; qrthrive: string }>(),
+      monthlyQb.getRawMany<{
+        month: string;
+        total: string;
+        vemtap: string;
+        qrthrive: string;
+      }>(),
       typeQb.getRawMany<{ name: string; value: string }>(),
     ]);
 
-    const monthlyPlatformRevenue: MonthlyPlatformRevenueDto[] = monthlyRows.map((r) => ({
-      month: r.month,
-      total: this.toNumber(r.total),
-      vemtap: this.toNumber(r.vemtap),
-      qrthrive: this.toNumber(r.qrthrive),
-    }));
+    const monthlyPlatformRevenue: MonthlyPlatformRevenueDto[] = monthlyRows.map(
+      (r) => ({
+        month: r.month,
+        total: this.toNumber(r.total),
+        vemtap: this.toNumber(r.vemtap),
+        qrthrive: this.toNumber(r.qrthrive),
+      }),
+    );
 
     const revenueByType: RevenueByTypeDto[] = typeRows.map((r) => ({
       name: r.name,
@@ -290,14 +322,18 @@ export class FosRevenueAnalyticsService {
   // 5. GET /revenue/business/:businessId/history
   // ────────────────────────────────────────────
 
-  async getBusinessHistory(businessId: string): Promise<BusinessRevenueHistoryResponseDto> {
+  async getBusinessHistory(
+    businessId: string,
+  ): Promise<BusinessRevenueHistoryResponseDto> {
     const exists = await this.transactionRepo.findOne({
       where: { businessId },
       select: ['id'],
     });
 
     if (!exists) {
-      throw new NotFoundException(`No transactions found for business ${businessId}`);
+      throw new NotFoundException(
+        `No transactions found for business ${businessId}`,
+      );
     }
 
     const transactions = await this.transactionRepo.find({
@@ -341,17 +377,18 @@ export class FosRevenueAnalyticsService {
       count: number;
     }[];
   }> {
-    const [totalBusinesses, activeBusinesses, churnedCount, statusRaw] = await Promise.all([
-      this.businessRepo.count(),
-      this.businessRepo.count({ where: { status: 'active' as any } }),
-      this.businessRepo.count({ where: { status: 'suspended' as any } }),
-      this.businessRepo
-        .createQueryBuilder('b')
-        .select('b.status', 'status')
-        .addSelect('COUNT(b.id)', 'count')
-        .groupBy('b.status')
-        .getRawMany<{ status: string; count: string }>(),
-    ]);
+    const [totalBusinesses, activeBusinesses, churnedCount, statusRaw] =
+      await Promise.all([
+        this.businessRepo.count(),
+        this.businessRepo.count({ where: { status: 'active' as any } }),
+        this.businessRepo.count({ where: { status: 'suspended' as any } }),
+        this.businessRepo
+          .createQueryBuilder('b')
+          .select('b.status', 'status')
+          .addSelect('COUNT(b.id)', 'count')
+          .groupBy('b.status')
+          .getRawMany<{ status: string; count: string }>(),
+      ]);
 
     const statusDistribution = statusRaw.map((r) => ({
       status: r.status,
@@ -382,11 +419,13 @@ export class FosRevenueAnalyticsService {
       planMap.set(planName, entry);
     }
 
-    const planDistribution = Array.from(planMap.entries()).map(([plan, data]) => ({
-      plan,
-      count: data.count,
-      totalMrr: data.totalMrr,
-    }));
+    const planDistribution = Array.from(planMap.entries()).map(
+      ([plan, data]) => ({
+        plan,
+        count: data.count,
+        totalMrr: data.totalMrr,
+      }),
+    );
 
     let bestSellingPlan: {
       plan: string;
@@ -395,7 +434,9 @@ export class FosRevenueAnalyticsService {
     } | null = null;
 
     if (planDistribution.length > 0) {
-      const sorted = [...planDistribution].sort((a, b) => b.totalMrr - a.totalMrr);
+      const sorted = [...planDistribution].sort(
+        (a, b) => b.totalMrr - a.totalMrr,
+      );
       bestSellingPlan = {
         plan: sorted[0].plan,
         totalMrr: sorted[0].totalMrr,

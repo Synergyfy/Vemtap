@@ -116,7 +116,9 @@ if (require.main === module) {
     //  2. Give in-flight requests up to 10 seconds to complete.
     //  3. Then close the NestJS app (flushes queues, closes DB pool, etc.).
     process.on('SIGTERM', async () => {
-      logger.log('[Shutdown] SIGTERM received — draining in-flight requests (10s window)...');
+      logger.log(
+        '[Shutdown] SIGTERM received — draining in-flight requests (10s window)...',
+      );
       server.close(async () => {
         logger.log('[Shutdown] HTTP server closed. Closing application...');
         await app.close();
@@ -131,8 +133,12 @@ if (require.main === module) {
       }, 15_000).unref();
     });
 
-    logger.log(`Application is running on: http://localhost:${process.env.PORT || 3002}/api/v1`);
-    logger.log(`Swagger documentation: http://localhost:${process.env.PORT || 3002}/api-docs`);
+    logger.log(
+      `Application is running on: http://localhost:${process.env.PORT || 3002}/api/v1`,
+    );
+    logger.log(
+      `Swagger documentation: http://localhost:${process.env.PORT || 3002}/api-docs`,
+    );
   };
   void bootstrap();
 }

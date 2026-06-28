@@ -46,7 +46,9 @@ export class AIPromptsController {
   }
 
   @Post('generate')
-  @ApiOperation({ summary: 'Execute AI copywriting helper using template parameters' })
+  @ApiOperation({
+    summary: 'Execute AI copywriting helper using template parameters',
+  })
   @ApiResponse({ status: 200 })
   generate(@Body() dto: GenerateAIContentDto) {
     return this.aiPromptsService.generateContent(dto);
@@ -63,7 +65,10 @@ export class AIPromptsController {
   @ApiOperation({ summary: 'Update an AI prompt template (Admin only)' })
   @ApiResponse({ status: 200, type: MarketingAIPrompt })
   @Roles(UserRole.ADMIN)
-  update(@Param('id') id: string, @Body() updateDto: Partial<CreateAIPromptDto>) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: Partial<CreateAIPromptDto>,
+  ) {
     return this.aiPromptsService.update(id, updateDto);
   }
 

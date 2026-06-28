@@ -5,20 +5,32 @@ import {
   Body,
   Headers,
   Param,
-  Query,
+  UseGuards,
   BadRequestException,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('payments')
+@ApiBearerAuth()
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Get('verify/:reference')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
   @SkipSubscriptionCheck()
   @ApiOperation({ summary: 'Verify a payment reference' })
   @ApiResponse({ status: 200, description: 'Verification result' })

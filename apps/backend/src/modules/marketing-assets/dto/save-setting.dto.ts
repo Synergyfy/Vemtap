@@ -17,7 +17,10 @@ export class SaveSettingDto {
   @IsOptional()
   type?: string;
 
-  @ApiProperty({ example: 'Daily AI generation limit per business', required: false })
+  @ApiProperty({
+    example: 'Daily AI generation limit per business',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   description?: string;

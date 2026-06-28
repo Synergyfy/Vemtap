@@ -40,21 +40,30 @@ export class PosRegisterSession extends AbstractBaseEntity {
 
   @ApiProperty({ example: 50000 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2, default: 0,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   openingCash: number;
 
   @ApiProperty({ example: 0 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2, default: 0,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   expectedCash: number;
 
   @ApiProperty({ example: 0 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2, default: 0,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   totalSales: number;
@@ -63,7 +72,14 @@ export class PosRegisterSession extends AbstractBaseEntity {
   @Column({ type: 'int', default: 0 })
   transactionCount: number;
 
-  @ApiProperty({ enum: RegisterSessionStatus, default: RegisterSessionStatus.OPEN })
-  @Column({ type: 'enum', enum: RegisterSessionStatus, default: RegisterSessionStatus.OPEN })
+  @ApiProperty({
+    enum: RegisterSessionStatus,
+    default: RegisterSessionStatus.OPEN,
+  })
+  @Column({
+    type: 'enum',
+    enum: RegisterSessionStatus,
+    default: RegisterSessionStatus.OPEN,
+  })
   status: RegisterSessionStatus;
 }

@@ -1,7 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsNotEmpty, IsString, IsOptional, IsUUID, IsNumber, IsArray,
-  ValidateNested, Min, IsEnum, IsBoolean, IsObject,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsNumber,
+  IsArray,
+  ValidateNested,
+  Min,
+  IsEnum,
+  IsBoolean,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '../entities/pos-enums';

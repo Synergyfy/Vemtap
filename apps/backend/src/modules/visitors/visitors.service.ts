@@ -54,6 +54,10 @@ import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
 import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
 import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
+import {
+  ActivityFeedItemDto,
+  PaginatedActivityFeedResponseDto,
+} from './dto/activity-feed-response.dto';
 
 @Injectable()
 export class VisitorsService {
@@ -158,8 +162,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -510,8 +513,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -660,8 +662,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -1038,6 +1039,87 @@ export class VisitorsService {
     };
   }
 
+  async getActivityFeed(
+    context: { branchId?: string; businessId?: string },
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedActivityFeedResponseDto> {
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .leftJoinAndSelect('visit.customer', 'customer')
+      .leftJoinAndSelect('visit.branch', 'branch')
+      .leftJoinAndSelect('visit.order', 'order')
+      .where('visit.deletedAt IS NULL');
+
+    if (context.branchId) {
+      qb.andWhere('visit.branchId = :branchId', {
+        branchId: context.branchId,
+      });
+    } else if (context.businessId) {
+      qb.andWhere('visit.businessId = :businessId', {
+        businessId: context.businessId,
+      });
+    }
+
+    const [visits, total] = await qb
+      .orderBy('visit.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const data: ActivityFeedItemDto[] = visits.map((visit) => {
+      const customerName = visit.customer
+        ? `${visit.customer.firstName || ''} ${(visit.customer.lastName || '')[0] || ''}`.trim() ||
+          'Unknown'
+        : 'Unknown';
+
+      const shortName = customerName
+        .split(' ')
+        .map((p, i) => (i === 0 ? p : `${p[0]}.`))
+        .join(' ');
+
+      if (visit.orderId) {
+        return {
+          id: visit.id,
+          type: 'order',
+          userName: shortName,
+          description: `Placed an order`,
+          timestamp: visit.createdAt,
+          branchId: visit.branchId,
+          metadata: { orderId: visit.orderId },
+        };
+      }
+
+      if (visit.status === 'new') {
+        return {
+          id: visit.id,
+          type: 'registration',
+          userName: shortName,
+          description: visit.deviceId
+            ? `Registered via device`
+            : `Registered via portal`,
+          timestamp: visit.createdAt,
+          branchId: visit.branchId,
+          metadata: { deviceId: visit.deviceId },
+        };
+      }
+
+      return {
+        id: visit.id,
+        type: 'visit',
+        userName: shortName,
+        description: visit.deviceId ? `Visited via device` : `Returning visit`,
+        timestamp: visit.createdAt,
+        branchId: visit.branchId,
+        metadata: { deviceId: visit.deviceId, status: visit.status },
+      };
+    });
+
+    return { data, total, page, limit };
+  }
+
   // ─── Smart Visit Recording ────────────────────────────────────────────────
 
   /**
@@ -1057,11 +1139,20 @@ export class VisitorsService {
     referredByBranchId?: string;
     catalogueOfferId?: string;
   }): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
-    const { customerId, deviceCode, sessionToken, ipAddress, userAgent, referredByBranchId, catalogueOfferId } =
-      params;
+    const {
+      customerId,
+      deviceCode,
+      sessionToken,
+      ipAddress,
+      userAgent,
+      referredByBranchId,
+      catalogueOfferId,
+    } = params;
 
     // --- Prevent Admins from being recorded as visitors ---
-    const user = await this.userRepository.findOne({ where: { id: customerId } });
+    const user = await this.userRepository.findOne({
+      where: { id: customerId },
+    });
     if (user?.role === UserRole.ADMIN) {
       return { visitId: 'admin-skip', sessionToken, isNewVisit: false };
     }
@@ -1199,12 +1290,22 @@ export class VisitorsService {
         // Discovery attribution update — atomic increments to avoid race conditions
         if (visit.catalogueOfferId) {
           const offerRepo = this.dataSource.getRepository(CatalogueOffer);
-          await offerRepo.increment({ id: visit.catalogueOfferId }, 'visits', 1);
+          await offerRepo.increment(
+            { id: visit.catalogueOfferId },
+            'visits',
+            1,
+          );
           if (orderId) {
             const orderRepo = this.dataSource.getRepository('CatalogueOrder');
-            const order = await orderRepo.findOne({ where: { id: orderId } }) as any;
+            const order = (await orderRepo.findOne({
+              where: { id: orderId },
+            })) as any;
             if (order?.totalAmount) {
-              await offerRepo.increment({ id: visit.catalogueOfferId }, 'revenue', Number(order.totalAmount));
+              await offerRepo.increment(
+                { id: visit.catalogueOfferId },
+                'revenue',
+                Number(order.totalAmount),
+              );
             }
           }
         }
@@ -1241,9 +1342,15 @@ export class VisitorsService {
       await offerRepo.increment({ id: catalogueOfferId }, 'visits', 1);
       if (orderId) {
         const orderRepo = this.dataSource.getRepository('CatalogueOrder');
-        const order = await orderRepo.findOne({ where: { id: orderId } }) as any;
+        const order = (await orderRepo.findOne({
+          where: { id: orderId },
+        })) as any;
         if (order?.totalAmount) {
-          await offerRepo.increment({ id: catalogueOfferId }, 'revenue', Number(order.totalAmount));
+          await offerRepo.increment(
+            { id: catalogueOfferId },
+            'revenue',
+            Number(order.totalAmount),
+          );
         }
       }
     }

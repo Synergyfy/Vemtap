@@ -4,7 +4,10 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 
 @Entity('marketing_template_formats')
 export class MarketingTemplateFormat extends AbstractBaseEntity {
-  @ApiProperty({ example: 'A4 Poster', description: 'Display name of the format' })
+  @ApiProperty({
+    example: 'A4 Poster',
+    description: 'Display name of the format',
+  })
   @Column()
   name: string;
 
@@ -20,11 +23,19 @@ export class MarketingTemplateFormat extends AbstractBaseEntity {
   @Column({ type: 'float' })
   heightMm: number;
 
-  @ApiProperty({ example: 3, description: 'Bleed area in millimetres', default: 3 })
+  @ApiProperty({
+    example: 3,
+    description: 'Bleed area in millimetres',
+    default: 3,
+  })
   @Column({ type: 'float', default: 3 })
   bleedMm: number;
 
-  @ApiProperty({ example: 5, description: 'Print margin in millimetres', default: 5 })
+  @ApiProperty({
+    example: 5,
+    description: 'Print margin in millimetres',
+    default: 5,
+  })
   @Column({ type: 'float', default: 5 })
   printMarginMm: number;
 
@@ -40,7 +51,10 @@ export class MarketingTemplateFormat extends AbstractBaseEntity {
   @BeforeUpdate()
   generateSlug() {
     if (!this.slug) {
-      this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      this.slug = this.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     }
   }
 }

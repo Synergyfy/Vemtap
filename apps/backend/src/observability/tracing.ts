@@ -39,7 +39,9 @@ function buildSpanProcessor() {
   if (otlpEndpoint) {
     // OTLP exporter would be configured here when needed.
     // For now fall through to no-op so the binary doesn't require @opentelemetry/exporter-trace-otlp-http
-    console.log(`[Tracing] OTLP endpoint detected: ${otlpEndpoint} — wire up OTLPTraceExporter to activate.`);
+    console.log(
+      `[Tracing] OTLP endpoint detected: ${otlpEndpoint} — wire up OTLPTraceExporter to activate.`,
+    );
   }
 
   // Production without a real backend: NoopSpanProcessor discards all spans
@@ -62,8 +64,14 @@ const sdk = new NodeSDK({
 
 export function initializeTracing() {
   sdk.start();
-  const mode = isProduction ? (otlpEndpoint ? 'otlp-ready' : 'no-op') : 'console (batch)';
-  console.log(`[Tracing] OpenTelemetry initialized — service: ${serviceName}, exporter: ${mode}`);
+  const mode = isProduction
+    ? otlpEndpoint
+      ? 'otlp-ready'
+      : 'no-op'
+    : 'console (batch)';
+  console.log(
+    `[Tracing] OpenTelemetry initialized — service: ${serviceName}, exporter: ${mode}`,
+  );
 }
 
 process.on('SIGTERM', () => {

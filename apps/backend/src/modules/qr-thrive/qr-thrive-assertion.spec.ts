@@ -10,9 +10,7 @@ describe('QR Thrive Subscription Assertion', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [
-        JwtModule.register({}),
-      ],
+      imports: [JwtModule.register({})],
       providers: [
         QrThriveEncryptionService,
         {
@@ -24,7 +22,9 @@ describe('QR Thrive Subscription Assertion', () => {
       ],
     }).compile();
 
-    encryptionService = module.get<QrThriveEncryptionService>(QrThriveEncryptionService);
+    encryptionService = module.get<QrThriveEncryptionService>(
+      QrThriveEncryptionService,
+    );
     jwtService = module.get<JwtService>(JwtService);
   });
 
@@ -37,7 +37,7 @@ describe('QR Thrive Subscription Assertion', () => {
 
     // Verification logic (simulating QR Thrive side)
     const decoded = jwtService.verify(token!, { secret: mockSecret });
-    
+
     expect(decoded.planId).toBe(payload.planId);
     expect(decoded.status).toBe(payload.status);
     expect(decoded.exp).toBeDefined();

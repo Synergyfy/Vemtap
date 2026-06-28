@@ -12,7 +12,10 @@ export class CreateAIPromptDto {
   @IsNotEmpty()
   category: string;
 
-  @ApiProperty({ example: 'Write a catchy one-line call to action for a {businessType} business asking customers to leave a Google Review.' })
+  @ApiProperty({
+    example:
+      'Write a catchy one-line call to action for a {businessType} business asking customers to leave a Google Review.',
+  })
   @IsString()
   @IsNotEmpty()
   promptTemplate: string;

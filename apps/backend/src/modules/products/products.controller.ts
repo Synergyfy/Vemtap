@@ -8,6 +8,7 @@ import {
   Delete,
   Request,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -24,6 +25,8 @@ import { Order, OrderStatus } from './entities/order.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import {
   ApiTags,
   ApiOperation,
@@ -32,6 +35,7 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('products')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}

@@ -66,7 +66,10 @@ export class EventsGateway
     this.logger.log(`Events client disconnected: ${client.id}`);
   }
 
-  emitUserUpdated(userId: string, data: { permissions?: string[]; role?: string }) {
+  emitUserUpdated(
+    userId: string,
+    data: { permissions?: string[]; role?: string },
+  ) {
     this.server.to(`user_${userId}`).emit('user_updated', data);
   }
 }

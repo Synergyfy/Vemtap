@@ -80,7 +80,11 @@ export class Visit extends AbstractBaseEntity {
   @Column({ type: 'text', nullable: true })
   userAgent: string;
 
-  @ApiProperty({ example: 'uuid-string', description: 'ID of the partner branch that referred this customer', nullable: true })
+  @ApiProperty({
+    example: 'uuid-string',
+    description: 'ID of the partner branch that referred this customer',
+    nullable: true,
+  })
   @Column({ type: 'uuid', nullable: true })
   referredByBranchId: string | null;
 
@@ -88,7 +92,11 @@ export class Visit extends AbstractBaseEntity {
   @JoinColumn({ name: 'referredByBranchId' })
   referredByBranch: Branch;
 
-  @ApiProperty({ example: 'uuid-string', description: 'ID of the Catalogue Offer (Promotion) that drove this visit', nullable: true })
+  @ApiProperty({
+    example: 'uuid-string',
+    description: 'ID of the Catalogue Offer (Promotion) that drove this visit',
+    nullable: true,
+  })
   @Column({ type: 'uuid', nullable: true })
   catalogueOfferId: string | null;
 

@@ -22,18 +22,12 @@ export class AddBusinessDescriptionAndSocials1781296294692 implements MigrationI
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "isVisible"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "timezone"`,
-    );
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "isVisible"`);
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "timezone"`);
     await queryRunner.query(
       `ALTER TABLE "businesses" DROP COLUMN "openingHours"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "socials"`,
-    );
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "socials"`);
     await queryRunner.query(
       `ALTER TABLE "businesses" DROP COLUMN "description"`,
     );

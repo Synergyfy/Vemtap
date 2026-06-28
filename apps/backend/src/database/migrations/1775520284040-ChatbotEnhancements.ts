@@ -5,16 +5,32 @@ export class ChatbotEnhancements1775520284040 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add columns to support_knowledge if they don't exist
-    await queryRunner.query(`ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "confidence" float DEFAULT 0`);
-    await queryRunner.query(`ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "success_rate" float DEFAULT 0`);
-    await queryRunner.query(`ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "match_count" integer DEFAULT 0`);
-    await queryRunner.query(`ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "is_ai_generated" boolean DEFAULT false`);
-    await queryRunner.query(`ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "buttons" jsonb`);
+    await queryRunner.query(
+      `ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "confidence" float DEFAULT 0`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "success_rate" float DEFAULT 0`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "match_count" integer DEFAULT 0`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "is_ai_generated" boolean DEFAULT false`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "support_knowledge" ADD COLUMN IF NOT EXISTS "buttons" jsonb`,
+    );
 
     // Add columns to bot_interactions if they don't exist
-    await queryRunner.query(`ALTER TABLE "bot_interactions" ADD COLUMN IF NOT EXISTS "confidence" float DEFAULT 0`);
-    await queryRunner.query(`ALTER TABLE "bot_interactions" ADD COLUMN IF NOT EXISTS "buttons" jsonb`);
-    await queryRunner.query(`ALTER TABLE "bot_interactions" ADD COLUMN IF NOT EXISTS "conversation_path" varchar`);
+    await queryRunner.query(
+      `ALTER TABLE "bot_interactions" ADD COLUMN IF NOT EXISTS "confidence" float DEFAULT 0`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "bot_interactions" ADD COLUMN IF NOT EXISTS "buttons" jsonb`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "bot_interactions" ADD COLUMN IF NOT EXISTS "conversation_path" varchar`,
+    );
 
     // Create bot_conversation_context table
     await queryRunner.query(`
@@ -35,7 +51,7 @@ export class ChatbotEnhancements1775520284040 implements MigrationInterface {
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "idx_bot_conversation_context_user_session" ON "bot_conversation_context"("user_id", "session_id")
     `);
-    
+
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "idx_bot_conversation_context_last_activity" ON "bot_conversation_context"("last_activity") WHERE is_active = true
     `);

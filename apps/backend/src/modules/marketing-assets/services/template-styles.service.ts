@@ -13,7 +13,12 @@ export class TemplateStylesService {
   ) {}
 
   async create(dto: CreateTemplateStyleDto): Promise<MarketingTemplateStyle> {
-    const slug = dto.slug || dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const slug =
+      dto.slug ||
+      dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     const style = this.styleRepo.create({ ...dto, slug });
     return this.styleRepo.save(style);
   }
@@ -31,10 +36,16 @@ export class TemplateStylesService {
     return style;
   }
 
-  async update(id: string, dto: UpdateTemplateStyleDto): Promise<MarketingTemplateStyle> {
+  async update(
+    id: string,
+    dto: UpdateTemplateStyleDto,
+  ): Promise<MarketingTemplateStyle> {
     const style = await this.findOne(id);
     if (dto.name && !dto.slug) {
-      (dto as any).slug = dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      (dto as any).slug = dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     }
     Object.assign(style, dto);
     return this.styleRepo.save(style);

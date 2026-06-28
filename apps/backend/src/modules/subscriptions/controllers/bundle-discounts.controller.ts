@@ -1,7 +1,19 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BundleDiscountsService } from '../services/bundle-discounts.service';
-import { CreateBundleDiscountDto, UpdateBundleDiscountDto } from '../dto/bundle-discount.dto';
+import {
+  CreateBundleDiscountDto,
+  UpdateBundleDiscountDto,
+} from '../dto/bundle-discount.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -12,7 +24,9 @@ import { UserRole } from '../../users/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('admin/bundle-discounts')
 export class BundleDiscountsController {
-  constructor(private readonly bundleDiscountsService: BundleDiscountsService) {}
+  constructor(
+    private readonly bundleDiscountsService: BundleDiscountsService,
+  ) {}
 
   @Get()
   @Roles(UserRole.ADMIN)
@@ -31,7 +45,10 @@ export class BundleDiscountsController {
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update a bundle discount' })
-  async update(@Param('id') id: string, @Body() updateDto: UpdateBundleDiscountDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateBundleDiscountDto,
+  ) {
     return this.bundleDiscountsService.update(id, updateDto);
   }
 

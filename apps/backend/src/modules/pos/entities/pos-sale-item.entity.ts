@@ -29,14 +29,19 @@ export class PosSaleItem extends AbstractBaseEntity {
 
   @ApiProperty({ example: 4500 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   unitPrice: number;
 
   @ApiProperty({ example: 2500 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2, nullable: true,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   costPrice: number;
@@ -47,15 +52,27 @@ export class PosSaleItem extends AbstractBaseEntity {
 
   @ApiProperty({ example: 0 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2, default: 0,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   discount: number;
 
   @ApiProperty({ example: 9000 })
   @Column({
-    type: 'decimal', precision: 12, scale: 2,
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   totalPrice: number;
+
+  @ApiProperty({
+    example: 0,
+    description: 'Number of units refunded for this item',
+  })
+  @Column({ type: 'int', default: 0 })
+  refundedQuantity: number;
 }

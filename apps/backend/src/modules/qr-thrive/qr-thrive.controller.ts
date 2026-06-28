@@ -25,7 +25,6 @@ import {
   UpdateQRCodeDto,
   CreateFolderDto,
   UpdateFolderDto,
-
   SpecializedLeadsQueryDto,
   UpdateLeadStatusDto,
 } from './dto/qr-thrive.dto';
@@ -145,19 +144,28 @@ export class QrThriveController {
 
   @Patch('branches/:branchId/main-qr/:qrCodeId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Update main QR code and detach it from being the main QR' })
+  @ApiOperation({
+    summary: 'Update main QR code and detach it from being the main QR',
+  })
   async updateMainQRCode(
     @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
     @Body() dto: UpdateQRCodeDto,
   ) {
-    return this.qrThriveService.updateMainQRCode(req.user, branchId, qrCodeId, dto);
+    return this.qrThriveService.updateMainQRCode(
+      req.user,
+      branchId,
+      qrCodeId,
+      dto,
+    );
   }
 
   @Post('branches/:branchId/main-qr/recreate')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Recreate the main QR code (e.g., after user edited the old one)' })
+  @ApiOperation({
+    summary: 'Recreate the main QR code (e.g., after user edited the old one)',
+  })
   async recreateMainQRCode(
     @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
@@ -167,7 +175,9 @@ export class QrThriveController {
 
   @Post('branches/:branchId/qr-codes/:qrCodeId/set-as-main')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Set an existing QR code as the main business link QR code' })
+  @ApiOperation({
+    summary: 'Set an existing QR code as the main business link QR code',
+  })
   async setAsMainQRCode(
     @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
@@ -341,33 +351,39 @@ export class QrThriveController {
   async getSubscriptionToken(@Req() req: RequestWithUser) {
     const user = req.user;
     if (!user.businessId) {
-      return { token: null, qrThrivePlanId: '', subscriptionStatus: 'inactive' };
+      return {
+        token: null,
+        qrThrivePlanId: '',
+        subscriptionStatus: 'inactive',
+      };
     }
-    const token = await this.qrThriveService.generateSubscriptionToken(user, user.businessId);
-    
+    const token = await this.qrThriveService.generateSubscriptionToken(
+      user,
+      user.businessId,
+    );
+
     // Extract the payload to get plan info for the frontend
     let qrThrivePlanId = '';
     let subscriptionStatus = 'inactive';
     if (token) {
       try {
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        const payload = JSON.parse(
+          Buffer.from(token.split('.')[1], 'base64').toString(),
+        );
         qrThrivePlanId = payload.qrThrivePlanId || '';
         subscriptionStatus = payload.subscriptionStatus || 'inactive';
       } catch {
         // Ignore parse errors
       }
     }
-    
+
     return { token, qrThrivePlanId, subscriptionStatus };
   }
 
   @Public()
   @Get('public/:shortId')
   @ApiOperation({ summary: 'Get public details of a QR code by short ID' })
-  async getPublicQRCode(
-    @Param('shortId') shortId: string,
-    @Req() req: any,
-  ) {
+  async getPublicQRCode(@Param('shortId') shortId: string, @Req() req: any) {
     const user = req.user;
     return this.qrThriveService.getPublicQRCode(shortId, user);
   }
@@ -380,14 +396,22 @@ export class QrThriveController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    let ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+    let ip =
+      (req.headers['x-forwarded-for'] as string) ||
+      req.socket.remoteAddress ||
+      'unknown';
     if (ip.includes(',')) {
       ip = ip.split(',')[0].trim();
     }
     const userAgent = req.headers['user-agent'] || 'unknown';
     const user = req.user;
-    let redirectUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
-    
+    let redirectUrl = await this.qrThriveService.recordPublicScan(
+      shortId,
+      ip,
+      userAgent,
+      user,
+    );
+
     // Prevent self-referencing redirect loops to scan pages
     const scanPattern = new RegExp(`\\/s\\/${shortId}$`, 'i');
     if (scanPattern.test(redirectUrl)) {
@@ -400,25 +424,30 @@ export class QrThriveController {
   @Public()
   @Post('public/scan/:shortId')
   @ApiOperation({ summary: 'Record a scan and return destination metadata' })
-  async recordScanOnly(
-    @Param('shortId') shortId: string,
-    @Req() req: any,
-  ) {
-    let ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  async recordScanOnly(@Param('shortId') shortId: string, @Req() req: any) {
+    let ip =
+      (req.headers['x-forwarded-for'] as string) ||
+      req.socket.remoteAddress ||
+      'unknown';
     if (ip.includes(',')) {
       ip = ip.split(',')[0].trim();
     }
     const userAgent = req.headers['user-agent'] || 'unknown';
     const user = req.user;
-    const destinationUrl = await this.qrThriveService.recordPublicScan(shortId, ip, userAgent, user);
-    
+    const destinationUrl = await this.qrThriveService.recordPublicScan(
+      shortId,
+      ip,
+      userAgent,
+      user,
+    );
+
     // Fetch full QR details for in-app rendering
     const qrCode = await this.qrThriveService.getPublicQRCode(shortId, user);
-    
+
     return {
       ...qrCode,
       destinationUrl,
-      shortId
+      shortId,
     };
   }
 

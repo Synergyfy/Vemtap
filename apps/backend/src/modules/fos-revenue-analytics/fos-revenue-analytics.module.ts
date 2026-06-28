@@ -11,7 +11,13 @@ import { Plan } from '../subscriptions/entities/plan.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MetricsSnapshot, Business, User, Subscription, Plan]),
+    TypeOrmModule.forFeature([
+      MetricsSnapshot,
+      Business,
+      User,
+      Subscription,
+      Plan,
+    ]),
     FosCoreModule,
   ],
   controllers: [FosRevenueAnalyticsController],

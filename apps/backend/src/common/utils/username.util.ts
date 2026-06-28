@@ -10,7 +10,7 @@ export function generateUsernameFromName(name: string): string {
     .replace(/--+/g, '-') // Collapse multiple hyphens
     .replace(/^-|-$/g, '') // Trim hyphens
     .substring(0, 30); // Max length
-    
+
   return sanitized || 'branch';
 }
 

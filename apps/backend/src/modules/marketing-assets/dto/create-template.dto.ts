@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsObject, IsArray } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsObject,
+  IsArray,
+} from 'class-validator';
 
 export class CreateTemplateDto {
   @ApiProperty({ example: 'Sleek Table Tent' })
@@ -7,7 +14,10 @@ export class CreateTemplateDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'A modern design perfect for cafes and restaurants', required: false })
+  @ApiProperty({
+    example: 'A modern design perfect for cafes and restaurants',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   description?: string;
@@ -17,7 +27,11 @@ export class CreateTemplateDto {
   @IsNotEmpty()
   category: string;
 
-  @ApiProperty({ example: ['uuid'], required: false, description: 'FKs to marketing_categories' })
+  @ApiProperty({
+    example: ['uuid'],
+    required: false,
+    description: 'FKs to marketing_categories',
+  })
   @IsArray()
   @IsOptional()
   @IsString({ each: true })
@@ -28,7 +42,9 @@ export class CreateTemplateDto {
   @IsNotEmpty()
   type: string;
 
-  @ApiProperty({ description: 'Full HTML/CSS layout configuration JSON structure' })
+  @ApiProperty({
+    description: 'Full HTML/CSS layout configuration JSON structure',
+  })
   @IsObject()
   @IsNotEmpty()
   layoutConfig: any;
@@ -38,12 +54,19 @@ export class CreateTemplateDto {
   @IsOptional()
   isActive?: boolean;
 
-  @ApiProperty({ example: 'https://cdn.vemtap.com/templates/table-tent.png', required: false })
+  @ApiProperty({
+    example: 'https://cdn.vemtap.com/templates/table-tent.png',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   thumbnailUrl?: string;
 
-  @ApiProperty({ description: 'QR code configuration overrides (styles, margins, custom dots)', required: false })
+  @ApiProperty({
+    description:
+      'QR code configuration overrides (styles, margins, custom dots)',
+    required: false,
+  })
   @IsObject()
   @IsOptional()
   qrCodeConfig?: any;

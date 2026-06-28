@@ -172,7 +172,6 @@ export class CatalogueCartService {
       image = offer.mainImage ?? null;
     }
 
-
     let existingItem = cart.items?.find(
       (i) =>
         (dto.itemId && i.itemId === dto.itemId) ||

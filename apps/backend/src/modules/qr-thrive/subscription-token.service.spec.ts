@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { SubscriptionTokenService, VemTapQrThriveTokenPayload } from './subscription-token.service';
+import {
+  SubscriptionTokenService,
+  VemTapQrThriveTokenPayload,
+} from './subscription-token.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PlansService } from '../subscriptions/plans.service';
 
@@ -51,7 +54,8 @@ describe('SubscriptionTokenService', () => {
 
     service = module.get<SubscriptionTokenService>(SubscriptionTokenService);
     jwtService = module.get<JwtService>(JwtService);
-    subscriptionsService = module.get<SubscriptionsService>(SubscriptionsService);
+    subscriptionsService =
+      module.get<SubscriptionsService>(SubscriptionsService);
     plansService = module.get<PlansService>(PlansService);
   });
 
@@ -73,7 +77,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockJwtService.sign.mockReturnValue('signed-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -89,7 +95,7 @@ describe('SubscriptionTokenService', () => {
         expect.objectContaining({
           secret: 'test-secret-key',
           expiresIn: 3600,
-        })
+        }),
       );
     });
 
@@ -106,7 +112,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockJwtService.sign.mockReturnValue('trial-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -116,7 +124,7 @@ describe('SubscriptionTokenService', () => {
         expect.objectContaining({
           subscriptionStatus: 'trial',
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -130,19 +138,19 @@ describe('SubscriptionTokenService', () => {
         expect.objectContaining({
           subscriptionStatus: 'active',
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
     it('should fallback to free plan when no paid plan', async () => {
       mockSubscriptionsService.activeSubscription.mockResolvedValue(null);
-      
+
       const mockFreePlan = {
         id: 'free-plan',
         qrThrivePlanId: 'qr-free-plan',
       };
       mockPlansService.findFreePlan.mockResolvedValue(mockFreePlan);
-      
+
       mockJwtService.sign.mockReturnValue('free-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -151,7 +159,7 @@ describe('SubscriptionTokenService', () => {
         expect.objectContaining({
           qrThrivePlanId: 'qr-free-plan',
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -167,7 +175,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockJwtService.sign.mockReturnValue('canceled-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -176,7 +186,7 @@ describe('SubscriptionTokenService', () => {
         expect.objectContaining({
           subscriptionStatus: 'expired',
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -192,7 +202,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockJwtService.sign.mockReturnValue('expired-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -201,12 +213,14 @@ describe('SubscriptionTokenService', () => {
         expect.objectContaining({
           subscriptionStatus: 'expired',
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
     it('should use default capabilities when subscription fails', async () => {
-      mockSubscriptionsService.activeSubscription.mockRejectedValue(new Error('DB error'));
+      mockSubscriptionsService.activeSubscription.mockRejectedValue(
+        new Error('DB error'),
+      );
       mockJwtService.sign.mockReturnValue('default-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -220,7 +234,7 @@ describe('SubscriptionTokenService', () => {
             canAnalytics: true,
           }),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -236,7 +250,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockPlansService.findFreePlan.mockResolvedValue(null);
       mockJwtService.sign.mockReturnValue('no-plan-token');
 
@@ -246,7 +262,7 @@ describe('SubscriptionTokenService', () => {
         expect.objectContaining({
           qrThrivePlanId: 'qr-free-plan',
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -279,7 +295,9 @@ describe('SubscriptionTokenService', () => {
     });
 
     it('should return null for invalid token', async () => {
-      mockJwtService.verifyAsync.mockRejectedValue(new Error('Invalid signature'));
+      mockJwtService.verifyAsync.mockRejectedValue(
+        new Error('Invalid signature'),
+      );
 
       const result = await service.verifyToken('invalid-token');
 
@@ -295,7 +313,9 @@ describe('SubscriptionTokenService', () => {
     });
 
     it('should handle malformed token', async () => {
-      mockJwtService.verifyAsync.mockRejectedValue(new Error('Malformed token'));
+      mockJwtService.verifyAsync.mockRejectedValue(
+        new Error('Malformed token'),
+      );
 
       const result = await service.verifyToken('malformed');
 
@@ -313,7 +333,10 @@ describe('SubscriptionTokenService', () => {
 
       mockJwtService.sign.mockReturnValue('no-biz-token');
 
-      const result = await service.generateToken(userWithoutBusiness as any, 'biz-456');
+      const result = await service.generateToken(
+        userWithoutBusiness as any,
+        'biz-456',
+      );
 
       expect(result).toBe('no-biz-token');
     });
@@ -340,7 +363,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockJwtService.sign.mockReturnValue('null-types-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -352,7 +377,7 @@ describe('SubscriptionTokenService', () => {
             allowedQRTypes: expect.arrayContaining(['url', 'text', 'pdf']), // Default
           }),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -368,7 +393,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockJwtService.sign.mockReturnValue('analytics-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -379,7 +406,7 @@ describe('SubscriptionTokenService', () => {
             canAnalytics: true,
           }),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -395,7 +422,9 @@ describe('SubscriptionTokenService', () => {
         },
       };
 
-      mockSubscriptionsService.activeSubscription.mockResolvedValue(mockSubscription);
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(
+        mockSubscription,
+      );
       mockJwtService.sign.mockReturnValue('no-analytics-token');
 
       const result = await service.generateToken(mockUser as any, 'biz-456');
@@ -406,7 +435,7 @@ describe('SubscriptionTokenService', () => {
             canAnalytics: true, // Default to true since we overrode default capabilities
           }),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });

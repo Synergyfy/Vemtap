@@ -127,7 +127,10 @@ describe('SubscriptionsService', () => {
   const mockAffiliatesService = { processSubscriptionCommission: jest.fn() };
   const mockExternalAffiliateService = { recordReferral: jest.fn() };
   const mockQrThriveService = { syncSubscription: jest.fn() };
-  const mockBranchesService = { findBusinessByOwner: jest.fn(), findById: jest.fn() };
+  const mockBranchesService = {
+    findBusinessByOwner: jest.fn(),
+    findById: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -150,7 +153,10 @@ describe('SubscriptionsService', () => {
         { provide: CreditService, useValue: mockCreditService },
         { provide: AddonsService, useValue: mockAddonsService },
         { provide: AffiliatesService, useValue: mockAffiliatesService },
-        { provide: ExternalAffiliateService, useValue: mockExternalAffiliateService },
+        {
+          provide: ExternalAffiliateService,
+          useValue: mockExternalAffiliateService,
+        },
         { provide: QrThriveService, useValue: mockQrThriveService },
         { provide: BranchesService, useValue: mockBranchesService },
         {

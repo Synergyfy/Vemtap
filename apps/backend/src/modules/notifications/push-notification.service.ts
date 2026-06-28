@@ -27,7 +27,9 @@ export class PushNotificationService {
 
   constructor(
     @InjectQueue(PUSH_NOTIFICATION_QUEUE)
-    private readonly pushQueue: Queue<PushNotificationJobData | PushFanOutJobData>,
+    private readonly pushQueue: Queue<
+      PushNotificationJobData | PushFanOutJobData
+    >,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Contact)
@@ -82,7 +84,9 @@ export class PushNotificationService {
     isUser = true,
   ): Promise<{ queued: true } | { queued: false; reason: string }> {
     if (!this.isConfigured) {
-      this.logger.debug('Push notifications disabled (VAPID not configured) — skipping');
+      this.logger.debug(
+        'Push notifications disabled (VAPID not configured) — skipping',
+      );
       return { queued: false, reason: 'vapid-not-configured' };
     }
 
@@ -97,7 +101,9 @@ export class PushNotificationService {
       },
     );
 
-    this.logger.debug(`Push job queued for ${isUser ? 'User' : 'Contact'} ${targetId}`);
+    this.logger.debug(
+      `Push job queued for ${isUser ? 'User' : 'Contact'} ${targetId}`,
+    );
     return { queued: true };
   }
 
@@ -114,7 +120,9 @@ export class PushNotificationService {
     data: Record<string, any> = {},
   ): Promise<{ queued: true } | { queued: false; reason: string }> {
     if (!this.isConfigured) {
-      this.logger.debug('Push notifications disabled (VAPID not configured) — skipping fan-out');
+      this.logger.debug(
+        'Push notifications disabled (VAPID not configured) — skipping fan-out',
+      );
       return { queued: false, reason: 'vapid-not-configured' };
     }
 
@@ -126,7 +134,9 @@ export class PushNotificationService {
     });
 
     if (staff.length === 0) {
-      this.logger.debug(`No staff found for branch ${branchId} — skipping fan-out`);
+      this.logger.debug(
+        `No staff found for branch ${branchId} — skipping fan-out`,
+      );
       return { queued: false, reason: 'no-staff' };
     }
 

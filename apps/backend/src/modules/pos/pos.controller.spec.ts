@@ -41,9 +41,7 @@ describe('PosController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PosController],
-      providers: [
-        { provide: PosService, useValue: mockPosService },
-      ],
+      providers: [{ provide: PosService, useValue: mockPosService }],
     }).compile();
 
     controller = module.get<PosController>(PosController);
@@ -86,7 +84,10 @@ describe('PosController', () => {
     it('should call service.findOneSale with id and businessId', async () => {
       await controller.getSale('sale-1', mockReq);
 
-      expect(mockPosService.findOneSale).toHaveBeenCalledWith('sale-1', 'bus-1');
+      expect(mockPosService.findOneSale).toHaveBeenCalledWith(
+        'sale-1',
+        'bus-1',
+      );
     });
   });
 
@@ -96,7 +97,12 @@ describe('PosController', () => {
 
       await controller.updateSaleStatus('sale-1', dto, mockReq);
 
-      expect(mockPosService.updateSaleStatus).toHaveBeenCalledWith('sale-1', dto, 'bus-1');
+      expect(mockPosService.updateSaleStatus).toHaveBeenCalledWith(
+        'sale-1',
+        dto,
+        'bus-1',
+        'user-1',
+      );
     });
   });
 
@@ -114,7 +120,10 @@ describe('PosController', () => {
     it('should call service.findAllHeldSales', async () => {
       await controller.listHeldSales('br-1', mockReq);
 
-      expect(mockPosService.findAllHeldSales).toHaveBeenCalledWith('bus-1', 'br-1');
+      expect(mockPosService.findAllHeldSales).toHaveBeenCalledWith(
+        'bus-1',
+        'br-1',
+      );
     });
   });
 
@@ -122,7 +131,10 @@ describe('PosController', () => {
     it('should call service.resumeHeldSale', async () => {
       await controller.getHeldSale('held-1', mockReq);
 
-      expect(mockPosService.resumeHeldSale).toHaveBeenCalledWith('held-1', 'bus-1');
+      expect(mockPosService.resumeHeldSale).toHaveBeenCalledWith(
+        'held-1',
+        'bus-1',
+      );
     });
   });
 
@@ -130,7 +142,10 @@ describe('PosController', () => {
     it('should call service.deleteHeldSale', async () => {
       await controller.deleteHeldSale('held-1', mockReq);
 
-      expect(mockPosService.deleteHeldSale).toHaveBeenCalledWith('held-1', 'bus-1');
+      expect(mockPosService.deleteHeldSale).toHaveBeenCalledWith(
+        'held-1',
+        'bus-1',
+      );
     });
   });
 
@@ -166,7 +181,10 @@ describe('PosController', () => {
 
       await controller.getRegisterHistory(query, mockReq);
 
-      expect(mockPosService.getRegisterHistory).toHaveBeenCalledWith('bus-1', query);
+      expect(mockPosService.getRegisterHistory).toHaveBeenCalledWith(
+        'bus-1',
+        query,
+      );
     });
   });
 
@@ -182,7 +200,10 @@ describe('PosController', () => {
     it('should call service.getTopProducts', async () => {
       await controller.getTopProducts('br-1', mockReq);
 
-      expect(mockPosService.getTopProducts).toHaveBeenCalledWith('bus-1', 'br-1');
+      expect(mockPosService.getTopProducts).toHaveBeenCalledWith(
+        'bus-1',
+        'br-1',
+      );
     });
   });
 
@@ -190,7 +211,11 @@ describe('PosController', () => {
     it('should call service.adjustStock', async () => {
       await controller.adjustStock('prod-1', 50, mockReq);
 
-      expect(mockPosService.adjustStock).toHaveBeenCalledWith('prod-1', 'bus-1', 50);
+      expect(mockPosService.adjustStock).toHaveBeenCalledWith(
+        'prod-1',
+        'bus-1',
+        50,
+      );
     });
   });
 });

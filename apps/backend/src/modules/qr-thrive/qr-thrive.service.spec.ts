@@ -7,7 +7,10 @@ import { QrThriveUserMapping } from './entities/qr-thrive-user-mapping.entity';
 import { QrThriveEncryptionService } from './qr-thrive-encryption.service';
 import { SubscriptionTokenService } from './subscription-token.service';
 
-import { ExternalLeadStatusEntity, ExternalLeadStatus } from './entities/external-lead-status.entity';
+import {
+  ExternalLeadStatusEntity,
+  ExternalLeadStatus,
+} from './entities/external-lead-status.entity';
 import { BranchesService } from '../branches/branches.service';
 import { Branch } from '../branches/entities/branch.entity';
 import { of } from 'rxjs';
@@ -44,14 +47,23 @@ describe('QrThriveService - Lead Management', () => {
       providers: [
         QrThriveService,
         { provide: HttpService, useValue: httpService },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('mock-key') } },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('mock-key') },
+        },
         { provide: BranchesService, useValue: branchesService },
         { provide: getRepositoryToken(QrThriveUserMapping), useValue: {} },
-        { provide: getRepositoryToken(Branch), useValue: { findOne: jest.fn() } },
+        {
+          provide: getRepositoryToken(Branch),
+          useValue: { findOne: jest.fn() },
+        },
         { provide: QrThriveEncryptionService, useValue: {} },
         { provide: SubscriptionTokenService, useValue: {} },
 
-        { provide: getRepositoryToken(ExternalLeadStatusEntity), useValue: leadStatusRepo },
+        {
+          provide: getRepositoryToken(ExternalLeadStatusEntity),
+          useValue: leadStatusRepo,
+        },
       ],
     }).compile();
 
@@ -62,19 +74,32 @@ describe('QrThriveService - Lead Management', () => {
     it('should merge local statuses into external leads data', async () => {
       // Mock external data from QR Thrive
       const externalData = {
-        items: [{ id: 'lead-1', type: 'booking' }, { id: 'lead-2', type: 'menu' }]
+        items: [
+          { id: 'lead-1', type: 'booking' },
+          { id: 'lead-2', type: 'menu' },
+        ],
       };
       httpService.get.mockReturnValue(of({ data: externalData }));
 
       // Mock local status for lead-1
       leadStatusRepo.find.mockResolvedValue([
-        { externalLeadId: 'lead-1', status: ExternalLeadStatus.PROCESSING, notes: 'Called' }
+        {
+          externalLeadId: 'lead-1',
+          status: ExternalLeadStatus.PROCESSING,
+          notes: 'Called',
+        },
       ]);
 
       // Mock user mapping (needed for the API call)
-      (service as any).userMappingRepo.findOne = jest.fn().mockResolvedValue({ qrThriveUserId: 'qt-1' });
+      (service as any).userMappingRepo.findOne = jest
+        .fn()
+        .mockResolvedValue({ qrThriveUserId: 'qt-1' });
 
-      const result = await service.getSpecializedLeads(mockUser, mockBranchId, {});
+      const result = await service.getSpecializedLeads(
+        mockUser,
+        mockBranchId,
+        {},
+      );
 
       expect(result.items[0].status).toBe(ExternalLeadStatus.PROCESSING);
       expect(result.items[0].localNotes).toBe('Called');
@@ -84,11 +109,20 @@ describe('QrThriveService - Lead Management', () => {
 
   describe('updateLeadStatus', () => {
     it('should update an existing status record', async () => {
-      const existingStatus = { externalLeadId: 'lead-1', status: ExternalLeadStatus.NEW };
+      const existingStatus = {
+        externalLeadId: 'lead-1',
+        status: ExternalLeadStatus.NEW,
+      };
       leadStatusRepo.findOne.mockResolvedValue(existingStatus);
-      leadStatusRepo.save.mockImplementation(val => Promise.resolve(val));
+      leadStatusRepo.save.mockImplementation((val) => Promise.resolve(val));
 
-      const result = await service.updateLeadStatus(mockUser, mockBranchId, 'lead-1', ExternalLeadStatus.COMPLETED, 'Done!');
+      const result = await service.updateLeadStatus(
+        mockUser,
+        mockBranchId,
+        'lead-1',
+        ExternalLeadStatus.COMPLETED,
+        'Done!',
+      );
 
       expect(existingStatus.status).toBe(ExternalLeadStatus.COMPLETED);
       expect(result.notes).toBe('Done!');
@@ -98,58 +132,83 @@ describe('QrThriveService - Lead Management', () => {
     it('should create a new status record if one does not exist', async () => {
       leadStatusRepo.findOne.mockResolvedValue(null);
       leadStatusRepo.create.mockReturnValue({ externalLeadId: 'lead-new' });
-      leadStatusRepo.save.mockImplementation(val => Promise.resolve(val));
+      leadStatusRepo.save.mockImplementation((val) => Promise.resolve(val));
 
-      await service.updateLeadStatus(mockUser, mockBranchId, 'lead-new', ExternalLeadStatus.PROCESSING);
+      await service.updateLeadStatus(
+        mockUser,
+        mockBranchId,
+        'lead-new',
+        ExternalLeadStatus.PROCESSING,
+      );
 
-      expect(leadStatusRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-        externalLeadId: 'lead-new',
-        status: ExternalLeadStatus.PROCESSING
-      }));
+      expect(leadStatusRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          externalLeadId: 'lead-new',
+          status: ExternalLeadStatus.PROCESSING,
+        }),
+      );
     });
 
     it('should throw forbidden error if user has no access to branch', async () => {
       branchesService.checkBranchAccess.mockResolvedValue(false);
 
       await expect(
-        service.updateLeadStatus(mockUser, mockBranchId, 'lead-1', ExternalLeadStatus.PROCESSING)
+        service.updateLeadStatus(
+          mockUser,
+          mockBranchId,
+          'lead-1',
+          ExternalLeadStatus.PROCESSING,
+        ),
       ).rejects.toThrow('You do not have access to this branch');
     });
   });
 
   describe('updateQRCode & deleteQRCode - Main QR Protection', () => {
-    const mockBranch = { id: mockBranchId, mainQrCodeId: 'main-qr-id' } as Branch;
+    const mockBranch = {
+      id: mockBranchId,
+      mainQrCodeId: 'main-qr-id',
+    } as Branch;
 
     beforeEach(() => {
       branchesService.findById = jest.fn().mockResolvedValue(mockBranch);
-      (service as any).getMapping = jest.fn().mockResolvedValue({ qrThriveUserId: 'qt-1' });
+      (service as any).getMapping = jest
+        .fn()
+        .mockResolvedValue({ qrThriveUserId: 'qt-1' });
       httpService.patch = jest.fn().mockReturnValue(of({ data: {} }));
       httpService.delete = jest.fn().mockReturnValue(of({ data: {} }));
     });
 
     it('should throw BadRequest when trying to update the main QR code', async () => {
       await expect(
-        service.updateQRCode(mockUser, mockBranchId, 'main-qr-id', {})
-      ).rejects.toThrow('The main business link QR code cannot be modified or deleted.');
+        service.updateQRCode(mockUser, mockBranchId, 'main-qr-id', {}),
+      ).rejects.toThrow(
+        'The main business link QR code cannot be modified or deleted.',
+      );
     });
 
     it('should allow updating a non-main QR code', async () => {
       const mockHeaders = {};
-      (service as any).getHeadersWithSubscription = jest.fn().mockResolvedValue(mockHeaders);
-      
+      (service as any).getHeadersWithSubscription = jest
+        .fn()
+        .mockResolvedValue(mockHeaders);
+
       await service.updateQRCode(mockUser, mockBranchId, 'other-qr-id', {});
       expect(httpService.patch).toHaveBeenCalled();
     });
 
     it('should throw BadRequest when trying to delete the main QR code', async () => {
       await expect(
-        service.deleteQRCode(mockUser, mockBranchId, 'main-qr-id')
-      ).rejects.toThrow('The main business link QR code cannot be modified or deleted.');
+        service.deleteQRCode(mockUser, mockBranchId, 'main-qr-id'),
+      ).rejects.toThrow(
+        'The main business link QR code cannot be modified or deleted.',
+      );
     });
 
     it('should allow deleting a non-main QR code', async () => {
       const mockHeaders = {};
-      (service as any).getHeadersWithSubscription = jest.fn().mockResolvedValue(mockHeaders);
+      (service as any).getHeadersWithSubscription = jest
+        .fn()
+        .mockResolvedValue(mockHeaders);
       (service as any).branchRepo = {
         createQueryBuilder: jest.fn().mockReturnValue({
           update: jest.fn().mockReturnThis(),
