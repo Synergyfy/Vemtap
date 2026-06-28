@@ -10,6 +10,7 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import { useCatalogueOrders } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
+import OfflineBanner from '@/components/dashboard/pos/OfflineBanner';
 
 export default function POSPage() {
   const router = useRouter();
@@ -97,6 +98,8 @@ export default function POSPage() {
 
   return (
     <div className="h-full flex flex-col md:flex-row p-4 md:p-6 gap-4">
+      <OfflineBanner />
+
       {/* Left: Main content — scrolls as a whole */}
       <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
         <POSHomeScreen
