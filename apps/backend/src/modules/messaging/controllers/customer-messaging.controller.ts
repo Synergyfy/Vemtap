@@ -23,20 +23,23 @@ import {
 } from '@nestjs/swagger';
 import { InboxService } from '../services/inbox.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { User } from '../../users/entities/user.entity';
+import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Roles } from '../../../common/decorators/roles.decorator';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { ReplyDto } from '../dto/reply.dto';
 import { UpdateMessageDto } from '../dto/update-message.dto';
 import { StartConversationDto } from '../dto/start-conversation.dto';
 import { ThreadIdDto } from '../dto/thread-id.dto';
 
 @ApiTags('Customer Messaging')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('customer/messaging')
 export class CustomerMessagingController {
   constructor(private readonly inboxService: InboxService) {}
 
   @Get('threads')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({
     summary:
       'Get all in-house messaging threads for the customer (Newest to Oldest)',
@@ -64,7 +67,7 @@ export class CustomerMessagingController {
 
   @Post('threads/start')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({
     summary: 'Start a new conversation with a branch',
     description:
@@ -88,7 +91,7 @@ export class CustomerMessagingController {
 
   @Get('threads/:threadId')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({
     summary: 'Get messages in a specific in-house thread (Newest to Oldest)',
     description:
@@ -108,7 +111,7 @@ export class CustomerMessagingController {
 
   @Post('threads/:threadId/reply')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({
     summary: 'Reply to an in-house message (Supports Quoting)',
     description:
@@ -135,7 +138,7 @@ export class CustomerMessagingController {
 
   @Patch('messages/:id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Edit a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async editMessage(
@@ -148,7 +151,7 @@ export class CustomerMessagingController {
 
   @Delete('messages/:id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Delete (hide) a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async deleteMessage(

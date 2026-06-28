@@ -70,7 +70,13 @@ export class BusinessesController {
   ) {
     const businessId = req.user.businessId;
     if (!businessId) {
-      throw new BadRequestException('User is not associated with a business');
+      // Auto-create business during onboarding if one doesn't exist yet
+      const business = await this.businessesService.create({
+        ownerId: req.user.id,
+        name: updateBusinessDto.name || 'My Business',
+        ...updateBusinessDto,
+      });
+      return business;
     }
     return this.businessesService.update(businessId, updateBusinessDto);
   }
@@ -78,7 +84,8 @@ export class BusinessesController {
   @Post('my-business/enqueue-geocode')
   @Roles(UserRole.OWNER)
   @ApiOperation({
-    summary: 'Enqueue a background geocoding job to resolve lat/lng from the business address',
+    summary:
+      'Enqueue a background geocoding job to resolve lat/lng from the business address',
   })
   @ApiOkResponse({
     description: 'Geocoding job queued',
@@ -232,7 +239,10 @@ export class BusinessesController {
 
   @Post('admin/backfill-geocodes')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Trigger backfill geocoding for branches with null coordinates' })
+  @ApiOperation({
+    summary:
+      'Admin: Trigger backfill geocoding for branches with null coordinates',
+  })
   @ApiOkResponse({
     description: 'Backfill geocoding job dispatched',
     schema: { example: { queued: true } },
@@ -325,7 +335,9 @@ export class BusinessesController {
 
   @Get('stats')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get aggregate business statistics for summary cards' })
+  @ApiOperation({
+    summary: 'Get aggregate business statistics for summary cards',
+  })
   @ApiResponse({
     status: 200,
     description: 'Business stats returned successfully',

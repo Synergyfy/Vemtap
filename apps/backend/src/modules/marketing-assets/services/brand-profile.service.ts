@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MarketingBrandOverride } from '../entities/marketing-brand-override.entity';
@@ -21,7 +25,9 @@ export class BrandProfileService {
       throw new ForbiddenException('User is not associated with any business');
     }
 
-    const business = await this.businessRepo.findOne({ where: { id: businessId } });
+    const business = await this.businessRepo.findOne({
+      where: { id: businessId },
+    });
     if (!business) {
       throw new NotFoundException(`Business with ID ${businessId} not found`);
     }

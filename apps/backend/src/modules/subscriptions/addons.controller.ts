@@ -112,7 +112,7 @@ export class AddonsController {
   @ApiOperation({
     summary: 'Get purchased add-ons for the current business',
     description:
-      'Returns all add-ons purchased by the authenticated user\'s business, including active, expired, and canceled add-ons.',
+      "Returns all add-ons purchased by the authenticated user's business, including active, expired, and canceled add-ons.",
   })
   @ApiOkResponse({
     description: 'List of purchased add-ons with add-on details',
@@ -131,7 +131,7 @@ export class AddonsController {
   @ApiOperation({
     summary: 'Get active purchased add-ons for the current business',
     description:
-      'Returns only the currently active and non-expired add-ons purchased by the authenticated user\'s business.',
+      "Returns only the currently active and non-expired add-ons purchased by the authenticated user's business.",
   })
   @ApiOkResponse({
     description: 'List of active purchased add-ons with add-on details',
@@ -150,14 +150,17 @@ export class AddonsController {
   @ApiOperation({
     summary: 'Purchase add-on(s) standalone',
     description:
-      'Purchase one or more add-ons for the authenticated user\'s business. Payment is verified via Paystack. Add-ons can be purchased independently of a plan subscription.',
+      "Purchase one or more add-ons for the authenticated user's business. Payment is verified via Paystack. Add-ons can be purchased independently of a plan subscription.",
   })
   @ApiResponse({
     status: 201,
     description: 'Add-ons purchased successfully',
     type: [BusinessAddOn],
   })
-  @ApiResponse({ status: 400, description: 'Invalid add-on IDs or payment verification failed' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid add-on IDs or payment verification failed',
+  })
   @ApiResponse({ status: 404, description: 'One or more add-ons not found' })
   async purchaseAddons(
     @Request() req: RequestWithUser,
@@ -186,7 +189,8 @@ export class AddonsController {
   @Public()
   @ApiOperation({
     summary: 'List all active bundle discounts',
-    description: 'Returns all active bundle discount rules for the frontend to calculate pricing.',
+    description:
+      'Returns all active bundle discount rules for the frontend to calculate pricing.',
   })
   findAllDiscounts() {
     return this.addonsService.findAllDiscounts();
@@ -275,7 +279,10 @@ export class AddonsController {
     description: 'Add-on canceled successfully',
     type: BusinessAddOn,
   })
-  @ApiResponse({ status: 400, description: 'Add-on is not a recurring service' })
+  @ApiResponse({
+    status: 400,
+    description: 'Add-on is not a recurring service',
+  })
   @ApiResponse({ status: 404, description: 'Purchased add-on not found' })
   async cancelAddon(
     @Request() req: RequestWithUser,

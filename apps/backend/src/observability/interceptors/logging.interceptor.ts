@@ -65,7 +65,10 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
     const now = Date.now();
 
     // Capture cheap scalar fields eagerly; defer expensive serialisation to the response phase
-    const ip = request.ip || request.headers['x-forwarded-for'] || request.socket.remoteAddress;
+    const ip =
+      request.ip ||
+      request.headers['x-forwarded-for'] ||
+      request.socket.remoteAddress;
     const userAgent = request.headers['user-agent'];
     const userId = (request as any).user?.id;
     const userEmail = (request as any).user?.email;
@@ -120,7 +123,8 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
         }
       }),
       catchError((error: any) => {
-        const statusCode = (error?.status as number) || (error?.statusCode as number) || 500;
+        const statusCode =
+          (error?.status as number) || (error?.statusCode as number) || 500;
         const responseTime = Date.now() - now;
 
         // Structured error log
@@ -164,4 +168,3 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
     );
   }
 }
-

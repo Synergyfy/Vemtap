@@ -249,7 +249,7 @@ describe('CatalogueOrderService', () => {
 
       await service.updateStatus(
         'order-1',
-        CatalogueOrderStatus.COMPLETED,
+        { status: CatalogueOrderStatus.COMPLETED },
         'bus-1',
         mockStaff,
       );
@@ -291,7 +291,7 @@ describe('CatalogueOrderService', () => {
 
       await service.updateStatus(
         'order-1',
-        CatalogueOrderStatus.COMPLETED,
+        { status: CatalogueOrderStatus.COMPLETED },
         'bus-1',
         mockStaff,
       );

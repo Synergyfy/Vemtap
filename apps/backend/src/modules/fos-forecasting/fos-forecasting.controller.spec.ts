@@ -71,7 +71,12 @@ describe('FosForecastingController', () => {
     it('should save a forecast', async () => {
       const dto = {
         scenarioName: 'Q1 2026',
-        parameters: { growthRate: 10, churnRate: 5, conversionRate: 15, period: 12 },
+        parameters: {
+          growthRate: 10,
+          churnRate: 5,
+          conversionRate: 15,
+          period: 12,
+        },
         result: { summary: { projectedMrr: 1800000 }, monthlyData: [] },
       };
       const result = {
@@ -95,8 +100,19 @@ describe('FosForecastingController', () => {
           id: 'forecast-1',
           scenarioName: 'Q1 2026',
           createdAt: new Date(),
-          parameters: { growthRate: 10, churnRate: 5, conversionRate: 15, period: 12 },
-          summary: { projectedMrr: 1800000, mrrGrowthPercent: 44, totalProjectedProfit: 7200000, isDeclining: false, healthAlert: 'HEALTHY' },
+          parameters: {
+            growthRate: 10,
+            churnRate: 5,
+            conversionRate: 15,
+            period: 12,
+          },
+          summary: {
+            projectedMrr: 1800000,
+            mrrGrowthPercent: 44,
+            totalProjectedProfit: 7200000,
+            isDeclining: false,
+            healthAlert: 'HEALTHY',
+          },
         },
       ];
       mockService.getHistory.mockResolvedValue(result);

@@ -57,14 +57,10 @@ export class FosDashboardService {
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
     const uniqueBusinesses = new Set(
-      allTransactions
-        .filter((t) => t.businessId)
-        .map((t) => t.businessId),
+      allTransactions.filter((t) => t.businessId).map((t) => t.businessId),
     ).size;
     const uniqueAgents = new Set(
-      allTransactions
-        .filter((t) => t.agentId)
-        .map((t) => t.agentId),
+      allTransactions.filter((t) => t.agentId).map((t) => t.agentId),
     ).size;
 
     const snapshots = await this.snapshotRepo.find({
@@ -91,7 +87,9 @@ export class FosDashboardService {
       commissionsPaid,
       cashBalance: cashInflows - cashOutflows,
       churnRate: latestSnapshot ? Number(latestSnapshot.churnRate) : 0,
-      conversionRate: latestSnapshot ? Number(latestSnapshot.conversionRate) : 0,
+      conversionRate: latestSnapshot
+        ? Number(latestSnapshot.conversionRate)
+        : 0,
     };
   }
 

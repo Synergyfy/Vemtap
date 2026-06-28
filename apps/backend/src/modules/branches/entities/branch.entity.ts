@@ -181,27 +181,47 @@ export class Branch extends AbstractBaseEntity {
   @Column({ default: true })
   showFeedback: boolean;
 
-  @ApiProperty({ example: true, description: 'Whether the branch has joined the Discovery Network' })
+  @ApiProperty({
+    example: true,
+    description: 'Whether the branch has joined the Discovery Network',
+  })
   @Column({ default: true })
   joinDiscoveryNetwork: boolean;
 
-  @ApiProperty({ example: true, description: 'Whether the branch allows other businesses to request partnerships' })
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the branch allows other businesses to request partnerships',
+  })
   @Column({ default: true })
   receivePartnerRequests: boolean;
 
-  @ApiProperty({ example: true, description: 'Whether the branch shows active promotions on the Discovery Network' })
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the branch shows active promotions on the Discovery Network',
+  })
   @Column({ default: true })
   allowPromotions: boolean;
 
-  @ApiProperty({ example: true, description: 'Push notification preference for discovery updates' })
+  @ApiProperty({
+    example: true,
+    description: 'Push notification preference for discovery updates',
+  })
   @Column({ default: true })
   pushNotifications: boolean;
 
-  @ApiProperty({ example: false, description: 'SMS notification preference for discovery updates' })
+  @ApiProperty({
+    example: false,
+    description: 'SMS notification preference for discovery updates',
+  })
   @Column({ default: false })
   smsAlerts: boolean;
 
-  @ApiProperty({ example: true, description: 'Email summary preference for discovery updates' })
+  @ApiProperty({
+    example: true,
+    description: 'Email summary preference for discovery updates',
+  })
   @Column({ default: true })
   emailSummary: boolean;
 
@@ -225,8 +245,6 @@ export class Branch extends AbstractBaseEntity {
 
   @OneToMany('MessageCampaign', 'branch')
   messageCampaigns: MessageCampaign[];
-
-
 
   @BeforeInsert()
   generateUniqueCode() {

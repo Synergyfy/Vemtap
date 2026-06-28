@@ -12,6 +12,7 @@ export class AppController {
     return 'This is public';
   }
 
+  @Public()
   @Get()
   getHello(): string {
     return this.appService.getHello();

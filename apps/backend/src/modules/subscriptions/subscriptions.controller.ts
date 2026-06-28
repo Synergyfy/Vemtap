@@ -95,10 +95,7 @@ export class SubscriptionsController {
     @Request() req,
     @Body() subscribeDto: SubscribeWithAddonsDto,
   ) {
-    if (
-      subscribeDto.isAdminOverride &&
-      req.user.role !== UserRole.ADMIN
-    ) {
+    if (subscribeDto.isAdminOverride && req.user.role !== UserRole.ADMIN) {
       throw new BadRequestException('Only admins can override plans');
     }
     if (!subscribeDto.businessId) {

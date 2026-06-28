@@ -30,7 +30,7 @@ describe('Device Tap - Username (e2e)', () => {
         name: 'Test Business',
         officialEmail: 'test@example.com',
         status: 'active' as any,
-      })
+      }),
     );
 
     // Create a test branch with username
@@ -41,7 +41,7 @@ describe('Device Tap - Username (e2e)', () => {
         isActive: true,
         businessId: business.id,
         isMainBranch: true,
-      })
+      }),
     );
   });
 
@@ -63,14 +63,16 @@ describe('Device Tap - Username (e2e)', () => {
 
   it('should return 404 for username with inactive branch', async () => {
     // Create an inactive branch
-    const business = await businessRepo.findOne({ where: { name: 'Test Business' } });
+    const business = await businessRepo.findOne({
+      where: { name: 'Test Business' },
+    });
     const inactiveBranch = await branchRepo.save(
       branchRepo.create({
         name: 'Inactive Branch',
         username: 'inactive-branch',
         isActive: false,
         businessId: business!.id,
-      })
+      }),
     );
 
     return request(app.getHttpServer())
@@ -83,7 +85,9 @@ describe('Device Tap - Username (e2e)', () => {
     if (testBranch) {
       await branchRepo.delete(testBranch.id);
     }
-    const business = await businessRepo.findOne({ where: { name: 'Test Business' } });
+    const business = await businessRepo.findOne({
+      where: { name: 'Test Business' },
+    });
     if (business) {
       await businessRepo.delete(business.id);
     }

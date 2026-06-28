@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, IsObject } from 'class-validator';
 
 export class SaveBrandOverrideDto {
-  @ApiProperty({ example: 'https://cdn.vemtap.com/brands/logo.png', required: false })
+  @ApiProperty({
+    example: 'https://cdn.vemtap.com/brands/logo.png',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   logoUrl?: string;

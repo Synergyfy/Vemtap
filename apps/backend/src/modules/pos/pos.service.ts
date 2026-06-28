@@ -1,5 +1,9 @@
 import {
-  Injectable, NotFoundException, BadRequestException,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, ILike } from 'typeorm';
@@ -12,9 +16,19 @@ import { PosHeldSale } from './entities/pos-held-sale.entity';
 import { PosHeldSaleItem } from './entities/pos-held-sale-item.entity';
 import { PosRegisterSession } from './entities/pos-register-session.entity';
 import { RegisterSessionStatus } from './entities/pos-enums';
-import { CatalogueItem, CatalogueItemStatus } from '../catalogue/entities/catalogue-item.entity';
-import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
-import { CatalogueOrder, CatalogueOrderStatus } from '../catalogue-orders/entities/catalogue-order.entity';
+
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+} from '../catalogue/entities/catalogue-item.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferStatus,
+} from '../catalogue/entities/catalogue-offer.entity';
+import {
+  CatalogueOrder,
+  CatalogueOrderStatus,
+} from '../catalogue-orders/entities/catalogue-order.entity';
 import { CatalogueOrderItem } from '../catalogue-orders/entities/catalogue-order-item.entity';
 import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
 import { CreatePosSaleDto } from './dto/create-pos-sale.dto';
@@ -25,11 +39,17 @@ import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
 import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import {
-  FinancialTransaction, FosTransactionType, FosPlatform,
+  FinancialTransaction,
+  FosTransactionType,
+  FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PosRefund } from './entities/pos-refund.entity';
+import { PosRefundItem } from './entities/pos-refund-item.entity';
 
 @Injectable()
 export class PosService {
@@ -46,6 +66,10 @@ export class PosService {
     private readonly heldSaleItemRepository: Repository<PosHeldSaleItem>,
     @InjectRepository(PosRegisterSession)
     private readonly registerSessionRepository: Repository<PosRegisterSession>,
+    @InjectRepository(PosRefund)
+    private readonly refundRepository: Repository<PosRefund>,
+    @InjectRepository(PosRefundItem)
+    private readonly refundItemRepository: Repository<PosRefundItem>,
     @InjectRepository(CatalogueItem)
     private readonly productRepository: Repository<CatalogueItem>,
     @InjectRepository(CatalogueOffer)
@@ -56,21 +80,45 @@ export class PosService {
     private readonly orderItemRepository: Repository<CatalogueOrderItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(Business)
+    private readonly businessRepository: Repository<Business>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(FinancialTransaction)
     private readonly fosTransactionRepository: Repository<FinancialTransaction>,
     private readonly pushNotificationService: PushNotificationService,
     private readonly catalogueOrderService: CatalogueOrderService,
+    @Inject(forwardRef(() => LoyaltyService))
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   async completeSale(dto: CreatePosSaleDto, cashier: User) {
-    const branch = await this.branchRepository.findOne({ where: { id: dto.branchId } });
+    const branch = await this.branchRepository.findOne({
+      where: { id: dto.branchId },
+    });
     if (!branch) throw new NotFoundException('Branch not found');
+
+    if (branch.businessId !== cashier.businessId) {
+      throw new BadRequestException('Branch does not belong to your business');
+    }
+
+    if (dto.clientRef) {
+      const existingSale = await this.saleRepository.findOne({
+        where: {
+          businessId: branch.businessId,
+          clientRef: dto.clientRef,
+        },
+      });
+      if (existingSale) {
+        return this.findOneSale(existingSale.id, branch.businessId);
+      }
+    }
 
     let customer: User | null = null;
     if (dto.customerId) {
-      customer = await this.userRepository.findOne({ where: { id: dto.customerId } });
+      customer = await this.userRepository.findOne({
+        where: { id: dto.customerId },
+      });
     }
 
     const items: PosSaleItem[] = [];
@@ -81,16 +129,20 @@ export class PosService {
       const product = await this.productRepository.findOne({
         where: { id: itemDto.productId, businessId: branch.businessId },
       });
-      if (!product) throw new NotFoundException(`Product ${itemDto.productId} not found`);
+      if (!product)
+        throw new NotFoundException(`Product ${itemDto.productId} not found`);
 
-      if (product.stockQuantity !== null && product.stockQuantity < itemDto.quantity) {
+      if (
+        product.stockQuantity !== null &&
+        product.stockQuantity < itemDto.quantity
+      ) {
         throw new BadRequestException(
           `Insufficient stock for ${product.name}: ${product.stockQuantity} available, ${itemDto.quantity} requested`,
         );
       }
 
       const itemDiscount = itemDto.discount || 0;
-      const lineTotal = (Number(product.price) * itemDto.quantity) - itemDiscount;
+      const lineTotal = Number(product.price) * itemDto.quantity - itemDiscount;
 
       const saleItem = this.saleItemRepository.create({
         productId: itemDto.productId,
@@ -120,16 +172,26 @@ export class PosService {
 
     if (dto.payment.method === PaymentMethod.SPLIT) {
       if (!dto.payment.splitDetails || dto.payment.splitDetails.length < 2) {
-        throw new BadRequestException('Split payment requires at least 2 payment methods');
+        throw new BadRequestException(
+          'Split payment requires at least 2 payment methods',
+        );
       }
-      const splitTotal = dto.payment.splitDetails.reduce((acc, s) => acc + s.amount, 0);
+      const splitTotal = dto.payment.splitDetails.reduce(
+        (acc, s) => acc + s.amount,
+        0,
+      );
       if (Math.abs(splitTotal - dto.payment.amountPaid) > 0.01) {
-        throw new BadRequestException('Split payment amounts must sum to the total paid');
+        throw new BadRequestException(
+          'Split payment amounts must sum to the total paid',
+        );
       }
     }
 
     const splitPayments: PosSplitPayment[] = [];
-    if (dto.payment.method === PaymentMethod.SPLIT && dto.payment.splitDetails) {
+    if (
+      dto.payment.method === PaymentMethod.SPLIT &&
+      dto.payment.splitDetails
+    ) {
       for (const sp of dto.payment.splitDetails) {
         const splitPayment = this.splitPaymentRepository.create({
           method: sp.method,
@@ -139,7 +201,22 @@ export class PosService {
       }
     }
 
-    const cashierName = `${cashier.firstName} ${cashier.lastName}`.trim() || cashier.email;
+    const cashierName =
+      `${cashier.firstName} ${cashier.lastName}`.trim() || cashier.email;
+
+    let orderedAt = new Date();
+    if (dto.orderedAt) {
+      const clientDate = new Date(dto.orderedAt);
+      if (!isNaN(clientDate.getTime())) {
+        const now = new Date();
+        const tenMinutesInMs = 10 * 60 * 1000;
+        if (clientDate.getTime() > now.getTime() + tenMinutesInMs) {
+          orderedAt = now;
+        } else {
+          orderedAt = clientDate;
+        }
+      }
+    }
 
     const sale = this.saleRepository.create({
       businessId: branch.businessId,
@@ -160,6 +237,8 @@ export class PosService {
       status: SaleStatus.COMPLETED,
       items,
       splitPayments,
+      clientRef: dto.clientRef || null,
+      orderedAt,
     } as unknown as PosSale);
 
     const savedSale = await this.saleRepository.save(sale);
@@ -189,31 +268,124 @@ export class PosService {
       openRegister.totalSales = Number(openRegister.totalSales) + total;
       openRegister.transactionCount = Number(openRegister.transactionCount) + 1;
       if (dto.payment.method === PaymentMethod.CASH) {
-        openRegister.expectedCash = Number(openRegister.expectedCash) + dto.payment.amountPaid;
+        openRegister.expectedCash =
+          Number(openRegister.expectedCash) + dto.payment.amountPaid;
       }
       await this.registerSessionRepository.save(openRegister);
+    }
+
+    // Auto-award loyalty points if the business has loyalty enabled and a customer is linked
+    if (customer) {
+      try {
+        const business = await this.businessRepository.findOne({
+          where: { id: branch.businessId },
+        });
+        if (business?.posSettings?.loyaltyEnabled) {
+          let totalPoints = 0;
+          for (const item of items) {
+            if (item.productId) {
+              const product = await this.productRepository.findOne({
+                where: { id: item.productId },
+              });
+              if (product?.enableLoyaltyPoints && product.loyaltyPointsValue) {
+                totalPoints += product.loyaltyPointsValue * item.quantity;
+              } else if (product?.loyaltyPoints) {
+                // Fallback to legacy loyaltyPoints field
+                totalPoints += product.loyaltyPoints * item.quantity;
+              }
+            }
+          }
+          if (totalPoints > 0) {
+            await this.loyaltyService.awardPoints(
+              customer.id,
+              totalPoints,
+              branch.businessId,
+              branch.id,
+              `POS Sale ${receiptNumber}`,
+              cashier.id,
+            );
+          }
+        }
+      } catch (error) {
+        // Loyalty failure should not block the sale
+        console.error(
+          `[POS] Failed to auto-award loyalty points for sale ${receiptNumber}:`,
+          error,
+        );
+      }
     }
 
     return this.findOneSale(savedSale.id, branch.businessId);
   }
 
-  async placeOrder(dto: CreatePosOrderDto, staff?: User): Promise<CatalogueOrder> {
-    const branch = await this.branchRepository.findOne({ where: { id: dto.branchId } });
+  async batchSyncSales(
+    dtos: CreatePosSaleDto[],
+    cashier: User,
+  ): Promise<
+    {
+      clientRef: string | null;
+      saleId?: string;
+      success: boolean;
+      error?: string;
+    }[]
+  > {
+    const results: {
+      clientRef: string | null;
+      saleId?: string;
+      success: boolean;
+      error?: string;
+    }[] = [];
+    for (const dto of dtos) {
+      try {
+        const sale = await this.completeSale(dto, cashier);
+        results.push({
+          clientRef: dto.clientRef || null,
+          saleId: sale.id,
+          success: true,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Internal server error';
+        results.push({
+          clientRef: dto.clientRef || null,
+          success: false,
+          error: errorMessage,
+        });
+      }
+    }
+    return results;
+  }
+
+  async placeOrder(
+    dto: CreatePosOrderDto,
+    staff?: User,
+  ): Promise<CatalogueOrder> {
+    const branch = await this.branchRepository.findOne({
+      where: { id: dto.branchId },
+    });
     if (!branch) throw new NotFoundException('Branch not found');
 
     // Resolve customer
     let customer: User | null = null;
 
     if (staff && dto.customerId) {
-      customer = await this.userRepository.findOne({ where: { id: dto.customerId } });
+      customer = await this.userRepository.findOne({
+        where: { id: dto.customerId },
+      });
       if (!customer) throw new NotFoundException('Customer not found');
     } else if (dto.phone) {
       if (!dto.firstName || !dto.lastName) {
-        throw new BadRequestException('Customer first name and last name are required when providing a phone number');
+        throw new BadRequestException(
+          'Customer first name and last name are required when providing a phone number',
+        );
       }
-      customer = await this.userRepository.findOne({ where: { phone: dto.phone } });
+      customer = await this.userRepository.findOne({
+        where: { phone: dto.phone },
+      });
       if (!customer && dto.email) {
-        customer = await this.userRepository.findOne({ where: { email: dto.email } });
+        customer = await this.userRepository.findOne({
+          where: { email: dto.email },
+        });
       }
       if (!customer) {
         const defaultPassword = '123456';
@@ -231,7 +403,9 @@ export class PosService {
         await this.userRepository.save(customer);
       }
     } else {
-      throw new BadRequestException('Customer information is required — provide phone (for new/guest) or customerId (for existing)');
+      throw new BadRequestException(
+        'Customer information is required — provide phone (for new/guest) or customerId (for existing)',
+      );
     }
 
     // Process items and calculate total
@@ -240,11 +414,15 @@ export class PosService {
 
     for (const itemDto of dto.items) {
       if (!itemDto.itemId && !itemDto.offerId) {
-        throw new BadRequestException('Each order item must have either itemId or offerId');
+        throw new BadRequestException(
+          'Each order item must have either itemId or offerId',
+        );
       }
 
       if (itemDto.itemId && itemDto.offerId) {
-        throw new BadRequestException('Each order item must have either itemId or offerId, not both');
+        throw new BadRequestException(
+          'Each order item must have either itemId or offerId, not both',
+        );
       }
 
       if (itemDto.itemId) {
@@ -253,16 +431,23 @@ export class PosService {
           relations: ['branches'],
         });
 
-        if (!item) throw new NotFoundException(`Item ${itemDto.itemId} not found`);
+        if (!item)
+          throw new NotFoundException(`Item ${itemDto.itemId} not found`);
         if (!item.branches?.some((b) => b.id === branch.id)) {
-          throw new BadRequestException(`Item ${item.name} is not available in this branch`);
+          throw new BadRequestException(
+            `Item ${item.name} is not available in this branch`,
+          );
         }
         if (item.status === CatalogueItemStatus.SUSPENDED || item.isSuspended) {
-          throw new BadRequestException(`Item ${item.name} is currently suspended`);
+          throw new BadRequestException(
+            `Item ${item.name} is currently suspended`,
+          );
         }
         if (item.stockQuantity !== null && !item.allowBackOrder) {
           if (item.stockQuantity < itemDto.quantity) {
-            throw new BadRequestException(`Insufficient stock for ${item.name}`);
+            throw new BadRequestException(
+              `Insufficient stock for ${item.name}`,
+            );
           }
         }
 
@@ -280,18 +465,25 @@ export class PosService {
           relations: ['items'],
         });
 
-        if (!offer) throw new NotFoundException(`Offer ${itemDto.offerId} not found in this branch`);
+        if (!offer)
+          throw new NotFoundException(
+            `Offer ${itemDto.offerId} not found in this branch`,
+          );
         if (offer.status !== CatalogueOfferStatus.ACTIVE) {
           throw new BadRequestException(`Offer ${offer.name} is not active`);
         }
         if (offer.quantity !== null && offer.quantity < itemDto.quantity) {
-          throw new BadRequestException(`Insufficient stock for offer ${offer.name}`);
+          throw new BadRequestException(
+            `Insufficient stock for offer ${offer.name}`,
+          );
         }
 
         for (const offerItem of offer.items) {
           if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {
             if (offerItem.stockQuantity < itemDto.quantity) {
-              throw new BadRequestException(`Insufficient stock for item ${offerItem.name} in offer ${offer.name}`);
+              throw new BadRequestException(
+                `Insufficient stock for item ${offerItem.name} in offer ${offer.name}`,
+              );
             }
           }
         }
@@ -328,7 +520,9 @@ export class PosService {
     // Deduct stock immediately
     for (const orderItem of savedOrder.items) {
       if (orderItem.itemId) {
-        const item = await this.productRepository.findOne({ where: { id: orderItem.itemId } });
+        const item = await this.productRepository.findOne({
+          where: { id: orderItem.itemId },
+        });
         if (item) {
           this.deductStock(item, orderItem.quantity);
           await this.productRepository.save(item);
@@ -356,7 +550,9 @@ export class PosService {
     }
 
     // Notify branch staff
-    const staffName = staff ? `${staff.firstName} ${staff.lastName}`.trim() : `${customer.firstName} ${customer.lastName}`.trim();
+    const staffName = staff
+      ? `${staff.firstName} ${staff.lastName}`.trim()
+      : `${customer.firstName} ${customer.lastName}`.trim();
     this.pushNotificationService
       .sendToBranchStaff(
         branch.id,
@@ -384,7 +580,10 @@ export class PosService {
     });
     if (!order) throw new NotFoundException('Order not found');
 
-    if (order.status !== CatalogueOrderStatus.NEW && order.status !== CatalogueOrderStatus.PROCESSING) {
+    if (
+      order.status !== CatalogueOrderStatus.NEW &&
+      order.status !== CatalogueOrderStatus.PROCESSING
+    ) {
       throw new BadRequestException(
         `Cannot process payment for order with status "${order.status}". Only "new" or "processing" orders can be paid.`,
       );
@@ -393,11 +592,15 @@ export class PosService {
     // Validate payment details
     if (dto.paymentMethod === PaymentMethod.SPLIT) {
       if (!dto.splitDetails || dto.splitDetails.length < 2) {
-        throw new BadRequestException('Split payment requires at least 2 payment methods');
+        throw new BadRequestException(
+          'Split payment requires at least 2 payment methods',
+        );
       }
       const splitTotal = dto.splitDetails.reduce((acc, s) => acc + s.amount, 0);
       if (Math.abs(splitTotal - dto.amountPaid) > 0.01) {
-        throw new BadRequestException('Split payment amounts must sum to the total amount paid');
+        throw new BadRequestException(
+          'Split payment amounts must sum to the total amount paid',
+        );
       }
     }
 
@@ -406,7 +609,8 @@ export class PosService {
     let subtotal = 0;
 
     for (const orderItem of order.items) {
-      const itemName = orderItem.item?.name || orderItem.offer?.name || 'Unknown';
+      const itemName =
+        orderItem.item?.name || orderItem.offer?.name || 'Unknown';
       const unitPrice = Number(orderItem.priceAtOrder);
       const lineTotal = unitPrice * orderItem.quantity;
 
@@ -416,7 +620,9 @@ export class PosService {
         sku: orderItem.item?.sku || '',
         barcode: orderItem.item?.barcode || '',
         unitPrice,
-        costPrice: orderItem.item?.costPrice ? Number(orderItem.item.costPrice) : 0,
+        costPrice: orderItem.item?.costPrice
+          ? Number(orderItem.item.costPrice)
+          : 0,
         quantity: orderItem.quantity,
         discount: 0,
         totalPrice: lineTotal,
@@ -426,13 +632,17 @@ export class PosService {
     }
 
     const receiptNumber = await this.generateReceiptNumber(order.businessId);
-    const cashierName = `${staff.firstName} ${staff.lastName}`.trim() || staff.email;
+    const cashierName =
+      `${staff.firstName} ${staff.lastName}`.trim() || staff.email;
 
     const splitPayments: PosSplitPayment[] = [];
     if (dto.paymentMethod === PaymentMethod.SPLIT && dto.splitDetails) {
       for (const sp of dto.splitDetails) {
         splitPayments.push(
-          this.splitPaymentRepository.create({ method: sp.method, amount: sp.amount }),
+          this.splitPaymentRepository.create({
+            method: sp.method,
+            amount: sp.amount,
+          }),
         );
       }
     }
@@ -464,7 +674,7 @@ export class PosService {
     // Update order status to COMPLETED (awards loyalty, generates rewards, sends notifications)
     await this.catalogueOrderService.updateStatus(
       orderId,
-      CatalogueOrderStatus.COMPLETED,
+      { status: CatalogueOrderStatus.COMPLETED },
       staff.businessId,
       staff,
     );
@@ -488,10 +698,12 @@ export class PosService {
     });
 
     if (openRegister) {
-      openRegister.totalSales = Number(openRegister.totalSales) + Number(order.totalAmount);
+      openRegister.totalSales =
+        Number(openRegister.totalSales) + Number(order.totalAmount);
       openRegister.transactionCount = Number(openRegister.transactionCount) + 1;
       if (dto.paymentMethod === PaymentMethod.CASH) {
-        openRegister.expectedCash = Number(openRegister.expectedCash) + dto.amountPaid;
+        openRegister.expectedCash =
+          Number(openRegister.expectedCash) + dto.amountPaid;
       }
       await this.registerSessionRepository.save(openRegister);
     }
@@ -525,8 +737,15 @@ export class PosService {
 
   async findAllSales(businessId: string, query: PosSaleQueryDto) {
     const {
-      page = 1, limit = 10, status, paymentMethod, branchId,
-      cashierId, dateFrom, dateTo, search,
+      page = 1,
+      limit = 10,
+      status,
+      paymentMethod,
+      branchId,
+      cashierId,
+      dateFrom,
+      dateTo,
+      search,
     } = query;
     const skip = (page - 1) * limit;
 
@@ -576,48 +795,184 @@ export class PosService {
   async findOneSale(id: string, businessId: string) {
     const sale = await this.saleRepository.findOne({
       where: { id, businessId },
-      relations: ['items', 'splitPayments', 'customer', 'cashier', 'branch'],
+      relations: [
+        'items',
+        'splitPayments',
+        'customer',
+        'cashier',
+        'branch',
+        'refunds',
+      ],
     });
     if (!sale) throw new NotFoundException('Sale not found');
     return sale;
   }
 
-  async updateSaleStatus(id: string, dto: UpdatePosSaleStatusDto, businessId: string) {
+  async updateSaleStatus(
+    id: string,
+    dto: UpdatePosSaleStatusDto,
+    businessId: string,
+    refundedById?: string,
+  ) {
     const sale = await this.findOneSale(id, businessId);
 
-    if (sale.status !== SaleStatus.COMPLETED) {
-      throw new BadRequestException('Only completed sales can be refunded');
+    // Can only refund COMPLETED or PARTIAL_REFUND sales
+    if (
+      sale.status !== SaleStatus.COMPLETED &&
+      sale.status !== SaleStatus.PARTIAL_REFUND
+    ) {
+      throw new BadRequestException(
+        'Only completed or partially refunded sales can be refunded',
+      );
     }
 
-    sale.status = dto.status;
-    const updated = await this.saleRepository.save(sale);
+    let refundAmount = 0;
+    const refundItemsToSave: PosRefundItem[] = [];
 
-    for (const item of sale.items) {
-      if (item.productId) {
-        const product = await this.productRepository.findOne({
-          where: { id: item.productId, businessId },
-        });
-        if (product) {
-          this.restoreStock(product, item.quantity);
-          await this.productRepository.save(product);
+    if (dto.status === SaleStatus.REFUNDED) {
+      // Full Refund: refund all remaining quantities of all items
+      for (const item of sale.items) {
+        const remainingQty = item.quantity - (item.refundedQuantity || 0);
+        if (remainingQty > 0) {
+          if (item.productId) {
+            const product = await this.productRepository.findOne({
+              where: { id: item.productId, businessId },
+            });
+            if (product) {
+              this.restoreStock(product, remainingQty);
+              await this.productRepository.save(product);
+            }
+          }
+          const itemPrice = Number(item.unitPrice);
+          const itemDiscount = Number(item.discount || 0) / item.quantity;
+          const effectivePrice = itemPrice - itemDiscount;
+          const lineRefundAmount = effectivePrice * remainingQty;
+
+          item.refundedQuantity = item.quantity;
+          await this.saleItemRepository.save(item);
+
+          const refundItem = this.refundItemRepository.create({
+            saleItemId: item.id,
+            quantity: remainingQty,
+            amount: lineRefundAmount,
+          });
+          refundItemsToSave.push(refundItem);
+          refundAmount += lineRefundAmount;
         }
       }
+
+      // Calculate final total refund amount (remaining sale total)
+      const existingRefundsSum =
+        sale.refunds?.reduce((acc, r) => acc + Number(r.refundAmount), 0) || 0;
+      refundAmount = Number(sale.total) - existingRefundsSum;
+      if (refundAmount < 0) refundAmount = 0;
+
+      sale.status = SaleStatus.REFUNDED;
+      sale.refundReason = dto.reason || null;
+      sale.refundedById = refundedById || null;
+      sale.refundedAt = new Date();
+      await this.saleRepository.save(sale);
+    } else if (dto.status === SaleStatus.PARTIAL_REFUND) {
+      if (!dto.refundItems || dto.refundItems.length === 0) {
+        throw new BadRequestException(
+          'Partial refund requires specifying items to refund',
+        );
+      }
+
+      for (const refundItemDto of dto.refundItems) {
+        const item = sale.items.find((i) => i.id === refundItemDto.saleItemId);
+        if (!item) {
+          throw new NotFoundException(
+            `Sale item ${refundItemDto.saleItemId} not found on this sale`,
+          );
+        }
+
+        const remainingQty = item.quantity - (item.refundedQuantity || 0);
+        if (refundItemDto.quantity > remainingQty) {
+          throw new BadRequestException(
+            `Cannot refund ${refundItemDto.quantity} of ${item.productName}. Only ${remainingQty} remaining.`,
+          );
+        }
+
+        if (item.productId) {
+          const product = await this.productRepository.findOne({
+            where: { id: item.productId, businessId },
+          });
+          if (product) {
+            this.restoreStock(product, refundItemDto.quantity);
+            await this.productRepository.save(product);
+          }
+        }
+
+        const itemPrice = Number(item.unitPrice);
+        const itemDiscount = Number(item.discount || 0) / item.quantity;
+        const effectivePrice = itemPrice - itemDiscount;
+        const lineRefundAmount = effectivePrice * refundItemDto.quantity;
+
+        item.refundedQuantity =
+          (item.refundedQuantity || 0) + refundItemDto.quantity;
+        await this.saleItemRepository.save(item);
+
+        const refundItem = this.refundItemRepository.create({
+          saleItemId: item.id,
+          quantity: refundItemDto.quantity,
+          amount: lineRefundAmount,
+        });
+        refundItemsToSave.push(refundItem);
+        refundAmount += lineRefundAmount;
+      }
+
+      // Check if all items in the sale are fully refunded now
+      const allFullyRefunded = sale.items.every(
+        (i) => i.quantity === i.refundedQuantity,
+      );
+      sale.status = allFullyRefunded
+        ? SaleStatus.REFUNDED
+        : SaleStatus.PARTIAL_REFUND;
+      sale.refundReason = dto.reason || sale.refundReason || null;
+      sale.refundedById = refundedById || sale.refundedById || null;
+      sale.refundedAt = new Date();
+      await this.saleRepository.save(sale);
+    } else {
+      throw new BadRequestException('Invalid status for refund request');
     }
 
+    // Create the PosRefund record
+    const refund = this.refundRepository.create({
+      saleId: sale.id,
+      businessId,
+      refundedById: refundedById || undefined,
+      reason: dto.reason || 'Refund processed',
+      type:
+        dto.status === SaleStatus.REFUNDED
+          ? ('full' as any)
+          : ('partial' as any),
+      refundAmount,
+    });
+    const savedRefund = await this.refundRepository.save(refund);
+
+    for (const ri of refundItemsToSave) {
+      ri.refundId = savedRefund.id;
+      await this.refundItemRepository.save(ri);
+    }
+
+    // Record FOS Transaction
     await this.recordFosTransaction({
       businessId,
-      amount: -Number(sale.total),
+      amount: -refundAmount,
       paymentMethod: sale.paymentMethod,
       referenceId: sale.id,
-      description: `POS Refund ${sale.receiptNumber}`,
+      description: `POS Refund ${sale.receiptNumber} (${dto.status === SaleStatus.REFUNDED ? 'Full' : 'Partial'})`,
       type: FosTransactionType.POS_REFUND,
     });
 
-    return updated;
+    return this.findOneSale(sale.id, businessId);
   }
 
   async holdSale(dto: HoldPosSaleDto, cashier: User) {
-    const branch = await this.branchRepository.findOne({ where: { id: dto.branchId } });
+    const branch = await this.branchRepository.findOne({
+      where: { id: dto.branchId },
+    });
     if (!branch) throw new NotFoundException('Branch not found');
 
     const items = dto.items.map((item) =>
@@ -673,7 +1028,8 @@ export class PosService {
 
   async deleteHeldSale(id: string, businessId: string) {
     const result = await this.heldSaleRepository.softDelete({ id, businessId });
-    if (result.affected === 0) throw new NotFoundException('Held sale not found');
+    if (result.affected === 0)
+      throw new NotFoundException('Held sale not found');
     return { message: 'Held sale deleted' };
   }
 
@@ -724,8 +1080,12 @@ export class PosService {
       },
     });
 
-    const cashSales = todaySales.filter(s => s.paymentMethod === PaymentMethod.CASH);
-    const expectedCash = Number(session.openingCash) + cashSales.reduce((acc, s) => acc + Number(s.amountPaid), 0);
+    const cashSales = todaySales.filter(
+      (s) => s.paymentMethod === PaymentMethod.CASH,
+    );
+    const expectedCash =
+      Number(session.openingCash) +
+      cashSales.reduce((acc, s) => acc + Number(s.amountPaid), 0);
     const totalSales = todaySales.reduce((acc, s) => acc + Number(s.total), 0);
 
     session.expectedCash = expectedCash;
@@ -781,16 +1141,21 @@ export class PosService {
     };
     if (branchId) where.branchId = branchId;
 
-    const sales = await this.saleRepository.find({ where, relations: ['items'] });
+    const sales = await this.saleRepository.find({
+      where,
+      relations: ['items'],
+    });
 
     const revenue = sales.reduce((acc, s) => acc + Number(s.total), 0);
     const transactionCount = sales.length;
-    const averageSaleValue = transactionCount > 0 ? revenue / transactionCount : 0;
+    const averageSaleValue =
+      transactionCount > 0 ? revenue / transactionCount : 0;
 
     const paymentBreakdown: Record<string, number> = {};
     for (const s of sales) {
       const method = s.paymentMethod;
-      paymentBreakdown[method] = (paymentBreakdown[method] || 0) + Number(s.total);
+      paymentBreakdown[method] =
+        (paymentBreakdown[method] || 0) + Number(s.total);
     }
 
     return { revenue, transactionCount, averageSaleValue, paymentBreakdown };
@@ -803,13 +1168,23 @@ export class PosService {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const where: any = {
-      sale: { businessId, status: SaleStatus.COMPLETED, createdAt: Between(today, tomorrow) },
+      sale: {
+        businessId,
+        status: SaleStatus.COMPLETED,
+        createdAt: Between(today, tomorrow),
+      },
     };
     if (branchId) where.sale.branchId = branchId;
 
-    const items = await this.saleItemRepository.find({ where, relations: ['sale'] });
+    const items = await this.saleItemRepository.find({
+      where,
+      relations: ['sale'],
+    });
 
-    const productMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+    const productMap = new Map<
+      string,
+      { name: string; quantity: number; revenue: number }
+    >();
     for (const item of items) {
       const existing = productMap.get(item.productId) || {
         name: item.productName,

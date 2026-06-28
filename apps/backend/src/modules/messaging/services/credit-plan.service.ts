@@ -41,7 +41,8 @@ export class CreditPlanService {
     emailAmount: number,
   ): Promise<BusinessCreditWallet> {
     // Idempotency: check if reference has already been processed
-    const existingPayment = await this.paymentsService.findByReference(reference);
+    const existingPayment =
+      await this.paymentsService.findByReference(reference);
     if (existingPayment) {
       this.logger.warn(
         `Idempotency triggered: Custom credit purchase for reference ${reference} has already been processed.`,
@@ -55,10 +56,15 @@ export class CreditPlanService {
     const priceWhatsapp = Number(settings.creditPriceWhatsapp) || 25;
     const priceEmail = Number(settings.creditPriceEmail) || 2;
 
-    const expectedPrice = (smsAmount * priceSms) + (whatsappAmount * priceWhatsapp) + (emailAmount * priceEmail);
+    const expectedPrice =
+      smsAmount * priceSms +
+      whatsappAmount * priceWhatsapp +
+      emailAmount * priceEmail;
 
     if (expectedPrice <= 0) {
-      throw new BadRequestException('Total custom purchase amount must be greater than zero.');
+      throw new BadRequestException(
+        'Total custom purchase amount must be greater than zero.',
+      );
     }
 
     const paymentData = await this.paymentsService.verifyTransaction(reference);
@@ -139,7 +145,8 @@ export class CreditPlanService {
     reference: string,
   ): Promise<BusinessCreditWallet> {
     // Idempotency: check if reference has already been processed
-    const existingPayment = await this.paymentsService.findByReference(reference);
+    const existingPayment =
+      await this.paymentsService.findByReference(reference);
     if (existingPayment) {
       this.logger.warn(
         `Idempotency triggered: Credit package purchase for reference ${reference} has already been processed.`,
@@ -221,9 +228,9 @@ export class CreditPlanService {
   async getRates() {
     const settings = await this.settingsService.getGlobalSettings();
     return {
-      creditPriceSms: Number(settings.creditPriceSms) || 15.00,
-      creditPriceWhatsapp: Number(settings.creditPriceWhatsapp) || 25.00,
-      creditPriceEmail: Number(settings.creditPriceEmail) || 2.00,
+      creditPriceSms: Number(settings.creditPriceSms) || 15.0,
+      creditPriceWhatsapp: Number(settings.creditPriceWhatsapp) || 25.0,
+      creditPriceEmail: Number(settings.creditPriceEmail) || 2.0,
     };
   }
 

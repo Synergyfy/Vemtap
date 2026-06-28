@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class GenerateAIContentDto {
-  @ApiProperty({ example: 'uuid', description: 'Selected MarketingAIPrompt id' })
+  @ApiProperty({
+    example: 'uuid',
+    description: 'Selected MarketingAIPrompt id',
+  })
   @IsUUID()
   @IsNotEmpty()
   promptId: string;
@@ -22,7 +25,11 @@ export class GenerateAIContentDto {
   @IsOptional()
   subject?: string;
 
-  @ApiProperty({ example: 'Playful', required: false, description: 'Tone of voice (e.g. Playful, Professional, Energetic)' })
+  @ApiProperty({
+    example: 'Playful',
+    required: false,
+    description: 'Tone of voice (e.g. Playful, Professional, Energetic)',
+  })
   @IsString()
   @IsOptional()
   tone?: string;

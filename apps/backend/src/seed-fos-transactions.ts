@@ -1,21 +1,32 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DataSource, Repository, In } from 'typeorm';
-import { Payment, PaymentPurpose, PaymentStatus } from './modules/payments/entities/payment.entity';
+import {
+  Payment,
+  PaymentPurpose,
+  PaymentStatus,
+} from './modules/payments/entities/payment.entity';
 import { AffiliateCommission } from './modules/affiliates/entities/commission.entity';
 import { CreditTransaction } from './modules/messaging/entities/credit-transaction.entity';
-import { FinancialTransaction, FosTransactionType, FosPlatform } from './modules/fos-core/entities/financial-transaction.entity';
+import {
+  FinancialTransaction,
+  FosTransactionType,
+  FosPlatform,
+} from './modules/fos-core/entities/financial-transaction.entity';
 
 const BATCH_SIZE = 500;
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const dataSource = app.get(DataSource);
-  const fosRepo: Repository<FinancialTransaction> = dataSource.getRepository(FinancialTransaction);
+  const fosRepo: Repository<FinancialTransaction> =
+    dataSource.getRepository(FinancialTransaction);
 
   const existingCount = await fosRepo.count();
   if (existingCount > 0) {
-    console.log(`fos_transactions already has ${existingCount} records. Skipping seed.`);
+    console.log(
+      `fos_transactions already has ${existingCount} records. Skipping seed.`,
+    );
     await app.close();
     return;
   }
@@ -24,11 +35,19 @@ async function bootstrap() {
 
   // 1. From payments
   const paymentRepo: Repository<Payment> = dataSource.getRepository(Payment);
-  const payments = await paymentRepo.find({ where: { status: PaymentStatus.SUCCESS } });
+  const payments = await paymentRepo.find({
+    where: { status: PaymentStatus.SUCCESS },
+  });
   const paymentRecords: Partial<FinancialTransaction>[] = [];
   for (const p of payments) {
     let type: FosTransactionType;
-    if ([PaymentPurpose.SUBSCRIPTION, PaymentPurpose.ADDON, PaymentPurpose.PLAN_WITH_ADDONS].includes(p.purpose)) {
+    if (
+      [
+        PaymentPurpose.SUBSCRIPTION,
+        PaymentPurpose.ADDON,
+        PaymentPurpose.PLAN_WITH_ADDONS,
+      ].includes(p.purpose)
+    ) {
       type = FosTransactionType.SUBSCRIPTION;
     } else if (p.purpose === PaymentPurpose.CREDIT_TOPUP) {
       type = FosTransactionType.SMS;
@@ -54,11 +73,14 @@ async function bootstrap() {
     const batch = paymentRecords.slice(i, i + BATCH_SIZE);
     await fosRepo.save(batch);
     totalSeeded += batch.length;
-    console.log(`  Inserted payment batch ${i / BATCH_SIZE + 1} (${totalSeeded} total)`);
+    console.log(
+      `  Inserted payment batch ${i / BATCH_SIZE + 1} (${totalSeeded} total)`,
+    );
   }
 
   // 2. From affiliate commissions
-  const commissionRepo: Repository<AffiliateCommission> = dataSource.getRepository(AffiliateCommission);
+  const commissionRepo: Repository<AffiliateCommission> =
+    dataSource.getRepository(AffiliateCommission);
   const commissions = await commissionRepo.find();
   const commissionRecords: Partial<FinancialTransaction>[] = [];
   for (const c of commissions) {
@@ -81,11 +103,14 @@ async function bootstrap() {
     const batch = commissionRecords.slice(i, i + BATCH_SIZE);
     await fosRepo.save(batch);
     totalSeeded += batch.length;
-    console.log(`  Inserted commission batch ${i / BATCH_SIZE + 1} (${totalSeeded} total)`);
+    console.log(
+      `  Inserted commission batch ${i / BATCH_SIZE + 1} (${totalSeeded} total)`,
+    );
   }
 
   // 3. From credit transactions (message deductions as expense)
-  const creditRepo: Repository<CreditTransaction> = dataSource.getRepository(CreditTransaction);
+  const creditRepo: Repository<CreditTransaction> =
+    dataSource.getRepository(CreditTransaction);
   const creditTxns = await creditRepo.find();
   const creditRecords: Partial<FinancialTransaction>[] = [];
   for (const ct of creditTxns) {
@@ -108,7 +133,9 @@ async function bootstrap() {
     const batch = creditRecords.slice(i, i + BATCH_SIZE);
     await fosRepo.save(batch);
     totalSeeded += batch.length;
-    console.log(`  Inserted credit batch ${i / BATCH_SIZE + 1} (${totalSeeded} total)`);
+    console.log(
+      `  Inserted credit batch ${i / BATCH_SIZE + 1} (${totalSeeded} total)`,
+    );
   }
 
   console.log(`Seeded ${totalSeeded} total records into fos_transactions.`);

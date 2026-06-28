@@ -14,7 +14,10 @@ import { InventoryCountingService } from './inventory-counting.service';
 import { CreateCountSessionDto } from './dto/create-count-session.dto';
 import { AddCountItemsDto, UpdateCountItemDto } from './dto/add-count-item.dto';
 import { CompleteCountDto } from './dto/complete-count.dto';
-import { ApproveVarianceDto, RejectVarianceDto } from './dto/approve-variance.dto';
+import {
+  ApproveVarianceDto,
+  RejectVarianceDto,
+} from './dto/approve-variance.dto';
 import { CountSessionQueryDto } from './dto/count-session-query.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -27,9 +30,7 @@ interface RequestWithUser extends Request {
 @ApiBearerAuth()
 @Controller('inventory/counting')
 export class InventoryCountingController {
-  constructor(
-    private readonly countingService: InventoryCountingService,
-  ) {}
+  constructor(private readonly countingService: InventoryCountingService) {}
 
   @Post('sessions')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)

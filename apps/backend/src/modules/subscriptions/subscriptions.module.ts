@@ -28,7 +28,6 @@ import { BundleDiscount } from './entities/bundle-discount.entity';
 import { BundleDiscountsService } from './services/bundle-discounts.service';
 import { BundleDiscountsController } from './controllers/bundle-discounts.controller';
 
-
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
@@ -62,7 +61,12 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
     forwardRef(() => QrThriveModule),
     SettingsModule,
   ],
-  controllers: [PlansController, SubscriptionsController, AddonsController, BundleDiscountsController],
+  controllers: [
+    PlansController,
+    SubscriptionsController,
+    AddonsController,
+    BundleDiscountsController,
+  ],
   providers: [
     PlansService,
     SubscriptionsService,

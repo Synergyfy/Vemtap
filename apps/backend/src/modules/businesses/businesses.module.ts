@@ -15,11 +15,22 @@ import { Reward } from '../loyalty/entities/reward.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
-import { GeocodingProcessor, GEOCODING_QUEUE } from './processors/geocoding.processor';
+import {
+  GeocodingProcessor,
+  GEOCODING_QUEUE,
+} from './processors/geocoding.processor';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Business, User, Branch, Visit, Reward, Subscription, Plan]),
+    TypeOrmModule.forFeature([
+      Business,
+      User,
+      Branch,
+      Visit,
+      Reward,
+      Subscription,
+      Plan,
+    ]),
     BullModule.registerQueue({
       name: GEOCODING_QUEUE,
     }),

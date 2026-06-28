@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsObject } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsObject,
+} from 'class-validator';
 
 export class CreateTemplateStyleDto {
   @ApiProperty({ example: 'Classic' })
@@ -47,7 +53,10 @@ export class CreateTemplateStyleDto {
   @IsNotEmpty()
   textColor: string;
 
-  @ApiProperty({ example: { fontFamily: 'Inter', headingSize: 32 }, required: false })
+  @ApiProperty({
+    example: { fontFamily: 'Inter', headingSize: 32 },
+    required: false,
+  })
   @IsObject()
   @IsOptional()
   fontConfig?: Record<string, any>;

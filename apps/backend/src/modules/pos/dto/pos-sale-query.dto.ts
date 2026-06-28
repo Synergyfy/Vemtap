@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsEnum, IsUUID, IsString, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsUUID,
+  IsString,
+  IsDateString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { PaymentMethod, SaleStatus } from '../entities/pos-enums';
@@ -35,7 +41,9 @@ export class PosSaleQueryDto extends PaginationQueryDto {
   @IsDateString()
   dateTo?: string;
 
-  @ApiPropertyOptional({ description: 'Search by receipt number, customer name, or product name' })
+  @ApiPropertyOptional({
+    description: 'Search by receipt number, customer name, or product name',
+  })
   @IsOptional()
   @IsString()
   search?: string;

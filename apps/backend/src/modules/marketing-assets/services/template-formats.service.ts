@@ -13,7 +13,12 @@ export class TemplateFormatsService {
   ) {}
 
   async create(dto: CreateTemplateFormatDto): Promise<MarketingTemplateFormat> {
-    const slug = dto.slug || dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const slug =
+      dto.slug ||
+      dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     const format = this.formatRepo.create({ ...dto, slug });
     return this.formatRepo.save(format);
   }
@@ -31,10 +36,16 @@ export class TemplateFormatsService {
     return format;
   }
 
-  async update(id: string, dto: UpdateTemplateFormatDto): Promise<MarketingTemplateFormat> {
+  async update(
+    id: string,
+    dto: UpdateTemplateFormatDto,
+  ): Promise<MarketingTemplateFormat> {
     const format = await this.findOne(id);
     if (dto.name && !dto.slug) {
-      (dto as any).slug = dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      (dto as any).slug = dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     }
     Object.assign(format, dto);
     return this.formatRepo.save(format);

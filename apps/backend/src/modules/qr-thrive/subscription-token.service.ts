@@ -34,16 +34,22 @@ export class SubscriptionTokenService {
     @Inject(forwardRef(() => PlansService))
     private readonly plansService: PlansService,
   ) {
-    this.secret = this.configService.get<string>('VEMTAP_QR_THRIVE_SECRET') || '';
+    this.secret =
+      this.configService.get<string>('VEMTAP_QR_THRIVE_SECRET') || '';
     if (!this.secret) {
       this.logger.warn('VEMTAP_QR_THRIVE_SECRET is not configured');
     }
   }
 
   async generateToken(user: User, businessId: string): Promise<string> {
-    const isAdminOrAgent = user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT;
-    const subscriptionStatus = isAdminOrAgent ? 'active' : await this.getSubscriptionStatus(businessId);
-    let qrThrivePlanId = isAdminOrAgent ? 'qr-pro-plan' : await this.getQrThrivePlanId(businessId);
+    const isAdminOrAgent =
+      user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT;
+    const subscriptionStatus = isAdminOrAgent
+      ? 'active'
+      : await this.getSubscriptionStatus(businessId);
+    let qrThrivePlanId = isAdminOrAgent
+      ? 'qr-pro-plan'
+      : await this.getQrThrivePlanId(businessId);
 
     // If no active paid plan mapped, try to find the default free plan mapping
     if (!qrThrivePlanId) {
@@ -71,13 +77,16 @@ export class SubscriptionTokenService {
     });
   }
 
-  private async getSubscriptionStatus(businessId: string): Promise<'active' | 'trial' | 'expired'> {
+  private async getSubscriptionStatus(
+    businessId: string,
+  ): Promise<'active' | 'trial' | 'expired'> {
     if (!businessId) {
       return 'active';
     }
     try {
-      const sub = await this.subscriptionsService.activeSubscription(businessId);
-      
+      const sub =
+        await this.subscriptionsService.activeSubscription(businessId);
+
       if (!sub) {
         // Fallback: default to active for free plan users
         return 'active';
@@ -99,8 +108,9 @@ export class SubscriptionTokenService {
       return '';
     }
     try {
-      const sub = await this.subscriptionsService.activeSubscription(businessId);
-      
+      const sub =
+        await this.subscriptionsService.activeSubscription(businessId);
+
       if (sub?.plan?.qrThrivePlanId) {
         return sub.plan.qrThrivePlanId;
       }
@@ -114,13 +124,17 @@ export class SubscriptionTokenService {
     }
   }
 
-  private async getPlanCapabilities(qrThrivePlanId: string): Promise<VemTapQrThriveTokenPayload['planCapabilities']> {
+  private async getPlanCapabilities(
+    qrThrivePlanId: string,
+  ): Promise<VemTapQrThriveTokenPayload['planCapabilities']> {
     try {
       // Since VemTap Plan doesn't have qrCodeLimit/qrCodeTypes directly,
       // we'll use defaults and let QR-Thrive handle the actual limits based on qrThrivePlanId
       return this.getDefaultCapabilities();
     } catch (error) {
-      this.logger.warn(`Failed to get plan capabilities: ${error.message}, using defaults`);
+      this.logger.warn(
+        `Failed to get plan capabilities: ${error.message}, using defaults`,
+      );
       return this.getDefaultCapabilities();
     }
   }
@@ -159,9 +173,12 @@ export class SubscriptionTokenService {
 
   async verifyToken(token: string): Promise<VemTapQrThriveTokenPayload | null> {
     try {
-      return await this.jwtService.verifyAsync<VemTapQrThriveTokenPayload>(token, {
-        secret: this.secret,
-      });
+      return await this.jwtService.verifyAsync<VemTapQrThriveTokenPayload>(
+        token,
+        {
+          secret: this.secret,
+        },
+      );
     } catch (error) {
       this.logger.warn(`Token verification failed: ${error.message}`);
       return null;

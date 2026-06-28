@@ -138,6 +138,17 @@ export class Business extends AbstractBaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   verifiedAt: Date | null;
 
+  @ApiProperty({
+    example: { loyaltyEnabled: true, loyaltyRedeemThreshold: 100 },
+    nullable: true,
+    description: 'POS-specific settings for this business',
+  })
+  @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
+  posSettings: {
+    loyaltyEnabled?: boolean;
+    loyaltyRedeemThreshold?: number;
+  };
+
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {
     onDelete: 'CASCADE',

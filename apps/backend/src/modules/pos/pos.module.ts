@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PosController } from './pos.controller';
 import { PosService } from './pos.service';
@@ -8,6 +8,8 @@ import { PosSplitPayment } from './entities/pos-split-payment.entity';
 import { PosHeldSale } from './entities/pos-held-sale.entity';
 import { PosHeldSaleItem } from './entities/pos-held-sale-item.entity';
 import { PosRegisterSession } from './entities/pos-register-session.entity';
+import { PosRefund } from './entities/pos-refund.entity';
+import { PosRefundItem } from './entities/pos-refund-item.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOrder } from '../catalogue-orders/entities/catalogue-order.entity';
@@ -18,6 +20,7 @@ import { User } from '../users/entities/user.entity';
 import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
 import { CatalogueOrderModule } from '../catalogue-orders/catalogue-orders.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 @Module({
   imports: [
@@ -28,6 +31,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
       PosHeldSale,
       PosHeldSaleItem,
       PosRegisterSession,
+      PosRefund,
+      PosRefundItem,
       CatalogueItem,
       CatalogueOffer,
       CatalogueOrder,
@@ -39,6 +44,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ]),
     CatalogueOrderModule,
     NotificationsModule,
+    forwardRef(() => LoyaltyModule),
   ],
   controllers: [PosController],
   providers: [PosService],
