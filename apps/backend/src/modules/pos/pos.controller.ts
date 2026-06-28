@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   ParseUUIDPipe,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PosService } from './pos.service';
@@ -41,6 +42,17 @@ export class PosController {
     @Req() req: RequestWithUser,
   ) {
     return this.posService.completeSale(dto, req.user);
+  }
+
+  @Post('sales/batch-sync')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Batch sync offline POS sales' })
+  async batchSyncSales(
+    @Body(new ParseArrayPipe({ items: CreatePosSaleDto }))
+    dtos: CreatePosSaleDto[],
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.batchSyncSales(dtos, req.user);
   }
 
   @Get('sales')
@@ -190,7 +202,10 @@ export class PosController {
       '(can link existing customers via customerId). If no token is provided, acts as a public ' +
       'walk-in order requiring customer name and phone. Select catalogue items or offers by UUID.',
   })
-  async placeOrder(@Body() dto: CreatePosOrderDto, @Req() req: any) {
+  async placeOrder(
+    @Body() dto: CreatePosOrderDto,
+    @Req() req: Partial<RequestWithUser>,
+  ) {
     const staff: User | undefined = req.user?.id ? req.user : undefined;
     return this.posService.placeOrder(dto, staff);
   }

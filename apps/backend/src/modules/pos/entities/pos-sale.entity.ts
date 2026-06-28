@@ -12,7 +12,7 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
 import { PosSaleItem } from './pos-sale-item.entity';
 import { PosSplitPayment } from './pos-split-payment.entity';
-import { PosRefund } from './pos-refund.entity';
+import type { PosRefund } from './pos-refund.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { PaymentMethod, SaleStatus } from './pos-enums';
 import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.entity';
@@ -23,6 +23,11 @@ import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.
 @Index(['cashierId'])
 @Index(['customerId'])
 @Index(['orderId'])
+@Index(['businessId', 'clientRef'], {
+  unique: true,
+  where: '"clientRef" IS NOT NULL',
+})
+@Index(['orderedAt'])
 export class PosSale extends AbstractBaseEntity {
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
@@ -130,6 +135,14 @@ export class PosSale extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   orderId: string;
 
+  @ApiProperty({ example: 'uuid-of-client-offline-sale', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  clientRef: string | null;
+
+  @ApiProperty({ example: '2026-06-28T10:00:00.000Z' })
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  orderedAt: Date;
+
   @ApiProperty({ example: 'Paid with NGN 5000 note', nullable: true })
   @Column({ type: 'text', nullable: true })
   notes: string;
@@ -158,6 +171,6 @@ export class PosSale extends AbstractBaseEntity {
   @OneToMany(() => PosSplitPayment, (sp) => sp.sale, { cascade: true })
   splitPayments: PosSplitPayment[];
 
-  @OneToMany(() => PosRefund, (refund) => refund.sale, { cascade: true })
+  @OneToMany('PosRefund', 'sale', { cascade: true })
   refunds: PosRefund[];
 }

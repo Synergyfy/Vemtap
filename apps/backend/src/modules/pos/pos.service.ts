@@ -16,8 +16,7 @@ import { PosHeldSale } from './entities/pos-held-sale.entity';
 import { PosHeldSaleItem } from './entities/pos-held-sale-item.entity';
 import { PosRegisterSession } from './entities/pos-register-session.entity';
 import { RegisterSessionStatus } from './entities/pos-enums';
-import { PosRefund } from './entities/pos-refund.entity';
-import { PosRefundItem } from './entities/pos-refund-item.entity';
+
 import {
   CatalogueItem,
   CatalogueItemStatus,
@@ -49,6 +48,8 @@ import {
 } from '../fos-core/entities/financial-transaction.entity';
 import { PushNotificationService } from '../notifications/push-notification.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PosRefund } from './entities/pos-refund.entity';
+import { PosRefundItem } from './entities/pos-refund-item.entity';
 
 @Injectable()
 export class PosService {
@@ -96,6 +97,22 @@ export class PosService {
       where: { id: dto.branchId },
     });
     if (!branch) throw new NotFoundException('Branch not found');
+
+    if (branch.businessId !== cashier.businessId) {
+      throw new BadRequestException('Branch does not belong to your business');
+    }
+
+    if (dto.clientRef) {
+      const existingSale = await this.saleRepository.findOne({
+        where: {
+          businessId: branch.businessId,
+          clientRef: dto.clientRef,
+        },
+      });
+      if (existingSale) {
+        return this.findOneSale(existingSale.id, branch.businessId);
+      }
+    }
 
     let customer: User | null = null;
     if (dto.customerId) {
@@ -187,6 +204,20 @@ export class PosService {
     const cashierName =
       `${cashier.firstName} ${cashier.lastName}`.trim() || cashier.email;
 
+    let orderedAt = new Date();
+    if (dto.orderedAt) {
+      const clientDate = new Date(dto.orderedAt);
+      if (!isNaN(clientDate.getTime())) {
+        const now = new Date();
+        const tenMinutesInMs = 10 * 60 * 1000;
+        if (clientDate.getTime() > now.getTime() + tenMinutesInMs) {
+          orderedAt = now;
+        } else {
+          orderedAt = clientDate;
+        }
+      }
+    }
+
     const sale = this.saleRepository.create({
       businessId: branch.businessId,
       branchId: branch.id,
@@ -206,6 +237,8 @@ export class PosService {
       status: SaleStatus.COMPLETED,
       items,
       splitPayments,
+      clientRef: dto.clientRef || null,
+      orderedAt,
     } as unknown as PosSale);
 
     const savedSale = await this.saleRepository.save(sale);
@@ -283,6 +316,44 @@ export class PosService {
     }
 
     return this.findOneSale(savedSale.id, branch.businessId);
+  }
+
+  async batchSyncSales(
+    dtos: CreatePosSaleDto[],
+    cashier: User,
+  ): Promise<
+    {
+      clientRef: string | null;
+      saleId?: string;
+      success: boolean;
+      error?: string;
+    }[]
+  > {
+    const results: {
+      clientRef: string | null;
+      saleId?: string;
+      success: boolean;
+      error?: string;
+    }[] = [];
+    for (const dto of dtos) {
+      try {
+        const sale = await this.completeSale(dto, cashier);
+        results.push({
+          clientRef: dto.clientRef || null,
+          saleId: sale.id,
+          success: true,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Internal server error';
+        results.push({
+          clientRef: dto.clientRef || null,
+          success: false,
+          error: errorMessage,
+        });
+      }
+    }
+    return results;
   }
 
   async placeOrder(
@@ -603,7 +674,7 @@ export class PosService {
     // Update order status to COMPLETED (awards loyalty, generates rewards, sends notifications)
     await this.catalogueOrderService.updateStatus(
       orderId,
-      CatalogueOrderStatus.COMPLETED,
+      { status: CatalogueOrderStatus.COMPLETED },
       staff.businessId,
       staff,
     );
@@ -870,7 +941,7 @@ export class PosService {
     const refund = this.refundRepository.create({
       saleId: sale.id,
       businessId,
-      refundedById: refundedById || null,
+      refundedById: refundedById || undefined,
       reason: dto.reason || 'Refund processed',
       type:
         dto.status === SaleStatus.REFUNDED

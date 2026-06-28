@@ -1,12 +1,12 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { PosRefund } from './pos-refund.entity';
+import type { PosRefund } from './pos-refund.entity';
 import { PosSaleItem } from './pos-sale-item.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('pos_refund_items')
 export class PosRefundItem extends AbstractBaseEntity {
-  @ManyToOne(() => PosRefund, (refund) => refund.items, { onDelete: 'CASCADE' })
+  @ManyToOne('PosRefund', 'items', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'refundId' })
   refund: PosRefund;
 

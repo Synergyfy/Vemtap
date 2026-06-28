@@ -1,10 +1,10 @@
 import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { PosSale } from './pos-sale.entity';
+import type { PosSale } from './pos-sale.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { User } from '../../users/entities/user.entity';
-import { PosRefundItem } from './pos-refund-item.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { PosRefundItem } from './pos-refund-item.entity';
 
 export enum RefundType {
   FULL = 'full',
@@ -13,7 +13,7 @@ export enum RefundType {
 
 @Entity('pos_refunds')
 export class PosRefund extends AbstractBaseEntity {
-  @ManyToOne(() => PosSale, (sale) => sale.refunds, { onDelete: 'CASCADE' })
+  @ManyToOne('PosSale', 'refunds', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'saleId' })
   sale: PosSale;
 
@@ -51,6 +51,6 @@ export class PosRefund extends AbstractBaseEntity {
   })
   refundAmount: number;
 
-  @OneToMany(() => PosRefundItem, (item) => item.refund, { cascade: true })
+  @OneToMany('PosRefundItem', 'refund', { cascade: true })
   items: PosRefundItem[];
 }
