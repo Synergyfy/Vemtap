@@ -17,14 +17,18 @@ export class ExpensesController {
 
   @Get()
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'List expenses with pagination and optional category filter' })
+  @ApiOperation({
+    summary: 'List expenses with pagination and optional category filter',
+  })
   async listExpenses(@Query() query: ListExpensesQueryDto) {
     return this.pnlService.listExpenses(query);
   }
 
   @Post()
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Create an expense and auto-insert cash flow OUTFLOW record' })
+  @ApiOperation({
+    summary: 'Create an expense and auto-insert cash flow OUTFLOW record',
+  })
   async createExpense(@Body() dto: CreateExpenseDto) {
     return this.pnlService.createExpense(dto);
   }

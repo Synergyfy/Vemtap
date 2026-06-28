@@ -8,7 +8,10 @@ import {
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { FosTransactionType, FosPlatform } from '../entities/financial-transaction.entity';
+import {
+  FosTransactionType,
+  FosPlatform,
+} from '../entities/financial-transaction.entity';
 
 export class CreateFinancialTransactionDto {
   @ApiProperty({ enum: FosTransactionType })

@@ -10,18 +10,27 @@ import {
   Request,
   ForbiddenException,
   NotFoundException,
-  Get as GetMapping,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+  ApiParam,
+} from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 
 @ApiTags('branches')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('branches')
 export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
@@ -60,7 +69,12 @@ export class BranchesController {
     @Body() updateBranchDto: UpdateBranchDto,
   ) {
     const businessId = await this.getBusinessId(req.user);
-    return this.branchesService.update(businessId, id, updateBranchDto, req.user);
+    return this.branchesService.update(
+      businessId,
+      id,
+      updateBranchDto,
+      req.user,
+    );
   }
 
   @Delete(':id')
@@ -71,6 +85,7 @@ export class BranchesController {
     return this.branchesService.remove(businessId, id);
   }
 
+  @Public()
   @Get('check-username/:username')
   @ApiOperation({
     summary: 'Check username availability',
@@ -116,7 +131,8 @@ export class BranchesController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
     summary: 'Get the last top recent customer of a branch',
-    description: 'Returns the customer who has visited this branch the most, with tie-breaks for the most recent visit.',
+    description:
+      'Returns the customer who has visited this branch the most, with tie-breaks for the most recent visit.',
   })
   @ApiParam({
     name: 'id',
@@ -125,7 +141,8 @@ export class BranchesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'The top recent customer detail or null if the branch has no visitors yet.',
+    description:
+      'The top recent customer detail or null if the branch has no visitors yet.',
     schema: {
       example: {
         customer: {
@@ -144,13 +161,15 @@ export class BranchesController {
     },
   })
   async getLastTopRecentCustomer(@Request() req, @Param('id') id: string) {
-    const hasAccess = await this.branchesService.checkBranchAccess(req.user, id);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      req.user,
+      id,
+    );
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this branch');
     }
     return this.branchesService.getLastTopRecentCustomer(id);
   }
-
 
   private async getBusinessId(user: any): Promise<string> {
     if (user.businessId) return user.businessId;

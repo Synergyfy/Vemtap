@@ -12,10 +12,17 @@ import { Branch } from './entities/branch.entity';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { NearbyBranchesQueryDto } from './dto/nearby-branches-query.dto';
 import { Business } from '../businesses/entities/business.entity';
-import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferStatus,
+} from '../catalogue/entities/catalogue-offer.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DevicesService } from '../devices/devices.service';
-import { isValidUsername, RESERVED_USERNAMES, generateUsernameFromName } from '../../common/utils/username.util';
+import {
+  isValidUsername,
+  RESERVED_USERNAMES,
+  generateUsernameFromName,
+} from '../../common/utils/username.util';
 
 import { User } from '../users/entities/user.entity';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
@@ -129,9 +136,13 @@ export class BranchesService {
 
     // Auto-generate username if not provided
     if (!createBranchDto.username) {
-      createBranchDto.username = await this.generateUniqueUsername(createBranchDto.name);
+      createBranchDto.username = await this.generateUniqueUsername(
+        createBranchDto.name,
+      );
     } else {
-      const usernameError = await this.validateUsername(createBranchDto.username);
+      const usernameError = await this.validateUsername(
+        createBranchDto.username,
+      );
       if (usernameError) {
         throw new BadRequestException(usernameError);
       }
@@ -243,7 +254,8 @@ export class BranchesService {
       where: { id: branchId },
       select: ['businessId'],
     });
-    if (!branch) throw new NotFoundException(`Branch with ID ${branchId} not found`);
+    if (!branch)
+      throw new NotFoundException(`Branch with ID ${branchId} not found`);
     return branch.businessId;
   }
 
@@ -270,13 +282,16 @@ export class BranchesService {
     // Validate username if being updated
     const oldUsername = branch.username;
     if (updateBranchDto.username && updateBranchDto.username !== oldUsername) {
-      const usernameError = await this.validateUsername(updateBranchDto.username, id);
+      const usernameError = await this.validateUsername(
+        updateBranchDto.username,
+        id,
+      );
       if (usernameError) {
         throw new BadRequestException(usernameError);
       }
     }
 
-Object.assign(branch, updateBranchDto);
+    Object.assign(branch, updateBranchDto);
     const savedBranch = await this.branchesRepository.save(branch);
 
     return savedBranch;
@@ -297,7 +312,10 @@ Object.assign(branch, updateBranchDto);
     });
   }
 
-  async validateUsername(username: string, excludeBranchId?: string): Promise<string | null> {
+  async validateUsername(
+    username: string,
+    excludeBranchId?: string,
+  ): Promise<string | null> {
     // Check format
     if (!username || username.length < 3 || username.length > 30) {
       return 'Username must be 3-30 characters';
@@ -314,7 +332,8 @@ Object.assign(branch, updateBranchDto);
     }
 
     // Check uniqueness
-    const query = this.branchesRepository.createQueryBuilder('branch')
+    const query = this.branchesRepository
+      .createQueryBuilder('branch')
       .where('branch.username = :username', { username });
 
     if (excludeBranchId) {
@@ -329,7 +348,10 @@ Object.assign(branch, updateBranchDto);
     return null; // Valid
   }
 
-  async generateUniqueUsername(branchName: string, attempt: number = 0): Promise<string> {
+  async generateUniqueUsername(
+    branchName: string,
+    attempt: number = 0,
+  ): Promise<string> {
     let base = generateUsernameFromName(branchName);
 
     if (attempt > 0) {
@@ -346,11 +368,17 @@ Object.assign(branch, updateBranchDto);
 
     // Fallback to random
     const suffix = '-' + Math.floor(Math.random() * 1000);
-    const baseName = generateUsernameFromName(branchName).substring(0, 30 - suffix.length);
+    const baseName = generateUsernameFromName(branchName).substring(
+      0,
+      30 - suffix.length,
+    );
     return baseName + suffix;
   }
 
-  async findNearbyBranches(sourceBranchId: string, query: NearbyBranchesQueryDto) {
+  async findNearbyBranches(
+    sourceBranchId: string,
+    query: NearbyBranchesQueryDto,
+  ) {
     const distance = query.distance ?? 500;
     const limit = query.limit ?? 20;
 
@@ -434,7 +462,7 @@ Object.assign(branch, updateBranchDto);
       }
 
       for (const row of rows) {
-        (row as any).offers = offersByBranch.get(row.id) ?? [];
+        row.offers = offersByBranch.get(row.id) ?? [];
       }
     }
 
@@ -471,7 +499,16 @@ Object.assign(branch, updateBranchDto);
 
     const customer = await this.branchesRepository.manager.findOne(User, {
       where: { id: rawResult.customerId },
-      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'avatar', 'uniqueCode', 'createdAt'],
+      select: [
+        'id',
+        'firstName',
+        'lastName',
+        'email',
+        'phone',
+        'avatar',
+        'uniqueCode',
+        'createdAt',
+      ],
     });
 
     return {

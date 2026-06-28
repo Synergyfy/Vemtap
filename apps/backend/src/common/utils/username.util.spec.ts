@@ -1,4 +1,8 @@
-import { isValidUsername, generateUsernameFromName, RESERVED_USERNAMES } from './username.util';
+import {
+  isValidUsername,
+  generateUsernameFromName,
+  RESERVED_USERNAMES,
+} from './username.util';
 
 describe('Username Utilities', () => {
   describe('isValidUsername', () => {
@@ -12,7 +16,9 @@ describe('Username Utilities', () => {
     });
 
     it('should reject invalid usernames', () => {
-      expect(isValidUsername('toolongusernameexceedingthirtycharacters123')).toBe(false); // Too long
+      expect(
+        isValidUsername('toolongusernameexceedingthirtycharacters123'),
+      ).toBe(false); // Too long
       expect(isValidUsername('Branch-Name')).toBe(false); // Uppercase
       expect(isValidUsername('-start')).toBe(false); // Starts with hyphen
       expect(isValidUsername('end-')).toBe(false); // Ends with hyphen
@@ -31,7 +37,9 @@ describe('Username Utilities', () => {
       expect(generateUsernameFromName('Main Office')).toBe('main-office');
       expect(generateUsernameFromName('Branch 123!')).toBe('branch-123');
       expect(generateUsernameFromName('Test@Branch#123')).toBe('testbranch123');
-      expect(generateUsernameFromName('  Multiple   Spaces  ')).toBe('multiple-spaces');
+      expect(generateUsernameFromName('  Multiple   Spaces  ')).toBe(
+        'multiple-spaces',
+      );
     });
 
     it('should handle empty or invalid names', () => {
@@ -40,7 +48,8 @@ describe('Username Utilities', () => {
     });
 
     it('should truncate to 30 characters', () => {
-      const longName = 'This Is A Very Long Branch Name That Exceeds Thirty Characters';
+      const longName =
+        'This Is A Very Long Branch Name That Exceeds Thirty Characters';
       const result = generateUsernameFromName(longName);
       expect(result.length).toBeLessThanOrEqual(30);
     });

@@ -42,6 +42,7 @@ export class MarketingTemplatesController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all active print templates' })
   @ApiResponse({ status: 200, type: [MarketingTemplate] })
   findAll(
@@ -51,11 +52,14 @@ export class MarketingTemplatesController {
     @Query('categoryIds') categoryIds?: string,
   ) {
     const activeOnly = all !== 'true';
-    const ids = categoryIds ? categoryIds.split(',').filter(Boolean) : undefined;
+    const ids = categoryIds
+      ? categoryIds.split(',').filter(Boolean)
+      : undefined;
     return this.templatesService.findAll(category, type, activeOnly, ids);
   }
 
   @Get('categories')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get list of unique template categories' })
   @ApiResponse({ status: 200, type: [String] })
   getCategories() {
@@ -63,6 +67,7 @@ export class MarketingTemplatesController {
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a template by ID' })
   @ApiResponse({ status: 200, type: MarketingTemplate })
   findOne(@Param('id') id: string) {
@@ -73,7 +78,11 @@ export class MarketingTemplatesController {
   @ApiOperation({ summary: 'Update a template (Admin only)' })
   @ApiResponse({ status: 200, type: MarketingTemplate })
   @Roles(UserRole.ADMIN)
-  update(@Param('id') id: string, @Body() updateDto: UpdateTemplateDto, @Req() req: Request) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateTemplateDto,
+    @Req() req: Request,
+  ) {
     return this.templatesService.update(id, updateDto, (req as any).user);
   }
 

@@ -36,7 +36,10 @@ export class AIPromptsService {
     if (activeOnly) {
       query.andWhere('prompt.isActive = :isActive', { isActive: true });
     }
-    return query.orderBy('prompt.category', 'ASC').addOrderBy('prompt.name', 'ASC').getMany();
+    return query
+      .orderBy('prompt.category', 'ASC')
+      .addOrderBy('prompt.name', 'ASC')
+      .getMany();
   }
 
   async findOne(id: string): Promise<MarketingAIPrompt> {
@@ -47,7 +50,10 @@ export class AIPromptsService {
     return prompt;
   }
 
-  async update(id: string, updateDto: Partial<CreateAIPromptDto>): Promise<MarketingAIPrompt> {
+  async update(
+    id: string,
+    updateDto: Partial<CreateAIPromptDto>,
+  ): Promise<MarketingAIPrompt> {
     const prompt = await this.findOne(id);
     Object.assign(prompt, updateDto);
     return this.promptRepo.save(prompt);
@@ -77,7 +83,9 @@ export class AIPromptsService {
     // 1. Try Gemini if configured
     if (this.geminiClient) {
       try {
-        const model = this.geminiClient.getGenerativeModel({ model: 'gemini-flash-latest' });
+        const model = this.geminiClient.getGenerativeModel({
+          model: 'gemini-flash-latest',
+        });
         const result = await model.generateContent(promptText);
         const response = await result.response;
         const text = response.text()?.trim();

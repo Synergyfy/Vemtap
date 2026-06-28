@@ -33,7 +33,9 @@ describe('PartnershipsService', () => {
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
-        getRawAndEntities: jest.fn().mockResolvedValue({ entities: [], raw: [] }),
+        getRawAndEntities: jest
+          .fn()
+          .mockResolvedValue({ entities: [], raw: [] }),
         getCount: jest.fn().mockResolvedValue(0),
       })),
     },

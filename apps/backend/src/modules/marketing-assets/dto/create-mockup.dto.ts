@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsObject } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsObject,
+} from 'class-validator';
 
 export class CreateMockupDto {
   @ApiProperty({ example: 'Wooden Table Stand Mockup' })
@@ -17,7 +23,9 @@ export class CreateMockupDto {
   @IsNotEmpty()
   imageUrl: string;
 
-  @ApiProperty({ description: 'Overlay coordinates and perspective matrix JSON' })
+  @ApiProperty({
+    description: 'Overlay coordinates and perspective matrix JSON',
+  })
   @IsObject()
   @IsNotEmpty()
   overlayConfig: any;

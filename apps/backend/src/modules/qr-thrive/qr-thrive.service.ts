@@ -26,7 +26,6 @@ import {
   UpdateQRCodeDto,
   CreateFolderDto,
   UpdateFolderDto,
-
   SpecializedLeadsQueryDto,
 } from './dto/qr-thrive.dto';
 import { BranchesService } from '../branches/branches.service';
@@ -103,30 +102,45 @@ export class QrThriveService implements OnModuleInit {
     };
   }
 
-  private async getHeadersWithSubscription(user?: User): Promise<Record<string, string>> {
+  private async getHeadersWithSubscription(
+    user?: User,
+  ): Promise<Record<string, string>> {
     const baseHeaders = this.headers;
-    
+
     if (!user?.businessId) {
       return baseHeaders;
     }
 
     try {
-      const token = await this.subscriptionTokenService.generateToken(user, user.businessId);
+      const token = await this.subscriptionTokenService.generateToken(
+        user,
+        user.businessId,
+      );
       return {
         ...baseHeaders,
         'X-VemTap-Subscription-Token': token,
       };
     } catch (error) {
-      this.logger.warn(`Failed to generate subscription token: ${error.message}`);
+      this.logger.warn(
+        `Failed to generate subscription token: ${error.message}`,
+      );
       return baseHeaders;
     }
   }
 
-  async generateSubscriptionToken(user: User, businessId: string): Promise<string> {
+  async generateSubscriptionToken(
+    user: User,
+    businessId: string,
+  ): Promise<string> {
     try {
-      return await this.subscriptionTokenService.generateToken(user, businessId);
+      return await this.subscriptionTokenService.generateToken(
+        user,
+        businessId,
+      );
     } catch (error) {
-      this.logger.error(`Failed to generate subscription token: ${error.message}`);
+      this.logger.error(
+        `Failed to generate subscription token: ${error.message}`,
+      );
       return '';
     }
   }
@@ -137,7 +151,7 @@ export class QrThriveService implements OnModuleInit {
     maxRetries: number = 1,
   ): Promise<T> {
     let headers = await this.getHeadersWithSubscription(user);
-    
+
     try {
       return await requestFn(headers);
     } catch (error) {
@@ -177,7 +191,8 @@ export class QrThriveService implements OnModuleInit {
       }
 
       if (businessId) {
-        const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
+        const ownerId =
+          await this.branchesService.getBusinessOwnerId(businessId);
         if (ownerId) {
           targetUserId = ownerId;
           this.logger.debug(
@@ -358,7 +373,9 @@ export class QrThriveService implements OnModuleInit {
         mainQrShortUrl: data.shortUrl,
       });
 
-      this.logger.log(`Created main QR code for branch ${branch.id}: ${data.id}`);
+      this.logger.log(
+        `Created main QR code for branch ${branch.id}: ${data.id}`,
+      );
       return data;
     } catch (error) {
       this.logger.error(
@@ -371,14 +388,28 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Updates the destination URL of the main QR code (e.g., when username changes).
    */
-  async updateMainQRCodeUrl(user: User, branchId: string, qrCodeId: string, username: string) {
-    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+  async updateMainQRCodeUrl(
+    user: User,
+    branchId: string,
+    qrCodeId: string,
+    username: string,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
     if (!hasAccess) {
-      throw new HttpException('You do not have access to this branch', HttpStatus.FORBIDDEN);
+      throw new HttpException(
+        'You do not have access to this branch',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     const mapping = await this.getMapping(user, branchId);
-    const appUrl = this.configService.get<string>('VEMTAP_APP_URL', 'https://vemtap.com');
+    const appUrl = this.configService.get<string>(
+      'VEMTAP_APP_URL',
+      'https://vemtap.com',
+    );
     const newUrl = `${appUrl}/${username}`;
 
     try {
@@ -407,7 +438,10 @@ export class QrThriveService implements OnModuleInit {
    * Returns { qrCode: null } if user is not provisioned.
    */
   async getMainQRCode(user: User, branchId: string) {
-    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
     if (!hasAccess) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
     }
@@ -466,7 +500,10 @@ export class QrThriveService implements OnModuleInit {
    * Recreates the main QR code for a branch (used when user edits it away).
    */
   async recreateMainQRCode(user: User, branchId: string) {
-    const hasAccess = await this.branchesService.checkBranchAccess(user, branchId);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
     if (!hasAccess) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
     }
@@ -484,11 +521,7 @@ export class QrThriveService implements OnModuleInit {
    * Sets an existing QR code as the branch's main QR code.
    * Updates its content to the UBL URL but preserves its design.
    */
-  async setAsMainQRCode(
-    user: User,
-    branchId: string,
-    qrCodeId: string,
-  ) {
+  async setAsMainQRCode(user: User, branchId: string, qrCodeId: string) {
     const hasAccess = await this.branchesService.checkBranchAccess(
       user,
       branchId,
@@ -784,7 +817,9 @@ export class QrThriveService implements OnModuleInit {
           });
         }
       } catch (dbError) {
-        this.logger.error(`Failed to merge local lead statuses: ${dbError.message}`);
+        this.logger.error(
+          `Failed to merge local lead statuses: ${dbError.message}`,
+        );
         // If DB fails, we still return the leads with default NEW status
         // so the user doesn't see a 500 error.
         const leads = Array.isArray(data.items) ? data.items : [];
@@ -828,8 +863,6 @@ export class QrThriveService implements OnModuleInit {
     }
   }
 
-
-
   /**
    * Fetches available plans from QR-Thrive.
    */
@@ -852,13 +885,19 @@ export class QrThriveService implements OnModuleInit {
   async syncSubscription(user: User, qrThrivePlanId: string) {
     let mapping = await this.getMapping(user, undefined, false);
     if (!mapping) {
-      console.log(`[QrThriveService] User ${user.id} not synced with QR-Thrive. Attempting auto-sync...`);
+      console.log(
+        `[QrThriveService] User ${user.id} not synced with QR-Thrive. Attempting auto-sync...`,
+      );
       try {
         await this.syncUser(user);
         mapping = await this.getMapping(user);
-        console.log(`[QrThriveService] Auto-sync result for ${user.id}: ${mapping ? 'Success' : 'Still no mapping'}`);
+        console.log(
+          `[QrThriveService] Auto-sync result for ${user.id}: ${mapping ? 'Success' : 'Still no mapping'}`,
+        );
       } catch (error) {
-        console.error(`[QrThriveService] Failed to auto-sync user ${user.id} to QR-Thrive: ${error.message}`);
+        console.error(
+          `[QrThriveService] Failed to auto-sync user ${user.id} to QR-Thrive: ${error.message}`,
+        );
         return;
       }
     }
@@ -871,17 +910,18 @@ export class QrThriveService implements OnModuleInit {
     }
 
     try {
-      const managedSubscriptionToken = this.encryptionService.signSubscriptionAssertion({
-        planId: qrThrivePlanId,
-        status: 'active',
-      });
+      const managedSubscriptionToken =
+        this.encryptionService.signSubscriptionAssertion({
+          planId: qrThrivePlanId,
+          status: 'active',
+        });
 
       const headers = await this.getHeadersWithSubscription(user);
       await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/users/${mapping.qrThriveUserId}/subscription`,
-          { 
-            planId: qrThrivePlanId, 
+          {
+            planId: qrThrivePlanId,
             status: 'active',
             managedSubscriptionToken,
           },
@@ -948,7 +988,7 @@ export class QrThriveService implements OnModuleInit {
     try {
       const businessId = await this.branchesService.getBusinessId(branchId);
       const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
-      
+
       if (!ownerId) {
         this.logger.warn(`Could not resolve owner for branch ${branchId}`);
         return [];
@@ -987,7 +1027,9 @@ export class QrThriveService implements OnModuleInit {
           logo: qr.logo,
         }));
     } catch (error) {
-      this.logger.error(`Failed to fetch public QR codes for branch ${branchId}: ${error.message}`);
+      this.logger.error(
+        `Failed to fetch public QR codes for branch ${branchId}: ${error.message}`,
+      );
       return [];
     }
   }
@@ -1111,7 +1153,10 @@ export class QrThriveService implements OnModuleInit {
         .createQueryBuilder()
         .update(Branch)
         .set({ mainQrCodeId: null as any, mainQrShortUrl: null as any })
-        .where('id = :branchId AND mainQrCodeId = :qrCodeId', { branchId, qrCodeId })
+        .where('id = :branchId AND mainQrCodeId = :qrCodeId', {
+          branchId,
+          qrCodeId,
+        })
         .execute();
 
       return { success: true };
@@ -1155,8 +1200,6 @@ export class QrThriveService implements OnModuleInit {
       return this.handleExternalError(error, 'Failed to duplicate QR code');
     }
   }
-
-
 
   /**
    * Updates the local status of an external lead in VemTap.
@@ -1383,7 +1426,9 @@ export class QrThriveService implements OnModuleInit {
           const parts = branch.mainQrShortUrl.split('/');
           const extractedId = parts[parts.length - 1];
           if (extractedId) {
-            this.logger.log(`Resolved branch uniqueCode ${shortId} to cached main QR shortId ${extractedId}`);
+            this.logger.log(
+              `Resolved branch uniqueCode ${shortId} to cached main QR shortId ${extractedId}`,
+            );
             return extractedId;
           }
         }
@@ -1391,8 +1436,11 @@ export class QrThriveService implements OnModuleInit {
         // Case 2: mainQrShortUrl is null but we have mainQrCodeId -> Self-heal by fetching from QR-Thrive integration API
         if (branch.mainQrCodeId) {
           try {
-            const businessId = await this.branchesService.getBusinessId(branch.id);
-            const ownerId = await this.branchesService.getBusinessOwnerId(businessId);
+            const businessId = await this.branchesService.getBusinessId(
+              branch.id,
+            );
+            const ownerId =
+              await this.branchesService.getBusinessOwnerId(businessId);
             if (ownerId) {
               const mapping = await this.userMappingRepo.findOne({
                 where: { userId: ownerId },
@@ -1409,20 +1457,27 @@ export class QrThriveService implements OnModuleInit {
                 if (data && data.shortId) {
                   // Self-heal/Cache in database for future scans
                   await this.branchRepo.update(branch.id, {
-                    mainQrShortUrl: data.shortUrl || `https://qrthrive.com/${data.shortId}`,
+                    mainQrShortUrl:
+                      data.shortUrl || `https://qrthrive.com/${data.shortId}`,
                   });
-                  this.logger.log(`Self-healed mainQrShortUrl for branch ${branch.id} to ${data.shortUrl}`);
+                  this.logger.log(
+                    `Self-healed mainQrShortUrl for branch ${branch.id} to ${data.shortUrl}`,
+                  );
                   return data.shortId;
                 }
               }
             }
           } catch (apiError) {
-            this.logger.error(`Failed to fetch main QR details from QR-Thrive for self-healing: ${apiError.message}`);
+            this.logger.error(
+              `Failed to fetch main QR details from QR-Thrive for self-healing: ${apiError.message}`,
+            );
           }
         }
       }
     } catch (error) {
-      this.logger.error(`Failed to resolve branch code ${shortId}: ${error.message}`);
+      this.logger.error(
+        `Failed to resolve branch code ${shortId}: ${error.message}`,
+      );
     }
 
     return shortId;
@@ -1448,7 +1503,12 @@ export class QrThriveService implements OnModuleInit {
   /**
    * Records a scan in QR-Thrive and returns the destination URL.
    */
-  async recordPublicScan(shortId: string, ip: string, userAgent: string, user?: User) {
+  async recordPublicScan(
+    shortId: string,
+    ip: string,
+    userAgent: string,
+    user?: User,
+  ) {
     const realShortId = await this.resolveRealShortId(shortId);
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/qr-codes');
@@ -1474,7 +1534,7 @@ export class QrThriveService implements OnModuleInit {
       // Fallback: try to get the QR data to determine destination if scan recording fails
       try {
         const qrCode = await this.getPublicQRCode(realShortId);
-        const data = qrCode.data as any;
+        const data = qrCode.data;
         if (qrCode.type === 'url' && data.url) {
           return data.url.startsWith('http') ? data.url : `https://${data.url}`;
         }
@@ -1519,11 +1579,16 @@ export class QrThriveService implements OnModuleInit {
     try {
       const publicUrl = this.baseUrl.replace('/integration', '/public/forms');
       const { data } = await firstValueFrom(
-        this.httpService.post(`${publicUrl}/${realShortId}/submit`, { answers }),
+        this.httpService.post(`${publicUrl}/${realShortId}/submit`, {
+          answers,
+        }),
       );
       return data;
     } catch (error) {
-      return this.handleExternalError(error, 'Failed to submit form to QR-Thrive');
+      return this.handleExternalError(
+        error,
+        'Failed to submit form to QR-Thrive',
+      );
     }
   }
 
@@ -1539,8 +1604,10 @@ export class QrThriveService implements OnModuleInit {
       );
       return data;
     } catch (error) {
-      return this.handleExternalError(error, 'Failed to fetch public form structure');
+      return this.handleExternalError(
+        error,
+        'Failed to fetch public form structure',
+      );
     }
   }
 }
-

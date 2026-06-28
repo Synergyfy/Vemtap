@@ -194,6 +194,22 @@ export class UpdateCatalogueOrderStatusDto {
   @IsNotEmpty()
   @IsEnum(CatalogueOrderStatus)
   status: CatalogueOrderStatus;
+
+  @ApiPropertyOptional({ example: 'Customer requested cancellation' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Items to refund (for partial refunds). If omitted, a full refund is processed.',
+    type: [OrderItemDto], // Or we can define a simpler one, or just reuse OrderItemDto where itemId is passed
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemDto)
+  refundItems?: OrderItemDto[];
 }
 
 export class CatalogueOrderQueryDto {

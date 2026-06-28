@@ -1,10 +1,4 @@
-import {
-  IsEmail,
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUUID,
-} from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AgentStatus } from './list-agents-query.dto';
 
@@ -21,12 +15,18 @@ export class CreateAgentDto {
   @IsString()
   phone: string;
 
-  @ApiPropertyOptional({ description: 'Optional password (auto-generated if omitted)' })
+  @ApiPropertyOptional({
+    description: 'Optional password (auto-generated if omitted)',
+  })
   @IsOptional()
   @IsString()
   password?: string;
 
-  @ApiPropertyOptional({ description: 'Agent status', enum: AgentStatus, default: 'ACTIVE' })
+  @ApiPropertyOptional({
+    description: 'Agent status',
+    enum: AgentStatus,
+    default: 'ACTIVE',
+  })
   @IsOptional()
   @IsEnum(AgentStatus)
   status?: AgentStatus;

@@ -421,7 +421,9 @@ export class FormsService {
     if (!form) throw new NotFoundException('Form not found');
 
     if (form.requiresAuth && !visitorId) {
-      throw new UnauthorizedException('Authentication is required to submit this form');
+      throw new UnauthorizedException(
+        'Authentication is required to submit this form',
+      );
     }
 
     const response = this.formResponsesRepository.create({

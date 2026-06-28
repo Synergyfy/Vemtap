@@ -7,7 +7,10 @@ async function bootstrap() {
   const categoriesService = app.get(CategoriesService);
   try {
     const categories = await categoriesService.findAll(true);
-    console.log('Successfully found marketing categories count:', categories.length);
+    console.log(
+      'Successfully found marketing categories count:',
+      categories.length,
+    );
     console.log('Categories:', JSON.stringify(categories, null, 2));
   } catch (err) {
     console.error('Failed to find marketing categories:', err);

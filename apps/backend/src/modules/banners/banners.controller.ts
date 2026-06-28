@@ -12,7 +12,12 @@ import { BannersService } from './banners.service';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { ReorderBannersDto } from './dto/reorder-banners.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -26,7 +31,11 @@ export class BannersController {
 
   @Get()
   @ApiOperation({ summary: 'Get active banners (any authenticated user)' })
-  @ApiResponse({ status: 200, description: 'Active banners retrieved', type: [Banner] })
+  @ApiResponse({
+    status: 200,
+    description: 'Active banners retrieved',
+    type: [Banner],
+  })
   async getActiveBanners() {
     return this.bannersService.findActive();
   }
@@ -42,7 +51,11 @@ export class AdminBannersController {
   @Get()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get all banners' })
-  @ApiResponse({ status: 200, description: 'All banners retrieved', type: [Banner] })
+  @ApiResponse({
+    status: 200,
+    description: 'All banners retrieved',
+    type: [Banner],
+  })
   async findAll() {
     return this.bannersService.findAll();
   }
@@ -66,7 +79,11 @@ export class AdminBannersController {
   @Patch('reorder')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Reorder banners' })
-  @ApiResponse({ status: 200, description: 'Banners reordered', type: [Banner] })
+  @ApiResponse({
+    status: 200,
+    description: 'Banners reordered',
+    type: [Banner],
+  })
   async reorder(@Body() dto: ReorderBannersDto) {
     return this.bannersService.reorder(dto);
   }

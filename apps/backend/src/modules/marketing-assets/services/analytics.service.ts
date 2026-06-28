@@ -11,7 +11,11 @@ export class AnalyticsService {
     private readonly analyticsRepo: Repository<MarketingAnalytics>,
   ) {}
 
-  async trackEvent(assetId: string, businessId: string, type: 'scan' | 'view'): Promise<MarketingAnalytics> {
+  async trackEvent(
+    assetId: string,
+    businessId: string,
+    type: 'scan' | 'view',
+  ): Promise<MarketingAnalytics> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -39,16 +43,24 @@ export class AnalyticsService {
     return this.analyticsRepo.save(record);
   }
 
-  async getAssetPerformance(id: string, user: User, startDateStr?: string, endDateStr?: string) {
+  async getAssetPerformance(
+    id: string,
+    user: User,
+    startDateStr?: string,
+    endDateStr?: string,
+  ) {
     const businessId = user.businessId || user.ownedBusiness?.id;
     if (!businessId) {
       throw new ForbiddenException('User is not associated with any business');
     }
 
-    const start = startDateStr ? new Date(startDateStr) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const start = startDateStr
+      ? new Date(startDateStr)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = endDateStr ? new Date(endDateStr) : new Date();
 
-    const query = this.analyticsRepo.createQueryBuilder('analytics')
+    const query = this.analyticsRepo
+      .createQueryBuilder('analytics')
       .where('analytics.assetId = :id', { id })
       .andWhere('analytics.businessId = :businessId', { businessId })
       .andWhere('analytics.date >= :start', { start })
@@ -66,7 +78,10 @@ export class AnalyticsService {
       { scans: 0, views: 0 },
     );
 
-    const conversionRate = totals.views > 0 ? parseFloat(((totals.scans / totals.views) * 100).toFixed(2)) : 0;
+    const conversionRate =
+      totals.views > 0
+        ? parseFloat(((totals.scans / totals.views) * 100).toFixed(2))
+        : 0;
 
     return {
       assetId: id,
@@ -91,7 +106,8 @@ export class AnalyticsService {
 
     const days30Ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const analytics = await this.analyticsRepo.createQueryBuilder('analytics')
+    const analytics = await this.analyticsRepo
+      .createQueryBuilder('analytics')
       .where('analytics.businessId = :businessId', { businessId })
       .andWhere('analytics.date >= :days30Ago', { days30Ago })
       .getMany();
@@ -105,7 +121,10 @@ export class AnalyticsService {
       { scans: 0, views: 0 },
     );
 
-    const conversionRate = totals.views > 0 ? parseFloat(((totals.scans / totals.views) * 100).toFixed(2)) : 0;
+    const conversionRate =
+      totals.views > 0
+        ? parseFloat(((totals.scans / totals.views) * 100).toFixed(2))
+        : 0;
 
     // Aggregate by template/asset type if needed, or by day
     const dailyMap: Record<string, { scans: number; views: number }> = {};
@@ -118,11 +137,13 @@ export class AnalyticsService {
       dailyMap[dateStr].views += d.viewsCount;
     });
 
-    const daily = Object.entries(dailyMap).map(([date, counts]) => ({
-      date,
-      scans: counts.scans,
-      views: counts.views,
-    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const daily = Object.entries(dailyMap)
+      .map(([date, counts]) => ({
+        date,
+        scans: counts.scans,
+        views: counts.views,
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return {
       totals: {

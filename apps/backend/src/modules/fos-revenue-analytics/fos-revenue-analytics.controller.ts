@@ -29,9 +29,7 @@ import { DateRangeQueryDto } from '../fos-core/dto/create-financial-transaction.
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('revenue')
 export class FosRevenueAnalyticsController {
-  constructor(
-    private readonly revenueService: FosRevenueAnalyticsService,
-  ) {}
+  constructor(private readonly revenueService: FosRevenueAnalyticsService) {}
 
   @Get('transactions')
   @Roles(UserRole.ADMIN)
@@ -76,7 +74,9 @@ export class FosRevenueAnalyticsController {
 
   @Get('business/:businessId/history')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get full transaction history for a specific business' })
+  @ApiOperation({
+    summary: 'Get full transaction history for a specific business',
+  })
   async getBusinessHistory(
     @Param() params: BusinessIdParamDto,
   ): Promise<BusinessRevenueHistoryResponseDto> {

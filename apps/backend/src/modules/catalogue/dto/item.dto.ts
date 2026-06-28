@@ -112,6 +112,16 @@ export class CreateCatalogueItemDto {
   @IsString()
   brand?: string;
 
+  @ApiPropertyOptional({ example: '500 g' })
+  @IsOptional()
+  @IsString()
+  weight?: string;
+
+  @ApiPropertyOptional({ example: '10x15x5 cm' })
+  @IsOptional()
+  @IsString()
+  dimensions?: string;
+
   @ApiPropertyOptional({ example: [{ type: 'size', value: 'large' }] })
   @IsOptional()
   variants?: { type: string; value: string }[];
@@ -133,6 +143,18 @@ export class CreateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPoints?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enableLoyaltyPoints?: boolean;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPointsValue?: number;
 
   @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()
@@ -237,6 +259,16 @@ export class UpdateCatalogueItemDto {
   @IsString()
   brand?: string;
 
+  @ApiPropertyOptional({ example: '500 g' })
+  @IsOptional()
+  @IsString()
+  weight?: string;
+
+  @ApiPropertyOptional({ example: '10x15x5 cm' })
+  @IsOptional()
+  @IsString()
+  dimensions?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   variants?: { type: string; value: string }[];
@@ -258,6 +290,18 @@ export class UpdateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPoints?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enableLoyaltyPoints?: boolean;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPointsValue?: number;
 
   @ApiPropertyOptional({
     description: 'If provided, the edit will be isolated to this branch',

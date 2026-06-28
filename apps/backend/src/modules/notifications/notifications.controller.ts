@@ -26,7 +26,7 @@ import { NotificationResponseDto } from './dto/notification-response.dto';
 @ApiTags('notifications')
 @ApiBearerAuth()
 @Controller('notifications')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class NotificationsController {
   constructor(
     private readonly notificationsService: NotificationsService,

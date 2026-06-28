@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MarketingDownload } from '../entities/marketing-download.entity';
@@ -16,7 +20,11 @@ export class DownloadsService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  async recordDownload(assetId: string, format: string, user: User): Promise<MarketingDownload> {
+  async recordDownload(
+    assetId: string,
+    format: string,
+    user: User,
+  ): Promise<MarketingDownload> {
     const businessId = user.businessId || user.ownedBusiness?.id;
     if (!businessId) {
       throw new ForbiddenException('User is not associated with any business');
@@ -53,14 +61,18 @@ export class DownloadsService {
     return saved;
   }
 
-  async getDownloads(user: User, assetId?: string): Promise<MarketingDownload[]> {
+  async getDownloads(
+    user: User,
+    assetId?: string,
+  ): Promise<MarketingDownload[]> {
     const isAdmin = user.role === 'Admin';
     const businessId = user.businessId || user.ownedBusiness?.id;
     if (!isAdmin && !businessId) {
       throw new ForbiddenException('User is not associated with any business');
     }
 
-    const query = this.downloadRepo.createQueryBuilder('download')
+    const query = this.downloadRepo
+      .createQueryBuilder('download')
       .leftJoinAndSelect('download.asset', 'asset');
 
     if (!isAdmin) {

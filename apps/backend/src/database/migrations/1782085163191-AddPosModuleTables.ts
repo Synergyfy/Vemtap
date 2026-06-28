@@ -1,182 +1,471 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddPosModuleTables1782085163191 implements MigrationInterface {
-    name = 'AddPosModuleTables1782085163191'
+  name = 'AddPosModuleTables1782085163191';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query('DROP TABLE IF EXISTS "pos_products" CASCADE');
-        await queryRunner.query('DROP TYPE IF EXISTS "public"."pos_products_status_enum"');
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_mtc_templateId"`);
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_mtc_categoryId"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fos_snapshots_date"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_type"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_platform"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_businessId"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_agentId"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_referenceId"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_date"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_expenses_date"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_expenses_category"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_expenses_frequency"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_date"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_type"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_category"`);
-        await queryRunner.query(`CREATE TABLE "pos_sale_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "saleId" uuid NOT NULL, "productId" uuid, "productName" character varying NOT NULL, "sku" character varying, "barcode" character varying, "unitPrice" numeric(12,2) NOT NULL, "costPrice" numeric(12,2), "quantity" integer NOT NULL, "discount" numeric(12,2) NOT NULL DEFAULT '0', "totalPrice" numeric(12,2) NOT NULL, CONSTRAINT "PK_5711893fa1eb60d2de0bd22ba07" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TYPE "public"."pos_sales_paymentmethod_enum" AS ENUM('cash', 'transfer', 'card', 'split')`);
-        await queryRunner.query(`CREATE TYPE "public"."pos_sales_status_enum" AS ENUM('completed', 'refunded', 'partial_refund')`);
-        await queryRunner.query(`CREATE TABLE "pos_sales" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "businessId" uuid NOT NULL, "branchId" uuid NOT NULL, "cashierId" uuid NOT NULL, "cashierName" character varying, "customerId" uuid, "receiptNumber" character varying NOT NULL, "subtotal" numeric(12,2) NOT NULL, "discountAmount" numeric(12,2) NOT NULL DEFAULT '0', "tax" numeric(12,2) NOT NULL DEFAULT '0', "total" numeric(12,2) NOT NULL, "paymentMethod" "public"."pos_sales_paymentmethod_enum" NOT NULL, "amountPaid" numeric(12,2) NOT NULL, "change" numeric(12,2) NOT NULL DEFAULT '0', "hideCustomerInfoOnReceipt" boolean NOT NULL DEFAULT false, "notes" text, "status" "public"."pos_sales_status_enum" NOT NULL DEFAULT 'completed', CONSTRAINT "UQ_fe940a1d17a36f92c0f8de0655f" UNIQUE ("receiptNumber"), CONSTRAINT "PK_ae373d79543e016f6028c0061aa" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_f7fa23b32ee30c6a046a849237" ON "pos_sales" ("customerId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_c67ed1bec0dcaf096f347711f1" ON "pos_sales" ("cashierId") `);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_fe940a1d17a36f92c0f8de0655" ON "pos_sales" ("receiptNumber") `);
-        await queryRunner.query(`CREATE INDEX "IDX_516f0b4edc23b49d22a6d531ea" ON "pos_sales" ("businessId", "createdAt") `);
-        await queryRunner.query(`CREATE TYPE "public"."pos_split_payments_method_enum" AS ENUM('cash', 'transfer', 'card', 'split')`);
-        await queryRunner.query(`CREATE TABLE "pos_split_payments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "saleId" uuid NOT NULL, "method" "public"."pos_split_payments_method_enum" NOT NULL, "amount" numeric(12,2) NOT NULL, CONSTRAINT "PK_7af307981b3c8327acaa0f275c5" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TYPE "public"."pos_register_sessions_status_enum" AS ENUM('open', 'closed')`);
-        await queryRunner.query(`CREATE TABLE "pos_register_sessions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "businessId" uuid NOT NULL, "branchId" uuid NOT NULL, "cashierId" uuid NOT NULL, "openedAt" TIMESTAMP NOT NULL, "closedAt" TIMESTAMP, "openingCash" numeric(12,2) NOT NULL DEFAULT '0', "expectedCash" numeric(12,2) NOT NULL DEFAULT '0', "totalSales" numeric(12,2) NOT NULL DEFAULT '0', "transactionCount" integer NOT NULL DEFAULT '0', "status" "public"."pos_register_sessions_status_enum" NOT NULL DEFAULT 'open', CONSTRAINT "PK_b221710405ea9491912f881cde9" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_527e3902b50a9c1c0b18b74ef2" ON "pos_register_sessions" ("businessId", "cashierId") `);
-        await queryRunner.query(`CREATE TABLE "pos_held_sale_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "heldSaleId" uuid NOT NULL, "productId" uuid, "productName" character varying NOT NULL, "sku" character varying, "barcode" character varying, "unitPrice" numeric(12,2) NOT NULL, "costPrice" numeric(12,2), "quantity" integer NOT NULL, "discount" numeric(12,2) NOT NULL DEFAULT '0', "totalPrice" numeric(12,2) NOT NULL, CONSTRAINT "PK_cef0ad4ade98493e0ba62c9debe" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "pos_held_sales" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "businessId" uuid NOT NULL, "branchId" uuid NOT NULL, "cashierId" uuid NOT NULL, "customerId" uuid, "subtotal" numeric(12,2) NOT NULL, "discountAmount" numeric(12,2) NOT NULL DEFAULT '0', "tax" numeric(12,2) NOT NULL DEFAULT '0', "total" numeric(12,2) NOT NULL, "note" text, "heldAt" TIMESTAMP NOT NULL, CONSTRAINT "PK_7cc60423b71e67aefe25aaa8cd7" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_c5828239305ec6c7f3dfade864" ON "pos_held_sales" ("businessId", "cashierId") `);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "barcode" character varying`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "costPrice" numeric(12,2)`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "minStock" integer`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "brand" character varying`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "variants" jsonb`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "tags" text`);
-        await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "socials"`);
-        await queryRunner.query(`ALTER TABLE "businesses" ADD "socials" json`);
-        await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "openingHours"`);
-        await queryRunner.query(`ALTER TABLE "businesses" ADD "openingHours" json`);
-        await queryRunner.query(`ALTER TABLE "businesses" ALTER COLUMN "isVisible" DROP NOT NULL`);
-        await queryRunner.query(`ALTER TABLE "businesses" ALTER COLUMN "isVisible" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TYPE "public"."catalogue_items_status_enum" RENAME TO "catalogue_items_status_enum_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."catalogue_items_status_enum" AS ENUM('active', 'inactive', 'out_of_stock', 'suspended', 'low_stock', 'archived')`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ALTER COLUMN "status" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ALTER COLUMN "status" TYPE "public"."catalogue_items_status_enum" USING "status"::"text"::"public"."catalogue_items_status_enum"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ALTER COLUMN "status" SET DEFAULT 'active'`);
-        await queryRunner.query(`DROP TYPE "public"."catalogue_items_status_enum_old"`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT '0.05'`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT '0.08'`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT '0.01'`);
-        await queryRunner.query(`ALTER TYPE "public"."fos_transactions_type_enum" RENAME TO "fos_transactions_type_enum_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."fos_transactions_type_enum" AS ENUM('SUBSCRIPTION', 'SMS', 'COMMISSION', 'EXPENSE', 'REFUND', 'POS_SALE', 'POS_REFUND')`);
-        await queryRunner.query(`ALTER TABLE "fos_transactions" ALTER COLUMN "type" TYPE "public"."fos_transactions_type_enum" USING "type"::"text"::"public"."fos_transactions_type_enum"`);
-        await queryRunner.query(`DROP TYPE "public"."fos_transactions_type_enum_old"`);
-        await queryRunner.query(`ALTER TABLE "expenses" ALTER COLUMN "date" SET DEFAULT ('now'::text)::date`);
-        await queryRunner.query(`ALTER TABLE "cash_flows" ALTER COLUMN "date" SET DEFAULT ('now'::text)::date`);
-        await queryRunner.query(`CREATE INDEX "IDX_50fdb6182eb94f3fdb54312d41" ON "catalogue_items" ("barcode") `);
-        await queryRunner.query(`CREATE INDEX "IDX_833ad3324c73d3c4f2283c8f12" ON "fos_metrics_snapshots" ("date") `);
-        await queryRunner.query(`CREATE INDEX "IDX_e5e4c5ce3d2a3df6a8916ca8e3" ON "fos_transactions" ("type") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fe4280093d0b9ed80c4067839b" ON "fos_transactions" ("platform") `);
-        await queryRunner.query(`CREATE INDEX "IDX_87e2bb5669785f6a787958b418" ON "fos_transactions" ("businessId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_ff5b85bc788a6e39806566de7a" ON "fos_transactions" ("agentId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_1880a3e4cce6c1078c2a882a16" ON "fos_transactions" ("referenceId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_b9ce8154737b4c8f6bc7edac69" ON "fos_transactions" ("date") `);
-        await queryRunner.query(`CREATE INDEX "IDX_76147b09b61dce686ba0ac597a" ON "marketing_template_categories" ("templateId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_6e59e098e944667877562b5d3a" ON "marketing_template_categories" ("categoryId") `);
-        await queryRunner.query(`ALTER TABLE "pos_sale_items" ADD CONSTRAINT "FK_d1732275575d1ad849e3730bb08" FOREIGN KEY ("saleId") REFERENCES "pos_sales"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_a6423e8362fd3e4100a7464e523" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_88c72614b6f61abcda798530c44" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_c67ed1bec0dcaf096f347711f15" FOREIGN KEY ("cashierId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_f7fa23b32ee30c6a046a849237a" FOREIGN KEY ("customerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_split_payments" ADD CONSTRAINT "FK_d8fab6039f41ede9d3c8adbda78" FOREIGN KEY ("saleId") REFERENCES "pos_sales"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_register_sessions" ADD CONSTRAINT "FK_6d40adbbe5f717601123dc29166" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_register_sessions" ADD CONSTRAINT "FK_91dd151669ea36faf7682c635e9" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_register_sessions" ADD CONSTRAINT "FK_d4464a5bf20f581f0c0a6721c1c" FOREIGN KEY ("cashierId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sale_items" ADD CONSTRAINT "FK_f1ce1d8b90afc8a17065d8ac09b" FOREIGN KEY ("heldSaleId") REFERENCES "pos_held_sales"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_c90aef569e9d9f12a7dc91c14b3" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_295c03c9ca5d46e0db8301f4f10" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_2acb6c1dcc546acf35b1e2b88df" FOREIGN KEY ("cashierId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_569268a15dcdf1015b461727afe" FOREIGN KEY ("customerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_76147b09b61dce686ba0ac597a0" FOREIGN KEY ("templateId") REFERENCES "marketing_templates"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_6e59e098e944667877562b5d3a0" FOREIGN KEY ("categoryId") REFERENCES "marketing_categories"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-    }
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('DROP TABLE IF EXISTS "pos_products" CASCADE');
+    await queryRunner.query(
+      'DROP TYPE IF EXISTS "public"."pos_products_status_enum"',
+    );
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_mtc_templateId"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_mtc_categoryId"`,
+    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_fos_snapshots_date"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_type"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_fos_transactions_platform"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_fos_transactions_businessId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_fos_transactions_agentId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_fos_transactions_referenceId"`,
+    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_date"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_expenses_date"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_expenses_category"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_expenses_frequency"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_date"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_type"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_category"`);
+    await queryRunner.query(
+      `CREATE TABLE "pos_sale_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "saleId" uuid NOT NULL, "productId" uuid, "productName" character varying NOT NULL, "sku" character varying, "barcode" character varying, "unitPrice" numeric(12,2) NOT NULL, "costPrice" numeric(12,2), "quantity" integer NOT NULL, "discount" numeric(12,2) NOT NULL DEFAULT '0', "totalPrice" numeric(12,2) NOT NULL, CONSTRAINT "PK_5711893fa1eb60d2de0bd22ba07" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."pos_sales_paymentmethod_enum" AS ENUM('cash', 'transfer', 'card', 'split')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."pos_sales_status_enum" AS ENUM('completed', 'refunded', 'partial_refund')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "pos_sales" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "businessId" uuid NOT NULL, "branchId" uuid NOT NULL, "cashierId" uuid NOT NULL, "cashierName" character varying, "customerId" uuid, "receiptNumber" character varying NOT NULL, "subtotal" numeric(12,2) NOT NULL, "discountAmount" numeric(12,2) NOT NULL DEFAULT '0', "tax" numeric(12,2) NOT NULL DEFAULT '0', "total" numeric(12,2) NOT NULL, "paymentMethod" "public"."pos_sales_paymentmethod_enum" NOT NULL, "amountPaid" numeric(12,2) NOT NULL, "change" numeric(12,2) NOT NULL DEFAULT '0', "hideCustomerInfoOnReceipt" boolean NOT NULL DEFAULT false, "notes" text, "status" "public"."pos_sales_status_enum" NOT NULL DEFAULT 'completed', CONSTRAINT "UQ_fe940a1d17a36f92c0f8de0655f" UNIQUE ("receiptNumber"), CONSTRAINT "PK_ae373d79543e016f6028c0061aa" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_f7fa23b32ee30c6a046a849237" ON "pos_sales" ("customerId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_c67ed1bec0dcaf096f347711f1" ON "pos_sales" ("cashierId") `,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_fe940a1d17a36f92c0f8de0655" ON "pos_sales" ("receiptNumber") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_516f0b4edc23b49d22a6d531ea" ON "pos_sales" ("businessId", "createdAt") `,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."pos_split_payments_method_enum" AS ENUM('cash', 'transfer', 'card', 'split')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "pos_split_payments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "saleId" uuid NOT NULL, "method" "public"."pos_split_payments_method_enum" NOT NULL, "amount" numeric(12,2) NOT NULL, CONSTRAINT "PK_7af307981b3c8327acaa0f275c5" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."pos_register_sessions_status_enum" AS ENUM('open', 'closed')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "pos_register_sessions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "businessId" uuid NOT NULL, "branchId" uuid NOT NULL, "cashierId" uuid NOT NULL, "openedAt" TIMESTAMP NOT NULL, "closedAt" TIMESTAMP, "openingCash" numeric(12,2) NOT NULL DEFAULT '0', "expectedCash" numeric(12,2) NOT NULL DEFAULT '0', "totalSales" numeric(12,2) NOT NULL DEFAULT '0', "transactionCount" integer NOT NULL DEFAULT '0', "status" "public"."pos_register_sessions_status_enum" NOT NULL DEFAULT 'open', CONSTRAINT "PK_b221710405ea9491912f881cde9" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_527e3902b50a9c1c0b18b74ef2" ON "pos_register_sessions" ("businessId", "cashierId") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "pos_held_sale_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "heldSaleId" uuid NOT NULL, "productId" uuid, "productName" character varying NOT NULL, "sku" character varying, "barcode" character varying, "unitPrice" numeric(12,2) NOT NULL, "costPrice" numeric(12,2), "quantity" integer NOT NULL, "discount" numeric(12,2) NOT NULL DEFAULT '0', "totalPrice" numeric(12,2) NOT NULL, CONSTRAINT "PK_cef0ad4ade98493e0ba62c9debe" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "pos_held_sales" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "businessId" uuid NOT NULL, "branchId" uuid NOT NULL, "cashierId" uuid NOT NULL, "customerId" uuid, "subtotal" numeric(12,2) NOT NULL, "discountAmount" numeric(12,2) NOT NULL DEFAULT '0', "tax" numeric(12,2) NOT NULL DEFAULT '0', "total" numeric(12,2) NOT NULL, "note" text, "heldAt" TIMESTAMP NOT NULL, CONSTRAINT "PK_7cc60423b71e67aefe25aaa8cd7" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_c5828239305ec6c7f3dfade864" ON "pos_held_sales" ("businessId", "cashierId") `,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "barcode" character varying`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "costPrice" numeric(12,2)`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "minStock" integer`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "brand" character varying`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "variants" jsonb`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ADD COLUMN IF NOT EXISTS "tags" text`,
+    );
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "socials"`);
+    await queryRunner.query(`ALTER TABLE "businesses" ADD "socials" json`);
+    await queryRunner.query(
+      `ALTER TABLE "businesses" DROP COLUMN "openingHours"`,
+    );
+    await queryRunner.query(`ALTER TABLE "businesses" ADD "openingHours" json`);
+    await queryRunner.query(
+      `ALTER TABLE "businesses" ALTER COLUMN "isVisible" DROP NOT NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "businesses" ALTER COLUMN "isVisible" DROP DEFAULT`,
+    );
+    await queryRunner.query(
+      `ALTER TYPE "public"."catalogue_items_status_enum" RENAME TO "catalogue_items_status_enum_old"`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."catalogue_items_status_enum" AS ENUM('active', 'inactive', 'out_of_stock', 'suspended', 'low_stock', 'archived')`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ALTER COLUMN "status" DROP DEFAULT`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ALTER COLUMN "status" TYPE "public"."catalogue_items_status_enum" USING "status"::"text"::"public"."catalogue_items_status_enum"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ALTER COLUMN "status" SET DEFAULT 'active'`,
+    );
+    await queryRunner.query(
+      `DROP TYPE "public"."catalogue_items_status_enum_old"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT '0.05'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT '0.08'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT '0.01'`,
+    );
+    await queryRunner.query(
+      `ALTER TYPE "public"."fos_transactions_type_enum" RENAME TO "fos_transactions_type_enum_old"`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."fos_transactions_type_enum" AS ENUM('SUBSCRIPTION', 'SMS', 'COMMISSION', 'EXPENSE', 'REFUND', 'POS_SALE', 'POS_REFUND')`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "fos_transactions" ALTER COLUMN "type" TYPE "public"."fos_transactions_type_enum" USING "type"::"text"::"public"."fos_transactions_type_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE "public"."fos_transactions_type_enum_old"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "expenses" ALTER COLUMN "date" SET DEFAULT ('now'::text)::date`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "cash_flows" ALTER COLUMN "date" SET DEFAULT ('now'::text)::date`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_50fdb6182eb94f3fdb54312d41" ON "catalogue_items" ("barcode") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_833ad3324c73d3c4f2283c8f12" ON "fos_metrics_snapshots" ("date") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_e5e4c5ce3d2a3df6a8916ca8e3" ON "fos_transactions" ("type") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fe4280093d0b9ed80c4067839b" ON "fos_transactions" ("platform") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_87e2bb5669785f6a787958b418" ON "fos_transactions" ("businessId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_ff5b85bc788a6e39806566de7a" ON "fos_transactions" ("agentId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_1880a3e4cce6c1078c2a882a16" ON "fos_transactions" ("referenceId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_b9ce8154737b4c8f6bc7edac69" ON "fos_transactions" ("date") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_76147b09b61dce686ba0ac597a" ON "marketing_template_categories" ("templateId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_6e59e098e944667877562b5d3a" ON "marketing_template_categories" ("categoryId") `,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sale_items" ADD CONSTRAINT "FK_d1732275575d1ad849e3730bb08" FOREIGN KEY ("saleId") REFERENCES "pos_sales"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_a6423e8362fd3e4100a7464e523" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_88c72614b6f61abcda798530c44" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_c67ed1bec0dcaf096f347711f15" FOREIGN KEY ("cashierId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" ADD CONSTRAINT "FK_f7fa23b32ee30c6a046a849237a" FOREIGN KEY ("customerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_split_payments" ADD CONSTRAINT "FK_d8fab6039f41ede9d3c8adbda78" FOREIGN KEY ("saleId") REFERENCES "pos_sales"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_register_sessions" ADD CONSTRAINT "FK_6d40adbbe5f717601123dc29166" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_register_sessions" ADD CONSTRAINT "FK_91dd151669ea36faf7682c635e9" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_register_sessions" ADD CONSTRAINT "FK_d4464a5bf20f581f0c0a6721c1c" FOREIGN KEY ("cashierId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sale_items" ADD CONSTRAINT "FK_f1ce1d8b90afc8a17065d8ac09b" FOREIGN KEY ("heldSaleId") REFERENCES "pos_held_sales"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_c90aef569e9d9f12a7dc91c14b3" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_295c03c9ca5d46e0db8301f4f10" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_2acb6c1dcc546acf35b1e2b88df" FOREIGN KEY ("cashierId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" ADD CONSTRAINT "FK_569268a15dcdf1015b461727afe" FOREIGN KEY ("customerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_76147b09b61dce686ba0ac597a0" FOREIGN KEY ("templateId") REFERENCES "marketing_templates"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_6e59e098e944667877562b5d3a0" FOREIGN KEY ("categoryId") REFERENCES "marketing_categories"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_6e59e098e944667877562b5d3a0"`);
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_76147b09b61dce686ba0ac597a0"`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_569268a15dcdf1015b461727afe"`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_2acb6c1dcc546acf35b1e2b88df"`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_295c03c9ca5d46e0db8301f4f10"`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_c90aef569e9d9f12a7dc91c14b3"`);
-        await queryRunner.query(`ALTER TABLE "pos_held_sale_items" DROP CONSTRAINT "FK_f1ce1d8b90afc8a17065d8ac09b"`);
-        await queryRunner.query(`ALTER TABLE "pos_register_sessions" DROP CONSTRAINT "FK_d4464a5bf20f581f0c0a6721c1c"`);
-        await queryRunner.query(`ALTER TABLE "pos_register_sessions" DROP CONSTRAINT "FK_91dd151669ea36faf7682c635e9"`);
-        await queryRunner.query(`ALTER TABLE "pos_register_sessions" DROP CONSTRAINT "FK_6d40adbbe5f717601123dc29166"`);
-        await queryRunner.query(`ALTER TABLE "pos_split_payments" DROP CONSTRAINT "FK_d8fab6039f41ede9d3c8adbda78"`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_f7fa23b32ee30c6a046a849237a"`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_c67ed1bec0dcaf096f347711f15"`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_88c72614b6f61abcda798530c44"`);
-        await queryRunner.query(`ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_a6423e8362fd3e4100a7464e523"`);
-        await queryRunner.query(`ALTER TABLE "pos_sale_items" DROP CONSTRAINT "FK_d1732275575d1ad849e3730bb08"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_6e59e098e944667877562b5d3a"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_76147b09b61dce686ba0ac597a"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_b9ce8154737b4c8f6bc7edac69"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_1880a3e4cce6c1078c2a882a16"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_ff5b85bc788a6e39806566de7a"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_87e2bb5669785f6a787958b418"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fe4280093d0b9ed80c4067839b"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_e5e4c5ce3d2a3df6a8916ca8e3"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_833ad3324c73d3c4f2283c8f12"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_50fdb6182eb94f3fdb54312d41"`);
-        await queryRunner.query(`ALTER TABLE "cash_flows" ALTER COLUMN "date" SET DEFAULT CURRENT_DATE`);
-        await queryRunner.query(`ALTER TABLE "expenses" ALTER COLUMN "date" SET DEFAULT CURRENT_DATE`);
-        await queryRunner.query(`CREATE TYPE "public"."fos_transactions_type_enum_old" AS ENUM('COMMISSION', 'EXPENSE', 'REFUND', 'SMS', 'SUBSCRIPTION')`);
-        await queryRunner.query(`ALTER TABLE "fos_transactions" ALTER COLUMN "type" TYPE "public"."fos_transactions_type_enum_old" USING "type"::"text"::"public"."fos_transactions_type_enum_old"`);
-        await queryRunner.query(`DROP TYPE "public"."fos_transactions_type_enum"`);
-        await queryRunner.query(`ALTER TYPE "public"."fos_transactions_type_enum_old" RENAME TO "fos_transactions_type_enum"`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT 0.01`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT 0.08`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT 0.05`);
-        await queryRunner.query(`CREATE TYPE "public"."catalogue_items_status_enum_old" AS ENUM('active', 'inactive', 'out_of_stock', 'suspended')`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ALTER COLUMN "status" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ALTER COLUMN "status" TYPE "public"."catalogue_items_status_enum_old" USING "status"::"text"::"public"."catalogue_items_status_enum_old"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" ALTER COLUMN "status" SET DEFAULT 'active'`);
-        await queryRunner.query(`DROP TYPE "public"."catalogue_items_status_enum"`);
-        await queryRunner.query(`ALTER TYPE "public"."catalogue_items_status_enum_old" RENAME TO "catalogue_items_status_enum"`);
-        await queryRunner.query(`ALTER TABLE "businesses" ALTER COLUMN "isVisible" SET DEFAULT true`);
-        await queryRunner.query(`ALTER TABLE "businesses" ALTER COLUMN "isVisible" SET NOT NULL`);
-        await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "openingHours"`);
-        await queryRunner.query(`ALTER TABLE "businesses" ADD "openingHours" jsonb`);
-        await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "socials"`);
-        await queryRunner.query(`ALTER TABLE "businesses" ADD "socials" jsonb`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" DROP COLUMN "tags"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" DROP COLUMN "variants"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" DROP COLUMN "brand"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" DROP COLUMN "minStock"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" DROP COLUMN "costPrice"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_items" DROP COLUMN "barcode"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_c5828239305ec6c7f3dfade864"`);
-        await queryRunner.query(`DROP TABLE "pos_held_sales"`);
-        await queryRunner.query(`DROP TABLE "pos_held_sale_items"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_527e3902b50a9c1c0b18b74ef2"`);
-        await queryRunner.query(`DROP TABLE "pos_register_sessions"`);
-        await queryRunner.query(`DROP TYPE "public"."pos_register_sessions_status_enum"`);
-        await queryRunner.query(`DROP TABLE "pos_split_payments"`);
-        await queryRunner.query(`DROP TYPE "public"."pos_split_payments_method_enum"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_516f0b4edc23b49d22a6d531ea"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fe940a1d17a36f92c0f8de0655"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_c67ed1bec0dcaf096f347711f1"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_f7fa23b32ee30c6a046a849237"`);
-        await queryRunner.query(`DROP TABLE "pos_sales"`);
-        await queryRunner.query(`DROP TYPE "public"."pos_sales_status_enum"`);
-        await queryRunner.query(`DROP TYPE "public"."pos_sales_paymentmethod_enum"`);
-        await queryRunner.query(`DROP TABLE "pos_sale_items"`);
-        await queryRunner.query(`CREATE INDEX "IDX_cash_flows_category" ON "cash_flows" ("category") `);
-        await queryRunner.query(`CREATE INDEX "IDX_cash_flows_type" ON "cash_flows" ("type") `);
-        await queryRunner.query(`CREATE INDEX "IDX_cash_flows_date" ON "cash_flows" ("date") `);
-        await queryRunner.query(`CREATE INDEX "IDX_expenses_frequency" ON "expenses" ("frequency") `);
-        await queryRunner.query(`CREATE INDEX "IDX_expenses_category" ON "expenses" ("category") `);
-        await queryRunner.query(`CREATE INDEX "IDX_expenses_date" ON "expenses" ("date") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fos_transactions_date" ON "fos_transactions" ("date") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fos_transactions_referenceId" ON "fos_transactions" ("referenceId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fos_transactions_agentId" ON "fos_transactions" ("agentId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fos_transactions_businessId" ON "fos_transactions" ("businessId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fos_transactions_platform" ON "fos_transactions" ("platform") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fos_transactions_type" ON "fos_transactions" ("type") `);
-        await queryRunner.query(`CREATE INDEX "IDX_fos_snapshots_date" ON "fos_metrics_snapshots" ("date") `);
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_mtc_categoryId" FOREIGN KEY ("categoryId") REFERENCES "marketing_categories"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_mtc_templateId" FOREIGN KEY ("templateId") REFERENCES "marketing_templates"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-    }
-
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_6e59e098e944667877562b5d3a0"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_76147b09b61dce686ba0ac597a0"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_569268a15dcdf1015b461727afe"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_2acb6c1dcc546acf35b1e2b88df"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_295c03c9ca5d46e0db8301f4f10"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sales" DROP CONSTRAINT "FK_c90aef569e9d9f12a7dc91c14b3"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_held_sale_items" DROP CONSTRAINT "FK_f1ce1d8b90afc8a17065d8ac09b"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_register_sessions" DROP CONSTRAINT "FK_d4464a5bf20f581f0c0a6721c1c"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_register_sessions" DROP CONSTRAINT "FK_91dd151669ea36faf7682c635e9"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_register_sessions" DROP CONSTRAINT "FK_6d40adbbe5f717601123dc29166"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_split_payments" DROP CONSTRAINT "FK_d8fab6039f41ede9d3c8adbda78"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_f7fa23b32ee30c6a046a849237a"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_c67ed1bec0dcaf096f347711f15"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_88c72614b6f61abcda798530c44"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" DROP CONSTRAINT "FK_a6423e8362fd3e4100a7464e523"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "pos_sale_items" DROP CONSTRAINT "FK_d1732275575d1ad849e3730bb08"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_6e59e098e944667877562b5d3a"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_76147b09b61dce686ba0ac597a"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_b9ce8154737b4c8f6bc7edac69"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_1880a3e4cce6c1078c2a882a16"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_ff5b85bc788a6e39806566de7a"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_87e2bb5669785f6a787958b418"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_fe4280093d0b9ed80c4067839b"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_e5e4c5ce3d2a3df6a8916ca8e3"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_833ad3324c73d3c4f2283c8f12"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_50fdb6182eb94f3fdb54312d41"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "cash_flows" ALTER COLUMN "date" SET DEFAULT CURRENT_DATE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "expenses" ALTER COLUMN "date" SET DEFAULT CURRENT_DATE`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."fos_transactions_type_enum_old" AS ENUM('COMMISSION', 'EXPENSE', 'REFUND', 'SMS', 'SUBSCRIPTION')`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "fos_transactions" ALTER COLUMN "type" TYPE "public"."fos_transactions_type_enum_old" USING "type"::"text"::"public"."fos_transactions_type_enum_old"`,
+    );
+    await queryRunner.query(`DROP TYPE "public"."fos_transactions_type_enum"`);
+    await queryRunner.query(
+      `ALTER TYPE "public"."fos_transactions_type_enum_old" RENAME TO "fos_transactions_type_enum"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT 0.01`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT 0.08`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT 0.05`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."catalogue_items_status_enum_old" AS ENUM('active', 'inactive', 'out_of_stock', 'suspended')`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ALTER COLUMN "status" DROP DEFAULT`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ALTER COLUMN "status" TYPE "public"."catalogue_items_status_enum_old" USING "status"::"text"::"public"."catalogue_items_status_enum_old"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" ALTER COLUMN "status" SET DEFAULT 'active'`,
+    );
+    await queryRunner.query(`DROP TYPE "public"."catalogue_items_status_enum"`);
+    await queryRunner.query(
+      `ALTER TYPE "public"."catalogue_items_status_enum_old" RENAME TO "catalogue_items_status_enum"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "businesses" ALTER COLUMN "isVisible" SET DEFAULT true`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "businesses" ALTER COLUMN "isVisible" SET NOT NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "businesses" DROP COLUMN "openingHours"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "businesses" ADD "openingHours" jsonb`,
+    );
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "socials"`);
+    await queryRunner.query(`ALTER TABLE "businesses" ADD "socials" jsonb`);
+    await queryRunner.query(`ALTER TABLE "catalogue_items" DROP COLUMN "tags"`);
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" DROP COLUMN "variants"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" DROP COLUMN "brand"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" DROP COLUMN "minStock"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" DROP COLUMN "costPrice"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "catalogue_items" DROP COLUMN "barcode"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_c5828239305ec6c7f3dfade864"`,
+    );
+    await queryRunner.query(`DROP TABLE "pos_held_sales"`);
+    await queryRunner.query(`DROP TABLE "pos_held_sale_items"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_527e3902b50a9c1c0b18b74ef2"`,
+    );
+    await queryRunner.query(`DROP TABLE "pos_register_sessions"`);
+    await queryRunner.query(
+      `DROP TYPE "public"."pos_register_sessions_status_enum"`,
+    );
+    await queryRunner.query(`DROP TABLE "pos_split_payments"`);
+    await queryRunner.query(
+      `DROP TYPE "public"."pos_split_payments_method_enum"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_516f0b4edc23b49d22a6d531ea"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_fe940a1d17a36f92c0f8de0655"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_c67ed1bec0dcaf096f347711f1"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_f7fa23b32ee30c6a046a849237"`,
+    );
+    await queryRunner.query(`DROP TABLE "pos_sales"`);
+    await queryRunner.query(`DROP TYPE "public"."pos_sales_status_enum"`);
+    await queryRunner.query(
+      `DROP TYPE "public"."pos_sales_paymentmethod_enum"`,
+    );
+    await queryRunner.query(`DROP TABLE "pos_sale_items"`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_cash_flows_category" ON "cash_flows" ("category") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_cash_flows_type" ON "cash_flows" ("type") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_cash_flows_date" ON "cash_flows" ("date") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_expenses_frequency" ON "expenses" ("frequency") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_expenses_category" ON "expenses" ("category") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_expenses_date" ON "expenses" ("date") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fos_transactions_date" ON "fos_transactions" ("date") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fos_transactions_referenceId" ON "fos_transactions" ("referenceId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fos_transactions_agentId" ON "fos_transactions" ("agentId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fos_transactions_businessId" ON "fos_transactions" ("businessId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fos_transactions_platform" ON "fos_transactions" ("platform") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fos_transactions_type" ON "fos_transactions" ("type") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_fos_snapshots_date" ON "fos_metrics_snapshots" ("date") `,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_mtc_categoryId" FOREIGN KEY ("categoryId") REFERENCES "marketing_categories"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "marketing_template_categories" ADD CONSTRAINT "FK_mtc_templateId" FOREIGN KEY ("templateId") REFERENCES "marketing_templates"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+  }
 }

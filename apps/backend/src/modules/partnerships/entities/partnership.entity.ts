@@ -12,7 +12,10 @@ export enum PartnershipStatus {
 @Entity('partnerships')
 @Unique(['initiatorBranchId', 'recipientBranchId'])
 export class Partnership extends AbstractBaseEntity {
-  @ApiProperty({ example: 'uuid-string', description: 'ID of the initiator branch' })
+  @ApiProperty({
+    example: 'uuid-string',
+    description: 'ID of the initiator branch',
+  })
   @Column({ type: 'uuid' })
   initiatorBranchId: string;
 
@@ -20,7 +23,10 @@ export class Partnership extends AbstractBaseEntity {
   @JoinColumn({ name: 'initiatorBranchId' })
   initiatorBranch: Branch;
 
-  @ApiProperty({ example: 'uuid-string', description: 'ID of the recipient branch' })
+  @ApiProperty({
+    example: 'uuid-string',
+    description: 'ID of the recipient branch',
+  })
   @Column({ type: 'uuid' })
   recipientBranchId: string;
 

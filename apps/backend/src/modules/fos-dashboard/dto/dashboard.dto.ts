@@ -69,7 +69,9 @@ export class DashboardInsightDto {
   @ApiProperty({ example: 'Best Performing Agent' })
   title: string;
 
-  @ApiProperty({ example: 'Agent John generated NGN 250,000 in MRR this month' })
+  @ApiProperty({
+    example: 'Agent John generated NGN 250,000 in MRR this month',
+  })
   message: string;
 
   @ApiProperty({ example: 'SUCCESS' })

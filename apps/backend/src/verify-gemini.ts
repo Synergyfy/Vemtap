@@ -7,10 +7,15 @@ const targetPath = join(process.cwd(), '.env');
 dotenv.config({ path: targetPath });
 
 const apiKey = process.env.GEMINI_API_KEY;
-console.log('Gemini API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : 'MISSING');
+console.log(
+  'Gemini API Key:',
+  apiKey ? `${apiKey.substring(0, 8)}...` : 'MISSING',
+);
 
 if (!apiKey) {
-  console.error('Error: GEMINI_API_KEY is not defined in the backend .env file.');
+  console.error(
+    'Error: GEMINI_API_KEY is not defined in the backend .env file.',
+  );
   process.exit(1);
 }
 
@@ -23,25 +28,25 @@ async function testGemini() {
         {
           parts: [
             {
-              text: 'Generate a modern minimalist restaurant table stand menu design with white background'
-            }
-          ]
-        }
+              text: 'Generate a modern minimalist restaurant table stand menu design with white background',
+            },
+          ],
+        },
       ],
       generationConfig: {
-        responseModalities: ['IMAGE']
-      }
+        responseModalities: ['IMAGE'],
+      },
     };
 
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     console.log('Response status:', response.status);
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('API Error details:', JSON.stringify(data, null, 2));
       process.exit(1);
@@ -55,8 +60,14 @@ async function testGemini() {
       parts.forEach((p: any, idx: number) => {
         console.log(`Part ${idx} keys:`, Object.keys(p));
         if (p.inlineData) {
-          console.log(`Part ${idx} inlineData mimeType:`, p.inlineData.mimeType);
-          console.log(`Part ${idx} inlineData data length:`, p.inlineData.data?.length || 0);
+          console.log(
+            `Part ${idx} inlineData mimeType:`,
+            p.inlineData.mimeType,
+          );
+          console.log(
+            `Part ${idx} inlineData data length:`,
+            p.inlineData.data?.length || 0,
+          );
         }
       });
     }

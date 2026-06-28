@@ -37,7 +37,10 @@ export class MockupsService {
     return mockup;
   }
 
-  async update(id: string, updateDto: Partial<CreateMockupDto>): Promise<MarketingMockup> {
+  async update(
+    id: string,
+    updateDto: Partial<CreateMockupDto>,
+  ): Promise<MarketingMockup> {
     const mockup = await this.findOne(id);
     Object.assign(mockup, updateDto);
     return this.mockupRepo.save(mockup);

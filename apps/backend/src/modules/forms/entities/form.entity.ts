@@ -56,7 +56,10 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   showAfterLeadCapture: boolean;
 
-  @ApiProperty({ example: true, description: 'Require customer authentication to submit' })
+  @ApiProperty({
+    example: true,
+    description: 'Require customer authentication to submit',
+  })
   @Column({ default: true })
   requiresAuth: boolean;
 
