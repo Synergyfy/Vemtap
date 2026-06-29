@@ -11,6 +11,9 @@ import type {
     RecommendBusinessDto,
     RecommendBusinessResponse,
     NearbyPartner,
+    PaginatedPartnershipInvitationsResponse,
+    PartnershipInvitation,
+    InvitePartnershipDto,
 } from './types';
 
 function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
@@ -109,6 +112,46 @@ export const useRecommendBusiness = () => {
         mutationFn: (data: RecommendBusinessDto) =>
             api.post(`/discovery/recommend/${resolvedBranchId}`, data),
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['discovery', 'partners'] });
+        },
+    });
+};
+
+export const usePartnershipInvitations = (params: { type?: 'sent' | 'received' | 'all'; status?: string; branchId?: string } = {}) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(params.branchId);
+    const { type = 'received', status } = params;
+
+    const queryParams = new URLSearchParams();
+    if (resolvedBranchId) queryParams.set('branchId', resolvedBranchId);
+    queryParams.set('type', type);
+    if (status) queryParams.set('status', status);
+
+    return useQuery<PaginatedPartnershipInvitationsResponse>({
+        queryKey: ['partnerships', 'invitations', resolvedBranchId, type, status],
+        queryFn: () => api.get(`/partnerships/invitations?${queryParams.toString()}`),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useInvitePartner = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<PartnershipInvitation, Error, InvitePartnershipDto>({
+        mutationFn: (data) => api.post('/partnerships/invite', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['partnerships'] });
+            queryClient.invalidateQueries({ queryKey: ['discovery', 'partners'] });
+        },
+    });
+};
+
+export const useRespondToInvitation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<PartnershipInvitation, Error, { id: string; status: 'Accepted' | 'Declined' }>({
+        mutationFn: ({ id, status }) => api.patch(`/partnerships/${id}/respond`, { status }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['partnerships'] });
             queryClient.invalidateQueries({ queryKey: ['discovery', 'partners'] });
         },
     });

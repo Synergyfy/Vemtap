@@ -20,6 +20,9 @@ import {
     useNearbyPartners,
     useDiscoveryCustomers,
     useRecommendBusiness,
+    usePartnershipInvitations,
+    useInvitePartner,
+    useRespondToInvitation,
 } from '@/services/discovery/hooks';
 import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer } from '@/services/catalogue/hooks';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
@@ -425,34 +428,50 @@ function PartnersTab({ branchId }: { branchId: string }) {
     const { data: nearbyPartners, isLoading: loadingNearby } = useNearbyPartners(branchId);
     const recommendMutation = useRecommendBusiness();
 
+    // Partnership invitations (received, pending)
+    const { data: invitationsData, isLoading: loadingInvitations, refetch: refetchInvitations } = usePartnershipInvitations({ branchId, type: 'received', status: 'Pending' });
+    const inviteMutation = useInvitePartner();
+    const respondMutation = useRespondToInvitation();
+
     // Connect Prompt State
-    const [connectingTo, setConnectingTo] = useState<string | null>(null);
+    const [connectingTo, setConnectingTo] = useState<{ id: string; name: string } | null>(null);
     const [connectReason, setConnectReason] = useState('');
 
-    // Incoming Requests State (mock until endpoint available)
-    const [incomingRequests, setIncomingRequests] = useState([
-        { id: 1, name: 'Burger Joint', type: 'Restaurant', distance: '0.4 miles away', reason: 'Our customers always look for a nice place to eat after shopping.' }
-    ]);
-    const [handlingRequest, setHandlingRequest] = useState<{id: number, action: 'accept'|'reject'} | null>(null);
+    // Incoming Requests State
+    const [handlingRequest, setHandlingRequest] = useState<{id: string, partnershipId: string, action: 'accept'|'reject'} | null>(null);
     const [handleReason, setHandleReason] = useState('');
 
-    const handleConnectSubmit = (e: React.FormEvent) => {
+    const handleConnectSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (connectingTo) {
-            setConnected(prev => [...prev, connectingTo]);
-            setConnectingTo(null);
-            setConnectReason('');
-            alert('Partnership request sent successfully!');
+            try {
+                await inviteMutation.mutateAsync({
+                    initiatorBranchId: branchId,
+                    recipientBranchId: connectingTo.id,
+                });
+                setConnected(prev => [...prev, connectingTo.id]);
+                setConnectingTo(null);
+                setConnectReason('');
+            } catch (error: any) {
+                alert(error?.message || 'Failed to send partnership request');
+            }
         }
     };
 
-    const handleIncomingSubmit = (e: React.FormEvent) => {
+    const handleIncomingSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (handlingRequest) {
-            setIncomingRequests(prev => prev.filter(r => r.id !== handlingRequest.id));
-            setHandlingRequest(null);
-            setHandleReason('');
-            alert(`Partnership request ${handlingRequest.action}ed successfully!`);
+            try {
+                await respondMutation.mutateAsync({
+                    id: handlingRequest.partnershipId,
+                    status: handlingRequest.action === 'accept' ? 'Accepted' : 'Declined',
+                });
+                setHandlingRequest(null);
+                setHandleReason('');
+                refetchInvitations();
+            } catch (error: any) {
+                alert(error?.message || 'Failed to respond to partnership request');
+            }
         }
     };
 
@@ -464,7 +483,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                     <button onClick={() => setView('find')} className={cn("px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap", view === 'find' ? "bg-white text-gray-800 shadow-sm" : "text-gray-500")}>Find Partners</button>
                     <button onClick={() => setView('incoming')} className={cn("px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap", view === 'incoming' ? "bg-white text-gray-800 shadow-sm relative" : "text-gray-500")}>
                         Incoming Requests
-                        {incomingRequests.length > 0 && <span className="absolute top-1 right-2 size-2 bg-red-500 rounded-full"></span>}
+                        {(invitationsData?.data?.length ?? 0) > 0 && <span className="absolute top-1 right-2 size-2 bg-red-500 rounded-full"></span>}
                     </button>
                     <button onClick={() => setView('recommend')} className={cn("px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap", view === 'recommend' ? "bg-white text-gray-800 shadow-sm" : "text-gray-500")}>Recommend Business</button>
                 </div>
@@ -570,7 +589,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                             {connectingTo && (
                                 <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
                                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Request Partnership</h3>
-                                    <p className="text-sm text-gray-600 mb-6">Why do you want to partner with <strong>{connectingTo}</strong>?</p>
+                                    <p className="text-sm text-gray-600 mb-6">Why do you want to partner with <strong>{connectingTo.name}</strong>?</p>
                                     <form onSubmit={handleConnectSubmit} className="w-full max-w-sm">
                                         <textarea 
                                             required
@@ -582,7 +601,9 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                         ></textarea>
                                         <div className="flex gap-3">
                                             <Button type="button" variant="outline" onClick={() => setConnectingTo(null)} className="flex-1 rounded-xl font-bold">Cancel</Button>
-                                            <Button type="submit" className="flex-1 rounded-xl font-bold bg-primary text-white">Send Request</Button>
+                                            <Button type="submit" disabled={inviteMutation.isPending} className="flex-1 rounded-xl font-bold bg-primary text-white">
+                                                {inviteMutation.isPending ? 'Sending...' : 'Send Request'}
+                                            </Button>
                                         </div>
                                     </form>
                                 </div>
@@ -622,12 +643,12 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                                 <div className="text-xs text-gray-500">{partner.type} • {partner.distance}</div>
                                             </div>
                                         </div>
-                                        {connected.includes(partner.name) ? (
+                                        {connected.includes(partner.id) ? (
                                             <Button disabled className="w-full rounded-xl font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-50 border-0 h-9">
                                                 <CheckCircle2 size={16} className="mr-2" /> Request Sent
                                             </Button>
                                         ) : (
-                                            <Button onClick={() => setConnectingTo(partner.name)} className="w-full rounded-xl font-bold h-9 bg-gray-900 text-white hover:bg-gray-800">
+                                            <Button onClick={() => setConnectingTo({ id: partner.id, name: partner.name })} className="w-full rounded-xl font-bold h-9 bg-gray-900 text-white hover:bg-gray-800">
                                                 Connect
                                             </Button>
                                         )}
@@ -641,7 +662,26 @@ function PartnersTab({ branchId }: { branchId: string }) {
 
             {view === 'incoming' && (
                 <div className="max-w-2xl mx-auto space-y-6">
-                    {incomingRequests.length === 0 ? (
+                    {loadingInvitations ? (
+                        <div className="space-y-4">
+                            {[1, 2].map(i => (
+                                <div key={i} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 animate-pulse">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="size-12 bg-gray-100 rounded-2xl"></div>
+                                        <div className="flex-1">
+                                            <div className="h-4 bg-gray-100 rounded w-32 mb-2"></div>
+                                            <div className="h-3 bg-gray-100 rounded w-48"></div>
+                                        </div>
+                                    </div>
+                                    <div className="h-16 bg-gray-50 rounded-2xl mb-4"></div>
+                                    <div className="flex gap-3">
+                                        <div className="h-10 bg-gray-100 rounded-xl flex-1"></div>
+                                        <div className="h-10 bg-gray-100 rounded-xl flex-1"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : !invitationsData?.data || invitationsData.data.length === 0 ? (
                         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
                             <div className="size-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                                 <Handshake size={32} />
@@ -650,15 +690,17 @@ function PartnersTab({ branchId }: { branchId: string }) {
                             <p className="text-gray-500 text-sm">You've responded to all partnership requests.</p>
                         </div>
                     ) : (
-                        <>
-                            {/* TODO: Integrate with partnerships API when available */}
-                            <div className="text-xs text-gray-400 bg-gray-50 rounded-2xl px-4 py-2 text-center">Partnership request management coming soon</div>
-                            {incomingRequests.map(req => (
-                                <div key={req.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-                                    {handlingRequest?.id === req.id ? (
+                        invitationsData.data.map(partnership => {
+                            const partner = partnership.initiatorBranch;
+                            const partnerName = partner?.business?.name || partner?.name || 'Unknown Business';
+                            const partnerType = partner?.business?.category || 'Business';
+
+                            return (
+                                <div key={partnership.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                                    {handlingRequest?.partnershipId === partnership.id ? (
                                         <form onSubmit={handleIncomingSubmit} className="animate-in fade-in">
                                             <h4 className="font-semibold text-gray-800 mb-2">
-                                                {handlingRequest.action === 'accept' ? 'Accepting' : 'Rejecting'} Partnership with {req.name}
+                                                {handlingRequest.action === 'accept' ? 'Accepting' : 'Rejecting'} Partnership with {partnerName}
                                             </h4>
                                             <p className="text-sm text-gray-600 mb-4">Please briefly explain why you are {handlingRequest.action}ing this request.</p>
                                             <textarea 
@@ -671,8 +713,8 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                             ></textarea>
                                             <div className="flex gap-3">
                                                 <Button type="button" variant="outline" onClick={() => setHandlingRequest(null)} className="flex-1 rounded-xl font-bold">Cancel</Button>
-                                                <Button type="submit" className={cn("flex-1 rounded-xl font-bold text-white", handlingRequest.action === 'accept' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>
-                                                    Confirm {handlingRequest.action === 'accept' ? 'Acceptance' : 'Rejection'}
+                                                <Button type="submit" disabled={respondMutation.isPending} className={cn("flex-1 rounded-xl font-bold text-white", handlingRequest.action === 'accept' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>
+                                                    {respondMutation.isPending ? 'Processing...' : `Confirm ${handlingRequest.action === 'accept' ? 'Acceptance' : 'Rejection'}`}
                                                 </Button>
                                             </div>
                                         </form>
@@ -683,23 +725,30 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                                     <Store size={24} />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-gray-800">{req.name}</div>
-                                                    <div className="text-sm text-gray-500">{req.type} • {req.distance}</div>
+                                                    <div className="font-semibold text-gray-800">{partnerName}</div>
+                                                    <div className="text-sm text-gray-500">{partnerType}</div>
                                                 </div>
                                             </div>
-                                            <div className="bg-gray-50 p-4 rounded-2xl mb-6 border border-gray-100">
-                                                <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Their message:</div>
-                                                <p className="text-sm text-gray-700 italic">"{req.reason}"</p>
-                                            </div>
                                             <div className="flex gap-3">
-                                                <Button onClick={() => setHandlingRequest({id: req.id, action: 'accept'})} className="flex-1 rounded-xl font-bold bg-gray-900 text-white hover:bg-gray-800">Accept Request</Button>
-                                                <Button onClick={() => setHandlingRequest({id: req.id, action: 'reject'})} variant="outline" className="flex-1 rounded-xl font-bold border-red-200 text-red-600 hover:bg-red-50">Reject</Button>
+                                                <Button 
+                                                    onClick={() => setHandlingRequest({ id: partnership.id, partnershipId: partnership.id, action: 'accept' })} 
+                                                    className="flex-1 rounded-xl font-bold bg-gray-900 text-white hover:bg-gray-800"
+                                                >
+                                                    Accept Request
+                                                </Button>
+                                                <Button 
+                                                    onClick={() => setHandlingRequest({ id: partnership.id, partnershipId: partnership.id, action: 'reject' })} 
+                                                    variant="outline" 
+                                                    className="flex-1 rounded-xl font-bold border-red-200 text-red-600 hover:bg-red-50"
+                                                >
+                                                    Reject
+                                                </Button>
                                             </div>
                                         </>
                                     )}
                                 </div>
-                            ))}
-                        </>
+                            );
+                        })
                     )}
                 </div>
             )}

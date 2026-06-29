@@ -1,15 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { usePosSale, useUpdatePosSaleStatus } from '@/services/pos/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Printer, MessageCircle, Mail, RotateCcw, FileText, Loader2 } from 'lucide-react';
+import { Printer, MessageCircle, Mail, RotateCcw, FileText, Loader2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
+import { RefundModal } from '@/components/dashboard/pos/RefundModal';
 
 export default function SingleTransactionScreen() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function SingleTransactionScreen() {
 
   const { data: sale, isLoading } = usePosSale(id);
   const updateStatus = useUpdatePosSaleStatus();
+  const [showRefundModal, setShowRefundModal] = useState(false);
 
   const { data: myBusiness } = useMyBusiness();
   const { data: branches = [] } = useBranches();
@@ -31,11 +33,19 @@ export default function SingleTransactionScreen() {
   const businessLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png';
   const businessName = currentBranch?.name || myBusiness?.name || 'VemTap';
 
-  const handleRefund = () => {
-    if (sale?.status === 'refunded' || !sale) return;
-    if (window.confirm('Are you sure you want to refund this sale?')) {
-      updateStatus.mutate({ id: sale.id, status: 'refunded' });
-    }
+  const handleRefund = (data: { status: 'refunded' | 'partial_refund'; reason?: string; refundItems?: { saleItemId: string; quantity: number }[] }) => {
+    updateStatus.mutate(
+      { id: sale!.id, ...data },
+      {
+        onSuccess: () => {
+          toast.success(data.status === 'refunded' ? 'Sale fully refunded' : 'Partial refund processed');
+          setShowRefundModal(false);
+        },
+        onError: (err) => {
+          toast.error(err.message || 'Refund failed');
+        },
+      }
+    );
   };
 
   if (isLoading) {
@@ -54,14 +64,14 @@ export default function SingleTransactionScreen() {
         title={`Receipt ${sale.receiptNumber}`}
         subtitle={`${new Date(sale.createdAt).toLocaleString()} • Cashier: ${sale.cashierName}`}
         actions={
-          sale.status !== 'refunded' && (
+          sale.status !== 'refunded' && sale.status !== 'partial_refund' && (
             <button
-              onClick={handleRefund}
+              onClick={() => setShowRefundModal(true)}
               disabled={updateStatus.isPending}
               className="h-10 md:h-12 px-4 rounded-xl bg-red-50 text-red-600 flex items-center gap-2 hover:bg-red-100 transition-colors"
             >
               <RotateCcw size={18} />
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Refund Sale</span>
+              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Refund</span>
             </button>
           )
         }
@@ -203,6 +213,14 @@ export default function SingleTransactionScreen() {
           </div>
         </div>
       </div>
+
+      <RefundModal
+        isOpen={showRefundModal}
+        onClose={() => setShowRefundModal(false)}
+        sale={sale}
+        onRefund={handleRefund}
+        isPending={updateStatus.isPending}
+      />
     </div>
   );
 }

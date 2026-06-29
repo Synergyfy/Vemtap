@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import POSHomeScreen from '@/components/dashboard/pos/POSHomeScreen';
 import { CartPanel } from '@/components/dashboard/pos/CartPanel';
 import { usePosStore } from '@/store/usePosStore';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
 import { ShoppingCart, X, Share2, ExternalLink, ShoppingBag, Tag } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useCatalogueOrders } from '@/services/catalogue/hooks';
@@ -18,8 +19,15 @@ export default function POSPage() {
   const { cart } = usePosStore();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const { data: business } = useMyBusiness();
+  const loadFromBusiness = usePosSettingsStore((s) => s.loadFromBusiness);
   const businessCode = business?.uniqueCode;
   const { activeBranchId } = useActiveBranch();
+
+  useEffect(() => {
+    if (business) {
+      loadFromBusiness(business);
+    }
+  }, [business, loadFromBusiness]);
 
   const { data: newOrdersData } = useCatalogueOrders({
     branchId: activeBranchId ?? undefined,
