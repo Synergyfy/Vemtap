@@ -2,15 +2,24 @@
 
 import React from 'react';
 import Link from 'next/link';
-import PageHeader from '@/components/dashboard/PageHeader';
-import { Mail, Send, CheckCircle, Eye, BarChart, Wallet, Plus } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Mail, Send, CheckCircle, Eye, BarChart, Wallet, Plus, MessageSquare, Phone, CreditCard, History } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
 import ChannelBalance from '@/components/messaging/ChannelBalance';
 import { useMessagingAnalytics } from '@/services/messaging/hooks';
-import ComingSoonOverlay from '@/components/dashboard/ComingSoonOverlay';
+import { cn } from '@/lib/utils';
+
+const TABS = [
+    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
+    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
+    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
+    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
+    { label: 'History', href: '/dashboard/messaging/history', icon: History },
+];
 
 export default function EmailOverviewPage() {
+    const pathname = usePathname();
     const { data: analytics } = useMessagingAnalytics('EMAIL');
     const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
 
@@ -27,11 +36,34 @@ export default function EmailOverviewPage() {
                 description="We're building a powerful drag-and-drop email editor with advanced segmentation and automation. Drive more loyalty with personalized newsletters."
             /> */}
             
-            <div className="p-4 md:p-8 space-y-8">
-                <PageHeader
-                    title="Email Channel"
-                    description="Drive engagement with beautifully designed email newsletters and transactional mail."
-                />
+            <div className="p-4 md:p-8 space-y-6">
+                {/* Compact Header */}
+                <div>
+                    <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
+                    <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+                </div>
+
+                {/* Channel Tabs */}
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {TABS.map(tab => {
+                        const isActive = pathname === tab.href;
+                        return (
+                            <Link
+                                key={tab.href}
+                                href={tab.href}
+                                className={cn(
+                                    'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
+                                    isActive
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                                )}
+                            >
+                                <tab.icon size={16} />
+                                {tab.label}
+                            </Link>
+                        );
+                    })}
+                </div>
 
                 <ChannelBalance channel="email" onTopUp={() => setIsTopUpOpen(true)} />
 

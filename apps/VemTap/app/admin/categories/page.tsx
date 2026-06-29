@@ -8,6 +8,7 @@ import {
     Trash2,
     Settings,
     ChevronRight,
+    ChevronLeft,
     Layers,
     Info,
     LayoutGrid,
@@ -17,6 +18,7 @@ import {
     Search,
     Edit3
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Subcategory {
@@ -31,20 +33,26 @@ interface Category {
     subcategories: Subcategory[];
 }
 
-import { useCategories, useCreateCategory, useDeleteCategory, useCreateSubcategory } from '@/services/categories/hooks';
+import { useCategories, useCreateCategory, useDeleteCategory, useCreateSubcategory, useUpdateCategory } from '@/services/categories/hooks';
 import { Loader2 } from 'lucide-react';
 
 export default function AdminCategoriesPage() {
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const PAGE_SIZE = 12;
 
-    // Pagination / Search can be updated via state if desired. For now, max limit.
-    const { data: categoryData, isLoading } = useCategories({ search: searchTerm, limit: 100 });
+    const { data: categoryData, isLoading } = useCategories({ search: searchTerm, page: currentPage, limit: PAGE_SIZE });
     const categories = categoryData?.items || [];
+    const meta = categoryData?.meta;
 
     const createCategoryMutation = useCreateCategory();
     const deleteCategoryMutation = useDeleteCategory();
     const createSubcategoryMutation = useCreateSubcategory();
+    const updateCategoryMutation = useUpdateCategory();
+
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [editCategory, setEditCategory] = useState({ name: '', description: '' });
 
     const [newCategory, setNewCategory] = useState({
         name: '',
@@ -96,11 +104,30 @@ export default function AdminCategoriesPage() {
         }
     };
 
-    const filteredCategories = categories.filter((c: Category) => {
-        const nameMatch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const subMatch = (c.subcategories || []).some(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
-        return nameMatch || subMatch;
-    });
+    const handleEditCategory = (category: Category) => {
+        setEditingCategory(category);
+        setEditCategory({ name: category.name, description: category.description });
+    };
+
+    const handleUpdateCategory = async () => {
+        if (!editingCategory) return;
+        if (!editCategory.name || !editCategory.description) {
+            toast.error('Please fill name and description');
+            return;
+        }
+        try {
+            await updateCategoryMutation.mutateAsync({
+                id: editingCategory.id,
+                data: { name: editCategory.name, description: editCategory.description },
+            });
+            setEditingCategory(null);
+            toast.success('Category updated successfully');
+        } catch (error) {
+            toast.error('Failed to update category');
+        }
+    };
+
+    const filteredCategories = categories;
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -126,14 +153,14 @@ export default function AdminCategoriesPage() {
                         type="text"
                         placeholder="Search sectors/types..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         className="w-full h-11 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all outline-none"
                     />
                 </div>
                 <div className="flex gap-4">
                     <div className="px-4 py-2 bg-primary/5 text-primary rounded-xl text-xs font-bold border border-primary/10 flex items-center gap-2 uppercase tracking-tight">
                         <LayoutGrid size={14} />
-                        {categories.length} Total Sectors/Types
+                        {meta?.total ?? categories.length} Total Sectors/Types
                     </div>
                 </div>
             </div>
@@ -172,6 +199,7 @@ export default function AdminCategoriesPage() {
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
+                                                onClick={() => handleEditCategory(category)}
                                                 className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                                             >
                                                 <Edit3 size={16} />
@@ -221,6 +249,58 @@ export default function AdminCategoriesPage() {
                     </div>
                     <h3 className="font-bold text-text-main text-xl">No sectors/types found</h3>
                     <p className="text-sm text-text-secondary mt-2">Try searching for something else or create a new one.</p>
+                </div>
+            )}
+
+            {/* Pagination */}
+            {!isLoading && meta && meta.totalPages > 1 && (
+                <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-gray-400">
+                        Page {meta.page} of {meta.totalPages} ({meta.total} total)
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage <= 1}
+                            className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            <ChevronLeft size={14} />
+                            Prev
+                        </button>
+                        {Array.from({ length: meta.totalPages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === meta.totalPages || Math.abs(p - currentPage) <= 1)
+                            .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
+                                if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('ellipsis');
+                                acc.push(p);
+                                return acc;
+                            }, [])
+                            .map((p, i) =>
+                                p === 'ellipsis' ? (
+                                    <span key={`e${i}`} className="px-2 text-gray-300">...</span>
+                                ) : (
+                                    <button
+                                        key={p}
+                                        onClick={() => setCurrentPage(p as number)}
+                                        className={cn(
+                                            "size-9 rounded-xl text-xs font-bold transition-all",
+                                            currentPage === p
+                                                ? "bg-primary text-white shadow-md shadow-primary/20"
+                                                : "text-gray-500 hover:bg-gray-50"
+                                        )}
+                                    >
+                                        {p}
+                                    </button>
+                                )
+                            )}
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(meta.totalPages, p + 1))}
+                            disabled={currentPage >= meta.totalPages}
+                            className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            Next
+                            <ChevronRight size={14} />
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -315,6 +395,90 @@ export default function AdminCategoriesPage() {
                                         <Save size={20} />
                                     )}
                                     Save & Publish Sector/Type
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Category Modal */}
+            <AnimatePresence>
+                {editingCategory && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            onClick={() => setEditingCategory(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                            className="relative w-full max-w-2xl bg-white rounded-4xl shadow-2xl overflow-hidden border border-white/20"
+                        >
+                            <div className="px-10 py-8 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30">
+                                        <Edit3 size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-display font-bold text-text-main text-xl">Edit Sector/Type</h3>
+                                        <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mt-1">Update category details</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setEditingCategory(null)}
+                                    className="size-10 flex items-center justify-center hover:bg-gray-200 rounded-xl transition-all text-gray-400 hover:text-text-main"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-10 space-y-8">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Sector/Type Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., Technology & Digital Services"
+                                        value={editCategory.name}
+                                        onChange={(e) => setEditCategory({ ...editCategory, name: e.target.value })}
+                                        className="w-full h-16 bg-gray-50 border border-gray-200 rounded-2xl px-8 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Short Description (Customer-facing)</label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="e.g. Restaurants, cafes, bakeries, catering services, food trucks, meal prep services"
+                                        value={editCategory.description}
+                                        onChange={(e) => setEditCategory({ ...editCategory, description: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-8 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="px-10 py-8 bg-gray-50/80 border-t border-gray-100 flex gap-4">
+                                <button
+                                    onClick={() => setEditingCategory(null)}
+                                    className="flex-1 h-14 border border-gray-200 text-text-secondary font-bold rounded-2xl hover:bg-white hover:border-gray-300 transition-all text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateCategory}
+                                    disabled={updateCategoryMutation.isPending}
+                                    className="flex-[2] h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/30 hover:bg-primary-hover hover:scale-[1.02] active:scale-95 transition-all text-sm flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {updateCategoryMutation.isPending ? (
+                                        <Loader2 size={20} className="animate-spin" />
+                                    ) : (
+                                        <Save size={20} />
+                                    )}
+                                    Save Changes
                                 </button>
                             </div>
                         </motion.div>

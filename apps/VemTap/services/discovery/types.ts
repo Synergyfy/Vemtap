@@ -126,6 +126,15 @@ export interface NearbyPartner {
   type: string;
   distance: string;
   distanceInMeters?: number;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface NearbyPartnersResponse {
+  data: NearbyPartner[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export type PartnershipStatus = 'Pending' | 'Accepted' | 'Declined';
