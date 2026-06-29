@@ -227,7 +227,7 @@ export default function AdminSubscriptionsPage() {
                             return (
                                 <tr
                                     key={latest.id}
-                                    onClick={() => setSelectedBusiness(item)}
+                                    onClick={() => setSelectedBusiness({ name: item.business, subscriptions: item.subscriptions })}
                                     className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                                 >
                                     <td className="px-6 py-4">

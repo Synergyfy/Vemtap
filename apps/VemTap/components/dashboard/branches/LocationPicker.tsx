@@ -57,7 +57,7 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setMarkerPos([lat, lng]);
