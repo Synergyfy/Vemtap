@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import PageHeader from '@/components/dashboard/PageHeader';
-import { MessageSquare, Phone, Mail, LayoutDashboard, Wallet, CreditCard, Send, CheckCircle, Clock, Smartphone, Plus, Lock, Inbox, Zap, Search, AlertTriangle, MessageCircle, User, Loader2 } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { MessageSquare, Phone, Mail, LayoutDashboard, Wallet, CreditCard, Send, CheckCircle, Clock, Smartphone, Plus, Lock, Inbox, Zap, Search, AlertTriangle, MessageCircle, User, Loader2, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
 import ChannelBalance from '@/components/messaging/ChannelBalance';
@@ -13,6 +13,15 @@ import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import WhatsAppTemplateModal from '@/components/messaging/WhatsAppTemplateModal';
+import { cn } from '@/lib/utils';
+
+const CHANNEL_TABS = [
+    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
+    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
+    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
+    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
+    { label: 'History', href: '/dashboard/messaging/history', icon: History },
+];
 
 // Inline WhatsApp SVG icon for consistent branding
 function WhatsAppIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
@@ -24,6 +33,7 @@ function WhatsAppIcon({ size = 20, className = '' }: { size?: number; className?
 }
 
 export default function WhatsAppOverviewPage() {
+    const pathname = usePathname();
     const { data: analytics } = useMessagingAnalytics('WHATSAPP');
     const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState<'chat' | 'promotional'>('chat');
@@ -47,11 +57,33 @@ export default function WhatsAppOverviewPage() {
         <div className="flex flex-col h-full bg-gray-50/30 overflow-hidden">
             {/* Header and Tabs */}
             <div className="bg-white border-b border-gray-200 px-4 md:px-8 pt-4 md:pt-6 pb-0 shrink-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                     <div>
-                        <h1 className="text-2xl font-black text-text-main tracking-tight">WhatsApp Channel</h1>
-                        <p className="text-sm text-text-secondary mt-1 font-medium">Manage your customer conversations via official WhatsApp integration.</p>
+                        <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
+                        <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
                     </div>
+                </div>
+
+                {/* Channel Tabs */}
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-4">
+                    {CHANNEL_TABS.map(tab => {
+                        const isActive = pathname === tab.href;
+                        return (
+                            <Link
+                                key={tab.href}
+                                href={tab.href}
+                                className={cn(
+                                    'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
+                                    isActive
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                                )}
+                            >
+                                <tab.icon size={16} />
+                                {tab.label}
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 <div className="flex gap-4 md:gap-8 overflow-x-auto custom-scrollbar shrink-0">

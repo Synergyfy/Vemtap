@@ -116,7 +116,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 id: 'channels',
                 label: 'Channels',
                 icon: Globe2,
-                href: '/dashboard/customer-capture/channels',
+                href: '/dashboard/messaging/sms',
                 roles: ['owner', 'manager', 'marketing', 'customer_service'],
                 permission: 'dashboard',
                 keywords: ['qr', 'setup', 'capture', 'link', 'shortlink', 'generator', 'customize'],
@@ -242,9 +242,15 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 id: 'preferences',
                 label: 'Settings',
                 icon: Settings,
-                href: '/dashboard/settings',
                 roles: ['owner', 'manager'],
-                permission: 'settings'
+                permission: 'settings',
+                submenu: [
+                    { label: 'Settings', href: '/dashboard/settings' },
+                    { label: 'Profile', href: '/dashboard/settings/profile' },
+                    { label: 'Subscription', href: '/dashboard/settings/subscription' },
+                    { label: 'Support', href: '/dashboard/support' },
+                    { label: 'Compliance', href: '/dashboard/compliance' },
+                ]
             }
         ]
     }

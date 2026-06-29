@@ -56,6 +56,7 @@ import {
     Heart,
     Landmark,
     ChevronDown,
+    ChevronRight,
     Trash2,
     Plus,
     X
@@ -365,8 +366,20 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(data.category || '');
-    const { data: categoriesData, isLoading } = useCategories();
+    const [currentPage, setCurrentPage] = useState(1);
+    const PAGE_SIZE = 12;
+
+    const { data: categoriesData, isLoading } = useCategories({
+        page: currentPage,
+        limit: PAGE_SIZE,
+        search: search || undefined,
+    });
     const rawCategories: Category[] = categoriesData?.items || [];
+    const meta = categoriesData?.meta;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search]);
 
     const CATEGORY_ICONS: Record<string, React.ElementType> = {
         // Parent category matchers
@@ -408,21 +421,15 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
     const categories = rawCategories.map((cat: Category) => {
         const key = cat.name.toLowerCase();
         const icon = Object.entries(CATEGORY_ICONS).find(([k]) => key.includes(k))?.[1] || MoreHorizontal;
-        const subNames = (cat.subcategories || []).map(s => s.name.toLowerCase());
-        return { id: cat.id, label: cat.name, description: cat.description, icon, subNames };
+        return { id: cat.id, label: cat.name, description: cat.description, icon };
     });
-
-    const filtered = categories.filter(c => 
-        c.label.toLowerCase().includes(search.toLowerCase()) ||
-        c.subNames.some(s => s.includes(search.toLowerCase()))
-    );
 
     // If search matches exactly one category, auto-select it
     useEffect(() => {
-        if (search && filtered.length === 1) {
-            setSelected(filtered[0].id);
+        if (search && categories.length === 1) {
+            setSelected(categories[0].id);
         }
-    }, [search, filtered]);
+    }, [search, categories]);
 
     return (
         <motion.div
@@ -458,7 +465,7 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                 </div>
             ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filtered.map((cat) => (
+                {categories.map((cat) => (
                     <button
                         key={cat.id}
                         onClick={() => setSelected(cat.id)}
@@ -494,6 +501,57 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                     </button>
                 ))}
             </div>
+            )}
+
+            {/* Pagination */}
+            {!isLoading && meta && meta.totalPages > 1 && (
+                <div className="flex items-center justify-between bg-gray-50 px-6 py-4 rounded-2xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-400">
+                        Page {meta.page} of {meta.totalPages} ({meta.total} total)
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage <= 1}
+                            className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            <ChevronLeft size={14} />
+                            Prev
+                        </button>
+                        {Array.from({ length: meta.totalPages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === meta.totalPages || Math.abs(p - currentPage) <= 1)
+                            .reduce<(number | 'ellipsis')[]>((acc, p, _, arr) => {
+                                if (acc.length > 0 && p - (arr[acc.length - 1] as number) > 1) acc.push('ellipsis');
+                                acc.push(p);
+                                return acc;
+                            }, [])
+                            .map((p, i) =>
+                                p === 'ellipsis' ? (
+                                    <span key={`e${i}`} className="px-2 text-gray-300">...</span>
+                                ) : (
+                                    <button
+                                        key={p}
+                                        onClick={() => setCurrentPage(p as number)}
+                                        className={`size-9 rounded-xl text-xs font-bold transition-all ${
+                                            currentPage === p
+                                                ? "bg-primary text-white shadow-md shadow-primary/20"
+                                                : "text-gray-500 hover:bg-gray-50"
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                )
+                            )}
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(meta.totalPages, p + 1))}
+                            disabled={currentPage >= meta.totalPages}
+                            className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            Next
+                            <ChevronRight size={14} />
+                        </button>
+                    </div>
+                </div>
             )}
 
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">

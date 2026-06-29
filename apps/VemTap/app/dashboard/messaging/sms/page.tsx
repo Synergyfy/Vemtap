@@ -2,15 +2,24 @@
 
 import React from 'react';
 import Link from 'next/link';
-import PageHeader from '@/components/dashboard/PageHeader';
-import { Phone, Send, CheckCircle, Clock, Smartphone, Wallet, Plus } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Phone, Send, CheckCircle, Clock, Smartphone, Wallet, Plus, MessageSquare, Mail, CreditCard, History } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
 import ChannelBalance from '@/components/messaging/ChannelBalance';
 import { useMessagingAnalytics } from '@/services/messaging/hooks';
-import ComingSoonOverlay from '@/components/dashboard/ComingSoonOverlay';
+import { cn } from '@/lib/utils';
+
+const TABS = [
+    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
+    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
+    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
+    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
+    { label: 'History', href: '/dashboard/messaging/history', icon: History },
+];
 
 export default function SMSOverviewPage() {
+    const pathname = usePathname();
     const { data: analytics } = useMessagingAnalytics('SMS');
     const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
 
@@ -22,16 +31,34 @@ export default function SMSOverviewPage() {
 
     return (
         <div className="relative min-h-[calc(100vh-4rem)]">
-            {/* <ComingSoonOverlay 
-                title="SMS Gateway is Coming Soon" 
-                description="We're currently integrating with Tier-1 global SMS carriers to ensure 99.9% delivery rates for your business campaigns. Stay tuned!"
-            /> */}
-            
-            <div className="p-4 md:p-8 space-y-8">
-                <PageHeader
-                    title="SMS Channel"
-                    description="Reach your customers directly on their mobile phones via high-delivery SMS."
-                />
+            <div className="p-4 md:p-8 space-y-6">
+                {/* Compact Header */}
+                <div>
+                    <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
+                    <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+                </div>
+
+                {/* Channel Tabs */}
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {TABS.map(tab => {
+                        const isActive = pathname === tab.href;
+                        return (
+                            <Link
+                                key={tab.href}
+                                href={tab.href}
+                                className={cn(
+                                    'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
+                                    isActive
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                                )}
+                            >
+                                <tab.icon size={16} />
+                                {tab.label}
+                            </Link>
+                        );
+                    })}
+                </div>
 
                 <ChannelBalance channel="sms" onTopUp={() => setIsTopUpOpen(true)} />
 
