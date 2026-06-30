@@ -12,6 +12,7 @@ import {
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import JoinOfferModal from '@/components/promotions/JoinOfferModal';
+import ShareDealModal from '@/components/promotions/ShareDealModal';
 import {
     MOCK_PROMOTIONS,
     formatDealPrice,
@@ -25,9 +26,11 @@ import { toast } from 'react-hot-toast';
 export default function PromotionDetailPage() {
     const params = useParams();
     const id = params.id as string;
+    const slug = params.slug as string;
     const promotion = MOCK_PROMOTIONS.find(p => p.id === id);
 
     const [showJoinModal, setShowJoinModal] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
     const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
     if (!promotion) {
@@ -39,7 +42,7 @@ export default function PromotionDetailPage() {
                     <h1 className="text-2xl font-black text-gray-900 mb-2">Deal Not Found</h1>
                     <p className="text-gray-500 font-bold mb-8">This deal may have expired or doesn&apos;t exist.</p>
                     <Link
-                        href="/promotions"
+                        href="/deals"
                         className="px-8 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
                     >
                         <ArrowLeft size={16} /> Browse Deals
@@ -61,9 +64,10 @@ export default function PromotionDetailPage() {
     };
     const todayHours = getTodayHours();
 
+    const dealUrl = `${window.location.origin}/deals/${business.slug}/${promotion.id}`;
+
     const handleShare = () => {
-        navigator.clipboard.writeText(window.location.href);
-        toast.success('Link copied to clipboard!');
+        setShowShareModal(true);
     };
 
     return (
@@ -74,7 +78,7 @@ export default function PromotionDetailPage() {
                 {/* Back nav */}
                 <div className="max-w-5xl mx-auto px-4 md:px-8 mb-6">
                     <Link
-                        href="/promotions"
+                        href="/deals"
                         className="inline-flex items-center gap-2 text-gray-400 hover:text-primary text-sm font-bold transition-colors"
                     >
                         <ArrowLeft size={16} /> All Deals
@@ -282,6 +286,14 @@ export default function PromotionDetailPage() {
             </main>
 
             <Footer />
+
+            <ShareDealModal
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                title={promotion.title}
+                description={promotion.longDescription}
+                url={dealUrl}
+            />
 
             <JoinOfferModal
                 isOpen={showJoinModal}

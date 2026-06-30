@@ -23,7 +23,7 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: index * 0.05 }}
         >
-            <Link href={`/promotions/${promotion.id}`} className="block group">
+            <Link href={`/deals/${promotion.business.slug}/${promotion.id}`} className="block group">
                 <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5">
                     {/* Image */}
                     <div className="relative h-44 overflow-hidden bg-gray-50">

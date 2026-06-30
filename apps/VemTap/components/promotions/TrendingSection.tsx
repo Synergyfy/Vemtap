@@ -40,7 +40,7 @@ export default function TrendingSection({ promotions }: TrendingSectionProps) {
                             transition={{ delay: i * 0.1 }}
                         >
                             <Link
-                                href={`/promotions/${promo.id}`}
+                                href={`/deals/${promo.business.slug}/${promo.id}`}
                                 className="block w-[260px] md:w-[300px] bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:border-orange-200 transition-all group shrink-0"
                             >
                                 <div className="relative h-32 overflow-hidden">
