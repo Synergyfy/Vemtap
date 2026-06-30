@@ -34,9 +34,13 @@ export class CategoriesService {
         cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
 
       if (store && typeof store.keys === 'function') {
-        const keys = await store.keys('categories:*');
+        const keys = await store.keys('*categories:*');
         for (const key of keys) {
-          await this.cacheManager.del(key);
+          if (typeof store.del === 'function') {
+            await store.del(key);
+          } else {
+            await this.cacheManager.del(key);
+          }
         }
       } else {
         // Fallback to reset if we can't find keys (less efficient but safe)
