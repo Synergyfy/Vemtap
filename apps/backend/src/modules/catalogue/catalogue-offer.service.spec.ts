@@ -12,6 +12,7 @@ import { CatalogueOfferClaim, CatalogueOfferClaimStatus } from './entities/catal
 import { Otp } from '../auth/entities/otp.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { In } from 'typeorm';
 
@@ -58,6 +59,9 @@ describe('CatalogueOfferService', () => {
   };
 
   beforeEach(async () => {
+    mockOtpRecord.isVerified = false;
+    mockClaim.status = CatalogueOfferClaimStatus.CLAIMED;
+
     offerRepo = {
       findOne: jest.fn(),
       increment: jest.fn(),
@@ -70,9 +74,13 @@ describe('CatalogueOfferService', () => {
     };
     otpRepo = {
       create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockImplementation((otp) => Promise.resolve({ id: 'otp-123', ...otp })),
+      save: jest.fn().mockImplementation((otp) => {
+        otpRecord.isVerified = otp.isVerified;
+        return Promise.resolve({ id: 'otp-123', ...otp });
+      }),
       findOne: jest.fn(),
     };
+    const otpRecord = mockOtpRecord;
     mailService = {
       sendOtp: jest.fn().mockResolvedValue(true),
     };
@@ -96,6 +104,14 @@ describe('CatalogueOfferService', () => {
           },
         },
         { provide: MailService, useValue: mailService },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(null),
+            del: jest.fn().mockResolvedValue(null),
+          },
+        },
       ],
     }).compile();
 
@@ -153,6 +169,7 @@ describe('CatalogueOfferService', () => {
       otpRepo.findOne.mockResolvedValue(mockOtpRecord);
       offerRepo.findOne.mockResolvedValue(mockOffer);
       claimRepo.count.mockResolvedValue(0);
+      claimRepo.findOne.mockResolvedValue(null); // No existing claim
 
       const result = await service.verifyClaim({
         email: 'chidi@example.com',
@@ -164,6 +181,21 @@ describe('CatalogueOfferService', () => {
       expect(result.claim.claimCode).toMatch(/^VEM-CLAIM-[A-Z0-9]{6}$/);
       expect(claimRepo.save).toHaveBeenCalled();
       expect(otpRepo.save).toHaveBeenCalled();
+    });
+
+    it('should return existing claim details if already claimed (idempotency)', async () => {
+      otpRepo.findOne.mockResolvedValue(mockOtpRecord);
+      offerRepo.findOne.mockResolvedValue(mockOffer);
+      claimRepo.findOne.mockResolvedValue(mockClaim); // Existing claim
+
+      const result = await service.verifyClaim({
+        email: 'chidi@example.com',
+        code: '1234',
+        offerId: 'offer-1',
+      });
+
+      expect(result.message).toBe('Deal already claimed');
+      expect(result.claim.claimCode).toBe('VEM-CLAIM-123456');
     });
 
     it('should throw BadRequestException if OTP code is incorrect', async () => {

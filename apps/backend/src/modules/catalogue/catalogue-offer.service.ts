@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
@@ -23,9 +25,12 @@ import { CatalogueOfferClaim, CatalogueOfferClaimStatus } from './entities/catal
 import { Otp } from '../auth/entities/otp.entity';
 import { MailService } from '../mail/mail.service';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
+import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class CatalogueOfferService {
+  private readonly logger = new Logger(CatalogueOfferService.name);
+
   constructor(
     @InjectRepository(CatalogueOffer)
     private readonly offerRepository: Repository<CatalogueOffer>,
@@ -39,6 +44,7 @@ export class CatalogueOfferService {
     private readonly otpRepository: Repository<Otp>,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly mailService: MailService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
@@ -91,7 +97,9 @@ export class CatalogueOfferService {
 
     offer.calculatedPrice = this.calculatePrice(offer, items);
 
-    return this.offerRepository.save(offer);
+    const saved = await this.offerRepository.save(offer);
+    await this.clearCache(dto.branchId);
+    return saved;
   }
 
   async updateOffer(
@@ -130,7 +138,9 @@ export class CatalogueOfferService {
     Object.assign(offer, dto);
     offer.calculatedPrice = this.calculatePrice(offer, offer.items);
 
-    return this.offerRepository.save(offer);
+    const saved = await this.offerRepository.save(offer);
+    await this.clearCache(offer.branchId, id);
+    return saved;
   }
 
   async deleteOffer(id: string, businessId: string) {
@@ -138,7 +148,9 @@ export class CatalogueOfferService {
       where: { id, businessId },
     });
     if (!offer) throw new NotFoundException('Offer not found');
-    return this.offerRepository.remove(offer);
+    const removed = await this.offerRepository.remove(offer);
+    await this.clearCache(offer.branchId, id);
+    return removed;
   }
 
   async findAllOffersAdmin(businessId: string, branchId?: string) {
@@ -153,6 +165,15 @@ export class CatalogueOfferService {
 
   async findAllOffersPublic(branchId: string, query: CatalogueOfferQueryDto) {
     const { page = 1, limit = 10, search, sortBy = 'newest' } = query;
+    const cacheKey = `offers:public:branch:${branchId}:page:${page}:limit:${limit}:search:${search || ''}:sortBy:${sortBy}`;
+
+    try {
+      const cached = await this.cacheManager.get<any>(cacheKey);
+      if (cached) return cached;
+    } catch (err) {
+      this.logger.warn(`Failed to get branch offers from cache: ${err.message}`);
+    }
+
     const skip = (page - 1) * limit;
 
     const qb = this.offerRepository
@@ -182,11 +203,27 @@ export class CatalogueOfferService {
     }
 
     const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
+    const result = { data, total, page, limit };
 
-    return { data, total, page, limit };
+    try {
+      await this.cacheManager.set(cacheKey, result, 3600000); // 1 hour TTL
+    } catch (err) {
+      this.logger.warn(`Failed to set branch offers in cache: ${err.message}`);
+    }
+
+    return result;
   }
 
   async findOneOffer(id: string, branchId?: string) {
+    const cacheKey = `offers:public:details:${id}`;
+
+    try {
+      const cached = await this.cacheManager.get<any>(cacheKey);
+      if (cached) return cached;
+    } catch (err) {
+      this.logger.warn(`Failed to get offer details from cache: ${err.message}`);
+    }
+
     const where: any = { id };
     if (branchId) where.branchId = branchId;
     const offer = await this.offerRepository.findOne({
@@ -194,6 +231,13 @@ export class CatalogueOfferService {
       relations: ['items', 'reward'],
     });
     if (!offer) throw new NotFoundException('Offer not found');
+
+    try {
+      await this.cacheManager.set(cacheKey, offer, 3600000); // 1 hour TTL
+    } catch (err) {
+      this.logger.warn(`Failed to set offer details in cache: ${err.message}`);
+    }
+
     return offer;
   }
 
@@ -303,6 +347,27 @@ export class CatalogueOfferService {
       throw new NotFoundException('Promotion not found or inactive');
     }
 
+    // Idempotency: If already claimed, return the existing claim details
+    const existingClaim = await this.claimRepository.findOne({
+      where: {
+        offerId: offer.id,
+        email,
+        status: CatalogueOfferClaimStatus.CLAIMED,
+      },
+    });
+
+    if (existingClaim) {
+      return {
+        message: 'Deal already claimed',
+        claim: {
+          id: existingClaim.id,
+          claimCode: existingClaim.claimCode,
+          expiresAt: existingClaim.expiresAt,
+          status: existingClaim.status,
+        },
+      };
+    }
+
     if (offer.quantity !== null && offer.quantity !== undefined) {
       const claimedCount = await this.claimRepository.count({
         where: {
@@ -339,6 +404,7 @@ export class CatalogueOfferService {
     });
 
     await this.claimRepository.save(claim);
+    await this.clearCache(offer.branchId, offer.id);
 
     return {
       message: 'Deal claimed successfully',
@@ -384,6 +450,7 @@ export class CatalogueOfferService {
     await this.claimRepository.save(claim);
 
     await this.offerRepository.increment({ id: claim.offerId }, 'visits', 1);
+    await this.clearCache(claim.offer.branchId, claim.offerId);
 
     return {
       success: true,
@@ -398,5 +465,41 @@ export class CatalogueOfferService {
         offerName: claim.offer.name,
       },
     };
+  }
+
+  private async clearCache(branchId: string, offerId?: string) {
+    try {
+      const cacheMgr = this.cacheManager as any;
+      const store =
+        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
+
+      if (store && typeof store.keys === 'function') {
+        const branchKeys = await store.keys(`*offers:public:branch:${branchId}:*`);
+        for (const key of branchKeys) {
+          if (typeof store.del === 'function') {
+            await store.del(key);
+          } else {
+            await this.cacheManager.del(key);
+          }
+        }
+
+        if (offerId) {
+          const detailKeys = await store.keys(`*offers:public:details:${offerId}*`);
+          for (const key of detailKeys) {
+            if (typeof store.del === 'function') {
+              await store.del(key);
+            } else {
+              await this.cacheManager.del(key);
+            }
+          }
+        }
+      } else {
+        if (typeof (this.cacheManager as any).reset === 'function') {
+          await (this.cacheManager as any).reset();
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to clear offers cache: ${error.message}`);
+    }
   }
 }
