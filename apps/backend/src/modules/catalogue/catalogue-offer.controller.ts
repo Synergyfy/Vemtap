@@ -10,6 +10,8 @@ import {
   UseGuards,
   Req,
   ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,6 +25,7 @@ import {
   UpdateCatalogueOfferDto,
   CatalogueOfferQueryDto,
 } from './dto/offer.dto';
+import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -95,5 +98,32 @@ export class CatalogueOfferController {
   @ApiOperation({ summary: 'Get offer details (Public)' })
   async getOfferPublic(@Param('id', ParseUUIDPipe) id: string) {
     return this.offerService.findOneOffer(id);
+  }
+
+  @Public()
+  @Post('claim/request')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request OTP to claim a promotion (Public)' })
+  async requestClaimOtp(@Body() dto: RequestClaimOtpDto) {
+    return this.offerService.requestClaimOtp(dto);
+  }
+
+  @Public()
+  @Post('claim/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP and complete promotion claim (Public)' })
+  async verifyClaim(@Body() dto: VerifyClaimDto) {
+    return this.offerService.verifyClaim(dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Post('claim/redeem/:code')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('catalogue')
+  @ApiOperation({ summary: 'Redeem a claimed promotion code (Admin/Staff)' })
+  async redeemClaim(@Param('code') code: string, @Req() req: any) {
+    return this.offerService.redeemClaim(code, req.user.businessId);
   }
 }

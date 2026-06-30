@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
@@ -18,7 +19,10 @@ import {
 } from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { ForbiddenException } from '@nestjs/common';
+import { CatalogueOfferClaim, CatalogueOfferClaimStatus } from './entities/catalogue-offer-claim.entity';
+import { Otp } from '../auth/entities/otp.entity';
+import { MailService } from '../mail/mail.service';
+import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 
 @Injectable()
 export class CatalogueOfferService {
@@ -29,7 +33,12 @@ export class CatalogueOfferService {
     private readonly itemRepository: Repository<CatalogueItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(CatalogueOfferClaim)
+    private readonly claimRepository: Repository<CatalogueOfferClaim>,
+    @InjectRepository(Otp)
+    private readonly otpRepository: Repository<Otp>,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly mailService: MailService,
   ) {}
 
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
@@ -210,5 +219,184 @@ export class CatalogueOfferService {
       default:
         return sum;
     }
+  }
+
+  async requestClaimOtp(dto: RequestClaimOtpDto) {
+    const offer = await this.offerRepository.findOne({
+      where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
+    });
+    if (!offer) {
+      throw new NotFoundException('Promotion not found or inactive');
+    }
+
+    const now = new Date();
+    if (offer.startDate && now < new Date(offer.startDate)) {
+      throw new BadRequestException('Promotion has not started yet');
+    }
+    if (offer.endDate && now > new Date(offer.endDate)) {
+      throw new BadRequestException('Promotion has expired');
+    }
+
+    if (offer.quantity !== null && offer.quantity !== undefined) {
+      const claimedCount = await this.claimRepository.count({
+        where: {
+          offerId: offer.id,
+          status: In([
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ]),
+        },
+      });
+      if (claimedCount >= offer.quantity) {
+        throw new BadRequestException('This promotion has reached its claim limit');
+      }
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    const otp = this.otpRepository.create({
+      email: dto.email.toLowerCase(),
+      code,
+      expiresAt,
+      metadata: {
+        type: 'promotion_claim',
+        ...dto,
+      },
+    });
+    await this.otpRepository.save(otp);
+
+    await this.mailService.sendOtp(dto.email, code);
+
+    return { message: 'Verification OTP sent successfully' };
+  }
+
+  async verifyClaim(dto: VerifyClaimDto) {
+    const email = dto.email.toLowerCase();
+
+    const otpRecord = await this.otpRepository.findOne({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otpRecord) {
+      throw new BadRequestException('OTP not found');
+    }
+    if (otpRecord.code !== dto.code) {
+      throw new BadRequestException('Invalid OTP');
+    }
+    if (new Date() > otpRecord.expiresAt) {
+      throw new BadRequestException('OTP expired');
+    }
+    if (otpRecord.isVerified) {
+      throw new BadRequestException('OTP already verified');
+    }
+    if (!otpRecord.metadata || otpRecord.metadata.offerId !== dto.offerId) {
+      throw new BadRequestException('Invalid OTP metadata');
+    }
+
+    const offer = await this.offerRepository.findOne({
+      where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
+    });
+    if (!offer) {
+      throw new NotFoundException('Promotion not found or inactive');
+    }
+
+    if (offer.quantity !== null && offer.quantity !== undefined) {
+      const claimedCount = await this.claimRepository.count({
+        where: {
+          offerId: offer.id,
+          status: In([
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ]),
+        },
+      });
+      if (claimedCount >= offer.quantity) {
+        throw new BadRequestException('This promotion has reached its claim limit');
+      }
+    }
+
+    otpRecord.isVerified = true;
+    await this.otpRepository.save(otpRecord);
+
+    const randomString = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const claimCode = `VEM-CLAIM-${randomString}`;
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const claim = this.claimRepository.create({
+      offerId: offer.id,
+      firstName: otpRecord.metadata.firstName,
+      lastName: otpRecord.metadata.lastName || null,
+      email: otpRecord.metadata.email,
+      phone: otpRecord.metadata.phone,
+      claimCode,
+      status: CatalogueOfferClaimStatus.CLAIMED,
+      expiresAt,
+    });
+
+    await this.claimRepository.save(claim);
+
+    return {
+      message: 'Deal claimed successfully',
+      claim: {
+        id: claim.id,
+        claimCode: claim.claimCode,
+        expiresAt: claim.expiresAt,
+        status: claim.status,
+      },
+    };
+  }
+
+  async redeemClaim(code: string, businessId: string) {
+    const claim = await this.claimRepository.findOne({
+      where: { claimCode: code },
+      relations: ['offer'],
+    });
+
+    if (!claim) {
+      throw new NotFoundException('Claim code not found');
+    }
+
+    if (claim.offer.businessId !== businessId) {
+      throw new ForbiddenException('Unauthorized to redeem this claim');
+    }
+
+    if (claim.status === CatalogueOfferClaimStatus.REDEEMED) {
+      throw new BadRequestException('This claim has already been redeemed');
+    }
+
+    if (
+      claim.status === CatalogueOfferClaimStatus.EXPIRED ||
+      new Date() > claim.expiresAt
+    ) {
+      if (claim.status !== CatalogueOfferClaimStatus.EXPIRED) {
+        claim.status = CatalogueOfferClaimStatus.EXPIRED;
+        await this.claimRepository.save(claim);
+      }
+      throw new BadRequestException('This claim has expired');
+    }
+
+    claim.status = CatalogueOfferClaimStatus.REDEEMED;
+    await this.claimRepository.save(claim);
+
+    await this.offerRepository.increment({ id: claim.offerId }, 'visits', 1);
+
+    return {
+      success: true,
+      message: 'Claim redeemed successfully',
+      claim: {
+        id: claim.id,
+        firstName: claim.firstName,
+        lastName: claim.lastName,
+        email: claim.email,
+        phone: claim.phone,
+        status: claim.status,
+        offerName: claim.offer.name,
+      },
+    };
   }
 }
