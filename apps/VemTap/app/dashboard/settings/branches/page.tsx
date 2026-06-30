@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, Suspense, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { 
@@ -18,6 +19,8 @@ import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
 import UpgradeModal from '@/components/dashboard/UpgradeModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
+
+const LocationSetupModal = dynamic(() => import('@/components/dashboard/branches/LocationSetupModal'), { ssr: false });
 
 function BranchesContent() {
     const pathname = usePathname();
@@ -47,6 +50,7 @@ function BranchesContent() {
     const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
     const [otp, setOtp] = useState('');
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [locationSetupFor, setLocationSetupFor] = useState<'create' | 'edit' | null>(null);
 
     // Close upgrade modal on navigation
     useEffect(() => {
@@ -77,6 +81,8 @@ function BranchesContent() {
             address: newBranch.address,
             phone: newBranch.phone,
             officialEmail: newBranch.officialEmail,
+            latitude: newBranch.latitude,
+            longitude: newBranch.longitude,
         }, {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
@@ -107,6 +113,8 @@ function BranchesContent() {
                 address: branchToEdit.address,
                 phone: branchToEdit.phone,
                 officialEmail: branchToEdit.officialEmail,
+                latitude: branchToEdit.latitude,
+                longitude: branchToEdit.longitude,
             }
         }, {
             onSuccess: () => {
@@ -305,13 +313,23 @@ function BranchesContent() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
-                                        <input
-                                            type="text"
-                                            value={newBranch.address}
-                                            onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
-                                            placeholder="Enter complete physical address"
-                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={newBranch.address}
+                                                onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
+                                                placeholder="Enter complete physical address"
+                                                className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl pl-5 pr-14 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setLocationSetupFor('create')}
+                                                title="Set location coordinates"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 size-10 rounded-xl bg-gray-100 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center text-gray-400"
+                                            >
+                                                <MapPin size={18} />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -338,7 +356,7 @@ function BranchesContent() {
                                 </div>
                             </div>
 
-                        <div className="grid grid-cols-2 gap-4 pt-8">
+                            <div className="grid grid-cols-2 gap-4 pt-8">
                             <button
                                 onClick={() => setIsCreateModalOpen(false)}
                                 className="h-14 bg-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-200 transition-all"
@@ -380,13 +398,23 @@ function BranchesContent() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
-                                    <input
-                                        type="text"
-                                        value={branchToEdit.address}
-                                        onChange={(e) => setBranchToEdit({ ...branchToEdit, address: e.target.value })}
-                                        placeholder="Enter complete physical address"
-                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={branchToEdit.address}
+                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, address: e.target.value })}
+                                            placeholder="Enter complete physical address"
+                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl pl-5 pr-14 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setLocationSetupFor('edit')}
+                                            title="Set location coordinates"
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 size-10 rounded-xl bg-gray-100 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center text-gray-400"
+                                        >
+                                            <MapPin size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -414,23 +442,23 @@ function BranchesContent() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 pt-8">
-                            <button
-                                onClick={() => setIsEditModalOpen(false)}
-                                className="h-14 bg-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-200 transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleUpdateBranch}
-                                disabled={updateBranchMutation.isPending}
-                                className="h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                                {updateBranchMutation.isPending ? <Loader2 size={20} className="animate-spin" /> : <Edit2 size={20} />}
-                                Save Changes
-                            </button>
+                                    <button
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        className="h-14 bg-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-200 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleUpdateBranch}
+                                        disabled={updateBranchMutation.isPending}
+                                        className="h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {updateBranchMutation.isPending ? <Loader2 size={20} className="animate-spin" /> : <Edit2 size={20} />}
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
             )}
 
             {/* Delete Confirmation Modal */}
@@ -507,6 +535,20 @@ function BranchesContent() {
                     </div>
                 </div>
             )}
+
+                <LocationSetupModal
+                    isOpen={locationSetupFor !== null}
+                    onClose={() => setLocationSetupFor(null)}
+                    addressHint={locationSetupFor === 'create' ? newBranch.address : branchToEdit?.address}
+                    onLocationSet={(lat, lng) => {
+                        if (locationSetupFor === 'create') {
+                            setNewBranch(prev => ({ ...prev, latitude: lat, longitude: lng }));
+                        } else if (locationSetupFor === 'edit' && branchToEdit) {
+                            setBranchToEdit({ ...branchToEdit, latitude: lat, longitude: lng });
+                        }
+                        setLocationSetupFor(null);
+                    }}
+                />
 
                 <UpgradeModal 
                     isOpen={showUpgradeModal} 

@@ -11,7 +11,7 @@ export interface RegisterOwnerRequest {
     password?: string;
     firstName?: string;
     lastName?: string;
-    businessName: string;
+    businessName?: string;
     businessLogo?: string;
     categoryId?: string;
     subcategoryId?: string;

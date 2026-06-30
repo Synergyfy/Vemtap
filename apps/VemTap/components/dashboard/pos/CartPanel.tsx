@@ -2,10 +2,9 @@
 
 import React, { useState } from 'react';
 import { usePosStore } from '@/store/usePosStore';
-import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
 import { useHoldPosSale } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { UserPlus, Tag, Plus, Minus, X, ArrowRight, User, Coins, Gift } from 'lucide-react';
+import { UserPlus, Tag, Plus, Minus, X, ArrowRight, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { CustomerSelectorModal } from './CustomerSelectorModal';
@@ -52,27 +51,6 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
   const discount = getCartDiscountAmount();
   const tax = getCartTax();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-
-  const { addOrGetCustomer, getPointsBalance, addPoints, setLastEarned, redemptionThreshold } = usePosLoyaltyStore();
-  const effectiveThreshold = posSettings.loyaltyEnabled ? (posSettings.loyaltyRedeemThreshold || redemptionThreshold) : 0;
-  const autoLoyaltyPoints = cart.reduce((acc, item) =>
-    item.enableLoyaltyPoints && item.loyaltyPointsValue
-      ? acc + item.loyaltyPointsValue * item.quantity
-      : acc, 0);
-  const customerPointsBalance = attachedCustomer ? getPointsBalance(attachedCustomer.id) : 0;
-  const [showLoyaltyForm, setShowLoyaltyForm] = useState(false);
-  const [loyaltyName, setLoyaltyName] = useState('');
-  const [loyaltyPhone, setLoyaltyPhone] = useState('');
-  const [manualPointsInput, setManualPointsInput] = useState(0);
-
-  const handleAddLoyaltyCustomer = () => {
-    if (!loyaltyName.trim() || !loyaltyPhone.trim()) return;
-    const customer = addOrGetCustomer(loyaltyName.trim(), loyaltyPhone.trim());
-    attachCustomer({ id: customer.id, name: customer.name, phone: customer.phone });
-    setShowLoyaltyForm(false);
-    setLoyaltyName('');
-    setLoyaltyPhone('');
-  };
 
   const handlePlaceOrder = async () => {
     if (!attachedCustomer) {
@@ -273,85 +251,6 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
             {discount > 0 ? `Discount Applied` : 'Add Discount'}
           </button>
         </div>
-
-        {/* Loyalty Points Section */}
-        {posSettings.loyaltyEnabled && (autoLoyaltyPoints > 0 || attachedCustomer) && (
-          <div className="mb-4 p-3 rounded-2xl bg-amber-50/70 border border-amber-100">
-            <div className="flex items-center gap-2 mb-2">
-              <Coins size={14} className="text-amber-600" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Loyalty Points</span>
-            </div>
-
-            {attachedCustomer ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-amber-800">
-                  <span>Balance: <span className="text-amber-600">{customerPointsBalance} pts</span></span>
-                  {autoLoyaltyPoints > 0 && (
-                    <span>Earn: <span className="text-amber-600">+{autoLoyaltyPoints} pts</span></span>
-                  )}
-                </div>
-                {customerPointsBalance >= effectiveThreshold && (
-                  <button className="w-full h-9 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-amber-600 transition-all">
-                    <Gift size={12} /> Redeem Points
-                  </button>
-                )}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="+ Manual pts"
-                    value={manualPointsInput || ''}
-                    onChange={e => { setManualPointsInput(Math.max(0, Number(e.target.value))); usePosStore.getState().setManualLoyaltyPoints(Number(e.target.value)); }}
-                    className="flex-1 h-9 px-3 rounded-xl bg-white border border-amber-200 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div>
-                {!showLoyaltyForm ? (
-                  <button
-                    onClick={() => setShowLoyaltyForm(true)}
-                    className="w-full text-left text-[11px] font-medium text-amber-700 hover:text-amber-800 transition-colors"
-                  >
-                    Join our loyalty program — drop your details to earn reward points for this purchase
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={loyaltyName}
-                      onChange={e => setLoyaltyName(e.target.value)}
-                      placeholder="Full Name"
-                      className="w-full h-9 px-3 rounded-xl bg-white border border-amber-200 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
-                    />
-                    <input
-                      type="tel"
-                      value={loyaltyPhone}
-                      onChange={e => setLoyaltyPhone(e.target.value)}
-                      placeholder="Phone Number"
-                      className="w-full h-9 px-3 rounded-xl bg-white border border-amber-200 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleAddLoyaltyCustomer}
-                        disabled={!loyaltyName.trim() || !loyaltyPhone.trim()}
-                        className="flex-1 h-9 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all disabled:opacity-50"
-                      >
-                        Save & Earn Points
-                      </button>
-                      <button
-                        onClick={() => setShowLoyaltyForm(false)}
-                        className="h-9 px-4 rounded-xl bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 transition-all"
-                      >
-                        Skip
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {!isPublic ? (
           <div className="grid grid-cols-4 gap-2">

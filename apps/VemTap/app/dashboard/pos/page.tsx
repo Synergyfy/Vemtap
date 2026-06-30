@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import POSHomeScreen from '@/components/dashboard/pos/POSHomeScreen';
 import { CartPanel } from '@/components/dashboard/pos/CartPanel';
 import { usePosStore } from '@/store/usePosStore';
-import { ShoppingCart, X, Share2, ExternalLink, ShoppingBag, Tag, AlertCircle } from 'lucide-react';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
+import { ShoppingCart, X, Share2, ExternalLink, ShoppingBag, Tag } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useCatalogueOrders } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
+import OfflineBanner from '@/components/dashboard/pos/OfflineBanner';
 
 export default function POSPage() {
   const router = useRouter();
@@ -17,8 +19,15 @@ export default function POSPage() {
   const { cart } = usePosStore();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const { data: business } = useMyBusiness();
+  const loadFromBusiness = usePosSettingsStore((s) => s.loadFromBusiness);
   const businessCode = business?.uniqueCode;
   const { activeBranchId } = useActiveBranch();
+
+  useEffect(() => {
+    if (business) {
+      loadFromBusiness(business);
+    }
+  }, [business, loadFromBusiness]);
 
   const { data: newOrdersData } = useCatalogueOrders({
     branchId: activeBranchId ?? undefined,
@@ -48,70 +57,71 @@ export default function POSPage() {
     window.open(publicPosUrl, '_blank');
   };
 
+  const quickActions = (
+    <>
+      <button
+        onClick={handleCopyLink}
+        disabled={!publicPosUrl}
+        className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-[#066CF4] text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all disabled:opacity-50"
+      >
+        <Share2 size={12} />
+        Copy Link
+      </button>
+      <button
+        onClick={handlePreview}
+        disabled={!publicPosUrl}
+        className="flex items-center justify-center h-10 px-3 rounded-xl border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all disabled:opacity-50"
+        title="Preview Public POS"
+      >
+        <ExternalLink size={12} />
+      </button>
+      <button
+        onClick={() => router.push('/dashboard/pos/orders')}
+        className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all relative"
+      >
+        <ShoppingBag size={14} />
+        Orders
+        {newOrdersCount > 0 && (
+          <span className="absolute -top-2 -right-2 size-5 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/30">
+            {newOrdersCount > 9 ? '9+' : newOrdersCount}
+          </span>
+        )}
+      </button>
+      <button
+        onClick={() => router.push('/dashboard/pos/register')}
+        className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
+      >
+        <span className="text-[10px]">₦</span>
+        Register
+      </button>
+      <button
+        onClick={() => router.push('/dashboard/pos/products/barcodes')}
+        className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
+      >
+        <Tag size={12} />
+        Barcodes
+      </button>
+    </>
+  );
+
   return (
-    <div className="h-full flex flex-col md:flex-row relative p-4 md:p-6">
-      <div className="flex-1 overflow-y-auto">
-        <POSHomeScreen onOpenCart={() => setMobileCartOpen(true)} />
+    <div className="h-full flex flex-col md:flex-row p-4 md:p-6 gap-4">
+      <OfflineBanner />
+
+      {/* Left: Main content — scrolls as a whole */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+        <POSHomeScreen
+          onOpenCart={() => setMobileCartOpen(true)}
+          headerActions={quickActions}
+        />
       </div>
 
-      {/* Desktop side-panel */}
-      <div className="hidden md:block w-[380px] lg:w-[420px] border-l border-gray-100 bg-white h-full relative">
-        {/* Quick Navigation */}
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-          <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Quick Access</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => router.push('/dashboard/pos/orders')}
-              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all relative"
-            >
-              <ShoppingBag size={14} />
-              Orders
-              {newOrdersCount > 0 && (
-                <span className="absolute -top-2 -right-2 size-5 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/30">
-                  {newOrdersCount > 9 ? '9+' : newOrdersCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => router.push('/dashboard/pos/register')}
-              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
-            >
-              <span className="text-[10px]">₦</span>
-              Register
-            </button>
-            <button
-              onClick={() => router.push('/dashboard/pos/products/barcodes')}
-              className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
-            >
-              <Tag size={12} />
-              Barcodes
-            </button>
-          </div>
+      {/* Desktop right-panel: Fixed cart — only cart items scroll internally */}
+      <div className="hidden md:flex w-[380px] lg:w-[420px] flex-col h-full sticky top-0 border-l border-gray-100 bg-white rounded-[32px] overflow-hidden">
+        {/* CartPanel — only cart items scroll, totals/actions stay fixed */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <CartPanel />
         </div>
-
-        {/* Share Public POS Link */}
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-          <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Share with customers</p>
-          <div className="flex gap-2">
-            <button
-              onClick={handleCopyLink}
-              disabled={!publicPosUrl}
-              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl bg-[#066CF4] text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all disabled:opacity-50"
-            >
-              <Share2 size={14} />
-              Copy Link
-            </button>
-            <button
-              onClick={handlePreview}
-              disabled={!publicPosUrl}
-              className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all disabled:opacity-50"
-              title="Preview Public POS"
-            >
-              <ExternalLink size={14} />
-            </button>
-          </div>
-        </div>
-        <CartPanel />
       </div>
 
       {/* ─── MOBILE: Floating Cart FAB ─── */}

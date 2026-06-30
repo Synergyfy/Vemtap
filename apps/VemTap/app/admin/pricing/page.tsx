@@ -861,6 +861,96 @@ export default function AdminPricingPage() {
                     </motion.div>
                 )}
 
+                {activeTab === 'plans' && (
+                    <div className="mb-10 bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="size-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                                <Percent size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-text-main text-sm">Tax Settings</h3>
+                                <p className="text-xs text-text-secondary font-medium">Control subscription tax collection</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div>
+                                    <p className="font-bold text-text-main text-sm">Tax on Subscription</p>
+                                    <p className="text-[10px] text-text-secondary font-medium mt-0.5">Collect tax on each subscription payment</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={systemSettings?.taxOnSubscription ?? false}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                updateSettingsMutation.mutate({ ...systemSettings, taxOnSubscription: true, removeTaxFromPrice: false });
+                                            } else {
+                                                updateSettingsMutation.mutate({ ...systemSettings, taxOnSubscription: false });
+                                            }
+                                        }}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none ring-4 ring-transparent peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </div>
+
+                            {(systemSettings?.taxOnSubscription) && (
+                                <div className="pl-4 space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Tax Rate (%)</label>
+                                        <div className="relative max-w-[200px]">
+                                            <input 
+                                                type="number" 
+                                                value={systemSettings?.taxRate ?? 7.5}
+                                                onChange={(e) => updateSettingsMutation.mutate({ ...systemSettings, taxRate: parseFloat(e.target.value) || 0 })}
+                                                className="w-full h-12 pl-4 pr-8 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-text-secondary">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div>
+                                    <p className="font-bold text-text-main text-sm">Remove Tax from Price</p>
+                                    <p className="text-[10px] text-text-secondary font-medium mt-0.5">Display prices without tax, add tax at checkout</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={systemSettings?.removeTaxFromPrice ?? false}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                updateSettingsMutation.mutate({ ...systemSettings, removeTaxFromPrice: true, taxOnSubscription: false });
+                                            } else {
+                                                updateSettingsMutation.mutate({ ...systemSettings, removeTaxFromPrice: false });
+                                            }
+                                        }}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none ring-4 ring-transparent peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </div>
+
+                            <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                <p className="text-[10px] text-blue-700 font-medium">
+                                    {systemSettings?.removeTaxFromPrice 
+                                        ? 'Tax will be added at checkout. Prices shown are exclusive of tax.'
+                                        : systemSettings?.taxOnSubscription 
+                                            ? `Tax of ${systemSettings?.taxRate ?? 7.5}% will be applied to subscription payments.`
+                                            : 'No tax is currently being collected on subscriptions.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {((activeTab === 'plans' && plansLoading) || (activeTab === 'addons' && (addonsLoading || settingsLoading))) ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />

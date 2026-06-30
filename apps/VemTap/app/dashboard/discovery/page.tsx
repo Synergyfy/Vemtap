@@ -4,13 +4,17 @@ import React, { useState } from 'react';
 import { 
     Activity, Users, MapPin, Store, Tag, Plus, Target, CheckCircle2, ArrowRight,
     Settings, Search, Handshake, TrendingUp, RefreshCw, X, Image as ImageIcon,
-    ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2
+    ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2, Navigation, Crosshair
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+
+const NearbyMap = dynamic(() => import('@/components/dashboard/discovery/NearbyMap'), { ssr: false });
+const LocationSetupModal = dynamic(() => import('@/components/dashboard/branches/LocationSetupModal'), { ssr: false });
 import { 
     useDiscoveryOverview,
     useDiscoveryResults,
@@ -20,10 +24,15 @@ import {
     useNearbyPartners,
     useDiscoveryCustomers,
     useRecommendBusiness,
+    usePartnershipInvitations,
+    useInvitePartner,
+    useRespondToInvitation,
 } from '@/services/discovery/hooks';
 import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer } from '@/services/catalogue/hooks';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import type { DiscoveryCustomer, ActivePartner, NearbyPartner, UpdateDiscoverySettingsDto } from '@/services/discovery/types';
+import { useUpdateBranch } from '@/services/branches/hooks';
+import { getBrowserLocation } from '@/lib/geolocation';
 
 type TabId = 'overview' | 'promotions' | 'partners' | 'customers' | 'results' | 'settings';
 
@@ -422,37 +431,87 @@ function PartnersTab({ branchId }: { branchId: string }) {
     const [connected, setConnected] = useState<string[]>([]);
     
     const { data: activePartners, isLoading: loadingActive, isError: errorActive, refetch: refetchActive } = useActivePartners(branchId);
-    const { data: nearbyPartners, isLoading: loadingNearby } = useNearbyPartners(branchId);
+    const [radius, setRadius] = useState(500);
+    const { data: nearbyPartners, isLoading: loadingNearby, isError: nearbyError, error: nearbyErrorObj, refetch: refetchNearby } = useNearbyPartners(branchId, radius);
+    const nearbyPartnersList = nearbyPartners?.data || [];
     const recommendMutation = useRecommendBusiness();
+    const updateBranchMutation = useUpdateBranch();
 
-    // Connect Prompt State
-    const [connectingTo, setConnectingTo] = useState<string | null>(null);
-    const [connectReason, setConnectReason] = useState('');
+    // Detect "no location coordinates" error
+    const isNoLocationError = nearbyError && 
+        nearbyErrorObj?.message === 'Source branch has no location coordinates';
+    const [isSettingLocation, setIsSettingLocation] = useState(false);
+    const [showLocationSetup, setShowLocationSetup] = useState(false);
+    const [locationMessage, setLocationMessage] = useState('');
 
-    // Incoming Requests State (mock until endpoint available)
-    const [incomingRequests, setIncomingRequests] = useState([
-        { id: 1, name: 'Burger Joint', type: 'Restaurant', distance: '0.4 miles away', reason: 'Our customers always look for a nice place to eat after shopping.' }
-    ]);
-    const [handlingRequest, setHandlingRequest] = useState<{id: number, action: 'accept'|'reject'} | null>(null);
-    const [handleReason, setHandleReason] = useState('');
-
-    const handleConnectSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (connectingTo) {
-            setConnected(prev => [...prev, connectingTo]);
-            setConnectingTo(null);
-            setConnectReason('');
-            alert('Partnership request sent successfully!');
+    const handleLocationYes = async () => {
+        setIsSettingLocation(true);
+        setLocationMessage('Getting your current location...');
+        try {
+            const pos = await getBrowserLocation();
+            await updateBranchMutation.mutateAsync({
+                id: branchId,
+                updates: { latitude: pos.lat, longitude: pos.lng },
+            });
+            setLocationMessage('Location found!');
+            setTimeout(() => {
+                setIsSettingLocation(false);
+                setLocationMessage('');
+                refetchNearby();
+            }, 1000);
+        } catch (err: any) {
+            setLocationMessage(err.message || 'Could not get your location');
+            setTimeout(() => {
+                setIsSettingLocation(false);
+                setLocationMessage('');
+            }, 2000);
         }
     };
 
-    const handleIncomingSubmit = (e: React.FormEvent) => {
+    // Partnership invitations (received, pending)
+    const { data: invitationsData, isLoading: loadingInvitations, refetch: refetchInvitations } = usePartnershipInvitations({ branchId, type: 'received', status: 'Pending' });
+    const inviteMutation = useInvitePartner();
+    const respondMutation = useRespondToInvitation();
+
+    // Connect Prompt State
+    const [connectingTo, setConnectingTo] = useState<{ id: string; name: string } | null>(null);
+    const [connectReason, setConnectReason] = useState('');
+
+    // Incoming Requests State
+    const [handlingRequest, setHandlingRequest] = useState<{id: string, partnershipId: string, action: 'accept'|'reject'} | null>(null);
+    const [handleReason, setHandleReason] = useState('');
+
+    const handleConnectSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (connectingTo) {
+            try {
+                await inviteMutation.mutateAsync({
+                    initiatorBranchId: branchId,
+                    recipientBranchId: connectingTo.id,
+                });
+                setConnected(prev => [...prev, connectingTo.id]);
+                setConnectingTo(null);
+                setConnectReason('');
+            } catch (error: any) {
+                alert(error?.message || 'Failed to send partnership request');
+            }
+        }
+    };
+
+    const handleIncomingSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (handlingRequest) {
-            setIncomingRequests(prev => prev.filter(r => r.id !== handlingRequest.id));
-            setHandlingRequest(null);
-            setHandleReason('');
-            alert(`Partnership request ${handlingRequest.action}ed successfully!`);
+            try {
+                await respondMutation.mutateAsync({
+                    id: handlingRequest.partnershipId,
+                    status: handlingRequest.action === 'accept' ? 'Accepted' : 'Declined',
+                });
+                setHandlingRequest(null);
+                setHandleReason('');
+                refetchInvitations();
+            } catch (error: any) {
+                alert(error?.message || 'Failed to respond to partnership request');
+            }
         }
     };
 
@@ -464,7 +523,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                     <button onClick={() => setView('find')} className={cn("px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap", view === 'find' ? "bg-white text-gray-800 shadow-sm" : "text-gray-500")}>Find Partners</button>
                     <button onClick={() => setView('incoming')} className={cn("px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap", view === 'incoming' ? "bg-white text-gray-800 shadow-sm relative" : "text-gray-500")}>
                         Incoming Requests
-                        {incomingRequests.length > 0 && <span className="absolute top-1 right-2 size-2 bg-red-500 rounded-full"></span>}
+                        {(invitationsData?.data?.length ?? 0) > 0 && <span className="absolute top-1 right-2 size-2 bg-red-500 rounded-full"></span>}
                     </button>
                     <button onClick={() => setView('recommend')} className={cn("px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap", view === 'recommend' ? "bg-white text-gray-800 shadow-sm" : "text-gray-500")}>Recommend Business</button>
                 </div>
@@ -506,6 +565,58 @@ function PartnersTab({ branchId }: { branchId: string }) {
 
             {view === 'find' && (
                 <div className="space-y-6">
+                    {/* Location Required Banner */}
+                    {isNoLocationError && !isSettingLocation && (
+                        <div className="bg-amber-50 rounded-3xl p-8 border border-amber-200 text-center space-y-6">
+                            <div className="size-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+                                <MapPin size={36} className="text-amber-600" />
+                            </div>
+                            <div className="space-y-2 max-w-md mx-auto">
+                                <h3 className="font-bold text-xl text-amber-900">Set Up Your Location</h3>
+                                <p className="text-amber-700 text-sm font-medium">
+                                    We need your branch's location to find nearby partners. Are you currently at this location?
+                                </p>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
+                                <Button
+                                    onClick={handleLocationYes}
+                                    className="flex-1 rounded-xl font-bold h-12 bg-amber-800 text-white hover:bg-amber-900 shadow-lg shadow-amber-200"
+                                >
+                                    <Navigation size={16} className="mr-2" />
+                                    Yes, Find My Location
+                                </Button>
+                                <Button
+                                    onClick={() => setShowLocationSetup(true)}
+                                    variant="outline"
+                                    className="flex-1 rounded-xl font-bold h-12 border-2 border-amber-300 text-amber-800 hover:bg-amber-100"
+                                >
+                                    <Crosshair size={16} className="mr-2" />
+                                    No, Set Up Manually
+                                </Button>
+                            </div>
+                            <p className="text-[10px] font-medium text-amber-500">
+                                Your device's location will only be used once and is not stored.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Location Loading State */}
+                    {isSettingLocation && (
+                        <div className="bg-blue-50 rounded-3xl p-12 border border-blue-100 text-center space-y-5">
+                            <div className="size-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                                <Loader2 size={36} className="text-blue-600 animate-spin" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="font-bold text-lg text-blue-900">{locationMessage}</p>
+                                {locationMessage === 'Getting your current location...' && (
+                                    <p className="text-sm text-blue-700 font-medium">
+                                        Please allow location access when prompted by your browser
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {!isNoLocationError && !isSettingLocation && (<>
                     <div className="bg-blue-50 rounded-3xl p-6 border border-blue-100 flex flex-col md:flex-row gap-6 items-center">
                         <div className="size-16 bg-white rounded-2xl shadow-sm text-blue-500 flex items-center justify-center shrink-0">
                             <Handshake size={32} />
@@ -520,57 +631,17 @@ function PartnersTab({ branchId }: { branchId: string }) {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Map Area */}
-                        <div className="lg:col-span-2 bg-gray-100 rounded-3xl border border-gray-200 relative overflow-hidden min-h-[400px]">
-                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cartographer.png')] bg-blue-50/50 mix-blend-multiply"></div>
-                            <div className="absolute inset-0 p-8">
-                                <div className="relative w-full h-full">
-                                    {nearbyPartners && nearbyPartners.length > 0 ? (
-                                        nearbyPartners.slice(0, 3).map((partner, i) => {
-                                            const positions = [
-                                                { top: '20%', left: '30%' },
-                                                { top: '60%', left: '70%' },
-                                                { top: '40%', left: '10%' },
-                                            ];
-                                            const pos = positions[i] || { top: '50%', left: '50%' };
-                                            return (
-                                                <div key={partner.id} className="absolute animate-in fade-in" style={{ top: pos.top, left: pos.left }}>
-                                                    <div className="bg-white p-2 rounded-xl shadow-lg flex items-center gap-2 border border-gray-100">
-                                                        <div className={cn("size-6 rounded-md flex items-center justify-center text-white", i === 0 ? "bg-primary" : i === 1 ? "bg-orange-500" : "bg-emerald-500")}>
-                                                            <Store size={14} />
-                                                        </div>
-                                                        <span className="font-bold text-xs whitespace-nowrap">{partner.name}</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <>
-                                            <div className="absolute top-[20%] left-[30%] animate-bounce">
-                                                <div className="bg-white p-2 rounded-xl shadow-lg flex items-center gap-2 border border-gray-100">
-                                                    <div className="size-6 bg-primary rounded-md flex items-center justify-center text-white"><Store size={14} /></div>
-                                                    <span className="font-bold text-xs">Local Bookshop</span>
-                                                </div>
-                                            </div>
-                                            <div className="absolute top-[60%] left-[70%]">
-                                                <div className="bg-white p-2 rounded-xl shadow-lg flex items-center gap-2 border border-gray-100">
-                                                    <div className="size-6 bg-orange-500 rounded-md flex items-center justify-center text-white"><Store size={14} /></div>
-                                                    <span className="font-bold text-xs">FitLife Gym</span>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                    <div className="absolute top-[40%] left-[50%]">
-                                        <div className="size-4 bg-blue-500 rounded-full border-2 border-white shadow-md"></div>
-                                        <div className="text-[10px] font-bold mt-1 text-center bg-white/80 px-1 rounded">You</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="lg:col-span-2 relative overflow-hidden min-h-[400px]">
+                            <NearbyMap
+                                partners={nearbyPartnersList}
+                                onSelectPartner={(partner) => setConnectingTo({ id: partner.id, name: partner.name })}
+                            />
 
                             {/* Connecting Overlay Modal */}
                             {connectingTo && (
                                 <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
                                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Request Partnership</h3>
-                                    <p className="text-sm text-gray-600 mb-6">Why do you want to partner with <strong>{connectingTo}</strong>?</p>
+                                    <p className="text-sm text-gray-600 mb-6">Why do you want to partner with <strong>{connectingTo.name}</strong>?</p>
                                     <form onSubmit={handleConnectSubmit} className="w-full max-w-sm">
                                         <textarea 
                                             required
@@ -582,7 +653,9 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                         ></textarea>
                                         <div className="flex gap-3">
                                             <Button type="button" variant="outline" onClick={() => setConnectingTo(null)} className="flex-1 rounded-xl font-bold">Cancel</Button>
-                                            <Button type="submit" className="flex-1 rounded-xl font-bold bg-primary text-white">Send Request</Button>
+                                            <Button type="submit" disabled={inviteMutation.isPending} className="flex-1 rounded-xl font-bold bg-primary text-white">
+                                                {inviteMutation.isPending ? 'Sending...' : 'Send Request'}
+                                            </Button>
                                         </div>
                                     </form>
                                 </div>
@@ -591,6 +664,26 @@ function PartnersTab({ branchId }: { branchId: string }) {
 
                         {/* List Area */}
                         <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
+                            {/* Radius Control */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Search radius</span>
+                                    <span className="text-sm font-bold text-primary">{radius >= 1000 ? `${(radius / 1000).toFixed(1)} km` : `${radius} m`}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={100}
+                                    max={10000}
+                                    step={100}
+                                    value={radius}
+                                    onChange={e => setRadius(Number(e.target.value))}
+                                    className="w-full h-2 bg-gray-100 rounded-full appearance-none cursor-pointer accent-primary"
+                                />
+                                <div className="flex justify-between text-[10px] text-gray-400 font-medium mt-1">
+                                    <span>100m</span>
+                                    <span>10km</span>
+                                </div>
+                            </div>
                             {loadingNearby ? (
                                 [1, 2, 3].map(i => (
                                     <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 animate-pulse">
@@ -604,14 +697,14 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                         <div className="h-9 bg-gray-100 rounded-xl w-full"></div>
                                     </div>
                                 ))
-                            ) : !nearbyPartners || nearbyPartners.length === 0 ? (
+                            ) : !nearbyPartnersList || nearbyPartnersList.length === 0 ? (
                                 <div className="text-center py-12 text-gray-400">
                                     <Store size={32} className="mx-auto mb-3" />
                                     <p className="text-sm font-medium">No nearby partners found</p>
                                     <p className="text-xs mt-1">Try expanding your search area.</p>
                                 </div>
                             ) : (
-                                nearbyPartners.map((partner) => (
+                                nearbyPartnersList.map((partner) => (
                                     <div key={partner.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="size-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 shrink-0">
@@ -622,12 +715,12 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                                 <div className="text-xs text-gray-500">{partner.type} • {partner.distance}</div>
                                             </div>
                                         </div>
-                                        {connected.includes(partner.name) ? (
+                                        {connected.includes(partner.id) ? (
                                             <Button disabled className="w-full rounded-xl font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-50 border-0 h-9">
                                                 <CheckCircle2 size={16} className="mr-2" /> Request Sent
                                             </Button>
                                         ) : (
-                                            <Button onClick={() => setConnectingTo(partner.name)} className="w-full rounded-xl font-bold h-9 bg-gray-900 text-white hover:bg-gray-800">
+                                            <Button onClick={() => setConnectingTo({ id: partner.id, name: partner.name })} className="w-full rounded-xl font-bold h-9 bg-gray-900 text-white hover:bg-gray-800">
                                                 Connect
                                             </Button>
                                         )}
@@ -636,12 +729,33 @@ function PartnersTab({ branchId }: { branchId: string }) {
                             )}
                         </div>
                     </div>
+                    </>
+                    )}
                 </div>
             )}
 
             {view === 'incoming' && (
                 <div className="max-w-2xl mx-auto space-y-6">
-                    {incomingRequests.length === 0 ? (
+                    {loadingInvitations ? (
+                        <div className="space-y-4">
+                            {[1, 2].map(i => (
+                                <div key={i} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 animate-pulse">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="size-12 bg-gray-100 rounded-2xl"></div>
+                                        <div className="flex-1">
+                                            <div className="h-4 bg-gray-100 rounded w-32 mb-2"></div>
+                                            <div className="h-3 bg-gray-100 rounded w-48"></div>
+                                        </div>
+                                    </div>
+                                    <div className="h-16 bg-gray-50 rounded-2xl mb-4"></div>
+                                    <div className="flex gap-3">
+                                        <div className="h-10 bg-gray-100 rounded-xl flex-1"></div>
+                                        <div className="h-10 bg-gray-100 rounded-xl flex-1"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : !invitationsData?.data || invitationsData.data.length === 0 ? (
                         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
                             <div className="size-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                                 <Handshake size={32} />
@@ -650,15 +764,17 @@ function PartnersTab({ branchId }: { branchId: string }) {
                             <p className="text-gray-500 text-sm">You've responded to all partnership requests.</p>
                         </div>
                     ) : (
-                        <>
-                            {/* TODO: Integrate with partnerships API when available */}
-                            <div className="text-xs text-gray-400 bg-gray-50 rounded-2xl px-4 py-2 text-center">Partnership request management coming soon</div>
-                            {incomingRequests.map(req => (
-                                <div key={req.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-                                    {handlingRequest?.id === req.id ? (
+                        invitationsData.data.map(partnership => {
+                            const partner = partnership.initiatorBranch;
+                            const partnerName = partner?.business?.name || partner?.name || 'Unknown Business';
+                            const partnerType = partner?.business?.category || 'Business';
+
+                            return (
+                                <div key={partnership.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                                    {handlingRequest?.partnershipId === partnership.id ? (
                                         <form onSubmit={handleIncomingSubmit} className="animate-in fade-in">
                                             <h4 className="font-semibold text-gray-800 mb-2">
-                                                {handlingRequest.action === 'accept' ? 'Accepting' : 'Rejecting'} Partnership with {req.name}
+                                                {handlingRequest.action === 'accept' ? 'Accepting' : 'Rejecting'} Partnership with {partnerName}
                                             </h4>
                                             <p className="text-sm text-gray-600 mb-4">Please briefly explain why you are {handlingRequest.action}ing this request.</p>
                                             <textarea 
@@ -671,8 +787,8 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                             ></textarea>
                                             <div className="flex gap-3">
                                                 <Button type="button" variant="outline" onClick={() => setHandlingRequest(null)} className="flex-1 rounded-xl font-bold">Cancel</Button>
-                                                <Button type="submit" className={cn("flex-1 rounded-xl font-bold text-white", handlingRequest.action === 'accept' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>
-                                                    Confirm {handlingRequest.action === 'accept' ? 'Acceptance' : 'Rejection'}
+                                                <Button type="submit" disabled={respondMutation.isPending} className={cn("flex-1 rounded-xl font-bold text-white", handlingRequest.action === 'accept' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>
+                                                    {respondMutation.isPending ? 'Processing...' : `Confirm ${handlingRequest.action === 'accept' ? 'Acceptance' : 'Rejection'}`}
                                                 </Button>
                                             </div>
                                         </form>
@@ -683,23 +799,30 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                                     <Store size={24} />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-gray-800">{req.name}</div>
-                                                    <div className="text-sm text-gray-500">{req.type} • {req.distance}</div>
+                                                    <div className="font-semibold text-gray-800">{partnerName}</div>
+                                                    <div className="text-sm text-gray-500">{partnerType}</div>
                                                 </div>
                                             </div>
-                                            <div className="bg-gray-50 p-4 rounded-2xl mb-6 border border-gray-100">
-                                                <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Their message:</div>
-                                                <p className="text-sm text-gray-700 italic">"{req.reason}"</p>
-                                            </div>
                                             <div className="flex gap-3">
-                                                <Button onClick={() => setHandlingRequest({id: req.id, action: 'accept'})} className="flex-1 rounded-xl font-bold bg-gray-900 text-white hover:bg-gray-800">Accept Request</Button>
-                                                <Button onClick={() => setHandlingRequest({id: req.id, action: 'reject'})} variant="outline" className="flex-1 rounded-xl font-bold border-red-200 text-red-600 hover:bg-red-50">Reject</Button>
+                                                <Button 
+                                                    onClick={() => setHandlingRequest({ id: partnership.id, partnershipId: partnership.id, action: 'accept' })} 
+                                                    className="flex-1 rounded-xl font-bold bg-gray-900 text-white hover:bg-gray-800"
+                                                >
+                                                    Accept Request
+                                                </Button>
+                                                <Button 
+                                                    onClick={() => setHandlingRequest({ id: partnership.id, partnershipId: partnership.id, action: 'reject' })} 
+                                                    variant="outline" 
+                                                    className="flex-1 rounded-xl font-bold border-red-200 text-red-600 hover:bg-red-50"
+                                                >
+                                                    Reject
+                                                </Button>
                                             </div>
                                         </>
                                     )}
                                 </div>
-                            ))}
-                        </>
+                            );
+                        })
                     )}
                 </div>
             )}
@@ -771,6 +894,22 @@ function PartnersTab({ branchId }: { branchId: string }) {
                     </form>
                 </div>
             )}
+
+            <LocationSetupModal
+                isOpen={showLocationSetup}
+                onClose={() => setShowLocationSetup(false)}
+                addressHint=""
+                onLocationSet={async (lat, lng) => {
+                    try {
+                        await updateBranchMutation.mutateAsync({
+                            id: branchId,
+                            updates: { latitude: lat, longitude: lng },
+                        });
+                        setShowLocationSetup(false);
+                        refetchNearby();
+                    } catch {}
+                }}
+            />
         </div>
     );
 }

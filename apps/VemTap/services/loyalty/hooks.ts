@@ -397,3 +397,18 @@ export const usePointsLogs = (params: { businessId: string; page?: number; limit
         enabled: !!params.businessId,
     });
 };
+
+export const useBusinessPointLogs = (params: { businessId: string; branchId?: string; page?: number; limit?: number }) => {
+    return useQuery<{ data: PointTransaction[]; total: number; page: number; limit: number }, Error>({
+        queryKey: ['loyalty', 'business-point-logs', params],
+        queryFn: async () => {
+            const q = new URLSearchParams();
+            q.set('businessId', params.businessId);
+            if (params.branchId) q.set('branchId', params.branchId);
+            if (params.page) q.set('page', String(params.page));
+            if (params.limit) q.set('limit', String(params.limit));
+            return await api.get(`/loyalty/points/business-logs?${q.toString()}`);
+        },
+        enabled: !!params.businessId,
+    });
+};

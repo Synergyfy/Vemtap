@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useMyCredits } from '@/services/messaging/hooks';
 import { 
   fetchCreditPlans, 
@@ -23,11 +25,21 @@ import {
   Loader2,
   RefreshCw,
   Calculator,
-  Sparkles
+  Sparkles,
+  Phone
 } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { cn } from '@/lib/utils';
+
+const CHANNEL_TABS = [
+    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
+    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
+    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
+    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
+    { label: 'History', href: '/dashboard/messaging/history', icon: History },
+];
 
 const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unavailable }: any) => (
   <div className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all ${unavailable ? 'opacity-60 grayscale cursor-not-allowed border-slate-200 bg-slate-50' : 'hover:shadow-md'}`}>
@@ -59,6 +71,7 @@ const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unava
 );
 
 export default function MessagingCreditsPage() {
+  const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const { activeBranchId } = useActiveBranch();
   const resolvedBranchId = activeBranchId || user?.branchId || '';
@@ -266,19 +279,33 @@ export default function MessagingCreditsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-3 text-primary mb-2">
-            <RefreshCw size={20} />
-            <span className="text-xs font-black uppercase tracking-widest">Billing & Usage</span>
-          </div>
-          <h1 className="text-4xl font-display font-bold text-slate-900">
-            Messaging Credits
-          </h1>
-          <p className="text-slate-500 font-medium mt-1">Manage your SMS, WhatsApp, and Email credit balances.</p>
-        </div>
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4 md:px-8">
+      {/* Compact Header */}
+      <div>
+        <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
+        <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+      </div>
+
+      {/* Channel Tabs */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        {CHANNEL_TABS.map(tab => {
+          const isActive = pathname === tab.href;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
+                isActive
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+              )}
+            >
+              <tab.icon size={16} />
+              {tab.label}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Credit Overview */}

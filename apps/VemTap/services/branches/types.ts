@@ -12,6 +12,8 @@ export interface Branch {
     businessId: string;
     isActive: boolean;
     isMainBranch: boolean;
+    latitude?: number;
+    longitude?: number;
     logoUrl?: string;
     website?: string;
     whatsappNumber?: string;
@@ -70,6 +72,8 @@ export interface CreateBranchRequest {
     state?: string;
     city?: string;
     phone?: string;
+    latitude?: number;
+    longitude?: number;
     logoUrl?: string;
     officialEmail?: string;
     whatsappNumber?: string;
@@ -115,4 +119,6 @@ export interface UpdateBranchRequest {
     utilityBill?: string;
     engagement?: Record<string, any> & { ublSequence?: string[] };
     isMainBranch?: boolean;
+    latitude?: number;
+    longitude?: number;
 }

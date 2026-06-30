@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Search, LayoutGrid, Loader2, ScanLine } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -9,18 +9,19 @@ import { cn } from '@/lib/utils';
 import POSPageHeader from './shared/POSPageHeader';
 import BarcodeScanner from '@/components/dashboard/catalogue/BarcodeScanner';
 import toast from 'react-hot-toast';
+import { cacheProducts } from '@/lib/offline/db';
 
 interface POSHomeScreenProps {
   onOpenCart?: () => void;
   businessCode?: string;
   isPublic?: boolean;
+  headerActions?: React.ReactNode;
 }
 
-export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = false }: POSHomeScreenProps) {
+export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = false, headerActions }: POSHomeScreenProps) {
   const { cart, addToCart } = usePosStore();
   const { activeBranchId } = useActiveBranch();
   
-  // Use businessCode for public mode, activeBranchId for admin mode
   const branchId = isPublic ? businessCode : activeBranchId;
   
   const { data: productsData, isLoading: loadingProducts } = useCatalogueItemsPublic(branchId ?? '');
@@ -39,6 +40,33 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   });
 
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  // Cache products in IndexedDB for offline use
+  useEffect(() => {
+    if (products.length > 0 && navigator.onLine) {
+      const offlineProducts = products.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        description: p.description,
+        categoryId: p.categoryId,
+        mainImage: p.mainImage,
+        galleryImages: p.galleryImages,
+        sku: p.sku,
+        barcode: p.barcode,
+        weight: p.weight,
+        dimensions: p.dimensions,
+        stockQuantity: p.stockQuantity,
+        discountType: p.discountType,
+        discountValue: p.discountValue,
+        enableLoyaltyPoints: p.enableLoyaltyPoints,
+        loyaltyPointsValue: p.loyaltyPointsValue || p.loyaltyPoints,
+        allowBackOrder: p.allowBackOrder,
+        cachedAt: Date.now(),
+      }));
+      cacheProducts(offlineProducts);
+    }
+  }, [products]);
 
   const handleBarcodeScan = (product: any) => {
     if (product) {
@@ -72,33 +100,44 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
 
   if (loadingProducts) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-80px)]">
+      <div className="flex items-center justify-center h-full min-h-[300px]">
         <Loader2 size={32} className="animate-spin text-gray-400" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] md:h-full relative pb-24">
-      <div className="px-4 pt-4 md:px-0 md:pt-0">
-        <POSPageHeader title={isPublic ? 'Menu' : 'Point of Sale'} showBack={false} />
-      </div>
+    <div className="flex flex-col h-full">
+      {!isPublic && (
+        <div className="shrink-0 px-4 pt-4 md:px-0 md:pt-0">
+          <POSPageHeader title="Point of Sale" showBack={false} />
+        </div>
+      )}
 
-      <div className="px-4 md:px-0 mb-6 space-y-4">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search products or scan barcode..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-14 pl-12 pr-4 rounded-[24px] border border-gray-200 bg-white shadow-sm focus:outline-none focus:border-[#066CF4]/50 focus:ring-4 focus:ring-[#066CF4]/10 text-sm font-bold text-gray-900 transition-all placeholder:font-medium placeholder:text-gray-400"
-          />
-          <button onClick={() => setShowBarcodeScanner(true)} className="absolute right-3 top-1/2 -translate-y-1/2 size-8 bg-[#066CF4]/10 rounded-xl flex items-center justify-center text-[#066CF4] hover:bg-[#066CF4]/20 transition-colors">
-            <ScanLine size={16} />
-          </button>
+      <div className="shrink-0 px-4 md:px-0 mb-4 space-y-4">
+        {/* Search bar + Quick Actions row */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-lg">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search products or scan barcode..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-12 md:h-14 pl-12 pr-12 rounded-[24px] border border-gray-200 bg-white shadow-sm focus:outline-none focus:border-[#066CF4]/50 focus:ring-4 focus:ring-[#066CF4]/10 text-sm font-bold text-gray-900 transition-all placeholder:font-medium placeholder:text-gray-400"
+            />
+            <button onClick={() => setShowBarcodeScanner(true)} className="absolute right-3 top-1/2 -translate-y-1/2 size-8 bg-[#066CF4]/10 rounded-xl flex items-center justify-center text-[#066CF4] hover:bg-[#066CF4]/20 transition-colors">
+              <ScanLine size={16} />
+            </button>
+          </div>
+          {headerActions && (
+            <div className="hidden md:flex items-center gap-2 shrink-0">
+              {headerActions}
+            </div>
+          )}
         </div>
 
+        {/* Category pills */}
         <div className="flex overflow-x-auto no-scrollbar gap-2 pb-2 -mx-4 px-4 md:mx-0 md:px-0">
           <button
             onClick={() => setActiveCategory('all')}
@@ -129,7 +168,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 md:px-0 pb-32">
+      {/* Product grid — scrollable independently */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-0 pb-4">
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
             {filteredProducts.map((product: any) => {
@@ -201,35 +241,39 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         )}
       </div>
 
-      <div className="fixed bottom-[80px] left-0 right-0 p-4 md:hidden z-20 pointer-events-none">
-        <button
-          onClick={onOpenCart}
-          className={cn(
-            "w-full h-14 rounded-[20px] shadow-xl flex items-center justify-between px-6 transition-all pointer-events-auto active:scale-[0.98]",
-            cartItemCount > 0
-              ? "bg-[#066CF4] text-white shadow-[#066CF4]/30"
-              : "bg-gray-900 text-white shadow-gray-900/20"
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <ShoppingBag size={20} />
-              {cartItemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-white text-[#066CF4] text-[9px] font-black size-5 rounded-full flex items-center justify-center shadow-sm">
-                  {cartItemCount}
-                </span>
-              )}
+      {/* Mobile floating cart button */}
+      {!isPublic && (
+        <div className="shrink-0 md:hidden px-4 pb-4">
+          <button
+            onClick={onOpenCart}
+            className={cn(
+              "w-full h-14 rounded-[20px] shadow-xl flex items-center justify-between px-6 transition-all active:scale-[0.98]",
+              cartItemCount > 0
+                ? "bg-[#066CF4] text-white shadow-[#066CF4]/30"
+                : "bg-gray-900 text-white shadow-gray-900/20"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <ShoppingBag size={20} />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-white text-[#066CF4] text-[9px] font-black size-5 rounded-full flex items-center justify-center shadow-sm">
+                    {cartItemCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] font-black uppercase tracking-widest">View Cart</span>
             </div>
-            <span className="text-[11px] font-black uppercase tracking-widest">View Cart</span>
-          </div>
-          {cartItemCount > 0 && (
-            <span className="text-sm font-black">
-              ₦{usePosStore.getState().getCartTotal().toLocaleString()}
-            </span>
-          )}
-        </button>
-      </div>
+            {cartItemCount > 0 && (
+              <span className="text-sm font-black">
+                ₦{usePosStore.getState().getCartTotal().toLocaleString()}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
 
+      {/* Barcode Scanner Modal */}
       <BarcodeScanner
         isOpen={showBarcodeScanner}
         products={scannedProducts}

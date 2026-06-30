@@ -11,6 +11,10 @@ import type {
     RecommendBusinessDto,
     RecommendBusinessResponse,
     NearbyPartner,
+    NearbyPartnersResponse,
+    PaginatedPartnershipInvitationsResponse,
+    PartnershipInvitation,
+    InvitePartnershipDto,
 } from './types';
 
 function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
@@ -75,12 +79,27 @@ export const useActivePartners = (branchId?: string) => {
     });
 };
 
-export const useNearbyPartners = (branchId?: string) => {
+export const useNearbyPartners = (branchId?: string, distance?: number) => {
     const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 
-    return useQuery<NearbyPartner[]>({
-        queryKey: ['discovery', 'partners', 'nearby', resolvedBranchId],
-        queryFn: () => api.get(`/partnerships/nearby?branchId=${resolvedBranchId}`),
+    return useQuery<NearbyPartnersResponse>({
+        queryKey: ['discovery', 'partners', 'nearby', resolvedBranchId, distance],
+        queryFn: async () => {
+            let url = `/partnerships/nearby-branches?branchId=${resolvedBranchId}`;
+            if (distance) url += `&distance=${distance}`;
+            const res = await api.get(url);
+            const partners: NearbyPartner[] = (res.data || []).map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                businessName: item.business?.name || item.name,
+                type: item.business?.category || 'Business',
+                distance: item.distanceMeters ? `${(item.distanceMeters / 1000).toFixed(1)} km away` : '',
+                distanceInMeters: item.distanceMeters,
+                latitude: item.latitude ? Number(item.latitude) : undefined,
+                longitude: item.longitude ? Number(item.longitude) : undefined,
+            }));
+            return { data: partners, total: res.total, page: res.page, limit: res.limit };
+        },
         enabled: !!resolvedBranchId,
     });
 };
@@ -109,6 +128,46 @@ export const useRecommendBusiness = () => {
         mutationFn: (data: RecommendBusinessDto) =>
             api.post(`/discovery/recommend/${resolvedBranchId}`, data),
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['discovery', 'partners'] });
+        },
+    });
+};
+
+export const usePartnershipInvitations = (params: { type?: 'sent' | 'received' | 'all'; status?: string; branchId?: string } = {}) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(params.branchId);
+    const { type = 'received', status } = params;
+
+    const queryParams = new URLSearchParams();
+    if (resolvedBranchId) queryParams.set('branchId', resolvedBranchId);
+    queryParams.set('type', type);
+    if (status) queryParams.set('status', status);
+
+    return useQuery<PaginatedPartnershipInvitationsResponse>({
+        queryKey: ['partnerships', 'invitations', resolvedBranchId, type, status],
+        queryFn: () => api.get(`/partnerships/invitations?${queryParams.toString()}`),
+        enabled: !!resolvedBranchId,
+    });
+};
+
+export const useInvitePartner = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<PartnershipInvitation, Error, InvitePartnershipDto>({
+        mutationFn: (data) => api.post('/partnerships/invite', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['partnerships'] });
+            queryClient.invalidateQueries({ queryKey: ['discovery', 'partners'] });
+        },
+    });
+};
+
+export const useRespondToInvitation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<PartnershipInvitation, Error, { id: string; status: 'Accepted' | 'Declined' }>({
+        mutationFn: ({ id, status }) => api.patch(`/partnerships/${id}/respond`, { status }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['partnerships'] });
             queryClient.invalidateQueries({ queryKey: ['discovery', 'partners'] });
         },
     });

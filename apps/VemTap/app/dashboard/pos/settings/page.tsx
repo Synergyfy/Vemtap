@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Store, Receipt, Calculator, Bell, Save } from 'lucide-react';
+import { Store, Receipt, Calculator, Bell, Save, Coins } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosSettingsStore } from '@/store/usePosSettingsStore';
 
-type SettingsTab = 'business' | 'receipt' | 'tax' | 'notifications';
+type SettingsTab = 'business' | 'receipt' | 'tax' | 'notifications' | 'loyalty';
 
 export default function POSSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('business');
@@ -30,6 +30,8 @@ export default function POSSettingsPage() {
     dailySalesSummary: true,
     newOrderAlert: false,
     staffActivityAlerts: false,
+    loyaltyEnabled: false,
+    loyaltyRedeemThreshold: 100,
   });
 
   React.useEffect(() => {
@@ -50,6 +52,8 @@ export default function POSSettingsPage() {
       dailySalesSummary: settings.dailySalesSummary,
       newOrderAlert: settings.newOrderAlert,
       staffActivityAlerts: settings.staffActivityAlerts,
+      loyaltyEnabled: settings.loyaltyEnabled,
+      loyaltyRedeemThreshold: settings.loyaltyRedeemThreshold,
     });
   }, [settings]);
 
@@ -62,6 +66,7 @@ export default function POSSettingsPage() {
     { id: 'receipt', label: 'Receipt', icon: Receipt },
     { id: 'tax', label: 'Tax & Pricing', icon: Calculator },
     { id: 'notifications', label: 'Alerts', icon: Bell },
+    { id: 'loyalty', label: 'Loyalty', icon: Coins },
   ];
 
   const handleSave = () => {
@@ -116,6 +121,7 @@ export default function POSSettingsPage() {
         {activeTab === 'receipt' && <ReceiptSettings values={localSettings} onChange={updateField} />}
         {activeTab === 'tax' && <TaxSettings values={localSettings} onChange={updateField} />}
         {activeTab === 'notifications' && <AlertSettings values={localSettings} onChange={updateField} />}
+        {activeTab === 'loyalty' && <LoyaltySettings values={localSettings} onChange={updateField} />}
       </div>
     </div>
   );
@@ -253,6 +259,28 @@ function AlertSettings({ values, onChange }: SettingsProps) {
       </SettingsField>
       <SettingsField label="Staff Activity Alerts" description="Notify on refunds, voids, and drawer openings">
         <ToggleSwitch checked={values.staffActivityAlerts} onChange={(val) => onChange('staffActivityAlerts', val)} />
+      </SettingsField>
+    </div>
+  );
+}
+
+function LoyaltySettings({ values, onChange }: SettingsProps) {
+  return (
+    <div>
+      <SettingsField label="Enable Loyalty Program" description="Allow cashiers to award points to customers at checkout">
+        <ToggleSwitch checked={values.loyaltyEnabled} onChange={(val) => onChange('loyaltyEnabled', val)} />
+      </SettingsField>
+      <SettingsField label="Redemption Threshold" description="Minimum points required before a customer can redeem rewards">
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            value={values.loyaltyRedeemThreshold}
+            onChange={(e) => onChange('loyaltyRedeemThreshold', parseInt(e.target.value) || 100)}
+            min={1}
+            className="w-32 h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10"
+          />
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">pts</span>
+        </div>
       </SettingsField>
     </div>
   );

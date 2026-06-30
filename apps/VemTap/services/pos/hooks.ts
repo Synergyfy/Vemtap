@@ -63,8 +63,8 @@ export const useCreatePosSale = () => {
 
 export const useUpdatePosSaleStatus = () => {
   const queryClient = useQueryClient();
-  return useMutation<PosSaleResponse, Error, { id: string; status: PosSaleStatus }>({
-    mutationFn: ({ id, status }) => posApi.updateSaleStatus(id, status),
+  return useMutation<PosSaleResponse, Error, { id: string; status: PosSaleStatus; reason?: string; refundItems?: { saleItemId: string; quantity: number }[] }>({
+    mutationFn: ({ id, status, reason, refundItems }) => posApi.updateSaleStatus(id, { status, reason, refundItems }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: posKeys.sales.all });
     },
