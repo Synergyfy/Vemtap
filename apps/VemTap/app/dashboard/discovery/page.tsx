@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
     Activity, Users, MapPin, Store, Tag, Plus, Target, CheckCircle2, ArrowRight,
     Settings, Search, Handshake, TrendingUp, RefreshCw, X, Image as ImageIcon,
-    ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2, Navigation, Crosshair
+    ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2, Navigation, Crosshair,
+    Trash2
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/dashboard/PageHeader';
@@ -15,6 +16,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const NearbyMap = dynamic(() => import('@/components/dashboard/discovery/NearbyMap'), { ssr: false });
 const LocationSetupModal = dynamic(() => import('@/components/dashboard/branches/LocationSetupModal'), { ssr: false });
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import { 
     useDiscoveryOverview,
     useDiscoveryResults,
@@ -1273,12 +1275,16 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [audience, setAudience] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const createOffer = useCreateCatalogueOffer();
 
     const handlePublish = () => {
         createOffer.mutate({
             name: title,
             description,
+            mainImage: imageUrl || undefined,
             branchId,
             itemIds: [],
             pricingType: 'sum',
@@ -1295,6 +1301,25 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                 alert(err.message || 'Failed to create promotion');
             },
         });
+    };
+
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploading(true);
+        try {
+            const url = await uploadToCloudinary(file);
+            setImageUrl(url);
+        } catch {
+            alert('Failed to upload image. Please try again.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setImageUrl('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     return (
@@ -1374,10 +1399,44 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Image</label>
-                                <div className="w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 cursor-pointer transition-colors">
-                                    <ImageIcon size={24} className="mb-2" />
-                                    <span className="font-bold text-sm">Upload Image</span>
-                                </div>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleImageSelect}
+                                    accept="image/*"
+                                    className="hidden"
+                                />
+                                {imageUrl ? (
+                                    <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-gray-200 group">
+                                        <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveImage}
+                                                className="bg-white/90 text-red-500 p-2 rounded-full hover:bg-white transition-colors"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 hover:border-primary/30 cursor-pointer transition-colors"
+                                    >
+                                        {isUploading ? (
+                                            <>
+                                                <Loader2 size={24} className="animate-spin mb-2 text-primary" />
+                                                <span className="font-bold text-sm">Uploading...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ImageIcon size={24} className="mb-2" />
+                                                <span className="font-bold text-sm">Upload Image</span>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex justify-between pt-6">
