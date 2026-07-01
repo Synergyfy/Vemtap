@@ -374,6 +374,11 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
     };
 
     const onSubmit: SubmitHandler<ProductFormValues> = async (values) => {
+        if (currentStep < STEPS.length - 1) {
+            handleNext();
+            return;
+        }
+
         setIsUploading(true);
         let toastId: string | undefined;
 
@@ -825,12 +830,13 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                         <div className="flex-1" />
 
                         {currentStep < STEPS.length - 1 ? (
-                            <button type="button" onClick={handleNext} className="flex items-center justify-center gap-2 h-12 px-8 bg-[#066CF4] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
+                            <button key="next-btn" type="button" onClick={handleNext} className="flex items-center justify-center gap-2 h-12 px-8 bg-[#066CF4] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
                                 Next
                                 <ChevronRight size={16} />
                             </button>
                         ) : (
                             <button
+                                key="submit-btn"
                                 type="submit"
                                 disabled={isUploading}
                                 className="flex items-center justify-center gap-2 h-12 px-8 bg-[#066CF4] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
