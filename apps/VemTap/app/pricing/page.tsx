@@ -63,6 +63,8 @@ export default function PricingPage() {
 
     const activePlans = plans.filter(p => p.isActive);
 
+    const standardPlans = activePlans.filter(p => !p.name.toLowerCase().includes('enterprise'));
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-white">
@@ -114,7 +116,7 @@ export default function PricingPage() {
                 {/* PRICING CARDS */}
                 <section className="container mx-auto max-w-7xl mb-32">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {activePlans.map((plan, index) => {
+                        {standardPlans.map((plan, index) => {
                             const highlight = plan.isPopular ?? false;
                             const isFree = plan.isFree;
                             const price = billing === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
@@ -192,7 +194,7 @@ export default function PricingPage() {
                 </section>
 
                 {/* COMPARISON TABLE */}
-                <PlanComparisonTable plans={activePlans} />
+                <PlanComparisonTable plans={standardPlans} />
 
                 {/* ENTERPRISE CTA */}
                 <section className="container mx-auto max-w-5xl mb-32">
