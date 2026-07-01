@@ -23,6 +23,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { UserStatusGuard } from './common/guards/user-status.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { SubscriptionGuard } from './modules/subscriptions/guards/subscription.guard';
+import { CapabilityGuard } from './modules/subscriptions/guards/capability.guard';
 import { SettingsModule } from './modules/settings/settings.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { PartnershipsModule } from './modules/partnerships/partnerships.module';
@@ -206,6 +207,10 @@ import { LegalComplianceModule } from './modules/legal-compliance/legal-complian
     {
       provide: APP_GUARD,
       useClass: SubscriptionGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CapabilityGuard,
     },
   ],
 })

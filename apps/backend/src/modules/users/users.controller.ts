@@ -31,7 +31,6 @@ import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
-import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 import {
   AdminCreateUserDto,
@@ -142,7 +141,6 @@ export class UsersController {
   @Post('team/invite')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('staff')
-  @UseGuards(CapabilityGuard)
   @RequireCapability('teamMembers')
   @ApiOperation({ summary: 'Invite a new team member' })
   @ApiResponse({ status: 201, type: User })
