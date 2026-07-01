@@ -547,7 +547,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     );
 
     return (
-        <div className={`max-w-${step === 2 ? '5xl' : '2xl'} mx-auto py-8 px-4`}>
+        <div className={`max-w-${step === 2 ? '5xl' : '2xl'} mx-auto pt-8 pb-32 md:pb-8 px-4`}>
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
