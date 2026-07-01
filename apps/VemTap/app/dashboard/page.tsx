@@ -154,7 +154,7 @@ export default function DashboardPage() {
                                 return [
                                     { label: 'My Business QR', icon: QrCode, color: 'text-emerald-600 bg-emerald-50/50 border-emerald-100/50', route: '/dashboard/customer-experience' },
                                     { label: 'Marketing Kit', icon: Sparkles, color: 'text-purple-600 bg-purple-50/50 border-purple-100/50', route: '/dashboard/marketing-assets' },
-                                    { label: 'Channels', icon: Zap, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/customer-capture/channels' },
+                                    { label: 'Channels', icon: Zap, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/messaging/sms' },
                                     { label: 'Campaigns', icon: Send, color: 'text-amber-600 bg-amber-50/50 border-amber-100/50', route: '/dashboard/marketing-assets/create' }
                                 ];
                             }

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PosService } from './pos.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { PosSale } from './entities/pos-sale.entity';
 import {
   PaymentMethod,
@@ -190,10 +191,60 @@ describe('PosService', () => {
     allowBackOrder: true,
   };
 
+  const mockEntityManager = {
+    getRepository: jest.fn().mockImplementation((entity) => {
+      if (entity === PosSale) return mockSaleRepo;
+      if (entity === PosSaleItem) return mockSaleItemRepo;
+      if (entity === PosSplitPayment) return mockSplitPaymentRepo;
+      if (entity === PosHeldSale) return mockHeldSaleRepo;
+      if (entity === PosHeldSaleItem) return mockHeldSaleItemRepo;
+      if (entity === PosRegisterSession) return mockRegisterSessionRepo;
+      if (entity === PosRefund) return mockRefundRepo;
+      if (entity === PosRefundItem) return mockRefundItemRepo;
+      if (entity === CatalogueItem) return mockProductRepo;
+      if (entity === CatalogueOffer) return mockOfferRepo;
+      if (entity === CatalogueOrder) return mockOrderRepo;
+      if (entity === CatalogueOrderItem) return mockOrderItemRepo;
+      if (entity === Business) return mockBusinessRepo;
+      if (entity === Branch) return mockBranchRepo;
+      if (entity === User) return mockUserRepo;
+      if (entity === FinancialTransaction) return mockFosTransactionRepo;
+      return null;
+    }),
+    findOne: jest.fn().mockImplementation((entity, options) => {
+      const repo = mockEntityManager.getRepository(entity);
+      return repo ? repo.findOne(options) : Promise.resolve(null);
+    }),
+    save: jest.fn().mockImplementation((entityOrObject, objectOrNothing) => {
+      let entityClass = entityOrObject;
+      let obj = objectOrNothing;
+      if (!obj) {
+        obj = entityOrObject;
+        entityClass = entityOrObject.constructor;
+      }
+      const repo = mockEntityManager.getRepository(entityClass);
+      if (repo) return repo.save(obj);
+      return Promise.resolve(obj);
+    }),
+    count: jest.fn().mockImplementation((entity, options) => {
+      const repo = mockEntityManager.getRepository(entity);
+      return repo ? repo.count(options) : Promise.resolve(0);
+    }),
+    create: jest.fn().mockImplementation((entity, dto) => {
+      const repo = mockEntityManager.getRepository(entity);
+      return repo ? repo.create(dto) : dto;
+    }),
+  };
+
+  const mockDataSource = {
+    transaction: jest.fn().mockImplementation((cb) => cb(mockEntityManager)),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PosService,
+        { provide: DataSource, useValue: mockDataSource },
         { provide: getRepositoryToken(PosSale), useValue: mockSaleRepo },
         {
           provide: getRepositoryToken(PosSaleItem),

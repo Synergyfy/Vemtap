@@ -1,13 +1,24 @@
 'use client';
 
 import React from 'react';
-import PageHeader from '@/components/dashboard/PageHeader';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import { useMessagingCampaigns } from '@/services/messaging/hooks';
 import { Campaign } from '@/services/messaging/types';
-import { Send, Clock } from 'lucide-react';
+import { Send, Clock, MessageSquare, Phone, Mail, CreditCard, History } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const TABS = [
+    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
+    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
+    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
+    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
+    { label: 'History', href: '/dashboard/messaging/history', icon: History },
+];
 
 export default function MessageHistoryPage() {
+    const pathname = usePathname();
     const { data: campaigns, isLoading } = useMessagingCampaigns();
     const broadcasts = campaigns || [];
 
@@ -52,11 +63,34 @@ export default function MessageHistoryPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8 space-y-8 md:space-y-10">
-            <PageHeader
-                title="Message History"
-                description="View all previous broadcasts sent to your customers"
-            />
+        <div className="p-4 md:p-8 space-y-6">
+            {/* Compact Header */}
+            <div>
+                <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
+                <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+            </div>
+
+            {/* Channel Tabs */}
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {TABS.map(tab => {
+                    const isActive = pathname === tab.href;
+                    return (
+                        <Link
+                            key={tab.href}
+                            href={tab.href}
+                            className={cn(
+                                'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
+                                isActive
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                            )}
+                        >
+                            <tab.icon size={16} />
+                            {tab.label}
+                        </Link>
+                    );
+                })}
+            </div>
 
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 <DataTable

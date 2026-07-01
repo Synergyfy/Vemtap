@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
+import PlanPermissionsTab from '@/components/admin/pricing/PlanPermissionsTab';
 import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
 import { useQrThrivePlans } from '@/services/qr-thrive/hooks';
 import { useAdminAddOns, useAddOnStats, useAddAddOn, useUpdateAddOn, useDeleteAddOn } from '@/services/addons/hooks';
@@ -385,7 +386,7 @@ const BundleDiscountsTab = () => {
 };
 
 export default function AdminPricingPage() {
-    const [activeTab, setActiveTab] = useState<'plans' | 'addons'>('plans');
+    const [activeTab, setActiveTab] = useState<'plans' | 'addons' | 'permissions'>('plans');
     
     // Plans State
     const [editingPlan, setEditingPlan] = useState<EditablePlanForm | null>(null);
@@ -778,7 +779,7 @@ export default function AdminPricingPage() {
                             <span className="text-xs font-black uppercase tracking-widest">Pricing Management</span>
                         </div>
                         <h1 className="text-4xl font-display font-bold text-text-main">
-                            {activeTab === 'plans' ? 'Subscription Plans' : 'Add-ons & Discounts'}
+                            {activeTab === 'plans' ? 'Subscription Plans' : activeTab === 'addons' ? 'Add-ons & Discounts' : 'Plan Permissions'}
                         </h1>
                     </div>
                     <div className="flex flex-wrap gap-3">
@@ -794,6 +795,12 @@ export default function AdminPricingPage() {
                                 className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'addons' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
                                 Add-ons
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('permissions')}
+                                className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'permissions' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Permissions
                             </button>
                         </div>
                         {activeTab === 'plans' ? (
@@ -1093,6 +1100,8 @@ export default function AdminPricingPage() {
                             ))}
                         </AnimatePresence>
                     </div>
+                ) : activeTab === 'permissions' ? (
+                    <PlanPermissionsTab plans={plans} isLoading={plansLoading} />
                 ) : (
                     <div className="space-y-12">
                         <BundleDiscountsTab />

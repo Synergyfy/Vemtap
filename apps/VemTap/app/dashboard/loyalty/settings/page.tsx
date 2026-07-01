@@ -1,14 +1,82 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Bell, Zap, QrCode, Power, Save } from 'lucide-react';
+import { Shield, Bell, Zap, QrCode, Power, Save, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLoyaltyRules, useUpdateLoyaltyRules } from '@/services/loyalty/hooks';
+import Spinner from '@/components/ui/Spinner';
+import toast from 'react-hot-toast';
 
 export default function LoyaltySettingsPage() {
+    const { data: rules, isLoading } = useLoyaltyRules();
+    const updateRulesMutation = useUpdateLoyaltyRules();
+
+    const [formState, setFormState] = useState({
+        isActive: true,
+        qrRedemption: true,
+        pushNotifications: true,
+        spendingBaseAmount: 1000,
+        spendingBasePoints: 10,
+        dailyPointsLimit: 5000,
+        fraudProtection: true,
+    });
+    const [isDirty, setIsDirty] = useState(false);
+
+    useEffect(() => {
+        if (rules) {
+            setFormState(prev => ({
+                ...prev,
+                isActive: rules.isActive ?? true,
+                spendingBaseAmount: rules.spendingBaseAmount ?? 1000,
+                spendingBasePoints: rules.spendingBasePoints ?? 10,
+            }));
+            setIsDirty(false);
+        }
+    }, [rules]);
+
+    const handleChange = (key: string, value: any) => {
+        setFormState(prev => ({ ...prev, [key]: value }));
+        setIsDirty(true);
+    };
+
+    const handleSave = async () => {
+        try {
+            await updateRulesMutation.mutateAsync({
+                isActive: formState.isActive,
+                spendingBaseAmount: formState.spendingBaseAmount,
+                spendingBasePoints: formState.spendingBasePoints,
+            });
+            setIsDirty(false);
+            toast.success('Settings saved successfully');
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to save settings');
+        }
+    };
+
+    const handleDiscard = () => {
+        if (rules) {
+            setFormState(prev => ({
+                ...prev,
+                isActive: rules.isActive ?? true,
+                spendingBaseAmount: rules.spendingBaseAmount ?? 1000,
+                spendingBasePoints: rules.spendingBasePoints ?? 10,
+            }));
+        }
+        setIsDirty(false);
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl space-y-8 pb-10">
             {/* System Status Section */}
@@ -23,23 +91,33 @@ export default function LoyaltySettingsPage() {
                             <p className="text-xs md:text-sm text-gray-500">Enable or disable the loyalty system globally.</p>
                         </div>
                     </div>
-                    <Switch className="data-[state=checked]:bg-primary scale-110 md:scale-125" defaultChecked />
+                    <Switch
+                        checked={formState.isActive}
+                        onCheckedChange={(checked) => handleChange('isActive', checked)}
+                        className="data-[state=checked]:bg-primary scale-110 md:scale-125"
+                    />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pt-5 md:pt-6 border-t border-gray-50">
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                         <div className="flex items-center gap-3">
                             <QrCode size={18} className="text-gray-400" />
                             <span className="text-xs md:text-sm font-semibold text-gray-700">QR Redemption</span>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch
+                            checked={formState.qrRedemption}
+                            onCheckedChange={(checked) => handleChange('qrRedemption', checked)}
+                        />
                     </div>
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                         <div className="flex items-center gap-3">
                             <Bell size={18} className="text-gray-400" />
                             <span className="text-xs md:text-sm font-semibold text-gray-700">Push Notifications</span>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch
+                            checked={formState.pushNotifications}
+                            onCheckedChange={(checked) => handleChange('pushNotifications', checked)}
+                        />
                     </div>
                 </div>
             </section>
@@ -62,18 +140,20 @@ export default function LoyaltySettingsPage() {
                             <Label className="text-xs md:text-sm font-bold text-gray-700 ml-1">Default Points Ratio</Label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">₦</span>
-                                <Input 
-                                    defaultValue="1000" 
-                                    className="pl-8 h-11 md:h-12 rounded-xl border-gray-100 bg-gray-50/50 text-sm" 
+                                <Input
+                                    value={formState.spendingBaseAmount}
+                                    onChange={(e) => handleChange('spendingBaseAmount', Number(e.target.value))}
+                                    className="pl-8 h-11 md:h-12 rounded-xl border-gray-100 bg-gray-50/50 text-sm"
                                 />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-[10px] md:text-xs">= 10 pts</span>
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-[10px] md:text-xs">= {formState.spendingBasePoints} pts</span>
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs md:text-sm font-bold text-gray-700 ml-1">Daily Points Limit</Label>
-                            <Input 
-                                defaultValue="5000" 
-                                className="h-11 md:h-12 rounded-xl border-gray-100 bg-gray-50/50 text-sm" 
+                            <Input
+                                value={formState.dailyPointsLimit}
+                                onChange={(e) => handleChange('dailyPointsLimit', Number(e.target.value))}
+                                className="h-11 md:h-12 rounded-xl border-gray-100 bg-gray-50/50 text-sm"
                             />
                         </div>
                     </div>
@@ -86,20 +166,36 @@ export default function LoyaltySettingsPage() {
                                 <p className="text-[10px] md:text-xs text-gray-500">Automatically flag unusual activity.</p>
                             </div>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch
+                            checked={formState.fraudProtection}
+                            onCheckedChange={(checked) => handleChange('fraudProtection', checked)}
+                        />
                     </div>
                 </div>
             </section>
 
             <div className="flex justify-end gap-4">
-                <Button variant="ghost" className="h-12 px-8 rounded-xl font-bold text-gray-500">
+                <Button
+                    variant="ghost"
+                    onClick={handleDiscard}
+                    disabled={!isDirty}
+                    className="h-12 px-8 rounded-xl font-bold text-gray-500 disabled:opacity-40"
+                >
                     Discard Changes
                 </Button>
-                <Button className="h-12 px-8 rounded-xl font-bold bg-primary text-white shadow-lg shadow-primary/20 gap-2">
-                    <Save size={18} /> Save Settings
+                <Button
+                    onClick={handleSave}
+                    disabled={!isDirty || updateRulesMutation.isPending}
+                    className="h-12 px-8 rounded-xl font-bold bg-primary text-white shadow-lg shadow-primary/20 gap-2 disabled:opacity-60"
+                >
+                    {updateRulesMutation.isPending ? (
+                        <RefreshCw size={18} className="animate-spin" />
+                    ) : (
+                        <Save size={18} />
+                    )}
+                    Save Settings
                 </Button>
             </div>
         </div>
     );
 }
-

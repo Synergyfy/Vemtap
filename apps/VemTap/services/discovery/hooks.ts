@@ -11,6 +11,7 @@ import type {
     RecommendBusinessDto,
     RecommendBusinessResponse,
     NearbyPartner,
+    NearbyPartnersResponse,
     PaginatedPartnershipInvitationsResponse,
     PartnershipInvitation,
     InvitePartnershipDto,
@@ -78,12 +79,27 @@ export const useActivePartners = (branchId?: string) => {
     });
 };
 
-export const useNearbyPartners = (branchId?: string) => {
+export const useNearbyPartners = (branchId?: string, distance?: number) => {
     const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 
-    return useQuery<NearbyPartner[]>({
-        queryKey: ['discovery', 'partners', 'nearby', resolvedBranchId],
-        queryFn: () => api.get(`/partnerships/nearby?branchId=${resolvedBranchId}`),
+    return useQuery<NearbyPartnersResponse>({
+        queryKey: ['discovery', 'partners', 'nearby', resolvedBranchId, distance],
+        queryFn: async () => {
+            let url = `/partnerships/nearby-branches?branchId=${resolvedBranchId}`;
+            if (distance) url += `&distance=${distance}`;
+            const res = await api.get(url);
+            const partners: NearbyPartner[] = (res.data || []).map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                businessName: item.business?.name || item.name,
+                type: item.business?.category || 'Business',
+                distance: item.distanceMeters ? `${(item.distanceMeters / 1000).toFixed(1)} km away` : '',
+                distanceInMeters: item.distanceMeters,
+                latitude: item.latitude ? Number(item.latitude) : undefined,
+                longitude: item.longitude ? Number(item.longitude) : undefined,
+            }));
+            return { data: partners, total: res.total, page: res.page, limit: res.limit };
+        },
         enabled: !!resolvedBranchId,
     });
 };

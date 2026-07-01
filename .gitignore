@@ -67,6 +67,10 @@ pids
 *.pid.lock
 .next/dev/lock
 
+# Stray lock files (pnpm monorepo — only pnpm-lock.yaml should exist)
+package-lock.json
+yarn.lock
+
 # Vercel
 .vercel
 
