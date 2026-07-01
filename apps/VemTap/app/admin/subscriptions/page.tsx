@@ -2,9 +2,11 @@
 
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { CheckCircle2, AlertCircle, Clock, Search, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, Search, Calendar, X, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { adminSubscriptionsApi } from '@/lib/api/admin';
+import { cn } from '@/lib/utils';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 
 const STATUS_STYLES: Record<string, { bg: string; dot: string }> = {
     active: { bg: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
@@ -66,6 +68,196 @@ function SubscriptionHistoryModal({ business, subscriptions, onClose }: {
                             })}
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const STATUS_COLORS: Record<string, string> = {
+    active: '#22c55e',
+    trial: '#3b82f6',
+    expired: '#ef4444',
+    canceled: '#6b7280',
+    expiring_soon: '#f59e0b',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+    active: 'Active',
+    trial: 'Trial',
+    expired: 'Expired',
+    canceled: 'Canceled',
+    expiring_soon: 'Expiring Soon',
+};
+
+function StatusCharts({ subscriptions }: { subscriptions: any[] }) {
+    const { statusData, planData, totalSubs } = React.useMemo(() => {
+        const now = new Date();
+        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        const businessesWithActive = new Set<string>();
+        for (const sub of subscriptions) {
+            if (sub.status === 'active') {
+                businessesWithActive.add(sub.businessId || sub.business);
+            }
+        }
+
+        const statusCounts: Record<string, number> = {};
+        const planCounts: Record<string, number> = {};
+
+        for (const sub of subscriptions) {
+            const p = sub.plan || 'Unknown';
+            planCounts[p] = (planCounts[p] || 0) + 1;
+
+            let status = sub.status || 'unknown';
+
+            if (status === 'canceled') {
+                const businessKey = sub.businessId || sub.business;
+                if (businessesWithActive.has(businessKey)) continue;
+            }
+
+            if (status === 'active' && sub.renewal && sub.renewal !== 'N/A') {
+                const renewalDate = new Date(sub.renewal);
+                if (renewalDate <= sevenDaysFromNow && renewalDate > now) {
+                    status = 'expiring_soon';
+                }
+            }
+
+            statusCounts[status] = (statusCounts[status] || 0) + 1;
+        }
+
+        const status = Object.entries(statusCounts)
+            .map(([name, value]) => ({ name: STATUS_LABELS[name] || name, value, color: STATUS_COLORS[name] || '#9ca3af' }))
+            .sort((a, b) => b.value - a.value);
+        const plans = Object.entries(planCounts)
+            .map(([name, value]) => ({ name, value, color: `hsl(${Object.keys(planCounts).indexOf(name) * 45 + 200}, 60%, 55%)` }))
+            .sort((a, b) => b.value - a.value);
+        const total = status.reduce((s, d) => s + d.value, 0);
+        return { statusData: status, planData: plans, totalSubs: total };
+    }, [subscriptions]);
+
+    const CustomTooltip = ({ active, payload }: any) => {
+        if (active && payload?.length) {
+            const d = payload[0].payload;
+            return (
+                <div className="bg-white px-4 py-3 rounded-xl shadow-xl border border-gray-100 text-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="size-3 rounded-full" style={{ backgroundColor: d.color }} />
+                        <span className="font-bold text-gray-800">{d.name}</span>
+                    </div>
+                    <span className="font-black text-gray-900">{d.value.toLocaleString()}</span>
+                    <span className="text-gray-400 ml-1">({(d.value / totalSubs * 100).toFixed(1)}%)</span>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                        <Activity size={20} className="text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-black text-gray-900">Subscription Status</h3>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{totalSubs} total</p>
+                    </div>
+                </div>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="h-[220px] w-[220px] shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={statusData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={90}
+                                    paddingAngle={6}
+                                    dataKey="value"
+                                    strokeWidth={0}
+                                >
+                                    {statusData.map((entry, idx) => (
+                                        <Cell key={`sc-${idx}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 space-y-4 w-full">
+                        {statusData.map(d => (
+                            <div key={d.name} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="size-3 rounded-full" style={{ backgroundColor: d.color }} />
+                                    <span className="text-xs font-bold text-gray-500">{d.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full transition-all duration-500"
+                                            style={{ width: `${(d.value / totalSubs) * 100}%`, backgroundColor: d.color }}
+                                        />
+                                    </div>
+                                    <span className="text-sm font-black text-gray-900 min-w-[48px] text-right">{d.value}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="size-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                        <Activity size={20} className="text-purple-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-black text-gray-900">Plan Distribution</h3>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{totalSubs} subscriptions</p>
+                    </div>
+                </div>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="h-[200px] w-[200px] shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={planData}
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    dataKey="value"
+                                    strokeWidth={0}
+                                >
+                                    {planData.map((entry, idx) => (
+                                        <Cell key={`pc-${idx}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 space-y-4 w-full">
+                        {planData.map(d => (
+                            <div key={d.name} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="size-3 rounded-full" style={{ backgroundColor: d.color }} />
+                                    <span className="text-xs font-bold text-gray-500">{d.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full transition-all duration-500"
+                                            style={{ width: `${(d.value / totalSubs) * 100}%`, backgroundColor: d.color }}
+                                        />
+                                    </div>
+                                    <span className="text-sm font-black text-gray-900 min-w-[48px] text-right">{d.value}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
@@ -181,7 +373,7 @@ export default function AdminSubscriptionsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {[
-                    { label: 'Active Subscriptions', value: isLoadingStats ? '...' : statsObj.activeSubscriptions || 0, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
+                    { label: 'Active Subscriptions', value: isLoadingStats ? '...' : (statsObj.activeSubscriptions || 0) - (statsObj.expiringSoon || 0), icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
                     { label: 'Expiring Soon', value: isLoadingStats ? '...' : statsObj.expiringSoon || 0, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
                     { label: 'Past Due', value: isLoadingStats ? '...' : statsObj.pastDue || 0, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
                 ].map((stat, i) => (
@@ -196,6 +388,10 @@ export default function AdminSubscriptionsPage() {
                     </div>
                 ))}
             </div>
+
+            {subscriptions.length > 0 && (
+                <StatusCharts subscriptions={subscriptions} />
+            )}
 
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 <table className="w-full">

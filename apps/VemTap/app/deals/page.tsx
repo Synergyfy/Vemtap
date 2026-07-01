@@ -1,23 +1,57 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, TrendingUp, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Search, TrendingUp, Sparkles, SlidersHorizontal, MapPin, X } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CategoryDropdown from '@/components/promotions/CategoryStep';
 import TrendingSection from '@/components/promotions/TrendingSection';
 import PromotionCard from '@/components/promotions/PromotionCard';
+import LocationModal from '@/components/promotions/LocationModal';
 import {
     MOCK_PROMOTIONS,
     getPromotionsByCategory,
     getTrendingPromotions,
 } from '@/lib/mock/promotions';
 import { cn } from '@/lib/utils';
+import type { GeolocationCoordinates } from '@/lib/geolocation';
 
 export default function PromotionsPage() {
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
+    const [locationLabel, setLocationLabel] = useState('');
+    const [showLocationModal, setShowLocationModal] = useState(false);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('vemtap_user_location');
+        const savedLabel = localStorage.getItem('vemtap_user_location_label');
+        if (saved) {
+            try {
+                setLocation(JSON.parse(saved));
+                setLocationLabel(savedLabel || '');
+            } catch {
+                setShowLocationModal(true);
+            }
+        } else {
+            setShowLocationModal(true);
+        }
+    }, []);
+
+    const handleLocationSet = (coords: GeolocationCoordinates, label?: string) => {
+        setLocation(coords);
+        setLocationLabel(label || '');
+        localStorage.setItem('vemtap_user_location', JSON.stringify(coords));
+        if (label) localStorage.setItem('vemtap_user_location_label', label);
+    };
+
+    const handleClearLocation = () => {
+        setLocation(null);
+        setLocationLabel('');
+        localStorage.removeItem('vemtap_user_location');
+        localStorage.removeItem('vemtap_user_location_label');
+    };
 
     const filteredPromotions = useMemo(() => {
         let promos = getPromotionsByCategory(MOCK_PROMOTIONS, selectedCategory);
@@ -77,6 +111,19 @@ export default function PromotionsPage() {
                         >
                             Browse exclusive promotions from top businesses. Check VemTap before you shop.
                         </motion.p>
+
+                        {!location && (
+                            <motion.button
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.15 }}
+                                onClick={() => setShowLocationModal(true)}
+                                className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline"
+                            >
+                                <MapPin size={14} />
+                                Set your location for nearby deals
+                            </motion.button>
+                        )}
                     </div>
                 </div>
             </section>
@@ -105,6 +152,23 @@ export default function PromotionsPage() {
                             />
                         </div>
                     </div>
+
+                    {location && (
+                        <div className="flex items-center gap-2 mt-3">
+                            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full px-3 py-1.5">
+                                <MapPin size={12} className="text-primary" />
+                                <span className="text-[10px] font-bold text-primary">
+                                    {locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
+                                </span>
+                                <button
+                                    onClick={handleClearLocation}
+                                    className="p-0.5 hover:bg-primary/10 rounded-full transition-colors"
+                                >
+                                    <X size={10} className="text-primary" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -160,6 +224,12 @@ export default function PromotionsPage() {
                     )}
                 </div>
             </section>
+
+            <LocationModal
+                isOpen={showLocationModal}
+                onClose={() => setShowLocationModal(false)}
+                onLocationSet={handleLocationSet}
+            />
 
             <Footer />
         </div>
