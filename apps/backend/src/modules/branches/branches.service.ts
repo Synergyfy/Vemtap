@@ -425,8 +425,9 @@ export class BranchesService {
         bu.name                                                      AS "businessName",
         bu.logo_url                                                  AS "businessLogoUrl",
         ROUND(ST_Distance(b.location, source.location)::numeric, 2)  AS "distanceMeters"
-      FROM branches b, source
+      FROM branches b
       JOIN businesses bu ON bu.id = b.business_id
+      CROSS JOIN source
       WHERE b.id != source.id
         AND b.business_id != source.business_id
         AND b.latitude IS NOT NULL
@@ -447,7 +448,7 @@ export class BranchesService {
 
       const offers = await this.catalogueOfferRepository
         .createQueryBuilder('offer')
-        .where('offer.branch_id IN (:...branchIds)', { branchIds })
+        .where('offer.branchId IN (:...branchIds)', { branchIds })
         .andWhere('offer.status = :status', {
           status: CatalogueOfferStatus.ACTIVE,
         })

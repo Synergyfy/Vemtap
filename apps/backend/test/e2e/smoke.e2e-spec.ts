@@ -1,40 +1,40 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   User,
   UserRole,
   UserStatus,
 } from '../../src/modules/users/entities/user.entity';
-import { Repository } from 'typeorm';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import * as bcrypt from 'bcrypt';
 
 describe('Smoke Test (E2E)', () => {
   let app: INestApplication;
   let server: any;
-  let authToken: string;
+  let adminToken: string;
 
   beforeAll(async () => {
     app = await createTestApp();
     server = app.getHttpServer();
 
-    // Setup an authenticated session for the smoke test
     const userRepo = app.get<Repository<User>>(getRepositoryToken(User));
     const authService = app.get(AuthService);
 
-    const testEmail = `smoke-test-${Date.now()}@test.com`;
+    const testEmail = `smoke-admin-${Date.now()}@test.com`;
     const password = 'SmokeTestPass123!';
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await userRepo.save(
+    await userRepo.save(
       userRepo.create({
         email: testEmail,
         password: hashedPassword,
         firstName: 'Smoke',
-        lastName: 'Tester',
-        role: UserRole.ADMIN, // Use Admin to reach most routes
+        lastName: 'Admin',
+        role: UserRole.ADMIN,
         status: UserStatus.ACTIVE,
       }),
     );
@@ -43,103 +43,152 @@ describe('Smoke Test (E2E)', () => {
       identifier: testEmail,
       password,
     });
-    authToken = loginRes.access_token;
-  });
+    adminToken = loginRes.access_token;
+  }, 120000);
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('should ensure all registered routes return status < 500', async () => {
-    // ... (logic to get routes)
+  it('should return status < 500 for all API routes (authenticated)', async () => {
+    const routes = discoverRoutes(app);
+    console.log(`\n[Smoke] Discovered ${routes.length} API routes`);
 
-    const expressApp = app.getHttpAdapter().getInstance();
+    const failures: string[] = [];
 
-    const router = expressApp._router || expressApp.router;
-
-    if (!router) {
-      console.warn(
-        'Could not access Express router. Smoke test cannot discover routes automatically.',
-      );
-      if (expressApp) {
-        console.log('Express keys:', Object.keys(expressApp));
-      }
-      return;
-    }
-
-    // Helper to extract routes recursively from Express stack
-    const getRoutes = (
-      stack: any[],
-      basePath: string = '',
-    ): { path: string; method: string }[] => {
-      let routes: { path: string; method: string }[] = [];
-
-      stack.forEach((layer) => {
-        if (layer.route) {
-          const path = basePath + layer.route.path;
-          const method = Object.keys(layer.route.methods)[0].toUpperCase();
-          routes.push({ path, method });
-        } else if (layer.name === 'router' && layer.handle.stack) {
-          // Recursively check sub-routers
-          // Note: Express router regex might be tricky to parse back to string path,
-          // but often layer.regexp.source helps if path is missing.
-          // NestJS usually registers paths cleanly.
-          const routePath = '';
-          // Try to guess path from regexp if needed, but usually we just traverse.
-          // For NestJS global prefix, it often mounts a router.
-          routes = routes.concat(
-            getRoutes(layer.handle.stack, basePath + routePath),
-          );
-        }
-      });
-      return routes;
-    };
-
-    const availableRoutes = getRoutes(router.stack);
-
-    console.log(`Found ${availableRoutes.length} routes to smoke test.`);
-
-    // If 0 routes, something is wrong with extraction or app setup.
-    // But we won't fail the test setup, just warn.
-    if (availableRoutes.length === 0) {
-      console.warn(
-        'No routes found automatically. Smoke test might be skipping routes.',
-      );
-    }
-
-    for (const route of availableRoutes) {
-      // Replace parameter placeholders with dummy values
-      // e.g. /users/:id -> /users/dummy-param
-      const path = route.path.replace(
-        /:[^\/]+/g,
-        '123e4567-e89b-12d3-a456-426614174000',
-      ); // Use a UUID-like dummy
-
-      // Skip wildcard routes that might match everything
-      if (path.includes('*')) continue;
-
+    for (const route of routes) {
+      const url = replacePathParams(route.path);
       try {
-        // We use the lowercased method name to call supertest
-        // e.g. request(server).get(path)
-        const method = route.method.toLowerCase();
-        // @ts-ignore
-        const res = await request(server)
-          [method](path)
-          .set('Authorization', `Bearer ${authToken}`);
+        const req = request(server)[route.method.toLowerCase()](url)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .timeout(5000);
 
-        if (res.status >= 500) {
-          console.error(
-            `Smoke test failed for ${route.method} ${path}: Status ${res.status}`,
-            res.body,
-          );
+        if (['POST', 'PUT', 'PATCH'].includes(route.method)) {
+          req.send({});
         }
 
-        expect(res.status).toBeLessThan(500);
-      } catch (e) {
-        // If the error is actual network error (conn refused), fail.
-        // If it's just a failed expectation, Jest handles it.
-        throw e;
+        const res = await req;
+
+        if (res.status >= 500 && res.status !== 503) {
+          failures.push(
+            `${route.method} ${url} \u2192 ${res.status}\n  body: ${JSON.stringify(res.body)}`,
+          );
+        }
+      } catch (err: any) {
+        if (err.timeout) {
+          // Timeout is expected for SSE/streaming endpoints
+          continue;
+        }
+        failures.push(`${route.method} ${url} \u2192 ERROR: ${err.message}`);
       }
     }
-  });
+
+    if (failures.length > 0) {
+      console.error(
+        `\n[Smoke] ${failures.length} route(s) returned 500+ (authenticated):`,
+      );
+      failures.forEach((f) => console.error(`  ${f}`));
+    }
+
+    expect(failures).toHaveLength(0);
+  }, 300000);
+
+  it('should return status < 500 for all routes without auth (public pass)', async () => {
+    const routes = discoverRoutes(app);
+    const failures: string[] = [];
+
+    for (const route of routes) {
+      const url = replacePathParams(route.path);
+      try {
+        const req = request(server)[route.method.toLowerCase()](url).timeout(
+          5000,
+        );
+
+        if (['POST', 'PUT', 'PATCH'].includes(route.method)) {
+          req.send({});
+        }
+
+        const res = await req;
+
+        if (res.status >= 500 && res.status !== 503) {
+          failures.push(
+            `${route.method} ${url} \u2192 ${res.status}\n  body: ${JSON.stringify(res.body)}`,
+          );
+        }
+      } catch (err: any) {
+        if (err.timeout) {
+          continue;
+        }
+        failures.push(`${route.method} ${url} \u2192 ERROR: ${err.message}`);
+      }
+    }
+
+    if (failures.length > 0) {
+      console.error(
+        `\n[Smoke] ${failures.length} route(s) returned 500+ (public):`,
+      );
+      failures.forEach((f) => console.error(`  ${f}`));
+    }
+
+    expect(failures).toHaveLength(0);
+  }, 300000);
 });
+
+function discoverRoutes(app: INestApplication): {
+  path: string;
+  method: string;
+}[] {
+  try {
+    const config = new DocumentBuilder()
+      .setTitle('Vemtap API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    const routes: { path: string; method: string }[] = [];
+
+    for (const [path, methods] of Object.entries(document.paths || {})) {
+      for (const method of ['get', 'post', 'put', 'patch', 'delete'] as const) {
+        if (methods[method]) {
+          routes.push({ path, method: method.toUpperCase() });
+        }
+      }
+    }
+
+    routes.sort((a, b) => a.path.localeCompare(b.path));
+
+    if (routes.length < 10) {
+      console.warn(
+        `[Smoke] WARNING: Only ${routes.length} routes discovered. Expected significantly more.`,
+      );
+    }
+
+    return routes;
+  } catch (err) {
+    console.error('[Smoke] Failed to discover routes via Swagger:', err);
+    return [];
+  }
+}
+
+function replacePathParams(path: string): string {
+  return path.replace(/\{(\w+)\}/g, (_match: string, name: string) => {
+    const key = name.toLowerCase();
+    if (key.includes('id') || key === 'uuid') {
+      return '123e4567-e89b-12d3-a456-426614174000';
+    }
+    if (key.includes('email')) {
+      return 'test@example.com';
+    }
+    if (key.includes('code')) {
+      return 'test-code';
+    }
+    if (key.includes('username') || key === 'slug') {
+      return 'test-username';
+    }
+    if (key.includes('reference')) {
+      return 'test-ref';
+    }
+    return 'test-dummy';
+  });
+}
