@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Param,
   Delete,
   UseGuards,
@@ -12,6 +13,7 @@ import {
 import { PlansService } from './plans.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { SavePlanPermissionsDto } from './dto/save-plan-permissions.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -75,6 +77,35 @@ export class PlansController {
   })
   update(@Param('id') id: string, @Body() updatePlanDto: UpdatePlanDto) {
     return this.plansService.update(id, updatePlanDto);
+  }
+
+  @Get('admin/:id/permissions')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get plan feature permissions (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Plan permissions retrieved',
+  })
+  getPermissions(@Param('id') id: string) {
+    return this.plansService.getPermissions(id);
+  }
+
+  @Put('admin/:id/permissions')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Save plan feature permissions (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Permissions saved successfully',
+  })
+  updatePermissions(
+    @Param('id') id: string,
+    @Body() dto: SavePlanPermissionsDto,
+  ) {
+    return this.plansService.updatePermissions(id, dto);
   }
 
   @Delete('admin/:id')

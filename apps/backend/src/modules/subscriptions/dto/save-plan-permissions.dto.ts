@@ -1,54 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  ArrayNotEmpty,
-  IsArray,
-  IsBoolean,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
-export class CreatePlanDto {
-  @ApiProperty({ description: 'The name of the plan', example: 'Premium Plan' })
-  @IsString()
-  name: string;
-
-  @ApiPropertyOptional({ description: 'Monthly price', example: 50000 })
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  monthlyPrice?: number;
-
-  @ApiProperty({
-    description: 'Features included in the plan',
-    example: ['Analytics', 'Unlimited Messages'],
-  })
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
-  features: string[];
-
-  @ApiPropertyOptional({ description: 'Currency', example: 'NGN' })
-  @IsString()
-  @IsOptional()
-  currency?: string;
-
-  @ApiPropertyOptional({
-    description: 'Whether the plan is free',
-    example: false,
-  })
-  @IsBoolean()
-  @IsOptional()
-  isFree?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Trial duration in days (default 30)',
-    example: 30,
-  })
-  @IsNumber()
-  @IsOptional()
-  trialDurationDays?: number;
+export class SavePlanPermissionsDto {
+  // --- Existing Permission Columns ---
 
   @ApiPropertyOptional({ description: 'Is messaging enabled?', example: false })
   @IsBoolean()
@@ -70,47 +24,32 @@ export class CreatePlanDto {
   @IsOptional()
   emailCredits?: number;
 
-  @ApiPropertyOptional({
-    description: 'Is team members management enabled?',
-    example: false,
-  })
+  @ApiPropertyOptional({ description: 'Is team members enabled?', example: false })
   @IsBoolean()
   @IsOptional()
   teamMembersEnabled?: boolean;
 
-  @ApiPropertyOptional({
-    description: 'Maximum team members limit (null for unlimited)',
-    example: 5,
-  })
+  @ApiPropertyOptional({ description: 'Team members limit (null for unlimited)', example: 5 })
   @IsNumber()
   @IsOptional()
   teamMembersLimit?: number;
 
-  @ApiPropertyOptional({
-    description: 'Loyalty programs limit (null for unlimited)',
-    example: 10,
-  })
-  @IsNumber()
-  @IsOptional()
-  loyaltyLimit?: number;
-
-  @ApiPropertyOptional({
-    description: 'Is loyalty management enabled?',
-    example: false,
-  })
+  @ApiPropertyOptional({ description: 'Is loyalty enabled?', example: false })
   @IsBoolean()
   @IsOptional()
   loyaltyEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Loyalty programs limit (null for unlimited)', example: 10 })
+  @IsNumber()
+  @IsOptional()
+  loyaltyLimit?: number;
 
   @ApiPropertyOptional({ description: 'Is branches enabled?', example: false })
   @IsBoolean()
   @IsOptional()
   branchesEnabled?: boolean;
 
-  @ApiPropertyOptional({
-    description: 'Branches limit (null for unlimited)',
-    example: 3,
-  })
+  @ApiPropertyOptional({ description: 'Branches limit (null for unlimited)', example: 3 })
   @IsNumber()
   @IsOptional()
   branchLimit?: number;
@@ -120,10 +59,7 @@ export class CreatePlanDto {
   @IsOptional()
   analyticsEnabled?: boolean;
 
-  @ApiPropertyOptional({
-    description: 'Level of analytics',
-    example: 'advanced',
-  })
+  @ApiPropertyOptional({ description: 'Analytics level', example: 'advanced' })
   @IsString()
   @IsOptional()
   analyticsLevel?: string;
@@ -133,77 +69,30 @@ export class CreatePlanDto {
   @IsOptional()
   catalogueEnabled?: boolean;
 
-  @ApiPropertyOptional({
-    description: 'Maximum catalogue items limit (null for unlimited)',
-    example: 50,
-  })
+  @ApiPropertyOptional({ description: 'Max catalogue items (null for unlimited)', example: 50 })
   @IsNumber()
   @IsOptional()
   maxCatalogueItems?: number;
 
-  @ApiPropertyOptional({
-    description: 'Maximum catalogue categories limit (null for unlimited)',
-    example: 10,
-  })
+  @ApiPropertyOptional({ description: 'Max catalogue categories (null for unlimited)', example: 10 })
   @IsNumber()
   @IsOptional()
   maxCatalogueCategories?: number;
 
-  @ApiPropertyOptional({
-    description: 'Maximum catalogue offers limit (null for unlimited)',
-    example: 10,
-  })
+  @ApiPropertyOptional({ description: 'Max catalogue offers (null for unlimited)', example: 10 })
   @IsNumber()
   @IsOptional()
   maxCatalogueOffers?: number;
 
-  @ApiPropertyOptional({
-    description: 'Is automations enabled?',
-    example: false,
-  })
+  @ApiPropertyOptional({ description: 'Is automations enabled?', example: false })
   @IsBoolean()
   @IsOptional()
   automationsEnabled?: boolean;
 
-  @ApiPropertyOptional({
-    description: 'Maximum automations limit (null or -1 for unlimited)',
-    example: 5,
-  })
+  @ApiPropertyOptional({ description: 'Max automations (null for unlimited)', example: 5 })
   @IsNumber()
   @IsOptional()
   maxAutomations?: number;
-
-  @ApiPropertyOptional({
-    description: 'Is plan currently active?',
-    example: true,
-  })
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Plan description',
-    example: 'Access to premium features.',
-  })
-  @IsString()
-  @IsOptional()
-  description?: string;
-
-  @ApiPropertyOptional({
-    description: 'QR Thrive plan ID to link to',
-    example: 'plan_123',
-  })
-  @IsString()
-  @IsOptional()
-  qrThrivePlanId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Is this plan marked as popular?',
-    example: true,
-  })
-  @IsBoolean()
-  @IsOptional()
-  isPopular?: boolean;
 
   // --- New Permission Columns ---
 
