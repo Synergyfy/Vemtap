@@ -106,6 +106,9 @@ export default function PaymentScreen() {
     };
 
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const clientRef = uuidv4();
+    const orderedAt = new Date().toISOString();
+    
     const salePayload = {
       items,
       payment,
@@ -113,6 +116,8 @@ export default function PaymentScreen() {
       customerId: attachedCustomer?.id && UUID_RE.test(attachedCustomer.id) ? attachedCustomer.id : undefined,
       cartDiscountAmount: cartDiscount ? (cartDiscount.type === 'percentage' ? getCartDiscountAmount() : cartDiscount.value) : undefined,
       hideCustomerInfoOnReceipt,
+      clientRef,
+      orderedAt,
     };
 
     const buildOfflineSale = () => {

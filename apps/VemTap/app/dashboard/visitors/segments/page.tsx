@@ -12,15 +12,43 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useSegments } from '@/services/messaging/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import Spinner from '@/components/ui/Spinner';
+import CreateSegmentModal from '@/components/dashboard/CreateSegmentModal';
+import { useRouter } from 'next/navigation';
 
 export default function CustomerSegmentsPage() {
-    const segments = [
-        { id: '1', name: 'VIP Customers', count: 124, type: 'Behavioral', date: 'Oct 12, 2024', color: 'bg-amber-50 text-amber-600' },
-        { id: '2', name: 'New This Month', count: 85, type: 'Temporal', date: 'Oct 01, 2024', color: 'bg-blue-50 text-[#066CF4]' },
-        { id: '3', name: 'Inactive (>30 days)', count: 210, type: 'Retention', date: 'Sep 15, 2024', color: 'bg-red-50 text-red-600' },
-        { id: '4', name: 'Fashion Lovers', count: 450, type: 'Interest', date: 'Aug 20, 2024', color: 'bg-purple-50 text-purple-600' },
-        { id: '5', name: 'Weekend Regulars', count: 167, type: 'Behavioral', date: 'Jul 10, 2024', color: 'bg-emerald-50 text-emerald-600' },
-    ];
+    const { activeBranchId } = useActiveBranch();
+    const router = useRouter();
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const { data: apiSegments = [], isLoading } = useSegments(activeBranchId || undefined, true);
+
+    const segments = apiSegments.map((s, index) => {
+        const colors = [
+            'bg-amber-50 text-amber-600',
+            'bg-blue-50 text-[#066CF4]',
+            'bg-red-50 text-red-600',
+            'bg-purple-50 text-purple-600',
+            'bg-emerald-50 text-emerald-600'
+        ];
+        return {
+            id: s.id,
+            name: s.name,
+            count: s.users?.length || 0,
+            type: s.description || 'Custom Segment',
+            date: new Date(s.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            color: colors[index % colors.length]
+        };
+    });
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
 
     return (
         <div className="pb-32 md:pb-20 max-w-5xl mx-auto p-4 md:p-8">
@@ -36,7 +64,10 @@ export default function CustomerSegmentsPage() {
                         Organize your customers into high-performing target groups.
                     </p>
                 </div>
-                <Button className="h-14 px-8 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                <Button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="h-14 px-8 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
+                >
                     <Plus size={18} className="mr-2" />
                     Create New Segment
                 </Button>
@@ -45,7 +76,7 @@ export default function CustomerSegmentsPage() {
             {/* SEGMENT SUMMARY CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
                 {[
-                    { label: 'Total Segments', value: '12', icon: LayoutGrid, bg: 'bg-blue-50', text: 'text-blue-600' },
+                    { label: 'Total Segments', value: apiSegments.length.toString(), icon: LayoutGrid, bg: 'bg-blue-50', text: 'text-blue-600' },
                     { label: 'Avg. Open Rate', value: '42%', icon: Zap, bg: 'bg-emerald-50', text: 'text-emerald-600' },
                     { label: 'Active in Flows', value: '8', icon: Target, bg: 'bg-purple-50', text: 'text-purple-600' },
                 ].map((stat, i) => (
@@ -82,7 +113,10 @@ export default function CustomerSegmentsPage() {
                                 <p className="text-2xl font-black text-gray-900">{seg.count}</p>
                                 <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Customers</p>
                             </div>
-                            <Button className="h-10 px-6 rounded-xl bg-gray-900 text-[10px] font-black uppercase tracking-widest group-hover:bg-[#066CF4] transition-all">
+                            <Button 
+                                onClick={() => router.push(`/dashboard/visitors/all?segmentId=${seg.id}`)}
+                                className="h-10 px-6 rounded-xl bg-gray-900 text-[10px] font-black uppercase tracking-widest group-hover:bg-[#066CF4] transition-all"
+                            >
                                 View Group
                                 <ArrowRight size={14} className="ml-1" />
                             </Button>
@@ -100,10 +134,19 @@ export default function CustomerSegmentsPage() {
                 <p className="text-sm font-medium text-gray-400 max-w-sm mx-auto mb-8">
                     Create segments based on customer behavior, frequency, and interests to increase your marketing ROI.
                 </p>
-                <Button variant="outline" className="h-12 px-8 rounded-2xl border-gray-200 font-black text-xs uppercase tracking-widest text-gray-500 hover:bg-white hover:text-[#066CF4] transition-all">
+                <Button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    variant="outline" 
+                    className="h-12 px-8 rounded-2xl border-gray-200 font-black text-xs uppercase tracking-widest text-gray-500 hover:bg-white hover:text-[#066CF4] transition-all"
+                >
                     Explore Advanced Rules
                 </Button>
             </div>
+
+            <CreateSegmentModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+            />
         </div>
     );
 }

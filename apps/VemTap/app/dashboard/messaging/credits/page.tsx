@@ -26,20 +26,15 @@ import {
   RefreshCw,
   Calculator,
   Sparkles,
-  Phone
+  Phone,
+  ArrowLeft
 } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { cn } from '@/lib/utils';
 
-const CHANNEL_TABS = [
-    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
-    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
-    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
-    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
-    { label: 'History', href: '/dashboard/messaging/history', icon: History },
-];
+const CHANNEL_TABS_UNUSED = null; // Tabs removed - navigation via Messaging Center
 
 const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unavailable }: any) => (
   <div className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all ${unavailable ? 'opacity-60 grayscale cursor-not-allowed border-slate-200 bg-slate-50' : 'hover:shadow-md'}`}>
@@ -280,32 +275,20 @@ export default function MessagingCreditsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4 md:px-8">
-      {/* Compact Header */}
-      <div>
-        <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
-        <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+      {/* Back to Messaging Central */}
+      <div className="flex items-center gap-4 pt-4">
+        <Link
+          href="/dashboard/messaging"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-bold active:scale-95"
+        >
+          <ArrowLeft size={16} />
+          Messaging Center
+        </Link>
       </div>
 
-      {/* Channel Tabs */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-        {CHANNEL_TABS.map(tab => {
-          const isActive = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
-                isActive
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-              )}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-            </Link>
-          );
-        })}
+      <div>
+        <h1 className="text-2xl font-black text-text-main tracking-tight">Credits</h1>
+        <p className="text-sm text-text-secondary font-medium">Manage your messaging credit balance.</p>
       </div>
 
       {/* Credit Overview */}
@@ -315,7 +298,7 @@ export default function MessagingCreditsPage() {
           amount={credits?.smsCredits || 0} 
           icon={MessageSquare} 
           color="bg-blue-500"
-          subtitle="Direct SMS Campaigns"
+          subtitle="Direct SMS Messages"
         />
         <CreditCardComponent 
           title="WhatsApp Credits" 

@@ -22,6 +22,7 @@ import Modal from '@/components/ui/Modal';
 import { api } from '@/lib/api';
 import ProfileTabs from '@/components/dashboard/settings/profile/ProfileTabs';
 import PushNotificationsTab from '@/components/dashboard/settings/profile/PushNotificationsTab';
+import InstallAppButton from '@/components/shared/InstallAppButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRegisterOwner, useOtp, useLogin, useChangePassword } from '@/services/auth/hooks';
 import {
@@ -833,14 +834,18 @@ export default function BusinessProfilePage() {
             <PageHeader
                 title="Business Profile"
                 description="Update your business information and online presence"
+                isSticky={false}
                 actions={
-                    <button
-                        onClick={handleSave}
-                        disabled={updateBranchMutation.isPending || updateSocialsMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
-                    >
-                        {updateBranchMutation.isPending || updateSocialsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <InstallAppButton />
+                        <button
+                            onClick={handleSave}
+                            disabled={updateBranchMutation.isPending || updateSocialsMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
+                        >
+                            {updateBranchMutation.isPending || updateSocialsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+                        </button>
+                    </div>
                 }
             />
 

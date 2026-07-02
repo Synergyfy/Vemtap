@@ -197,6 +197,7 @@ export default function ProductsPage() {
                 <PageHeader
                     title="Products & Services"
                     description="Configure your active menu and services"
+                    isSticky={false}
                     actions={
                         <button 
                             onClick={handleAdd} 

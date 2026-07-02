@@ -91,6 +91,7 @@ export const useVisitors = (branchId?: string, query?: Record<string, any>, enab
             const searchParams = new URLSearchParams(contextParams);
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
+            if (query?.segmentId) searchParams.append('segmentId', query.segmentId);
             if (query?.page) searchParams.append('page', String(query.page));
             return await api.get(`/visitors?${searchParams.toString()}`);
         },

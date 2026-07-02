@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, Phone, Mail, LayoutDashboard, Wallet, CreditCard, Send, CheckCircle, Clock, Smartphone, Plus, Lock, Inbox, Zap, Search, AlertTriangle, MessageCircle, User, Loader2, History } from 'lucide-react';
+import { MessageSquare, Phone, Mail, LayoutDashboard, Wallet, CreditCard, Send, CheckCircle, Clock, Smartphone, Plus, Lock, Inbox, Zap, Search, AlertTriangle, MessageCircle, User, Loader2, History, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
 import ChannelBalance from '@/components/messaging/ChannelBalance';
@@ -14,14 +14,6 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import WhatsAppTemplateModal from '@/components/messaging/WhatsAppTemplateModal';
 import { cn } from '@/lib/utils';
-
-const CHANNEL_TABS = [
-    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
-    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
-    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
-    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
-    { label: 'History', href: '/dashboard/messaging/history', icon: History },
-];
 
 // Inline WhatsApp SVG icon for consistent branding
 function WhatsAppIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
@@ -55,41 +47,30 @@ export default function WhatsAppOverviewPage() {
 
     return (
         <div className="flex flex-col h-full bg-gray-50/30 overflow-hidden">
-            {/* Header and Tabs */}
+            {/* Header */}
             <div className="bg-white border-b border-gray-200 px-4 md:px-8 pt-4 md:pt-6 pb-0 shrink-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div className="flex flex-col gap-4 mb-4">
+                    {/* Back to Messaging Central */}
+                    <div className="flex items-center gap-4">
+                        <Link
+                            href="/dashboard/messaging"
+                            className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-xs md:text-sm font-bold active:scale-95 w-fit"
+                        >
+                            <ArrowLeft size={16} />
+                            Messaging Center
+                        </Link>
+                    </div>
+
                     <div>
-                        <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
-                        <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+                        <h1 className="text-xl md:text-2xl font-black text-text-main tracking-tight">WhatsApp</h1>
+                        <p className="text-xs md:text-sm text-text-secondary font-medium">Reach your customers via WhatsApp.</p>
                     </div>
                 </div>
 
-                {/* Channel Tabs */}
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-4">
-                    {CHANNEL_TABS.map(tab => {
-                        const isActive = pathname === tab.href;
-                        return (
-                            <Link
-                                key={tab.href}
-                                href={tab.href}
-                                className={cn(
-                                    'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
-                                    isActive
-                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-                                )}
-                            >
-                                <tab.icon size={16} />
-                                {tab.label}
-                            </Link>
-                        );
-                    })}
-                </div>
-
-                <div className="flex gap-4 md:gap-8 overflow-x-auto custom-scrollbar shrink-0">
+                <div className="flex gap-4 md:gap-8 overflow-x-auto custom-scrollbar shrink-0 no-scrollbar">
                     <button
                         onClick={() => setActiveTab('chat')}
-                        className={`pb-4 px-2 text-sm font-bold transition-all relative ${activeTab === 'chat' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
+                        className={`pb-4 px-2 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === 'chat' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
                     >
                         <div className="flex items-center gap-2">
                             <MessageSquare size={18} />
@@ -101,12 +82,12 @@ export default function WhatsAppOverviewPage() {
                     </button>
                     <button
                         onClick={() => setActiveTab('promotional')}
-                        className={`pb-4 px-2 text-sm font-bold transition-all relative ${activeTab === 'promotional' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
+                        className={`pb-4 px-2 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === 'promotional' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
                     >
                         <div className="flex items-center gap-2">
                             <Zap size={18} />
                             Promotional WhatsApp
-                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-black rounded-md flex items-center gap-1">
+                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-black rounded-md flex items-center gap-1 shrink-0 ml-1">
                                 <Lock size={10} />
                                 Coming Soon
                             </span>
@@ -130,20 +111,26 @@ export default function WhatsAppOverviewPage() {
                             className="w-full h-full p-4 md:p-8 overflow-y-auto custom-scrollbar"
                         >
                             {/* Warning Notice */}
-                            <div className="mb-8 p-6 bg-amber-50 border border-amber-100 rounded-[2rem] flex items-start gap-4 shadow-sm">
-                                <div className="p-3 bg-amber-100 rounded-2xl text-amber-600 shrink-0">
-                                    <AlertTriangle size={24} />
+                            <div className="mb-6 md:mb-8 p-4 md:p-6 bg-amber-50 border border-amber-100 rounded-2xl md:rounded-[2rem] flex flex-col sm:flex-row items-start gap-3 md:gap-4 shadow-sm">
+                                <div className="p-2 md:p-3 bg-amber-100 rounded-xl md:rounded-2xl text-amber-600 shrink-0">
+                                    <AlertTriangle size={20} className="md:w-6 md:h-6" />
                                 </div>
-                                <div className="space-y-1">
-                                    <h4 className="text-base font-black text-amber-900 leading-tight">Conversation Recording Notice</h4>
-                                    <p className="text-sm text-amber-800/80 font-medium leading-relaxed">
+                                <div className="space-y-1 md:space-y-1.5 flex-1">
+                                    <h4 className="text-sm md:text-base font-black text-amber-900 leading-tight">Conversation Recording Notice</h4>
+                                    <p className="text-xs md:text-sm text-amber-800/80 font-medium leading-relaxed">
                                         Messages sent via WhatsApp Click-to-Chat open directly in the WhatsApp application. 
                                         VemTap <span className="font-extrabold underline decoration-amber-300">does not record</span> these external discussions. 
-                                        For full record-keeping and business management, we recommend using our In-App Chat.
+                                        For full record-keeping, we recommend using our In-App Chat.
                                     </p>
+                                    <div className="mt-3 sm:hidden">
+                                        <Link href="/dashboard/messaging/chat" className="px-3 py-1.5 bg-white border border-amber-200 text-amber-700 text-[10px] font-bold rounded-lg hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 w-full">
+                                            <MessageCircle size={12} />
+                                            Go to In-App Chat
+                                        </Link>
+                                    </div>
                                 </div>
-                                <div className="ml-auto hidden lg:block">
-                                    <Link href="/dashboard/messaging/chat" className="px-4 py-2 bg-white border border-amber-200 text-amber-700 text-xs font-bold rounded-xl hover:bg-amber-100 transition-colors flex items-center gap-2">
+                                <div className="ml-auto hidden sm:block shrink-0">
+                                    <Link href="/dashboard/messaging/chat" className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-amber-200 text-amber-700 text-[10px] md:text-xs font-bold rounded-xl hover:bg-amber-100 transition-colors flex items-center gap-2 whitespace-nowrap">
                                         <MessageCircle size={14} />
                                         Go to In-App Chat
                                     </Link>
@@ -231,9 +218,9 @@ export default function WhatsAppOverviewPage() {
                                     <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
                                         <Zap className="text-primary" size={40} />
                                     </div>
-                                    <h3 className="text-2xl font-black text-text-main tracking-tight">Advanced Campaigns</h3>
+                                    <h3 className="text-2xl font-black text-text-main tracking-tight">Advanced Messaging</h3>
                                     <p className="text-sm text-text-secondary mt-3 leading-relaxed">
-                                        WhatsApp Broadcasts, Automated Campaigns, and Analytics are coming soon to VemTap. 
+                                        WhatsApp Broadcasts, Automated Messages, and Analytics are coming soon to VemTap. 
                                         We&apos;re currently finalizing our official WhatsApp Business API integration.
                                     </p>
                                     <button className="mt-8 px-8 py-3 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition-all text-sm w-full">
@@ -262,7 +249,7 @@ export default function WhatsAppOverviewPage() {
                             <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                                 <div className="flex items-center justify-between mb-8">
                                     <div>
-                                        <h3 className="text-xl font-display font-black text-text-main">Campaign Management</h3>
+                                        <h3 className="text-xl font-display font-black text-text-main">Message Management</h3>
                                         <p className="text-sm text-text-secondary">Send broadcasts and track marketing performance.</p>
                                     </div>
                                     <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full border border-amber-100">
