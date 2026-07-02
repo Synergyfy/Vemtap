@@ -118,6 +118,11 @@ export class UsersService {
     });
   }
 
+  async existsByPhone(phone: string): Promise<{ exists: boolean }> {
+    const user = await this.findByPhone(phone);
+    return { exists: !!user };
+  }
+
   async findByGoogleId(googleId: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { googleId },

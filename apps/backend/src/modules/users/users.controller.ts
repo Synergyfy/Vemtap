@@ -36,6 +36,7 @@ import {
   AdminCreateUserDto,
   AdminUpdateUserDto,
 } from './dto/admin-user-management.dto';
+import { Public } from '../../common/decorators/public.decorator';
 import { ParseUUIDPipe, Inject, forwardRef } from '@nestjs/common';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BusinessesService } from '../businesses/businesses.service';
@@ -74,6 +75,17 @@ export class UsersController {
       }
     }
     return actorId;
+  }
+
+  @Public()
+  @Get('public/check-phone')
+  @ApiOperation({ summary: 'Check if phone number exists (Public)' })
+  @ApiQuery({ name: 'phone', required: true, type: String })
+  async existsByPhone(@Query('phone') phone: string) {
+    if (!phone) {
+      throw new BadRequestException('Phone number query param is required');
+    }
+    return this.usersService.existsByPhone(phone);
   }
 
   @Get('profile')

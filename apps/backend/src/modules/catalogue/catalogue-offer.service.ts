@@ -18,6 +18,7 @@ import {
   CreateCatalogueOfferDto,
   UpdateCatalogueOfferDto,
   CatalogueOfferQueryDto,
+  PublicCatalogueOffersQueryDto,
 } from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -214,6 +215,122 @@ export class CatalogueOfferService {
     return result;
   }
 
+  async findAllOffersPublicGlobal(query: PublicCatalogueOffersQueryDto) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'newest',
+      categoryId,
+      lat,
+      lng,
+      radius,
+      audience,
+    } = query;
+
+    const skip = (page - 1) * limit;
+
+    const qb = this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.items', 'item')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business')
+      .where('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE })
+      .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('branch.isActive = :branchActive', { branchActive: true });
+
+    if (search) {
+      qb.andWhere(
+        '(offer.name ILIKE :search OR offer.description ILIKE :search OR business.name ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    if (categoryId) {
+      qb.andWhere('business.categoryId = :categoryId', { categoryId });
+    }
+
+    if (audience) {
+      qb.andWhere('offer.audience = :audience', { audience });
+    }
+
+    if (lat !== undefined && lng !== undefined) {
+      const earthRadius = 6371; // km
+      const distanceFormula = `${earthRadius} * acos(
+        cos(radians(:lat)) * cos(radians(branch.latitude)) *
+        cos(radians(branch.longitude) - radians(:lng)) +
+        sin(radians(:lat)) * sin(radians(branch.latitude))
+      )`;
+
+      qb.addSelect(distanceFormula, 'distance');
+      qb.setParameter('lat', lat);
+      qb.setParameter('lng', lng);
+
+      if (radius !== undefined && radius > 0) {
+        qb.andWhere(`${distanceFormula} <= :radius`, { radius });
+      }
+    }
+
+    if (sortBy === 'price_asc') {
+      qb.orderBy('offer.calculatedPrice', 'ASC');
+    } else if (sortBy === 'price_desc') {
+      qb.orderBy('offer.calculatedPrice', 'DESC');
+    } else if (sortBy === 'trending') {
+      qb.orderBy('offer.views', 'DESC').addOrderBy('offer.visits', 'DESC');
+    } else {
+      qb.orderBy('offer.createdAt', 'DESC');
+    }
+
+    const [rawOffers, total] = await qb.skip(skip).take(limit).getManyAndCount();
+
+    const mappedOffers = await Promise.all(
+      rawOffers.map(async (offer) => {
+        const originalPrice = offer.items.reduce(
+          (acc, it) => acc + Number(it.price || 0),
+          0,
+        );
+
+        let discountPercent = 0;
+        if (originalPrice > 0 && offer.calculatedPrice < originalPrice) {
+          discountPercent = Math.round(
+            ((originalPrice - offer.calculatedPrice) / originalPrice) * 100,
+          );
+        }
+
+        const claimedCount = await this.claimRepository.count({
+          where: {
+            offerId: offer.id,
+            status: In([
+              CatalogueOfferClaimStatus.CLAIMED,
+              CatalogueOfferClaimStatus.REDEEMED,
+            ]),
+          },
+        });
+
+        const isTrending = offer.views > 50 || offer.visits > 10;
+
+        return {
+          ...offer,
+          originalPrice,
+          dealPrice: offer.calculatedPrice,
+          discountPercent,
+          claimedCount,
+          maxClaims: offer.quantity || 100,
+          isTrending,
+        };
+      }),
+    );
+
+    return {
+      data: mappedOffers,
+      total,
+      page,
+      limit,
+    };
+  }
+
   async findOneOffer(id: string, branchId?: string) {
     const cacheKey = `offers:public:details:${id}`;
 
@@ -228,17 +345,57 @@ export class CatalogueOfferService {
     if (branchId) where.branchId = branchId;
     const offer = await this.offerRepository.findOne({
       where,
-      relations: ['items', 'reward'],
+      relations: ['items', 'reward', 'branch', 'branch.business'],
     });
     if (!offer) throw new NotFoundException('Offer not found');
 
+    const originalPrice = offer.items.reduce(
+      (acc, it) => acc + Number(it.price || 0),
+      0,
+    );
+
+    let discountPercent = 0;
+    if (originalPrice > 0 && offer.calculatedPrice < originalPrice) {
+      discountPercent = Math.round(
+        ((originalPrice - offer.calculatedPrice) / originalPrice) * 100,
+      );
+    }
+
+    const claimedCount = await this.claimRepository.count({
+      where: {
+        offerId: offer.id,
+        status: In([
+          CatalogueOfferClaimStatus.CLAIMED,
+          CatalogueOfferClaimStatus.REDEEMED,
+        ]),
+      },
+    });
+
+    const isTrending = offer.views > 50 || offer.visits > 10;
+
+    const mappedOffer = {
+      ...offer,
+      originalPrice,
+      dealPrice: offer.calculatedPrice,
+      discountPercent,
+      claimedCount,
+      maxClaims: offer.quantity || 100,
+      isTrending,
+      terms: [
+        'Valid during business hours',
+        'Cannot be combined with other offers',
+        'Valid for 7 days after claiming',
+      ],
+      longDescription: offer.description,
+    };
+
     try {
-      await this.cacheManager.set(cacheKey, offer, 3600000); // 1 hour TTL
+      await this.cacheManager.set(cacheKey, mappedOffer, 3600000); // 1 hour TTL
     } catch (err) {
       this.logger.warn(`Failed to set offer details in cache: ${err.message}`);
     }
 
-    return offer;
+    return mappedOffer;
   }
 
   async countOffers(branchId: string) {
