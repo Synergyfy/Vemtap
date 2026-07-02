@@ -78,6 +78,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
 import LocationStep from './components/LocationStep';
 import toast from 'react-hot-toast';
+import { api } from '@/lib/api';
 
 // --- Types ---
 type Step = 1 | 2 | '2A' | 3 | '3A' | 4 | 5 | '5A' | 6 | 7;
