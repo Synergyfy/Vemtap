@@ -44,6 +44,7 @@ describe('SubscriptionsService', () => {
     loyaltyLimit: 2,
     branchLimit: 3,
     analyticsLevel: 'basic',
+    permissionsConfiguredAt: new Date(),
   };
 
   const mockTrialPlan = {
@@ -222,6 +223,85 @@ describe('SubscriptionsService', () => {
       });
 
       expect(result.subscription.endDate.toISOString()).toBe(customEndDateStr);
+    });
+
+    describe('permissions guard', () => {
+      it('should allow free plan even without permissionsConfiguredAt', async () => {
+        const freePlanNoPerms = {
+          ...mockFreePlan,
+          permissionsConfiguredAt: null,
+        };
+        mockPlansService.findOne.mockResolvedValue(freePlanNoPerms);
+        mockSubRepository.findOne.mockResolvedValue(null);
+        mockBranchRepo.find.mockResolvedValue([]);
+
+        const result = await service.subscribe({
+          planId: '2',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.YEARLY,
+        });
+
+        expect(result.subscription.status).toBe(SubscriptionStatus.ACTIVE);
+      });
+
+      it('should throw BadRequest if paid plan has null permissionsConfiguredAt', async () => {
+        const paidPlanNoPerms = {
+          ...mockPlan,
+          permissionsConfiguredAt: null,
+        };
+        mockPlansService.findOne.mockResolvedValue(paidPlanNoPerms);
+
+        await expect(
+          service.subscribe({
+            planId: '1',
+            businessId: 'b1',
+            billingPeriod: BillingPeriod.MONTHLY,
+          }),
+        ).rejects.toThrow(BadRequestException);
+      });
+
+      it('should allow paid plan if permissionsConfiguredAt is set', async () => {
+        const paidPlanWithPerms = {
+          ...mockPlan,
+          permissionsConfiguredAt: new Date(),
+        };
+        mockPlansService.findOne.mockResolvedValue(paidPlanWithPerms);
+        mockSubRepository.findOne.mockResolvedValue(null);
+        mockBranchRepo.find.mockResolvedValue([]);
+        mockPaymentsService.verifyTransaction.mockResolvedValue({
+          status: 'success',
+          data: { amount: 5000 },
+          authorization: { authorization_code: 'AUTH_123' },
+        });
+
+        const result = await service.subscribe({
+          planId: '1',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.MONTHLY,
+          paymentReference: 'PAY_123',
+        });
+
+        expect(result.subscription.status).toBe(SubscriptionStatus.ACTIVE);
+      });
+
+      it('should allow admin override even without permissionsConfiguredAt', async () => {
+        const paidPlanNoPerms = {
+          ...mockPlan,
+          permissionsConfiguredAt: null,
+        };
+        mockPlansService.findOne.mockResolvedValue(paidPlanNoPerms);
+        mockSubRepository.findOne.mockResolvedValue(null);
+        mockBranchRepo.find.mockResolvedValue([]);
+
+        const result = await service.subscribe({
+          planId: '1',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.MONTHLY,
+          isAdminOverride: true,
+        });
+
+        expect(result.subscription.status).toBe(SubscriptionStatus.ACTIVE);
+      });
     });
   });
 

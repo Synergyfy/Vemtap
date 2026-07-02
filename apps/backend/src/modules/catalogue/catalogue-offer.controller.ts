@@ -24,6 +24,7 @@ import {
   CreateCatalogueOfferDto,
   UpdateCatalogueOfferDto,
   CatalogueOfferQueryDto,
+  PublicCatalogueOffersQueryDto,
 } from './dto/offer.dto';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -81,6 +82,13 @@ export class CatalogueOfferController {
   @ApiOperation({ summary: 'List all offers for the business (Admin)' })
   async listOffersAdmin(@Query('branchId') branchId: string, @Req() req: any) {
     return this.offerService.findAllOffersAdmin(req.user.businessId, branchId);
+  }
+
+  @Public()
+  @Get('public')
+  @ApiOperation({ summary: 'List active promotions across all branches (Public)' })
+  async listAllOffersPublic(@Query() query: PublicCatalogueOffersQueryDto) {
+    return this.offerService.findAllOffersPublicGlobal(query);
   }
 
   @Public()

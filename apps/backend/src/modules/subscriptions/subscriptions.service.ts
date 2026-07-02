@@ -142,6 +142,12 @@ export class SubscriptionsService {
       throw new BadRequestException('Selected plan is not active');
     }
 
+    if (!plan.isFree && !plan.permissionsConfiguredAt && !isAdminOverride) {
+      throw new BadRequestException(
+        'This plan is not yet available for subscription. Permissions must be configured first.',
+      );
+    }
+
     const business = await this.businessRepository.findOne({
       where: { id: businessId },
       relations: ['owner'],
@@ -845,6 +851,81 @@ export class SubscriptionsService {
             : finalCatalogueOffersLimit === 'unlimited'
               ? 'unlimited'
               : Math.max(0, finalCatalogueOffersLimit - usedCatalogueOffers),
+        },
+        inventory: {
+          enabled: plan.inventoryEnabled ?? false,
+          limit: plan.inventoryLimit === null || plan.inventoryLimit === -1 ? 'unlimited' : (plan.inventoryLimit ?? 0),
+          used: 0,
+          remaining: !plan.inventoryEnabled
+            ? 0
+            : plan.inventoryLimit === null || plan.inventoryLimit === -1
+              ? 'unlimited'
+              : plan.inventoryLimit ?? 0,
+        },
+        pos: {
+          enabled: plan.posEnabled ?? false,
+          limit: plan.posTerminalLimit === null || plan.posTerminalLimit === -1 ? 'unlimited' : (plan.posTerminalLimit ?? 0),
+          used: 0,
+          remaining: !plan.posEnabled
+            ? 0
+            : plan.posTerminalLimit === null || plan.posTerminalLimit === -1
+              ? 'unlimited'
+              : plan.posTerminalLimit ?? 0,
+        },
+        visitors: {
+          enabled: plan.visitorsEnabled ?? false,
+        },
+        inAppChat: {
+          enabled: plan.inAppChatEnabled ?? false,
+        },
+        forms: {
+          enabled: plan.formsEnabled ?? false,
+          limit: plan.formsLimit === null || plan.formsLimit === -1 ? 'unlimited' : (plan.formsLimit ?? 0),
+          used: 0,
+          remaining: !plan.formsEnabled
+            ? 0
+            : plan.formsLimit === null || plan.formsLimit === -1
+              ? 'unlimited'
+              : plan.formsLimit ?? 0,
+        },
+        businessQr: {
+          enabled: plan.businessQrEnabled ?? false,
+        },
+        marketingKit: {
+          enabled: plan.marketingKitEnabled ?? false,
+          limit: plan.marketingKitLimit === null || plan.marketingKitLimit === -1 ? 'unlimited' : (plan.marketingKitLimit ?? 0),
+          used: 0,
+          remaining: !plan.marketingKitEnabled
+            ? 0
+            : plan.marketingKitLimit === null || plan.marketingKitLimit === -1
+              ? 'unlimited'
+              : plan.marketingKitLimit ?? 0,
+        },
+        discovery: {
+          enabled: plan.discoveryEnabled ?? false,
+        },
+        staffRoles: {
+          enabled: plan.staffRolesEnabled ?? false,
+          limit: plan.staffRolesLimit === null || plan.staffRolesLimit === -1 ? 'unlimited' : (plan.staffRolesLimit ?? 0),
+          used: 0,
+          remaining: !plan.staffRolesEnabled
+            ? 0
+            : plan.staffRolesLimit === null || plan.staffRolesLimit === -1
+              ? 'unlimited'
+              : plan.staffRolesLimit ?? 0,
+        },
+        activityLog: {
+          enabled: plan.activityLogEnabled ?? false,
+        },
+        qrCodes: {
+          enabled: plan.qrCodesEnabled ?? false,
+          limit: plan.qrCodesLimit === null || plan.qrCodesLimit === -1 ? 'unlimited' : (plan.qrCodesLimit ?? 0),
+          used: 0,
+          remaining: !plan.qrCodesEnabled
+            ? 0
+            : plan.qrCodesLimit === null || plan.qrCodesLimit === -1
+              ? 'unlimited'
+              : plan.qrCodesLimit ?? 0,
         },
         features: plan.features || [],
         credits: {

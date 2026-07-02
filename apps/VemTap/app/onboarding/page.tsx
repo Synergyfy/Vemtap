@@ -673,6 +673,18 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     whatsappNumber: localData.socials.whatsapp || undefined,
                 }
             });
+
+            // Sync user profile to update businessId and branchId in Zustand store
+            try {
+                const profile = await api.get('/users/profile');
+                const token = useAuthStore.getState().access_token;
+                if (token) {
+                    useAuthStore.getState().login(profile, token);
+                }
+            } catch (err) {
+                console.error('Failed to sync user profile after business creation:', err);
+            }
+
             onNext(localData);
         } catch (err: any) {
             toast.error(err?.message || 'Failed to save business details');
