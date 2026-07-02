@@ -106,81 +106,81 @@ export default function InventoryDashboard() {
         title="Inventory Manager" 
         subtitle="Source of truth for all your products, stock levels, and pricing"
         actions={
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => router.push('/dashboard/catalogue/import')}
-              className="h-12 px-6 rounded-2xl bg-white border border-gray-100 text-gray-900 flex items-center gap-2 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
-            >
-              <Upload size={18} />
-              <span className="text-[11px] font-black uppercase tracking-widest hidden md:inline">Bulk Import</span>
-            </button>
-            <button 
-              onClick={handleAdd}
-              className="h-12 px-6 rounded-2xl bg-[#066CF4] text-white flex items-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all"
-            >
-              <Plus size={18} />
-              <span className="text-[11px] font-black uppercase tracking-widest hidden md:inline">Add Product</span>
-            </button>
-          </div>
+          <button 
+            onClick={handleAdd}
+            className="size-10 md:h-12 md:w-auto md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all"
+          >
+            <Plus size={18} />
+            <span className="text-[11px] font-black uppercase tracking-widest hidden md:inline">Add Product</span>
+          </button>
         }
       />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-[#066CF4]/20 transition-colors">
-          <div className="size-12 rounded-2xl flex items-center justify-center mb-4 border bg-blue-50 text-[#066CF4] border-blue-100 transition-transform group-hover:scale-110">
-            <Package size={22} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[20px] md:rounded-[28px] p-4 md:p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-[#066CF4]/20 transition-colors">
+          <div className="size-9 md:size-12 rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-4 border bg-blue-50 text-[#066CF4] border-blue-100 transition-transform group-hover:scale-110">
+            <Package className="w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
           </div>
           <div>
-            <h3 className="text-3xl font-black text-gray-900 leading-none mb-1">{items.length}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Items</p>
+            <h3 className="text-2xl md:text-3xl font-black text-gray-900 leading-none mb-0.5 md:mb-1">{items.length}</h3>
+            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Total Items</p>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-emerald-500/20 transition-colors">
-          <div className="size-12 rounded-2xl flex items-center justify-center mb-4 border bg-emerald-50 text-emerald-500 border-emerald-100 transition-transform group-hover:scale-110">
-            <span className="font-bold text-lg">₦</span>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-[20px] md:rounded-[28px] p-4 md:p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-emerald-500/20 transition-colors">
+          <div className="size-9 md:size-12 rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-4 border bg-emerald-50 text-emerald-500 border-emerald-100 transition-transform group-hover:scale-110">
+            <span className="font-bold text-sm md:text-lg">₦</span>
           </div>
           <div>
-            <h3 className="text-2xl font-black text-gray-900 leading-none mb-1">₦{totalValue.toLocaleString()}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Inventory Value</p>
+            <h3 className="text-lg md:text-2xl font-black text-gray-900 leading-none mb-0.5 md:mb-1">₦{totalValue.toLocaleString()}</h3>
+            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Inventory Value</p>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-amber-500/20 transition-colors">
-          <div className="size-12 rounded-2xl flex items-center justify-center mb-4 border bg-amber-50 text-amber-500 border-amber-100 transition-transform group-hover:scale-110">
-            <AlertTriangle size={22} />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-[20px] md:rounded-[28px] p-4 md:p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-amber-500/20 transition-colors">
+          <div className="size-9 md:size-12 rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-4 border bg-amber-50 text-amber-500 border-amber-100 transition-transform group-hover:scale-110">
+            <AlertTriangle className="w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
           </div>
           <div>
-            <h3 className="text-3xl font-black text-gray-900 leading-none mb-1">{lowStock}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Low Stock</p>
+            <h3 className="text-2xl md:text-3xl font-black text-gray-900 leading-none mb-0.5 md:mb-1">{lowStock}</h3>
+            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Low Stock</p>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-red-500/20 transition-colors">
-          <div className="size-12 rounded-2xl flex items-center justify-center mb-4 border bg-red-50 text-red-500 border-red-100 transition-transform group-hover:scale-110">
-            <Archive size={22} />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-[20px] md:rounded-[28px] p-4 md:p-6 border border-gray-100 shadow-sm flex flex-col justify-between group hover:border-red-500/20 transition-colors">
+          <div className="size-9 md:size-12 rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-4 border bg-red-50 text-red-500 border-red-100 transition-transform group-hover:scale-110">
+            <Archive className="w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
           </div>
           <div>
-            <h3 className="text-3xl font-black text-gray-900 leading-none mb-1">{outOfStock}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Out of Stock</p>
+            <h3 className="text-2xl md:text-3xl font-black text-gray-900 leading-none mb-0.5 md:mb-1">{outOfStock}</h3>
+            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Out of Stock</p>
           </div>
         </motion.div>
       </div>
 
       {/* Main Content — Products Table */}
       <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-4 md:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
           <h2 className="text-lg font-black text-gray-900">All Products</h2>
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by name, category, SKU..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 text-sm font-bold placeholder:font-medium focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10"
-            />
+          <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-72 md:flex-none">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search by name, category, SKU..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-11 md:h-12 pl-12 pr-4 rounded-xl border border-gray-200 text-sm font-bold placeholder:font-medium focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10"
+              />
+            </div>
+            <button 
+              onClick={() => router.push('/dashboard/catalogue/import')}
+              className="h-11 md:h-12 px-4 md:px-5 rounded-xl bg-white border border-gray-200 text-gray-600 flex items-center gap-2 hover:bg-gray-50 active:scale-95 transition-all shrink-0"
+            >
+              <Upload size={16} />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Import</span>
+            </button>
           </div>
         </div>
         

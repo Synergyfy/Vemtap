@@ -9,7 +9,7 @@ import {
     TrendingUp, ArrowRight, UserCheck, Search,
     ChevronRight, BarChart3, Settings as SettingsIcon,
     PieChart, Activity, Sparkles, FileText, Package,
-    ChevronDown, ChevronUp
+    ChevronDown, ChevronUp, CreditCard
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
@@ -168,10 +168,10 @@ export default function DashboardPage() {
                             }
                             // Default / Owner / Manager
                             return [
-                                { label: 'New Sale', icon: ShoppingBag, color: 'text-purple-600 bg-purple-50/50 border-purple-100/50', route: '/dashboard/commerce' },
-                                { label: 'Add Customer', icon: UserPlus, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/visitors/add' },
+                                { label: 'Sales', icon: ShoppingBag, color: 'text-purple-600 bg-purple-50/50 border-purple-100/50', route: '/dashboard/sales' },
+                                { label: 'POS Terminal', icon: CreditCard, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/pos' },
                                 { label: 'Send Message', icon: Send, color: 'text-indigo-600 bg-indigo-50/50 border-indigo-100/50', route: '/dashboard/messaging' },
-                                { label: 'Create Campaign', icon: Zap, color: 'text-amber-600 bg-amber-50/50 border-amber-100/50', route: '/dashboard/marketing-assets/create' },
+                                { label: 'Loyalty', icon: Gift, color: 'text-amber-600 bg-amber-50/50 border-amber-100/50', route: '/dashboard/loyalty' },
                                 { label: 'My Business QR', icon: QrCode, color: 'text-emerald-600 bg-emerald-50/50 border-emerald-100/50', route: '/dashboard/customer-experience' },
                                 { label: 'Capture Visitor', icon: UserCheck, color: 'text-rose-600 bg-rose-50/50 border-rose-100/50', route: '/dashboard/visitors' }
                             ];

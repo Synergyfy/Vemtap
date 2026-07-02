@@ -19,7 +19,7 @@ export function MessagingOverviewHeader() {
             <div>
                 <h1 className="text-3xl font-black text-gray-900 leading-tight">Messaging Center</h1>
                 <p className="text-sm font-medium text-gray-500 mt-1">
-                    Create, manage, and track customer campaigns.
+                    Create, manage, and track customer messages.
                 </p>
             </div>
             <div className="flex items-center gap-3">
@@ -67,11 +67,11 @@ export function MessagingStatsCards({ stats }: { stats: any[] }) {
 
 export function MessagingQuickActions() {
     const actions = [
-        { label: 'Create Campaign', icon: Plus, href: '/dashboard/messaging/create', color: 'bg-blue-50 text-[#066CF4]' },
-        { label: 'Send Promotion', icon: Megaphone, href: '/dashboard/messaging/create?type=promotion', color: 'bg-purple-50 text-purple-600' },
-        { label: 'Announcement', icon: Bell, href: '/dashboard/messaging/create?type=announcement', color: 'bg-amber-50 text-amber-600' },
-        { label: 'Discount Offer', icon: Percent, href: '/dashboard/messaging/create?type=discount', color: 'bg-emerald-50 text-emerald-600' },
-        { label: 'View Reports', icon: Activity, href: '/dashboard/messaging/reports', color: 'bg-indigo-50 text-indigo-600' },
+        { label: 'SMS', icon: Megaphone, href: '/dashboard/messaging/sms', color: 'bg-blue-50 text-[#066CF4]' },
+        { label: 'WhatsApp', icon: Zap, href: '/dashboard/messaging/whatsapp', color: 'bg-emerald-50 text-emerald-600' },
+        { label: 'Email', icon: Send, href: '/dashboard/messaging/email', color: 'bg-purple-50 text-purple-600' },
+        { label: 'History', icon: Activity, href: '/dashboard/messaging/history', color: 'bg-amber-50 text-amber-600' },
+        { label: 'Credits', icon: Sparkles, href: '/dashboard/messaging/credits', color: 'bg-indigo-50 text-indigo-600' },
     ];
 
     return (
@@ -100,7 +100,7 @@ export function RecentCampaignsList({ campaigns }: { campaigns: any[] }) {
     return (
         <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black text-gray-900">Recent Campaigns</h3>
+                <h3 className="text-xl font-black text-gray-900">Recent Messages</h3>
                 <Link href="/dashboard/messaging/history">
                     <Button variant="outline" className="rounded-xl border-gray-100 text-[10px] font-black uppercase tracking-widest">View History</Button>
                 </Link>

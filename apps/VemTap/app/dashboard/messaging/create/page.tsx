@@ -38,7 +38,7 @@ export default function CreateCampaignPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24 md:pb-10">
+        <div className="min-h-screen bg-gray-50 pb-36 md:pb-10">
             {/* Top Navigation */}
             <div className="sticky top-0 z-[40] w-full bg-white/80 backdrop-blur-xl border-b border-gray-100">
                 <div className="mx-auto max-w-2xl flex items-center justify-between p-4">
@@ -53,7 +53,7 @@ export default function CreateCampaignPage() {
                             <ArrowLeft className="size-5 text-gray-900" />
                         </Button>
                         <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest">
-                            {steps.find(s => s.id === Math.min(step, 5))?.title} Campaign
+                            {steps.find(s => s.id === Math.min(step, 5))?.title} Message
                         </h2>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => resetStore()} className="rounded-full text-gray-400">

@@ -11,9 +11,13 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Spinner from '@/components/ui/Spinner';
+import { useSearchParams } from 'next/navigation';
 
 export default function AllCustomersPage() {
-    const { data: paginatedData, isLoading } = useVisitors();
+    const searchParams = useSearchParams();
+    const segmentId = searchParams.get('segmentId') || undefined;
+
+    const { data: paginatedData, isLoading } = useVisitors(undefined, { segmentId });
     const visitors = paginatedData?.data || [];
 
     if (isLoading) {
