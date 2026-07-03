@@ -4,11 +4,11 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Clock, ArrowRight, Flame, Star, Zap } from 'lucide-react';
-import { MockPromotion, formatDealPrice, getUrgencyText, getClaimPercent } from '@/lib/mock/promotions';
+import { Promotion, formatDealPrice, getUrgencyText, getClaimPercent } from '@/lib/promotions';
 import { cn } from '@/lib/utils';
 
 interface PromotionCardProps {
-    promotion: MockPromotion;
+    promotion: Promotion;
     index: number;
 }
 

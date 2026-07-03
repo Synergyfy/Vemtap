@@ -9,6 +9,9 @@ import {
 import { toast } from 'react-hot-toast';
 import { checkPhone, requestClaimOtp, verifyClaimOtp } from '@/services/deals/hooks';
 
+import { useCheckPhone } from '@/services/users/hooks';
+import { useRequestClaimOtp, useVerifyClaim } from '@/services/catalogue/hooks';
+
 type JoinStep = 'phone' | 'otp' | 'new-account' | 'success';
 
 interface JoinOfferModalProps {
