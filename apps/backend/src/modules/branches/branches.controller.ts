@@ -25,7 +25,6 @@ import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 
 @ApiTags('branches')
@@ -37,7 +36,6 @@ export class BranchesController {
 
   @Post()
   @Roles(UserRole.OWNER)
-  @UseGuards(CapabilityGuard)
   @RequireCapability('branches')
   @ApiOperation({ summary: 'Create a new branch for the business' })
   create(@Request() req, @Body() createBranchDto: CreateBranchDto) {

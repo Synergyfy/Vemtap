@@ -601,8 +601,8 @@ export default function SMSSender() {
             </div>
 
             {/* Bottom Sticky Action Bar */}
-            <div className="fixed bottom-0 md:bottom-6 left-0 md:left-1/2 md:-translate-x-1/2 w-full md:max-w-5xl px-0 md:px-6 z-50">
-                <div className="bg-white/95 md:bg-white/80 backdrop-blur-xl border-t md:border border-gray-100 md:border-white/20 md:rounded-3xl p-4 md:p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] md:shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-6 ring-1 ring-black/5">
+            <div className="fixed bottom-20 md:bottom-6 left-0 md:left-1/2 md:-translate-x-1/2 w-full md:max-w-5xl px-0 md:px-6 z-40">
+                <div className="bg-white/95 md:bg-white/80 backdrop-blur-xl border-t md:border border-gray-100 md:border-white/20 md:rounded-3xl p-3 md:p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] md:shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-6 ring-1 ring-black/5">
                     <div className="flex justify-between md:justify-start md:gap-8 px-4 md:pl-4">
                         <div>
                             <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Recipients</p>

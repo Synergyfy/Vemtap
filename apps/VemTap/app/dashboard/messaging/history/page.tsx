@@ -1,26 +1,43 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import { useMessagingCampaigns } from '@/services/messaging/hooks';
 import { Campaign } from '@/services/messaging/types';
-import { Send, Clock, MessageSquare, Phone, Mail, CreditCard, History } from 'lucide-react';
+import { Send, Clock, ArrowLeft, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TABS = [
-    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
-    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
-    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
-    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
-    { label: 'History', href: '/dashboard/messaging/history', icon: History },
-];
-
 export default function MessageHistoryPage() {
-    const pathname = usePathname();
     const { data: campaigns, isLoading } = useMessagingCampaigns();
     const broadcasts = campaigns || [];
+
+    // Local state for filtering and pagination
+    const [searchQuery, setSearchQuery] = useState('');
+    const [channelFilter, setChannelFilter] = useState<string>('ALL');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Filter the data
+    const filteredData = useMemo(() => {
+        return broadcasts.filter((item) => {
+            const matchesSearch = item.name?.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesChannel = channelFilter === 'ALL' || item.channel?.toUpperCase() === channelFilter;
+            return matchesSearch && matchesChannel;
+        });
+    }, [broadcasts, searchQuery, channelFilter]);
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const paginatedData = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredData.slice(start, start + itemsPerPage);
+    }, [filteredData, currentPage]);
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, channelFilter]);
 
     const columns: Column<Campaign>[] = [
         {
@@ -63,48 +80,89 @@ export default function MessageHistoryPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8 space-y-6">
-            {/* Compact Header */}
+        <div className="p-4 md:p-8 pb-24 md:pb-8 space-y-6">
+            {/* Back to Messaging Central */}
+            <div className="flex items-center gap-4">
+                <Link
+                    href="/dashboard/messaging"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-bold active:scale-95"
+                >
+                    <ArrowLeft size={16} />
+                    Messaging Central
+                </Link>
+            </div>
+
             <div>
-                <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
-                <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+                <h1 className="text-2xl font-black text-text-main tracking-tight">Message History</h1>
+                <p className="text-sm text-text-secondary font-medium">View all your past messages and broadcasts.</p>
             </div>
 
-            {/* Channel Tabs */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                {TABS.map(tab => {
-                    const isActive = pathname === tab.href;
-                    return (
-                        <Link
-                            key={tab.href}
-                            href={tab.href}
-                            className={cn(
-                                'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
-                                isActive
-                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-                            )}
-                        >
-                            <tab.icon size={16} />
-                            {tab.label}
-                        </Link>
-                    );
-                })}
+            {/* Toolbar */}
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <div className="relative w-full md:w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search message name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    />
+                </div>
+                
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <Filter className="text-gray-400" size={18} />
+                    <select
+                        value={channelFilter}
+                        onChange={(e) => setChannelFilter(e.target.value)}
+                        className="flex-1 md:w-40 appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-text-main outline-none focus:border-primary transition-all cursor-pointer"
+                    >
+                        <option value="ALL">All Channels</option>
+                        <option value="SMS">SMS</option>
+                        <option value="WHATSAPP">WhatsApp</option>
+                        <option value="EMAIL">Email</option>
+                    </select>
+                </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm flex flex-col">
                 <DataTable
                     columns={columns}
-                    data={broadcasts}
+                    data={paginatedData}
                     isLoading={isLoading}
                     emptyState={
                         <div className="text-center py-20">
                             <Clock size={48} className="mx-auto text-gray-300 mb-4" />
-                            <h3 className="text-lg font-bold text-text-main">No history yet</h3>
-                            <p className="text-text-secondary text-sm">Your sent messages will appear here.</p>
+                            <h3 className="text-lg font-bold text-text-main">No history found</h3>
+                            <p className="text-text-secondary text-sm">No messages match your current filters.</p>
                         </div>
                     }
                 />
+                
+                {/* Pagination Controls */}
+                {!isLoading && filteredData.length > 0 && (
+                    <div className="border-t border-gray-100 p-4 flex items-center justify-between bg-gray-50/50">
+                        <p className="text-xs font-bold text-gray-500">
+                            Showing <span className="text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-gray-900">{Math.min(currentPage * itemsPerPage, filteredData.length)}</span> of <span className="text-gray-900">{filteredData.length}</span> results
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

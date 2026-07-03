@@ -4,6 +4,7 @@ import { Plan } from './entities/plan.entity';
 import { Repository } from 'typeorm';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { SavePlanPermissionsDto } from './dto/save-plan-permissions.dto';
 import { PricingUtil } from './utils/pricing.util';
 
 @Injectable()
@@ -58,5 +59,62 @@ export class PlansService {
   async remove(id: string): Promise<void> {
     const plan = await this.findOne(id);
     await this.planRepository.softRemove(plan);
+  }
+
+  async updatePermissions(
+    id: string,
+    dto: SavePlanPermissionsDto,
+  ): Promise<Plan> {
+    const plan = await this.findOne(id);
+    Object.assign(plan, dto);
+    plan.permissionsConfiguredAt = new Date();
+    return this.planRepository.save(plan);
+  }
+
+  async getPermissions(id: string): Promise<Partial<Plan>> {
+    const plan = await this.findOne(id);
+    const permissionFields: (keyof Plan)[] = [
+      'messagingEnabled',
+      'smsCredits',
+      'whatsappCredits',
+      'emailCredits',
+      'teamMembersEnabled',
+      'teamMembersLimit',
+      'loyaltyEnabled',
+      'loyaltyLimit',
+      'branchesEnabled',
+      'branchLimit',
+      'analyticsEnabled',
+      'analyticsLevel',
+      'catalogueEnabled',
+      'maxCatalogueItems',
+      'maxCatalogueCategories',
+      'maxCatalogueOffers',
+      'automationsEnabled',
+      'maxAutomations',
+      'inventoryEnabled',
+      'inventoryLimit',
+      'posEnabled',
+      'posTerminalLimit',
+      'visitorsEnabled',
+      'inAppChatEnabled',
+      'formsEnabled',
+      'formsLimit',
+      'businessQrEnabled',
+      'marketingKitEnabled',
+      'marketingKitLimit',
+      'discoveryEnabled',
+      'staffRolesEnabled',
+      'staffRolesLimit',
+      'activityLogEnabled',
+      'qrCodesEnabled',
+      'qrCodesLimit',
+      'permissionsConfiguredAt',
+    ];
+    const result: Partial<Plan> = { id: plan.id };
+    for (const field of permissionFields) {
+      (result as any)[field] = plan[field];
+    }
+    return result;
   }
 }

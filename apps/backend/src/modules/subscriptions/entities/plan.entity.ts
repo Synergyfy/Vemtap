@@ -95,6 +95,61 @@ export class Plan extends AbstractBaseEntity {
   @Column({ default: false })
   isPopular: boolean;
 
+  // New permission columns - feature toggles and limits
+  @Column({ default: false })
+  inventoryEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  inventoryLimit: number | null;
+
+  @Column({ default: false })
+  posEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  posTerminalLimit: number | null;
+
+  @Column({ default: false })
+  visitorsEnabled: boolean;
+
+  @Column({ default: false })
+  inAppChatEnabled: boolean;
+
+  @Column({ default: false })
+  formsEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  formsLimit: number | null;
+
+  @Column({ default: false })
+  businessQrEnabled: boolean;
+
+  @Column({ default: false })
+  marketingKitEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  marketingKitLimit: number | null;
+
+  @Column({ default: false })
+  discoveryEnabled: boolean;
+
+  @Column({ default: false })
+  staffRolesEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  staffRolesLimit: number | null;
+
+  @Column({ default: false })
+  activityLogEnabled: boolean;
+
+  @Column({ default: false })
+  qrCodesEnabled: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  qrCodesLimit: number | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  permissionsConfiguredAt: Date | null;
+
   @OneToMany(() => Subscription, (sub) => sub.plan)
   subscriptions: Subscription[];
 }

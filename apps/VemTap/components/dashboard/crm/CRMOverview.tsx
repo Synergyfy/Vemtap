@@ -52,11 +52,11 @@ export function CRMStatsCards({ stats }: { stats: any[] }) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="min-w-[240px] md:flex-1 rounded-[2.5rem] bg-white p-6 shadow-sm border border-gray-100 snap-center flex flex-col justify-between h-40 group hover:border-[#066CF4]/20 transition-all"
+                    className="min-w-[160px] md:min-w-[240px] md:flex-1 rounded-[1.5rem] md:rounded-[2.5rem] bg-white p-4 md:p-6 shadow-sm border border-gray-100 snap-center flex flex-col justify-between h-32 md:h-40 group hover:border-[#066CF4]/20 transition-all"
                 >
                     <div className="flex justify-between items-start">
-                        <div className={cn("size-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-110", stat.bg)}>
-                            <stat.icon size={24} className={stat.color} />
+                        <div className={cn("size-10 md:size-12 rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-110", stat.bg)}>
+                            <stat.icon size={20} className={`md:w-6 md:h-6 ${stat.color}`} />
                         </div>
                         {stat.trend && (
                             <div className={cn(
@@ -69,8 +69,8 @@ export function CRMStatsCards({ stats }: { stats: any[] }) {
                         )}
                     </div>
                     <div>
-                        <div className="text-3xl font-black text-gray-900 mb-1">{stat.value}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">{stat.label}</div>
+                        <div className="text-2xl md:text-3xl font-black text-gray-900 mb-0.5 md:mb-1">{stat.value}</div>
+                        <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">{stat.label}</div>
                     </div>
                 </motion.div>
             ))}
@@ -84,7 +84,7 @@ export function CRMQuickActions() {
         { label: 'Create Segment', icon: LayoutGrid, href: '/dashboard/visitors/segments', color: 'bg-purple-50 text-purple-600' },
         { label: 'Export Data', icon: Download, href: '/dashboard/visitors/export', color: 'bg-emerald-50 text-emerald-600' },
         { label: 'Import List', icon: Upload, href: '/dashboard/visitors/import', color: 'bg-indigo-50 text-indigo-600' },
-        { label: 'Send Campaign', icon: Send, href: '/dashboard/messaging/create', color: 'bg-rose-50 text-rose-600' },
+        { label: 'Send Message', icon: Send, href: '/dashboard/messaging/sms', color: 'bg-rose-50 text-rose-600' },
     ];
 
     return (
@@ -95,9 +95,9 @@ export function CRMQuickActions() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {actions.map((action, i) => (
                     <Link key={i} href={action.href} className="group">
-                        <div className="flex flex-col items-center text-center gap-4 p-6 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5 active:scale-95 h-full">
-                            <div className={cn("size-14 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform", action.color)}>
-                                <action.icon size={24} />
+                        <div className="flex flex-col items-center text-center gap-3 md:gap-4 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] bg-white border border-gray-100 shadow-sm transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5 active:scale-95 h-full">
+                            <div className={cn("size-12 md:size-14 rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform", action.color)}>
+                                <action.icon size={20} className="md:w-6 md:h-6" />
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-widest text-gray-700 leading-tight">{action.label}</span>
                         </div>
