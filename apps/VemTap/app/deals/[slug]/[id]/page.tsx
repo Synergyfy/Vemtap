@@ -15,7 +15,7 @@ import JoinOfferModal from '@/components/promotions/JoinOfferModal';
 import ShareDealModal from '@/components/promotions/ShareDealModal';
 import { usePublicOfferDetails } from '@/services/deals/hooks';
 import type { DealBusiness } from '@/services/deals/types';
-import { formatDealPrice, getCategoryIcon } from '@/lib/mock/promotions';
+import { formatDealPrice, getCategoryIcon } from '@/lib/promotions';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 

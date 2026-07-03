@@ -11,12 +11,12 @@ import PromotionCard from '@/components/promotions/PromotionCard';
 import LocationModal from '@/components/promotions/LocationModal';
 import { usePublicOffers } from '@/services/deals/hooks';
 import type { DealOffer } from '@/services/deals/types';
-import type { MockPromotion, MockBusiness } from '@/lib/mock/promotions';
-import { formatDealPrice } from '@/lib/mock/promotions';
+import type { Promotion, PromotionBusiness } from '@/lib/promotions';
+import { formatDealPrice } from '@/lib/promotions';
 import { cn } from '@/lib/utils';
 import type { GeolocationCoordinates } from '@/lib/geolocation';
 
-function toMockBusiness(business: DealOffer['business']): MockBusiness {
+function toPromotionBusiness(business: DealOffer['business']): PromotionBusiness {
     return {
         id: business.id,
         name: business.name,
@@ -32,7 +32,7 @@ function toMockBusiness(business: DealOffer['business']): MockBusiness {
     };
 }
 
-function toMockPromotion(offer: DealOffer): MockPromotion {
+function toPromotion(offer: DealOffer): Promotion {
     const discountPercent = offer.pricingType === 'percentage_discount' && offer.discountValue
         ? offer.discountValue : undefined;
     const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
@@ -45,7 +45,7 @@ function toMockPromotion(offer: DealOffer): MockPromotion {
 
     return {
         id: offer.id,
-        business: toMockBusiness(offer.business),
+        business: toPromotionBusiness(offer.business),
         title: offer.name,
         description: offer.description,
         longDescription: offer.longDescription || offer.description,
@@ -110,7 +110,7 @@ export default function PromotionsPage() {
 
     const promotions = useMemo(() => {
         if (!offersData?.data) return [];
-        return offersData.data.map(toMockPromotion);
+        return offersData.data.map(toPromotion);
     }, [offersData]);
 
     const filteredPromotions = useMemo(() => {
