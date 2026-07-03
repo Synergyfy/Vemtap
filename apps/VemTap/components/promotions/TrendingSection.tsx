@@ -4,10 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Flame, Users, Clock, ChevronRight } from 'lucide-react';
-import { MockPromotion, formatDealPrice, getUrgencyText, getClaimPercent } from '@/lib/mock/promotions';
+import { Promotion, formatDealPrice, getUrgencyText, getClaimPercent } from '@/lib/promotions';
 
 interface TrendingSectionProps {
-    promotions: MockPromotion[];
+    promotions: Promotion[];
 }
 
 export default function TrendingSection({ promotions }: TrendingSectionProps) {

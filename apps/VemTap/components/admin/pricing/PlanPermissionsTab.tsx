@@ -16,9 +16,12 @@ import {
     PlanPermissionConfig,
     FeaturePermission,
     buildDefaultPermissions,
-} from '@/lib/mock/planPermissions';
+    mapPlanToConfig,
+    mapConfigToPlanDto,
+} from '@/lib/planPermissions';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
+import { useUpdatePlanPermissions } from '@/services/pricing/hooks';
 
 interface PlanPermissionsTabProps {
     plans: PricingPlan[];
@@ -36,10 +39,12 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         currentLimit: number;
     } | null>(null);
     const [limitInput, setLimitInput] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
 
     const selectedPlan = plans.find(p => p.id === selectedPlanId);
     const config = selectedPlanId ? configs[selectedPlanId] : null;
+
+    const updatePermissionsMutation = useUpdatePlanPermissions();
+    const isSaving = updatePermissionsMutation.isPending;
 
     // Initialize configs from plans (once)
     const initialized = useMemo(() => {
@@ -48,7 +53,7 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         plans.forEach(plan => {
             const key = plan.id;
             if (!configs[key]) {
-                newConfigs[key] = buildDefaultPermissions(plan.name, plan.id);
+                newConfigs[key] = mapPlanToConfig(plan);
             }
         });
         if (Object.keys(newConfigs).length > 0) {
@@ -150,12 +155,17 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
     }, [selectedPlan]);
 
     const handleSave = useCallback(async () => {
-        setIsSaving(true);
-        // Mock API call
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        setIsSaving(false);
-        toast.success('Plan permissions saved successfully');
-    }, []);
+        if (!selectedPlanId || !config || !selectedPlan) return;
+        try {
+            const dto = mapConfigToPlanDto(config, selectedPlan);
+            await updatePermissionsMutation.mutateAsync({
+                planId: selectedPlanId,
+                permissions: dto
+            });
+        } catch (err) {
+            console.error('Failed to save plan permissions:', err);
+        }
+    }, [selectedPlanId, config, selectedPlan, updatePermissionsMutation]);
 
     const getLevelIcon = (level: PermissionLevel) => {
         switch (level) {

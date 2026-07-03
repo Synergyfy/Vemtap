@@ -1,37 +1,113 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft, Clock, Users, Share2, CheckCircle2,
     Gift, ShieldCheck, ChevronLeft, ChevronRight, Star,
-    MapPin
+    MapPin, Loader2
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import JoinOfferModal from '@/components/promotions/JoinOfferModal';
 import ShareDealModal from '@/components/promotions/ShareDealModal';
 import {
-    MOCK_PROMOTIONS,
+    Promotion,
     formatDealPrice,
     getDaysLeft,
     getClaimPercent,
     getCategoryIcon,
-} from '@/lib/mock/promotions';
+} from '@/lib/promotions';
+import { useCatalogueOfferDetails } from '@/services/catalogue/hooks';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
+
+function adaptCatalogueOffer(offer: any): Promotion {
+    const biz = offer.branch?.business || {};
+    const br = offer.branch || {};
+    
+    const fallbackHours = [
+        { day: 'Mon', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Tue', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Wed', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Thu', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Fri', open: '8:00 AM', close: '11:00 PM', closed: false },
+        { day: 'Sat', open: '9:00 AM', close: '11:00 PM', closed: false },
+        { day: 'Sun', open: '10:00 AM', close: '6:00 PM', closed: false },
+    ];
+
+    const hours = br.businessHours || biz.businessHours || fallbackHours;
+    const formattedHours = Array.isArray(hours) 
+        ? hours 
+        : Object.entries(hours || {}).map(([day, val]: [string, any]) => ({
+            day,
+            open: val.open || '9:00 AM',
+            close: val.close || '6:00 PM',
+            closed: val.closed || false
+        }));
+
+    return {
+        id: offer.id,
+        title: offer.name,
+        description: offer.description,
+        longDescription: offer.longDescription || offer.description,
+        image: offer.mainImage || 'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800&q=80',
+        originalPrice: Number(offer.originalPrice || offer.calculatedPrice || 0),
+        dealPrice: Number(offer.dealPrice || offer.calculatedPrice || 0),
+        discountPercent: offer.discountPercent || 0,
+        discountAmount: Math.max(0, Number(offer.originalPrice || 0) - Number(offer.dealPrice || 0)),
+        startDate: offer.startDate || new Date().toISOString(),
+        endDate: offer.endDate || new Date(Date.now() + 86400000 * 30).toISOString(),
+        claimedCount: offer.claimedCount || 0,
+        maxClaims: offer.maxClaims || 100,
+        isTrending: !!offer.isTrending,
+        terms: offer.terms || ['Valid during business hours', 'Subject to availability'],
+        business: {
+            id: biz.id || br.businessId || 'unknown-biz',
+            name: biz.name || br.name || 'Local Business',
+            slug: biz.slug || 'local-business',
+            logo: biz.logoUrl || br.logoUrl || '',
+            photos: biz.photos || [br.logoUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80'],
+            categoryId: biz.categoryId || 'food-and-hospitality',
+            categoryName: biz.categoryName || 'Local Shop',
+            address: br.address || biz.address || 'Address not listed',
+            hours: formattedHours.length > 0 ? formattedHours : fallbackHours,
+            rating: Number(biz.rating || 4.5),
+            totalReviews: Number(biz.totalReviews || 12),
+        }
+    };
+}
 
 export default function PromotionDetailPage() {
     const params = useParams();
     const id = params.id as string;
     const slug = params.slug as string;
-    const promotion = MOCK_PROMOTIONS.find(p => p.id === id);
+
+    const { data: rawOffer, isLoading } = useCatalogueOfferDetails(id);
 
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+
+    const promotion = useMemo(() => {
+        if (!rawOffer) return null;
+        return adaptCatalogueOffer(rawOffer);
+    }, [rawOffer]);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-[#f4f5f6] flex flex-col">
+                <Navbar />
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <Loader2 size={48} className="text-primary animate-spin mb-4" />
+                    <p className="text-gray-500 font-bold">Loading deal details...</p>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
 
     if (!promotion) {
         return (
@@ -60,7 +136,7 @@ export default function PromotionDetailPage() {
 
     const getTodayHours = () => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-        return business.hours.find(h => h.day === today);
+        return business.hours.find((h: any) => h.day === today);
     };
     const todayHours = getTodayHours();
 
@@ -133,7 +209,7 @@ export default function PromotionDetailPage() {
                                             <ChevronRight size={18} className="text-gray-700" />
                                         </button>
                                         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                                            {business.photos.map((_, i) => (
+                                            {business.photos.map((_: any, i: number) => (
                                                 <button key={i} onClick={() => setActivePhotoIndex(i)} className={cn("size-2 rounded-full transition-all", i === activePhotoIndex ? "bg-white w-6" : "bg-white/50")} />
                                             ))}
                                         </div>
@@ -163,7 +239,7 @@ export default function PromotionDetailPage() {
                             >
                                 <h2 className="text-lg font-headline font-bold text-gray-900 mb-3">Terms & Conditions</h2>
                                 <ul className="space-y-2">
-                                    {promotion.terms.map((term, i) => (
+                                    {promotion.terms.map((term: string, i: number) => (
                                         <li key={i} className="flex items-start gap-2 text-sm text-gray-500 font-medium">
                                             <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
                                             {term}
@@ -262,7 +338,7 @@ export default function PromotionDetailPage() {
                                 <div className="space-y-1.5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Business Hours</p>
                                     <div className="grid grid-cols-1 gap-1">
-                                        {business.hours.map(h => (
+                                        {business.hours.map((h: any) => (
                                             <div key={h.day} className="flex justify-between text-[11px] font-bold">
                                                 <span className={cn(h.day === todayHours?.day ? "text-primary" : "text-gray-500")}>
                                                     {h.day}
@@ -300,6 +376,7 @@ export default function PromotionDetailPage() {
                 onClose={() => setShowJoinModal(false)}
                 offerTitle={promotion.title}
                 businessName={business.name}
+                offerId={promotion.id}
             />
         </div>
     );

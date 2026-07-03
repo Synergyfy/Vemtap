@@ -12,7 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { getCategories } from '@/services/categories/hooks';
 import { Category } from '@/services/categories';
-import { SECTOR_CATEGORIES } from '@/lib/mock/promotions';
+import { SECTOR_CATEGORIES } from '@/lib/promotions';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {

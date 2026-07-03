@@ -8,6 +8,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+import { useCheckPhone } from '@/services/users/hooks';
+import { useRequestClaimOtp, useVerifyClaim } from '@/services/catalogue/hooks';
+
 type JoinStep = 'phone' | 'otp' | 'new-account' | 'success';
 
 interface JoinOfferModalProps {
@@ -15,61 +18,105 @@ interface JoinOfferModalProps {
     onClose: () => void;
     offerTitle: string;
     businessName: string;
+    offerId: string;
 }
 
-export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessName }: JoinOfferModalProps) {
+export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessName, offerId }: JoinOfferModalProps) {
     const [step, setStep] = useState<JoinStep>('phone');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [claimCode, setClaimCode] = useState('');
+    const [userEmail, setUserEmail] = useState('');
     const [accountForm, setAccountForm] = useState({ name: '', email: '', password: '' });
 
-    const handlePhoneSubmit = () => {
+    const checkPhoneMutation = useCheckPhone();
+    const requestOtpMutation = useRequestClaimOtp();
+    const verifyClaimMutation = useVerifyClaim();
+
+    const handlePhoneSubmit = async () => {
         if (!phone || phone.length < 10) {
             toast.error('Please enter a valid phone number');
             return;
         }
         setIsSubmitting(true);
-        // Simulate API check — randomly return "existing" or "new" user
-        setTimeout(() => {
-            setIsSubmitting(false);
-            const isNewUser = Math.random() > 0.5;
-            if (isNewUser) {
-                setStep('new-account');
-            } else {
+        try {
+            // Check if phone number is registered
+            const checkRes = await checkPhoneMutation.mutateAsync(phone);
+            
+            if (checkRes.exists && checkRes.email) {
+                // Return user email found: request OTP
+                setUserEmail(checkRes.email);
+                await requestOtpMutation.mutateAsync({
+                    offerId,
+                    firstName: 'Guest',
+                    email: checkRes.email,
+                    phone: phone.startsWith('+') ? phone : `+234${phone.replace(/^0+/, '')}`,
+                });
+                
+                setIsSubmitting(false);
                 setStep('otp');
-                toast('Welcome back! We found your account.', { icon: '👋' });
+                toast('Welcome back! We sent a code to your email.', { icon: '👋' });
+            } else {
+                setIsSubmitting(false);
+                setStep('new-account');
             }
-        }, 1500);
+        } catch (error: any) {
+            setIsSubmitting(false);
+            toast.error(error?.message || 'Error checking phone number');
+        }
     };
 
-    const handleOtpVerify = () => {
+    const handleOtpVerify = async () => {
         if (otp.length < 4) {
             toast.error('Please enter the verification code');
             return;
         }
         setIsSubmitting(true);
-        setTimeout(() => {
-            const code = `VEM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            setClaimCode(code);
+        try {
+            const verifyRes = await verifyClaimMutation.mutateAsync({
+                email: userEmail,
+                offerId,
+                code: otp,
+            });
+            
+            setClaimCode(verifyRes.claim.claimCode);
             setIsSubmitting(false);
             setStep('success');
-        }, 1200);
+        } catch (error: any) {
+            setIsSubmitting(false);
+            toast.error(error?.message || 'Invalid or expired verification code');
+        }
     };
 
-    const handleNewAccount = () => {
+    const handleNewAccount = async () => {
         if (!accountForm.name || !accountForm.email || !accountForm.password) {
             toast.error('Please fill in all fields');
             return;
         }
         setIsSubmitting(true);
-        setTimeout(() => {
-            const code = `VEM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            setClaimCode(code);
+        try {
+            // Initiate claim OTP for new account email
+            setUserEmail(accountForm.email);
+            const nameParts = accountForm.name.trim().split(/\s+/);
+            const firstName = nameParts[0] || 'Guest';
+            const lastName = nameParts.slice(1).join(' ') || undefined;
+
+            await requestOtpMutation.mutateAsync({
+                offerId,
+                firstName,
+                lastName,
+                email: accountForm.email,
+                phone: phone.startsWith('+') ? phone : `+234${phone.replace(/^0+/, '')}`,
+            });
+
             setIsSubmitting(false);
-            setStep('success');
-        }, 1500);
+            setStep('otp');
+            toast('Account details saved. Please verify the code sent to your email.');
+        } catch (error: any) {
+            setIsSubmitting(false);
+            toast.error(error?.message || 'Failed to submit details');
+        }
     };
 
     const resetModal = () => {
@@ -79,6 +126,7 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
             setPhone('');
             setOtp('');
             setClaimCode('');
+            setUserEmail('');
             setAccountForm({ name: '', email: '', password: '' });
         }, 300);
     };
