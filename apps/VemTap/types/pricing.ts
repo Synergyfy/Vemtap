@@ -15,23 +15,41 @@ export interface PricingPlan {
     whatsappCredits: number;
     emailCredits: number;
     teamMembersEnabled: boolean;
-    teamMembersLimit: number;
+    teamMembersLimit: number | null;
     loyaltyEnabled: boolean;
-    loyaltyLimit: number;
+    loyaltyLimit: number | null;
     branchesEnabled: boolean;
-    branchLimit: number;
+    branchLimit: number | null;
     analyticsEnabled: boolean;
     analyticsLevel: 'basic' | 'advanced' | 'none';
     catalogueEnabled: boolean;
-    maxCatalogueItems: number;
-    maxCatalogueCategories: number;
-    maxCatalogueOffers: number;
+    maxCatalogueItems: number | null;
+    maxCatalogueCategories: number | null;
+    maxCatalogueOffers: number | null;
     automationsEnabled: boolean;
-    maxAutomations: number;
+    maxAutomations: number | null;
     isActive: boolean;
     description: string;
     isPopular?: boolean;
     qrThrivePlanId?: string;
+    inventoryEnabled?: boolean;
+    inventoryLimit?: number | null;
+    posEnabled?: boolean;
+    posTerminalLimit?: number | null;
+    visitorsEnabled?: boolean;
+    inAppChatEnabled?: boolean;
+    formsEnabled?: boolean;
+    formsLimit?: number | null;
+    businessQrEnabled?: boolean;
+    marketingKitEnabled?: boolean;
+    marketingKitLimit?: number | null;
+    discoveryEnabled?: boolean;
+    staffRolesEnabled?: boolean;
+    staffRolesLimit?: number | null;
+    activityLogEnabled?: boolean;
+    qrCodesEnabled?: boolean;
+    qrCodesLimit?: number | null;
+    permissionsConfiguredAt?: string | null;
 }
 
 export interface HardwareOption {

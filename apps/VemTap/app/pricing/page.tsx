@@ -26,7 +26,7 @@ const faqs = [
     { q: 'Can I cancel anytime?', a: 'Absolutely. You can cancel your subscription at any time. Your access will remain active until the end of your current billing cycle.' },
 ];
 
-const formatLimit = (value: number | string | undefined, label: string) => {
+const formatLimit = (value: number | string | null | undefined, label: string) => {
     if (value === undefined || value === null || value === 0 || value === '0') return null;
     if (value === -1 || value === 'unlimited') return `Unlimited ${label}`;
     return `${value} ${label}`;

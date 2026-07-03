@@ -118,9 +118,9 @@ export class UsersService {
     });
   }
 
-  async existsByPhone(phone: string): Promise<{ exists: boolean }> {
+  async existsByPhone(phone: string): Promise<{ exists: boolean; email?: string }> {
     const user = await this.findByPhone(phone);
-    return { exists: !!user };
+    return { exists: !!user, email: user?.email };
   }
 
   async findByGoogleId(googleId: string): Promise<User | null> {

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, TrendingUp, Sparkles, SlidersHorizontal, MapPin, X } from 'lucide-react';
+import { Search, TrendingUp, Sparkles, SlidersHorizontal, MapPin, X, Loader2 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CategoryDropdown from '@/components/promotions/CategoryStep';
@@ -10,12 +10,67 @@ import TrendingSection from '@/components/promotions/TrendingSection';
 import PromotionCard from '@/components/promotions/PromotionCard';
 import LocationModal from '@/components/promotions/LocationModal';
 import {
-    MOCK_PROMOTIONS,
-    getPromotionsByCategory,
-    getTrendingPromotions,
-} from '@/lib/mock/promotions';
+    Promotion,
+} from '@/lib/promotions';
+import { useCatalogueOffersGlobal } from '@/services/catalogue/hooks';
 import { cn } from '@/lib/utils';
 import type { GeolocationCoordinates } from '@/lib/geolocation';
+
+function adaptCatalogueOffer(offer: any): Promotion {
+    const biz = offer.branch?.business || {};
+    const br = offer.branch || {};
+    
+    const fallbackHours = [
+        { day: 'Mon', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Tue', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Wed', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Thu', open: '8:00 AM', close: '10:00 PM', closed: false },
+        { day: 'Fri', open: '8:00 AM', close: '11:00 PM', closed: false },
+        { day: 'Sat', open: '9:00 AM', close: '11:00 PM', closed: false },
+        { day: 'Sun', open: '10:00 AM', close: '6:00 PM', closed: false },
+    ];
+
+    const hours = br.businessHours || biz.businessHours || fallbackHours;
+    const formattedHours = Array.isArray(hours) 
+        ? hours 
+        : Object.entries(hours || {}).map(([day, val]: [string, any]) => ({
+            day,
+            open: val.open || '9:00 AM',
+            close: val.close || '6:00 PM',
+            closed: val.closed || false
+        }));
+
+    return {
+        id: offer.id,
+        title: offer.name,
+        description: offer.description,
+        longDescription: offer.longDescription || offer.description,
+        image: offer.mainImage || 'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800&q=80',
+        originalPrice: Number(offer.originalPrice || offer.calculatedPrice || 0),
+        dealPrice: Number(offer.dealPrice || offer.calculatedPrice || 0),
+        discountPercent: offer.discountPercent || 0,
+        discountAmount: Math.max(0, Number(offer.originalPrice || 0) - Number(offer.dealPrice || 0)),
+        startDate: offer.startDate || new Date().toISOString(),
+        endDate: offer.endDate || new Date(Date.now() + 86400000 * 30).toISOString(),
+        claimedCount: offer.claimedCount || 0,
+        maxClaims: offer.maxClaims || 100,
+        isTrending: !!offer.isTrending,
+        terms: offer.terms || ['Valid during business hours', 'Subject to availability'],
+        business: {
+            id: biz.id || br.businessId || 'unknown-biz',
+            name: biz.name || br.name || 'Local Business',
+            slug: biz.slug || 'local-business',
+            logo: biz.logoUrl || br.logoUrl || '',
+            photos: biz.photos || [br.logoUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80'],
+            categoryId: biz.categoryId || 'food-and-hospitality',
+            categoryName: biz.categoryName || 'Local Shop',
+            address: br.address || biz.address || 'Address not listed',
+            hours: formattedHours.length > 0 ? formattedHours : fallbackHours,
+            rating: Number(biz.rating || 4.5),
+            totalReviews: Number(biz.totalReviews || 12),
+        }
+    };
+}
 
 export default function PromotionsPage() {
     const [search, setSearch] = useState('');
@@ -53,25 +108,23 @@ export default function PromotionsPage() {
         localStorage.removeItem('vemtap_user_location_label');
     };
 
+    // Query active promotions from API
+    const { data: offersResponse, isLoading } = useCatalogueOffersGlobal({
+        search: search.trim() || undefined,
+        categoryId: selectedCategory || undefined,
+        lat: location?.lat || undefined,
+        lng: location?.lng || undefined,
+        radius: location ? 10 : undefined,
+    });
+
     const filteredPromotions = useMemo(() => {
-        let promos = getPromotionsByCategory(MOCK_PROMOTIONS, selectedCategory);
-
-        if (search.trim()) {
-            const q = search.toLowerCase();
-            promos = promos.filter(p =>
-                p.title.toLowerCase().includes(q) ||
-                p.business.name.toLowerCase().includes(q) ||
-                p.business.address.toLowerCase().includes(q) ||
-                p.description.toLowerCase().includes(q)
-            );
-        }
-
-        return promos;
-    }, [search, selectedCategory]);
+        const offers = offersResponse?.data || [];
+        return offers.map(adaptCatalogueOffer);
+    }, [offersResponse]);
 
     const trendingPromotions = useMemo(() => {
-        return getTrendingPromotions(MOCK_PROMOTIONS);
-    }, []);
+        return filteredPromotions.filter(p => p.isTrending).slice(0, 5);
+    }, [filteredPromotions]);
 
     return (
         <div className="min-h-screen bg-[#f4f5f6] font-body text-text-main">
@@ -176,7 +229,7 @@ export default function PromotionsPage() {
             <section className="max-w-7xl mx-auto px-4 md:px-8 py-8 pb-20">
                 <div className="space-y-8">
                     {/* Trending */}
-                    {!selectedCategory && !search && (
+                    {!selectedCategory && !search && trendingPromotions.length > 0 && (
                         <TrendingSection promotions={trendingPromotions} />
                     )}
 
@@ -185,7 +238,7 @@ export default function PromotionsPage() {
                         <div className="flex items-center gap-2">
                             <TrendingUp size={14} className="text-primary" />
                             <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                                {filteredPromotions.length} {filteredPromotions.length === 1 ? 'deal' : 'deals'}
+                                {isLoading ? '...' : filteredPromotions.length} {filteredPromotions.length === 1 ? 'deal' : 'deals'}
                                 {selectedCategory && (
                                     <> in <span className="text-primary">this category</span></>
                                 )}
@@ -198,8 +251,13 @@ export default function PromotionsPage() {
                         )}
                     </div>
 
-                    {/* Grid */}
-                    {filteredPromotions.length > 0 ? (
+                    {/* Grid / Loader */}
+                    {isLoading ? (
+                        <div className="py-24 text-center space-y-4">
+                            <Loader2 className="animate-spin text-primary mx-auto" size={32} />
+                            <p className="text-gray-400 font-bold text-sm">Searching for best deals near you...</p>
+                        </div>
+                    ) : filteredPromotions.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                             {filteredPromotions.map((promo, i) => (
                                 <PromotionCard key={promo.id} promotion={promo} index={i} />

@@ -303,6 +303,48 @@ export const getOffersPublic = async (branchId: string, params: { search?: strin
     return await api.get(`/catalogue/offers/public/${branchId}${qs ? `?${qs}` : ''}`);
 };
 
+export interface PublicCatalogueOffersQuery {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    categoryId?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    audience?: string;
+}
+
+export interface RequestClaimOtpDto {
+    offerId: string;
+    firstName: string;
+    lastName?: string;
+    email: string;
+    phone: string;
+}
+
+export interface VerifyClaimDto {
+    email: string;
+    offerId: string;
+    code: string;
+}
+
+export const getOffersGlobal = async (params: PublicCatalogueOffersQuery = {}) => {
+    const cleanParams = Object.fromEntries(
+        Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const qs = new URLSearchParams(cleanParams as any).toString();
+    return await api.get(`/catalogue/offers/public${qs ? `?${qs}` : ''}`);
+};
+
+export const requestClaimOtp = async (data: RequestClaimOtpDto) => {
+    return await api.post('/catalogue/offers/claim/request', data);
+};
+
+export const verifyClaim = async (data: VerifyClaimDto) => {
+    return await api.post('/catalogue/offers/claim/verify', data);
+};
+
 export const getOfferDetails = async (id: string) => {
     return await api.get(`/catalogue/offers/public/details/${id}`);
 };
@@ -493,6 +535,25 @@ export const useCatalogueOffersPublic = (branchId: string, params: { search?: st
         queryKey: ['catalogue', 'offers', 'public', branchId, params],
         queryFn: () => getOffersPublic(branchId, params),
         enabled: !!branchId,
+    });
+};
+
+export const useCatalogueOffersGlobal = (params: PublicCatalogueOffersQuery = {}) => {
+    return useQuery<PaginatedResponse<CatalogueOffer>>({
+        queryKey: ['catalogue', 'offers', 'global', params],
+        queryFn: () => getOffersGlobal(params),
+    });
+};
+
+export const useRequestClaimOtp = () => {
+    return useMutation({
+        mutationFn: requestClaimOtp,
+    });
+};
+
+export const useVerifyClaim = () => {
+    return useMutation({
+        mutationFn: verifyClaim,
     });
 };
 
