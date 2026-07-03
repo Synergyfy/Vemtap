@@ -7,6 +7,7 @@ import {
     ArrowRight, ChevronLeft, ShieldCheck, Gift
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { checkPhone, requestClaimOtp, verifyClaimOtp } from '@/services/deals/hooks';
 
 import { useCheckPhone } from '@/services/users/hooks';
 import { useRequestClaimOtp, useVerifyClaim } from '@/services/catalogue/hooks';
@@ -27,12 +28,8 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [claimCode, setClaimCode] = useState('');
-    const [userEmail, setUserEmail] = useState('');
+    const [reference, setReference] = useState('');
     const [accountForm, setAccountForm] = useState({ name: '', email: '', password: '' });
-
-    const checkPhoneMutation = useCheckPhone();
-    const requestOtpMutation = useRequestClaimOtp();
-    const verifyClaimMutation = useVerifyClaim();
 
     const handlePhoneSubmit = async () => {
         if (!phone || phone.length < 10) {
@@ -41,29 +38,19 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
         }
         setIsSubmitting(true);
         try {
-            // Check if phone number is registered
-            const checkRes = await checkPhoneMutation.mutateAsync(phone);
-            
-            if (checkRes.exists && checkRes.email) {
-                // Return user email found: request OTP
-                setUserEmail(checkRes.email);
-                await requestOtpMutation.mutateAsync({
-                    offerId,
-                    firstName: 'Guest',
-                    email: checkRes.email,
-                    phone: phone.startsWith('+') ? phone : `+234${phone.replace(/^0+/, '')}`,
-                });
-                
-                setIsSubmitting(false);
+            const res = await checkPhone(phone);
+            if (res.exists) {
+                const otpRes = await requestClaimOtp({ phone, offerId });
+                setReference(otpRes.reference);
                 setStep('otp');
-                toast('Welcome back! We sent a code to your email.', { icon: '👋' });
+                toast('Welcome back! We found your account.', { icon: '👋' });
             } else {
-                setIsSubmitting(false);
                 setStep('new-account');
             }
-        } catch (error: any) {
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to check phone number');
+        } finally {
             setIsSubmitting(false);
-            toast.error(error?.message || 'Error checking phone number');
         }
     };
 
@@ -74,18 +61,13 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
         }
         setIsSubmitting(true);
         try {
-            const verifyRes = await verifyClaimMutation.mutateAsync({
-                email: userEmail,
-                offerId,
-                code: otp,
-            });
-            
-            setClaimCode(verifyRes.claim.claimCode);
-            setIsSubmitting(false);
+            const res = await verifyClaimOtp({ phone, code: otp, reference });
+            setClaimCode(res.couponCode);
             setStep('success');
-        } catch (error: any) {
+        } catch (err: any) {
+            toast.error(err?.message || 'Invalid verification code');
+        } finally {
             setIsSubmitting(false);
-            toast.error(error?.message || 'Invalid or expired verification code');
         }
     };
 
@@ -96,26 +78,13 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
         }
         setIsSubmitting(true);
         try {
-            // Initiate claim OTP for new account email
-            setUserEmail(accountForm.email);
-            const nameParts = accountForm.name.trim().split(/\s+/);
-            const firstName = nameParts[0] || 'Guest';
-            const lastName = nameParts.slice(1).join(' ') || undefined;
-
-            await requestOtpMutation.mutateAsync({
-                offerId,
-                firstName,
-                lastName,
-                email: accountForm.email,
-                phone: phone.startsWith('+') ? phone : `+234${phone.replace(/^0+/, '')}`,
-            });
-
-            setIsSubmitting(false);
+            const otpRes = await requestClaimOtp({ phone, offerId });
+            setReference(otpRes.reference);
             setStep('otp');
-            toast('Account details saved. Please verify the code sent to your email.');
-        } catch (error: any) {
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to create account');
+        } finally {
             setIsSubmitting(false);
-            toast.error(error?.message || 'Failed to submit details');
         }
     };
 
@@ -126,7 +95,7 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
             setPhone('');
             setOtp('');
             setClaimCode('');
-            setUserEmail('');
+            setReference('');
             setAccountForm({ name: '', email: '', password: '' });
         }, 300);
     };
@@ -148,7 +117,6 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
                 exit={{ y: '100%' }}
                 className="relative w-full max-w-md bg-white rounded-t-3xl md:rounded-3xl overflow-hidden shadow-2xl"
             >
-                {/* Close */}
                 <button
                     onClick={resetModal}
                     className="absolute top-4 right-4 z-10 size-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
@@ -225,7 +193,7 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
                                 </div>
                                 <h2 className="text-xl font-headline font-bold text-gray-900">Welcome back!</h2>
                                 <p className="text-sm text-gray-500 font-medium">
-                                    We&apos;ve found your account. Enter the code sent to your email to verify.
+                                    We&apos;ve found your account. Enter the code sent to your phone to verify.
                                 </p>
                             </div>
 
