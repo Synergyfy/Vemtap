@@ -7,6 +7,7 @@ import {
     ArrowRight, ChevronLeft, ShieldCheck, Gift
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { checkPhone, requestClaimOtp, verifyClaimOtp } from '@/services/deals/hooks';
 
 type JoinStep = 'phone' | 'otp' | 'new-account' | 'success';
 
@@ -15,61 +16,73 @@ interface JoinOfferModalProps {
     onClose: () => void;
     offerTitle: string;
     businessName: string;
+    offerId: string;
 }
 
-export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessName }: JoinOfferModalProps) {
+export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessName, offerId }: JoinOfferModalProps) {
     const [step, setStep] = useState<JoinStep>('phone');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [claimCode, setClaimCode] = useState('');
+    const [reference, setReference] = useState('');
     const [accountForm, setAccountForm] = useState({ name: '', email: '', password: '' });
 
-    const handlePhoneSubmit = () => {
+    const handlePhoneSubmit = async () => {
         if (!phone || phone.length < 10) {
             toast.error('Please enter a valid phone number');
             return;
         }
         setIsSubmitting(true);
-        // Simulate API check — randomly return "existing" or "new" user
-        setTimeout(() => {
-            setIsSubmitting(false);
-            const isNewUser = Math.random() > 0.5;
-            if (isNewUser) {
-                setStep('new-account');
-            } else {
+        try {
+            const res = await checkPhone(phone);
+            if (res.exists) {
+                const otpRes = await requestClaimOtp({ phone, offerId });
+                setReference(otpRes.reference);
                 setStep('otp');
                 toast('Welcome back! We found your account.', { icon: '👋' });
+            } else {
+                setStep('new-account');
             }
-        }, 1500);
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to check phone number');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleOtpVerify = () => {
+    const handleOtpVerify = async () => {
         if (otp.length < 4) {
             toast.error('Please enter the verification code');
             return;
         }
         setIsSubmitting(true);
-        setTimeout(() => {
-            const code = `VEM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            setClaimCode(code);
-            setIsSubmitting(false);
+        try {
+            const res = await verifyClaimOtp({ phone, code: otp, reference });
+            setClaimCode(res.couponCode);
             setStep('success');
-        }, 1200);
+        } catch (err: any) {
+            toast.error(err?.message || 'Invalid verification code');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleNewAccount = () => {
+    const handleNewAccount = async () => {
         if (!accountForm.name || !accountForm.email || !accountForm.password) {
             toast.error('Please fill in all fields');
             return;
         }
         setIsSubmitting(true);
-        setTimeout(() => {
-            const code = `VEM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            setClaimCode(code);
+        try {
+            const otpRes = await requestClaimOtp({ phone, offerId });
+            setReference(otpRes.reference);
+            setStep('otp');
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to create account');
+        } finally {
             setIsSubmitting(false);
-            setStep('success');
-        }, 1500);
+        }
     };
 
     const resetModal = () => {
@@ -79,6 +92,7 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
             setPhone('');
             setOtp('');
             setClaimCode('');
+            setReference('');
             setAccountForm({ name: '', email: '', password: '' });
         }, 300);
     };
@@ -100,7 +114,6 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
                 exit={{ y: '100%' }}
                 className="relative w-full max-w-md bg-white rounded-t-3xl md:rounded-3xl overflow-hidden shadow-2xl"
             >
-                {/* Close */}
                 <button
                     onClick={resetModal}
                     className="absolute top-4 right-4 z-10 size-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
@@ -177,7 +190,7 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
                                 </div>
                                 <h2 className="text-xl font-headline font-bold text-gray-900">Welcome back!</h2>
                                 <p className="text-sm text-gray-500 font-medium">
-                                    We&apos;ve found your account. Enter the code sent to your email to verify.
+                                    We&apos;ve found your account. Enter the code sent to your phone to verify.
                                 </p>
                             </div>
 

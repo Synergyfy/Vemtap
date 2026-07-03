@@ -306,6 +306,7 @@ export default function MessagingCreditsPage() {
           icon={Zap} 
           color="bg-green-500"
           subtitle="Messaging API"
+          unavailable={true}
         />
         <CreditCardComponent 
           title="Email Credits" 
@@ -344,7 +345,7 @@ export default function MessagingCreditsPage() {
                   </li>
                 )}
                 {plan.whatsappAmount > 0 && (
-                  <li className="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                  <li className="flex items-center gap-3 text-slate-300 text-sm font-medium opacity-50">
                     <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                     </div>
@@ -436,7 +437,7 @@ export default function MessagingCreditsPage() {
               </div>
 
               {/* WhatsApp Slider & Input */}
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4 opacity-50 pointer-events-none">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
@@ -536,7 +537,7 @@ export default function MessagingCreditsPage() {
                     <span className="text-slate-400 font-medium">SMS Credits ({smsAmount.toLocaleString()})</span>
                     <span className="text-slate-200 font-bold">₦{smsCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm opacity-50">
                     <span className="text-slate-400 font-medium">WhatsApp ({whatsappAmount.toLocaleString()})</span>
                     <span className="text-slate-200 font-bold">₦{whatsappCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
@@ -580,20 +581,7 @@ export default function MessagingCreditsPage() {
       </div>
 
       {/* Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-blue-50 p-8 rounded-3xl border border-blue-100">
-          <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white mb-6">
-            <History size={24} />
-          </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Usage History</h3>
-          <p className="text-slate-600 font-medium mb-6">View detailed logs of your messaging activities and credit deductions.</p>
-          <button className="flex items-center gap-2 text-blue-600 font-bold text-sm hover:gap-3 transition-all">
-            <span>View Full Logs</span>
-            <ArrowUpRight size={16} />
-          </button>
-        </div>
-
-        <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200">
+      <div className="grid grid-cols-1 gap-8">        <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200">
           <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white mb-6">
             <ShieldCheck size={24} />
           </div>

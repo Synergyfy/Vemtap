@@ -61,9 +61,17 @@ export default function WhatsAppOverviewPage() {
                         </Link>
                     </div>
 
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-black text-text-main tracking-tight">WhatsApp</h1>
-                        <p className="text-xs md:text-sm text-text-secondary font-medium">Reach your customers via WhatsApp.</p>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-black text-text-main tracking-tight">WhatsApp</h1>
+                            <p className="text-xs md:text-sm text-text-secondary font-medium">Reach your customers via WhatsApp.</p>
+                        </div>
+                        <Link
+                            href="/dashboard/messaging/whatsapp/history"
+                            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-bold active:scale-95"
+                        >
+                            View History
+                        </Link>
                     </div>
                 </div>
 
@@ -86,7 +94,7 @@ export default function WhatsAppOverviewPage() {
                     >
                         <div className="flex items-center gap-2">
                             <Zap size={18} />
-                            Promotional WhatsApp
+                            Promotion
                             <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-black rounded-md flex items-center gap-1 shrink-0 ml-1">
                                 <Lock size={10} />
                                 Coming Soon
@@ -141,7 +149,7 @@ export default function WhatsAppOverviewPage() {
                             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
                                 <div className="p-5 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div>
-                                        <h3 className="text-xl font-display font-black text-text-main">Global Customer List</h3>
+                                        <h3 className="text-xl font-display font-black text-text-main">Customer List</h3>
                                         <p className="text-sm text-text-secondary font-medium">Quickly start a WhatsApp conversation with any customer.</p>
                                     </div>
                                     <div className="relative w-full md:w-80">

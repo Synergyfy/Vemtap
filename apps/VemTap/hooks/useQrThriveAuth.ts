@@ -60,7 +60,7 @@ export function useQrThriveAuth() {
         // 2. Try to fetch from backend dedicated endpoint (if exists)
         try {
           // This endpoint should return the mapped ID if it exists in the DB
-          const response = await api.get('/auth/qr-thrive/status');
+          const response = await api.get('/users/me/qr-thrive');
           if (response?.qrThriveUserId) {
             console.log('[QRThrive] Found ID from status endpoint:', response.qrThriveUserId);
             setQrThriveUser(response.qrThriveUserId);

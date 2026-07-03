@@ -59,23 +59,6 @@ export default function MessagingPage() {
 
                 {/* RIGHT COLUMN: Templates & Small Actions */}
                 <div className="lg:col-span-4 space-y-8">
-                    {/* MESSAGE TEMPLATES */}
-                    <div className="rounded-[32px] bg-gray-900 p-8 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#066CF4]/20 rounded-full blur-2xl" />
-                        <h3 className="text-xl font-black mb-6 relative z-10">Premium Templates</h3>
-                        <div className="space-y-3 relative z-10">
-                            {['Promotion', 'Flash Sale', 'Event Invitation', 'Welcome Message'].map((t) => (
-                                <button key={t} className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-left group">
-                                    <span className="text-xs font-bold text-white/80 group-hover:text-white">{t}</span>
-                                    <Sparkles size={14} className="text-[#066CF4]" />
-                                </button>
-                            ))}
-                        </div>
-                        <Button className="w-full mt-8 h-12 rounded-xl bg-[#066CF4] text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20">
-                            Explore All
-                        </Button>
-                    </div>
-
                     {/* EMPTY STATE MOCK (Small version) */}
                     {(!campaigns || campaigns.length === 0) && (
                         <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100 text-center">
@@ -84,11 +67,7 @@ export default function MessagingPage() {
                             </div>
                             <h4 className="text-sm font-black text-gray-900 mb-2">No messages yet</h4>
                             <p className="text-xs font-medium text-gray-400 mb-6">Start engaging your audience today.</p>
-                            <Link href="/dashboard/messaging/create">
-                                <Button variant="outline" className="h-10 px-6 rounded-xl border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-[#066CF4]">
-                                    New Message
-                                </Button>
-                            </Link>
+
                         </div>
                     )}
                 </div>
