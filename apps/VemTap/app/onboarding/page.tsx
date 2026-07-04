@@ -1323,7 +1323,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => setSelectedPlan(plan.id)}
-                className={`relative flex flex-col text-left rounded-[2.5rem] border-2 transition-all duration-200 overflow-hidden ${
+                className={`relative flex flex-col text-left rounded-3xl border-2 transition-all duration-200 overflow-hidden h-full ${
                     isSelected
                         ? 'border-primary ring-4 ring-primary/10 shadow-xl shadow-primary/10'
                         : isHighlighted
@@ -1340,10 +1340,10 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                     </div>
                 )}
 
-                <div className="p-8 space-y-6">
+                <div className="p-6 sm:p-7 flex flex-col flex-1">
                     {/* Plan Name & Description */}
-                    <div className="space-y-2">
-                        <h3 className={`text-lg font-black ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
+                    <div className="space-y-2 mb-4">
+                        <h3 className={`text-base sm:text-lg font-black leading-snug ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
                             {plan.name}
                         </h3>
                         {plan.description && (
@@ -1354,15 +1354,15 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                     </div>
 
                     {/* Pricing */}
-                    <div className="space-y-1">
+                    <div className="space-y-1 mb-4">
                         <div className={`flex items-baseline gap-1 ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
-                            <span className="text-4xl font-black tracking-tight">{formatPrice(plan)}</span>
-                            <span className={`text-sm font-bold ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                            <span className="text-2xl sm:text-3xl font-black tracking-tight">{formatPrice(plan)}</span>
+                            <span className={`text-xs sm:text-sm font-bold ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
                                 {getBillingPeriodLabel(plan)}
                             </span>
                         </div>
                         {getBillingTotal(plan) && (
-                            <p className={`text-xs font-medium ${isSelected && isHighlighted ? 'text-white/60' : 'text-text-secondary/60'}`}>
+                            <p className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/60' : 'text-text-secondary/60'}`}>
                                 {getBillingTotal(plan)}
                             </p>
                         )}
@@ -1370,7 +1370,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
 
                     {/* Free Trial Badge */}
                     {plan.trialDurationDays > 0 && !plan.isFree && (
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 ${
                             isSelected && isHighlighted ? 'bg-white/20 text-white' : 'bg-green-50 text-green-700'
                         }`}>
                             <Zap size={12} />
@@ -1379,16 +1379,16 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                     )}
 
                     {/* Divider */}
-                    <div className={`border-t ${isSelected && isHighlighted ? 'border-white/20' : 'border-gray-100'}`} />
+                    <div className={`border-t mb-4 ${isSelected && isHighlighted ? 'border-white/20' : 'border-gray-100'}`} />
 
                     {/* Features */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 flex-1">
                         <p className={`text-[10px] font-black uppercase tracking-[0.15em] ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
                             What's Included
                         </p>
                         <div className="space-y-2.5">
                             {plan.features.map((feature: string, i: number) => (
-                                <div key={i} className="flex items-start gap-3">
+                                <div key={i} className="flex items-start gap-2.5">
                                     <CheckCircle2 
                                         size={14} 
                                         className={`shrink-0 mt-0.5 ${isSelected && isHighlighted ? 'text-white' : 'text-green-500'}`} 
@@ -1402,20 +1402,20 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                     </div>
 
                     {/* Usage Limits */}
-                    <div className={`space-y-2 pt-2 ${isSelected && isHighlighted ? 'border-t border-white/20' : ''}`}>
-                        <div className="grid grid-cols-2 gap-2">
+                    <div className={`mt-4 pt-3 space-y-2 ${isSelected && isHighlighted ? 'border-t border-white/20' : 'border-t border-gray-100'}`}>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
                             {plan.messagingEnabled && (
-                                <div className={`text-[10px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
                                     SMS: {plan.smsCredits === -1 ? 'Unlimited' : `${plan.smsCredits}/mo`}
                                 </div>
                             )}
                             {plan.teamMembersEnabled && (
-                                <div className={`text-[10px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
                                     Team: {plan.teamMembersLimit === -1 ? 'Unlimited' : `${plan.teamMembersLimit} members`}
                                 </div>
                             )}
                             {plan.branchesEnabled && (
-                                <div className={`text-[10px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
+                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
                                     Branches: {plan.branchLimit === -1 ? 'Unlimited' : `${plan.branchLimit}`}
                                 </div>
                             )}
@@ -1425,7 +1425,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
 
                 {/* Selected Indicator */}
                 {isSelected && (
-                    <div className={`px-8 py-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest ${
+                    <div className={`px-6 py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest ${
                         isHighlighted ? 'bg-white/15 text-white' : 'bg-primary/10 text-primary'
                     }`}>
                         <CheckCircle2 size={14} />
@@ -1467,7 +1467,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                         <button
                             key={cycle}
                             onClick={() => setBillingCycle(cycle)}
-                            className={`relative px-5 sm:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                            className={`relative px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                 billingCycle === cycle
                                     ? 'bg-white shadow-lg shadow-black/5 text-primary scale-[1.02]'
                                     : 'text-text-secondary hover:text-text-main'
@@ -1494,19 +1494,19 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                     <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto items-stretch">
                     {plans.map((plan: PricingPlan, idx: number) => (
                         plan.isPopular ? renderHighlightedCard(plan, idx) : renderRegularCard(plan, idx)
                     ))}
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
+            <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0 mt-4">
                 <div className="max-w-xl mx-auto">
                     <Button 
                         disabled={!selectedPlan}
                         onClick={() => onNext({ planId: selectedPlan, billingCycle })}
-                        className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
+                        className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
                         {plans.find(p => p.id === selectedPlan)?.isFree ? 'Continue' : 'Continue to Payment'} <ArrowRight size={18} />
                     </Button>
