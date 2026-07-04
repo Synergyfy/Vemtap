@@ -27,12 +27,10 @@ export default function MessagingLayout({ children }: MessagingLayoutProps) {
     }
 
     const content = (
-        <div className="h-full flex flex-col bg-gray-50">
+        <div className="min-h-full bg-gray-50">
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-6 relative">
-                <div className="h-full w-full max-w-7xl mx-auto">
-                    {children}
-                </div>
+            <div className="w-full max-w-7xl mx-auto">
+                {children}
             </div>
         </div>
     );

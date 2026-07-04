@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Check, X, ChevronDown, Table as TableIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PricingPlan } from '@/types/pricing';
-import { buildDefaultPermissions, PERMISSION_SECTIONS } from '@/lib/mock/planPermissions';
-import type { PlanPermissionConfig, PermissionLevel } from '@/lib/mock/planPermissions';
+import { mapPlanToConfig, PERMISSION_SECTIONS } from '@/lib/planPermissions';
+import type { PlanPermissionConfig, PermissionLevel } from '@/lib/planPermissions';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface PlanComparisonTableProps {
@@ -19,7 +19,7 @@ export default function PlanComparisonTable({ plans }: PlanComparisonTableProps)
     if (activePlans.length === 0) return null;
 
     const permissionConfigs: PlanPermissionConfig[] = activePlans.map(plan =>
-        buildDefaultPermissions(plan.name, plan.id)
+        mapPlanToConfig(plan)
     );
 
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {

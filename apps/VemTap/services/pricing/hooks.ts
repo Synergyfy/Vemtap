@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAdminPricingPlans, fetchPricingPlans, addPricingPlan, updatePricingPlan, deletePricingPlan } from '@/lib/api/pricing';
+import { fetchAdminPricingPlans, fetchPricingPlans, addPricingPlan, updatePricingPlan, deletePricingPlan, updatePlanPermissions } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
 import { notify } from '@/lib/notify';
 
@@ -61,6 +61,22 @@ export const useDeletePricingPlan = () => {
         },
         onError: (error: any) => {
             notify.error(error.message || 'Failed to delete plan');
+        },
+    });
+};
+
+export const useUpdatePlanPermissions = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ planId, permissions }: { planId: string; permissions: Partial<PricingPlan> }) =>
+            updatePlanPermissions(planId, permissions),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-pricing-plans'] });
+            queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
+            notify.success('Plan permissions saved successfully');
+        },
+        onError: (error: any) => {
+            notify.error(error.message || 'Failed to save plan permissions');
         },
     });
 };

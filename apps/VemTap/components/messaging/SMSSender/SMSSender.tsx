@@ -47,7 +47,11 @@ const HIGH_RISK_WORDS = [
     'immediate action', 'verify', 'account', 'secure-login', 'verify-now', 
     'urgent', 'winner', 'prize', 'bank', 'password', 'urgent response needed', 
     'you have won', 'congratulations winner', 'click below', 'identity verification', 
-    'crypto giveaway', 'failed delivery', 'free gift', 'action required', 'bank account'
+    'crypto giveaway', 'failed delivery', 'free gift', 'action required', 'bank account',
+    'promo', 'promotion', 'congrat', 'congratulations', 'bonus', 'discount',
+    'offer', 'claim', 'exclusive', 'limited time', 'act now', 'don\'t miss',
+    'special offer', 'free', 'win', 'cash', 'guaranteed', 'risk free',
+    'no obligation', 'act today', 'expires', 'limited supply'
 ];
 
 export default function SMSSender() {

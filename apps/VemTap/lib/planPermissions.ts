@@ -1,4 +1,4 @@
-// ─── Types ────────────────────────────────────────────────────────────────────
+import type { PricingPlan } from '@/types/pricing';
 
 export type PermissionLevel = 'yes' | 'no' | 'limited';
 
@@ -165,4 +165,165 @@ export function buildDefaultPermissions(
     });
 
     return { planId, planName, features };
+}
+
+export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
+    const features: Record<string, FeaturePermission> = {};
+
+    // Helper to extract boolean toggle and limit
+    const getPerm = (enabled: boolean, limit: number | null | undefined): FeaturePermission => {
+        if (!enabled) return { level: 'no' };
+        if (limit !== null && limit !== undefined && limit > 0) {
+            return { level: 'limited', limit };
+        }
+        return { level: 'yes' };
+    };
+
+    features['dashboard'] = { level: 'yes' };
+    features['products-stock'] = { level: 'yes' };
+    features['catalogue'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueItems);
+    features['inventory'] = getPerm(!!plan.inventoryEnabled, plan.inventoryLimit);
+    features['sales'] = { level: 'yes' };
+    features['pos'] = getPerm(!!plan.posEnabled, plan.posTerminalLimit);
+    features['customers'] = { level: 'yes' };
+    features['customer-list'] = { level: 'yes' };
+    features['loyalty'] = getPerm(plan.loyaltyEnabled, plan.loyaltyLimit);
+    features['visitors'] = { level: plan.visitorsEnabled ? 'yes' : 'no' };
+    features['in-app-chat'] = { level: plan.inAppChatEnabled ? 'yes' : 'no' };
+    features['channels'] = { level: plan.messagingEnabled ? 'yes' : 'no' };
+    features['forms'] = getPerm(!!plan.formsEnabled, plan.formsLimit);
+    features['business-qr'] = { level: plan.businessQrEnabled ? 'yes' : 'no' };
+    features['marketing-kit'] = getPerm(!!plan.marketingKitEnabled, plan.marketingKitLimit);
+    features['discovery'] = { level: plan.discoveryEnabled ? 'yes' : 'no' };
+    
+    // Analytics
+    if (!plan.analyticsEnabled) {
+        features['analytics'] = { level: 'no' };
+    } else {
+        features['analytics'] = plan.analyticsLevel === 'basic' 
+            ? { level: 'limited', limit: 3 } // Default basic analytics limit in months
+            : { level: 'yes' };
+    }
+
+    features['staff'] = getPerm(plan.teamMembersEnabled, plan.teamMembersLimit);
+    features['staff-roles'] = getPerm(!!plan.staffRolesEnabled, plan.staffRolesLimit);
+    features['activity-log'] = { level: plan.activityLogEnabled ? 'yes' : 'no' };
+    features['locations'] = getPerm(plan.branchesEnabled, plan.branchLimit);
+    features['qr-codes'] = getPerm(!!plan.qrCodesEnabled, plan.qrCodesLimit);
+    
+    // Settings, Profile, Subscription, Support
+    features['settings'] = { level: 'yes' };
+    features['profile'] = { level: 'yes' };
+    features['subscription'] = { level: 'yes' };
+    features['support'] = { level: 'yes' };
+
+    return {
+        planId: plan.id,
+        planName: plan.name,
+        features
+    };
+}
+
+export function mapConfigToPlanDto(
+    config: PlanPermissionConfig,
+    existingPlan?: PricingPlan
+): Partial<PricingPlan> {
+    const dto: Partial<PricingPlan> = {};
+
+    const getEnabledAndLimit = (featId: string) => {
+        const feat = config.features[featId];
+        if (!feat || feat.level === 'no') return { enabled: false, limit: null };
+        if (feat.level === 'limited') return { enabled: true, limit: feat.limit || null };
+        return { enabled: true, limit: null };
+    };
+
+    const getEnabledOnly = (featId: string) => {
+        const feat = config.features[featId];
+        return !!feat && feat.level === 'yes';
+    };
+
+    // Catalogue
+    const catalogue = getEnabledAndLimit('catalogue');
+    dto.catalogueEnabled = catalogue.enabled;
+    dto.maxCatalogueItems = catalogue.limit;
+    // Retain categories/offers if existing plan, otherwise null
+    if (existingPlan) {
+        dto.maxCatalogueCategories = catalogue.enabled ? existingPlan.maxCatalogueCategories : null;
+        dto.maxCatalogueOffers = catalogue.enabled ? existingPlan.maxCatalogueOffers : null;
+    }
+
+    // Inventory
+    const inventory = getEnabledAndLimit('inventory');
+    dto.inventoryEnabled = inventory.enabled;
+    dto.inventoryLimit = inventory.limit;
+
+    // POS
+    const pos = getEnabledAndLimit('pos');
+    dto.posEnabled = pos.enabled;
+    dto.posTerminalLimit = pos.limit;
+
+    // Loyalty
+    const loyalty = getEnabledAndLimit('loyalty');
+    dto.loyaltyEnabled = loyalty.enabled;
+    dto.loyaltyLimit = loyalty.limit;
+
+    // Visitors
+    dto.visitorsEnabled = getEnabledOnly('visitors');
+
+    // In-App Chat
+    dto.inAppChatEnabled = getEnabledOnly('in-app-chat');
+
+    // Messaging
+    dto.messagingEnabled = getEnabledOnly('channels');
+
+    // Forms
+    const forms = getEnabledAndLimit('forms');
+    dto.formsEnabled = forms.enabled;
+    dto.formsLimit = forms.limit;
+
+    // Business QR
+    dto.businessQrEnabled = getEnabledOnly('business-qr');
+
+    // Marketing Kit
+    const marketing = getEnabledAndLimit('marketing-kit');
+    dto.marketingKitEnabled = marketing.enabled;
+    dto.marketingKitLimit = marketing.limit;
+
+    // Discovery Network
+    dto.discoveryEnabled = getEnabledOnly('discovery');
+
+    // Analytics
+    const analyticsFeat = config.features['analytics'];
+    if (!analyticsFeat || analyticsFeat.level === 'no') {
+        dto.analyticsEnabled = false;
+        dto.analyticsLevel = 'none';
+    } else {
+        dto.analyticsEnabled = true;
+        dto.analyticsLevel = analyticsFeat.level === 'yes' ? 'advanced' : 'basic';
+    }
+
+    // Staff
+    const staff = getEnabledAndLimit('staff');
+    dto.teamMembersEnabled = staff.enabled;
+    dto.teamMembersLimit = staff.limit;
+
+    // Staff Roles
+    const staffRoles = getEnabledAndLimit('staff-roles');
+    dto.staffRolesEnabled = staffRoles.enabled;
+    dto.staffRolesLimit = staffRoles.limit;
+
+    // Activity Log
+    dto.activityLogEnabled = getEnabledOnly('activity-log');
+
+    // Locations
+    const locations = getEnabledAndLimit('locations');
+    dto.branchesEnabled = locations.enabled;
+    dto.branchLimit = locations.limit || 1; // Default to at least 1 branch if enabled
+
+    // QR Codes
+    const qrCodes = getEnabledAndLimit('qr-codes');
+    dto.qrCodesEnabled = qrCodes.enabled;
+    dto.qrCodesLimit = qrCodes.limit;
+
+    return dto;
 }

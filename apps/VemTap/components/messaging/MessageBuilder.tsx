@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MessageChannel } from '@/lib/store/useMessagingStore';
 import { useMessagingTemplates, useSendMessage } from '@/services/messaging/hooks';
 import { Channel, AudienceType } from '@/services/messaging/types';
-import { Users, Send, CheckCircle, Smartphone, MessageSquare, Mail } from 'lucide-react';
+import { Users, Send, CheckCircle, Smartphone, MessageSquare, Mail, UserPlus, X, Check, Tag, ChevronDown, Trash2, ChevronRight, Search, ArrowLeft, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useVisitors } from '@/services/visitors/hooks';
+import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
 import { useBusinessForms } from '@/services/business-forms/hooks';
 import Image from 'next/image';
 
@@ -181,7 +181,6 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const searchParams = useSearchParams();
     const { user } = useAuthStore();
     const sendMessage = useSendMessage();
-    const { data: visitorsData } = useVisitors('all');
     const { data: businessForms = [] } = useBusinessForms();
     const [channel, setChannel] = useState<MessageChannel>(defaultChannel || 'SMS');
     const channelApiMap: Record<MessageChannel, Channel> = {
@@ -197,16 +196,81 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     // If a channel was explicitly passed, skip channel selection (step 1) and go to compose (step 2)
     const [step, setStep] = useState(defaultChannel ? 2 : 1);
 
+    type RecipientMode = 'All' | 'Manual';
+
     // Form State
     const [messageName, setMessageName] = useState('');
-    const [audience, setAudience] = useState('all');
+    const [recipientMode, setRecipientMode] = useState<RecipientMode>('All');
+    const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+    const [tempSelectedIds, setTempSelectedIds] = useState<string[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalSearch, setModalSearch] = useState('');
+    const [modalTagFilter, setModalTagFilter] = useState<'all' | 'new' | 'returning'>('all');
+    const [subject, setSubject] = useState('');
     const [selectedTemplate, setSelectedTemplate] = useState<string>('');
     const [selectedFormId, setSelectedFormId] = useState<string>(searchParams.get('formId') || '');
     const [customContent, setCustomContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isLiveEdit, setIsLiveEdit] = useState(false);
-    const totalVisitors = visitorsData?.total || 0;
-    const countLabel = audience === 'all' ? `${totalVisitors.toLocaleString()} Contacts` : 'Segmented Contacts';
+
+    const { data: visitors = [] } = useMessagingVisitorsByBranch();
+    const totalVisitors = visitors.length;
+    const countLabel = recipientMode === 'All' ? `${totalVisitors.toLocaleString()} Contacts` : `${selectedContactIds.length.toLocaleString()} Selected`;
+
+    const selectedContacts = useMemo(() => 
+        visitors.filter(v => selectedContactIds.includes(v.id)),
+    [visitors, selectedContactIds]);
+
+    const filteredModalContacts = useMemo(() => {
+        let result = visitors;
+        const query = modalSearch.toLowerCase().trim();
+        if (query) {
+            result = result.filter(v => 
+                v.name?.toLowerCase().includes(query) || 
+                v.phone?.includes(query)
+            );
+        }
+        if (modalTagFilter !== 'all') {
+            result = result.filter(v => {
+                const visits = Number(v.visits) || 0;
+                if (modalTagFilter === 'new') return visits <= 1;
+                if (modalTagFilter === 'returning') return visits > 1;
+                return true;
+            });
+        }
+        return result;
+    }, [visitors, modalSearch, modalTagFilter]);
+
+    const toggleContact = (id: string) => {
+        setSelectedContactIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const toggleModalContact = (id: string) => {
+        setTempSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const toggleAllModalContacts = () => {
+        if (tempSelectedIds.length === filteredModalContacts.length) {
+            setTempSelectedIds([]);
+        } else {
+            setTempSelectedIds(filteredModalContacts.map(v => v.id));
+        }
+    };
+
+    const handleOpenModal = () => {
+        setTempSelectedIds([...selectedContactIds]);
+        setIsModalOpen(true);
+    };
+
+    const handleConfirmSelection = () => {
+        setSelectedContactIds(tempSelectedIds);
+        setIsModalOpen(false);
+    };
+
     const eligibleForms = businessForms.filter((form) => form.isPublished && form.isActive);
     const selectedForm = eligibleForms.find((form) => form.id === selectedFormId) || null;
     const selectedFormCode = selectedForm?.uniqueCode?.trim() || '';
@@ -230,15 +294,13 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
             toast.error('This form is missing a public code. Please republish the form to generate one.');
             return;
         }
+        if (recipientMode === 'Manual' && selectedContactIds.length === 0) {
+            toast.error('Please select at least one recipient');
+            return;
+        }
 
         const audienceType: AudienceType =
-            audience === 'all'
-                ? 'ALL'
-                : audience === 'new'
-                    ? 'RECENT'
-                    : audience === 'premium'
-                        ? 'TAGGED'
-                        : 'GROUP';
+            recipientMode === 'All' ? 'ALL' : 'TAGGED';
 
         setIsSending(true);
         try {
@@ -247,7 +309,8 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                 audienceType,
                 templateId: selectedTemplate || undefined,
                 content: selectedTemplate ? contentWithFormLink || undefined : contentWithFormLink,
-                from: businessName, // Include sender from based on backend field name
+                from: businessName,
+                customerIds: recipientMode === 'Manual' ? selectedContactIds : undefined,
             });
 
             const costInfo = response.totalCost ? ` (Cost: ${response.totalCost} units)` : '';
@@ -296,29 +359,70 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
                 <div>
                     <label className="block text-xs font-bold uppercase text-text-secondary mb-3">Target Audience</label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {[
-                            { id: 'all', label: 'All Contacts', sub: `(${visitorsData?.total || 0} Total)`, icon: Users },
-                            { id: 'new', label: 'Recent Contacts', sub: '(Recent)', icon: Smartphone },
-                            { id: 'premium', label: 'Tagged Contacts', sub: '(Tagged)', icon: CheckCircle }
-                        ].map(opt => (
-                            <button
-                                key={opt.id}
-                                onClick={() => setAudience(opt.id)}
-                                className={`p-4 rounded-2xl border-2 transition-all text-left ${audience === opt.id
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-gray-100 bg-white hover:border-gray-200'
+                    <div className="space-y-4">
+                        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 w-fit">
+                            {(['All', 'Manual'] as RecipientMode[]).map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setRecipientMode(mode)}
+                                    className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                        recipientMode === mode 
+                                        ? 'bg-white text-primary shadow-sm' 
+                                        : 'text-slate-400 hover:text-slate-600'
                                     }`}
-                            >
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="font-bold text-sm text-text-main">{opt.label}</span>
-                                    {audience === opt.id && <div className="size-4 bg-primary rounded-full flex items-center justify-center">
-                                        <div className="size-1.5 bg-white rounded-full" />
-                                    </div>}
+                                >
+                                    {mode}
+                                </button>
+                            ))}
+                        </div>
+
+                        {recipientMode === 'All' && (
+                            <div className="bg-gray-50 border border-gray-100 p-4 md:p-6 rounded-2xl flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 md:gap-4">
+                                    <div className="size-10 md:size-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary shrink-0">
+                                        <Users size={20} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-bold text-text-main leading-tight">All Contacts</p>
+                                        <p className="text-xs text-text-secondary font-medium mt-0.5 truncate">{totalVisitors.toLocaleString()} visitors will receive this.</p>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-tighter">{opt.sub}</p>
-                            </button>
-                        ))}
+                                <CheckCircle className="text-primary shrink-0" size={24} />
+                            </div>
+                        )}
+
+                        {recipientMode === 'Manual' && (
+                            <div className="space-y-4">
+                                <button 
+                                    onClick={handleOpenModal}
+                                    className="w-full h-14 border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center gap-3 text-slate-400 font-bold text-sm hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all"
+                                >
+                                    <UserPlus size={20} />
+                                    Select Visitors from List
+                                </button>
+
+                                {selectedContactIds.length > 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                                        {selectedContacts.map(contact => (
+                                            <div key={contact.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="size-8 rounded-full bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-400 uppercase shrink-0">
+                                                        {contact.name?.[0] || contact.email?.[0] || '?'}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-bold text-text-main truncate">{contact.name || 'Unknown'}</p>
+                                                        <p className="text-[10px] text-text-secondary font-medium">{contact.email || 'No email'}</p>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => toggleContact(contact.id)} className="text-slate-300 hover:text-red-500 transition-colors shrink-0">
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -383,30 +487,50 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
                         <div>
                             <label className="block text-[10px] font-black uppercase text-text-secondary mb-2 tracking-widest ml-1">Target Audience</label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {[
-                                    { id: 'all', label: 'All', sub: `${visitorsData?.total || 0} Total`, icon: Users },
-                                    { id: 'new', label: 'Recent', sub: 'Recent', icon: Smartphone },
-                                    { id: 'premium', label: 'Tagged', sub: 'Tagged', icon: CheckCircle }
-                                ].map(opt => (
+                            <div className="flex bg-gray-50 p-0.5 rounded-lg border border-gray-100 w-fit">
+                                {(['All', 'Manual'] as RecipientMode[]).map((mode) => (
                                     <button
-                                        key={opt.id}
-                                        onClick={() => setAudience(opt.id)}
-                                        className={`py-2 px-1 rounded-xl border-2 transition-all text-center ${audience === opt.id
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-gray-100 bg-white hover:border-gray-200'
-                                            }`}
+                                        key={mode}
+                                        onClick={() => setRecipientMode(mode)}
+                                        className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                                            recipientMode === mode 
+                                            ? 'bg-white text-primary shadow-sm' 
+                                            : 'text-slate-400 hover:text-slate-600'
+                                        }`}
                                     >
-                                        <div className="flex flex-col items-center gap-0.5">
-                                            <span className="font-bold text-[9px] text-text-main truncate w-full px-1">{opt.label}</span>
-                                            <span className="text-[8px] text-text-secondary font-black opacity-60">({opt.sub})</span>
-                                            {audience === opt.id && <div className="w-1.5 h-1.5 mt-0.5 bg-primary rounded-full" />}
-                                        </div>
+                                        {mode} {mode === 'Manual' && selectedContactIds.length > 0 ? `(${selectedContactIds.length})` : ''}
                                     </button>
                                 ))}
                             </div>
+                            {recipientMode === 'Manual' && (
+                                <div className="mt-3 space-y-3">
+                                    <button 
+                                        onClick={handleOpenModal}
+                                        className="w-full h-11 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 text-slate-400 font-bold text-xs hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all"
+                                    >
+                                        <UserPlus size={16} />
+                                        Select Visitors from List
+                                    </button>
+                                    {selectedContactIds.length > 0 && (
+                                        <p className="text-[10px] font-bold text-primary">{selectedContactIds.length} visitor(s) selected</p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {channel === 'Email' && (
+                        <div>
+                            <label className="block text-[10px] font-black uppercase text-text-secondary mb-2 tracking-widest ml-1">Email Subject</label>
+                            <input
+                                type="text"
+                                className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                placeholder="Enter email subject line..."
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                            />
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-[10px] font-black uppercase text-text-secondary mb-2 tracking-widest ml-1">Message Content</label>
@@ -500,6 +624,12 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                         <span className="font-bold text-text-main">{countLabel}</span>
                     </div>
                 </div>
+                {channel === 'Email' && subject && (
+                    <div className="flex justify-between items-center pb-4 border-b border-gray-200">
+                        <span className="text-sm font-bold text-text-secondary">Subject</span>
+                        <span className="font-bold text-text-main text-right max-w-[60%] truncate">{subject}</span>
+                    </div>
+                )}
                 <div className="flex justify-between items-center pb-4 border-b border-gray-200">
                     <span className="text-sm font-bold text-text-secondary">Estimated Cost</span>
                     <span className="font-mono font-bold text-text-main">Calculated by backend</span>
@@ -547,10 +677,154 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     );
 
     return (
-        <div className={`max-w-${step === 2 ? '5xl' : '2xl'} mx-auto pt-8 pb-32 md:pb-8 px-4`}>
-            {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
-        </div>
+        <>
+            <div className={`max-w-${step === 2 ? '5xl' : '2xl'} mx-auto pt-8 pb-32 md:pb-8 px-4`}>
+                {step === 1 && renderStep1()}
+                {step === 2 && renderStep2()}
+                {step === 3 && renderStep3()}
+            </div>
+
+            {/* Manual Selection Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center md:p-4 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+                    <div className="relative w-full h-full md:h-auto md:max-w-4xl bg-white md:rounded-[1.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col md:max-h-[90vh]">
+                        
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100 bg-white sticky top-0 z-10">
+                            <div>
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Select Visitors</h3>
+                                <p className="text-[10px] text-slate-400 font-bold mt-0.5">{tempSelectedIds.length} selected</p>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-50 rounded-full transition-colors md:hidden">
+                                <X size={20} className="text-slate-400" />
+                            </button>
+                        </div>
+
+                        {/* Header Filters */}
+                        <div className="p-4 md:p-6 border-b border-gray-100 space-y-4 bg-gray-50/30">
+                            <div className="flex flex-col md:flex-row gap-3">
+                                <div className="flex-1 relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <Search size={16} />
+                                    </div>
+                                    <input 
+                                        type="text"
+                                        placeholder="Search name or phone..."
+                                        value={modalSearch}
+                                        onChange={(e) => setModalSearch(e.target.value)}
+                                        className="w-full h-11 pl-11 pr-4 bg-white border border-gray-200 rounded-xl text-sm font-medium outline-none focus:border-primary transition-all shadow-sm"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1 md:flex-none">
+                                        <select 
+                                            value={modalTagFilter}
+                                            onChange={(e) => setModalTagFilter(e.target.value as 'all' | 'new' | 'returning')}
+                                            className="appearance-none w-full h-11 pl-10 pr-10 border border-gray-200 rounded-xl text-slate-600 text-[11px] md:text-sm font-bold outline-none bg-white hover:bg-gray-50 transition-all cursor-pointer shadow-sm"
+                                        >
+                                            <option value="all">All Visitors</option>
+                                            <option value="new">New</option>
+                                            <option value="returning">Returning</option>
+                                        </select>
+                                        <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                    <button 
+                                        onClick={toggleAllModalContacts}
+                                        className="h-11 px-4 bg-white border border-gray-200 rounded-xl text-[11px] font-bold text-slate-600 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2 shrink-0"
+                                    >
+                                        <Check size={14} className={tempSelectedIds.length === filteredModalContacts.length ? 'text-primary' : 'text-slate-400'} />
+                                        {tempSelectedIds.length === filteredModalContacts.length ? 'Deselect' : 'Select All'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* List Content */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="divide-y divide-gray-50">
+                                {filteredModalContacts.map(contact => {
+                                    const isSelected = tempSelectedIds.includes(contact.id);
+                                    const isReturning = (Number(contact.visits) || 0) > 1;
+                                    return (
+                                        <div 
+                                            key={contact.id}
+                                            onClick={() => toggleModalContact(contact.id)}
+                                            className={`flex items-center gap-3 p-4 transition-all cursor-pointer ${isSelected ? 'bg-primary/5' : 'hover:bg-gray-50'}`}
+                                        >
+                                            <div className={`size-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                                                isSelected ? 'bg-primary border-primary' : 'border-gray-200 bg-white'
+                                            }`}>
+                                                {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
+                                            </div>
+                                            
+                                            <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-primary uppercase shrink-0">
+                                                {contact.name?.[0] || contact.email?.[0] || '?'}
+                                            </div>
+                                            
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-bold text-slate-800 truncate">{contact.name || 'Unknown'}</span>
+                                                    <span className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-md shrink-0 ${
+                                                        isReturning 
+                                                        ? 'bg-emerald-50 text-emerald-600' 
+                                                        : 'bg-blue-50 text-blue-600'
+                                                    }`}>
+                                                        {isReturning ? 'Returning' : 'New'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500 font-medium mt-0.5">{contact.email || 'No email'}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                
+                                {filteredModalContacts.length === 0 && (
+                                    <div className="p-12 text-center">
+                                        <div className="size-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Users size={24} className="text-slate-300" />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-400">No visitors found</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 md:p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 sticky bottom-0">
+                            <div className="flex items-center justify-between w-full md:w-auto md:gap-6">
+                                <div className="bg-primary/10 text-primary px-4 py-2 rounded-xl text-xs font-black border border-primary/20">
+                                    {tempSelectedIds.length.toLocaleString()} selected
+                                </div>
+                                <button 
+                                    onClick={() => setTempSelectedIds([])}
+                                    className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-xs font-bold transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                    Clear
+                                </button>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                <button 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="flex-1 md:flex-none h-11 px-6 border border-gray-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleConfirmSelection}
+                                    className="flex-[1.5] md:flex-none h-11 px-8 bg-primary text-white text-sm font-black rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    Confirm
+                                    <ChevronRight size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
