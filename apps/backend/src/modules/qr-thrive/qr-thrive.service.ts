@@ -54,11 +54,10 @@ export class QrThriveService implements OnModuleInit {
     private readonly subscriptionTokenService: SubscriptionTokenService,
   ) {
     this.apiKey = this.configService.get<string>('QR_THRIVE_API_KEY')!;
-    const configuredUrl = this.configService.get<string>(
+    this.baseUrl = this.configService.get<string>(
       'QR_THRIVE_BASE_URL',
       'https://api.qrthrive.com/api/v1/integration',
     );
-    this.baseUrl = configuredUrl.replace(/^http:\/\//i, 'https://');
   }
 
   onModuleInit() {

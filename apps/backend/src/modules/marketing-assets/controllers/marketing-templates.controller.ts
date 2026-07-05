@@ -42,7 +42,7 @@ export class MarketingTemplatesController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get all active print templates' })
   @ApiResponse({ status: 200, type: [MarketingTemplate] })
   findAll(
@@ -59,7 +59,7 @@ export class MarketingTemplatesController {
   }
 
   @Get('categories')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get list of unique template categories' })
   @ApiResponse({ status: 200, type: [String] })
   getCategories() {
@@ -67,7 +67,7 @@ export class MarketingTemplatesController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get a template by ID' })
   @ApiResponse({ status: 200, type: MarketingTemplate })
   findOne(@Param('id') id: string) {
