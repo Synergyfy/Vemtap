@@ -33,7 +33,7 @@ import {
 import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer } from '@/services/catalogue/hooks';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import type { DiscoveryCustomer, ActivePartner, NearbyPartner, UpdateDiscoverySettingsDto } from '@/services/discovery/types';
-import { useUpdateBranch } from '@/services/branches/hooks';
+import { useUpdateBranch, useBranches } from '@/services/branches/hooks';
 import { getBrowserLocation } from '@/lib/geolocation';
 
 type TabId = 'overview' | 'promotions' | 'partners' | 'customers' | 'results' | 'settings';
@@ -438,6 +438,42 @@ function PartnersTab({ branchId }: { branchId: string }) {
     const nearbyPartnersList = nearbyPartners?.data || [];
     const recommendMutation = useRecommendBusiness();
     const updateBranchMutation = useUpdateBranch();
+    const { data: branches = [] } = useBranches();
+
+    // Browser live location for accurate map pin (refreshes per session)
+    const [liveLocation, setLiveLocation] = React.useState<{ lat: number; lng: number } | null>(null);
+    const [locationError, setLocationError] = React.useState<string | null>(null);
+    const locationFetched = React.useRef(false);
+
+    React.useEffect(() => {
+        if (locationFetched.current) return;
+        locationFetched.current = true;
+        if (!navigator.geolocation) {
+            setLocationError('Geolocation not supported');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            (err) => {
+                const msg = err.code === err.PERMISSION_DENIED ? 'Permission denied' : 'Could not get location';
+                setLocationError(msg);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+        );
+    }, []);
+
+    // Fallback to stored branch coordinates if browser location unavailable
+    const currentBranch = React.useMemo(() => {
+        return branches.find((b: any) => b.id === branchId);
+    }, [branches, branchId]);
+
+    const branchLocation = React.useMemo(() => {
+        if (liveLocation) return liveLocation;
+        if (currentBranch?.latitude && currentBranch?.longitude) {
+            return { lat: Number(currentBranch.latitude), lng: Number(currentBranch.longitude) };
+        }
+        return undefined;
+    }, [liveLocation, currentBranch]);
 
     // Detect "no location coordinates" error
     const isNoLocationError = nearbyError && 
@@ -636,6 +672,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                         <div className="lg:col-span-2 relative overflow-hidden min-h-[400px]">
                             <NearbyMap
                                 partners={nearbyPartnersList}
+                                center={branchLocation}
                                 onSelectPartner={(partner) => setConnectingTo({ id: partner.id, name: partner.name })}
                             />
 
