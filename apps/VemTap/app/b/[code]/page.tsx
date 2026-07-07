@@ -17,7 +17,6 @@ import {
     Music2,
     Gift,
     ChevronRight,
-    Star,
     CheckCircle2,
     Building2,
     MessageCircle,
@@ -32,10 +31,13 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/useAuthStore';
 
 import { usePublicBusiness, usePublicBranch } from '@/services/public/hooks';
 import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
 import { BusinessHours } from '@/services/public/types';
+import { ChatConnectModal } from '@/components/visitor/ChatConnectModal';
 
 const displayText = (value?: string | null) => (value && value.trim().length > 0 ? value : 'Not provided');
 
@@ -49,11 +51,18 @@ const formatHours = (hours?: BusinessHours) => {
     return `${hours.open} - ${hours.close}`;
 };
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
-const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+const DAY_DISPLAY: Record<string, string> = {
+    monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+    thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday',
+};
 
 export default function PublicBusinessProfilePage() {
     const params = useParams();
+    const router = useRouter();
+    const authUser = useAuthStore((s) => s.user);
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const codeParam = params?.code;
     const code = Array.isArray(codeParam) ? codeParam[0] : codeParam || '';
 
@@ -96,7 +105,15 @@ export default function PublicBusinessProfilePage() {
         queryFn: async () => {
             if (!branchId) return [];
             const res = await api.get(`/catalogue/offers/public/${branchId}`);
-            return Array.isArray(res) ? res : (res as any)?.data || [];
+            const items = Array.isArray(res) ? res : (res as any)?.data || [];
+            const now = new Date();
+            return items.filter((offer: any) => {
+                if (offer.endDate) {
+                    const end = new Date(offer.endDate);
+                    if (end < now) return false;
+                }
+                return true;
+            });
         },
         enabled: !!branchId,
     });
@@ -119,6 +136,10 @@ export default function PublicBusinessProfilePage() {
     const mapRef = useRef<HTMLDivElement | null>(null);
     const mapInstanceRef = useRef<any>(null);
     const markerRef = useRef<any>(null);
+
+    // Chat Auth Modal State
+    const [showChatModal, setShowChatModal] = useState(false);
+    const [isRecordingVisit, setIsRecordingVisit] = useState(false);
 
     // OTP Claiming Modal States
     const [selectedOffer, setSelectedOffer] = useState<any | null>(null);
@@ -264,7 +285,14 @@ export default function PublicBusinessProfilePage() {
         if (!profileHours) return null;
         const todayHours = (profileHours as any)?.[todayName];
         if (!todayHours || todayHours.closed) return false;
-        return true;
+        const now = new Date();
+        const [openH, openM] = (todayHours.open || '').split(':').map(Number);
+        const [closeH, closeM] = (todayHours.close || '').split(':').map(Number);
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const openMinutes = (openH || 0) * 60 + (openM || 0);
+        const closeMinutes = (closeH || 0) * 60 + (closeM || 0);
+        if (isNaN(openMinutes) || isNaN(closeMinutes)) return true;
+        return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
     }, [profileHours, todayName]);
 
     const handleShare = async () => {
@@ -273,6 +301,55 @@ export default function PublicBusinessProfilePage() {
             try { await navigator.share({ title: profileName, url }); } catch { /* cancelled */ }
         } else {
             try { await navigator.clipboard.writeText(url); } catch { /* fallback */ }
+        }
+    };
+
+    const handleChatClick = () => {
+        if (isAuthenticated) {
+            const chatUrl = `/customer/messaging/chat?businessId=${businessId || ''}`;
+            router.push(chatUrl);
+        } else {
+            setShowChatModal(true);
+        }
+    };
+
+    const handleChatModalSuccess = async () => {
+        setShowChatModal(false);
+        setIsRecordingVisit(true);
+
+        try {
+            // Small delay to ensure Zustand persist middleware writes token to localStorage
+            await new Promise((r) => setTimeout(r, 300));
+
+            // Use the resolved branch's uniqueCode (not URL code which could be a business code)
+            const branchCode = resolvedBranch?.uniqueCode;
+            console.log('[CHAT] Branch uniqueCode:', branchCode, '| resolvedBranch id:', resolvedBranch?.id);
+
+            if (branchCode) {
+                console.log('[CHAT] Getting device context for branchCode:', branchCode);
+                const deviceContext = await api.get(`/tap/context/${branchCode}`);
+                console.log('[CHAT] Device context response:', JSON.stringify(deviceContext));
+                const deviceCode = deviceContext?.device?.code;
+                console.log('[CHAT] Resolved deviceCode:', deviceCode);
+
+                if (deviceCode) {
+                    console.log('[CHAT] Recording portal visit with deviceCode:', deviceCode);
+                    const visitResult = await api.post('/visitors/portal-visit', { deviceCode });
+                    console.log('[CHAT] Portal visit result:', JSON.stringify(visitResult));
+                } else {
+                    console.warn('[CHAT] No deviceCode found for branch');
+                }
+            } else {
+                console.warn('[CHAT] No branchCode available');
+            }
+        } catch (err: any) {
+            console.error('[CHAT] Failed to record visit:', err?.message || err);
+            // Continue to chat even if visit recording fails
+        } finally {
+            setIsRecordingVisit(false);
+            const chatUrl = `/customer/messaging/chat?businessId=${businessId || ''}`;
+            console.log('[CHAT] Navigating to:', chatUrl);
+            router.push(chatUrl);
         }
     };
 
@@ -445,12 +522,6 @@ export default function PublicBusinessProfilePage() {
                             </div>
 
                             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 mt-2.5 text-sm">
-                                <div className="flex items-center gap-1 font-bold text-slate-800">
-                                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                    <span>4.9</span>
-                                    <span className="text-slate-400 font-medium">(1,240 Reviews)</span>
-                                </div>
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-200 hidden sm:inline-block" />
                                 <div className="flex items-center gap-1 text-slate-500">
                                     <MapPin size={14} className="shrink-0" />
                                     <span className="truncate">{resolvedLocationDisplay}</span>
@@ -490,23 +561,38 @@ export default function PublicBusinessProfilePage() {
                     {/* Quick Button Controls */}
                     <div className="grid grid-cols-4 sm:flex sm:justify-start gap-4 sm:gap-8 border-t border-slate-100 mt-6 pt-5 bg-slate-50/20 rounded-2xl p-4">
                         {[
-                            { icon: MessageCircle, label: 'Chat', href: profileEmail ? `mailto:${profileEmail}` : undefined },
+                            { icon: MessageCircle, label: 'Chat', action: handleChatClick },
                             { icon: Tag, label: 'Offers', href: '#offers-section' },
-                            { icon: Briefcase, label: 'Services', href: '#services-section' },
+                            ...(services && services.length > 0 ? [{ icon: Briefcase, label: 'Services', href: '#services-section' }] : []),
                             { icon: Phone, label: 'Call', href: profilePhone ? `tel:${profilePhone}` : undefined },
-                        ].map((action) => (
-                            <a
-                                key={action.label}
-                                href={action.href || '#'}
-                                className="flex flex-col items-center gap-1.5 group sm:min-w-[64px]"
-                            >
-                                <div className="w-11 h-11 rounded-xl bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 active:scale-90 flex items-center justify-center text-slate-600 transition-all border border-slate-100/50">
-                                    <action.icon size={18} strokeWidth={2} />
-                                </div>
-                                <span className="text-[11px] font-semibold text-slate-600 group-hover:text-blue-600 transition-colors">
-                                    {action.label}
-                                </span>
-                            </a>
+                        ].map((item) => (
+                            item.action ? (
+                                <button
+                                    key={item.label}
+                                    onClick={item.action}
+                                    className="flex flex-col items-center gap-1.5 group sm:min-w-[64px]"
+                                >
+                                    <div className="w-11 h-11 rounded-xl bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 active:scale-90 flex items-center justify-center text-slate-600 transition-all border border-slate-100/50">
+                                        <item.icon size={18} strokeWidth={2} />
+                                    </div>
+                                    <span className="text-[11px] font-semibold text-slate-600 group-hover:text-blue-600 transition-colors">
+                                        {item.label}
+                                    </span>
+                                </button>
+                            ) : (
+                                <a
+                                    key={item.label}
+                                    href={item.href || '#'}
+                                    className="flex flex-col items-center gap-1.5 group sm:min-w-[64px]"
+                                >
+                                    <div className="w-11 h-11 rounded-xl bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 active:scale-90 flex items-center justify-center text-slate-600 transition-all border border-slate-100/50">
+                                        <item.icon size={18} strokeWidth={2} />
+                                    </div>
+                                    <span className="text-[11px] font-semibold text-slate-600 group-hover:text-blue-600 transition-colors">
+                                        {item.label}
+                                    </span>
+                                </a>
+                            )
                         ))}
                     </div>
                 </div>
@@ -516,30 +602,6 @@ export default function PublicBusinessProfilePage() {
 
                     {/* LEFT COLUMN: ABOUT, OFFERS, SERVICES */}
                     <div className="lg:col-span-8 space-y-8">
-
-                        {/* WHY VISIT US */}
-                        <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                WHY VISIT US
-                            </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {[
-                                    { icon: Star, value: '4.9 Rating', label: 'Top-tier score', cls: 'text-amber-500 fill-amber-500' },
-                                    { icon: Gift, value: `${offersData?.length || 0} Deals`, label: 'Active promotions', cls: 'text-blue-600' },
-                                    { icon: Zap, value: `${branches.length || 1} Location`, label: branches.length === 1 ? 'Central office' : 'Multi-branch setup', cls: 'text-violet-600' },
-                                    { icon: Clock, value: 'Replies Fast', label: 'Under 2 min response', cls: 'text-emerald-600' },
-                                ].map((stat, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-1.5"
-                                    >
-                                        <stat.icon className={`w-5 h-5 ${stat.cls}`} />
-                                        <div className="font-extrabold text-[15px] text-slate-900 mt-1">{stat.value}</div>
-                                        <div className="text-[11px] text-slate-400 font-semibold">{stat.label}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
 
                         {/* ACTIVE OFFERS & PROMOTIONS */}
                         {activeShowRewards && (
@@ -610,113 +672,75 @@ export default function PublicBusinessProfilePage() {
                             </section>
                         )}
 
-                        {/* OUR SERVICES */}
-                        <section id="services-section" className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                            <div className="flex items-center justify-between mb-5">
-                                <h3 className="text-lg font-bold text-slate-900 font-display">Our Services</h3>
-                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                                    {services?.length || 0} Services
-                                </span>
-                            </div>
-
-                            {servicesLoading ? (
-                                <div className="flex justify-center py-6">
-                                    <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-blue-600 animate-spin" />
+                        {/* OUR SERVICES — hidden when no services */}
+                        {(servicesLoading || (services && services.length > 0)) && (
+                            <section id="services-section" className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                                <div className="flex items-center justify-between mb-5">
+                                    <h3 className="text-lg font-bold text-slate-900 font-display">Our Services</h3>
+                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
+                                        {services?.length || 0} Services
+                                    </span>
                                 </div>
-                            ) : services && services.length > 0 ? (
-                                <div className="space-y-3.5">
-                                    {services.map((item: any) => (
-                                        <div
-                                            key={item.id}
-                                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-100 transition-all gap-4"
-                                        >
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-14 h-14 rounded-xl bg-blue-50 border border-blue-100/30 flex items-center justify-center text-blue-600 shrink-0 text-2xl font-semibold">
-                                                    ✂️
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-slate-900 text-[15px]">
-                                                        {item.name}
-                                                    </h4>
-                                                    <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-md">
-                                                        {item.shortDescription || item.description || 'Full professional standard service execution.'}
-                                                    </p>
-                                                    {item.price !== undefined && (
-                                                        <div className="text-xs font-bold text-slate-800 mt-1">
-                                                            Price: ₦{item.price}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
 
-                                            <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
-                                                <a
-                                                    href={profilePhone ? `tel:${profilePhone}` : `mailto:${profileEmail || ''}`}
-                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95"
-                                                >
-                                                    Book Now
-                                                </a>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-slate-100 border-dashed">
-                                    <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-2.5" />
-                                    <p className="text-sm font-bold text-slate-600">No listed services yet</p>
-                                    <p className="text-xs text-slate-400 mt-1">Contact business to enquire about specific work.</p>
-                                </div>
-                            )}
-                        </section>
-
-                        {/* ABOUT US */}
-                        <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-900 mb-3.5">About Us</h3>
-                            <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                                {profileAbout ||
-                                    `Welcome to ${profileName}! We are dedicated to providing the best experience to our customers through innovation and quality service. Join our loyalty program to earn points on every visit.`}
-                            </p>
-                            {profileWelcome && (
-                                <div className="mt-5 p-4.5 bg-blue-50/40 rounded-2xl border border-blue-100/30 italic text-slate-600 text-sm">
-                                    &ldquo;{profileWelcome}&rdquo;
-                                </div>
-                            )}
-                        </section>
-
-                        {/* REVIEWS SECTION */}
-                        <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                            <div className="flex items-center justify-between mb-5">
-                                <h3 className="text-lg font-bold text-slate-900">Reviews &amp; Feedback</h3>
-                                <button className="text-xs font-bold text-blue-600 hover:underline">Write a Review</button>
-                            </div>
-                            <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/30">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold">
-                                        EN
+                                {servicesLoading ? (
+                                    <div className="flex justify-center py-6">
+                                        <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-blue-600 animate-spin" />
                                     </div>
-                                    <div>
-                                        <h4 className="font-extrabold text-sm text-slate-900">Emeka Nwosu</h4>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <div className="flex text-amber-400">
-                                                {[...Array(5)].map((_, i) => (
-                                                    <Star key={i} className="w-3 h-3 fill-amber-400" />
-                                                ))}
+                                ) : services && services.length > 0 ? (
+                                    <div className="space-y-3.5">
+                                        {services.map((item: any) => (
+                                            <div
+                                                key={item.id}
+                                                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-100 transition-all gap-4"
+                                            >
+                                                <div className="flex items-start gap-4">
+                                                    <div className="w-14 h-14 rounded-xl bg-blue-50 border border-blue-100/30 flex items-center justify-center text-blue-600 shrink-0 text-2xl font-semibold">
+                                                        ✂️
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-900 text-[15px]">
+                                                            {item.name}
+                                                        </h4>
+                                                        <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-md">
+                                                            {item.shortDescription || item.description || 'Full professional standard service execution.'}
+                                                        </p>
+                                                        {item.price !== undefined && (
+                                                            <div className="text-xs font-bold text-slate-800 mt-1">
+                                                                Price: ₦{item.price}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                                                    <a
+                                                        href={profilePhone ? `tel:${profilePhone}` : `mailto:${profileEmail || ''}`}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95"
+                                                    >
+                                                        Book Now
+                                                    </a>
+                                                </div>
                                             </div>
-                                            <span className="text-[10px] text-slate-400 font-bold">2 days ago</span>
-                                        </div>
+                                        ))}
                                     </div>
-                                </div>
-                                <p className="text-xs text-slate-500 mt-3 italic leading-relaxed">
-                                    &ldquo;The best service experience I&apos;ve had in Abuja. The fit for my wear was absolutely perfect and the staff are incredibly professional. Highly recommended!&rdquo;
+                                ) : null}
+                            </section>
+                        )}
+
+                        {/* ABOUT US — only show if there's actual content */}
+                        {profileAbout && (
+                            <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                                <h3 className="text-lg font-bold text-slate-900 mb-3.5">About Us</h3>
+                                <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                                    {profileAbout}
                                 </p>
-                                <div className="mt-4 p-3.5 bg-blue-50/60 rounded-xl border border-blue-100/20 text-xs">
-                                    <span className="font-bold text-slate-900">{profileName} (Owner):</span>
-                                    <p className="text-slate-500 mt-1">
-                                        Thank you so much for the kind words, Emeka! It was an absolute pleasure serving you. Looking forward to seeing you again soon.
-                                    </p>
-                                </div>
-                            </div>
-                        </section>
+                                {profileWelcome && (
+                                    <div className="mt-5 p-4.5 bg-blue-50/40 rounded-2xl border border-blue-100/30 italic text-slate-600 text-sm">
+                                        &ldquo;{profileWelcome}&rdquo;
+                                    </div>
+                                )}
+                            </section>
+                        )}
                     </div>
 
                     {/* RIGHT COLUMN: SIDEBAR */}
@@ -728,7 +752,7 @@ export default function PublicBusinessProfilePage() {
                                 OPENING HOURS
                             </h3>
                             <div className="space-y-2.5">
-                                {DAY_ORDER.map((day, idx) => {
+                                {DAY_ORDER.map((day) => {
                                     const dayHours = (profileHours as any)?.[day] as BusinessHours | undefined;
                                     const isToday = day === todayName;
                                     const isClosed = !dayHours || dayHours.closed;
@@ -741,7 +765,7 @@ export default function PublicBusinessProfilePage() {
                                         >
                                             <div className="flex items-center gap-1.5">
                                                 <span className={`font-bold ${isToday ? 'text-slate-900' : 'text-slate-600'}`}>
-                                                    {day}
+                                                    {DAY_DISPLAY[day] || day}
                                                 </span>
                                                 {isToday && (
                                                     <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100">
@@ -888,7 +912,7 @@ export default function PublicBusinessProfilePage() {
                 {/* Footer Branding */}
                 <div className="text-center mt-12 pt-6 border-t border-slate-200/50">
                     <p className="text-[11px] text-slate-300 font-bold uppercase tracking-[0.2em]">
-                        Powered by VemTap Commerce Core
+                        Powered by VemTap
                     </p>
                 </div>
             </div>
@@ -931,26 +955,24 @@ export default function PublicBusinessProfilePage() {
                             {/* STEP 1: Enter details */}
                             {claimStep === 'details' && (
                                 <form onSubmit={handleRequestOtpSubmit} className="space-y-3.5">
-                                    <div className="grid grid-cols-2 gap-3.5">
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase">First Name</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
-                                                value={claimForm.firstName}
-                                                onChange={(e) => setClaimForm({ ...claimForm, firstName: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Last Name</label>
-                                            <input
-                                                type="text"
-                                                className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
-                                                value={claimForm.lastName}
-                                                onChange={(e) => setClaimForm({ ...claimForm, lastName: e.target.value })}
-                                            />
-                                        </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">First Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
+                                            value={claimForm.firstName}
+                                            onChange={(e) => setClaimForm({ ...claimForm, firstName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Last Name</label>
+                                        <input
+                                            type="text"
+                                            className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
+                                            value={claimForm.lastName}
+                                            onChange={(e) => setClaimForm({ ...claimForm, lastName: e.target.value })}
+                                        />
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase">Email Address</label>
@@ -1085,6 +1107,15 @@ export default function PublicBusinessProfilePage() {
                     animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
             `}</style>
+
+            {/* Chat Auth Modal */}
+            <ChatConnectModal
+                isOpen={showChatModal}
+                onClose={() => setShowChatModal(false)}
+                onSuccess={handleChatModalSuccess}
+                storeName={profileName}
+                logoUrl={profileLogo}
+            />
         </div>
     );
 }

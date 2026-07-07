@@ -199,10 +199,17 @@ export default function PaymentScreen() {
       goToSuccess(buildOfflineSale());
     };
 
+    // Offline-first: if offline, save locally and go to success immediately
+    if (!navigator.onLine) {
+      await saveAndGoOffline();
+      return;
+    }
+
     try {
       const sale = await createSale.mutateAsync(salePayload);
       goToSuccess(sale);
     } catch (err: any) {
+      // Also handle case where we went offline during the request
       if (!navigator.onLine) {
         await saveAndGoOffline();
       } else {
