@@ -1,21 +1,56 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { usePosDashboard } from '@/services/pos/hooks';
+import { usePosDashboard, usePosSales } from '@/services/pos/hooks';
 import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { TrendingUp, Banknote, Package, Users, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { TrendingUp, Banknote, Package, Users, ArrowUpRight, ArrowDownRight, Activity, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { startOfDay, endOfDay, subDays, subMonths, subYears, format } from 'date-fns';
+
+type Period = '7days' | 'thisMonth' | 'thisYear';
 
 export default function AnalyticsDashboard() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
+  const [period, setPeriod] = useState<Period>('7days');
+
   const { data: dashboard } = usePosDashboard(activeBranchId ?? undefined);
   const { data: productsData } = useCatalogueItemsPublic(activeBranchId ?? '');
   const products = productsData?.data ?? [];
+
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const to = endOfDay(now);
+    let from: Date;
+    switch (period) {
+      case 'thisMonth': from = startOfDay(subMonths(now, 1)); break;
+      case 'thisYear': from = startOfDay(subYears(now, 1)); break;
+      default: from = startOfDay(subDays(now, 6)); break;
+    }
+    return { dateFrom: from.toISOString(), dateTo: to.toISOString(), days: Math.ceil((to.getTime() - from.getTime()) / 86400000) };
+  }, [period]);
+
+  const { data: salesData } = usePosSales({ branchId: activeBranchId ?? undefined, dateFrom: dateRange.dateFrom, dateTo: dateRange.dateTo, limit: 1000 });
+
+  const dailyRevenue = useMemo(() => {
+    if (!salesData?.data) return [];
+    const map = new Map<string, number>();
+    for (const sale of salesData.data) {
+      const day = format(new Date(sale.createdAt), 'yyyy-MM-dd');
+      map.set(day, (map.get(day) ?? 0) + sale.total);
+    }
+    const entries = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const maxVal = Math.max(...entries.map(([_, v]) => v), 1);
+    return entries.map(([date, revenue]) => ({
+      date,
+      revenue,
+      height: Math.max((revenue / maxVal) * 100, 4),
+    }));
+  }, [salesData]);
 
   const totalRevenue = dashboard?.revenue ?? 0;
   const transactionCount = dashboard?.transactionCount ?? 0;
@@ -66,25 +101,49 @@ export default function AnalyticsDashboard() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-lg font-black text-gray-900">Revenue Overview</h3>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Last 7 Days vs Previous</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                {period === '7days' ? 'Last 7 Days' : period === 'thisMonth' ? 'Last 30 Days' : 'This Year'}
+              </p>
             </div>
-            <select className="bg-gray-50 border border-gray-200 text-xs font-black uppercase tracking-widest text-gray-600 rounded-xl px-4 py-2 outline-none">
-              <option>Last 7 Days</option>
-              <option>This Month</option>
-              <option>This Year</option>
-            </select>
+            <div className="relative">
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as Period)}
+                className="bg-gray-50 border border-gray-200 text-xs font-black uppercase tracking-widest text-gray-600 rounded-xl px-4 py-2 pr-8 outline-none appearance-none cursor-pointer"
+              >
+                <option value="7days">Last 7 Days</option>
+                <option value="thisMonth">This Month</option>
+                <option value="thisYear">This Year</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
+            </div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-100 rounded-[24px] bg-gray-50/50 relative overflow-hidden">
-            <div className="absolute inset-x-8 bottom-8 flex items-end justify-between gap-2 opacity-20">
-              {[40, 70, 45, 90, 65, 80, 100].map((h, i) => (
-                <div key={i} className="w-full bg-[#066CF4] rounded-t-lg transition-all duration-1000" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-            <div className="text-center relative z-10">
-              <TrendingUp size={32} className="mx-auto mb-3 text-gray-400" />
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Interactive Charts Loading...</p>
-            </div>
+          <div className="flex-1 flex items-end justify-center border-2 border-gray-100 rounded-[24px] bg-gray-50/50 p-6 min-h-[280px]">
+            {dailyRevenue.length > 0 ? (
+              <div className="w-full h-full flex items-end justify-between gap-2 self-end">
+                {dailyRevenue.map((d, i) => (
+                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                    <span className="text-[9px] font-black text-gray-400">₦{(d.revenue / 1000).toFixed(d.revenue >= 1000 ? 1 : 0)}k</span>
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: `${d.height}%` }}
+                      transition={{ duration: 0.6, delay: i * 0.05, ease: 'easeOut' }}
+                      className="w-full max-w-[48px] bg-gradient-to-t from-[#066CF4] to-[#4A9AF5] rounded-t-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      title={`${format(new Date(d.date), 'MMM d')}: ₦${d.revenue.toLocaleString()}`}
+                    />
+                    <span className="text-[8px] font-bold text-gray-400 uppercase whitespace-nowrap">
+                      {format(new Date(d.date), 'd MMM')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center w-full">
+                <TrendingUp size={32} className="mx-auto mb-3 text-gray-300" />
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No revenue data for this period</p>
+              </div>
+            )}
           </div>
         </div>
 
