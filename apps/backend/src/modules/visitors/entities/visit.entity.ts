@@ -58,7 +58,7 @@ export class Visit extends AbstractBaseEntity {
     default: 'portal',
     nullable: true,
   })
-  visitType: 'portal' | 'patronage';
+  visitType: 'portal' | 'patronage' | 'chat';
 
   /**
    * A unique token minted per browser session on the frontend.
