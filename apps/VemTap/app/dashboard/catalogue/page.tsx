@@ -64,24 +64,24 @@ export default function CatalogueOverviewPage() {
                         </div>
 
                         {items.length === 0 ? (
-                            <div className="py-20 text-center">
-                                <div className="size-20 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-6 text-gray-300">
-                                    <Plus size={40} />
+                            <div className="py-12 md:py-20 text-center">
+                                <div className="size-16 md:size-20 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-6 text-gray-300">
+                                    <Plus size={32} className="md:w-10 md:h-10" />
                                 </div>
-                                <h4 className="text-lg font-black text-gray-900 mb-2">No items yet</h4>
-                                <p className="text-sm font-medium text-gray-400 mb-8">Start adding your {isProductBased ? 'products' : 'services'} to grow.</p>
-                                <Link href="/dashboard/catalogue/products"><Button className="bg-[#066CF4] rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs">Add First Item</Button></Link>
+                                <h4 className="text-base md:text-lg font-black text-gray-900 mb-2">No items yet</h4>
+                                <p className="text-xs md:text-sm font-medium text-gray-400 mb-8">Start adding your {isProductBased ? 'products' : 'services'} to grow.</p>
+                                <Link href="/dashboard/catalogue/products"><Button className="bg-[#066CF4] rounded-2xl h-12 md:h-14 px-6 md:px-8 font-black uppercase tracking-widest text-[10px] md:text-xs">Add First Item</Button></Link>
                             </div>
                         ) : (
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                               {items.slice(0, 4).map((item: any) => (
-                                 <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
-                                    <div className="size-14 rounded-xl bg-white shadow-sm overflow-hidden flex items-center justify-center shrink-0">
-                                       {item.image ? <img src={item.image} className="size-full object-cover" /> : <ShoppingBag className="text-gray-300" />}
+                                 <div key={item.id} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
+                                    <div className="size-12 md:size-14 rounded-xl bg-white shadow-sm overflow-hidden flex items-center justify-center shrink-0">
+                                       {(item.mainImage || item.image) ? <img src={item.mainImage || item.image} className="size-full object-cover" /> : <ShoppingBag className="text-gray-300" size={20} />}
                                     </div>
-                                    <div>
-                                       <h4 className="text-sm font-black text-gray-900">{item.name}</h4>
-                                       <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">₦{Number(item.price).toLocaleString()}</p>
+                                    <div className="min-w-0">
+                                       <h4 className="text-xs md:text-sm font-black text-gray-900 truncate">{item.name}</h4>
+                                       <p className="text-[9px] md:text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">₦{Number(item.price).toLocaleString()}</p>
                                     </div>
                                  </div>
                               ))}

@@ -168,8 +168,8 @@ export default function MarketingAssetEditor({
 
     const initialX = el.x;
     const initialY = el.y;
-    const elWidth = el.width || (el.type === 'qr' ? (el.size! / canvasRect.width) * 100 : 30);
-    const elHeight = el.height || (el.type === 'qr' ? (el.size! / canvasRect.height) * 100 : 8);
+    const elWidth = el.width || (el.type === 'qr' ? (el.size! / (designW || 1080)) * 100 : 30);
+    const elHeight = el.height || (el.type === 'qr' ? (el.size! / (designH || 1350)) * 100 : 8);
     let hasMoved = false;
     const DRAG_THRESHOLD = 4; // pixels before we consider it a drag
 
@@ -260,8 +260,10 @@ export default function MarketingAssetEditor({
 
     const initialX = el.x;
     const initialY = el.y;
-    const initialWidth = el.width || (el.type === 'qr' ? (el.size! / canvasRect.width) * 100 : 30);
-    const initialHeight = el.height || (el.type === 'qr' ? (el.size! / canvasRect.height) * 100 : 8);
+    const elWidth = el.width || (el.type === 'qr' ? (el.size! / (designW || 1080)) * 100 : 30);
+    const elHeight = el.height || (el.type === 'qr' ? (el.size! / (designH || 1350)) * 100 : 8);
+    const initialWidth = elWidth;
+    const initialHeight = elHeight;
     const initialSize = el.size || 120;
     const initialFontSize = el.fontSize || 14;
 
@@ -275,12 +277,13 @@ export default function MarketingAssetEditor({
       const deltaYPct = ((currentY - startY) / canvasRect.height) * 100;
       const deltaX = currentX - startX;
 
+      const scaleFactor = canvasRect.width / (designW || 1080);
       let updates: Partial<EditorElement> = {};
 
       if (el.type === 'text') {
         if (['nw', 'ne', 'se', 'sw'].includes(dir)) {
           const factor = (dir === 'se' || dir === 'ne') ? 1 : -1;
-          updates.fontSize = Math.max(6, Math.min(100, Math.round(initialFontSize + (deltaX * factor) / 3)));
+          updates.fontSize = Math.max(6, Math.min(200, Math.round(initialFontSize + ((deltaX * factor) / 3) / scaleFactor)));
         } else {
           if (dir === 'e') updates.width = Math.max(5, Math.min(100, Math.round(initialWidth + deltaXPct)));
           if (dir === 'w') {
@@ -290,7 +293,7 @@ export default function MarketingAssetEditor({
         }
       } else if (el.type === 'qr') {
         const factor = (dir === 'se' || dir === 'e' || dir === 's') ? 1 : -1;
-        updates.size = Math.max(40, Math.min(300, Math.round(initialSize + deltaX * factor)));
+        updates.size = Math.max(40, Math.min(500, Math.round(initialSize + (deltaX * factor) / scaleFactor)));
         if (factor === -1) {
             updates.x = Math.max(0, Math.round(initialX + deltaXPct));
             updates.y = Math.max(0, Math.round(initialY + (deltaX / canvasRect.height) * 100));
@@ -579,36 +582,44 @@ export default function MarketingAssetEditor({
                 }}
                 className={cn("group transition-all select-none", isSelected && "bg-white/5 backdrop-blur-[1px] ring-4 ring-[#066CF4]/10 rounded-xl")}
               >
-                {el.type === 'text' && (
-                  <div 
-                    style={{ 
-                        color: el.color, 
-                        fontSize: `${el.fontSize}px`, 
-                        fontWeight: el.fontWeight, 
-                        textAlign: el.alignment 
-                    }}
-                    className="w-full leading-tight break-words"
-                  >
-                    {el.text}
-                  </div>
-                )}
+                {(() => {
+                  const scaleFactor = displayWidth / (designW || 1080);
+                  
+                  return (
+                    <>
+                      {el.type === 'text' && (
+                        <div 
+                          style={{ 
+                              color: el.color, 
+                              fontSize: `${(el.fontSize || 16) * scaleFactor}px`, 
+                              fontWeight: el.fontWeight, 
+                              textAlign: el.alignment 
+                          }}
+                          className="w-full leading-tight break-words"
+                        >
+                          {el.text}
+                        </div>
+                      )}
 
-                {el.type === 'qr' && (
-                  <div className="bg-white p-2 rounded-2xl shadow-xl flex items-center justify-center">
-                    <QRCodeSVG 
-                        value={el.qrContent || qrUrl} 
-                        size={el.size} 
-                        level="H" 
-                        includeMargin={false}
-                        imageSettings={businessLogo ? {
-                            src: businessLogo,
-                            height: (el.size || 100) * 0.2,
-                            width: (el.size || 100) * 0.2,
-                            excavate: true,
-                        } : undefined}
-                    />
-                  </div>
-                )}
+                      {el.type === 'qr' && (
+                        <div className="bg-white p-2 rounded-2xl shadow-xl flex items-center justify-center">
+                          <QRCodeSVG 
+                              value={el.qrContent || qrUrl} 
+                              size={(el.size || 120) * scaleFactor} 
+                              level="H" 
+                              includeMargin={false}
+                              imageSettings={businessLogo ? {
+                                  src: businessLogo,
+                                  height: ((el.size || 120) * scaleFactor) * 0.2,
+                                  width: ((el.size || 120) * scaleFactor) * 0.2,
+                                  excavate: true,
+                              } : undefined}
+                          />
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {el.type === 'logo' && (
                   <div className="w-full h-full flex items-center justify-center min-h-[40px]">

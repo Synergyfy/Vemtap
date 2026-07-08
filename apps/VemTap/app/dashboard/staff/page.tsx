@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Users, Shield, Plus, MoreVertical, X, Loader2, Check, ChevronDown, Trash2, Edit3 } from 'lucide-react';
+import { Users, Plus, MoreVertical, X, Loader2, Check, ChevronDown, Trash2, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -30,7 +29,6 @@ interface FormState {
 const emptyForm: FormState = { firstName: '', lastName: '', email: '', phone: '', role: 'Staff', permissions: [] };
 
 export default function StaffDirectory() {
-  const router = useRouter();
   const { activeBranchId } = useActiveBranch();
   const { data: staffMembers = [], isLoading } = useStaff();
   const inviteMutation = useInviteStaff();
@@ -197,18 +195,11 @@ export default function StaffDirectory() {
         title="Staff Directory"
         subtitle="Manage user access and roles"
         actions={
-          <div className="flex gap-2">
-            <button onClick={() => router.push('/dashboard/staff/roles')}
-              className="h-10 md:h-12 px-4 rounded-2xl bg-gray-100 text-gray-600 flex items-center gap-2 hover:bg-gray-200 transition-colors">
-              <Shield size={18} />
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Roles & Permissions</span>
-            </button>
-            <button onClick={() => { setForm(emptyForm); setShowInviteModal(true); }}
-              className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all">
-              <Plus size={18} />
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Invite Member</span>
-            </button>
-          </div>
+          <button onClick={() => { setForm(emptyForm); setShowInviteModal(true); }}
+            className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all">
+            <Plus size={18} />
+            <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Invite Member</span>
+          </button>
         }
       />
 

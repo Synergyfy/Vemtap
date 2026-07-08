@@ -64,6 +64,7 @@ export default function CreateAssetWizardPage() {
   const [designW, setDesignW] = useState(1080);
   const [designH, setDesignH] = useState(1350);
   const [maintainAspectRatio, setMaintainAspectRatio] = useState(true);
+  const [previewWidth, setPreviewWidth] = useState(320);
 
   const RATIOS: Record<string, number> = { square: 1, portrait: 1350/1080, landscape: 1080/1920 };
 
@@ -263,13 +264,13 @@ export default function CreateAssetWizardPage() {
         const displayH = Math.round((displayW * targetH) / targetW);
         const pixelRatio = targetW / displayW;
 
-        el.style.width = `${displayW}px`;
+        setPreviewWidth(displayW);
         if (inner) {
           inner.style.aspectRatio = `${displayW} / ${displayH}`;
         }
 
         await new Promise(r => requestAnimationFrame(r));
-        await new Promise(r => setTimeout(r, 30));
+        await new Promise(r => setTimeout(r, 60));
 
         let dataUrl: string;
         if (format === 'jpg') {
@@ -278,7 +279,7 @@ export default function CreateAssetWizardPage() {
             dataUrl = await htmlToImage.toPng(el, { quality: 1, pixelRatio });
         }
 
-        el.style.width = origOuterW;
+        setPreviewWidth(320);
         if (inner) inner.setAttribute('style', origInnerStyle);
 
         if (format === 'pdf') {
@@ -357,8 +358,68 @@ export default function CreateAssetWizardPage() {
                                   {tpl.thumbnailUrl ? (
                                       <img src={tpl.thumbnailUrl} alt={tpl.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                   ) : (
-                                      <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-                                          <Layout size={40} className="text-gray-200" />
+                                      <div 
+                                          className="w-full h-full relative overflow-hidden flex flex-col justify-between"
+                                          style={{ 
+                                              backgroundColor: tpl.layoutConfig?.backgroundColor || '#FFFFFF',
+                                              backgroundImage: tpl.layoutConfig?.backgroundImage ? `url(${tpl.layoutConfig.backgroundImage})` : 'none',
+                                              backgroundSize: 'cover',
+                                              backgroundPosition: 'center'
+                                          }}
+                                      >
+                                          {tpl.layoutConfig?.elements?.map((el: any) => {
+                                              return (
+                                                  <div 
+                                                      key={el.id} 
+                                                      style={{ 
+                                                          position: 'absolute', 
+                                                          left: `${el.x}%`, 
+                                                          top: `${el.y}%`, 
+                                                          width: el.width ? `${el.width}%` : 'auto',
+                                                          pointerEvents: 'none',
+                                                          userSelect: 'none'
+                                                      }}
+                                                  >
+                                                      {el.type === 'text' && (
+                                                          <div 
+                                                              style={{ 
+                                                                  color: el.color || '#000000', 
+                                                                  fontSize: `${Math.max(5, Math.round((el.fontSize || 16) * 0.14))}px`, 
+                                                                  fontWeight: el.fontWeight || 'bold', 
+                                                                  textAlign: el.alignment || 'center',
+                                                                  lineHeight: 1.1
+                                                              }}
+                                                              className="w-full break-words px-1"
+                                                          >
+                                                              {el.text}
+                                                          </div>
+                                                      )}
+                                                      {el.type === 'qr' && (
+                                                          <div className="bg-white p-0.5 rounded-sm shadow-sm border border-gray-100 flex items-center justify-center mx-auto" style={{ width: '28px', height: '28px' }}>
+                                                              <div className="w-full h-full bg-gray-900 rounded-[1px] flex flex-wrap gap-[1px] p-[1.5px]">
+                                                                  <div className="w-2.5 h-2.5 bg-white p-[1px] flex"><div className="w-full h-full bg-gray-900" /></div>
+                                                                  <div className="w-2.5 h-2.5 bg-white p-[1px] flex ml-auto"><div className="w-full h-full bg-gray-900" /></div>
+                                                                  <div className="w-2.5 h-2.5 bg-white p-[1px] flex mt-auto"><div className="w-full h-full bg-gray-900" /></div>
+                                                              </div>
+                                                          </div>
+                                                      )}
+                                                      {el.type === 'logo' && (
+                                                          <div className="w-6 h-6 rounded-md bg-gray-200/50 backdrop-blur-sm flex items-center justify-center border border-white/20 mx-auto">
+                                                              {businessLogo ? (
+                                                                  <img src={businessLogo} alt="logo" className="w-full h-full object-contain p-0.5" />
+                                                              ) : (
+                                                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                              )}
+                                                          </div>
+                                                      )}
+                                                  </div>
+                                              );
+                                          })}
+                                          {(!tpl.layoutConfig?.elements || tpl.layoutConfig.elements.length === 0) && (
+                                              <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+                                                  <Layout size={40} className="text-gray-200" />
+                                              </div>
+                                          )}
                                       </div>
                                   )}
                               </div>
@@ -375,26 +436,26 @@ export default function CreateAssetWizardPage() {
 
           {/* STEP 2: SIZE SELECTION */}
           {step === 'size_selection' && (
-            <motion.div key="size_selection" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto space-y-8 bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm mt-8">
-                <div className="text-center space-y-2 mb-8">
-                    <h2 className="text-2xl font-black text-gray-900">Choose Design Size</h2>
-                    <p className="text-sm font-medium text-gray-500">Select an orientation and adjust the dimensions for your asset.</p>
+            <motion.div key="size_selection" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto space-y-6 sm:space-y-8 bg-white p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 shadow-sm mt-4 sm:mt-8">
+                <div className="text-center space-y-2 mb-4 sm:mb-8">
+                    <h2 className="text-xl sm:text-2xl font-black text-gray-900 font-sans tracking-tight">Choose Design Size</h2>
+                    <p className="text-xs sm:text-sm font-medium text-gray-500">Select an orientation and adjust the dimensions for your asset.</p>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
                     {(['square', 'portrait', 'landscape'] as const).map(t => (
                         <button 
                             key={t}
                             onClick={() => handleSizeTypeChange(t)}
-                            className={cn("p-4 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all", sizeType === t ? "border-[#066CF4] bg-[#066CF4]/5 text-[#066CF4]" : "border-gray-100 text-gray-400 hover:border-gray-200")}
+                            className={cn("p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 flex flex-col items-center gap-2 sm:gap-3 transition-all", sizeType === t ? "border-[#066CF4] bg-[#066CF4]/5 text-[#066CF4]" : "border-gray-100 text-gray-400 hover:border-gray-200")}
                         >
-                            <div className={cn("border-2 rounded-md", sizeType === t ? "border-[#066CF4]" : "border-gray-300", t === 'square' ? "w-8 h-8" : t === 'portrait' ? "w-6 h-8" : "w-8 h-6")} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{t}</span>
+                            <div className={cn("border-2 rounded-md transition-all", sizeType === t ? "border-[#066CF4]" : "border-gray-300", t === 'square' ? "w-6 h-6 sm:w-8 sm:h-8" : t === 'portrait' ? "w-4.5 h-6 sm:w-6 sm:h-8" : "w-6 h-4.5 sm:w-8 sm:h-6")} />
+                            <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{t}</span>
                         </button>
                     ))}
                 </div>
 
-                <div className="flex items-center justify-center gap-2 py-2">
+                <div className="flex items-center justify-center gap-2 py-1">
                     <input
                         type="checkbox"
                         id="maintain-ratio"
@@ -402,38 +463,38 @@ export default function CreateAssetWizardPage() {
                         onChange={(e) => setMaintainAspectRatio(e.target.checked)}
                         className="size-4 rounded border-gray-300 text-[#066CF4] focus:ring-[#066CF4]/20"
                     />
-                    <label htmlFor="maintain-ratio" className="text-[11px] font-bold text-gray-600 cursor-pointer select-none">
+                    <label htmlFor="maintain-ratio" className="text-[10px] sm:text-[11px] font-bold text-gray-600 cursor-pointer select-none">
                         Maintain aspect ratio
                     </label>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex-1 space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Width (px)</label>
-                        <Input type="number" value={designW} onChange={(e) => handleWidthChange(Number(e.target.value))} className="h-14 rounded-2xl text-lg font-bold bg-gray-50 border-gray-100" />
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex-1 space-y-1">
+                        <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400">Width (px)</label>
+                        <Input type="number" value={designW} onChange={(e) => handleWidthChange(Number(e.target.value))} className="h-12 sm:h-14 rounded-xl sm:rounded-2xl text-base sm:text-lg font-bold bg-gray-50 border-gray-100" />
                     </div>
-                    <div className="text-gray-300 font-black text-xl pt-6">×</div>
-                    <div className="flex-1 space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Height (px)</label>
-                        <Input type="number" value={designH} onChange={(e) => handleHeightChange(Number(e.target.value))} className="h-14 rounded-2xl text-lg font-bold bg-gray-50 border-gray-100" />
+                    <div className="text-gray-300 font-black text-lg sm:text-xl pt-4 sm:pt-6">×</div>
+                    <div className="flex-1 space-y-1">
+                        <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400">Height (px)</label>
+                        <Input type="number" value={designH} onChange={(e) => handleHeightChange(Number(e.target.value))} className="h-12 sm:h-14 rounded-xl sm:rounded-2xl text-base sm:text-lg font-bold bg-gray-50 border-gray-100" />
                     </div>
                 </div>
 
                 {showSizeWarning && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-                        <div className="size-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                            <span className="text-amber-600 text-xs font-black">!</span>
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-start gap-2.5 sm:gap-3">
+                        <div className="size-5 sm:size-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="text-amber-600 text-[10px] sm:text-xs font-black">!</span>
                         </div>
-                        <div className="text-[11px] font-medium text-amber-800 leading-relaxed">
-                            The dimensions you entered ({designW}×{designH}) don't match the <strong>{sizeType}</strong> orientation you selected. 
-                            You can either adjust the values or change the size type to <strong>{actualType}</strong>.
+                        <div className="text-[10px] sm:text-[11px] font-medium text-amber-800 leading-relaxed">
+                            The dimensions entered ({designW}×{designH}) don't match the <strong>{sizeType}</strong> orientation. 
+                            Adjust values or change type to <strong>{actualType}</strong>.
                         </div>
                     </div>
                 )}
 
-                <div className="pt-4">
-                    <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} disabled={showSizeWarning} className={cn("w-full h-14 rounded-2xl text-white font-black uppercase tracking-widest shadow-xl transition-all", showSizeWarning ? "bg-gray-300 cursor-not-allowed shadow-none" : "bg-[#066CF4] hover:bg-[#0556c5] shadow-blue-500/20")}>
-                        Continue to Editor <ChevronRight className="ml-2" size={18} />
+                <div className="pt-2 sm:pt-4">
+                    <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} disabled={showSizeWarning} className={cn("w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-widest shadow-xl transition-all", showSizeWarning ? "bg-gray-300 cursor-not-allowed shadow-none" : "bg-[#066CF4] hover:bg-[#0556c5] shadow-blue-500/20")}>
+                        Continue to Editor <ChevronRight className="ml-2" size={16} />
                     </Button>
                 </div>
             </motion.div>
@@ -467,15 +528,33 @@ export default function CreateAssetWizardPage() {
             <motion.div key="preview" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto space-y-12 pb-20">
                 <div className="flex flex-col lg:flex-row items-start gap-12">
                     <div className="flex-1 w-full flex justify-center">
-                        <div id="export-container" ref={downloadRef} className="shadow-2xl ring-[16px] ring-white rounded-[2rem] overflow-hidden" style={{ width: 320, backgroundColor: bgColor }}>
+                        <div id="export-container" ref={downloadRef} className="shadow-2xl ring-[16px] ring-white rounded-[2rem] overflow-hidden" style={{ width: previewWidth, backgroundColor: bgColor }}>
                             <div className="w-full relative overflow-hidden" style={{ aspectRatio: `${designW} / ${designH}`, backgroundColor: bgColor, backgroundImage: bgImage ? `url(${bgImage})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                                {elements.map(el => (
-                                    <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: el.width ? `${el.width}%` : 'auto', zIndex: el.type === 'logo' ? 30 : 10 }}>
-                                        {el.type === 'text' && <div style={{ color: el.color, fontSize: `${el.fontSize}px`, fontWeight: el.fontWeight, textAlign: el.alignment }} className="w-full leading-tight">{el.text}</div>}
-                                        {el.type === 'qr' && <div className="bg-white p-2 rounded-2xl flex items-center justify-center"><QRCodeSVG value={el.qrContent || qrUrl} size={el.size} /></div>}
-                                        {el.type === 'logo' && businessLogo && <img src={businessLogo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
-                                    </div>
-                                ))}
+                                {(() => {
+                                    const scaleFactor = previewWidth / (designW || 1080);
+                                    return elements.map(el => (
+                                        <div key={el.id} style={{ position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: el.width ? `${el.width}%` : 'auto', height: el.height ? `${el.height}%` : 'auto', zIndex: el.type === 'logo' ? 30 : 10 }}>
+                                            {el.type === 'text' && <div style={{ color: el.color, fontSize: `${(el.fontSize || 16) * scaleFactor}px`, fontWeight: el.fontWeight, textAlign: el.alignment }} className="w-full leading-tight">{el.text}</div>}
+                                            {el.type === 'qr' && (
+                                                <div className="bg-white p-2 rounded-2xl flex items-center justify-center">
+                                                    <QRCodeSVG 
+                                                        value={el.qrContent || qrUrl} 
+                                                        size={(el.size || 120) * scaleFactor} 
+                                                        level="H"
+                                                        includeMargin={false}
+                                                        imageSettings={businessLogo ? {
+                                                            src: businessLogo,
+                                                            height: ((el.size || 120) * scaleFactor) * 0.2,
+                                                            width: ((el.size || 120) * scaleFactor) * 0.2,
+                                                            excavate: true,
+                                                        } : undefined}
+                                                    />
+                                                </div>
+                                            )}
+                                            {el.type === 'logo' && businessLogo && <img src={businessLogo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+                                        </div>
+                                    ));
+                                })()}
                             </div>
                         </div>
                     </div>
