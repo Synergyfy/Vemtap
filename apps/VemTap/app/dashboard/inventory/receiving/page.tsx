@@ -106,13 +106,13 @@ export default function ReceiveStockScreen() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
+    <div className="max-w-4xl mx-auto min-h-screen flex flex-col pt-4 px-4 md:px-0 pb-32 md:pb-8 overflow-y-auto">
       <POSPageHeader
         title="Receive Stock"
         subtitle="Log incoming deliveries from suppliers"
       />
 
-      <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex-1 flex flex-col">
+      <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex-none flex flex-col">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b border-gray-100">
           <div>
@@ -164,7 +164,7 @@ export default function ReceiveStockScreen() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto mb-6">
+        <div className="flex-none md:flex-1 md:overflow-y-auto mb-6">
           {selectedItems.length > 0 ? (
             <div className="space-y-3">
               {selectedItems.map((item, index) => (

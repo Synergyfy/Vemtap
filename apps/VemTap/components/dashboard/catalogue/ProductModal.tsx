@@ -522,7 +522,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     <p className="text-[10px] text-text-secondary font-medium ml-1">Group this product under a category for easier browsing.</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Weight</label>
                                         <div className="flex gap-2">
@@ -547,45 +547,54 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Dimensions (L × W × H)</label>
-                                        <div className="flex gap-1.5 items-center">
-                                            <input
-                                                type="number"
-                                                step="any"
-                                                min={0}
-                                                value={dimLength}
-                                                onChange={e => setDimLength(e.target.value)}
-                                                className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                                placeholder="L"
-                                            />
-                                            <span className="text-gray-400 font-black text-xs">×</span>
-                                            <input
-                                                type="number"
-                                                step="any"
-                                                min={0}
-                                                value={dimWidth}
-                                                onChange={e => setDimWidth(e.target.value)}
-                                                className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                                placeholder="W"
-                                            />
-                                            <span className="text-gray-400 font-black text-xs">×</span>
-                                            <input
-                                                type="number"
-                                                step="any"
-                                                min={0}
-                                                value={dimHeight}
-                                                onChange={e => setDimHeight(e.target.value)}
-                                                className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                                placeholder="H"
-                                            />
+                                        <div className="flex flex-row items-center gap-2">
+                                            <div className="grid grid-cols-3 flex-1 gap-1">
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        min={0}
+                                                        value={dimLength}
+                                                        onChange={e => setDimLength(e.target.value)}
+                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        placeholder="L"
+                                                    />
+                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-black text-gray-400">L</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        min={0}
+                                                        value={dimWidth}
+                                                        onChange={e => setDimWidth(e.target.value)}
+                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        placeholder="W"
+                                                    />
+                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-black text-gray-400">W</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        min={0}
+                                                        value={dimHeight}
+                                                        onChange={e => setDimHeight(e.target.value)}
+                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        placeholder="H"
+                                                    />
+                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-black text-gray-400">H</span>
+                                                </div>
+                                            </div>
                                             <select
                                                 value={dimUnit}
                                                 onChange={e => setDimUnit(e.target.value)}
-                                                className="w-16 h-12 px-1 bg-gray-50 border border-gray-200 rounded-xl font-bold text-xs outline-none cursor-pointer"
+                                                className="w-16 sm:w-20 h-12 px-1 sm:px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-[10px] sm:text-xs outline-none cursor-pointer shrink-0"
                                             >
                                                 {dimUnits.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Length × Width × Height with unit.</p>
+                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Length, Width, and Height with unit selector.</p>
                                     </div>
                                 </div>
 
@@ -622,9 +631,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Barcode</label>
-                                    <div className="flex gap-2">
-                                        <input {...register('barcode')} className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
-                                        <button type="button" onClick={handleGenerateBarcode} className="h-12 px-5 bg-[#066CF4]/10 text-[#066CF4] rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#066CF4]/20 transition-all whitespace-nowrap">
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <input {...register('barcode')} className="w-full sm:flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
+                                        <button type="button" onClick={handleGenerateBarcode} className="w-full sm:w-auto h-12 px-5 bg-[#066CF4]/10 text-[#066CF4] rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#066CF4]/20 transition-all whitespace-nowrap">
                                             Auto-Generate
                                         </button>
                                     </div>
@@ -637,7 +646,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">Discount Type</label>
                                             <select
@@ -671,7 +680,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">SKU</label>
                                         <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="Optional" />
@@ -688,7 +697,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Stock Quantity</label>
                                         <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="0" />
