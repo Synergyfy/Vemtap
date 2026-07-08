@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 test.describe('Dashboard Responsiveness', () => {
   test.beforeEach(async ({ page }) => {
@@ -75,7 +75,7 @@ test.describe('Dashboard Responsiveness', () => {
     });
   });
 
-  async function dismissCookieBanner(page) {
+  async function dismissCookieBanner(page: Page) {
     try {
       const acceptBtn = page.locator('button:has-text("ACCEPT ALL")');
       await acceptBtn.waitFor({ state: 'visible', timeout: 3000 });
