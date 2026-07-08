@@ -2,10 +2,10 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
-  forwardRef,
-  Inject,
   ForbiddenException,
   BadRequestException,
+  forwardRef,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -480,36 +480,43 @@ export class InboxService {
     branchId: string,
     content: string,
   ): Promise<Message> {
-    // 1. Verify if the customer has visited the branch
-    const visit = await this.visitRepo.findOne({
+    // 1. Ensure branch exists and load it (needed for businessId + customer lookup)
+    const branch = await this.branchRepo.findOne({ where: { id: branchId } });
+    if (!branch) {
+      throw new NotFoundException('Branch not found');
+    }
+
+    const customer = await this.userRepo.findOne({ where: { id: customerId } });
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    // 2. Auto-upsert a visit record so the customer appears in the branch's visitor list.
+    //    If they already have any visit (portal/patronage/chat) we leave it untouched.
+    //    If they have none, we create a lightweight 'chat' visit so the branch can still
+    //    track them as a contact — no NFC tap required.
+    const existingVisit = await this.visitRepo.findOne({
       where: { customerId, branchId },
     });
 
-    if (!visit) {
-      throw new ForbiddenException(
-        'You must be a visitor of this branch to start a conversation',
-      );
+    if (!existingVisit) {
+      const chatVisit = this.visitRepo.create({
+        customerId,
+        branchId,
+        businessId: branch.businessId,
+        visitType: 'chat',
+        status: 'new',
+      });
+      await this.visitRepo.save(chatVisit);
     }
 
-    // 2. Find or create an In-House thread
+    // 3. Find or create the In-House conversation thread
     let thread = await this.threadRepo.findOne({
       where: { customerId, branchId, channel: Channel.IN_HOUSE },
       relations: ['customer'],
     });
 
     if (!thread) {
-      const branch = await this.branchRepo.findOne({ where: { id: branchId } });
-      if (!branch) {
-        throw new NotFoundException('Branch not found');
-      }
-
-      const customer = await this.userRepo.findOne({
-        where: { id: customerId },
-      });
-      if (!customer) {
-        throw new NotFoundException('Customer not found');
-      }
-
       thread = this.threadRepo.create({
         branchId,
         businessId: branch.businessId,
@@ -524,7 +531,7 @@ export class InboxService {
       thread = await this.threadRepo.save(thread);
       thread.customer = customer;
     } else {
-      // If thread exists, just update it
+      // Thread already exists — update activity and increment unread counter
       await this.threadRepo.update(thread.id, {
         lastActivityAt: new Date(),
         lastMessageContent: content,
@@ -535,9 +542,13 @@ export class InboxService {
         'branchUnreadCount',
         1,
       );
+      // Ensure customer relation is populated for notification below
+      if (!thread.customer) {
+        thread.customer = customer;
+      }
     }
 
-    // 3. Create and save the message
+    // 4. Create and persist the first message
     const message = this.messageRepo.create({
       branchId,
       customerId,
@@ -553,7 +564,7 @@ export class InboxService {
 
     const savedMessage = await this.messageRepo.save(message);
 
-    // 4. Broadcast via socket
+    // 5. Broadcast via Socket.io
     this.messagingGateway.emitMessage(
       thread.id,
       thread.branchId,
@@ -561,7 +572,7 @@ export class InboxService {
       savedMessage,
     );
 
-    // 5. Send push notification to branch staff
+    // 6. Push notification to branch staff
     this.pushNotificationService
       .sendToBranchStaff(
         thread.branchId,
@@ -571,8 +582,7 @@ export class InboxService {
       )
       .catch((e) => console.error('Push error:', e.message));
 
-    // --- Automation Triggers ---
-    // Since startCustomerConversation always creates the first message
+    // 7. Automation triggers — always fires since this creates the first message
     await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {
       branchId,
       customerId,
