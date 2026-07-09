@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
-import { GeistSans } from 'geist/font/sans';
+import { Inter } from 'next/font/google';
 import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
+
+const inter = Inter({
+    subsets: ["latin"],
+    weight: ["300", "400", "500", "600", "700", "800"],
+    variable: "--font-inter",
+    display: "swap",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vemtap.io";
 
@@ -79,7 +86,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
+        <html lang="en" suppressHydrationWarning className={`${inter.variable} ${GeistMono.variable}`}>
             <head>
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />  
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
@@ -87,7 +94,7 @@ export default function RootLayout({
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
             </head>
             <body
-                className={`${GeistSans.className} antialiased`}
+                className={`${inter.className} antialiased`}
                 suppressHydrationWarning
             >
                 <QueryProvider>
