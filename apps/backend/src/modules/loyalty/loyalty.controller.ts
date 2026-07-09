@@ -178,10 +178,9 @@ export class LoyaltyController {
     );
   }
 
-  // --- Point Earning ---
   @Post('points/give')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('loyalty')
+  @Permissions('pos')
   @ApiOperation({
     summary: 'Staff gives points to customer using unique code',
     description:
@@ -199,7 +198,7 @@ export class LoyaltyController {
 
   @Post('points/generate-code')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('loyalty')
+  @Permissions('pos')
   @ApiOperation({
     summary: 'Staff generates a 9-digit point code',
     description:
@@ -296,7 +295,7 @@ export class LoyaltyController {
   // --- Rewards ---
   @Post('rewards')
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('loyalty')
+  @Permissions('marketing')
   @ApiOperation({
     summary: 'Owner creates a reward for a branch',
     description:
@@ -390,7 +389,7 @@ export class LoyaltyController {
 
   @Patch('rewards/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('loyalty')
+  @Permissions('marketing')
   @ApiOperation({
     summary: 'Update a reward',
     description:
@@ -409,7 +408,7 @@ export class LoyaltyController {
 
   @Delete('rewards/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('loyalty')
+  @Permissions('marketing')
   @ApiOperation({
     summary: 'Delete a reward',
     description:
@@ -427,7 +426,7 @@ export class LoyaltyController {
 
   @Get('rewards/:id/redemptions')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('loyalty')
+  @Permissions('marketing')
   @ApiOperation({
     summary: 'Fetch customers who redeemed a reward',
     description:
@@ -476,7 +475,7 @@ export class LoyaltyController {
   // --- Redemption ---
   @Post('redemption/generate-code')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('loyalty')
+  @Permissions('pos')
   @ApiOperation({
     summary: 'Staff generates a redemption code for a reward',
     description:

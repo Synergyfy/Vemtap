@@ -201,7 +201,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiParam({ name: 'channel', enum: Channel })
   @ApiOperation({
     summary:
@@ -227,7 +227,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Get messages in a specific thread (Newest to Oldest)',
     description:
@@ -252,7 +252,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Send a reply to an active thread (Supports Quoting)',
     description:
@@ -286,7 +286,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Mark a conversation thread as read for the branch',
     description:
@@ -308,7 +308,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Initialize an empty conversation thread with a customer',
   })
@@ -340,7 +340,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({ summary: 'Edit a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async editMessage(
@@ -362,7 +362,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({ summary: 'Delete (hide) a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async deleteMessage(
