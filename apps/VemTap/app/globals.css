@@ -2,9 +2,10 @@
 @import "tailwindcss";
 
 @theme {
-    --font-display: var(--font-geist-sans), "Geist", sans-serif;
-    --font-body: var(--font-geist-sans), "Geist", sans-serif;
-    --font-sans: var(--font-geist-sans), "Geist", sans-serif;
+    --font-display: var(--font-inter), "Inter", sans-serif;
+    --font-body: var(--font-inter), "Inter", sans-serif;
+    --font-sans: var(--font-inter), "Inter", sans-serif;
+    --font-mono: var(--font-geist-mono), monospace;
 
     --color-primary: #004ac6;
     --color-secondary: #0060ac;
@@ -185,6 +186,125 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: #cbd5e1;
     }
+
+    /* VEMTAP Typography Scale Utilities */
+    .text-display-xl {
+        font-size: 48px;
+        font-weight: 700;
+        line-height: 56px;
+    }
+    .text-display-lg {
+        font-size: 40px;
+        font-weight: 700;
+        line-height: 48px;
+    }
+    .text-h1 {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 40px;
+    }
+    .text-h2 {
+        font-size: 28px;
+        font-weight: 600;
+        line-height: 36px;
+    }
+    .text-h3 {
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 32px;
+    }
+    .text-h4 {
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 28px;
+    }
+    .text-h5 {
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 28px;
+    }
+    .text-body-lg {
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 26px;
+    }
+    .text-body-md {
+        font-size: 15px;
+        font-weight: 400;
+        line-height: 24px;
+    }
+    .text-body-sm {
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 22px;
+    }
+    .text-caption {
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 18px;
+    }
+    .text-tiny {
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 16px;
+    }
+    
+    /* Navigation typography */
+    .nav-primary {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .nav-secondary {
+        font-size: 13px;
+        font-weight: 400;
+    }
+    .nav-active {
+        font-weight: 600;
+    }
+    
+    /* Buttons */
+    .btn-primary-text {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: none;
+    }
+    .btn-secondary-text {
+        font-size: 14px;
+        font-weight: 500;
+        text-transform: none;
+    }
+    .btn-large-text {
+        font-size: 16px;
+        font-weight: 600;
+        text-transform: none;
+    }
+    
+    /* Forms */
+    .form-input-text {
+        font-size: 15px;
+        font-weight: 400;
+    }
+    .form-label-text {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .form-helper-text {
+        font-size: 13px;
+    }
+    .form-error-text {
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    /* Tables */
+    .table-header-text {
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .table-row-text {
+        font-size: 14px;
+        font-weight: 400;
+    }
 }
 
 :root {
@@ -195,21 +315,46 @@
 body {
     color: var(--foreground);
     background: var(--background);
-    font-family: var(--font-geist-sans), "Geist", sans-serif;
+    font-family: "Inter", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    letter-spacing: 0;
 }
 
-/* Enforce normal weight and Geist font strictly in the dashboard */
+/* Override fonts across the application */
+* {
+    letter-spacing: 0 !important;
+}
+
+/* Enforce Inter font family strictly in the dashboard while respecting typography weights */
 .dashboard-typography-override,
 .dashboard-typography-override * {
-    font-weight: 400 !important;
-    font-family: var(--font-geist-sans), "Geist", sans-serif !important;
+    font-family: "Inter", sans-serif !important;
 }
 
-/* Preserve icon font for Material Icons inside dashboard */
+/* Monospace Font only for Technical values */
+.technical-mono,
+.receipt-number,
+.invoice-number,
+.order-id,
+.transaction-id,
+.barcode-value,
+.qr-id,
+.coupon-code,
+.reference-number,
+.terminal-id,
+.api-key {
+    font-family: "Geist Mono", monospace !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Preserve icon font for Material Icons and Symbols inside dashboard */
 .dashboard-typography-override .material-icons-round,
 .dashboard-typography-override .material-icons {
     font-family: 'Material Icons Round', 'Material Icons', sans-serif !important;
+}
+
+.dashboard-typography-override .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined' !important;
 }

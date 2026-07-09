@@ -311,13 +311,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     <div className="space-y-1">
                                                         <button
                                                             onClick={(e) => handleItemClick(e, item)}
-                                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                                                                 active ? 'bg-primary/5 text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-3">
-                                                                {Icon && <div className="shrink-0"><Icon size={18} /></div>}
-                                                                {!isCollapsed && <span className="text-sm font-black">{item.label}</span>}
+                                                                {Icon && <div className="shrink-0"><Icon size={20} /></div>}
+                                                                {!isCollapsed && <span className={`text-sm ${active ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>}
                                                             </div>
                                                             {!isCollapsed && <ChevronDown size={14} className={`transition-transform ${isMenuExpanded ? 'rotate-180' : ''}`} />}
                                                         </button>
@@ -328,8 +328,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                         key={idx}
                                                                         href={withBranch(sub.href)}
                                                                         onClick={() => setIsMobileOpen(false)}
-                                                                        className={`block text-xs md:text-sm font-bold py-1.5 transition-colors ${
-                                                                            isActive(sub.href) ? 'text-primary' : 'text-gray-500 hover:text-gray-700'
+                                                                        className={`block text-[13px] py-1.5 transition-colors ${
+                                                                            isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700 font-normal'
                                                                         }`}
                                                                     >
                                                                         {sub.label}
@@ -342,13 +342,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     <Link
                                                         href={withBranch(item.href!)}
                                                         onClick={() => setIsMobileOpen(false)}
-                                                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                                                        className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                                                             active ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                                         }`}
                                                     >
                                                         <div className="flex items-center gap-3 min-w-0">
-                                                            {Icon && <div className="shrink-0"><Icon size={18} /></div>}
-                                                            {!isCollapsed && <span className="text-sm font-black truncate">{item.label}</span>}
+                                                            {Icon && <div className="shrink-0"><Icon size={20} /></div>}
+                                                            {!isCollapsed && <span className={`text-sm truncate ${active ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>}
                                                         </div>
                                                         {!isCollapsed && (
                                                             <div className="flex items-center gap-2">
