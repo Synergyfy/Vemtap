@@ -39,7 +39,7 @@ export class AdminCatalogueController {
   // Categories
   @Post('categories')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Create a new catalogue category' })
   async createCategory(
     @Body() dto: CreateCatalogueCategoryDto,
@@ -50,7 +50,7 @@ export class AdminCatalogueController {
 
   @Get('categories')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'List all catalogue categories' })
   async listCategories(@Req() req: any) {
     return this.catalogueService.findAllCategories(req.user.businessId);
@@ -58,7 +58,7 @@ export class AdminCatalogueController {
 
   @Patch('categories/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Update a catalogue category' })
   async updateCategory(
     @Param('id', ParseUUIDPipe) id: string,
@@ -70,7 +70,7 @@ export class AdminCatalogueController {
 
   @Delete('categories/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Delete a catalogue category' })
   async deleteCategory(
     @Param('id', ParseUUIDPipe) id: string,
@@ -82,7 +82,7 @@ export class AdminCatalogueController {
   // Items
   @Post('items')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Create a new catalogue item' })
   async createItem(@Body() dto: CreateCatalogueItemDto, @Req() req: any) {
     return this.catalogueService.createItem(dto, req.user.businessId);
@@ -90,7 +90,7 @@ export class AdminCatalogueController {
 
   @Get('items')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'List all items in the business catalogue' })
   async listItems(@Req() req: any, @Query('branchId') branchId?: string) {
     return this.catalogueService.findAllItemsAdmin(
@@ -101,7 +101,7 @@ export class AdminCatalogueController {
 
   @Patch('items/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Update a catalogue item (isolated or global)' })
   async updateItem(
     @Param('id', ParseUUIDPipe) id: string,
@@ -113,7 +113,7 @@ export class AdminCatalogueController {
 
   @Delete('items/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Remove item from branch or delete globally' })
   async deleteItem(
     @Param('id', ParseUUIDPipe) id: string,
@@ -131,7 +131,7 @@ export class AdminCatalogueController {
 
   @Post('items/:id/import')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Import an item to another branch' })
   async importItem(
     @Param('id', ParseUUIDPipe) id: string,

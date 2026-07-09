@@ -5,6 +5,7 @@ import { User, UserRole } from './entities/user.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
+import { EventsGateway } from '../../common/gateways/events.gateway';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt', () => ({
@@ -55,6 +56,12 @@ describe('UsersService', () => {
           },
         },
         { provide: MailService, useValue: mailService },
+        {
+          provide: EventsGateway,
+          useValue: {
+            emitUserUpdated: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -85,7 +92,7 @@ describe('UsersService', () => {
         email: 'staff@example.com',
         firstName: 'Staff',
         lastName: 'User',
-        role: UserRole.STAFF,
+        role: 'Staff',
         permissions: ['dashboard'],
       };
       const branchId = 'br-1';
@@ -96,18 +103,51 @@ describe('UsersService', () => {
 
       expect(result.email).toBe(dto.email.toLowerCase());
       expect(result.password).toBe('hashed_password');
-      expect(bcrypt.hash).toHaveBeenCalledWith(dto.firstName.toLowerCase(), 10);
+      expect(result.role).toBe(UserRole.STAFF);
+      expect(result.roleTag).toBe('Staff');
+      
+      const expectedPassword = (bcrypt.hash as jest.Mock).mock.calls[0][0];
+      expect(expectedPassword).toMatch(/^\d{6}$/);
+      expect(bcrypt.hash).toHaveBeenCalledWith(expectedPassword, 10);
       expect(userRepository.save).toHaveBeenCalled();
       expect(mailService.sendWelcomeEmail).toHaveBeenCalledWith(
         dto.email,
         dto.firstName,
-        dto.firstName.toLowerCase(),
+        expectedPassword,
       );
+    });
+
+    it('should map custom role "Cashier" to UserRole.STAFF and store "Cashier" as roleTag', async () => {
+      const dto = {
+        email: 'cashier@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        role: 'Cashier',
+        permissions: ['pos'],
+      };
+      userRepository.findOne.mockResolvedValue(null);
+      const result = await service.inviteStaff('br-1', dto as any);
+      expect(result.role).toBe(UserRole.STAFF);
+      expect(result.roleTag).toBe('Cashier');
+    });
+
+    it('should map custom role "Manager" case-insensitively to UserRole.MANAGER and store "Manager" as roleTag', async () => {
+      const dto = {
+        email: 'manager@example.com',
+        firstName: 'Bob',
+        lastName: 'Smith',
+        role: 'mAnAgEr',
+        permissions: ['staff'],
+      };
+      userRepository.findOne.mockResolvedValue(null);
+      const result = await service.inviteStaff('br-1', dto as any);
+      expect(result.role).toBe(UserRole.MANAGER);
+      expect(result.roleTag).toBe('mAnAgEr');
     });
 
     it('should throw BadRequestException if email already exists', async () => {
       userRepository.findOne.mockResolvedValue({ id: '1' });
-      const dto = { email: 'staff@example.com', firstName: 'Staff' };
+      const dto = { email: 'staff@example.com', firstName: 'Staff', role: 'Staff' };
       await expect(service.inviteStaff('br-1', dto as any)).rejects.toThrow(
         BadRequestException,
       );
@@ -115,15 +155,17 @@ describe('UsersService', () => {
   });
 
   describe('updateStaff', () => {
-    it('should update staff details', async () => {
-      const existingUser = { id: '1', branchId: 'br-1', firstName: 'Old' };
+    it('should update staff details including custom role', async () => {
+      const existingUser = { id: '1', branchId: 'br-1', firstName: 'Old', role: UserRole.STAFF, roleTag: 'Staff' };
       userRepository.findOne.mockResolvedValue(existingUser);
 
-      const updates: any = { name: 'New Name' };
+      const updates: any = { name: 'New Name', role: 'Supervisor' };
       const result = await service.updateStaff('1', 'br-1', updates);
 
       expect(result.firstName).toBe('New');
       expect(result.lastName).toBe('Name');
+      expect(result.role).toBe(UserRole.STAFF);
+      expect(result.roleTag).toBe('Supervisor');
       expect(userRepository.save).toHaveBeenCalled();
     });
 
