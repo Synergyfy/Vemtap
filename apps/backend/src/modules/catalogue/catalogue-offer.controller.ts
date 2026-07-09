@@ -44,7 +44,7 @@ export class CatalogueOfferController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Create a new catalogue offer (Admin)' })
   async createOffer(@Body() dto: CreateCatalogueOfferDto, @Req() req: any) {
     return this.offerService.createOffer(dto, req.user.businessId);
@@ -54,7 +54,7 @@ export class CatalogueOfferController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Update a catalogue offer (Admin)' })
   async updateOffer(
     @Param('id', ParseUUIDPipe) id: string,
@@ -68,7 +68,7 @@ export class CatalogueOfferController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'Delete a catalogue offer (Admin)' })
   async deleteOffer(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.offerService.deleteOffer(id, req.user.businessId);
@@ -78,7 +78,7 @@ export class CatalogueOfferController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get('admin')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('catalogue')
+  @Permissions('inventory')
   @ApiOperation({ summary: 'List all offers for the business (Admin)' })
   async listOffersAdmin(@Query('branchId') branchId: string, @Req() req: any) {
     return this.offerService.findAllOffersAdmin(req.user.businessId, branchId);
@@ -129,7 +129,7 @@ export class CatalogueOfferController {
   @Post('claim/redeem/:code')
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('catalogue')
+  @Permissions('pos')
   @ApiOperation({ summary: 'Redeem a claimed promotion code (Admin/Staff)' })
   async redeemClaim(@Param('code') code: string, @Req() req: any) {
     return this.offerService.redeemClaim(code, req.user.businessId);

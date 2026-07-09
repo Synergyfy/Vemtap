@@ -60,10 +60,10 @@ describe('Module Permissions Enforcement (e2e)', () => {
         .expect(403);
     });
 
-    it('Staff with "loyalty" should access loyalty points endpoints', async () => {
-      const token = await createStaffWithPermissions(['loyalty']);
+    it('Staff with "pos" should access loyalty points endpoints', async () => {
+      const token = await createStaffWithPermissions(['pos']);
 
-      // Loyalty points give: POST /api/v1/loyalty/points/give (Protected with @Permissions('loyalty'))
+      // Loyalty points give: POST /api/v1/loyalty/points/give (Protected with @Permissions('pos'))
       await request(app.getHttpServer())
         .post('/api/v1/loyalty/points/give')
         .set('Authorization', `Bearer ${token}`)

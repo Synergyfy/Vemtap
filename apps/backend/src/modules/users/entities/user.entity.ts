@@ -84,6 +84,10 @@ export class User extends AbstractBaseEntity {
   })
   role: UserRole;
 
+  @ApiProperty({ example: 'Cashier', nullable: true })
+  @Column({ nullable: true })
+  roleTag: string;
+
   @ApiProperty({ example: '+2348012345678', nullable: true })
   @Column({ nullable: true, unique: true })
   phone: string;
