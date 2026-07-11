@@ -175,67 +175,21 @@ export const useRespondToInvitation = () => {
 
 // Legacy admin mock hooks (to be replaced with real API)
 
-const MOCK_DISCOVERY_STATS = {
-    totalBusinesses: 124,
-    activeOffers: 342,
-    scheduledOffers: 45,
-    expiredOffers: 89,
-    totalOfferViews: 12540,
-    totalOfferClicks: 3420,
-    referralsGenerated: 856,
-    referralsCompleted: 234,
-    couponsRedeemed: 189,
-    attributedSales: 156,
-    attributedRevenue: 2450000,
-    sponsoredRevenue: 450000,
-    activePartnerships: 64,
-    notificationsSent: 4520,
-    avgConversionRate: 2.8,
-};
-
 export const useDiscoveryStats = () => {
     return useQuery({
         queryKey: ['discovery-stats'],
-        queryFn: async () => MOCK_DISCOVERY_STATS,
+        queryFn: () => api.get('/discovery/admin/stats'),
     });
 };
 
-export const useDiscoveryBusinesses = (params?: any) => {
+export const useDiscoveryBusinesses = (params?: { page?: number; limit?: number; search?: string }) => {
+    const { page = 1, limit = 20, search = '' } = params || {};
+    const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) query.set('search', search);
+
     return useQuery({
         queryKey: ['discovery-businesses', params],
-        queryFn: async () => {
-            return {
-                data: [
-                    {
-                        id: '1',
-                        name: 'Fashion Hub',
-                        category: 'Fashion',
-                        plan: 'Premium',
-                        location: 'Wuse 2',
-                        status: 'Active',
-                        activeOffers: 5,
-                        referralsSent: 42,
-                        referralsReceived: 28,
-                        revenueGenerated: 145000,
-                        dateJoined: '2026-01-15',
-                    },
-                    {
-                        id: '2',
-                        name: 'The Grill House',
-                        category: 'Restaurant',
-                        plan: 'Standard',
-                        location: 'Wuse 2',
-                        status: 'Active',
-                        activeOffers: 3,
-                        referralsSent: 15,
-                        referralsReceived: 35,
-                        revenueGenerated: 210000,
-                        dateJoined: '2026-02-10',
-                    },
-                ],
-                meta: { total: 2 }
-            };
-        },
+        queryFn: () => api.get(`/discovery/admin/businesses?${query.toString()}`),
     });
 };
 

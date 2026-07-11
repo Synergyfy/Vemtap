@@ -37,6 +37,7 @@ export default function RewardManagementPage() {
         if (reward.templateId) dto.templateId = reward.templateId;
         if (mainImage) dto.coverImage = mainImage;
         if (gallery.length > 0) dto.galleryImages = gallery;
+        if (reward.offerId) dto.offerId = reward.offerId;
 
         await createMutation.mutateAsync(dto);
         notify.success('Reward structured successfully');
@@ -60,6 +61,7 @@ export default function RewardManagementPage() {
         if (mainImage) dto.coverImage = mainImage;
         if (gallery.length > 0) dto.galleryImages = gallery;
         if (activeBranchId) dto.branchId = activeBranchId;
+        if (updates.offerId !== undefined) dto.offerId = updates.offerId || null;
 
         await updateMutation.mutateAsync({ id, updates: dto });
         notify.success('Reward updated successfully');

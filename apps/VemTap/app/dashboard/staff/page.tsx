@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Users, Plus, MoreVertical, X, Loader2, Check, ChevronDown, Trash2, Edit3 } from 'lucide-react';
+import { Users, Plus, MoreVertical, X, Loader2, Check, ChevronDown, Trash2, Edit3, Crown, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -38,6 +38,7 @@ export default function StaffDirectory() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editTarget, setEditTarget] = useState<string | null>(null);
@@ -73,7 +74,14 @@ export default function StaffDirectory() {
       setShowInviteModal(false);
       setForm(emptyForm);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to send invitation');
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('limit') && msg.toLowerCase().includes('team')) {
+        setShowInviteModal(false);
+        setForm(emptyForm);
+        setShowLimitModal(true);
+      } else {
+        toast.error(msg || 'Failed to send invitation');
+      }
     }
   };
 
@@ -309,6 +317,33 @@ export default function StaffDirectory() {
               <button onClick={() => { setShowEditModal(false); setForm(emptyForm); }} className="size-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"><X size={16} /></button>
             </div>
             <form onSubmit={handleEditSubmit}>{formFields({ buttonLabel: 'Save Changes', isPending: updateStaffMutation.isPending })}</form>
+          </div>
+        </div>
+      )}
+
+      {/* Limit Reached Modal */}
+      {showLimitModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowLimitModal(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-[32px] shadow-xl p-8 text-center">
+            <div className="size-20 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-5 border border-amber-200">
+              <Crown size={36} className="text-amber-500" />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 mb-2">Team Member Limit Reached</h2>
+            <p className="text-sm font-bold text-gray-500 mb-6 leading-relaxed">
+              You have reached the maximum number of team members allowed on your current plan. 
+              Upgrade to add more staff members and unlock additional features.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowLimitModal(false)}
+                className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">
+                Close
+              </button>
+              <a href="/dashboard/settings/subscription"
+                className="flex-1 h-12 rounded-2xl bg-[#066CF4] text-white font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                Upgrade <ArrowRight size={14} />
+              </a>
+            </div>
           </div>
         </div>
       )}
