@@ -101,6 +101,7 @@ export interface CreateRewardRequest {
     audienceTarget?: 'all' | 'new' | 'returning';
     branchId?: string;
     imageUrls?: string[];
+    offerId?: string;
 }
 
 export interface UpdateRewardRequest {
@@ -115,6 +116,7 @@ export interface UpdateRewardRequest {
     audienceTarget?: 'all' | 'new' | 'returning';
     branchId?: string;
     imageUrls?: string[];
+    offerId?: string;
 }
 
 export interface UpdateLoyaltyRuleRequest {

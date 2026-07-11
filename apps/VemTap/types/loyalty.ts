@@ -69,6 +69,8 @@ export interface Reward {
   branchId?: string;
   imageUrls?: string[];
   imageUrl?: string;
+  expiryDate?: string;
+  offerId?: string;
   createdAt: string;
   updatedAt: string;
 }
