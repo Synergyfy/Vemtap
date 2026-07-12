@@ -1,10 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsEmail,
+  IsInt,
+  Min,
+  IsIn,
 } from 'class-validator';
 
 export class UpdateDiscoverySettingsDto {
@@ -12,48 +16,48 @@ export class UpdateDiscoverySettingsDto {
     example: true,
     description: 'Allow business to be discovered by locals',
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   joinDiscoveryNetwork?: boolean;
 
   @ApiPropertyOptional({
     example: true,
     description: 'Allow other businesses to request partnerships',
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   receivePartnerRequests?: boolean;
 
   @ApiPropertyOptional({
     example: true,
     description: 'Show active promotions on the network',
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   allowPromotions?: boolean;
 
   @ApiPropertyOptional({
     example: true,
     description: 'Enable push notifications for discovery updates',
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   pushNotifications?: boolean;
 
   @ApiPropertyOptional({
     example: false,
     description: 'Enable SMS alerts for discovery updates',
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   smsAlerts?: boolean;
 
   @ApiPropertyOptional({
     example: true,
     description: 'Enable email summary for discovery updates',
   })
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   emailSummary?: boolean;
 }
 
@@ -113,10 +117,16 @@ export class DiscoveryQueryDto {
     description: 'Page number for pagination',
   })
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   page?: number;
 
   @ApiPropertyOptional({ example: 10, description: 'Number of items per page' })
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   limit?: number;
 
   @ApiPropertyOptional({
@@ -125,5 +135,6 @@ export class DiscoveryQueryDto {
   })
   @IsOptional()
   @IsString()
+  @IsIn(['all', 'from_partners', 'sent_to_partners', 'direct'])
   filter?: 'all' | 'from_partners' | 'sent_to_partners' | 'direct';
 }
