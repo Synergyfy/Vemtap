@@ -103,4 +103,52 @@ export class Setting extends AbstractBaseEntity {
 
   @Column('decimal', { precision: 10, scale: 2, default: 5000 })
   affiliateMinimumWithdrawal: number;
+
+  @ApiProperty({ example: true, description: 'Enable discovery network' })
+  @Column({ default: true })
+  discoveryEnableNetwork: boolean;
+
+  @ApiProperty({ example: true, description: 'Enable sponsored campaigns' })
+  @Column({ default: true })
+  discoveryEnableSponsored: boolean;
+
+  @ApiProperty({ example: true, description: 'Enable B2B partnerships' })
+  @Column({ default: true })
+  discoveryEnablePartnerships: boolean;
+
+  @ApiProperty({ example: 3, description: 'Max offers shown per visit' })
+  @Column({ default: 3 })
+  discoveryMaxOffersPerVisit: number;
+
+  @ApiProperty({ example: 5, description: 'Max offers shown per day' })
+  @Column({ default: 5 })
+  discoveryMaxOffersPerDay: number;
+
+  @ApiProperty({ example: 500, description: 'Default discovery radius in meters' })
+  @Column({ default: 500 })
+  discoveryDefaultRadius: number;
+
+  @ApiProperty({ example: 2000, description: 'Max discovery radius in meters' })
+  @Column({ default: 2000 })
+  discoveryMaxRadius: number;
+
+  @ApiProperty({ example: 24, description: 'Attribution window in hours' })
+  @Column({ default: 24 })
+  discoveryAttributionWindow: number;
+
+  @ApiProperty({ example: true, description: 'Enable push notifications for discovery' })
+  @Column({ default: true })
+  discoveryPushEnabled: boolean;
+
+  @ApiProperty({ example: false, description: 'Enable SMS for discovery' })
+  @Column({ default: false })
+  discoverySmsEnabled: boolean;
+
+  @ApiProperty({ example: true, description: 'Enable email for discovery' })
+  @Column({ default: true })
+  discoveryEmailEnabled: boolean;
+
+  @ApiProperty({ example: true, description: 'Require admin approval for discovery changes' })
+  @Column({ default: true })
+  discoveryApprovalRequired: boolean;
 }
