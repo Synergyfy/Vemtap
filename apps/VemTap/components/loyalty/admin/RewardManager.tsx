@@ -379,6 +379,37 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         </Tooltip>
                                     </div>
 
+                                    {/* Lifespan countdown */}
+                                    <div className="mb-4">
+                                        {(() => {
+                                            const expiry = reward.expiryDate;
+                                            if (!expiry) return null;
+                                            const remaining = Math.ceil((new Date(expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                            const isExpired = remaining <= 0;
+                                            return (
+                                                <div className={cn(
+                                                    "flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest",
+                                                    isExpired
+                                                        ? "bg-rose-50 text-rose-500 border border-rose-200"
+                                                        : remaining <= 7
+                                                            ? "bg-amber-50 text-amber-600 border border-amber-200"
+                                                            : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                )}>
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    {isExpired ? 'Expired' : `${remaining} day${remaining === 1 ? '' : 's'} remaining`}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Linked offer badge */}
+                                    {reward.offerId && (
+                                        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-xl text-[10px] uppercase font-black tracking-widest">
+                                            <Zap className="w-3.5 h-3.5" />
+                                            Linked to a promotion offer
+                                        </div>
+                                    )}
+
                                     {/* Real Analytics Footer */}
                                     <div className="mt-auto pt-4 border-t border-slate-100">
                                         <div className="grid grid-cols-2 gap-3 mb-4">
