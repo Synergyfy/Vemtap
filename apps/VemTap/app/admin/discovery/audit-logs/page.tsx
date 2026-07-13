@@ -10,41 +10,12 @@ import {
     Database, Server, Globe, Eye
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const MOCK_AUDITS = [
-    {
-        id: 'LOG-4501',
-        admin: 'Admin Sarah',
-        action: 'Approved Offer',
-        target: '15% Lunch Discount',
-        business: 'The Grill House',
-        status: 'Success',
-        date: '2026-06-13 12:45',
-        ip: '192.168.1.45'
-    },
-    {
-        id: 'LOG-4502',
-        admin: 'System AI',
-        action: 'Flagged Referral',
-        target: 'REF-000123',
-        business: 'Fashion Hub',
-        status: 'Warning',
-        date: '2026-06-13 11:20',
-        ip: 'Internal'
-    },
-    {
-        id: 'LOG-4503',
-        admin: 'Admin Mike',
-        action: 'Updated Radius',
-        target: 'Global Settings',
-        business: 'Network-wide',
-        status: 'Success',
-        date: '2026-06-13 09:30',
-        ip: '192.168.1.12'
-    }
-];
+import { useAdminAuditLogs } from '@/services/discovery/hooks';
 
 export default function DiscoveryAuditLogsPage() {
+    const { data, isLoading } = useAdminAuditLogs({ limit: 20 });
+    const audits = data?.data ?? [];
+
     return (
         <div className="p-8">
             <DiscoveryNav current="/admin/discovery/audit-logs" />
@@ -79,7 +50,25 @@ export default function DiscoveryAuditLogsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50 text-sm">
-                                    {MOCK_AUDITS.map((log) => (
+                                    {isLoading ? (
+                                        Array.from({ length: 5 }).map((_, i) => (
+                                            <tr key={i} className="animate-pulse">
+                                                <td className="px-6 py-4">
+                                                    <div className="h-3 w-24 bg-gray-200 rounded mb-2" />
+                                                    <div className="h-2 w-16 bg-gray-100 rounded" />
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="h-3 w-32 bg-gray-200 rounded" />
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="h-3 w-28 bg-gray-200 rounded" />
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="h-8 w-8 bg-gray-100 rounded-lg ml-auto" />
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : audits.map((log) => (
                                         <tr key={log.id} className="hover:bg-gray-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div>

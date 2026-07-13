@@ -3,6 +3,7 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import { useAdminReferralInvestigation } from '@/services/discovery/hooks';
 import { 
     ChevronLeft, ShieldAlert, Fingerprint, MapPin, 
     Smartphone, Globe, History, AlertTriangle,
@@ -14,28 +15,59 @@ import { motion } from 'framer-motion';
 export default function ReferralInvestigationPage() {
     const { id } = useParams();
     const router = useRouter();
+    const investigationId = (Array.isArray(id) ? id[0] : id) ?? '';
+    const { data: caseData, isLoading } = useAdminReferralInvestigation(investigationId);
 
-    // Mock investigation data
-    const caseData = {
-        id,
-        status: 'Flagged',
-        confidence: '94%',
-        reason: 'Velocity Spiking & Device ID Conflict',
-        customer: { name: 'John Doe', id: 'CUST-8801', history: '2 prior flags' },
-        referral: {
-            id: 'REF-000123',
-            source: 'Fashion Hub',
-            target: 'The Grill House',
-            timestamp: '2026-06-13 11:20:45',
-            offer: '15% Lunch Discount'
-        },
-        evidence: [
-            { label: 'Device fingerprint', val: 'DV-9921-X', conflict: true, note: 'Matches source business owner device' },
-            { label: 'IP Address', val: '192.168.1.45', conflict: false, note: 'Local Abuja residential' },
-            { label: 'Time to Redeem', val: '12 seconds', conflict: true, note: 'Humanly impossible travel time between locations' },
-            { label: 'Wallet Signature', val: '0x71C...88F', conflict: false, note: 'Verified user wallet' }
-        ]
-    };
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <div className="flex items-center gap-2 text-text-secondary mb-6 text-xs font-black uppercase tracking-widest">
+                    <ChevronLeft size={16} /> Back to Referrals
+                </div>
+                <div className="flex items-start gap-6 mb-8">
+                    <div className="size-20 rounded-3xl bg-gray-100 animate-pulse" />
+                    <div className="space-y-3">
+                        <div className="h-8 bg-gray-100 rounded w-64 animate-pulse" />
+                        <div className="h-4 bg-gray-100 rounded w-48 animate-pulse" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                    <div className="xl:col-span-2 bg-white rounded-3xl border border-gray-100 p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="p-5 rounded-2xl border border-gray-100">
+                                    <div className="h-3 bg-gray-100 rounded w-24 animate-pulse mb-3" />
+                                    <div className="h-4 bg-gray-100 rounded w-32 animate-pulse mb-2" />
+                                    <div className="h-3 bg-gray-100 rounded w-40 animate-pulse" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-3xl border border-gray-100 p-8">
+                        <div className="h-4 bg-gray-100 rounded w-32 animate-pulse mb-6" />
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="size-12 rounded-full bg-gray-100 animate-pulse" />
+                            <div className="space-y-2">
+                                <div className="h-4 bg-gray-100 rounded w-28 animate-pulse" />
+                                <div className="h-3 bg-gray-100 rounded w-20 animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!caseData) {
+        return (
+            <div className="p-8">
+                <div className="flex items-center gap-2 text-text-secondary mb-6 text-xs font-black uppercase tracking-widest">
+                    <ChevronLeft size={16} /> Back to Referrals
+                </div>
+                <div className="text-center py-20 text-text-secondary text-sm">Investigation not found.</div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">

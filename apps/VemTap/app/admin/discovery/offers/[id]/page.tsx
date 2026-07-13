@@ -10,31 +10,50 @@ import {
     AlertCircle, BarChart3, Target, Info
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAdminOffer } from '@/services/discovery/hooks';
 
 export default function OfferDiscoveryDetailPage() {
     const { id } = useParams();
     const router = useRouter();
+    const { data: offer, isLoading } = useAdminOffer(id as string);
 
-    // Mock details
-    const offer = {
-        id,
-        name: '15% Lunch Discount',
-        business: 'The Grill House',
-        category: 'Discounts',
-        status: 'Active',
-        startDate: '2026-06-01',
-        endDate: '2026-06-30',
-        radius: '500m',
-        minSpend: 5000,
-        stats: {
-            views: 1250,
-            clicks: 450,
-            visits: 85,
-            revenue: 145000,
-            ctr: '36%',
-            conversion: '18.8%'
-        }
-    };
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <div className="h-4 bg-gray-200 rounded w-32 mb-6 animate-pulse" />
+                <div className="flex items-start justify-between gap-6 mb-8 animate-pulse">
+                    <div className="flex items-center gap-5">
+                        <div className="size-20 rounded-3xl bg-gray-200" />
+                        <div className="space-y-3">
+                            <div className="h-8 bg-gray-200 rounded w-64" />
+                            <div className="h-4 bg-gray-100 rounded w-80" />
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-pulse">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+                            <div className="size-10 bg-gray-100 rounded-2xl mb-4" />
+                            <div className="h-3 bg-gray-100 rounded w-24 mb-2" />
+                            <div className="h-7 bg-gray-200 rounded w-20" />
+                        </div>
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-pulse">
+                    <div className="xl:col-span-2 space-y-8">
+                        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 h-80" />
+                        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 h-64" />
+                    </div>
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm h-64" />
+                        <div className="bg-text-main rounded-3xl p-8 h-48" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!offer) return null;
 
     return (
         <div className="p-8">
@@ -78,10 +97,10 @@ export default function OfferDiscoveryDetailPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                    { label: 'Total Views', value: offer.stats.views, icon: Eye, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: 'Total Clicks', value: offer.stats.clicks, icon: MousePointerClick, color: 'text-purple-500', bg: 'bg-purple-50' },
-                    { label: 'Store Visits', value: offer.stats.visits, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Revenue Generated', value: `₦${offer.stats.revenue.toLocaleString()}`, icon: DollarSign, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Total Views', value: offer.views, icon: Eye, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Total Clicks', value: offer.clicks, icon: MousePointerClick, color: 'text-purple-500', bg: 'bg-purple-50' },
+                    { label: 'Store Visits', value: offer.visits, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'Revenue Generated', value: `₦${offer.revenue.toLocaleString()}`, icon: DollarSign, color: 'text-amber-500', bg: 'bg-amber-50' },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm group">
                         <div className="p-3 rounded-2xl w-fit mb-4 bg-gray-50 text-text-secondary group-hover:bg-primary/5 group-hover:text-primary transition-all">
@@ -103,9 +122,9 @@ export default function OfferDiscoveryDetailPage() {
                         </h2>
                         <div className="space-y-12 py-4">
                             {[
-                                { stage: 'Awareness', action: 'Offer Views', count: offer.stats.views, percent: '100%', color: 'bg-blue-400' },
-                                { stage: 'Interest', action: 'Offer Clicks', count: offer.stats.clicks, percent: offer.stats.ctr, color: 'bg-purple-400' },
-                                { stage: 'Conversion', action: 'Store Visits', count: offer.stats.visits, percent: offer.stats.conversion, color: 'bg-emerald-400' },
+                                { stage: 'Awareness', action: 'Offer Views', count: offer.views, percent: '100%', color: 'bg-blue-400' },
+                                { stage: 'Interest', action: 'Offer Clicks', count: offer.clicks, percent: offer.ctr, color: 'bg-purple-400' },
+                                { stage: 'Conversion', action: 'Store Visits', count: offer.visits, percent: offer.conversion, color: 'bg-emerald-400' },
                             ].map((step, i) => (
                                 <div key={i} className="relative">
                                     <div className="flex justify-between items-end mb-3">
@@ -181,11 +200,7 @@ export default function OfferDiscoveryDetailPage() {
                     <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
                         <h3 className="text-xs font-black uppercase tracking-[0.15em] text-text-main mb-6">Top Referral Sources</h3>
                         <div className="space-y-5">
-                            {[
-                                { name: 'Fashion Hub', count: 185, growth: '+12%' },
-                                { name: 'Supermarket Plus', count: 142, growth: '+5%' },
-                                { name: 'Sharp Cuts', count: 98, growth: '+18%' },
-                            ].map((src, i) => (
+                            {offer.topReferralSources.map((src, i) => (
                                 <div key={i} className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center text-xs font-black text-text-secondary">{i+1}</div>

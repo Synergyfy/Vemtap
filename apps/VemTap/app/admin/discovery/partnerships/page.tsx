@@ -9,38 +9,12 @@ import {
     ArrowRight, Store, Calendar
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const MOCK_PARTNERSHIPS = [
-    {
-        id: 'PRT-001',
-        businessA: 'Fashion Hub',
-        businessB: 'The Grill House',
-        status: 'Active',
-        customersShared: 145,
-        revenueGenerated: 280000,
-        dateCreated: '2026-03-12',
-    },
-    {
-        id: 'PRT-002',
-        businessA: 'Supermarket Plus',
-        businessB: 'Sharp Cuts',
-        status: 'Pending',
-        customersShared: 0,
-        revenueGenerated: 0,
-        dateCreated: '2026-06-01',
-    },
-    {
-        id: 'PRT-003',
-        businessA: 'The Grill House',
-        businessB: 'Juice Paradise',
-        status: 'Active',
-        customersShared: 89,
-        revenueGenerated: 120000,
-        dateCreated: '2026-04-20',
-    }
-];
+import { useAdminPartnerships } from '@/services/discovery/hooks';
 
 export default function DiscoveryPartnershipsPage() {
+    const { data, isLoading } = useAdminPartnerships();
+    const partnerships = data?.data ?? [];
+
     return (
         <div className="p-8">
             <DiscoveryNav current="/admin/discovery/partnerships" />
@@ -99,7 +73,24 @@ export default function DiscoveryPartnershipsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_PARTNERSHIPS.map((prt) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-24 rounded-lg bg-gray-100" />
+                                                <div className="size-3 rounded-full bg-gray-100" />
+                                                <div className="h-8 w-24 rounded-lg bg-gray-100" />
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4"><div className="h-4 w-24 rounded bg-gray-100" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 w-16 rounded bg-gray-100" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-gray-100" /></td>
+                                        <td className="px-6 py-4"><div className="h-6 w-16 rounded-full bg-gray-100" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-gray-100 ml-auto" /></td>
+                                    </tr>
+                                ))
+                            ) : partnerships.map((prt) => (
                                 <tr key={prt.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
