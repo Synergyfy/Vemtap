@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import { useAdminReferrals } from '@/services/discovery/hooks';
 import { 
     Search, Filter, Download, MoreHorizontal, 
     Eye, MousePointerClick, User, Store, 
@@ -11,40 +12,10 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const MOCK_REFERRALS = [
-    {
-        id: 'REF-000123',
-        customer: 'John Doe',
-        source: 'Fashion Hub',
-        target: 'The Grill House',
-        offer: '15% Lunch Discount',
-        status: 'Purchased',
-        revenue: 15000,
-        date: '2026-06-12 10:45',
-    },
-    {
-        id: 'REF-000124',
-        customer: 'Sarah Smith',
-        source: 'Supermarket Plus',
-        target: 'Sharp Cuts Barbershop',
-        offer: 'Free Wash & Style',
-        status: 'Visited',
-        revenue: 0,
-        date: '2026-06-12 11:30',
-    },
-    {
-        id: 'REF-000125',
-        customer: 'Mike Ross',
-        source: 'The Grill House',
-        target: 'Juice Paradise',
-        offer: 'BOGO Smoothie',
-        status: 'Clicked',
-        revenue: 0,
-        date: '2026-06-12 12:15',
-    }
-];
-
 export default function DiscoveryReferralsPage() {
+    const { data, isLoading } = useAdminReferrals();
+    const referrals = data?.data ?? [];
+
     return (
         <div className="p-8">
             <DiscoveryNav current="/admin/discovery/referrals" />
@@ -85,7 +56,21 @@ export default function DiscoveryReferralsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_REFERRALS.map((ref) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i}>
+                                        <td className="px-6 py-4"><div className="h-4 bg-gray-100 rounded w-24 animate-pulse" /><div className="h-3 bg-gray-100 rounded w-16 mt-1 animate-pulse" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-gray-100 rounded w-28 animate-pulse" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-gray-100 rounded w-40 animate-pulse" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-gray-100 rounded w-32 animate-pulse" /></td>
+                                        <td className="px-6 py-4"><div className="h-6 bg-gray-100 rounded-full w-16 animate-pulse" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-gray-100 rounded w-16 animate-pulse" /></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-gray-100 rounded w-20 ml-auto animate-pulse" /></td>
+                                    </tr>
+                                ))
+                            ) : referrals.length === 0 ? (
+                                <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-text-secondary">No referrals found.</td></tr>
+                            ) : referrals.map((ref) => (
                                 <tr key={ref.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div>

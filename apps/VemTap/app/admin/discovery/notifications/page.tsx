@@ -2,6 +2,7 @@
 
 import React from 'react';
 import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import { useAdminNotifications } from '@/services/discovery/hooks';
 import { 
     Bell, MessageSquare, Mail, Smartphone,
     CheckCircle2, XCircle, Clock, Eye,
@@ -10,40 +11,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const MOCK_LOGS = [
-    {
-        id: 'NOT-001',
-        recipient: 'John Doe',
-        business: 'Fashion Hub',
-        channel: 'Push',
-        status: 'Delivered',
-        openRate: 'Opened',
-        date: '2026-06-13 10:01',
-        content: '15% off lunch at The Grill House...'
-    },
-    {
-        id: 'NOT-002',
-        recipient: 'Sarah Smith',
-        business: 'Supermarket Plus',
-        channel: 'SMS',
-        status: 'Sent',
-        openRate: 'N/A',
-        date: '2026-06-13 09:45',
-        content: 'Get a free wash & style at Sharp Cuts...'
-    },
-    {
-        id: 'NOT-003',
-        recipient: 'Mike Ross',
-        business: 'The Grill House',
-        channel: 'Email',
-        status: 'Delivered',
-        openRate: 'Unopened',
-        date: '2026-06-13 08:30',
-        content: 'BOGO Smoothie at Juice Paradise...'
-    }
-];
-
 export default function DiscoveryNotificationsPage() {
+    const { data, isLoading } = useAdminNotifications({ page: 1, limit: 50 });
+    const notifications = data?.data ?? [];
     return (
         <div className="p-8">
             <DiscoveryNav current="/admin/discovery/notifications" />
@@ -105,45 +75,77 @@ export default function DiscoveryNotificationsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_LOGS.map((log) => (
-                                <tr key={log.id} className="hover:bg-gray-50/50 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div>
-                                            <p className="font-bold text-text-main">{log.recipient}</p>
-                                            <p className="text-[10px] font-medium text-text-secondary mt-0.5">{log.date}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            {log.channel === 'Push' ? <Smartphone size={14} className="text-blue-500" /> : 
-                                             log.channel === 'SMS' ? <MessageSquare size={14} className="text-emerald-500" /> : 
-                                             <Mail size={14} className="text-purple-500" />}
-                                            <span className="font-bold text-text-main">{log.channel}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 font-medium text-text-secondary">
-                                        {log.business}
-                                    </td>
-                                    <td className="px-6 py-4 max-w-xs truncate italic text-text-secondary">
-                                        "{log.content}"
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                            log.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                                        }`}>
-                                            <span className={`size-1.5 rounded-full ${log.status === 'Delivered' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                                            {log.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                            log.openRate === 'Opened' ? 'text-primary' : 'text-gray-400'
-                                        }`}>
-                                            {log.openRate}
-                                        </span>
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={`skeleton-${i}`} className="animate-pulse">
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-gray-200 rounded w-24 mb-1.5" />
+                                            <div className="h-3 bg-gray-100 rounded w-32" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-gray-200 rounded w-16" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-gray-200 rounded w-28" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-gray-200 rounded w-48" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-6 bg-gray-200 rounded-full w-20" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-gray-200 rounded w-16" />
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : notifications.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-text-secondary text-sm">
+                                        No notifications found.
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                notifications.map((log) => (
+                                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div>
+                                                <p className="font-bold text-text-main">{log.recipient}</p>
+                                                <p className="text-[10px] font-medium text-text-secondary mt-0.5">{log.date}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                {log.channel === 'Push' ? <Smartphone size={14} className="text-blue-500" /> : 
+                                                 log.channel === 'SMS' ? <MessageSquare size={14} className="text-emerald-500" /> : 
+                                                 <Mail size={14} className="text-purple-500" />}
+                                                <span className="font-bold text-text-main">{log.channel}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 font-medium text-text-secondary">
+                                            {log.business}
+                                        </td>
+                                        <td className="px-6 py-4 max-w-xs truncate italic text-text-secondary">
+                                            "{log.content}"
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                log.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                                            }`}>
+                                                <span className={`size-1.5 rounded-full ${log.status === 'Delivered' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                                                {log.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                log.openStatus === 'Opened' ? 'text-primary' : 'text-gray-400'
+                                            }`}>
+                                                {log.openStatus}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
