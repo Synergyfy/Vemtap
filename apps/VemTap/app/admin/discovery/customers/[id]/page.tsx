@@ -11,29 +11,40 @@ import {
     UserCheck, ShoppingBag, Eye, Target
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAdminCustomer } from '@/services/discovery/hooks';
 
 export default function DiscoveryCustomerProfilePage() {
     const { id } = useParams();
     const router = useRouter();
     const [activeTab, setActiveTab] = React.useState<'overview' | 'visits' | 'offers' | 'referrals' | 'purchases'>('overview');
 
-    // Mock details
-    const cust = {
-        id,
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        phone: '+234 801 234 5678',
-        location: 'Wuse 2, Abuja',
-        optInDate: '2026-05-15',
-        status: 'Active',
-        stats: {
-            totalVisits: 24,
-            offersReceived: 12,
-            offersRedeemed: 5,
-            totalReferrals: 12,
-            totalSpend: 145000,
-        }
-    };
+    const { data: cust, isLoading } = useAdminCustomer(id as string);
+
+    if (isLoading || !cust) {
+        return (
+            <div className="p-8">
+                <DiscoveryNav current="/admin/discovery/customers" />
+                <div className="animate-pulse space-y-8 mt-8">
+                    <div className="flex items-center gap-5">
+                        <div className="size-24 rounded-[2.5rem] bg-gray-200" />
+                        <div className="space-y-3">
+                            <div className="h-8 w-48 bg-gray-200 rounded" />
+                            <div className="h-4 w-64 bg-gray-200 rounded" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+                                <div className="size-10 rounded-2xl bg-gray-200 mb-4" />
+                                <div className="h-3 w-20 bg-gray-200 rounded mb-2" />
+                                <div className="h-6 w-16 bg-gray-200 rounded" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
@@ -118,11 +129,7 @@ export default function DiscoveryCustomerProfilePage() {
                             Recent Network Activity
                         </h2>
                         <div className="space-y-8 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">
-                            {[
-                                { action: 'Purchased at The Grill House', via: '15% Discount Offer', time: 'Today, 12:45 PM', val: '₦15,000' },
-                                { action: 'Offer Clicked', via: 'Fashion Hub Recommendation', time: 'Today, 12:10 PM', val: null },
-                                { action: 'Visited Fashion Hub', via: 'Organic Discovery', time: 'Yesterday, 04:30 PM', val: '₦45,000' },
-                            ].map((item, i) => (
+                            {cust.activityTimeline.map((item, i) => (
                                 <div key={i} className="relative pl-12">
                                     <div className="absolute left-0 size-10 rounded-full bg-white border-2 border-gray-100 flex items-center justify-center z-10 group-hover:border-primary transition-colors">
                                         <div className="size-2 rounded-full bg-primary" />
@@ -178,7 +185,7 @@ export default function DiscoveryCustomerProfilePage() {
                             This user is most likely to convert on <span className="text-white font-bold">Afternoon Dining</span> and <span className="text-white font-bold">Boutique Retail</span> offers.
                         </p>
                         <div className="flex flex-wrap gap-2">
-                            {['Lunch Specials', 'Casual Wear', 'Fragrances'].map(t => (
+                            {cust.preferences.map(t => (
                                 <span key={t} className="px-3 py-1 rounded-lg bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-widest">
                                     {t}
                                 </span>

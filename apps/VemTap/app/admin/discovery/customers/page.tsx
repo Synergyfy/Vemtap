@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
@@ -10,44 +10,15 @@ import {
     MousePointerClick, TrendingUp, MoreHorizontal
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const MOCK_CUSTOMERS = [
-    {
-        id: 'CUST-8801',
-        name: 'John Doe',
-        location: 'Wuse 2, Abuja',
-        optInDate: '2026-05-15',
-        status: 'Active',
-        totalReferrals: 12,
-        redeemedOffers: 5,
-        lastActive: '2026-06-13 09:30',
-        preferences: ['Fashion', 'Dining']
-    },
-    {
-        id: 'CUST-8802',
-        name: 'Sarah Smith',
-        location: 'Maitama, Abuja',
-        optInDate: '2026-06-01',
-        status: 'Active',
-        totalReferrals: 4,
-        redeemedOffers: 1,
-        lastActive: '2026-06-12 18:20',
-        preferences: ['Spa', 'Retail']
-    },
-    {
-        id: 'CUST-8803',
-        name: 'Mike Ross',
-        location: 'Garki, Abuja',
-        optInDate: '2026-04-20',
-        status: 'Inactive',
-        totalReferrals: 28,
-        redeemedOffers: 14,
-        lastActive: '2026-06-10 11:45',
-        preferences: ['Groceries', 'Dining']
-    }
-];
+import { useAdminCustomers } from '@/services/discovery/hooks';
+import type { AdminCustomer } from '@/services/discovery/types';
 
 export default function DiscoveryCustomersPage() {
+    const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const { data, isLoading } = useAdminCustomers({ page, limit: 10, search });
+    const customers: AdminCustomer[] = data?.data ?? [];
+
     return (
         <div className="p-8">
             <DiscoveryNav current="/admin/discovery/customers" />
@@ -110,7 +81,19 @@ export default function DiscoveryCustomersPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_CUSTOMERS.map((cust) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="size-10 rounded-full bg-gray-200" /><div className="space-y-2"><div className="h-4 w-28 bg-gray-200 rounded" /><div className="h-3 w-20 bg-gray-200 rounded" /></div></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 w-32 bg-gray-200 rounded" /></td>
+                                        <td className="px-6 py-4 text-center"><div className="h-4 w-6 bg-gray-200 rounded mx-auto" /></td>
+                                        <td className="px-6 py-4 text-center"><div className="h-6 w-8 bg-gray-200 rounded mx-auto" /></td>
+                                        <td className="px-6 py-4"><div className="flex gap-1"><div className="h-5 w-14 bg-gray-200 rounded" /><div className="h-5 w-14 bg-gray-200 rounded" /></div></td>
+                                        <td className="px-6 py-4"><div className="h-5 w-16 bg-gray-200 rounded-full" /></td>
+                                        <td className="px-6 py-4 text-right"><div className="flex justify-end gap-2"><div className="size-8 bg-gray-200 rounded-lg" /><div className="size-8 bg-gray-200 rounded-lg" /><div className="size-8 bg-gray-200 rounded-lg" /></div></td>
+                                    </tr>
+                                ))
+                            ) : customers.map((cust) => (
                                 <tr key={cust.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
