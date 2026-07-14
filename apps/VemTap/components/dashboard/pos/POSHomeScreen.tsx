@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Search, LayoutGrid, Loader2, ScanLine } from 'lucide-react';
+import { ShoppingBag, Search, LayoutGrid, LayoutList, Loader2, ScanLine } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/services/catalogue/hooks';
@@ -31,6 +31,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const filteredProducts = products.filter((p: any) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -130,6 +131,31 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
               <ScanLine size={16} />
             </button>
           </div>
+          {/* View Toggle */}
+          <div className="flex items-center bg-white border border-gray-200 rounded-xl h-10 p-0.5 shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                "size-9 rounded-lg flex items-center justify-center transition-all",
+                viewMode === 'grid'
+                  ? "bg-gray-900 text-white shadow-sm"
+                  : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                "size-9 rounded-lg flex items-center justify-center transition-all",
+                viewMode === 'list'
+                  ? "bg-gray-900 text-white shadow-sm"
+                  : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <LayoutList size={16} />
+            </button>
+          </div>
           {headerActions && (
             <div className="hidden md:flex items-center gap-2 shrink-0">
               {headerActions}
@@ -171,65 +197,157 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
       {/* Product grid — scrollable independently */}
       <div className="flex-1 overflow-y-auto px-4 md:px-0 pb-4">
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-            {filteredProducts.map((product: any) => {
-              const stockWarning = product.stockQuantity <= (product.minStock || 5) && product.stockQuantity > 0;
-              const outOfStock = product.stockQuantity === 0;
-              const inCart = cart.some(item => item.productId === product.id);
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+              {filteredProducts.map((product: any) => {
+                const stockWarning = product.stockQuantity <= (product.minStock || 5) && product.stockQuantity > 0;
+                const outOfStock = product.stockQuantity === 0;
+                const inCart = cart.some(item => item.productId === product.id);
 
-              return (
-                <button
-                  key={product.id}
-                  disabled={outOfStock || inCart}
-                  onClick={() => addToCart({
-                    id: product.id,
-                    productId: product.id,
-                    name: product.name,
-                    price: product.price,
-                    costPrice: product.costPrice || 0,
-                    quantity: 1,
-                    sku: product.sku,
-                    barcode: product.barcode,
-                    image: product.mainImage,
-                    enableLoyaltyPoints: product.enableLoyaltyPoints || false,
-                    loyaltyPointsValue: product.loyaltyPointsValue || 0,
-                  })}
-                  className={cn(
-                    "flex flex-col text-left bg-white border rounded-[28px] p-3 shadow-sm transition-all relative group",
-                    outOfStock
-                      ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
-                      : inCart
-                        ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 cursor-default"
-                        : "border-gray-100 hover:border-[#066CF4]/30 hover:shadow-md active:scale-95"
-                  )}
-                >
-                  <div className="absolute top-3 right-3 flex gap-1 z-10">
-                    {outOfStock && (
-                      <span className="bg-red-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">Empty</span>
+                return (
+                  <button
+                    key={product.id}
+                    disabled={outOfStock || inCart}
+                    onClick={() => addToCart({
+                      id: product.id,
+                      productId: product.id,
+                      name: product.name,
+                      price: product.price,
+                      costPrice: product.costPrice || 0,
+                      quantity: 1,
+                      sku: product.sku,
+                      barcode: product.barcode,
+                      image: product.mainImage,
+                      enableLoyaltyPoints: product.enableLoyaltyPoints || false,
+                      loyaltyPointsValue: product.loyaltyPointsValue || 0,
+                    })}
+                    className={cn(
+                      "flex flex-col text-left bg-white border rounded-[28px] p-3 shadow-sm transition-all relative group",
+                      outOfStock
+                        ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
+                        : inCart
+                          ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 cursor-default"
+                          : "border-gray-100 hover:border-[#066CF4]/30 hover:shadow-md active:scale-95"
                     )}
-                    {stockWarning && !outOfStock && (
-                      <span className="bg-amber-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shadow-sm">Low</span>
-                    )}
-                  </div>
-
-                  <div className="w-full aspect-square bg-gray-50 rounded-[20px] mb-3 flex items-center justify-center border border-gray-100 overflow-hidden relative group-hover:bg-[#066CF4]/5 transition-colors">
-                    {product.mainImage ? (
-                      <img src={product.mainImage} alt={product.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <LayoutGrid size={32} className="text-gray-300 group-hover:text-[#066CF4]/30 transition-colors" />
-                    )}
-                  </div>
-                  <div className="px-1 flex-1 flex flex-col justify-between">
-                    <h3 className="text-xs font-black text-gray-900 leading-snug line-clamp-2 mb-1">{product.name}</h3>
-                    <div className="flex items-center justify-between mt-auto pt-1">
-                      <span className="text-[11px] font-black text-[#066CF4]">₦{product.price.toLocaleString()}</span>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{product.stockQuantity} left</span>
+                  >
+                    <div className="absolute top-3 right-3 flex gap-1 z-10">
+                      {outOfStock && (
+                        <span className="bg-red-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">Empty</span>
+                      )}
+                      {stockWarning && !outOfStock && (
+                        <span className="bg-amber-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shadow-sm">Low</span>
+                      )}
                     </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+
+                    <div className="w-full aspect-square bg-gray-50 rounded-[20px] mb-3 flex items-center justify-center border border-gray-100 overflow-hidden relative group-hover:bg-[#066CF4]/5 transition-colors">
+                      {product.mainImage ? (
+                        <img src={product.mainImage} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <LayoutGrid size={32} className="text-gray-300 group-hover:text-[#066CF4]/30 transition-colors" />
+                      )}
+                    </div>
+                    <div className="px-1 flex-1 flex flex-col justify-between">
+                      <h3 className="text-xs font-black text-gray-900 leading-snug line-clamp-2 mb-1">{product.name}</h3>
+                      <div className="flex items-center justify-between mt-auto pt-1">
+                        <span className="text-[11px] font-black text-[#066CF4]">₦{product.price.toLocaleString()}</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{product.stockQuantity} left</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex flex-col gap-2 min-w-[480px]">
+                {/* List Header */}
+                <div className="grid grid-cols-[48px_1fr_100px_70px_90px] gap-3 items-center px-4 py-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                  <span>Image</span>
+                  <span>Name</span>
+                  <span className="text-right">Price</span>
+                  <span className="text-right">Stock</span>
+                  <span className="text-right">Action</span>
+                </div>
+                {/* List Rows */}
+                {filteredProducts.map((product: any) => {
+                const stockWarning = product.stockQuantity <= (product.minStock || 5) && product.stockQuantity > 0;
+                const outOfStock = product.stockQuantity === 0;
+                const inCart = cart.some(item => item.productId === product.id);
+
+                return (
+                  <button
+                    key={product.id}
+                    disabled={outOfStock || inCart}
+                    onClick={() => addToCart({
+                      id: product.id,
+                      productId: product.id,
+                      name: product.name,
+                      price: product.price,
+                      costPrice: product.costPrice || 0,
+                      quantity: 1,
+                      sku: product.sku,
+                      barcode: product.barcode,
+                      image: product.mainImage,
+                      enableLoyaltyPoints: product.enableLoyaltyPoints || false,
+                      loyaltyPointsValue: product.loyaltyPointsValue || 0,
+                    })}
+                    className={cn(
+                      "grid grid-cols-[48px_1fr_100px_70px_90px] md:grid-cols-[48px_1fr_120px_90px_100px] gap-3 items-center bg-white border rounded-2xl px-4 py-3 shadow-sm transition-all text-left group",
+                      outOfStock
+                        ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
+                        : inCart
+                          ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 cursor-default"
+                          : "border-gray-100 hover:border-[#066CF4]/30 hover:shadow-md active:scale-[0.99]"
+                    )}
+                  >
+                    {/* Image */}
+                    <div className="size-12 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 overflow-hidden shrink-0">
+                      {product.mainImage ? (
+                        <img src={product.mainImage} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <LayoutGrid size={16} className="text-gray-300" />
+                      )}
+                    </div>
+                    {/* Name + Badges */}
+                    <div className="min-w-0 flex flex-col gap-0.5">
+                      <span className="text-xs font-black text-gray-900 truncate">{product.name}</span>
+                      <div className="flex gap-1">
+                        {outOfStock && (
+                          <span className="bg-red-500 text-white text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md">Empty</span>
+                        )}
+                        {stockWarning && !outOfStock && (
+                          <span className="bg-amber-500 text-white text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md">Low</span>
+                        )}
+                        {inCart && (
+                          <span className="bg-[#066CF4]/10 text-[#066CF4] text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md">In Cart</span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Price */}
+                    <span className="text-[11px] font-black text-[#066CF4] text-right">₦{product.price.toLocaleString()}</span>
+                    {/* Stock */}
+                    <span className={cn(
+                      "text-[10px] font-bold text-right",
+                      outOfStock ? "text-red-500" : stockWarning ? "text-amber-500" : "text-gray-400"
+                    )}>
+                      {product.stockQuantity}
+                    </span>
+                    {/* Action */}
+                    <div className="text-right">
+                      {outOfStock ? (
+                        <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">N/A</span>
+                      ) : inCart ? (
+                        <span className="text-[9px] font-black text-[#066CF4] uppercase tracking-widest">Added</span>
+                      ) : (
+                        <span className="text-[9px] font-black text-[#066CF4] uppercase tracking-widest group-hover:underline">Add</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+              </div>
+            </div>
+          )
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
             <div className="size-20 bg-gray-50 rounded-[24px] flex items-center justify-center text-gray-300 mb-4 border border-gray-100">
