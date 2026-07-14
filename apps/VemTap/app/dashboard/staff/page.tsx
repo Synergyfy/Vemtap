@@ -5,6 +5,7 @@ import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Users, Plus, MoreVertical, X, Loader2, Check, ChevronDown, Trash2, Edit3, Crown, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
+import { useCapabilities } from '@/services/subscriptions/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'react-hot-toast';
@@ -34,6 +35,8 @@ export default function StaffDirectory() {
   const inviteMutation = useInviteStaff();
   const updateStaffMutation = useUpdateStaff();
   const removeStaffMutation = useRemoveStaff(activeBranchId ?? undefined);
+  const { data: capabilities } = useCapabilities();
+  const teamLimit = capabilities?.capabilities?.teamMembers;
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -203,11 +206,33 @@ export default function StaffDirectory() {
         title="Staff Directory"
         subtitle="Manage user access and roles"
         actions={
-          <button onClick={() => { setForm(emptyForm); setShowInviteModal(true); }}
-            className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all">
-            <Plus size={18} />
-            <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Invite Member</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {teamLimit && (
+              <div className="h-10 md:h-12 px-4 rounded-2xl bg-gray-100 flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Used</span>
+                  <span className={cn(
+                    "text-sm font-black tabular-nums",
+                    teamLimit.remaining !== 'unlimited' && teamLimit.remaining <= 2 ? "text-red-500" : "text-gray-900"
+                  )}>
+                    {teamLimit.used}
+                  </span>
+                </div>
+                <div className="w-px h-4 bg-gray-300" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Limit</span>
+                  <span className="text-sm font-black tabular-nums text-gray-900">
+                    {teamLimit.limit === 'unlimited' ? '∞' : teamLimit.limit}
+                  </span>
+                </div>
+              </div>
+            )}
+            <button onClick={() => { setForm(emptyForm); setShowInviteModal(true); }}
+              className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all">
+              <Plus size={18} />
+              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Invite Member</span>
+            </button>
+          </div>
         }
       />
 
