@@ -247,12 +247,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     <Zap className="text-primary size-4" />
                                 )}
                             </div>
-                            <span className="text-sm font-black text-gray-900 truncate max-w-[120px]">{businessName}</span>
+                            <span className="text-sm font-semibold text-gray-900 truncate max-w-[120px]">{businessName}</span>
                         </div>
                     </Link>
                     <button 
                         onClick={toggleCollapse} 
-                        className={`size-8 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-all ${isCollapsed ? 'mx-auto' : ''}`}
+                        className={`size-9 rounded-xl border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all ${isCollapsed ? 'mx-auto' : ''}`}
                     >
                         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                     </button>
@@ -260,19 +260,19 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                 {/* Sidebar Search */}
                 {!isCollapsed && (
-                    <div className="px-4 mt-6 mb-2">
+                    <div className="px-4 mt-6 mb-3">
                         <div className="relative group">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" />
+                            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" />
                             <input 
                                 type="text"
                                 placeholder="Search modules..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-10 bg-gray-50 border border-transparent rounded-xl pl-9 pr-4 text-xs font-bold focus:bg-white focus:border-primary/20 focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+                                className="w-full h-11 bg-gray-50 border border-transparent rounded-xl pl-10 pr-4 text-sm font-medium focus:bg-white focus:border-primary/20 focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-gray-400"
                             />
                             {searchQuery && (
                                 <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                    <X size={12} />
+                                    <X size={14} />
                                 </button>
                             )}
                         </div>
@@ -288,17 +288,23 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                             {!isCollapsed && !searchQuery && section.label && (
                                 <button 
                                     onClick={() => toggleSection(section.id)}
-                                    className="w-full flex items-center justify-between px-4 py-1 group"
+                                    className="w-full flex items-center justify-between px-4 py-1.5 group"
                                 >
-                                    <span className="text-[11px] md:text-xs font-black uppercase tracking-[0.15em] text-gray-500 group-hover:text-gray-700 transition-colors">
+                                    <span className="text-base font-semibold text-gray-600 group-hover:text-gray-800 transition-colors">
                                         {section.label}
                                     </span>
-                                    <ChevronDown size={10} className={`text-gray-300 transition-transform ${expandedSections.includes(section.id) ? '' : '-rotate-90'}`} />
+                                    <div className={`size-6 rounded-lg flex items-center justify-center transition-all ${
+                                        expandedSections.includes(section.id)
+                                            ? 'bg-primary/10 text-primary'
+                                            : 'bg-gray-100/80 text-gray-400'
+                                    }`}>
+                                        <ChevronDown size={14} className={`transition-transform ${expandedSections.includes(section.id) ? '' : '-rotate-90'}`} />
+                                    </div>
                                 </button>
                             )}
                             
                             {(searchQuery || expandedSections.includes(section.id) || isCollapsed || !section.label) && (
-                                <div className="space-y-1">
+                                <div className="space-y-0.5">
                                     {section.items.map((item) => {
                                         const Icon = item.icon;
                                         const isLocked = item.feature && isFeatureLocked(item.feature);
@@ -311,15 +317,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     <div className="space-y-1">
                                                         <button
                                                             onClick={(e) => handleItemClick(e, item)}
-                                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                                                                active ? 'bg-primary/5 text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                            className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
+                                                                active ? 'bg-primary/5 text-primary font-semibold' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                                             }`}
                                                         >
-                                                            <div className="flex items-center gap-3">
-                                                                {Icon && <div className="shrink-0"><Icon size={18} /></div>}
-                                                                {!isCollapsed && <span className="text-sm font-black">{item.label}</span>}
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                {Icon && <div className="shrink-0"><Icon size={20} /></div>}
+                                                                {!isCollapsed && <span className="text-[15px] font-semibold truncate">{item.label}</span>}
                                                             </div>
-                                                            {!isCollapsed && <ChevronDown size={14} className={`transition-transform ${isMenuExpanded ? 'rotate-180' : ''}`} />}
+                                                            {!isCollapsed && <ChevronDown size={16} className={`shrink-0 text-gray-400 transition-transform ${isMenuExpanded ? 'rotate-180' : ''}`} />}
                                                         </button>
                                                         {!isCollapsed && isMenuExpanded && (
                                                             <div className="ml-9 space-y-1 border-l border-gray-100 pl-4 py-1">
@@ -328,8 +334,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                         key={idx}
                                                                         href={withBranch(sub.href)}
                                                                         onClick={() => setIsMobileOpen(false)}
-                                                                        className={`block text-xs md:text-sm font-bold py-1.5 transition-colors ${
-                                                                            isActive(sub.href) ? 'text-primary' : 'text-gray-500 hover:text-gray-700'
+                                                                        className={`block text-[15px] font-medium py-2 transition-colors ${
+                                                                            isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700'
                                                                         }`}
                                                                     >
                                                                         {sub.label}
@@ -342,17 +348,17 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     <Link
                                                         href={withBranch(item.href!)}
                                                         onClick={() => setIsMobileOpen(false)}
-                                                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                                                            active ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                        className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
+                                                            active ? 'bg-primary/10 text-primary font-semibold border-l-[3px] border-primary' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                                         }`}
                                                     >
                                                         <div className="flex items-center gap-3 min-w-0">
-                                                            {Icon && <div className="shrink-0"><Icon size={18} /></div>}
-                                                            {!isCollapsed && <span className="text-sm font-black truncate">{item.label}</span>}
+                                                            {Icon && <div className="shrink-0"><Icon size={20} /></div>}
+                                                            {!isCollapsed && <span className="text-[15px] font-semibold truncate">{item.label}</span>}
                                                         </div>
                                                         {!isCollapsed && (
                                                             <div className="flex items-center gap-2">
-                                                                {isLocked && <Lock size={12} className="text-gray-400" />}
+                                                                {isLocked && <Lock size={14} className="text-gray-400" />}
                                                                 {item.id === 'loyalty' && pendingRedemptions > 0 && (
                                                                     <span className="size-4 bg-emerald-500 text-white text-[8px] font-black flex items-center justify-center rounded-full">
                                                                         {pendingRedemptions}
@@ -365,16 +371,16 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                                                 {/* Tooltip & Favorite Toggle on Hover */}
                                                 {isCollapsed && (
-                                                    <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded opacity-0 group-hover/item:opacity-100 pointer-events-none z-50 whitespace-nowrap">
+                                                    <div className="absolute left-full ml-3 px-3 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg opacity-0 group-hover/item:opacity-100 pointer-events-none z-50 whitespace-nowrap shadow-lg">
                                                         {item.label}
                                                     </div>
                                                 )}
                                                 {!isCollapsed && (
                                                     <button 
                                                         onClick={(e) => toggleFavorite(e, item.id)}
-                                                        className={`absolute right-2 top-1/2 -translate-y-1/2 size-6 rounded-lg flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity bg-white/10 hover:bg-white/20 ${favorites.includes(item.id) ? 'text-amber-400' : 'text-gray-300'}`}
+                                                        className={`absolute right-2 top-1/2 -translate-y-1/2 size-7 rounded-lg flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity ${favorites.includes(item.id) ? 'text-amber-400' : 'text-gray-300 hover:text-gray-400'}`}
                                                     >
-                                                        <Star size={10} className={favorites.includes(item.id) ? 'fill-current' : ''} />
+                                                        <Star size={12} className={favorites.includes(item.id) ? 'fill-current' : ''} />
                                                     </button>
                                                 )}
                                             </div>
@@ -387,14 +393,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 </nav>
 
                 {/* Footer / Branch Switcher */}
-                <div className="border-t border-gray-100 p-4 space-y-3">
+                <div className="border-t border-gray-100 p-4 space-y-2">
                     {!isCollapsed && <BranchSwitcher />}
                     <button
                         onClick={handleLogout}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors ${isCollapsed ? 'justify-center' : ''}`}
                     >
-                        <LogOut size={18} />
-                        {!isCollapsed && <span className="text-xs font-black uppercase tracking-widest">Logout</span>}
+                        <LogOut size={20} />
+                        {!isCollapsed && <span className="text-[15px] font-semibold">Logout</span>}
                     </button>
                 </div>
             </aside>
@@ -404,8 +410,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* Top Bar */}
                 <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 shrink-0 sticky top-0 z-40">
                     <div className="flex items-center gap-4 flex-1">
-                        <button onClick={() => setIsMobileOpen(true)} className="p-2 text-text-secondary hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100">
-                            <Menu size={24} />
+                        <button onClick={() => setIsMobileOpen(true)} className="p-2.5 text-gray-500 hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100">
+                            <Menu size={22} />
                         </button>
                         
                         <div className="flex items-center gap-3">
@@ -413,8 +419,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 {currentBranchLogo ? <img src={currentBranchLogo} alt="Logo" className="size-full object-cover p-1" /> : <Zap className="text-primary size-4" />}
                             </div>
                             <div className="min-w-0">
-                                <p className="text-[8px] font-black uppercase tracking-[0.1em] text-gray-400 leading-none mb-0.5 truncate max-w-[120px]">{currentBranch?.name || businessName}</p>
-                                <h1 className="text-sm font-black text-gray-900 leading-none truncate capitalize">
+                                <p className="text-[10px] font-medium text-gray-400 leading-none mb-0.5 truncate max-w-[120px]">{currentBranch?.name || businessName}</p>
+                                <h1 className="text-sm font-semibold text-gray-900 leading-none truncate capitalize">
                                     {pathname.split('/').pop()?.replace(/-/g, ' ') || 'Overview'}
                                 </h1>
                             </div>
@@ -444,7 +450,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         {currentBranchLogo ? (
                                             <img src={currentBranchLogo} alt="Branch Logo" className="size-full object-cover p-1" />
                                         ) : (
-                                            <div className="text-primary font-black text-[10px] uppercase">
+                                            <div className="text-primary font-bold text-xs">
                                                 {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
                                             </div>
                                         )}
@@ -452,8 +458,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56 mt-2" align="end">
                                     <div className="px-3 py-2 border-b border-gray-50 mb-1">
-                                        <p className="text-xs font-black text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
-                                        <p className="text-[10px] font-bold text-gray-400 truncate">{user?.email}</p>
+                                        <p className="text-xs font-semibold text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
+                                        <p className="text-[10px] font-medium text-gray-400 truncate">{user?.email}</p>
                                     </div>
                                     <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/settings/profile'))}>
                                         <User size={14} />

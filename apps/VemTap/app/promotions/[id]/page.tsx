@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, MapPin, Clock, Users, Share2, CheckCircle2,
-    Loader2, Gift, ShieldCheck, Copy, X, ChevronRight, Phone, Mail
+    Loader2, Gift, ShieldCheck, Copy, X, ChevronRight, Phone, Mail,
+    User, UserPlus, Lock, Navigation, MessageCircle, ExternalLink,
+    Link as LinkIcon,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -14,7 +16,7 @@ import { MOCK_PROMOTIONS, formatPromoPrice, formatPromoDate, getPromoDaysLeft } 
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 
-type ClaimStep = 'form' | 'otp' | 'success';
+type ClaimStep = 'phone' | 'welcome_back' | 'signup' | 'otp' | 'success';
 
 export default function PromotionDetailPage() {
     const params = useParams();
@@ -22,16 +24,18 @@ export default function PromotionDetailPage() {
     const promotion = MOCK_PROMOTIONS.find(p => p.id === id);
 
     const [showClaimModal, setShowClaimModal] = useState(false);
-    const [claimStep, setClaimStep] = useState<ClaimStep>('form');
+    const [claimStep, setClaimStep] = useState<ClaimStep>('phone');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [claimForm, setClaimForm] = useState({
         firstName: '',
         lastName: '',
         email: '',
         phone: '',
+        password: '',
     });
     const [otp, setOtp] = useState('');
     const [claimCode, setClaimCode] = useState('');
+    const [showShareModal, setShowShareModal] = useState(false);
 
     if (!promotion) {
         return (
@@ -56,8 +60,38 @@ export default function PromotionDetailPage() {
     const daysLeft = getPromoDaysLeft(promotion.endDate);
     const claimPercent = Math.round((promotion.claimedCount / promotion.maxClaims) * 100);
 
-    const handleClaimSubmit = () => {
-        if (!claimForm.firstName || !claimForm.email || !claimForm.phone) {
+    const handlePhoneSubmit = () => {
+        if (!claimForm.phone || claimForm.phone.length < 10) {
+            toast.error('Please enter a valid phone number');
+            return;
+        }
+        setIsSubmitting(true);
+        setTimeout(() => {
+            setIsSubmitting(false);
+            // Simulate: check if phone exists
+            const phoneExists = claimForm.phone.startsWith('080');
+            if (phoneExists) {
+                setClaimStep('welcome_back');
+            } else {
+                setClaimStep('signup');
+            }
+        }, 1000);
+    };
+
+    const handleWelcomeBackSubmit = () => {
+        if (!claimForm.email) {
+            toast.error('Please enter your email');
+            return;
+        }
+        setIsSubmitting(true);
+        setTimeout(() => {
+            setIsSubmitting(false);
+            setClaimStep('otp');
+        }, 1000);
+    };
+
+    const handleSignupSubmit = () => {
+        if (!claimForm.firstName || !claimForm.email || !claimForm.password) {
             toast.error('Please fill in all required fields');
             return;
         }
@@ -83,15 +117,41 @@ export default function PromotionDetailPage() {
     };
 
     const handleShare = () => {
+        setShowShareModal(true);
+    };
+
+    const handleShareWhatsApp = () => {
+        const text = `Check out this deal at ${promotion.businessName}: ${promotion.name}\n\n${promotion.longDescription.slice(0, 200)}...\n\nGet it here: ${window.location.href}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        setShowShareModal(false);
+    };
+
+    const handleCopyLink = () => {
         navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard!');
+        setShowShareModal(false);
+    };
+
+    const handleNativeShare = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `${promotion.name} at ${promotion.businessName}`,
+                    text: promotion.longDescription.slice(0, 200),
+                    url: window.location.href,
+                });
+            } catch { /* user cancelled */ }
+            setShowShareModal(false);
+        } else {
+            handleCopyLink();
+        }
     };
 
     const resetModal = () => {
         setShowClaimModal(false);
-        setClaimStep('form');
+        setClaimStep('phone');
         setOtp('');
-        setClaimForm({ firstName: '', lastName: '', email: '', phone: '' });
+        setClaimForm({ firstName: '', lastName: '', email: '', phone: '', password: '' });
     };
 
     return (
@@ -139,6 +199,7 @@ export default function PromotionDetailPage() {
                         <button
                             onClick={handleShare}
                             className="absolute top-4 right-4 bg-white/80 backdrop-blur-md p-2.5 rounded-full hover:bg-white transition-colors"
+                            aria-label="Share this deal"
                         >
                             <Share2 size={18} className="text-gray-700" />
                         </button>
@@ -286,7 +347,27 @@ export default function PromotionDetailPage() {
                                         <p className="text-xs text-gray-400 font-bold flex items-center gap-1 mt-1">
                                             <MapPin size={10} /> {promotion.location}
                                         </p>
+                                        {promotion.distance && (
+                                            <p className="text-xs text-gray-400 font-bold flex items-center gap-1 mt-1">
+                                                <Navigation size={10} /> {promotion.distance} away
+                                            </p>
+                                        )}
+                                        {promotion.businessHours && (
+                                            <p className="text-xs text-gray-400 font-bold flex items-center gap-1 mt-1">
+                                                <Clock size={10} /> {promotion.businessHours}
+                                            </p>
+                                        )}
                                     </div>
+                                    {promotion.location && (
+                                        <a
+                                            href={`https://www.google.com/maps/search/${encodeURIComponent(promotion.location + ' ' + promotion.businessName)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full h-10 bg-gray-50 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 border border-gray-100"
+                                        >
+                                            <Navigation size={14} /> Get Directions
+                                        </a>
+                                    )}
                                 </div>
                             </motion.div>
                         </div>
@@ -295,6 +376,87 @@ export default function PromotionDetailPage() {
             </main>
 
             <Footer />
+
+            {/* Share Modal */}
+            <AnimatePresence>
+                {showShareModal && (
+                    <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowShareModal(false)}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            className="relative w-full max-w-sm bg-white rounded-t-3xl md:rounded-3xl overflow-hidden shadow-2xl"
+                        >
+                            <div className="p-6 md:p-8 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-lg font-headline font-bold text-gray-900">Share This Deal</h2>
+                                    <button
+                                        onClick={() => setShowShareModal(false)}
+                                        className="size-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                                    >
+                                        <X size={16} className="text-gray-500" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={handleShareWhatsApp}
+                                        className="w-full flex items-center gap-4 p-4 bg-green-50 border border-green-100 rounded-2xl hover:bg-green-100 transition-colors group"
+                                    >
+                                        <div className="size-12 rounded-xl bg-green-500 flex items-center justify-center shrink-0">
+                                            <MessageCircle size={24} className="text-white" />
+                                        </div>
+                                        <div className="text-left flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900">Share on WhatsApp</p>
+                                            <p className="text-[10px] text-gray-500 font-medium line-clamp-1">
+                                                {promotion.name} — {promotion.longDescription.slice(0, 80)}...
+                                            </p>
+                                        </div>
+                                        <ExternalLink size={16} className="text-green-400 shrink-0" />
+                                    </button>
+
+                                    <button
+                                        onClick={handleCopyLink}
+                                        className="w-full flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-gray-100 transition-colors group"
+                                    >
+                                        <div className="size-12 rounded-xl bg-gray-200 flex items-center justify-center shrink-0">
+                                            <LinkIcon size={24} className="text-gray-600" />
+                                        </div>
+                                        <div className="text-left flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900">Copy Link</p>
+                                            <p className="text-[10px] text-gray-500 font-medium truncate">
+                                                {window.location.href}
+                                            </p>
+                                        </div>
+                                        <Copy size={16} className="text-gray-400 shrink-0" />
+                                    </button>
+
+                                    <button
+                                        onClick={handleNativeShare}
+                                        className="w-full flex items-center gap-4 p-4 bg-primary/5 border border-primary/10 rounded-2xl hover:bg-primary/10 transition-colors group"
+                                    >
+                                        <div className="size-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
+                                            <Share2 size={24} className="text-white" />
+                                        </div>
+                                        <div className="text-left flex-1">
+                                            <p className="text-sm font-bold text-gray-900">More Options</p>
+                                            <p className="text-[10px] text-gray-500 font-medium">Share via other apps</p>
+                                        </div>
+                                        <ExternalLink size={16} className="text-primary/40 shrink-0" />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Claim Modal */}
             <AnimatePresence>
@@ -322,10 +484,10 @@ export default function PromotionDetailPage() {
                             </button>
 
                             <AnimatePresence mode="wait">
-                                {/* Step 1: Form */}
-                                {claimStep === 'form' && (
+                                {/* Step 1: Phone */}
+                                {claimStep === 'phone' && (
                                     <motion.div
-                                        key="form"
+                                        key="phone"
                                         initial={{ opacity: 0, x: -20 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -20 }}
@@ -337,52 +499,131 @@ export default function PromotionDetailPage() {
                                             </div>
                                             <h2 className="text-xl font-headline font-bold text-gray-900">Claim Your Deal</h2>
                                             <p className="text-sm text-gray-500 font-medium">
-                                                Fill in your details to claim <strong>{promotion.name}</strong> from {promotion.businessName}.
+                                                Start by entering your phone number to claim <strong>{promotion.name}</strong>.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+                                                Phone Number *
+                                            </label>
+                                            <div className="relative">
+                                                <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="tel"
+                                                    value={claimForm.phone}
+                                                    onChange={(e) => setClaimForm(f => ({ ...f, phone: e.target.value }))}
+                                                    className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                    placeholder="0801 234 5678"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={handlePhoneSubmit}
+                                            disabled={isSubmitting}
+                                            className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? (
+                                                <Loader2 size={18} className="animate-spin" />
+                                            ) : (
+                                                <>Continue <ChevronRight size={16} /></>
+                                            )}
+                                        </button>
+
+                                        <p className="text-[10px] text-gray-400 text-center font-bold">
+                                            By claiming, you agree to VemTap&apos;s Terms of Service.
+                                        </p>
+                                    </motion.div>
+                                )}
+
+                                {/* Step 2: Welcome back */}
+                                {claimStep === 'welcome_back' && (
+                                    <motion.div
+                                        key="welcome_back"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        className="p-6 md:p-8 space-y-6"
+                                    >
+                                        <div className="space-y-2">
+                                            <div className="size-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+                                                <User size={28} className="text-blue-500" />
+                                            </div>
+                                            <h2 className="text-xl font-headline font-bold text-gray-900">Welcome back!</h2>
+                                            <p className="text-sm text-gray-500 font-medium">
+                                                We found an account linked to <strong>{claimForm.phone}</strong>. Enter your email to continue.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+                                                Email Address *
+                                            </label>
+                                            <div className="relative">
+                                                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="email"
+                                                    value={claimForm.email}
+                                                    onChange={(e) => setClaimForm(f => ({ ...f, email: e.target.value }))}
+                                                    className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                    placeholder="chidi@example.com"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={handleWelcomeBackSubmit}
+                                            disabled={isSubmitting}
+                                            className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? (
+                                                <Loader2 size={18} className="animate-spin" />
+                                            ) : (
+                                                <>Continue <ChevronRight size={16} /></>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => setClaimStep('phone')}
+                                            className="w-full text-xs font-bold text-gray-400 hover:text-primary transition-colors"
+                                        >
+                                            ← Use a different number
+                                        </button>
+                                    </motion.div>
+                                )}
+
+                                {/* Step 3: Sign up */}
+                                {claimStep === 'signup' && (
+                                    <motion.div
+                                        key="signup"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        className="p-6 md:p-8 space-y-6"
+                                    >
+                                        <div className="space-y-2">
+                                            <div className="size-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+                                                <UserPlus size={28} className="text-primary" />
+                                            </div>
+                                            <h2 className="text-xl font-headline font-bold text-gray-900">Create an account</h2>
+                                            <p className="text-sm text-gray-500 font-medium">
+                                                Quick setup to claim <strong>{promotion.name}</strong>.
                                             </p>
                                         </div>
 
                                         <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                        First Name *
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={claimForm.firstName}
-                                                        onChange={(e) => setClaimForm(f => ({ ...f, firstName: e.target.value }))}
-                                                        className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                        placeholder="Chidi"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                        Last Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={claimForm.lastName}
-                                                        onChange={(e) => setClaimForm(f => ({ ...f, lastName: e.target.value }))}
-                                                        className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                        placeholder="Okonkwo"
-                                                    />
-                                                </div>
-                                            </div>
-
                                             <div>
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                    Phone Number *
+                                                    First Name *
                                                 </label>
-                                                <div className="relative">
-                                                    <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                                    <input
-                                                        type="tel"
-                                                        value={claimForm.phone}
-                                                        onChange={(e) => setClaimForm(f => ({ ...f, phone: e.target.value }))}
-                                                        className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                        placeholder="0801 234 5678"
-                                                    />
-                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={claimForm.firstName}
+                                                    onChange={(e) => setClaimForm(f => ({ ...f, firstName: e.target.value }))}
+                                                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                    placeholder="Chidi"
+                                                />
                                             </div>
 
                                             <div>
@@ -400,27 +641,46 @@ export default function PromotionDetailPage() {
                                                     />
                                                 </div>
                                             </div>
+
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+                                                    Create Password *
+                                                </label>
+                                                <div className="relative">
+                                                    <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                    <input
+                                                        type="password"
+                                                        value={claimForm.password}
+                                                        onChange={(e) => setClaimForm(f => ({ ...f, password: e.target.value }))}
+                                                        className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                        placeholder="Min. 8 characters"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <button
-                                            onClick={handleClaimSubmit}
+                                            onClick={handleSignupSubmit}
                                             disabled={isSubmitting}
                                             className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
                                             {isSubmitting ? (
                                                 <Loader2 size={18} className="animate-spin" />
                                             ) : (
-                                                <>Continue <ChevronRight size={16} /></>
+                                                <>Create & Continue <ChevronRight size={16} /></>
                                             )}
                                         </button>
 
-                                        <p className="text-[10px] text-gray-400 text-center font-bold">
-                                            By claiming, you agree to VemTap&apos;s Terms of Service.
-                                        </p>
+                                        <button
+                                            onClick={() => setClaimStep('phone')}
+                                            className="w-full text-xs font-bold text-gray-400 hover:text-primary transition-colors"
+                                        >
+                                            ← Use a different number
+                                        </button>
                                     </motion.div>
                                 )}
 
-                                {/* Step 2: OTP */}
+                                {/* Step 4: OTP */}
                                 {claimStep === 'otp' && (
                                     <motion.div
                                         key="otp"
@@ -466,15 +726,15 @@ export default function PromotionDetailPage() {
                                         </button>
 
                                         <button
-                                            onClick={() => setClaimStep('form')}
+                                            onClick={() => setClaimStep('phone')}
                                             className="w-full text-xs font-bold text-gray-400 hover:text-primary transition-colors"
                                         >
-                                            ← Back to details
+                                            ← Start over
                                         </button>
                                     </motion.div>
                                 )}
 
-                                {/* Step 3: Success */}
+                                {/* Step 5: Success */}
                                 {claimStep === 'success' && (
                                     <motion.div
                                         key="success"

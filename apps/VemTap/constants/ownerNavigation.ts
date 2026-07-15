@@ -172,6 +172,21 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
         ]
     },
     {
+        id: 'section-partnership',
+        label: '',
+        items: [
+            {
+                id: 'business-partnership',
+                label: 'Business Partnership',
+                icon: null,
+                href: '/dashboard/business-partnership',
+                roles: ['owner', 'manager'],
+                permission: 'partnership',
+                keywords: ['partner', 'partnership', 'referral', 'network', 'commission', 'invite', 'collaborate']
+            }
+        ]
+    },
+    {
         id: 'section-analytics',
         label: 'Analytics',
         items: [

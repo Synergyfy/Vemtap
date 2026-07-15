@@ -1,4 +1,4 @@
-export type PromotionCategory = 'All' | 'Food & Drinks' | 'Fashion' | 'Electronics' | 'Health & Beauty' | 'Services';
+export type PromotionCategory = 'All' | 'Food & Drinks' | 'Fashion' | 'Electronics' | 'Health & Beauty' | 'Services' | 'Supermarket' | 'Pharmacy' | 'Cafes' | 'Gym';
 
 export interface MockPromotion {
     id: string;
@@ -19,9 +19,25 @@ export interface MockPromotion {
     endDate: string;
     audience: string;
     location: string;
+    distance?: string;
     claimedCount: number;
     maxClaims: number;
+    businessHours?: string;
 }
+
+export const CATEGORY_EMOJIS: Record<string, string> = {
+    'Food & Drinks': '🍔',
+    'Fashion': '👔',
+    'Electronics': '📱',
+    'Health & Beauty': '💇',
+    'Services': '🔧',
+    'Supermarket': '🛒',
+    'Pharmacy': '💊',
+    'Cafes': '☕',
+    'Gym': '🏋️',
+    'Restaurants': '🍔',
+    'Salons': '💇',
+};
 
 export const MOCK_PROMOTIONS: MockPromotion[] = [
     {
@@ -47,8 +63,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-07-31',
         audience: 'nearby_customers',
         location: 'Victoria Island, Lagos',
+        distance: '450m',
         claimedCount: 142,
         maxClaims: 500,
+        businessHours: 'Mon-Sun: 8AM - 10PM',
     },
     {
         id: 'promo-002',
@@ -73,8 +91,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-06-30',
         audience: 'everyone_nearby',
         location: 'Lekki Phase 1, Lagos',
+        distance: '1.2km',
         claimedCount: 89,
         maxClaims: 200,
+        businessHours: 'Mon-Sat: 9AM - 8PM',
     },
     {
         id: 'promo-003',
@@ -99,8 +119,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-08-15',
         audience: 'nearby_customers',
         location: 'Ikoyi, Lagos',
+        distance: '700m',
         claimedCount: 67,
         maxClaims: 300,
+        businessHours: 'Mon-Sun: 10AM - 9PM',
     },
     {
         id: 'promo-004',
@@ -125,8 +147,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-07-10',
         audience: 'nearby_customers',
         location: 'Banana Island, Lagos',
+        distance: '1.5km',
         claimedCount: 34,
         maxClaims: 100,
+        businessHours: 'Tue-Sun: 9AM - 7PM',
     },
     {
         id: 'promo-005',
@@ -151,8 +175,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-09-30',
         audience: 'everyone_nearby',
         location: 'Victoria Island, Lagos',
+        distance: '800m',
         claimedCount: 213,
         maxClaims: 1000,
+        businessHours: 'Mon-Sun: 4PM - 2AM',
     },
     {
         id: 'promo-006',
@@ -177,8 +203,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-07-20',
         audience: 'nearby_businesses',
         location: 'Surulere, Lagos',
+        distance: '2.2km',
         claimedCount: 28,
         maxClaims: 150,
+        businessHours: 'Mon-Sat: 7AM - 6PM',
     },
     {
         id: 'promo-007',
@@ -205,6 +233,7 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         location: 'Online',
         claimedCount: 341,
         maxClaims: 5000,
+        businessHours: '24/7 Online',
     },
     {
         id: 'promo-008',
@@ -229,8 +258,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-06-29',
         audience: 'everyone_nearby',
         location: 'All of Lagos',
+        distance: '0m',
         claimedCount: 178,
         maxClaims: 1000,
+        businessHours: 'Sat-Sun: 8AM - 10PM',
     },
     {
         id: 'promo-009',
@@ -255,8 +286,10 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-08-31',
         audience: 'everyone_nearby',
         location: 'Lekki Phase 1, Lagos',
+        distance: '3.5km',
         claimedCount: 12,
         maxClaims: 250,
+        businessHours: 'Mon-Sun: 9AM - 8PM',
     },
     {
         id: 'promo-010',
@@ -281,18 +314,140 @@ export const MOCK_PROMOTIONS: MockPromotion[] = [
         endDate: '2026-07-31',
         audience: 'nearby_customers',
         location: 'Ikoyi, Lagos',
+        distance: '1.1km',
         claimedCount: 19,
         maxClaims: 80,
+        businessHours: 'Mon-Thu: 8AM - 8PM',
+    },
+    {
+        id: 'promo-011',
+        name: 'Fresh Produce Bundle',
+        description: 'Buy any 5kg vegetable bundle and get 2kg of fresh tomatoes free!',
+        longDescription: 'Stock up on the freshest seasonal vegetables, fruits, and pantry essentials at unbeatable prices. Our farm-to-table sourcing ensures you get the best quality produce every time.',
+        terms: [
+            'In-store purchase only',
+            'While stocks last',
+            'Cannot be combined with loyalty discount',
+            'One bundle per customer per visit',
+        ],
+        businessName: 'GreenMart Supermarket',
+        businessSlug: 'greenmart-supermarket',
+        category: 'Supermarket',
+        discountAmount: 2500,
+        originalPrice: 12500,
+        dealPrice: 10000,
+        image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80',
+        startDate: '2026-06-20',
+        endDate: '2026-07-20',
+        audience: 'everyone_nearby',
+        location: 'Tanke, Ilorin',
+        distance: '300m',
+        claimedCount: 203,
+        maxClaims: 500,
+        businessHours: 'Mon-Sun: 7AM - 10PM',
+    },
+    {
+        id: 'promo-012',
+        name: 'Morning Brew Special',
+        description: 'Buy any coffee and get a free croissant. Available weekdays 7AM - 10AM.',
+        longDescription: 'Start your morning right with our artisanal coffee blends. Choose from espresso, cappuccino, latte, or flat white, each paired with a freshly baked butter croissant. Free refill on drip coffee!',
+        terms: [
+            'Valid weekdays 7AM - 10AM',
+            'Dine-in only',
+            'One per customer',
+            'Cannot be combined with other offers',
+        ],
+        businessName: 'Brew & Bean',
+        businessSlug: 'brew-bean',
+        category: 'Cafes',
+        discountPercent: 100,
+        originalPrice: 3500,
+        dealPrice: 0,
+        image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&q=80',
+        startDate: '2026-06-15',
+        endDate: '2026-08-15',
+        audience: 'nearby_customers',
+        location: 'Wuse 2, Abuja',
+        distance: '200m',
+        claimedCount: 456,
+        maxClaims: 2000,
+        businessHours: 'Mon-Fri: 6AM - 8PM',
+    },
+    {
+        id: 'promo-013',
+        name: 'Gym Membership - First Month Free',
+        description: 'Join now and get your first month free. No joining fee. Cancel anytime.',
+        longDescription: 'Transform your fitness journey with state-of-the-art equipment, group classes, personal training sessions, and a refreshing steam room. Our certified trainers will help you reach your goals faster.',
+        terms: [
+            'New members only',
+            'First month free, then ₦15,000/month',
+            'Cancel anytime with 30-day notice',
+            'Includes all group classes',
+            'Personal training sessions extra',
+        ],
+        businessName: 'Iron Forge Gym',
+        businessSlug: 'iron-forge-gym',
+        category: 'Gym',
+        discountPercent: 100,
+        originalPrice: 15000,
+        dealPrice: 0,
+        image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+        startDate: '2026-06-01',
+        endDate: '2026-07-31',
+        audience: 'everyone_nearby',
+        location: 'Lekki, Lagos',
+        distance: '600m',
+        claimedCount: 89,
+        maxClaims: 500,
+        businessHours: 'Mon-Sun: 5AM - 10PM',
+    },
+    {
+        id: 'promo-014',
+        name: 'Health Essentials Sale',
+        description: '15% off all vitamins, supplements, and first-aid supplies this week.',
+        longDescription: 'Take charge of your health with our wide range of pharmaceutical and wellness products. From multivitamins to specialized supplements, find everything you need for a healthier lifestyle.',
+        terms: [
+            'Valid on vitamins and supplements only',
+            'Prescription items excluded',
+            'While stocks last',
+            'Cannot be combined with insurance',
+        ],
+        businessName: 'HealthPlus Pharmacy',
+        businessSlug: 'healthplus-pharmacy',
+        category: 'Pharmacy',
+        discountPercent: 15,
+        originalPrice: 15000,
+        dealPrice: 12750,
+        image: 'https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800&q=80',
+        startDate: '2026-06-25',
+        endDate: '2026-07-02',
+        audience: 'everyone_nearby',
+        location: 'Ilorin',
+        distance: '850m',
+        claimedCount: 56,
+        maxClaims: 200,
+        businessHours: 'Mon-Sun: 8AM - 9PM',
     },
 ];
 
 export const PROMOTION_CATEGORIES: PromotionCategory[] = [
     'All',
     'Food & Drinks',
+    'Supermarket',
     'Fashion',
+    'Pharmacy',
+    'Cafes',
     'Electronics',
     'Health & Beauty',
+    'Gym',
     'Services',
+];
+
+export const LOCATIONS = [
+    'Ilorin',
+    'Tanke',
+    'Wuse 2',
+    'Lekki',
 ];
 
 export function formatPromoPrice(price: number): string {

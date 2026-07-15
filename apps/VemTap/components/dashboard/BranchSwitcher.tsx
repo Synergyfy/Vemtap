@@ -98,7 +98,7 @@ export default function BranchSwitcher() {
                         )}
                     </div>
                     <div className="text-left block flex-1 min-w-0">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1 truncate">
+                        <p className="text-[10px] font-semibold text-primary leading-none mb-1 truncate">
                             Location
                         </p>
                         <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export default function BranchSwitcher() {
                         {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
                     </div>
                     <div className="text-left block flex-1 min-w-0">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1 truncate">
+                        <p className="text-[10px] font-semibold text-primary leading-none mb-1 truncate">
                             Active Location
                         </p>
                         <div className="flex items-center justify-between gap-2">
@@ -160,11 +160,11 @@ export default function BranchSwitcher() {
                         {!isCreating ? (
                             <>
                                 <div className="px-3 py-2 mb-1 flex items-center justify-between">
-                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
-                                        Switch Business Location
+                                    <p className="text-[10px] font-semibold text-gray-500">
+                                        Switch Location
                                     </p>
-                                    <span className="text-[10px] text-text-secondary font-medium">
-                                        {branches.length} Business Location{branches.length !== 1 ? 's' : ''}
+                                    <span className="text-[10px] text-gray-400 font-medium">
+                                        {branches.length} Location{branches.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
 
@@ -256,7 +256,7 @@ export default function BranchSwitcher() {
                             /* Create Branch Form */
                             <div className="p-3 space-y-3">
                                 <div className="flex items-center justify-between mb-1">
-                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">New Branch</p>
+                                    <p className="text-[10px] font-semibold text-gray-500">New Branch</p>
                                     <button
                                         onClick={() => setIsCreating(false)}
                                         className="size-6 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"

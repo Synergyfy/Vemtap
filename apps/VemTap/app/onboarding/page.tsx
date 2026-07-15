@@ -68,6 +68,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useCategories } from '@/services/categories/hooks';
 import type { Category } from '@/services/categories/index';
+import { getCategoryIcon } from '@/lib/category-icons';
 import { useUpdateBusiness } from '@/services/businesses/hooks';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import type { PricingPlan } from '@/types/pricing';
@@ -381,46 +382,8 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
         setCurrentPage(1);
     }, [search]);
 
-    const CATEGORY_ICONS: Record<string, React.ElementType> = {
-        // Parent category matchers
-        'retail': ShoppingBag,
-        'food': Utensils,
-        'beauty': Sparkles,
-        'health': Stethoscope,
-        'professional services': Briefcase,
-        'technology': Tv,
-        'education': GraduationCap,
-        'real estate': Home,
-        'automotive': Wrench,
-        'logistics': Truck,
-        'construction': Building2,
-        'events': Music,
-        'finance': Coins,
-        'agriculture': Sprout,
-        'manufacturing': Factory,
-        'religious': Heart,
-        'government': Landmark,
-        'others': MoreHorizontal,
-        // Subcategory matchers (more specific)
-        'restaurant': Utensils,
-        'salon & barbershop': Scissors,
-        'gym & fitness': Dumbbell,
-        'hotel & hospitality': Hotel,
-        'electronics': Tv,
-        'supermarket': ShoppingCart,
-        'pharmacy': Pill,
-        'beauty store': Sparkles,
-        'spa': Waves,
-        'bakery': Croissant,
-        'cafe': Coffee,
-        'laundry': Truck,
-        'auto service': Wrench,
-        'healthcare': Stethoscope,
-    };
-
     const categories = rawCategories.map((cat: Category) => {
-        const key = cat.name.toLowerCase();
-        const icon = Object.entries(CATEGORY_ICONS).find(([k]) => key.includes(k))?.[1] || MoreHorizontal;
+        const icon = getCategoryIcon(cat.name);
         return { id: cat.id, label: cat.name, description: cat.description, icon };
     });
 
@@ -476,10 +439,10 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                         }`}
                     >
                         <div className="flex items-start gap-4">
-                            <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                            <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 text-xl transition-colors ${
                                 selected === cat.id ? 'bg-primary text-white' : 'bg-gray-50 text-text-secondary group-hover:bg-gray-100'
                             }`}>
-                                <cat.icon size={24} />
+                                {cat.icon}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <span className={`text-sm font-bold block ${selected === cat.id ? 'text-primary' : 'text-text-main'}`}>

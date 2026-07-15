@@ -53,13 +53,12 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                             </div>
                         )}
 
-                        {/* Category pill */}
-                        <div className={cn(
-                            "absolute top-3 right-3 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                            CATEGORY_COLORS[promotion.category] || 'bg-gray-500'
-                        )}>
-                            {promotion.category}
-                        </div>
+                        {/* Ends Today badge */}
+                        {daysLeft === 0 && (
+                            <div className="absolute top-3 right-3 bg-orange-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg">
+                                Ends Today
+                            </div>
+                        )}
 
                         {/* Days left */}
                         {daysLeft <= 7 && daysLeft > 0 && (
@@ -99,16 +98,23 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                             )}
                         </div>
 
-                        {/* Footer */}
+                        {/* Footer with distance + claimed */}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                             <div className="flex items-center gap-1 text-gray-400">
                                 <MapPin size={10} />
-                                <span className="text-[10px] font-bold truncate max-w-[120px]">{promotion.location}</span>
+                                <span className="text-[10px] font-bold truncate max-w-[100px]">{promotion.location}</span>
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Users size={10} />
-                                <span className="text-[10px] font-bold">{promotion.claimedCount} claimed</span>
+                                <span className="text-[10px] font-bold">{promotion.distance || ''}</span>
                             </div>
+                        </div>
+
+                        {/* Trending / Social proof */}
+                        <div className="flex items-center gap-1">
+                            <Users size={10} className="text-primary" />
+                            <span className="text-[10px] font-bold text-primary">
+                                {promotion.claimedCount} {promotion.claimedCount === 1 ? 'person' : 'people'} claimed this
+                            </span>
                         </div>
 
                         {/* Claim progress bar */}
@@ -125,7 +131,7 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                                 {formatPromoDate(promotion.startDate)} — {formatPromoDate(promotion.endDate)}
                             </span>
                             <span className="flex items-center gap-1 text-xs font-black text-primary group-hover:gap-2 transition-all">
-                                View Deal <ArrowRight size={12} />
+                                View Offer <ArrowRight size={12} />
                             </span>
                         </div>
                     </div>
