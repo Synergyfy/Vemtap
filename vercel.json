@@ -1,0 +1,6 @@
+{
+    "installCommand": "cd apps/VemTap && npm install",
+    "buildCommand": "cd apps/VemTap && npm run build",
+    "outputDirectory": "apps/VemTap/.next",
+    "framework": "nextjs"
+}
