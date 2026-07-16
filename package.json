@@ -9,12 +9,12 @@
         "test:e2e:ui": "playwright test --ui",
         "test:e2e:headed": "playwright test --headed",
         "test:e2e:report": "playwright show-report",
-        "dev": "turbo dev",
-        "dev:ui": "turbo dev --filter=@vemtap/frontend",
-        "dev:api": "turbo dev --filter=@vemtap/backend",
-        "build": "turbo build",
-        "build:ui": "turbo build --filter=@vemtap/frontend",
-        "build:api": "turbo build --filter=@vemtap/backend"
+        "dev": "turbo --config turbo.config.json dev",
+        "dev:ui": "turbo --config turbo.config.json dev --filter=@vemtap/frontend",
+        "dev:api": "turbo --config turbo.config.json dev --filter=@vemtap/backend",
+        "build": "turbo --config turbo.config.json build",
+        "build:ui": "turbo --config turbo.config.json build --filter=@vemtap/frontend",
+        "build:api": "turbo --config turbo.config.json build --filter=@vemtap/backend"
     },
     "keywords": [],
     "author": "",
