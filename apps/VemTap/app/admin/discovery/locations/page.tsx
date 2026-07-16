@@ -1,10 +1,9 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useDiscoveryBusinesses } from '@/services/discovery/hooks';
 import { 
-    Search, Filter, Map as MapIcon, ArrowUpRight, Target, Navigation, Eye
+    Search, Filter, Map as MapIcon, ArrowUpRight, Target, Navigation, Eye, ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -19,7 +18,9 @@ const MOCK_LOCATIONS = [
 export default function DiscoveryLocationsPage() {
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/locations" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Geographical Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

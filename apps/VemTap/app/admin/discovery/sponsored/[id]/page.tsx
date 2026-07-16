@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, Activity, MapPin, Calendar, 
     TrendingUp, Eye, MousePointerClick, CheckCircle2, 

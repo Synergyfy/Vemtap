@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import Link from 'next/link';
 import { 
     Bell, MessageSquare, Mail, Smartphone,
     CheckCircle2, XCircle, Clock, Eye,
     Search, Filter, BarChart3, TrendingUp,
-    ArrowUpRight, Send, AlertCircle
+    ArrowUpRight, Send, AlertCircle, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -46,7 +46,9 @@ const MOCK_LOGS = [
 export default function DiscoveryNotificationsPage() {
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/notifications" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Analytics Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

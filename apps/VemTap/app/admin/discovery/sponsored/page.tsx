@@ -2,12 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Search, Filter, Plus, MoreHorizontal, 
     Eye, CheckCircle2, Pause, Play, XCircle,
     Activity, DollarSign, Target, Calendar,
-    TrendingUp, BadgeDollarSign, MapPin
+    TrendingUp, BadgeDollarSign, MapPin, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -56,7 +55,9 @@ const MOCK_CAMPAIGNS = [
 export default function DiscoverySponsoredPage() {
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/sponsored" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Top Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

@@ -2,12 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     History, User, Activity, ShieldCheck, 
     Search, Filter, Clock, ArrowRight,
     Lock, Unlock, Edit3, CheckCircle2,
-    Database, Server, Globe, Eye
+    Database, Server, Globe, Eye, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -47,7 +46,9 @@ const MOCK_AUDITS = [
 export default function DiscoveryAuditLogsPage() {
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/audit-logs" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 <div className="xl:col-span-2 space-y-6">

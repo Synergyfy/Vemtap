@@ -1,11 +1,10 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     DollarSign, CreditCard, ArrowUpRight, ArrowDownRight,
     TrendingUp, Calendar, Search, Filter, Download,
-    BadgeDollarSign, Receipt, FileText, MoreHorizontal, Eye
+    BadgeDollarSign, Receipt, FileText, MoreHorizontal, Eye, ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -43,7 +42,9 @@ const MOCK_TRANSACTIONS = [
 export default function DiscoveryBillingPage() {
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/billing" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Revenue Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, History, User, Activity, 
     ShieldCheck, Clock, ArrowRight, Lock,

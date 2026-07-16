@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import Link from 'next/link';
 import { 
     ShieldAlert, ShieldCheck, AlertTriangle, Eye, 
     Search, Filter, Ban, MoreHorizontal, CheckCircle2,
-    Activity, Fingerprint, MousePointer2, Zap
+    Activity, Fingerprint, MousePointer2, Zap, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -48,7 +48,9 @@ const MOCK_ALERTS = [
 export default function DiscoveryFraudPage() {
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/fraud" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Risk Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

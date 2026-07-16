@@ -188,11 +188,11 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
     },
     {
         id: 'section-analytics',
-        label: 'Analytics',
+        label: '',
         items: [
             {
                 id: 'analytics-overview',
-                label: 'Advanced Analytics',
+                label: 'Analytics',
                 icon: BarChart3,
                 href: '/dashboard/analytics',
                 roles: ['owner', 'manager'],
@@ -201,8 +201,13 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                     { label: 'Overview', href: '/dashboard/analytics' },
                     { label: 'Sales Reports', href: '/dashboard/analytics/sales' },
                     { label: 'Inventory Reports', href: '/dashboard/analytics/inventory' },
+                    { label: 'Customers', href: '/dashboard/analytics/customers' },
+                    { label: 'Discovery', href: '/dashboard/analytics/discovery' },
+                    { label: 'Footfall', href: '/dashboard/analytics/footfall' },
+                    { label: 'Marketing', href: '/dashboard/analytics/marketing' },
+                    { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
                 ],
-                keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts']
+                keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts', 'advanced']
             }
         ]
     },

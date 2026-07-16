@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Boxes, Plus, Edit3, Trash2, Search, 
     Filter, CheckCircle2, XCircle, Info,
@@ -38,7 +37,9 @@ export default function ManageOfferCategoriesPage() {
                 </button>
             </div>
 
-            <DiscoveryNav current="/admin/discovery/categories" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">

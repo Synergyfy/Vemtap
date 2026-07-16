@@ -168,12 +168,12 @@ export default function DashboardPage() {
                             }
                             // Default / Owner / Manager
                             return [
-                                { label: 'New Sale', icon: ShoppingBag, color: 'text-purple-600 bg-purple-50/50 border-purple-100/50', route: '/dashboard/commerce' },
-                                { label: 'Add Customer', icon: UserPlus, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/visitors/add' },
-                                { label: 'Send Message', icon: Send, color: 'text-indigo-600 bg-indigo-50/50 border-indigo-100/50', route: '/dashboard/messaging' },
-                                { label: 'Create Campaign', icon: Zap, color: 'text-amber-600 bg-amber-50/50 border-amber-100/50', route: '/dashboard/marketing-assets/create' },
-                                { label: 'My Business QR', icon: QrCode, color: 'text-emerald-600 bg-emerald-50/50 border-emerald-100/50', route: '/dashboard/customer-experience' },
-                                { label: 'Capture Visitor', icon: UserCheck, color: 'text-rose-600 bg-rose-50/50 border-rose-100/50', route: '/dashboard/visitors' }
+                                { label: 'Sales', icon: TrendingUp, color: 'text-purple-600 bg-purple-50/50 border-purple-100/50', route: '/dashboard/sales' },
+                                { label: 'POS Terminal', icon: ShoppingBag, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/pos' },
+                                { label: 'Customer', icon: Users, color: 'text-indigo-600 bg-indigo-50/50 border-indigo-100/50', route: '/dashboard/pos/customers' },
+                                { label: 'Send Message', icon: Send, color: 'text-amber-600 bg-amber-50/50 border-amber-100/50', route: '/dashboard/messaging' },
+                                { label: 'Get Customer', icon: QrCode, color: 'text-emerald-600 bg-emerald-50/50 border-emerald-100/50', route: '/dashboard/discovery' },
+                                { label: 'Refer a Business', icon: UserPlus, color: 'text-rose-600 bg-rose-50/50 border-rose-100/50', route: '/dashboard/business-partnership' }
                             ];
                         }, [user?.role]).map((action, i) => (
                             <button 
