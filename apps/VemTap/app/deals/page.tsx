@@ -17,6 +17,21 @@ import { cn } from '@/lib/utils';
 import type { GeolocationCoordinates } from '@/lib/geolocation';
 
 function toPromotionBusiness(business: DealOffer['business']): PromotionBusiness {
+    if (!business) {
+        return {
+            id: '',
+            name: 'Unknown Business',
+            slug: '',
+            logo: '',
+            photos: [],
+            categoryId: '',
+            categoryName: '',
+            address: '',
+            hours: [],
+            rating: 0,
+            totalReviews: 0,
+        };
+    }
     return {
         id: business.id,
         name: business.name,
@@ -110,7 +125,9 @@ export default function PromotionsPage() {
 
     const promotions = useMemo(() => {
         if (!offersData?.data) return [];
-        return offersData.data.map(toPromotion);
+        return offersData.data
+            .filter((offer): offer is DealOffer => !!offer && !!offer.id && !!offer.business)
+            .map(toPromotion);
     }, [offersData]);
 
     const filteredPromotions = useMemo(() => {
