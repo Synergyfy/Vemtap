@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Users, UserCheck, UserMinus, Eye, 
     Search, Filter, MapPin, Tag, 
     CheckCircle2, Clock, ShieldCheck,
-    MousePointerClick, TrendingUp, MoreHorizontal
+    MousePointerClick, TrendingUp, MoreHorizontal, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAdminCustomers } from '@/services/discovery/hooks';
@@ -21,7 +20,9 @@ export default function DiscoveryCustomersPage() {
 
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/customers" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* User Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

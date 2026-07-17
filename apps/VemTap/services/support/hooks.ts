@@ -8,10 +8,11 @@ export const useSupportTickets = (params?: { type?: string; isAssigned?: boolean
   });
 };
 
-export const useUserSupportTickets = (page: number = 1, limit: number = 10) => {
+export const useUserSupportTickets = (page: number = 1, limit: number = 10, enabled: boolean = true) => {
   return useQuery({
     queryKey: ['user-support-tickets', page, limit],
     queryFn: () => api.get('/support/tickets', { params: { page, limit } }),
+    enabled,
   });
 };
 

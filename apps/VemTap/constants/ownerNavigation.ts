@@ -3,7 +3,7 @@ import {
     MessageSquare, ShieldCheck, MessageCircle, Zap, ShoppingBag, QrCode, FileText, Palette,
     Package, Target, Globe, Star, LayoutDashboard, Megaphone, Workflow, Share2, 
     LineChart, CreditCard, Layers, Globe2, Cpu, BookOpen, Settings2, Wallet, 
-    UserCheck, Wand2, BarChart3, TrendingUp, Search, Users2
+    UserCheck, Wand2, BarChart3, TrendingUp, Search, Users2, Download
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -172,13 +172,28 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
         ]
     },
     {
+        id: 'section-partnership',
+        label: '',
+        items: [
+            {
+                id: 'business-partnership',
+                label: 'Business Partnership',
+                icon: null,
+                href: '/dashboard/business-partnership',
+                roles: ['owner', 'manager'],
+                permission: 'partnership',
+                keywords: ['partner', 'partnership', 'referral', 'network', 'commission', 'invite', 'collaborate']
+            }
+        ]
+    },
+    {
         id: 'section-analytics',
-        label: 'Analytics',
+        label: '',
         items: [
             {
                 id: 'analytics-overview',
-                label: 'Advanced Analytics',
-                icon: BarChart3,
+                label: 'Analytics',
+                icon: null,
                 href: '/dashboard/analytics',
                 roles: ['owner', 'manager'],
                 permission: 'analytics',
@@ -186,8 +201,13 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                     { label: 'Overview', href: '/dashboard/analytics' },
                     { label: 'Sales Reports', href: '/dashboard/analytics/sales' },
                     { label: 'Inventory Reports', href: '/dashboard/analytics/inventory' },
+                    { label: 'Customers', href: '/dashboard/analytics/customers' },
+                    { label: 'Discovery', href: '/dashboard/analytics/discovery' },
+                    { label: 'Footfall', href: '/dashboard/analytics/footfall' },
+                    { label: 'Marketing', href: '/dashboard/analytics/marketing' },
+                    { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
                 ],
-                keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts']
+                keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts', 'advanced']
             }
         ]
     },
@@ -236,16 +256,15 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
     },
     {
         id: 'section-settings',
-        label: 'Settings',
+        label: '',
         items: [
             {
                 id: 'preferences',
                 label: 'Settings',
-                icon: Settings,
+                icon: null,
                 roles: ['owner', 'manager'],
                 permission: 'settings',
                 submenu: [
-                    { label: 'Settings', href: '/dashboard/settings' },
                     { label: 'Profile', href: '/dashboard/settings/profile' },
                     { label: 'Subscription', href: '/dashboard/settings/subscription' },
                     { label: 'Support', href: '/dashboard/support' },

@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, Boxes, Tag, TrendingUp, Users, 
     DollarSign, Target, BarChart3, ArrowUpRight,
     PieChart, LayoutGrid, Info, Download, Store
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useAdminCategory } from '@/services/discovery/hooks';
 
 export default function DiscoveryCategoryDetailPage() {

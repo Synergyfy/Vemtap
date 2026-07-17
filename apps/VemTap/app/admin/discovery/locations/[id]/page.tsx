@@ -2,70 +2,37 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
-import {
-    ChevronLeft, MapPin, Store, Tag,
+import { 
+    ChevronLeft, MapPin, Store, Tag, 
     TrendingUp, Users, DollarSign, Target,
-    Navigation, Download
+    Search, Filter, Map as MapIcon, ArrowUpRight,
+    Navigation, Activity, Calendar, Download
 } from 'lucide-react';
-import { useAdminLocation } from '@/services/discovery/hooks';
+import { motion } from 'framer-motion';
 
 export default function DiscoveryLocationDetailPage() {
     const { id } = useParams();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'businesses' | 'offers' | 'revenue' | 'referrals'>('businesses');
-    const { data: loc, isLoading } = useAdminLocation(id as string);
 
-    if (isLoading) {
-        return (
-            <div className="p-8">
-                <div className="h-4 w-40 bg-gray-100 rounded mb-6 animate-pulse" />
-                <div className="flex flex-wrap items-start justify-between gap-6 mb-8">
-                    <div className="flex items-center gap-5">
-                        <div className="size-20 rounded-3xl bg-gray-100 animate-pulse" />
-                        <div>
-                            <div className="h-8 w-48 bg-gray-100 rounded mb-2 animate-pulse" />
-                            <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
-                        </div>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm animate-pulse">
-                            <div className="h-10 w-10 rounded-2xl bg-gray-100 mb-4" />
-                            <div className="h-3 w-24 bg-gray-100 rounded mb-2" />
-                            <div className="h-6 w-20 bg-gray-100 rounded" />
-                        </div>
-                    ))}
-                </div>
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 animate-pulse">
-                    <div className="h-12 bg-gray-50 rounded-lg mb-4" />
-                    <div className="h-12 bg-gray-50 rounded-lg mb-4" />
-                    <div className="h-12 bg-gray-50 rounded-lg" />
-                </div>
-            </div>
-        );
-    }
-
-    if (!loc) {
-        return (
-            <div className="p-8">
-                <button
-                    onClick={() => router.back()}
-                    className="flex items-center gap-2 text-text-secondary hover:text-text-main transition-colors mb-6 text-xs font-black uppercase tracking-widest"
-                >
-                    <ChevronLeft size={16} /> Back to Locations
-                </button>
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
-                    <p className="text-text-secondary text-sm">Location not found.</p>
-                </div>
-            </div>
-        );
-    }
+    // Mock details
+    const loc = {
+        id,
+        name: 'Wuse 2',
+        city: 'Abuja',
+        stats: {
+            totalBusinesses: 45,
+            activeOffers: 120,
+            referrals: 450,
+            revenue: 1250000,
+            growth: '+18%',
+            density: '12.4 biz/km²'
+        }
+    };
 
     return (
         <div className="p-8">
-            <button
+            <button 
                 onClick={() => router.back()}
                 className="flex items-center gap-2 text-text-secondary hover:text-text-main transition-colors mb-6 text-xs font-black uppercase tracking-widest"
             >
@@ -85,9 +52,9 @@ export default function DiscoveryLocationDetailPage() {
                             </span>
                         </div>
                         <div className="flex items-center gap-4 mt-2 text-sm font-medium text-text-secondary">
-                            <span className="flex items-center gap-1.5"><Store size={14} /> {loc.businesses} Businesses</span>
-                            <span className="flex items-center gap-1.5"><Navigation size={14} /> {loc.density}</span>
-                            <span className="flex items-center gap-1.5 text-emerald-600 font-bold"><TrendingUp size={14} /> {loc.growth} Growth</span>
+                            <span className="flex items-center gap-1.5"><Store size={14} /> {loc.stats.totalBusinesses} Businesses</span>
+                            <span className="flex items-center gap-1.5"><Navigation size={14} /> {loc.stats.density}</span>
+                            <span className="flex items-center gap-1.5 text-emerald-600 font-bold"><TrendingUp size={14} /> {loc.stats.growth} Growth</span>
                         </div>
                     </div>
                 </div>
@@ -104,10 +71,10 @@ export default function DiscoveryLocationDetailPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                    { label: 'Network Revenue', value: `₦${loc.revenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Total Referrals', value: loc.referrals.toLocaleString(), icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' },
-                    { label: 'Active Offers', value: loc.offers, icon: Tag, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: 'Conversion Rate', value: loc.conversionRate, icon: Target, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Network Revenue', value: `₦${loc.stats.revenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'Total Referrals', value: loc.stats.referrals.toLocaleString(), icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' },
+                    { label: 'Active Offers', value: loc.stats.activeOffers, icon: Tag, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Conversion Rate', value: '14.2%', icon: Target, color: 'text-amber-500', bg: 'bg-amber-50' },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
                         <div className={`p-3 rounded-2xl w-fit mb-4 ${stat.bg} ${stat.color}`}>
@@ -126,8 +93,8 @@ export default function DiscoveryLocationDetailPage() {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                            activeTab === tab
-                            ? 'bg-white text-primary shadow-sm'
+                            activeTab === tab 
+                            ? 'bg-white text-primary shadow-sm' 
                             : 'text-text-secondary hover:text-text-main'
                         }`}
                     >
@@ -138,18 +105,38 @@ export default function DiscoveryLocationDetailPage() {
 
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 {activeTab === 'businesses' && (
-                    <div className="p-12 text-center">
-                        <Store size={40} className="mx-auto text-gray-200 mb-4" />
-                        <p className="text-sm font-bold text-text-secondary">Business data for this location is not yet available.</p>
-                        <p className="text-xs text-text-secondary/60 mt-1">This section will be populated in a future update.</p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 border-b border-gray-100">
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary">Business Name</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary">Category</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Referrals</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-right">Revenue Contributed</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 text-sm">
+                                {[
+                                    { name: 'The Grill House', cat: 'Dining', ref: 145, rev: 650000, status: 'Active' },
+                                    { name: 'Fashion Hub', cat: 'Retail', ref: 89, rev: 320000, status: 'Active' },
+                                    { name: 'Juice Paradise', cat: 'Dining', ref: 64, rev: 120000, status: 'Active' },
+                                ].map((biz, i) => (
+                                    <tr key={i} className="hover:bg-gray-50/50 transition-colors group">
+                                        <td className="px-6 py-4 font-bold text-text-main">{biz.name}</td>
+                                        <td className="px-6 py-4 text-text-secondary font-medium">{biz.cat}</td>
+                                        <td className="px-6 py-4 text-center font-bold text-text-main">{biz.ref}</td>
+                                        <td className="px-6 py-4 text-right font-black text-text-main">₦{biz.rev.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase">{biz.status}</span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
-                {activeTab !== 'businesses' && (
-                    <div className="p-12 text-center">
-                        <Tag size={40} className="mx-auto text-gray-200 mb-4" />
-                        <p className="text-sm font-bold text-text-secondary">This section is coming soon.</p>
-                    </div>
-                )}
+                {/* Other tabs follow similar structure... */}
             </div>
         </div>
     );

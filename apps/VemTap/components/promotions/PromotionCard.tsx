@@ -3,97 +3,82 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Clock, ArrowRight, Flame, Star, Zap } from 'lucide-react';
-import { Promotion, formatDealPrice, getUrgencyText, getClaimPercent } from '@/lib/promotions';
+import { MapPin, Clock, Users, ArrowRight } from 'lucide-react';
+import { MockPromotion, formatPromoPrice, formatPromoDate, getPromoDaysLeft } from '@/lib/mock/promotions';
 import { cn } from '@/lib/utils';
 
 interface PromotionCardProps {
-    promotion: Promotion;
+    promotion: MockPromotion;
     index: number;
 }
 
+const CATEGORY_COLORS: Record<string, string> = {
+    'Food & Drinks': 'bg-orange-500',
+    'Fashion': 'bg-pink-500',
+    'Electronics': 'bg-blue-500',
+    'Health & Beauty': 'bg-purple-500',
+    'Services': 'bg-emerald-500',
+};
+
 export default function PromotionCard({ promotion, index }: PromotionCardProps) {
-    const urgency = getUrgencyText(promotion.endDate);
-    const claimPct = getClaimPercent(promotion);
-    const isUrgent = urgency.includes('today') || urgency.includes('tomorrow');
+    const daysLeft = getPromoDaysLeft(promotion.endDate);
+    const claimPercent = Math.round((promotion.claimedCount / promotion.maxClaims) * 100);
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: index * 0.05 }}
+            transition={{ duration: 0.5, delay: index * 0.08 }}
         >
-            <Link href={`/deals/${promotion.business.slug}/${promotion.id}`} className="block group">
-                <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5">
+            <Link href={`/promotions/${promotion.id}`} className="block group">
+                <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 hover:border-primary/20 transition-all duration-300 hover:-translate-y-1">
                     {/* Image */}
-                    <div className="relative h-44 overflow-hidden bg-gray-50">
+                    <div className="relative aspect-[4/3] overflow-hidden">
                         <img
                             src={promotion.image}
-                            alt={promotion.title}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            alt={promotion.name}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                        {/* Badge row */}
-                        <div className="absolute top-3 left-3 flex gap-2">
-                            {promotion.discountPercent && (
-                                <span className="bg-red-500 text-white px-2.5 py-0.5 rounded-md text-[10px] font-black shadow-lg">
-                                    -{promotion.discountPercent}%
-                                </span>
-                            )}
-                            {promotion.discountAmount && !promotion.discountPercent && promotion.discountAmount > 0 && (
-                                <span className="bg-red-500 text-white px-2.5 py-0.5 rounded-md text-[10px] font-black shadow-lg">
-                                    -{formatDealPrice(promotion.discountAmount)}
-                                </span>
-                            )}
-                            {promotion.isTrending && (
-                                <span className="bg-orange-500 text-white px-2.5 py-0.5 rounded-md text-[10px] font-black shadow-lg flex items-center gap-1">
-                                    <Flame size={10} /> Trending
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Price */}
-                        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
-                            <div>
-                                <p className="text-2xl font-black text-white font-display tracking-tight drop-shadow-lg">
-                                    {promotion.dealPrice === 0 ? 'FREE' : formatDealPrice(promotion.dealPrice)}
-                                </p>
-                                {promotion.originalPrice > promotion.dealPrice && (
-                                    <p className="text-xs text-white/70 line-through font-bold drop-shadow">
-                                        {formatDealPrice(promotion.originalPrice)}
-                                    </p>
-                                )}
+                        {/* Discount badge */}
+                        {promotion.discountPercent && (
+                            <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                {promotion.discountPercent}% OFF
                             </div>
-                            {isUrgent && (
-                                <span className="flex items-center gap-1 bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-md text-[10px] font-bold">
-                                    <Clock size={10} /> {urgency}
-                                </span>
-                            )}
-                        </div>
+                        )}
+                        {promotion.discountAmount && !promotion.discountPercent && (
+                            <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                SAVE {formatPromoPrice(promotion.discountAmount)}
+                            </div>
+                        )}
+
+                        {/* Ends Today badge */}
+                        {daysLeft === 0 && (
+                            <div className="absolute top-3 right-3 bg-orange-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg">
+                                Ends Today
+                            </div>
+                        )}
+
+                        {/* Days left */}
+                        {daysLeft <= 7 && daysLeft > 0 && (
+                            <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[10px] font-bold">
+                                <Clock size={10} />
+                                {daysLeft}d left
+                            </div>
+                        )}
                     </div>
 
                     {/* Content */}
-                    <div className="p-4 space-y-2.5">
-                        {/* Business name + rating */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="size-6 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <Zap size={10} className="text-gray-400" />
-                                </div>
-                                <span className="text-[11px] font-bold text-gray-600">
-                                    {promotion.business.name}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Star size={10} className="text-yellow-400 fill-yellow-400" />
-                                <span className="text-[11px] font-bold text-gray-500">{promotion.business.rating}</span>
-                            </div>
-                        </div>
+                    <div className="p-4 space-y-3">
+                        {/* Business name */}
+                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+                            {promotion.businessName}
+                        </p>
 
                         {/* Title */}
-                        <h3 className="font-headline font-bold text-gray-900 text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
-                            {promotion.title}
+                        <h3 className="font-headline font-bold text-gray-900 text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                            {promotion.name}
                         </h3>
 
                         {/* Description */}
@@ -101,24 +86,53 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                             {promotion.description}
                         </p>
 
-                        {/* Footer */}
+                        {/* Price */}
+                        <div className="flex items-baseline gap-2 pt-1">
+                            <span className="text-lg font-black text-primary font-display tracking-tight">
+                                {formatPromoPrice(promotion.dealPrice)}
+                            </span>
+                            {promotion.originalPrice > promotion.dealPrice && (
+                                <span className="text-xs text-gray-400 line-through font-bold">
+                                    {formatPromoPrice(promotion.originalPrice)}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Footer with distance + claimed */}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                            <div className="flex items-center gap-1.5 text-gray-400">
-                                <span className="text-[11px] font-bold">{promotion.claimedCount} claimed</span>
-                                <span className="text-[10px]">·</span>
-                                <span className="text-[11px] font-bold">{claimPct}%</span>
+                            <div className="flex items-center gap-1 text-gray-400">
+                                <MapPin size={10} />
+                                <span className="text-[10px] font-bold truncate max-w-[100px]">{promotion.location}</span>
                             </div>
-                            <span className="flex items-center gap-1 text-xs font-black text-primary group-hover:gap-2 transition-all">
-                                View Deal <ArrowRight size={12} />
+                            <div className="flex items-center gap-1 text-gray-400">
+                                <span className="text-[10px] font-bold">{promotion.distance || ''}</span>
+                            </div>
+                        </div>
+
+                        {/* Trending / Social proof */}
+                        <div className="flex items-center gap-1">
+                            <Users size={10} className="text-primary" />
+                            <span className="text-[10px] font-bold text-primary">
+                                {promotion.claimedCount} {promotion.claimedCount === 1 ? 'person' : 'people'} claimed this
                             </span>
                         </div>
 
-                        {/* Progress */}
-                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        {/* Claim progress bar */}
+                        <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500"
-                                style={{ width: `${Math.min(claimPct, 100)}%` }}
+                                style={{ width: `${Math.min(claimPercent, 100)}%` }}
                             />
+                        </div>
+
+                        {/* CTA */}
+                        <div className="flex items-center justify-between pt-1">
+                            <span className="text-[10px] text-gray-400 font-bold">
+                                {formatPromoDate(promotion.startDate)} — {formatPromoDate(promotion.endDate)}
+                            </span>
+                            <span className="flex items-center gap-1 text-xs font-black text-primary group-hover:gap-2 transition-all">
+                                View Offer <ArrowRight size={12} />
+                            </span>
                         </div>
                     </div>
                 </div>

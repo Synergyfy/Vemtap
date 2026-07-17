@@ -62,7 +62,7 @@ export default function DashboardMobileNav() {
 
     return (
         <div
-            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.06)]"
+            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.06)]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
             <div className="flex justify-around items-center h-20 px-2">
@@ -91,18 +91,18 @@ export default function DashboardMobileNav() {
                             key={item.href}
                             href={getLinkWithBranch(item.href)}
                             className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
-                                isActive ? 'text-[#066CF4]' : 'text-gray-400 hover:text-gray-600'
+                                isActive ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
                             }`}
                         >
-                            <div className={`relative p-2 rounded-2xl transition-all duration-300 ${
+                            <div className={`relative p-2.5 rounded-2xl transition-all duration-300 ${
                                 isActive 
-                                    ? 'bg-[#066CF4] text-white shadow-lg shadow-blue-200 scale-110' 
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-110' 
                                     : 'bg-transparent'
                             }`}>
                                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                             </div>
-                            <span className={`text-[10px] mt-1.5 font-bold tracking-tight transition-all ${
-                                isActive ? 'text-[#066CF4] opacity-100' : 'text-gray-400 opacity-80'
+                            <span className={`text-[11px] mt-1.5 font-semibold tracking-tight transition-all ${
+                                isActive ? 'text-primary opacity-100' : 'text-gray-400 opacity-80'
                             }`}>
                                 {item.label}
                             </span>

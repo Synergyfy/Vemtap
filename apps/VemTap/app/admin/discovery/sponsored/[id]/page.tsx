@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
-import { useAdminSponsoredCampaign } from '@/services/discovery/hooks';
 import { 
     ChevronLeft, Activity, MapPin, Calendar, 
     TrendingUp, Eye, MousePointerClick, CheckCircle2, 
@@ -17,24 +15,25 @@ export default function SponsoredCampaignDetailPage() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'performance' | 'billing' | 'audit'>('performance');
 
-    const { data: camp, isLoading } = useAdminSponsoredCampaign(id as string);
-
-    if (isLoading || !camp) {
-        return (
-            <div className="p-8">
-                <div className="h-6 w-64 bg-gray-100 rounded animate-pulse mb-6" />
-                <div className="h-10 w-80 bg-gray-100 rounded animate-pulse mb-8" />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
-                            <div className="h-5 w-20 bg-gray-100 rounded animate-pulse mb-3" />
-                            <div className="h-8 w-24 bg-gray-100 rounded animate-pulse" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
+    // Mock details
+    const camp = {
+        id,
+        name: 'Summer Lookbook Boost',
+        business: 'Fashion Hub',
+        status: 'Active',
+        radius: '1.5km',
+        budget: 50000,
+        spent: 12500,
+        startDate: '2026-06-01',
+        endDate: '2026-06-30',
+        stats: {
+            impressions: 4500,
+            clicks: 820,
+            conversions: 45,
+            ctr: '18.2%',
+            cpc: '₦15.24',
+        }
+    };
 
     return (
         <div className="p-8">
@@ -97,10 +96,10 @@ export default function SponsoredCampaignDetailPage() {
                 <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {[
-                            { label: 'Impressions', value: camp.impressions.toLocaleString(), icon: Eye, color: 'text-blue-500', bg: 'bg-blue-50' },
-                            { label: 'Clicks', value: camp.clicks.toLocaleString(), icon: MousePointerClick, color: 'text-purple-500', bg: 'bg-purple-50' },
-                            { label: 'CTR', value: camp.ctr, icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-50' },
-                            { label: 'Conversions', value: camp.conversions.toString(), icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                            { label: 'Impressions', value: camp.stats.impressions.toLocaleString(), icon: Eye, color: 'text-blue-500', bg: 'bg-blue-50' },
+                            { label: 'Clicks', value: camp.stats.clicks.toLocaleString(), icon: MousePointerClick, color: 'text-purple-500', bg: 'bg-purple-50' },
+                            { label: 'CTR', value: camp.stats.ctr, icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-50' },
+                            { label: 'Conversions', value: camp.stats.conversions, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                         ].map((stat) => (
                             <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm group">
                                 <div className="p-3 rounded-2xl w-fit mb-4 bg-gray-50 text-text-secondary group-hover:bg-primary/5 group-hover:text-primary transition-all">
@@ -216,21 +215,15 @@ export default function SponsoredCampaignDetailPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 text-sm">
-                                {camp.transactions.map((tx) => (
-                                    <tr key={tx.invoiceNo}>
-                                        <td className="px-6 py-4 font-mono font-bold text-text-main">{tx.invoiceNo}</td>
-                                        <td className="px-6 py-4 text-text-secondary">{tx.date}</td>
-                                        <td className="px-6 py-4 font-medium italic">{tx.type}</td>
-                                        <td className="px-6 py-4 text-right font-black text-text-main">₦{tx.amount.toLocaleString()}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
-                                                tx.status === 'Paid' ? 'bg-emerald-50 text-emerald-600' :
-                                                tx.status === 'Pending' ? 'bg-amber-50 text-amber-600' :
-                                                'bg-gray-100 text-gray-500'
-                                            }`}>{tx.status}</span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                <tr>
+                                    <td className="px-6 py-4 font-mono font-bold text-text-main">INV-C-9021</td>
+                                    <td className="px-6 py-4 text-text-secondary">June 01, 2026</td>
+                                    <td className="px-6 py-4 font-medium italic">Budget Allocation</td>
+                                    <td className="px-6 py-4 text-right font-black text-text-main">₦50,000</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase">Paid</span>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -243,7 +236,11 @@ export default function SponsoredCampaignDetailPage() {
                         <h2 className="text-lg font-display font-bold text-text-main">Campaign Audit Log</h2>
                     </div>
                     <div className="divide-y divide-gray-50">
-                        {camp.auditLog.map((log, i) => (
+                        {[
+                            { action: 'Campaign Approved', admin: 'Sarah Admin', time: 'June 01, 2026 10:00 AM', detail: 'Initial activation of 1.5km boost' },
+                            { action: 'Rules Updated', admin: 'System AI', time: 'June 05, 2026 02:30 PM', detail: 'Radius expansion from 1km to 1.5km' },
+                            { action: 'Budget Threshold Reached', admin: 'Notification Bot', time: 'June 12, 2026 09:15 AM', detail: '80% of budget consumed' },
+                        ].map((log, i) => (
                             <div key={i} className="p-6 flex items-start justify-between group hover:bg-gray-50/50 transition-colors">
                                 <div className="flex gap-4">
                                     <div className="size-10 rounded-xl bg-gray-50 flex items-center justify-center text-text-secondary">
