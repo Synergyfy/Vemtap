@@ -117,7 +117,7 @@ export default function CustomerDiscoverPage() {
 
     const trendingPromotions = useMemo(() => {
         return promotions
-            .filter(p => p.isTrending)
+            .filter(p => (p as MockPromotion & { isTrending?: boolean }).isTrending)
             .sort((a, b) => b.claimedCount - a.claimedCount)
             .slice(0, 5);
     }, [promotions]);
