@@ -44,7 +44,8 @@ function toPromotion(offer: DealOffer): MockPromotion {
         location: offer.business?.address || '',
         claimedCount: offer.claimedCount,
         maxClaims: offer.maxClaims,
-    };
+        isTrending: offer.isTrending || false,
+    } as MockPromotion;
 }
 
 export default function CustomerDiscoverPage() {
@@ -105,9 +106,9 @@ export default function CustomerDiscoverPage() {
         if (search.trim()) {
             const q = search.toLowerCase();
             result = result.filter(p =>
-                p.title.toLowerCase().includes(q) ||
-                p.business.name.toLowerCase().includes(q) ||
-                p.business.address.toLowerCase().includes(q) ||
+                p.name.toLowerCase().includes(q) ||
+                p.businessName.toLowerCase().includes(q) ||
+                p.location.toLowerCase().includes(q) ||
                 p.description.toLowerCase().includes(q)
             );
         }
