@@ -1,6 +1,7 @@
 {
-    "installCommand": "npm install",
-    "buildCommand": "npm run build",
-    "outputDirectory": ".next",
-    "framework": "nextjs"
+    "installCommand": "corepack enable && corepack prepare pnpm@10.28.2 --activate && pnpm install",
+    "buildCommand": "pnpm --filter @vemtap/frontend build",
+    "outputDirectory": "apps/VemTap/.next",
+    "framework": "nextjs",
+    "nodeVersion": "24.x"
 }
