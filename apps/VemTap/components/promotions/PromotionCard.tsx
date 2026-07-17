@@ -4,11 +4,12 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { MapPin, Clock, Users, ArrowRight } from 'lucide-react';
-import { MockPromotion, formatPromoPrice, formatPromoDate, getPromoDaysLeft } from '@/lib/mock/promotions';
+import { formatPromoPrice, formatPromoDate, getPromoDaysLeft } from '@/lib/mock/promotions';
+import type { Promotion } from '@/lib/promotions';
 import { cn } from '@/lib/utils';
 
 interface PromotionCardProps {
-    promotion: MockPromotion;
+    promotion: Promotion;
     index: number;
 }
 
@@ -36,7 +37,7 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                     <div className="relative aspect-[4/3] overflow-hidden">
                         <img
                             src={promotion.image}
-                            alt={promotion.name}
+                            alt={promotion.title}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -73,12 +74,12 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                     <div className="p-4 space-y-3">
                         {/* Business name */}
                         <p className="text-[10px] font-black uppercase tracking-widest text-primary">
-                            {promotion.businessName}
+                            {promotion.business.name}
                         </p>
 
                         {/* Title */}
                         <h3 className="font-headline font-bold text-gray-900 text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
-                            {promotion.name}
+                            {promotion.title}
                         </h3>
 
                         {/* Description */}
@@ -98,15 +99,10 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                             )}
                         </div>
 
-                        {/* Footer with distance + claimed */}
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <MapPin size={10} />
-                                <span className="text-[10px] font-bold truncate max-w-[100px]">{promotion.location}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <span className="text-[10px] font-bold">{promotion.distance || ''}</span>
-                            </div>
+                        {/* Footer with location */}
+                        <div className="flex items-center gap-1 text-gray-400 pt-2 border-t border-gray-50">
+                            <MapPin size={10} />
+                            <span className="text-[10px] font-bold truncate max-w-[100px]">{promotion.business.address}</span>
                         </div>
 
                         {/* Trending / Social proof */}

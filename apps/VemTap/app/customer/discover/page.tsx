@@ -9,10 +9,26 @@ import PromotionCard from '@/components/promotions/PromotionCard';
 import LocationModal from '@/components/promotions/LocationModal';
 import { usePublicOffers } from '@/services/deals/hooks';
 import type { DealOffer } from '@/services/deals/types';
-import type { MockPromotion } from '@/lib/mock/promotions';
+import type { Promotion, PromotionBusiness } from '@/lib/promotions';
 import type { GeolocationCoordinates } from '@/lib/geolocation';
 
-function toPromotion(offer: DealOffer): MockPromotion {
+function toPromotionBusiness(business?: DealOffer['business']): PromotionBusiness {
+    return {
+        id: business?.id || '',
+        name: business?.name || 'Unknown Business',
+        slug: business?.slug || '',
+        logo: business?.logo || '',
+        photos: business?.photos || [],
+        categoryId: business?.categoryId || '',
+        categoryName: business?.categoryName || '',
+        address: business?.address || '',
+        hours: business?.hours || [],
+        rating: business?.rating || 0,
+        totalReviews: business?.totalReviews || 0,
+    };
+}
+
+function toPromotion(offer: DealOffer): Promotion {
     const discountPercent = offer.pricingType === 'percentage_discount' && offer.discountValue
         ? offer.discountValue : undefined;
     const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
@@ -25,14 +41,11 @@ function toPromotion(offer: DealOffer): MockPromotion {
 
     return {
         id: offer.id,
-        name: offer.name,
+        business: toPromotionBusiness(offer.business),
+        title: offer.name,
         description: offer.description,
         longDescription: offer.longDescription || offer.description,
         terms: offer.terms || [],
-        businessName: offer.business?.name || 'Unknown Business',
-        businessSlug: offer.business?.slug || '',
-        businessLogo: offer.business?.logo,
-        category: (offer.business?.categoryName || 'Food & Drinks') as MockPromotion['category'],
         discountPercent,
         discountAmount,
         originalPrice,
@@ -40,12 +53,10 @@ function toPromotion(offer: DealOffer): MockPromotion {
         image: offer.mainImage,
         startDate: offer.startDate || '',
         endDate: offer.endDate || '',
-        audience: '',
-        location: offer.business?.address || '',
         claimedCount: offer.claimedCount,
         maxClaims: offer.maxClaims,
         isTrending: offer.isTrending || false,
-    } as MockPromotion;
+    };
 }
 
 export default function CustomerDiscoverPage() {
@@ -106,9 +117,9 @@ export default function CustomerDiscoverPage() {
         if (search.trim()) {
             const q = search.toLowerCase();
             result = result.filter(p =>
-                p.name.toLowerCase().includes(q) ||
-                p.businessName.toLowerCase().includes(q) ||
-                p.location.toLowerCase().includes(q) ||
+                p.title.toLowerCase().includes(q) ||
+                p.business.name.toLowerCase().includes(q) ||
+                p.business.address.toLowerCase().includes(q) ||
                 p.description.toLowerCase().includes(q)
             );
         }
@@ -117,7 +128,7 @@ export default function CustomerDiscoverPage() {
 
     const trendingPromotions = useMemo(() => {
         return promotions
-            .filter(p => (p as MockPromotion & { isTrending?: boolean }).isTrending)
+            .filter(p => p.isTrending)
             .sort((a, b) => b.claimedCount - a.claimedCount)
             .slice(0, 5);
     }, [promotions]);
