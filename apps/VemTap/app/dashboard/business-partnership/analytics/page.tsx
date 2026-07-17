@@ -130,7 +130,7 @@ export default function PartnershipAnalyticsPage() {
                 </div>
                 <div className="h-48 md:h-72">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={currentChart.data}>
+                        <AreaChart data={currentChart.data as Record<string, string | number>[]}>
                             <defs>
                                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#066CF4" stopOpacity={0.1} />
