@@ -253,7 +253,7 @@ export default function OrdersDashboard() {
                 <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12, fontWeight: 700 }}
-                  formatter={(value: number | undefined) => [value ?? 0, 'Orders']}
+                  formatter={(value: unknown) => [Number(value) || 0, 'Orders']}
                 />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]} />
               </BarChart>
