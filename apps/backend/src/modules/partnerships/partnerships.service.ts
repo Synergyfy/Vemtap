@@ -93,7 +93,7 @@ export class PartnershipsService {
       'distanceMeters',
     );
     qb.orderBy('"distanceMeters"', 'ASC');
-    qb.skip(skip).take(limit);
+    qb.offset(skip).limit(limit);
 
     const { entities, raw } = await qb.getRawAndEntities();
 

@@ -70,6 +70,8 @@ describe('InboxService', () => {
 
     visitRepoMock = {
       findOne: jest.fn(),
+      create: jest.fn().mockImplementation((v) => v),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'new-visit-id', ...v })),
     };
 
     branchRepoMock = {
@@ -197,28 +199,30 @@ describe('InboxService', () => {
   });
 
   describe('startCustomerConversation', () => {
-    it('should throw ForbiddenException if customer has not visited the branch', async () => {
+    const branch = { id: 'br1', businessId: 'bus1' };
+    const customer = { id: 'c1', firstName: 'John', phone: null, email: 'j@test.com' };
+
+    it('should auto-create a chat visit and new thread when customer has no prior visit', async () => {
+      // No prior visit
       visitRepoMock.findOne.mockResolvedValue(null);
-      await expect(
-        service.startCustomerConversation('c1', 'br1', 'hi'),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should create a new thread and message if no thread exists', async () => {
-      visitRepoMock.findOne.mockResolvedValue({ id: 'v1' });
+      branchRepoMock.findOne.mockResolvedValue(branch);
+      userRepoMock.findOne.mockResolvedValue(customer);
       threadRepoMock.findOne.mockResolvedValue(null);
-      branchRepoMock.findOne.mockResolvedValue({
-        id: 'br1',
-        businessId: 'bus1',
-      });
-      userRepoMock.findOne.mockResolvedValue({ id: 'c1', firstName: 'John' });
 
-      const result = await service.startCustomerConversation(
-        'c1',
-        'br1',
-        'hello branch',
+      const result = await service.startCustomerConversation('c1', 'br1', 'hello branch');
+
+      // Visit upsert should have been called with visitType='chat'
+      expect(visitRepoMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerId: 'c1',
+          branchId: 'br1',
+          visitType: 'chat',
+          status: 'new',
+        }),
       );
+      expect(visitRepoMock.save).toHaveBeenCalled();
 
+      // Thread and message should be created
       expect(threadRepoMock.create).toHaveBeenCalledWith(
         expect.objectContaining({
           branchId: 'br1',
@@ -232,8 +236,27 @@ describe('InboxService', () => {
       expect(result.content).toBe('hello branch');
     });
 
-    it('should reuse existing thread if it exists', async () => {
+    it('should skip visit creation and create a new thread when customer already has a visit', async () => {
+      // Existing visit present
       visitRepoMock.findOne.mockResolvedValue({ id: 'v1' });
+      branchRepoMock.findOne.mockResolvedValue(branch);
+      userRepoMock.findOne.mockResolvedValue(customer);
+      threadRepoMock.findOne.mockResolvedValue(null);
+
+      await service.startCustomerConversation('c1', 'br1', 'hello branch');
+
+      // Visit upsert should NOT have run
+      expect(visitRepoMock.create).not.toHaveBeenCalled();
+      expect(visitRepoMock.save).not.toHaveBeenCalled();
+
+      expect(threadRepoMock.save).toHaveBeenCalled();
+      expect(messageRepoMock.save).toHaveBeenCalled();
+    });
+
+    it('should reuse existing thread and skip thread creation', async () => {
+      visitRepoMock.findOne.mockResolvedValue({ id: 'v1' });
+      branchRepoMock.findOne.mockResolvedValue(branch);
+      userRepoMock.findOne.mockResolvedValue(customer);
       const existingThread = {
         id: 't1',
         branchId: 'br1',

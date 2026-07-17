@@ -10,6 +10,17 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const COMMERCE_CARDS = [
     {
+        id: 'pos',
+        title: 'Point of Sale (POS)',
+        description: 'Process sales, handle orders, and print receipts.',
+        icon: CreditCard,
+        href: '/dashboard/pos',
+        roles: ['owner', 'manager', 'cashier', 'staff'],
+        permission: 'pos',
+        color: 'text-violet-500',
+        bgColor: 'bg-violet-50'
+    },
+    {
         id: 'catalogue',
         title: 'Catalogue',
         description: 'Manage products, services, offers, and categories.',
@@ -30,17 +41,6 @@ const COMMERCE_CARDS = [
         permission: 'inventory',
         color: 'text-emerald-500',
         bgColor: 'bg-emerald-50'
-    },
-    {
-        id: 'pos',
-        title: 'Point of Sale (POS)',
-        description: 'Process sales, handle orders, and print receipts.',
-        icon: CreditCard,
-        href: '/dashboard/pos',
-        roles: ['owner', 'manager', 'cashier', 'staff'],
-        permission: 'pos',
-        color: 'text-violet-500',
-        bgColor: 'bg-violet-50'
     }
 ];
 

@@ -8,25 +8,40 @@ import {
     PieChart, LayoutGrid, Info, Download, Store
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAdminCategory } from '@/services/discovery/hooks';
 
 export default function DiscoveryCategoryDetailPage() {
     const { id } = useParams();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'businesses' | 'offers' | 'revenue' | 'conversions'>('businesses');
+    const { data: cat, isLoading } = useAdminCategory(id as string);
 
-    // Mock details
-    const cat = {
-        id,
-        name: 'Restaurants & Dining',
-        stats: {
-            totalBusinesses: 28,
-            activeOffers: 64,
-            referrals: 1250,
-            revenue: 2450000,
-            conversion: '18.5%',
-            avgTicketSize: '₦8,500'
-        }
-    };
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <DiscoveryNav current="/admin/discovery/categories" />
+                <div className="h-8 w-40 bg-gray-100 rounded mb-6 animate-pulse" />
+                <div className="flex items-center gap-5 mb-8 animate-pulse">
+                    <div className="size-20 rounded-3xl bg-gray-100" />
+                    <div className="space-y-2">
+                        <div className="h-8 w-48 bg-gray-100 rounded" />
+                        <div className="h-4 w-64 bg-gray-100 rounded" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm animate-pulse">
+                            <div className="h-10 w-10 rounded-2xl bg-gray-100 mb-4" />
+                            <div className="h-3 w-24 bg-gray-100 rounded mb-2" />
+                            <div className="h-6 w-16 bg-gray-100 rounded" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (!cat) return null;
 
     return (
         <div className="p-8">
@@ -50,9 +65,9 @@ export default function DiscoveryCategoryDetailPage() {
                             </span>
                         </div>
                         <div className="flex items-center gap-4 mt-2 text-sm font-medium text-text-secondary">
-                            <span className="flex items-center gap-1.5"><Store size={14} /> {cat.stats.totalBusinesses} Businesses</span>
-                            <span className="flex items-center gap-1.5 font-bold text-text-main"><TrendingUp size={14} /> {cat.stats.conversion} Conv. Rate</span>
-                            <span className="flex items-center gap-1.5"><DollarSign size={14} /> {cat.stats.avgTicketSize} Avg. Sale</span>
+                            <span className="flex items-center gap-1.5"><Store size={14} /> {cat.totalBusinesses} Businesses</span>
+                            <span className="flex items-center gap-1.5 font-bold text-text-main"><TrendingUp size={14} /> {cat.conversion} Conv. Rate</span>
+                            <span className="flex items-center gap-1.5"><DollarSign size={14} /> {cat.avgTicketSize} Avg. Sale</span>
                         </div>
                     </div>
                 </div>
@@ -69,10 +84,10 @@ export default function DiscoveryCategoryDetailPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                    { label: 'Category Revenue', value: `₦${cat.stats.revenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Total Referrals', value: cat.stats.referrals.toLocaleString(), icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' },
-                    { label: 'Active Offers', value: cat.stats.activeOffers, icon: Tag, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: 'Network Penetration', value: '24%', icon: Target, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Category Revenue', value: `₦${cat.revenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'Total Referrals', value: cat.referrals.toLocaleString(), icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' },
+                    { label: 'Active Offers', value: cat.activeOffers, icon: Tag, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Network Penetration', value: cat.penetration, icon: Target, color: 'text-amber-500', bg: 'bg-amber-50' },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm group">
                         <div className={`p-3 rounded-2xl w-fit mb-4 ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
@@ -121,20 +136,19 @@ export default function DiscoveryCategoryDetailPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {[
-                                { name: 'The Grill House', vol: 450, rate: '18.2%', rev: 1250000 },
-                                { name: 'Juice Paradise', vol: 320, rate: '14.5%', rev: 850000 },
-                                { name: 'Ocean Basket', vol: 280, rate: '12.8%', rev: 640000 },
-                            ].map((item, i) => (
-                                <tr key={i} className="hover:bg-gray-50/50 transition-colors group">
-                                    <td className="px-6 py-4 font-bold text-text-main">{item.name}</td>
-                                    <td className="px-6 py-4 text-center font-bold text-text-main">{item.vol}</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase">{item.rate}</span>
+                            {activeTab === 'conversions' ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-16 text-center text-text-secondary text-sm">
+                                        Conversion data coming soon.
                                     </td>
-                                    <td className="px-6 py-4 text-right font-black text-text-main">₦{item.rev.toLocaleString()}</td>
                                 </tr>
-                            ))}
+                            ) : (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-16 text-center text-text-secondary text-sm">
+                                        No data available for this tab yet.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

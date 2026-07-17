@@ -26,20 +26,15 @@ import {
   RefreshCw,
   Calculator,
   Sparkles,
-  Phone
+  Phone,
+  ArrowLeft
 } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { cn } from '@/lib/utils';
 
-const CHANNEL_TABS = [
-    { label: 'SMS', href: '/dashboard/messaging/sms', icon: MessageSquare },
-    { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp', icon: Phone },
-    { label: 'Email', href: '/dashboard/messaging/email', icon: Mail },
-    { label: 'Credits', href: '/dashboard/messaging/credits', icon: CreditCard },
-    { label: 'History', href: '/dashboard/messaging/history', icon: History },
-];
+const CHANNEL_TABS_UNUSED = null; // Tabs removed - navigation via Messaging Center
 
 const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unavailable }: any) => (
   <div className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all ${unavailable ? 'opacity-60 grayscale cursor-not-allowed border-slate-200 bg-slate-50' : 'hover:shadow-md'}`}>
@@ -280,32 +275,20 @@ export default function MessagingCreditsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4 md:px-8">
-      {/* Compact Header */}
-      <div>
-        <h1 className="text-2xl font-black text-text-main tracking-tight">Messaging</h1>
-        <p className="text-sm text-text-secondary font-medium">Reach your customers across SMS, WhatsApp, and Email.</p>
+      {/* Back to Messaging Central */}
+      <div className="flex items-center gap-4 pt-4">
+        <Link
+          href="/dashboard/messaging"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-bold active:scale-95"
+        >
+          <ArrowLeft size={16} />
+          Messaging Center
+        </Link>
       </div>
 
-      {/* Channel Tabs */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-        {CHANNEL_TABS.map(tab => {
-          const isActive = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all',
-                isActive
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-              )}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-            </Link>
-          );
-        })}
+      <div>
+        <h1 className="text-2xl font-black text-text-main tracking-tight">Credits</h1>
+        <p className="text-sm text-text-secondary font-medium">Manage your messaging credit balance.</p>
       </div>
 
       {/* Credit Overview */}
@@ -315,7 +298,7 @@ export default function MessagingCreditsPage() {
           amount={credits?.smsCredits || 0} 
           icon={MessageSquare} 
           color="bg-blue-500"
-          subtitle="Direct SMS Campaigns"
+          subtitle="Direct SMS Messages"
         />
         <CreditCardComponent 
           title="WhatsApp Credits" 
@@ -323,6 +306,7 @@ export default function MessagingCreditsPage() {
           icon={Zap} 
           color="bg-green-500"
           subtitle="Messaging API"
+          unavailable={true}
         />
         <CreditCardComponent 
           title="Email Credits" 
@@ -361,7 +345,7 @@ export default function MessagingCreditsPage() {
                   </li>
                 )}
                 {plan.whatsappAmount > 0 && (
-                  <li className="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                  <li className="flex items-center gap-3 text-slate-300 text-sm font-medium opacity-50">
                     <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                     </div>
@@ -453,7 +437,7 @@ export default function MessagingCreditsPage() {
               </div>
 
               {/* WhatsApp Slider & Input */}
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4 opacity-50 pointer-events-none">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
@@ -553,7 +537,7 @@ export default function MessagingCreditsPage() {
                     <span className="text-slate-400 font-medium">SMS Credits ({smsAmount.toLocaleString()})</span>
                     <span className="text-slate-200 font-bold">₦{smsCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm opacity-50">
                     <span className="text-slate-400 font-medium">WhatsApp ({whatsappAmount.toLocaleString()})</span>
                     <span className="text-slate-200 font-bold">₦{whatsappCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
@@ -597,20 +581,7 @@ export default function MessagingCreditsPage() {
       </div>
 
       {/* Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-blue-50 p-8 rounded-3xl border border-blue-100">
-          <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white mb-6">
-            <History size={24} />
-          </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Usage History</h3>
-          <p className="text-slate-600 font-medium mb-6">View detailed logs of your messaging activities and credit deductions.</p>
-          <button className="flex items-center gap-2 text-blue-600 font-bold text-sm hover:gap-3 transition-all">
-            <span>View Full Logs</span>
-            <ArrowUpRight size={16} />
-          </button>
-        </div>
-
-        <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200">
+      <div className="grid grid-cols-1 gap-8">        <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200">
           <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white mb-6">
             <ShieldCheck size={24} />
           </div>

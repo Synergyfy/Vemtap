@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
     Mail, Lock, Eye, EyeOff, ArrowRight,
@@ -21,7 +21,17 @@ const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
 const isValidIdentifier = (v: string) => isEmail(v) || isPhone(v);
 
 export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginPageContent />
+        </Suspense>
+    );
+}
+
+function LoginPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectTo = searchParams.get('redirect');
     const storeLogin = useAuthStore((s) => s.login);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -53,6 +63,10 @@ export default function LoginPage() {
     };
 
     const routeAfterLogin = useCallback((role: string, businessId?: string, isNewUser?: boolean) => {
+        if (redirectTo) {
+            router.push(redirectTo);
+            return;
+        }
         const normalizedRole = role?.toLowerCase();
         if (normalizedRole === 'admin') {
             router.push('/admin');

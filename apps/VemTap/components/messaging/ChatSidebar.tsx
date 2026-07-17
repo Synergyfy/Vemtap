@@ -94,6 +94,7 @@ export default function ChatSidebar() {
      const createSegment = useCreateSegment();
      const addSegmentMembers = useAddSegmentMembers();
      const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+     const [broadcastAudience, setBroadcastAudience] = useState<any[] | null>(null);
      const [showSendMessageModal, setShowSendMessageModal] = useState(false);
      const [showCreateSegment, setShowCreateSegment] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -355,12 +356,22 @@ export default function ChatSidebar() {
         setShowCampaigns(false);
         const toastId = toast.loading(`Fetching ${type} visitors...`);
         try {
+            const params = new URLSearchParams();
+            if (branchId && branchId !== 'all') {
+                params.append('branchId', branchId);
+            } else {
+                params.append('allBranches', 'true');
+            }
+            
             const endpoint = type === 'new' ? '/visitors/new' : '/visitors/returning';
-            const response = await api.get(endpoint);
+            const response = await api.get(`${endpoint}?${params.toString()}`);
             const audience = response?.data || [];
             
             if (audience.length > 0) {
                 toast.success(`Found ${audience.length} ${type} visitors`, { id: toastId });
+                setBroadcastAudience(audience);
+                setSelectedSegmentId(null);
+                setShowSendMessageModal(true);
             } else {
                 toast.error(`No ${type} visitors found in this segment.`, { id: toastId });
             }
@@ -590,6 +601,9 @@ export default function ChatSidebar() {
                                                                 <p className="text-[10px] text-slate-400">{segment.description || 'Customer Segment'}</p>
                                                             </div>
                                                         </div>
+                                                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                            {segment._count?.users || segment.users?.length || segment.customerCount || 0}
+                                                        </span>
                                                     </button>
                                                 ))}
 
@@ -707,14 +721,19 @@ export default function ChatSidebar() {
                     </>
                 )}
             </nav>
-            {showSendMessageModal && selectedSegmentId && (
+            {showSendMessageModal && (selectedSegmentId || broadcastAudience) && (
                 <SendMessageModal
                     isOpen={showSendMessageModal}
                     onClose={() => {
                         setShowSendMessageModal(false);
                         setSelectedSegmentId(null);
+                        setBroadcastAudience(null);
                     }}
-                    segmentId={selectedSegmentId}
+                    segmentId={selectedSegmentId || undefined}
+                    visitors={broadcastAudience || undefined}
+                    recipientName={broadcastAudience ? `${broadcastAudience.length} visitors` : undefined}
+                    initialChannel="In-App"
+                    allowedChannels={['In-App']}
                     type="general"
                 />
             )}

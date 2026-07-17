@@ -151,6 +151,8 @@ export interface CreatePosSaleDto {
   cartDiscountAmount?: number;
   hideCustomerInfoOnReceipt?: boolean;
   notes?: string;
+  clientRef?: string;
+  orderedAt?: string;
 }
 
 export interface HoldSaleItemDto {
@@ -198,6 +200,15 @@ export interface RegisterHistoryQuery {
   dateFrom?: string;
   dateTo?: string;
 }
+
+export interface BatchSyncResult {
+  clientRef: string | null;
+  success: boolean;
+  saleId?: string;
+  error?: string;
+}
+
+export type BatchSyncRequest = CreatePosSaleDto[];
 
 export interface RefundItemDto {
   saleItemId: string;

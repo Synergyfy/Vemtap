@@ -3,6 +3,7 @@ import {
   Get,
   Patch,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -33,6 +34,25 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import {
+  AdminOfferQueryDto,
+  AdminReferralQueryDto,
+  AdminPartnershipQueryDto,
+  AdminSponsoredQueryDto,
+  AdminBillingQueryDto,
+  AdminCustomerQueryDto,
+  AdminLocationQueryDto,
+  AdminCategoryQueryDto,
+  AdminFraudQueryDto,
+  AdminNotificationQueryDto,
+  AdminAuditLogQueryDto,
+} from './dto/discovery-admin-query.dto';
+import {
+  CreateCategoryTypeDto,
+  UpdateCategoryTypeDto,
+  GenerateReportDto,
+  UpdateDiscoveryAdminSettingsDto,
+} from './dto/discovery-admin-category-types.dto';
 
 @ApiTags('discovery')
 @ApiBearerAuth()
@@ -144,6 +164,8 @@ export class DiscoveryController {
     return this.discoveryService.submitRecommendation(branchId, dto);
   }
 
+  // =============== ADMIN ENDPOINTS ===============
+
   @Get('admin/stats')
   @Roles(UserRole.ADMIN)
   @ApiOperation({
@@ -182,6 +204,288 @@ export class DiscoveryController {
     @Query('search') search?: string,
   ) {
     return this.discoveryService.getAdminBusinesses({ page, limit, search });
+  }
+
+  @Get('admin/businesses/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get business discovery detail' })
+  @ApiParam({ name: 'id', description: 'Business ID' })
+  async getAdminBusinessDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminBusinessDetail(id);
+  }
+
+  // --- Offers ---
+  @Get('admin/offers')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List all offers with pagination and filters' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'category', required: false, type: String })
+  async getAdminOffers(@Query() query: AdminOfferQueryDto) {
+    return this.discoveryService.getAdminOffers(query);
+  }
+
+  @Get('admin/offers/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get single offer detail with conversion funnel' })
+  @ApiParam({ name: 'id', description: 'Offer ID' })
+  async getAdminOfferDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminOfferDetail(id);
+  }
+
+  // --- Referrals ---
+  @Get('admin/referrals')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List all referrals with pagination and filters' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  async getAdminReferrals(@Query() query: AdminReferralQueryDto) {
+    return this.discoveryService.getAdminReferrals(query);
+  }
+
+  @Get('admin/referrals/:id/investigate')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get fraud investigation detail for a referral' })
+  @ApiParam({ name: 'id', description: 'Referral ID' })
+  async getAdminReferralInvestigation(@Param('id') id: string) {
+    return this.discoveryService.getAdminReferralInvestigation(id);
+  }
+
+  // --- Partnerships ---
+  @Get('admin/partnerships')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List all B2B partnerships' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  async getAdminPartnerships(@Query() query: AdminPartnershipQueryDto) {
+    return this.discoveryService.getAdminPartnerships(query);
+  }
+
+  // --- Sponsored Campaigns ---
+  @Get('admin/sponsored')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List all sponsored ad campaigns' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  async getAdminSponsoredCampaigns(@Query() query: AdminSponsoredQueryDto) {
+    return this.discoveryService.getAdminSponsoredCampaigns(query);
+  }
+
+  @Get('admin/sponsored/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get campaign detail with performance/billing/audit tabs' })
+  @ApiParam({ name: 'id', description: 'Campaign ID' })
+  async getAdminSponsoredCampaignDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminSponsoredCampaignDetail(id);
+  }
+
+  // --- Billing ---
+  @Get('admin/billing')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List invoices/transactions' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'type', required: false, type: String })
+  async getAdminBilling(@Query() query: AdminBillingQueryDto) {
+    return this.discoveryService.getAdminBilling(query);
+  }
+
+  @Get('admin/billing/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get invoice detail with line items' })
+  @ApiParam({ name: 'id', description: 'Invoice ID' })
+  async getAdminBillingDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminBillingDetail(id);
+  }
+
+  // --- Attribution ---
+  @Get('admin/attribution')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get attribution paths, metrics, and window config' })
+  async getAdminAttribution() {
+    return this.discoveryService.getAdminAttribution();
+  }
+
+  // --- Customers ---
+  @Get('admin/customers')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List all customers across network' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  async getAdminCustomers(@Query() query: AdminCustomerQueryDto) {
+    return this.discoveryService.getAdminCustomers(query);
+  }
+
+  @Get('admin/customers/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get customer profile with activity timeline' })
+  @ApiParam({ name: 'id', description: 'Customer ID' })
+  async getAdminCustomerDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminCustomerDetail(id);
+  }
+
+  // --- Locations ---
+  @Get('admin/locations')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List all districts with performance metrics' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  async getAdminLocations(@Query() query: AdminLocationQueryDto) {
+    return this.discoveryService.getAdminLocations(query);
+  }
+
+  @Get('admin/locations/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get location detail with businesses, offers, revenue' })
+  @ApiParam({ name: 'id', description: 'Location ID' })
+  async getAdminLocationDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminLocationDetail(id);
+  }
+
+  // --- Categories ---
+  @Get('admin/categories')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List all offer categories with conversion data' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  async getAdminCategories(@Query() query: AdminCategoryQueryDto) {
+    return this.discoveryService.getAdminCategories(query);
+  }
+
+  @Get('admin/categories/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get category detail' })
+  @ApiParam({ name: 'id', description: 'Category ID' })
+  async getAdminCategoryDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminCategoryDetail(id);
+  }
+
+  // --- Category Types ---
+  @Get('admin/category-types')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List offer category types' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getAdminCategoryTypes(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.discoveryService.getAdminCategoryTypes(page, limit);
+  }
+
+  @Post('admin/category-types')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Create category type' })
+  async createAdminCategoryType(@Body() dto: CreateCategoryTypeDto) {
+    return this.discoveryService.createAdminCategoryType(dto);
+  }
+
+  @Patch('admin/category-types/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Update category type' })
+  @ApiParam({ name: 'id', description: 'Category Type ID' })
+  async updateAdminCategoryType(
+    @Param('id') id: string,
+    @Body() dto: UpdateCategoryTypeDto,
+  ) {
+    return this.discoveryService.updateAdminCategoryType(id, dto);
+  }
+
+  @Delete('admin/category-types/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Delete category type' })
+  @ApiParam({ name: 'id', description: 'Category Type ID' })
+  async deleteAdminCategoryType(@Param('id') id: string) {
+    return this.discoveryService.deleteAdminCategoryType(id);
+  }
+
+  // --- Fraud ---
+  @Get('admin/fraud')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get fraud alerts with KPIs' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'severity', required: false, type: String })
+  async getAdminFraudAlerts(@Query() query: AdminFraudQueryDto) {
+    return this.discoveryService.getAdminFraudAlerts(query);
+  }
+
+  // --- Notifications ---
+  @Get('admin/notifications')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get notification delivery log' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'channel', required: false, type: String })
+  async getAdminNotifications(@Query() query: AdminNotificationQueryDto) {
+    return this.discoveryService.getAdminNotifications(query);
+  }
+
+  // --- Reports ---
+  @Get('admin/reports')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: List generated reports' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getAdminReports(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.discoveryService.getAdminReports(page, limit);
+  }
+
+  @Post('admin/reports/generate')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Generate a new report' })
+  async generateAdminReport(@Req() req: any, @Body() dto: GenerateReportDto) {
+    return this.discoveryService.generateAdminReport(dto, req.user.id);
+  }
+
+  // --- Audit Logs ---
+  @Get('admin/audit-logs')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get immutable audit trail' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'date', required: false, type: String })
+  async getAdminAuditLogs(@Query() query: AdminAuditLogQueryDto) {
+    return this.discoveryService.getAdminAuditLogs(query);
+  }
+
+  @Get('admin/audit-logs/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get audit log detail with before/after diff' })
+  @ApiParam({ name: 'id', description: 'Audit Log ID' })
+  async getAdminAuditLogDetail(@Param('id') id: string) {
+    return this.discoveryService.getAdminAuditLogDetail(id);
+  }
+
+  // --- Settings ---
+  @Get('admin/settings')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get global discovery system config' })
+  async getAdminDiscoverySettings() {
+    return this.discoveryService.getAdminDiscoverySettings();
+  }
+
+  @Patch('admin/settings')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Save global discovery system config' })
+  async updateAdminDiscoverySettings(@Body() dto: UpdateDiscoveryAdminSettingsDto) {
+    return this.discoveryService.updateAdminDiscoverySettings(dto);
   }
 
   private async validateAccess(user: any, branchId: string) {

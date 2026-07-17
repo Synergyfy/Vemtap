@@ -73,7 +73,7 @@ export default function SMSTemplatesPage() {
             <div className="flex items-center justify-between">
                 <PageHeader
                     title="SMS Templates"
-                    description="Quick-send templates for your SMS campaigns."
+                    description="Quick-send templates for your SMS messages."
                 />
                 <button
                     onClick={() => handleOpenModal()}

@@ -1,29 +1,59 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Settings, ShieldCheck, MapPin, Bell, Target, 
     Save, RefreshCw, AlertTriangle, ShieldAlert,
-    Radio, Globe, Gauge
+    Radio, Globe, Gauge, Loader2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAdminDiscoverySettings, useUpdateAdminDiscoverySettings } from '@/services/discovery/hooks';
+import type { AdminDiscoverySettings } from '@/services/discovery/types';
+
+type SettingKey = keyof AdminDiscoverySettings & string;
+
+const defaultSettings: AdminDiscoverySettings = {
+    enableNetwork: true,
+    enableSponsored: true,
+    enablePartnerships: true,
+    maxOffersPerVisit: 3,
+    maxOffersPerDay: 5,
+    defaultRadius: 500,
+    maxRadius: 2000,
+    attributionWindow: 24,
+    pushEnabled: true,
+    smsEnabled: false,
+    emailEnabled: true,
+    approvalRequired: true,
+};
 
 export default function DiscoverySettingsPage() {
-    const [settings, setSettings] = useState<Record<string, any>>({
-        enableNetwork: true,
-        enableSponsored: true,
-        enablePartnerships: true,
-        maxOffersPerVisit: 3,
-        maxOffersPerDay: 5,
-        defaultRadius: 500,
-        maxRadius: 2000,
-        attributionWindow: 24,
-        pushEnabled: true,
-        smsEnabled: false,
-        emailEnabled: true,
-        approvalRequired: true,
-    });
+    const { data: apiSettings, isLoading } = useAdminDiscoverySettings();
+    const updateMutation = useUpdateAdminDiscoverySettings();
+
+    const [settings, setSettings] = useState<AdminDiscoverySettings>(defaultSettings);
+
+    useEffect(() => {
+        if (apiSettings) {
+            setSettings(apiSettings);
+        }
+    }, [apiSettings]);
+
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <DiscoveryNav current="/admin/discovery/settings" />
+                <div className="flex items-center justify-center py-32">
+                    <Loader2 className="animate-spin text-primary" size={32} />
+                </div>
+            </div>
+        );
+    }
+
+    const handleSave = () => {
+        updateMutation.mutate(settings);
+    };
 
     return (
         <div className="p-8">
@@ -38,12 +68,12 @@ export default function DiscoverySettingsPage() {
                             Network Availability
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[
-                                { id: 'enableNetwork', label: 'Discovery Network', desc: 'Enable global visitor recommendations across all participating businesses.' },
-                                { id: 'enableSponsored', label: 'Sponsored Placements', desc: 'Allow businesses to pay for featured visibility in recommendations.' },
-                                { id: 'enablePartnerships', label: 'B2B Partnerships', desc: 'Enable businesses to create direct referral agreements.' },
-                                { id: 'approvalRequired', label: 'Manual Moderation', desc: 'Require admin approval for all new offers and campaigns.' },
-                            ].map((toggle) => (
+                            {([
+                                { id: 'enableNetwork' as SettingKey, label: 'Discovery Network', desc: 'Enable global visitor recommendations across all participating businesses.' },
+                                { id: 'enableSponsored' as SettingKey, label: 'Sponsored Placements', desc: 'Allow businesses to pay for featured visibility in recommendations.' },
+                                { id: 'enablePartnerships' as SettingKey, label: 'B2B Partnerships', desc: 'Enable businesses to create direct referral agreements.' },
+                                { id: 'approvalRequired' as SettingKey, label: 'Manual Moderation', desc: 'Require admin approval for all new offers and campaigns.' },
+                            ]).map((toggle) => (
                                 <div key={toggle.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-start justify-between group">
                                     <div className="flex-1 pr-4">
                                         <p className="text-sm font-bold text-text-main">{toggle.label}</p>
@@ -105,7 +135,7 @@ export default function DiscoverySettingsPage() {
                                 <div>
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Notification Channels</label>
                                     <div className="flex gap-2">
-                                        {['pushEnabled', 'smsEnabled', 'emailEnabled'].map((channel) => (
+                                        {(['pushEnabled', 'smsEnabled', 'emailEnabled'] as SettingKey[]).map((channel) => (
                                             <button 
                                                 key={channel}
                                                 onClick={() => setSettings({...settings, [channel]: !settings[channel]})}
@@ -129,10 +159,16 @@ export default function DiscoverySettingsPage() {
                             <ShieldAlert className="text-primary" size={18} /> Actions
                         </h3>
                         <div className="space-y-3">
-                            <button className="w-full py-4 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95">
-                                <Save size={16} /> Save Configuration
+                            <button 
+                                onClick={handleSave}
+                                disabled={updateMutation.isPending}
+                                className="w-full py-4 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {updateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                {updateMutation.isPending ? 'Saving...' : 'Save Configuration'}
                             </button>
-                            <button className="w-full py-4 rounded-2xl bg-gray-50 text-text-secondary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-100 transition-all">
+                            <button 
+                                onClick={() => apiSettings && setSettings(apiSettings)}
+                                className="w-full py-4 rounded-2xl bg-gray-50 text-text-secondary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-100 transition-all">
                                 <RefreshCw size={16} /> Reset to Defaults
                             </button>
                         </div>

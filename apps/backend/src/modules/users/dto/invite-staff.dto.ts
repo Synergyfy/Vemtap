@@ -12,20 +12,18 @@ import { UserRole } from '../entities/user.entity';
 
 export enum StaffPermission {
   DASHBOARD = 'dashboard',
+  INVENTORY = 'inventory',
+  POS = 'pos',
   VISITORS = 'visitors',
   MESSAGES = 'messages',
-  CHAT = 'chat',
-  LOYALTY = 'loyalty',
   ENGAGEMENT = 'engagement',
+  CUSTOMER_EXPERIENCE = 'customer-experience',
+  MARKETING = 'marketing',
+  DISCOVERY = 'discovery',
   ANALYTICS = 'analytics',
   STAFF = 'staff',
-  CATALOGUE = 'catalogue',
-  QRTHRIVE = 'qrthrive',
-  CUSTOMER_EXPERIENCE = 'customer-experience',
-  AUTOMATIONS = 'automations',
-  SUPPORT = 'support',
-  TUTORIAL = 'tutorial',
   SETTINGS = 'settings',
+  QRTHRIVE = 'qrthrive',
 }
 
 export class InviteStaffDto {
@@ -49,12 +47,10 @@ export class InviteStaffDto {
   @IsOptional()
   phone?: string;
 
-  @ApiProperty({
-    enum: [UserRole.MANAGER, UserRole.STAFF],
-    example: UserRole.STAFF,
-  })
-  @IsEnum(UserRole)
-  role: UserRole;
+  @ApiProperty({ example: 'Cashier' })
+  @IsString()
+  @IsNotEmpty()
+  role: string;
 
   @ApiProperty({ example: 'Sales Associate', required: false })
   @IsString()

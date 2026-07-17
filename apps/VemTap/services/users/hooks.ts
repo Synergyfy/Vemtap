@@ -147,3 +147,13 @@ export const useAdminDeleteUser = () => {
         },
     });
 };
+
+export const checkPhone = async (phone: string): Promise<{ exists: boolean; email?: string }> => {
+    return await api.get(`/users/public/check-phone?phone=${encodeURIComponent(phone)}`);
+};
+
+export const useCheckPhone = () => {
+    return useMutation<{ exists: boolean; email?: string }, Error, string>({
+        mutationFn: checkPhone,
+    });
+};

@@ -46,17 +46,17 @@ export class UsersService {
       .findOne({ where: { id: branchId } });
 
     const trimmedFirstName = dto.firstName.trim();
-    const hashedPassword = await bcrypt.hash(
-      trimmedFirstName.toLowerCase(),
-      10,
-    );
+    const defaultPassword = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    const actualRole = dto.role.trim().toLowerCase() === 'manager' ? UserRole.MANAGER : UserRole.STAFF;
     const user = this.usersRepository.create({
       firstName: trimmedFirstName,
       lastName: dto.lastName.trim(),
       email: dto.email.trim().toLowerCase(),
       phone: dto.phone?.trim(),
       password: hashedPassword,
-      role: dto.role,
+      role: actualRole,
+      roleTag: dto.role.trim(),
       jobTitle: dto.jobTitle?.trim(),
       permissions: dto.permissions,
       branchId: branchId,
@@ -70,7 +70,7 @@ export class UsersService {
       await this.mailService.sendWelcomeEmail(
         savedUser.email,
         savedUser.firstName,
-        trimmedFirstName.toLowerCase(),
+        defaultPassword,
       );
     } catch (error) {
       console.error('Failed to send invitation email:', error);
@@ -116,6 +116,11 @@ export class UsersService {
     return this.usersRepository.findOne({
       where: { phone },
     });
+  }
+
+  async existsByPhone(phone: string): Promise<{ exists: boolean; email?: string }> {
+    const user = await this.findByPhone(phone);
+    return { exists: !!user, email: user?.email };
   }
 
   async findByGoogleId(googleId: string): Promise<User | null> {
@@ -187,7 +192,8 @@ export class UsersService {
     if (updates.email) user.email = updates.email;
 
     if (updates.role) {
-      user.role = updates.role;
+      user.roleTag = updates.role.trim();
+      user.role = updates.role.trim().toLowerCase() === 'manager' ? UserRole.MANAGER : UserRole.STAFF;
     }
 
     if (updates.permissions) {

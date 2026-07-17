@@ -8,38 +8,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-
-const MOCK_TRANSACTIONS = [
-    {
-        id: 'INV-2026-001',
-        business: 'Fashion Hub',
-        amount: 50000,
-        type: 'Campaign Budget',
-        method: 'Wallet',
-        status: 'Paid',
-        date: '2026-06-10 14:30',
-    },
-    {
-        id: 'INV-2026-002',
-        business: 'The Grill House',
-        amount: 25000,
-        type: 'Featured Placement',
-        method: 'Card',
-        status: 'Paid',
-        date: '2026-06-08 10:15',
-    },
-    {
-        id: 'INV-2026-003',
-        business: 'Sharp Cuts',
-        amount: 75000,
-        type: 'Network Subscription',
-        method: 'Bank Transfer',
-        status: 'Pending',
-        date: '2026-06-12 16:45',
-    }
-];
+import { useAdminBilling } from '@/services/discovery/hooks';
+import type { AdminBillingTransaction } from '@/services/discovery/types';
 
 export default function DiscoveryBillingPage() {
+    const { data, isLoading } = useAdminBilling();
+    const transactions: AdminBillingTransaction[] = data?.data ?? [];
     return (
         <div className="p-8">
             <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
@@ -105,7 +79,17 @@ export default function DiscoveryBillingPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_TRANSACTIONS.map((tx) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i}>
+                                        {Array.from({ length: 7 }).map((_, j) => (
+                                            <td key={j} className="px-6 py-4">
+                                                <div className="h-4 rounded bg-gray-100 animate-pulse" />
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
+                            ) : transactions.map((tx) => (
                                 <tr key={tx.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div>

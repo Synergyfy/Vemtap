@@ -2,7 +2,7 @@
 
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { NetworkOnly, StaleWhileRevalidate, Serwist } from "serwist";
+import { NetworkOnly, StaleWhileRevalidate, NetworkFirst, Serwist } from "serwist";
 
 interface SerwistGlobal extends ServiceWorkerGlobalScope, SerwistGlobalConfig {
   __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
@@ -44,12 +44,26 @@ const posCacheRule = {
   handler: new StaleWhileRevalidate(),
 };
 
+// POS pages and RSC payloads cached with NetworkFirst to ensure offline reloads work
+const posPagesRule = {
+  matcher: ({ url, request }: { url: URL; request: Request }) => {
+    const isPosPage = url.pathname.startsWith("/dashboard/pos");
+    const isNavigate = request.mode === "navigate";
+    const isRsc = url.searchParams.has("_rsc");
+    return isPosPage && (isNavigate || isRsc);
+  },
+  handler: new NetworkFirst({
+    cacheName: "pos-pages-cache",
+    networkTimeoutSeconds: 3,
+  }),
+};
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [apiNetworkOnlyRule, posCacheRule, ...defaultCache],
+  runtimeCaching: [apiNetworkOnlyRule, posCacheRule, posPagesRule, ...defaultCache],
 });
 
 serwist.addEventListeners();

@@ -6,7 +6,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, ILike } from 'typeorm';
+import { Repository, Between, ILike, DataSource, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { PosSale } from './entities/pos-sale.entity';
 import { PaymentMethod, SaleStatus } from './entities/pos-enums';
@@ -86,6 +86,7 @@ export class PosService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(FinancialTransaction)
     private readonly fosTransactionRepository: Repository<FinancialTransaction>,
+    private readonly dataSource: DataSource,
     private readonly pushNotificationService: PushNotificationService,
     private readonly catalogueOrderService: CatalogueOrderService,
     @Inject(forwardRef(() => LoyaltyService))
@@ -93,229 +94,240 @@ export class PosService {
   ) {}
 
   async completeSale(dto: CreatePosSaleDto, cashier: User) {
-    const branch = await this.branchRepository.findOne({
-      where: { id: dto.branchId },
-    });
-    if (!branch) throw new NotFoundException('Branch not found');
+    return this.dataSource.transaction(async (manager) => {
+      const branchRepo = manager.getRepository(Branch);
+      const saleRepo = manager.getRepository(PosSale);
+      const saleItemRepo = manager.getRepository(PosSaleItem);
+      const splitPaymentRepo = manager.getRepository(PosSplitPayment);
+      const productRepo = manager.getRepository(CatalogueItem);
+      const businessRepo = manager.getRepository(Business);
+      const userRepo = manager.getRepository(User);
+      const registerSessionRepo = manager.getRepository(PosRegisterSession);
 
-    if (branch.businessId !== cashier.businessId) {
-      throw new BadRequestException('Branch does not belong to your business');
-    }
+      const branch = await branchRepo.findOne({
+        where: { id: dto.branchId },
+      });
+      if (!branch) throw new NotFoundException('Branch not found');
 
-    if (dto.clientRef) {
-      const existingSale = await this.saleRepository.findOne({
+      if (branch.businessId !== cashier.businessId) {
+        throw new BadRequestException('Branch does not belong to your business');
+      }
+
+      if (dto.clientRef) {
+        const existingSale = await saleRepo.findOne({
+          where: {
+            businessId: branch.businessId,
+            clientRef: dto.clientRef,
+          },
+        });
+        if (existingSale) {
+          return this.findOneSale(existingSale.id, branch.businessId, manager);
+        }
+      }
+
+      let customer: User | null = null;
+      if (dto.customerId) {
+        customer = await userRepo.findOne({
+          where: { id: dto.customerId },
+        });
+      }
+
+      const items: PosSaleItem[] = [];
+      let subtotal = 0;
+      let totalDiscount = 0;
+
+      for (const itemDto of dto.items) {
+        const product = await productRepo.findOne({
+          where: { id: itemDto.productId, businessId: branch.businessId },
+        });
+        if (!product)
+          throw new NotFoundException(`Product ${itemDto.productId} not found`);
+
+        if (
+          product.stockQuantity !== null &&
+          product.stockQuantity < itemDto.quantity
+        ) {
+          throw new BadRequestException(
+            `Insufficient stock for ${product.name}: ${product.stockQuantity} available, ${itemDto.quantity} requested`,
+          );
+        }
+
+        const itemDiscount = itemDto.discount || 0;
+        const lineTotal = Number(product.price) * itemDto.quantity - itemDiscount;
+
+        const saleItem = saleItemRepo.create({
+          productId: itemDto.productId,
+          productName: product.name,
+          sku: product.sku || '',
+          barcode: product.barcode || '',
+          unitPrice: Number(product.price),
+          costPrice: product.costPrice ? Number(product.costPrice) : 0,
+          quantity: itemDto.quantity,
+          discount: itemDiscount,
+          totalPrice: lineTotal,
+        });
+
+        items.push(saleItem);
+        subtotal += Number(product.price) * itemDto.quantity;
+        totalDiscount += itemDiscount;
+
+        this.deductStock(product, itemDto.quantity);
+        await productRepo.save(product);
+      }
+
+      const cartDiscount = dto.cartDiscountAmount || 0;
+      const totalDiscountAmount = totalDiscount + cartDiscount;
+      const tax = 0;
+      const total = subtotal - totalDiscountAmount + tax;
+      const receiptNumber = await this.generateReceiptNumber(branch.businessId, manager);
+
+      if (dto.payment.method === PaymentMethod.SPLIT) {
+        if (!dto.payment.splitDetails || dto.payment.splitDetails.length < 2) {
+          throw new BadRequestException(
+            'Split payment requires at least 2 payment methods',
+          );
+        }
+        const splitTotal = dto.payment.splitDetails.reduce(
+          (acc, s) => acc + s.amount,
+          0,
+        );
+        if (Math.abs(splitTotal - dto.payment.amountPaid) > 0.01) {
+          throw new BadRequestException(
+            'Split payment amounts must sum to the total paid',
+          );
+        }
+      }
+
+      const splitPayments: PosSplitPayment[] = [];
+      if (
+        dto.payment.method === PaymentMethod.SPLIT &&
+        dto.payment.splitDetails
+      ) {
+        for (const sp of dto.payment.splitDetails) {
+          const splitPayment = splitPaymentRepo.create({
+            method: sp.method,
+            amount: sp.amount,
+          });
+          splitPayments.push(splitPayment);
+        }
+      }
+
+      const cashierName =
+        `${cashier.firstName} ${cashier.lastName}`.trim() || cashier.email;
+
+      let orderedAt = new Date();
+      if (dto.orderedAt) {
+        const clientDate = new Date(dto.orderedAt);
+        if (!isNaN(clientDate.getTime())) {
+          const now = new Date();
+          const tenMinutesInMs = 10 * 60 * 1000;
+          if (clientDate.getTime() > now.getTime() + tenMinutesInMs) {
+            orderedAt = now;
+          } else {
+            orderedAt = clientDate;
+          }
+        }
+      }
+
+      const sale = saleRepo.create({
+        businessId: branch.businessId,
+        branchId: branch.id,
+        cashierId: cashier.id,
+        cashierName,
+        customerId: customer?.id || null,
+        receiptNumber,
+        subtotal,
+        discountAmount: totalDiscountAmount,
+        tax,
+        total,
+        paymentMethod: dto.payment.method,
+        amountPaid: dto.payment.amountPaid,
+        change: dto.payment.change || 0,
+        hideCustomerInfoOnReceipt: dto.hideCustomerInfoOnReceipt || false,
+        notes: dto.notes || null,
+        status: SaleStatus.COMPLETED,
+        items,
+        splitPayments,
+        clientRef: dto.clientRef || null,
+        orderedAt,
+      } as unknown as PosSale);
+
+      const savedSale = await saleRepo.save(sale);
+
+      if (customer) {
+        customer.lastActive = new Date();
+        await userRepo.save(customer);
+      }
+
+      await this.recordFosTransaction({
+        businessId: branch.businessId,
+        amount: total,
+        paymentMethod: dto.payment.method,
+        referenceId: savedSale.id,
+        description: `POS Sale ${receiptNumber}`,
+      }, manager);
+
+      const openRegister = await registerSessionRepo.findOne({
         where: {
-          businessId: branch.businessId,
-          clientRef: dto.clientRef,
+          cashierId: cashier.id,
+          status: RegisterSessionStatus.OPEN,
+          branchId: branch.id,
         },
       });
-      if (existingSale) {
-        return this.findOneSale(existingSale.id, branch.businessId);
-      }
-    }
 
-    let customer: User | null = null;
-    if (dto.customerId) {
-      customer = await this.userRepository.findOne({
-        where: { id: dto.customerId },
-      });
-    }
-
-    const items: PosSaleItem[] = [];
-    let subtotal = 0;
-    let totalDiscount = 0;
-
-    for (const itemDto of dto.items) {
-      const product = await this.productRepository.findOne({
-        where: { id: itemDto.productId, businessId: branch.businessId },
-      });
-      if (!product)
-        throw new NotFoundException(`Product ${itemDto.productId} not found`);
-
-      if (
-        product.stockQuantity !== null &&
-        product.stockQuantity < itemDto.quantity
-      ) {
-        throw new BadRequestException(
-          `Insufficient stock for ${product.name}: ${product.stockQuantity} available, ${itemDto.quantity} requested`,
-        );
-      }
-
-      const itemDiscount = itemDto.discount || 0;
-      const lineTotal = Number(product.price) * itemDto.quantity - itemDiscount;
-
-      const saleItem = this.saleItemRepository.create({
-        productId: itemDto.productId,
-        productName: product.name,
-        sku: product.sku || '',
-        barcode: product.barcode || '',
-        unitPrice: Number(product.price),
-        costPrice: product.costPrice ? Number(product.costPrice) : 0,
-        quantity: itemDto.quantity,
-        discount: itemDiscount,
-        totalPrice: lineTotal,
-      });
-
-      items.push(saleItem);
-      subtotal += Number(product.price) * itemDto.quantity;
-      totalDiscount += itemDiscount;
-
-      this.deductStock(product, itemDto.quantity);
-      await this.productRepository.save(product);
-    }
-
-    const cartDiscount = dto.cartDiscountAmount || 0;
-    const totalDiscountAmount = totalDiscount + cartDiscount;
-    const tax = 0;
-    const total = subtotal - totalDiscountAmount + tax;
-    const receiptNumber = await this.generateReceiptNumber(branch.businessId);
-
-    if (dto.payment.method === PaymentMethod.SPLIT) {
-      if (!dto.payment.splitDetails || dto.payment.splitDetails.length < 2) {
-        throw new BadRequestException(
-          'Split payment requires at least 2 payment methods',
-        );
-      }
-      const splitTotal = dto.payment.splitDetails.reduce(
-        (acc, s) => acc + s.amount,
-        0,
-      );
-      if (Math.abs(splitTotal - dto.payment.amountPaid) > 0.01) {
-        throw new BadRequestException(
-          'Split payment amounts must sum to the total paid',
-        );
-      }
-    }
-
-    const splitPayments: PosSplitPayment[] = [];
-    if (
-      dto.payment.method === PaymentMethod.SPLIT &&
-      dto.payment.splitDetails
-    ) {
-      for (const sp of dto.payment.splitDetails) {
-        const splitPayment = this.splitPaymentRepository.create({
-          method: sp.method,
-          amount: sp.amount,
-        });
-        splitPayments.push(splitPayment);
-      }
-    }
-
-    const cashierName =
-      `${cashier.firstName} ${cashier.lastName}`.trim() || cashier.email;
-
-    let orderedAt = new Date();
-    if (dto.orderedAt) {
-      const clientDate = new Date(dto.orderedAt);
-      if (!isNaN(clientDate.getTime())) {
-        const now = new Date();
-        const tenMinutesInMs = 10 * 60 * 1000;
-        if (clientDate.getTime() > now.getTime() + tenMinutesInMs) {
-          orderedAt = now;
-        } else {
-          orderedAt = clientDate;
+      if (openRegister) {
+        openRegister.totalSales = Number(openRegister.totalSales) + total;
+        openRegister.transactionCount = Number(openRegister.transactionCount) + 1;
+        if (dto.payment.method === PaymentMethod.CASH) {
+          openRegister.expectedCash =
+            Number(openRegister.expectedCash) + dto.payment.amountPaid;
         }
+        await registerSessionRepo.save(openRegister);
       }
-    }
 
-    const sale = this.saleRepository.create({
-      businessId: branch.businessId,
-      branchId: branch.id,
-      cashierId: cashier.id,
-      cashierName,
-      customerId: customer?.id || null,
-      receiptNumber,
-      subtotal,
-      discountAmount: totalDiscountAmount,
-      tax,
-      total,
-      paymentMethod: dto.payment.method,
-      amountPaid: dto.payment.amountPaid,
-      change: dto.payment.change || 0,
-      hideCustomerInfoOnReceipt: dto.hideCustomerInfoOnReceipt || false,
-      notes: dto.notes || null,
-      status: SaleStatus.COMPLETED,
-      items,
-      splitPayments,
-      clientRef: dto.clientRef || null,
-      orderedAt,
-    } as unknown as PosSale);
-
-    const savedSale = await this.saleRepository.save(sale);
-
-    if (customer) {
-      customer.lastActive = new Date();
-      await this.userRepository.save(customer);
-    }
-
-    await this.recordFosTransaction({
-      businessId: branch.businessId,
-      amount: total,
-      paymentMethod: dto.payment.method,
-      referenceId: savedSale.id,
-      description: `POS Sale ${receiptNumber}`,
-    });
-
-    const openRegister = await this.registerSessionRepository.findOne({
-      where: {
-        cashierId: cashier.id,
-        status: RegisterSessionStatus.OPEN,
-        branchId: branch.id,
-      },
-    });
-
-    if (openRegister) {
-      openRegister.totalSales = Number(openRegister.totalSales) + total;
-      openRegister.transactionCount = Number(openRegister.transactionCount) + 1;
-      if (dto.payment.method === PaymentMethod.CASH) {
-        openRegister.expectedCash =
-          Number(openRegister.expectedCash) + dto.payment.amountPaid;
-      }
-      await this.registerSessionRepository.save(openRegister);
-    }
-
-    // Auto-award loyalty points if the business has loyalty enabled and a customer is linked
-    if (customer) {
-      try {
-        const business = await this.businessRepository.findOne({
-          where: { id: branch.businessId },
-        });
-        if (business?.posSettings?.loyaltyEnabled) {
-          let totalPoints = 0;
-          for (const item of items) {
-            if (item.productId) {
-              const product = await this.productRepository.findOne({
-                where: { id: item.productId },
-              });
-              if (product?.enableLoyaltyPoints && product.loyaltyPointsValue) {
-                totalPoints += product.loyaltyPointsValue * item.quantity;
-              } else if (product?.loyaltyPoints) {
-                // Fallback to legacy loyaltyPoints field
-                totalPoints += product.loyaltyPoints * item.quantity;
+      // Auto-award loyalty points if the business has loyalty enabled and a customer is linked
+      if (customer) {
+        try {
+          const business = await businessRepo.findOne({
+            where: { id: branch.businessId },
+          });
+          if (business?.posSettings?.loyaltyEnabled) {
+            let totalPoints = 0;
+            for (const item of items) {
+              if (item.productId) {
+                const product = await productRepo.findOne({
+                  where: { id: item.productId },
+                });
+                if (product?.enableLoyaltyPoints && product.loyaltyPointsValue) {
+                  totalPoints += product.loyaltyPointsValue * item.quantity;
+                } else if (product?.loyaltyPoints) {
+                  // Fallback to legacy loyaltyPoints field
+                  totalPoints += product.loyaltyPoints * item.quantity;
+                }
               }
             }
+            if (totalPoints > 0) {
+              await this.loyaltyService.awardPoints(
+                customer.id,
+                totalPoints,
+                branch.businessId,
+                branch.id,
+                `POS Sale ${receiptNumber}`,
+                cashier.id,
+              );
+            }
           }
-          if (totalPoints > 0) {
-            await this.loyaltyService.awardPoints(
-              customer.id,
-              totalPoints,
-              branch.businessId,
-              branch.id,
-              `POS Sale ${receiptNumber}`,
-              cashier.id,
-            );
-          }
+        } catch (error) {
+          // Loyalty failure should not block the sale
+          console.error(
+            `[POS] Failed to auto-award loyalty points for sale ${receiptNumber}:`,
+            error,
+          );
         }
-      } catch (error) {
-        // Loyalty failure should not block the sale
-        console.error(
-          `[POS] Failed to auto-award loyalty points for sale ${receiptNumber}:`,
-          error,
-        );
       }
-    }
 
-    return this.findOneSale(savedSale.id, branch.businessId);
+      return this.findOneSale(savedSale.id, branch.businessId, manager);
+    });
   }
 
   async batchSyncSales(
@@ -792,8 +804,9 @@ export class PosService {
     return { data, total, page, limit };
   }
 
-  async findOneSale(id: string, businessId: string) {
-    const sale = await this.saleRepository.findOne({
+  async findOneSale(id: string, businessId: string, manager?: EntityManager) {
+    const saleRepo = manager ? manager.getRepository(PosSale) : this.saleRepository;
+    const sale = await saleRepo.findOne({
       where: { id, businessId },
       relations: [
         'items',
@@ -1202,11 +1215,12 @@ export class PosService {
       .slice(0, 10);
   }
 
-  private async generateReceiptNumber(businessId: string): Promise<string> {
+  private async generateReceiptNumber(businessId: string, manager?: EntityManager): Promise<string> {
     const date = new Date();
     const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
 
-    const count = await this.saleRepository.count({
+    const saleRepo = manager ? manager.getRepository(PosSale) : this.saleRepository;
+    const count = await saleRepo.count({
       where: {
         businessId,
         createdAt: Between(
@@ -1220,15 +1234,19 @@ export class PosService {
     return `RCT-${dateStr}-${seq}`;
   }
 
-  private async recordFosTransaction(data: {
-    businessId: string;
-    amount: number;
-    paymentMethod: PaymentMethod;
-    referenceId: string;
-    description: string;
-    type?: FosTransactionType;
-  }) {
-    const transaction = this.fosTransactionRepository.create({
+  private async recordFosTransaction(
+    data: {
+      businessId: string;
+      amount: number;
+      paymentMethod: PaymentMethod;
+      referenceId: string;
+      description: string;
+      type?: FosTransactionType;
+    },
+    manager?: EntityManager,
+  ) {
+    const fosRepo = manager ? manager.getRepository(FinancialTransaction) : this.fosTransactionRepository;
+    const transaction = fosRepo.create({
       type: data.type || FosTransactionType.POS_SALE,
       platform: FosPlatform.VEMTAP,
       businessId: data.businessId,
@@ -1241,7 +1259,7 @@ export class PosService {
       description: data.description,
     });
 
-    return this.fosTransactionRepository.save(transaction);
+    return fosRepo.save(transaction);
   }
 
   private deductStock(item: CatalogueItem, quantity: number) {

@@ -22,6 +22,7 @@ import Modal from '@/components/ui/Modal';
 import { api } from '@/lib/api';
 import ProfileTabs from '@/components/dashboard/settings/profile/ProfileTabs';
 import PushNotificationsTab from '@/components/dashboard/settings/profile/PushNotificationsTab';
+import InstallAppButton from '@/components/shared/InstallAppButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRegisterOwner, useOtp, useLogin, useChangePassword } from '@/services/auth/hooks';
 import {
@@ -175,6 +176,7 @@ export default function BusinessProfilePage() {
     
     // Mobile Collapsible Sections State
     const [expandedSection, setExpandedSection] = useState<string | null>('health');
+    const [tasksExpanded, setTasksExpanded] = useState(true);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -833,14 +835,18 @@ export default function BusinessProfilePage() {
             <PageHeader
                 title="Business Profile"
                 description="Update your business information and online presence"
+                isSticky={false}
                 actions={
-                    <button
-                        onClick={handleSave}
-                        disabled={updateBranchMutation.isPending || updateSocialsMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
-                    >
-                        {updateBranchMutation.isPending || updateSocialsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <InstallAppButton />
+                        <button
+                            onClick={handleSave}
+                            disabled={updateBranchMutation.isPending || updateSocialsMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
+                        >
+                            {updateBranchMutation.isPending || updateSocialsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+                        </button>
+                    </div>
                 }
             />
 
@@ -911,34 +917,47 @@ export default function BusinessProfilePage() {
                                             </div>
                                         </div>
                                         
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            {healthTasks.map((task, i) => (
-                                                <button 
-                                                    key={i} 
-                                                    onClick={() => {
-                                                        if (task.id === 'general') {
-                                                            setIsEditingGeneral(true);
-                                                        } else {
-                                                            setActiveTab(task.id);
-                                                        }
-                                                    }}
-                                                    className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all text-left group ${
-                                                        task.completed 
-                                                        ? 'bg-green-50 border-green-100 text-green-700' 
-                                                        : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60 hover:opacity-100 hover:border-primary/20 hover:bg-primary/5'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className={`material-icons-round text-lg transition-transform ${!task.completed ? 'group-hover:scale-110 group-hover:text-primary' : ''}`}>{task.icon}</span>
-                                                        {task.completed ? (
-                                                            <span className="material-icons-round text-xs">check_circle</span>
-                                                        ) : (
-                                                            <span className="material-icons-round text-[10px] opacity-0 group-hover:opacity-100 text-primary">arrow_forward</span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
-                                                </button>
-                                            ))}
+                                        <div>
+                                            <button
+                                                onClick={() => setTasksExpanded(!tasksExpanded)}
+                                                className="flex items-center justify-between w-full group"
+                                            >
+                                                <span className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                                                    Tasks
+                                                </span>
+                                                <ChevronDown size={14} className={`text-gray-400 transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            {tasksExpanded && (
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                                                    {healthTasks.map((task, i) => (
+                                                        <button 
+                                                            key={i} 
+                                                            onClick={() => {
+                                                                if (task.id === 'general') {
+                                                                    setIsEditingGeneral(true);
+                                                                } else {
+                                                                    setActiveTab(task.id);
+                                                                }
+                                                            }}
+                                                            className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all text-left group ${
+                                                                task.completed 
+                                                                ? 'bg-green-50 border-green-100 text-green-700' 
+                                                                : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60 hover:opacity-100 hover:border-primary/20 hover:bg-primary/5'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <span className={`material-icons-round text-lg transition-transform ${!task.completed ? 'group-hover:scale-110 group-hover:text-primary' : ''}`}>{task.icon}</span>
+                                                                {task.completed ? (
+                                                                    <span className="material-icons-round text-xs">check_circle</span>
+                                                                ) : (
+                                                                    <span className="material-icons-round text-[10px] opacity-0 group-hover:opacity-100 text-primary">arrow_forward</span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

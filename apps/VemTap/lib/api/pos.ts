@@ -7,6 +7,8 @@ import type {
   PosSalesQuery,
   RegisterHistoryQuery,
   UpdatePosSaleStatusDto,
+  BatchSyncRequest,
+  BatchSyncResult,
 } from '@/services/pos/types';
 
 export const posApi = {
@@ -18,6 +20,9 @@ export const posApi = {
 
   createSale: (dto: CreatePosSaleDto) =>
     api.post('/pos/sales', dto),
+
+  batchSyncOfflineSales: (dto: BatchSyncRequest) =>
+    api.post('/pos/sales/batch-sync', dto),
 
   updateSaleStatus: (id: string, dto: UpdatePosSaleStatusDto) =>
     api.patch(`/pos/sales/${id}/status`, dto),

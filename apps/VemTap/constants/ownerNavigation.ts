@@ -116,7 +116,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 id: 'channels',
                 label: 'Channels',
                 icon: Globe2,
-                href: '/dashboard/messaging/sms',
+                href: '/dashboard/messaging',
                 roles: ['owner', 'manager', 'marketing', 'customer_service'],
                 permission: 'dashboard',
                 keywords: ['qr', 'setup', 'capture', 'link', 'shortlink', 'generator', 'customize'],
