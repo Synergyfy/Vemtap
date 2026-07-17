@@ -10,7 +10,7 @@ import LocationModal from '@/components/promotions/LocationModal';
 import { usePublicOffers } from '@/services/deals/hooks';
 import type { DealOffer } from '@/services/deals/types';
 import type { Promotion, PromotionBusiness } from '@/lib/promotions';
-import { formatDealPrice } from '@/lib/promotions';
+import type { MockPromotion } from '@/lib/mock/promotions';
 import type { GeolocationCoordinates } from '@/lib/geolocation';
 
 function toPromotionBusiness(business?: DealOffer['business']): PromotionBusiness {
@@ -35,7 +35,7 @@ function toPromotion(offer: DealOffer): Promotion {
     const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
         ? offer.discountValue : undefined;
     const originalPrice = discountPercent
-        ? Math.round(offer.calculatedPrice / (1 - discountPercent / 100))
+        ? Math.round(offer.calculatedPrice / (1 - (discountPercent || 0) / 100))
         : discountAmount
             ? offer.calculatedPrice + discountAmount
             : offer.calculatedPrice;
@@ -57,6 +57,31 @@ function toPromotion(offer: DealOffer): Promotion {
         claimedCount: offer.claimedCount,
         maxClaims: offer.maxClaims,
         isTrending: offer.isTrending || false,
+    };
+}
+
+function toMockPromotion(p: Promotion): MockPromotion {
+    return {
+        id: p.id,
+        name: p.title,
+        description: p.description,
+        longDescription: p.longDescription,
+        terms: p.terms,
+        businessName: p.business.name,
+        businessSlug: p.business.slug,
+        businessLogo: p.business.logo,
+        category: p.business.categoryName as MockPromotion['category'],
+        discountPercent: p.discountPercent,
+        discountAmount: p.discountAmount,
+        originalPrice: p.originalPrice,
+        dealPrice: p.dealPrice,
+        image: p.image,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        audience: '',
+        location: p.business.address,
+        claimedCount: p.claimedCount,
+        maxClaims: p.maxClaims,
     };
 }
 
@@ -284,7 +309,7 @@ export default function CustomerDiscoverPage() {
                             {filteredPromotions.length > 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                                     {filteredPromotions.map((promo, i) => (
-                                        <PromotionCard key={promo.id} promotion={promo} index={i} />
+                                        <PromotionCard key={promo.id} promotion={toMockPromotion(promo)} index={i} />
                                     ))}
                                 </div>
                             ) : (

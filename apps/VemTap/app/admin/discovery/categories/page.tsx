@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Tag, Store, MousePointerClick, TrendingUp,
     Search, Filter, PieChart, BarChart3,
-    ArrowUpRight, Target, LayoutGrid, Boxes, Eye
+    ArrowUpRight, Target, LayoutGrid, Boxes, Eye, ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useAdminCategories } from '@/services/discovery/hooks';
 
 export default function DiscoveryCategoriesPage() {
@@ -44,7 +44,9 @@ export default function DiscoveryCategoriesPage() {
 
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/categories" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Category Performance Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

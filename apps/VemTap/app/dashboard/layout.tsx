@@ -2,6 +2,7 @@
 
 import React, { useEffect, Suspense } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
+import PageGuide from '@/components/dashboard/PageGuide';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useEventsSocket } from '@/hooks/useEventsSocket';
 
@@ -36,6 +37,7 @@ export default function DashboardLayout({
                     {children}
                 </DashboardSidebar>
             </div>
+            <PageGuide />
         </Suspense>
     );
 }

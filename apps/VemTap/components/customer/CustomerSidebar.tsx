@@ -8,12 +8,14 @@ import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/no
 import { Notification } from '@/services/notifications/types';
 import {
     LayoutGrid, History, Gift, User, Nfc, Bell,
-    LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search, ShoppingBag, ShoppingCart
+    LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search, ShoppingBag, ShoppingCart, Download
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUrlPersistence } from '@/hooks/useUrlPersistence';
 import { useCartStore } from '@/store/useCartStore';
+import toast from 'react-hot-toast';
+import InstallAppModal from '@/components/dashboard/InstallAppModal';
 
 interface CustomerSidebarProps {
     children: React.ReactNode;
@@ -25,6 +27,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+    const [showInstallModal, setShowInstallModal] = useState(false);
     const { getPersistedLink } = useUrlPersistence();
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -36,6 +39,40 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
             return acc + cart.items.reduce((sum, item) => sum + item.quantity, 0);
         }, 0);
     }, [carts]);
+
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleDownloadApp = () => {
+        setShowInstallModal(true);
+    };
+
+    const handleInstallApp = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                toast.success('App installed successfully!');
+                setShowInstallModal(false);
+            } else {
+                toast('App installation cancelled', { icon: '📱' });
+            }
+            setDeferredPrompt(null);
+        } else {
+            toast('Open your browser menu and tap "Install App" or "Add to Home Screen"', {
+                icon: '📱',
+                duration: 4000,
+            });
+        }
+    };
 
     // Close mobile sidebar on navigation
     useEffect(() => {
@@ -190,6 +227,17 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                         </Link>
                     </div>
                 </nav>
+
+                {/* Download App */}
+                <div className="border-t border-gray-100 px-4 pt-4 pb-2">
+                    <button
+                        onClick={handleDownloadApp}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-text-secondary hover:bg-gray-50 hover:text-text-main transition-all"
+                    >
+                        <Download size={20} />
+                        <span className="flex-1">Download App</span>
+                    </button>
+                </div>
 
                 {/* User Profile */}
                 <div className="border-t border-gray-100 p-4">
@@ -359,6 +407,8 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                     {children}
                 </main>
             </div>
+
+            <InstallAppModal isOpen={showInstallModal} onClose={() => setShowInstallModal(false)} onInstall={handleInstallApp} />
         </div>
     );
 }

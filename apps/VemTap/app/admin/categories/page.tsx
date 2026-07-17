@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getCategoryIcon, setCategoryIcon, EMOJI_OPTIONS, getAllCategoryIcons } from '@/lib/category-icons';
 
 interface Subcategory {
     id: string;
@@ -31,6 +32,7 @@ interface Category {
     name: string;
     description: string;
     subcategories: Subcategory[];
+    icon?: string;
 }
 
 import { useCategories, useCreateCategory, useDeleteCategory, useCreateSubcategory, useUpdateCategory } from '@/services/categories/hooks';
@@ -52,13 +54,16 @@ export default function AdminCategoriesPage() {
     const updateCategoryMutation = useUpdateCategory();
 
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-    const [editCategory, setEditCategory] = useState({ name: '', description: '' });
+    const [editCategory, setEditCategory] = useState({ name: '', description: '', icon: '' });
 
     const [newCategory, setNewCategory] = useState({
         name: '',
         description: '',
+        icon: '',
         subcategoriesText: ''
     });
+    const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
+    const iconMap = getAllCategoryIcons();
 
     const handleAddCategory = async () => {
         if (!newCategory.name || !newCategory.description) {
@@ -71,6 +76,10 @@ export default function AdminCategoriesPage() {
                 name: newCategory.name,
                 description: newCategory.description
             });
+
+            if (newCategory.icon) {
+                setCategoryIcon(newCategory.name, newCategory.icon);
+            }
 
             const subNames = newCategory.subcategoriesText
                 .split(',')
@@ -86,7 +95,7 @@ export default function AdminCategoriesPage() {
                 ));
             }
 
-            setNewCategory({ name: '', description: '', subcategoriesText: '' });
+            setNewCategory({ name: '', description: '', icon: '', subcategoriesText: '' });
             setIsAddingCategory(false);
             toast.success('Category added successfully');
         } catch (error) {
@@ -105,8 +114,9 @@ export default function AdminCategoriesPage() {
     };
 
     const handleEditCategory = (category: Category) => {
+        const currentIcon = iconMap[category.name] || '';
         setEditingCategory(category);
-        setEditCategory({ name: category.name, description: category.description });
+        setEditCategory({ name: category.name, description: category.description, icon: currentIcon });
     };
 
     const handleUpdateCategory = async () => {
@@ -120,6 +130,9 @@ export default function AdminCategoriesPage() {
                 id: editingCategory.id,
                 data: { name: editCategory.name, description: editCategory.description },
             });
+            if (editCategory.icon) {
+                setCategoryIcon(editCategory.name, editCategory.icon);
+            }
             setEditingCategory(null);
             toast.success('Category updated successfully');
         } catch (error) {
@@ -128,6 +141,30 @@ export default function AdminCategoriesPage() {
     };
 
     const filteredCategories = categories;
+
+    const EmojiPicker = ({ current, onSelect, onClose }: { current: string; onSelect: (emoji: string) => void; onClose: () => void }) => (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 w-72"
+        >
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Pick Icon</span>
+                <button onClick={onClose} className="text-gray-300 hover:text-gray-500"><X size={14} /></button>
+            </div>
+            <div className="grid grid-cols-8 gap-1">
+                {EMOJI_OPTIONS.map((emoji) => (
+                    <button
+                        key={emoji}
+                        onClick={() => { onSelect(emoji); onClose(); }}
+                        className={`size-8 flex items-center justify-center text-lg rounded-lg hover:bg-gray-100 transition-colors ${current === emoji ? 'bg-primary/10 ring-2 ring-primary/30' : ''}`}
+                    >
+                        {emoji}
+                    </button>
+                ))}
+            </div>
+        </motion.div>
+    );
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -185,8 +222,17 @@ export default function AdminCategoriesPage() {
                                 <div className="p-8 space-y-6">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-4">
-                                            <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                                                <Layers size={24} />
+                                            <div className="relative size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner cursor-pointer hover:bg-primary/20 transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); setEmojiPickerFor(emojiPickerFor === category.id ? null : category.id); }}
+                                            >
+                                                <span className="text-2xl">{iconMap[category.name] || getCategoryIcon(category.name)}</span>
+                                                {emojiPickerFor === category.id && (
+                                                    <EmojiPicker
+                                                        current={iconMap[category.name] || ''}
+                                                        onSelect={(emoji) => setCategoryIcon(category.name, emoji)}
+                                                        onClose={() => setEmojiPickerFor(null)}
+                                                    />
+                                                )}
                                             </div>
                                             <div>
                                                 <h3 className="font-display font-bold text-text-main text-lg group-hover:text-primary transition-colors">
@@ -364,6 +410,28 @@ export default function AdminCategoriesPage() {
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between px-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Category Icon (Emoji)</label>
+                                    </div>
+                                    <div className="relative inline-block">
+                                        <button
+                                            type="button"
+                                            onClick={() => setEmojiPickerFor(emojiPickerFor === 'new' ? null : 'new')}
+                                            className="size-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center text-3xl hover:border-primary/30 hover:bg-primary/5 transition-all"
+                                        >
+                                            {newCategory.icon || '🏪'}
+                                        </button>
+                                        {emojiPickerFor === 'new' && (
+                                            <EmojiPicker
+                                                current={newCategory.icon}
+                                                onSelect={(emoji) => setNewCategory({ ...newCategory, icon: emoji })}
+                                                onClose={() => setEmojiPickerFor(null)}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between px-1">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Categories List</label>
                                         <span className="text-[10px] text-primary font-black uppercase">Separate entries by commas</span>
                                     </div>
@@ -458,6 +526,28 @@ export default function AdminCategoriesPage() {
                                         onChange={(e) => setEditCategory({ ...editCategory, description: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-8 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
                                     />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between px-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Category Icon (Emoji)</label>
+                                    </div>
+                                    <div className="relative inline-block">
+                                        <button
+                                            type="button"
+                                            onClick={() => setEmojiPickerFor(emojiPickerFor === 'edit' ? null : 'edit')}
+                                            className="size-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center text-3xl hover:border-primary/30 hover:bg-primary/5 transition-all"
+                                        >
+                                            {editCategory.icon || getCategoryIcon(editCategory.name) || '🏪'}
+                                        </button>
+                                        {emojiPickerFor === 'edit' && (
+                                            <EmojiPicker
+                                                current={editCategory.icon}
+                                                onSelect={(emoji) => setEditCategory({ ...editCategory, icon: emoji })}
+                                                onClose={() => setEmojiPickerFor(null)}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

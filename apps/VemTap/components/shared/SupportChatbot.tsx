@@ -39,7 +39,7 @@ export default function SupportChatbot() {
     const escalateMutation = useEscalateChat();
     const { socket, isConnected } = useSupportSocket({ enabled: handedToAgent });
     const { data: ticketData, refetch: refetchTicket } = useSupportTicket(liveTicketId || '', false);
-    const { data: userTicketsData } = useUserSupportTickets(1, 5);
+    const { data: userTicketsData } = useUserSupportTickets(1, 5, isAuthenticated);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatbotRef = useRef<HTMLDivElement>(null);
