@@ -10,6 +10,7 @@ import {
     UserCheck, ShoppingBag, Eye, Target
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useAdminCustomer } from '@/services/discovery/hooks';
 
 export default function DiscoveryCustomerProfilePage() {

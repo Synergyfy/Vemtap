@@ -8,6 +8,7 @@ import {
     PieChart, LayoutGrid, Info, Download, Store
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useAdminCategory } from '@/services/discovery/hooks';
 
 export default function DiscoveryCategoryDetailPage() {

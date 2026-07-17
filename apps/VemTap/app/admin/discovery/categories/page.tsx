@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useAdminCategories } from '@/services/discovery/hooks';
 
 export default function DiscoveryCategoriesPage() {

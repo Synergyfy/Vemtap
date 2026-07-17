@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAdminFraudAlerts } from '@/services/discovery/hooks';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 
 export default function DiscoveryFraudPage() {
     const { data: dashboard, isLoading } = useAdminFraudAlerts();

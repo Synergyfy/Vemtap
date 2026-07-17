@@ -15,6 +15,7 @@ import {
     useDeleteAdminCategoryType 
 } from '@/services/discovery/hooks';
 import type { AdminCategoryType } from '@/services/discovery/types';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 
 export default function ManageOfferCategoriesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
