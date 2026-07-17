@@ -9,44 +9,30 @@ import PromotionCard from '@/components/promotions/PromotionCard';
 import LocationModal from '@/components/promotions/LocationModal';
 import { usePublicOffers } from '@/services/deals/hooks';
 import type { DealOffer } from '@/services/deals/types';
-import type { Promotion, PromotionBusiness } from '@/lib/promotions';
-import { formatDealPrice } from '@/lib/promotions';
+import type { MockPromotion } from '@/lib/mock/promotions';
 import type { GeolocationCoordinates } from '@/lib/geolocation';
 
-function toPromotionBusiness(business?: DealOffer['business']): PromotionBusiness {
-    return {
-        id: business?.id || '',
-        name: business?.name || 'Unknown Business',
-        slug: business?.slug || '',
-        logo: business?.logo || '',
-        photos: business?.photos || [],
-        categoryId: business?.categoryId || '',
-        categoryName: business?.categoryName || '',
-        address: business?.address || '',
-        hours: business?.hours || [],
-        rating: business?.rating || 0,
-        totalReviews: business?.totalReviews || 0,
-    };
-}
-
-function toPromotion(offer: DealOffer): Promotion {
+function toPromotion(offer: DealOffer): MockPromotion {
     const discountPercent = offer.pricingType === 'percentage_discount' && offer.discountValue
         ? offer.discountValue : undefined;
     const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
         ? offer.discountValue : undefined;
     const originalPrice = discountPercent
-        ? Math.round(offer.calculatedPrice / (1 - discountPercent / 100))
+        ? Math.round(offer.calculatedPrice / (1 - (discountPercent || 0) / 100))
         : discountAmount
             ? offer.calculatedPrice + discountAmount
             : offer.calculatedPrice;
 
     return {
         id: offer.id,
-        business: toPromotionBusiness(offer.business),
-        title: offer.name,
+        name: offer.name,
         description: offer.description,
         longDescription: offer.longDescription || offer.description,
         terms: offer.terms || [],
+        businessName: offer.business?.name || 'Unknown Business',
+        businessSlug: offer.business?.slug || '',
+        businessLogo: offer.business?.logo,
+        category: (offer.business?.categoryName || 'Food & Drinks') as MockPromotion['category'],
         discountPercent,
         discountAmount,
         originalPrice,
@@ -54,9 +40,10 @@ function toPromotion(offer: DealOffer): Promotion {
         image: offer.mainImage,
         startDate: offer.startDate || '',
         endDate: offer.endDate || '',
+        audience: '',
+        location: offer.business?.address || '',
         claimedCount: offer.claimedCount,
         maxClaims: offer.maxClaims,
-        isTrending: offer.isTrending || false,
     };
 }
 
