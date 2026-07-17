@@ -19,6 +19,7 @@
     "keywords": [],
     "author": "",
     "license": "ISC",
+    "packageManager": "pnpm@10.29.1",
     "devDependencies": {
         "@playwright/test": "^1.56.1",
         "turbo": "^2.8.10"
