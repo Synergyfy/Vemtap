@@ -13,7 +13,7 @@ import {
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
     MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
     ClipboardCheck, Search, Star, Pin, PinOff, ChevronLeft, ChevronRight, LayoutDashboard,
-    X, MoreHorizontal, User
+    X, MoreHorizontal, User, Download
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -24,10 +24,12 @@ import { useMarketingAssets, useAnalyticsOverview } from '@/services/marketing-a
 import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
+import InstallAppModal from './InstallAppModal';
 import SubscriptionExpiredModal from './SubscriptionExpiredModal';
 import { useSudoStore } from '@/store/useSudoStore';
 import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 import OwnerSearch from './OwnerSearch';
+import toast from 'react-hot-toast';
 import { NAVIGATION_SECTIONS, MenuItem, NavSection } from '@/constants/ownerNavigation';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
@@ -94,9 +96,44 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const currentBranchLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || defaultLogo;
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
+    const [showInstallModal, setShowInstallModal] = useState(false);
     const isChatRoute = pathname.includes('/messaging/chat');
     const isCreateAssetPage = pathname.includes('/marketing-assets/create');
     const activeConversationId = useChatStore(s => s.activeConversationId);
+
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleDownloadApp = () => {
+        setShowInstallModal(true);
+    };
+
+    const handleInstallApp = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                toast.success('App installed successfully!');
+                setShowInstallModal(false);
+            } else {
+                toast('App installation cancelled', { icon: '📱' });
+            }
+            setDeferredPrompt(null);
+        } else {
+            toast('Open your browser menu and tap "Install App" or "Add to Home Screen"', {
+                icon: '📱',
+                duration: 4000,
+            });
+        }
+    };
     const mainRef = useRef<HTMLElement | null>(null);
 
     // Auto-expand the menu corresponding to the current path
@@ -317,7 +354,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     <div className="space-y-1">
                                                         <button
                                                             onClick={(e) => handleItemClick(e, item)}
-                                                            className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
+                                                             className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
                                                                 active ? 'bg-primary/5 text-primary font-semibold' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                                             }`}
                                                         >
@@ -325,7 +362,17 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                 {Icon && <div className="shrink-0"><Icon size={20} /></div>}
                                                                 {!isCollapsed && <span className="text-[15px] font-semibold truncate">{item.label}</span>}
                                                             </div>
-                                                            {!isCollapsed && <ChevronDown size={16} className={`shrink-0 text-gray-400 transition-transform ${isMenuExpanded ? 'rotate-180' : ''}`} />}
+                                                            {!isCollapsed && (
+                                                                ['preferences', 'analytics-overview'].includes(item.id) ? (
+                                                                    <div className={`size-6 rounded-lg flex items-center justify-center transition-all ${
+                                                                        isMenuExpanded ? 'bg-primary/10 text-primary' : 'bg-gray-100/80 text-gray-400'
+                                                                    }`}>
+                                                                        <ChevronDown size={14} className={`transition-transform ${isMenuExpanded ? '' : '-rotate-90'}`} />
+                                                                    </div>
+                                                                ) : (
+                                                                    <ChevronDown size={16} className={`shrink-0 text-gray-400 transition-transform ${isMenuExpanded ? '' : '-rotate-90'}`} />
+                                                                )
+                                                            )}
                                                         </button>
                                                         {!isCollapsed && isMenuExpanded && (
                                                             <div className="ml-9 space-y-1 border-l border-gray-100 pl-4 py-1">
@@ -334,7 +381,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                         key={idx}
                                                                         href={withBranch(sub.href)}
                                                                         onClick={() => setIsMobileOpen(false)}
-                                                                        className={`block text-[15px] font-medium py-2 transition-colors ${
+                                                                         className={`block text-[15px] font-medium py-2 transition-colors ${
                                                                             isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700'
                                                                         }`}
                                                                     >
@@ -348,7 +395,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     <Link
                                                         href={withBranch(item.href!)}
                                                         onClick={() => setIsMobileOpen(false)}
-                                                        className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
+                                                         className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
                                                             active ? 'bg-primary/10 text-primary font-semibold border-l-[3px] border-primary' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                                         }`}
                                                     >
@@ -391,6 +438,18 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                     ))}
                 </nav>
+
+                {/* Download App */}
+                <div className="border-t border-gray-100 px-3 pt-4 pb-2">
+                    <button
+                        onClick={handleDownloadApp}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-gray-700 hover:bg-gray-100 hover:text-gray-900 ${isCollapsed ? 'justify-center' : ''}`}
+                        title="Download App"
+                    >
+                        <Download size={20} className="shrink-0" />
+                        {!isCollapsed && <span className="text-[15px] font-semibold truncate">Download App</span>}
+                    </button>
+                </div>
 
                 {/* Footer / Branch Switcher */}
                 <div className="border-t border-gray-100 p-4 space-y-2">
@@ -491,6 +550,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
             <UpgradeModal isOpen={upgradeModal.isOpen} onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} featureName={upgradeModal.featureName} />
             <SubscriptionExpiredModal isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')} />
+            <InstallAppModal isOpen={showInstallModal} onClose={() => setShowInstallModal(false)} onInstall={handleInstallApp} />
             {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
         </div>
     );

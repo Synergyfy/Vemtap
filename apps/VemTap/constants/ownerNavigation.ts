@@ -3,7 +3,7 @@ import {
     MessageSquare, ShieldCheck, MessageCircle, Zap, ShoppingBag, QrCode, FileText, Palette,
     Package, Target, Globe, Star, LayoutDashboard, Megaphone, Workflow, Share2, 
     LineChart, CreditCard, Layers, Globe2, Cpu, BookOpen, Settings2, Wallet, 
-    UserCheck, Wand2, BarChart3, TrendingUp, Search, Users2
+    UserCheck, Wand2, BarChart3, TrendingUp, Search, Users2, Download
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -193,7 +193,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
             {
                 id: 'analytics-overview',
                 label: 'Analytics',
-                icon: BarChart3,
+                icon: null,
                 href: '/dashboard/analytics',
                 roles: ['owner', 'manager'],
                 permission: 'analytics',
@@ -256,16 +256,15 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
     },
     {
         id: 'section-settings',
-        label: 'Settings',
+        label: '',
         items: [
             {
                 id: 'preferences',
                 label: 'Settings',
-                icon: Settings,
+                icon: null,
                 roles: ['owner', 'manager'],
                 permission: 'settings',
                 submenu: [
-                    { label: 'Settings', href: '/dashboard/settings' },
                     { label: 'Profile', href: '/dashboard/settings/profile' },
                     { label: 'Subscription', href: '/dashboard/settings/subscription' },
                     { label: 'Support', href: '/dashboard/support' },
