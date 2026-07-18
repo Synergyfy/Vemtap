@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { UserPlus, X, Copy, CheckCheck, Download, QrCode, ArrowLeft } from 'lucide-react';
+import ComingSoonOverlay from '@/components/dashboard/ComingSoonOverlay';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,7 +32,7 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
     ];
 
     return (
-        <div className="flex flex-col gap-5 md:gap-6 p-4 md:p-8 max-w-7xl mx-auto w-full pb-28 md:pb-10">
+        <div className="relative flex flex-col gap-5 md:gap-6 p-4 md:p-8 max-w-7xl mx-auto w-full pb-28 md:pb-10">
             {/* Page Header */}
             <div className="flex items-start gap-3">
                 {!isOverview && (
@@ -49,6 +50,11 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
             </div>
 
             {children}
+
+            <ComingSoonOverlay
+                title="Business Partnership"
+                description="Invite other businesses to VEMTAP, earn commissions on every successful referral, and climb the partner leaderboard. Track your rewards, manage your business card, and grow your network — all in one place."
+            />
 
             {/* Floating Action Button */}
             <button

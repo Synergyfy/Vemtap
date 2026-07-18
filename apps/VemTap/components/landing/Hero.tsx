@@ -25,15 +25,15 @@ export default function Hero() {
                         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-2">
                             <Zap size={14} className="text-primary fill-primary" />
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
-                                The Future of Customer Loyalty
+                                Customer Engagement Platform
                             </span>
                         </div>
                         <h1 className="font-display font-black text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-text-main tracking-tight">
-                            Turn Every Visitor Into A <span className="text-primary">Customer You Can Reach Again</span>
+                            Turn Every Customer Into A <span className="text-primary">Customer You Can Reach Again.</span>
                         </h1>
 
                         <p className="text-base md:text-xl text-text-secondary max-w-xl font-medium leading-relaxed">
-                            Capture customer details using QR codes and NFC technology. Build your customer database, send smart messages, and grow your business.
+                            We help businesses capture customer details, build lasting relationships, automate follow-ups, and increase repeat sales...
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
