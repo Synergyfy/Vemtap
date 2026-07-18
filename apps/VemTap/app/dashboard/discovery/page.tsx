@@ -16,6 +16,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const NearbyMap = dynamic(() => import('@/components/dashboard/discovery/NearbyMap'), { ssr: false });
 const LocationSetupModal = dynamic(() => import('@/components/dashboard/branches/LocationSetupModal'), { ssr: false });
+import ComingSoonOverlay from '@/components/dashboard/ComingSoonOverlay';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { 
     useDiscoveryOverview,
@@ -119,11 +120,16 @@ export default function DiscoveryPage() {
     const { activeBranchId, isAllBranches } = useActiveBranch();
     
     return (
-        <div className="p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
+        <div className="relative p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
             <PageHeader 
                 title="Discovery Network" 
                 description="Get more customers from nearby businesses."
                 isSticky={false}
+            />
+            
+            <ComingSoonOverlay
+                title="Discovery Network"
+                description="Get discovered by nearby customers and grow your reach. Promote your offers, connect with local shoppers, and track how many new customers find your business through VEMTAP's discovery network."
             />
             
             {!isCreatingPromo ? (

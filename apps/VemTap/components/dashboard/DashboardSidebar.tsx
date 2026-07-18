@@ -317,11 +317,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 )}
 
                 {/* Navigation Content */}
-                <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar space-y-6">
+                <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar space-y-4">
                     
                     {/* Main Sections */}
                     {isMounted && filteredSections.map((section) => (
-                        <div key={section.id} className="space-y-2">
+                        <div key={section.id} className="space-y-1">
                             {!isCollapsed && !searchQuery && section.label && (
                                 <button 
                                     onClick={() => toggleSection(section.id)}

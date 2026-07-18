@@ -38,10 +38,10 @@ export default function Homepage() {
                 Customer Engagement Platform
               </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.1] mb-8 max-w-2xl mx-auto lg:mx-0">
-                Turn Every Visitor Into A Customer <span className="text-[#066CF4]">You Can Reach Again</span>
+                Turn Every Customer Into A <span className="text-[#066CF4]">Customer You Can Reach Again.</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-500 font-medium max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
-                Capture customer details using QR codes and NFC technology. Build your customer database, send smart messages, and grow your business.
+                We help businesses capture customer details, build lasting relationships, automate follow-ups, and increase repeat sales...
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
                 <Link href="/get-started" className="w-full sm:w-auto">
