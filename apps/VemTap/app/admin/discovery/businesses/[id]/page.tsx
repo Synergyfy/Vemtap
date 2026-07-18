@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, Store, MapPin, Calendar, Tag, 
     TrendingUp, Users, DollarSign, CheckCircle2, 

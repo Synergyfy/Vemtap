@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import Link from 'next/link';
 import { 
     Target, TrendingUp, DollarSign, Clock, CheckCircle2,
-    ArrowRight, MapPin, MousePointerClick, Tag, Search, Filter
+    ArrowRight, MapPin, MousePointerClick, Tag, Search, Filter, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAdminAttribution } from '@/services/discovery/hooks';
@@ -17,7 +17,9 @@ export default function DiscoveryAttributionPage() {
 
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/attribution" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {isLoading ? (
                 <div className="flex items-center justify-center py-20">

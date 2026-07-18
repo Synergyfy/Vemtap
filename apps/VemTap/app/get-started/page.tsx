@@ -102,11 +102,7 @@ export default function GetStartedPage() {
         setError('');
         setIsLoading(true);
         try {
-            await requestOwnerOtp({
-                email: formData.email,
-                ...(formData.phone ? { phone: formData.phone } : {}),
-                role: 'Owner'
-            });
+            await requestOwnerOtp({ email: formData.email, role: 'Owner' });
             setStep(2);
             setResendTimer(30);
             setResendDisabled(true);
@@ -137,11 +133,7 @@ export default function GetStartedPage() {
         setError('');
         setResendLoading(true);
         try {
-            await requestOwnerOtp({
-                email: formData.email,
-                ...(formData.phone ? { phone: formData.phone } : {}),
-                role: 'Owner'
-            });
+            await requestOwnerOtp({ email: formData.email, role: 'Owner' });
             setResendTimer(30);
             setResendDisabled(true);
         } catch (err: any) {
@@ -173,12 +165,13 @@ export default function GetStartedPage() {
         setIsLoading(true);
         setError('');
         try {
-            const response = await registerOwner({
+            const ownerPayload: import('@/services/auth/types').RegisterOwnerRequest = {
                 email: formData.email,
-                ...(formData.phone ? { businessNumber: formData.phone } : {}),
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-            });
+                ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
+            };
+            const response = await registerOwner(ownerPayload);
 
             login(response.user, response.access_token);
 
@@ -194,13 +187,14 @@ export default function GetStartedPage() {
         setError('');
         setIsLoading(true);
         try {
-            const response = await registerOwner({
+            const ownerPayload: import('@/services/auth/types').RegisterOwnerRequest = {
                 email: formData.email,
                 password: formData.password,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                ...(formData.phone ? { businessNumber: formData.phone } : {}),
-            });
+                ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
+            };
+            const response = await registerOwner(ownerPayload);
 
             // Log user in
             login(response.user, response.access_token);

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, User, ShieldCheck, MapPin, 
     Calendar, Tag, TrendingUp, MousePointerClick,
@@ -11,6 +10,7 @@ import {
     UserCheck, ShoppingBag, Eye, Target
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useAdminCustomer } from '@/services/discovery/hooks';
 
 export default function DiscoveryCustomerProfilePage() {

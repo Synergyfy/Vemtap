@@ -1,58 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
-import {
-    MapPin, Store, Tag, TrendingUp, Users, DollarSign,
-    Search, Filter, Eye, Navigation
+import React from 'react';
+import { useDiscoveryBusinesses } from '@/services/discovery/hooks';
+import { 
+    Search, Filter, Map as MapIcon, ArrowUpRight, Target, Navigation, Eye, ChevronLeft
 } from 'lucide-react';
-import { useAdminLocations } from '@/services/discovery/hooks';
-import type { AdminLocation } from '@/services/discovery/types';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+
+const MOCK_LOCATIONS = [
+    { id: '1', name: 'Wuse 2', businesses: 45, offers: 120, referrals: 450, revenue: 1250000, growth: '+18%' },
+    { id: '2', name: 'Garki', businesses: 32, offers: 85, referrals: 310, revenue: 850000, growth: '+12%' },
+    { id: '3', name: 'Maitama', businesses: 28, offers: 64, referrals: 280, revenue: 1850000, growth: '+5%' },
+    { id: '4', name: 'Jabi', businesses: 15, offers: 40, referrals: 120, revenue: 420000, growth: '+25%' },
+];
 
 export default function DiscoveryLocationsPage() {
-    const [search, setSearch] = useState('');
-    const [page, setPage] = useState(1);
-    const { data: response, isLoading } = useAdminLocations({ page, limit: 10, search });
-    const locations: AdminLocation[] = response?.data ?? [];
-
-    if (isLoading) {
-        return (
-            <div className="p-8">
-                <DiscoveryNav current="/admin/discovery/locations" />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm animate-pulse">
-                            <div className="h-10 w-10 rounded-2xl bg-gray-100 mb-4" />
-                            <div className="h-3 w-24 bg-gray-100 rounded mb-2" />
-                            <div className="h-6 w-16 bg-gray-100 rounded" />
-                        </div>
-                    ))}
-                </div>
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-gray-50">
-                        <div className="h-5 w-40 bg-gray-100 rounded" />
-                    </div>
-                    <div className="p-6 space-y-4">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="h-12 bg-gray-50 rounded-lg animate-pulse" />
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/locations" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
+            {/* Geographical Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 {[
-                    { label: 'Total Locations', value: locations.length || '0', icon: MapPin, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: 'Total Businesses', value: locations.reduce((sum, l) => sum + l.businesses, 0).toLocaleString(), icon: Store, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Total Offers', value: locations.reduce((sum, l) => sum + l.offers, 0).toLocaleString(), icon: Tag, color: 'text-purple-500', bg: 'bg-purple-50' },
-                    { label: 'Total Revenue', value: `₦${locations.reduce((sum, l) => sum + l.revenue, 0).toLocaleString()}`, icon: DollarSign, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Active Locations', value: '12', sub: 'Cities/Districts', icon: MapIcon, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Top Location', value: 'Wuse 2', sub: '₦1.2M Revenue', icon: Target, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'Hotspot Growth', value: '+24%', sub: 'Last 30 days', icon: ArrowUpRight, color: 'text-purple-500', bg: 'bg-purple-50' },
+                    { label: 'Network Density', value: '8.4', sub: 'Biz per km²', icon: Navigation, color: 'text-amber-500', bg: 'bg-amber-50' },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm group">
                         <div className="flex justify-between items-start mb-4">
@@ -62,75 +38,86 @@ export default function DiscoveryLocationsPage() {
                         </div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{stat.label}</p>
                         <p className="text-2xl font-display font-bold text-text-main mt-1">{stat.value}</p>
+                        <p className="text-[10px] font-bold text-text-secondary mt-1">{stat.sub}</p>
                     </div>
                 ))}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                <div className="flex items-center gap-4 flex-1 min-w-[300px]">
-                    <div className="relative flex-1 group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-text-secondary group-focus-within:text-primary transition-colors" />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                            placeholder="Search locations..."
-                            className="w-full h-12 pl-11 pr-4 rounded-2xl border border-gray-100 bg-white text-sm text-text-main placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                        />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Location List */}
+                <div className="xl:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+                        <h2 className="text-lg font-display font-bold text-text-main">Performance by District</h2>
+                        <div className="flex items-center gap-2">
+                            <Search className="size-4 text-text-secondary" />
+                            <input type="text" placeholder="Filter locations..." className="text-sm font-medium outline-none bg-transparent" />
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 border-b border-gray-100">
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary">Location Name</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Businesses</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Active Offers</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Referrals</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-right">Revenue</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 text-sm">
+                                {MOCK_LOCATIONS.map((loc) => (
+                                    <tr key={loc.id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center">
+                                                    <MapIcon size={16} />
+                                                </div>
+                                                <p className="font-bold text-text-main group-hover:text-primary transition-colors">{loc.name}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center font-bold text-text-main">{loc.businesses}</td>
+                                        <td className="px-6 py-4 text-center font-bold text-text-main">{loc.offers}</td>
+                                        <td className="px-6 py-4 text-center font-bold text-text-main">{loc.referrals}</td>
+                                        <td className="px-6 py-4 text-right font-black text-text-main">₦{loc.revenue.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Link href={`/admin/discovery/locations/${loc.id}`} className="p-2 rounded-lg bg-gray-50 text-text-secondary hover:bg-primary/10 hover:text-primary transition-all">
+                                                    <Eye size={16} />
+                                                </Link>
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                                    <ArrowUpRight size={12} />
+                                                    {loc.growth}
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            </div>
 
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50/50 border-b border-gray-100">
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary">Location Name</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Businesses</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Offers</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Referrals</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-right">Revenue</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Growth</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 text-sm">
-                            {locations.map((loc) => (
-                                <tr key={loc.id} className="hover:bg-gray-50/50 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center">
-                                                <MapPin size={16} />
-                                            </div>
-                                            <p className="font-bold text-text-main group-hover:text-primary transition-colors">{loc.name}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center font-bold text-text-main">{loc.businesses}</td>
-                                    <td className="px-6 py-4 text-center font-bold text-text-main">{loc.offers}</td>
-                                    <td className="px-6 py-4 text-center font-bold text-text-main">{loc.referrals.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-right font-black text-text-main">₦{loc.revenue.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase">
-                                            <TrendingUp size={10} /> {loc.growth}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <Link href={`/admin/discovery/locations/${loc.id}`} className="p-2 rounded-lg bg-gray-50 text-text-secondary hover:bg-primary/10 hover:text-primary transition-all inline-flex items-center">
-                                            <Eye size={16} />
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
-                            {locations.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-text-secondary">
-                                        No locations found.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                {/* Heatmap Placeholder/Quick Insight */}
+                <div className="bg-primary rounded-3xl p-8 text-white relative overflow-hidden group">
+                    <div className="relative z-10">
+                        <h3 className="text-lg font-display font-bold mb-2">Expansion Opportunity</h3>
+                        <p className="text-white/70 text-sm font-medium leading-relaxed">
+                            <span className="text-white font-bold">Jabi District</span> has seen a 25% increase in visitor check-ins but only has 15 businesses in the network.
+                        </p>
+                        <div className="mt-8 space-y-4">
+                            <div className="p-4 rounded-2xl bg-white/10 border border-white/10">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-1">Target Conversion Rate</p>
+                                <p className="text-2xl font-display font-bold">15.2%</p>
+                            </div>
+                            <button className="w-full py-3 bg-white text-primary text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-gray-100 transition-all active:scale-95">
+                                View District Report
+                            </button>
+                        </div>
+                    </div>
+                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
+                        <MapIcon size={140} />
+                    </div>
                 </div>
             </div>
         </div>

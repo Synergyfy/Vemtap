@@ -111,16 +111,7 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         id: 'discovery',
         label: 'Discovery Network',
         icon: Zap,
-        submenu: [
-            { label: 'Network Dashboard', href: '/admin/discovery/dashboard', keywords: ['discovery', 'stats', 'performance', 'overview'] },
-            { label: 'Discovery Businesses', href: '/admin/discovery/businesses', keywords: ['network', 'members', 'directory'] },
-            { label: 'Offer Management', href: '/admin/discovery/offers', keywords: ['promotions', 'deals', 'active', 'pending'] },
-            { label: 'Referral Tracking', href: '/admin/discovery/referrals', keywords: ['tracking', 'conversions', 'customer-flow'] },
-            { label: 'Attribution Engine', href: '/admin/discovery/attribution', keywords: ['roi', 'proof', 'revenue', 'source'] },
-            { label: 'Sponsored Placements', href: '/admin/discovery/sponsored', keywords: ['ads', 'featured', 'paid', 'campaigns'] },
-            { label: 'B2B Partnerships', href: '/admin/discovery/partnerships', keywords: ['collaboration', 'shared-customers', 'agreements'] },
-            { label: 'Network Settings', href: '/admin/discovery/settings', keywords: ['config', 'radius', 'limits', 'rules'] },
-        ],
+        href: '/admin/discovery/dashboard',
         permission: 'admin:all',
         keywords: ['discovery', 'network', 'referrals', 'attribution', 'partnerships', 'nearby']
     },

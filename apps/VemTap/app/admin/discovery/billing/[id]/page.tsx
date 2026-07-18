@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, Receipt, Store, Calendar, 
     CreditCard, DollarSign, Download, Share2,
@@ -10,6 +9,7 @@ import {
     Info, Building2, User, Activity
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { useAdminBillingDetail } from '@/services/discovery/hooks';
 
 export default function DiscoveryTransactionDetailPage() {

@@ -1,6 +1,6 @@
 // Mock redirection "database"
 const redirectMappings: Record<string, string> = {
-    'profile-qr': 'http://localhost:3000/tap/demo-business',
+    'profile-qr': 'http://localhost:3001/tap/demo-business',
 };
 
 export const redirectService = {
