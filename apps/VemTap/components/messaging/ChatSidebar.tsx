@@ -485,7 +485,7 @@ export default function ChatSidebar() {
                                             ) : visitorsLoading ? (
                                                 <div className="px-4 py-4 text-xs text-slate-400">Loading visitors...</div>
                                             ) : availableVisitors.length === 0 ? (
-                                                <div className="px-4 py-4 text-xs text-slate-400">No visitors available.</div>
+                                                <div className="px-4 py-4 text-xs text-slate-400">Your first customer is waiting. Let's capture them today.</div>
                                             ) : (
                                                 availableVisitors.map(visitor => {
                                                     const visitorDisplayName = visitor.name || 

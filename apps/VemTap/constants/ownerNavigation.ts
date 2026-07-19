@@ -267,6 +267,8 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 submenu: [
                     { label: 'Profile', href: '/dashboard/settings/profile' },
                     { label: 'Subscription', href: '/dashboard/settings/subscription' },
+                    { label: 'AI Credits', href: '/dashboard/ai' },
+                    { label: 'AI Reports', href: '/dashboard/ai/reports' },
                     { label: 'Support', href: '/dashboard/support' },
                     { label: 'Compliance', href: '/dashboard/compliance' },
                 ]

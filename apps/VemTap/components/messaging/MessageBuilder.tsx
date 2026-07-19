@@ -785,7 +785,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                                         <div className="size-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <Users size={24} className="text-slate-300" />
                                         </div>
-                                        <p className="text-sm font-bold text-slate-400">No visitors found</p>
+                                        <p className="text-sm font-bold text-slate-400">Your first customer is waiting. Let's capture them today.</p>
                                     </div>
                                 )}
                             </div>

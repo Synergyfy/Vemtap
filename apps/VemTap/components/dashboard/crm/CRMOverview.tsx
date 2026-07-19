@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export function CRMOverviewHeader() {
     return (
@@ -23,7 +24,11 @@ export function CRMOverviewHeader() {
                 </div>
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Management</p>
-                    <h1 className="text-2xl font-black text-gray-900 leading-none">Customers</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-black text-gray-900 leading-none">Customers</h1>
+                        <PageGuideButton />
+                        <AICopilotButton />
+                    </div>
                 </div>
             </div>
             <div className="flex items-center gap-3">

@@ -85,6 +85,11 @@ export default function PageGuide() {
         setIsActive(true);
     }, []);
 
+    useEffect(() => {
+        window.addEventListener('start-page-guide', handleStart);
+        return () => window.removeEventListener('start-page-guide', handleStart);
+    }, [handleStart]);
+
     const handleNext = useCallback(() => {
         if (!guide) return;
         if (currentStep < guide.steps.length - 1) {
@@ -222,25 +227,7 @@ export default function PageGuide() {
                 </div>
             )}
 
-            {/* Floating Icon Button */}
-            <button
-                onClick={isActive ? handleSkip : handleStart}
-                className={cn(
-                    "fixed bottom-6 right-6 sm:right-8 z-[55] size-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-200",
-                    isActive
-                        ? "bg-gray-900 text-white hover:bg-gray-800 scale-110"
-                        : isCompleted
-                            ? "bg-white text-gray-400 border border-gray-200 hover:border-gray-300 hover:text-gray-600 hover:shadow-xl"
-                            : "bg-primary text-white hover:bg-primary/90 hover:shadow-xl hover:scale-105"
-                )}
-                title={isActive ? 'Close guide' : isCompleted ? 'View guide again' : 'Page guide'}
-            >
-                {isActive ? (
-                    <X size={20} />
-                ) : (
-                    <HelpCircle size={20} />
-                )}
-            </button>
+
         </>
     );
 }

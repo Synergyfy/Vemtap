@@ -79,14 +79,13 @@ import InstallPWA from "@/components/shared/InstallPWA";
 import GoogleAuthProvider from "./providers/GoogleAuthProvider";
 import AdminViewerBanner from "@/components/admin/control-tower/AdminViewerBanner";
 import FloatingBackButton from "@/components/shared/FloatingBackButton";
-
 export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" suppressHydrationWarning className={`${inter.variable} ${GeistMono.variable}`}>
+        <html lang="en" className={`${inter.variable} ${GeistMono.variable}`}>
             <head>
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />  
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />

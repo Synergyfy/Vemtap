@@ -509,7 +509,7 @@ const CountrySelector = ({ value, onChange }: { value: string, onChange: (val: s
                 ))
               ) : (
                 <div className="p-8 text-center">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No countries found</p>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Countries will appear once you add them</p>
                 </div>
               )}
             </div>

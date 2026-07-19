@@ -150,7 +150,7 @@ export default function ProductsList() {
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-500">
               <Package size={48} className="mb-4 text-gray-300" />
-              <p className="text-sm font-black text-gray-900">No products found</p>
+              <p className="text-sm font-black text-gray-900">Start adding products to ring up your first sale</p>
             </div>
           )}
         </div>

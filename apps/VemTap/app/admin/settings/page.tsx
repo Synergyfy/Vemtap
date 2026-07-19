@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { notify } from '@/lib/notify';
 import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
 import { 
@@ -14,7 +14,7 @@ import {
     History,
     RefreshCw,
     Link,
-    Play
+    Play,
 } from 'lucide-react';
 import { useRegisterPushToken } from '@/services/notifications/hooks';
 import toast from 'react-hot-toast';
@@ -29,10 +29,9 @@ export default function AdminSettingsPage() {
         supportEmail: settings.supportEmail,
         currency: settings.currency,
         timezone: settings.timezone,
-        messagingCosts: { ...settings.messagingCosts },
         enforce2FA: settings.enforce2FA,
         passwordExpiry: settings.passwordExpiry,
-        onboardingVideoUrl: settings.onboardingVideoUrl
+        onboardingVideoUrl: settings.onboardingVideoUrl,
     });
 
     useEffect(() => {
@@ -41,12 +40,11 @@ export default function AdminSettingsPage() {
             supportEmail: settings.supportEmail,
             currency: settings.currency,
             timezone: settings.timezone,
-            messagingCosts: { ...settings.messagingCosts },
             enforce2FA: settings.enforce2FA,
             passwordExpiry: settings.passwordExpiry,
-            onboardingVideoUrl: settings.onboardingVideoUrl
+            onboardingVideoUrl: settings.onboardingVideoUrl,
         });
-    }, [settings.platformName, settings.supportEmail, settings.currency, settings.timezone, settings.messagingCosts, settings.enforce2FA, settings.passwordExpiry, settings.onboardingVideoUrl]);
+    }, [settings.platformName, settings.supportEmail, settings.currency, settings.timezone, settings.enforce2FA, settings.passwordExpiry, settings.onboardingVideoUrl]);
 
     const handleSave = () => {
         settings.updateSettings(localSettings);
@@ -78,7 +76,6 @@ export default function AdminSettingsPage() {
                         <nav className="flex flex-col p-2">
                             {[
                                 { id: 'general', label: 'General Configuration', icon: Settings },
-                                { id: 'messaging', label: 'Messaging Costs', icon: Smartphone },
                                 { id: 'security', label: 'Security & Access', icon: ShieldCheck },
                                 { id: 'payment', label: 'Payment Gateways', icon: CreditCard },
                                 { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -163,80 +160,6 @@ export default function AdminSettingsPage() {
                                                 <option value="Africa/Lagos">West Africa Time (Lagos)</option>
                                                 <option value="UTC">UTC</option>
                                             </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'messaging' && (
-                                <div className="bg-white rounded-3xl border border-gray-100 p-8 space-y-8 shadow-sm">
-                                    <div className="flex items-center gap-3 border-b border-gray-50 pb-6">
-                                        <div className="size-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                                            <MessageSquare size={20} />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-sm font-black text-text-main uppercase tracking-tight">Messaging Costs</h2>
-                                            <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Credits charged per outbound message</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="size-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                                    <Smartphone size={20} className="text-primary" />
-                                                </div>
-                                                <h3 className="font-bold text-slate-800">SMS Gateway</h3>
-                                            </div>
-                                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                                                Standard SMS cost application-wide. This will be deducted from business credits for every sent message.
-                                            </p>
-                                            <div className="space-y-1.5 pt-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Cost per SMS (Credits)</label>
-                                                <input 
-                                                    type="number" 
-                                                    value={localSettings.messagingCosts.sms} 
-                                                    onChange={(e) => setLocalSettings({ 
-                                                        ...localSettings, 
-                                                        messagingCosts: { ...localSettings.messagingCosts, sms: Number(e.target.value) } 
-                                                    })}
-                                                    className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-black text-lg text-primary outline-none focus:ring-4 focus:ring-primary/10 transition-all" 
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="p-6 bg-emerald-50/30 rounded-2xl border border-emerald-100 space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="size-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                                    <MessageSquare size={20} className="text-emerald-500" />
-                                                </div>
-                                                <h3 className="font-bold text-slate-800">WhatsApp Bridge</h3>
-                                            </div>
-                                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                                                WhatsApp Business API costs. Typically higher due to Meta conversation-based pricing.
-                                            </p>
-                                            <div className="space-y-1.5 pt-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Cost per WhatsApp (Credits)</label>
-                                                <input 
-                                                    type="number" 
-                                                    value={localSettings.messagingCosts.whatsapp} 
-                                                    onChange={(e) => setLocalSettings({ 
-                                                        ...localSettings, 
-                                                        messagingCosts: { ...localSettings.messagingCosts, whatsapp: Number(e.target.value) } 
-                                                    })}
-                                                    className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-black text-lg text-emerald-600 outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all" 
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-                                        <History size={20} className="text-amber-600 shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-xs font-bold text-amber-800">Propagation Note</p>
-                                            <p className="text-[10px] text-amber-700 font-medium leading-relaxed mt-0.5">
-                                                Changes to messaging costs will apply immediately to all new outbound messages. Existing scheduled campaigns will retain their original pricing.
-                                            </p>
                                         </div>
                                     </div>
                                 </div>

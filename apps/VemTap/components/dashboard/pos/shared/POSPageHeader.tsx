@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MoreVertical } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 interface POSPageHeaderProps {
   title: string;
@@ -26,7 +27,11 @@ export default function POSPageHeader({ title, subtitle, backHref, actions, show
           </button>
         )}
         <div>
-          <h1 className="text-lg md:text-2xl font-black text-gray-900 leading-tight">{title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg md:text-2xl font-black text-gray-900 leading-tight">{title}</h1>
+            <PageGuideButton />
+            <AICopilotButton />
+          </div>
           {subtitle && <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 max-w-[220px] md:max-w-none">{subtitle}</p>}
         </div>
       </div>

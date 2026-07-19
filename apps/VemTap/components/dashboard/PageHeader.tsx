@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 interface PageHeaderProps {
     title: string;
@@ -28,7 +29,11 @@ export default function PageHeader({ title, description, actions, showBack = fal
                         </button>
                     )}
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">{title}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">{title}</h1>
+                            <PageGuideButton />
+                            <AICopilotButton />
+                        </div>
                         {description && (
                             <p className="text-gray-500 font-medium text-sm mt-1">{description}</p>
                         )}

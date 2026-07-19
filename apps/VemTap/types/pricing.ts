@@ -50,6 +50,7 @@ export interface PricingPlan {
     qrCodesEnabled?: boolean;
     qrCodesLimit?: number | null;
     permissionsConfiguredAt?: string | null;
+    badge?: 'free' | 'silver' | 'gold' | 'platinum';
 }
 
 export interface HardwareOption {

@@ -15,6 +15,7 @@ import {
     ToggleRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function AutomatedRepliesPage() {
     const router = useRouter();
@@ -39,7 +40,7 @@ export default function AutomatedRepliesPage() {
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Automated Support Settings</h1>
+                        <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Automated Support Settings</h1><PageGuideButton /><AICopilotButton /></div>
                         <p className="text-slate-500 text-sm font-medium mt-1">Configure automated responses and AI behaviors for your support channels.</p>
                     </div>
                 </div>

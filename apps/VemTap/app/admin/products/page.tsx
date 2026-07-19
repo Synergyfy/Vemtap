@@ -137,7 +137,7 @@ export default function ProductsPage() {
                                         </tr>
                                     ) : products.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="py-20 text-center text-text-secondary font-medium">No products found.</td>
+                                            <td colSpan={4} className="py-20 text-center text-text-secondary font-medium">Businesses haven't added products yet. Products will appear here once listed.</td>
                                         </tr>
                                     ) : (
                                         products.map((product: Product) => (

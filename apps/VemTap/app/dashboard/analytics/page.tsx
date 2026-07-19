@@ -141,7 +141,7 @@ export default function AnalyticsDashboard() {
             ) : (
               <div className="text-center w-full">
                 <TrendingUp size={32} className="mx-auto mb-3 text-gray-300" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No revenue data for this period</p>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Revenue data will appear once customers start engaging</p>
               </div>
             )}
           </div>

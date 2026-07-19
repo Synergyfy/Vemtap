@@ -257,8 +257,8 @@ export default function ProductsPage() {
                     emptyState={
                         <EmptyState
                             icon="shopping-bag"
-                            title="No products found"
-                            description="Start by adding your first product to the catalogue."
+                            title="Your catalogue is ready for its first product"
+                            description="List your products so customers can discover what you offer."
                         />
                     }
                 />

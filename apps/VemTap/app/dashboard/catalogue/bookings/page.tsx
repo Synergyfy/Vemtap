@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import Spinner from '@/components/ui/Spinner';
 import { useCatalogueOrders } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function BookingsDashboardPage() {
     const { activeBranchId } = useActiveBranch();
@@ -48,7 +49,7 @@ export default function BookingsDashboardPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 leading-tight">Bookings</h1>
+                    <div className="flex items-center gap-2"><h1 className="text-3xl font-black text-gray-900 leading-tight">Bookings</h1><PageGuideButton /><AICopilotButton /></div>
                     <p className="text-sm font-medium text-gray-500 mt-1">Manage your appointment schedule and service requests.</p>
                 </div>
                 <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm">

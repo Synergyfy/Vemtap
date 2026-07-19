@@ -107,8 +107,8 @@ export default function CategoriesPage() {
                 emptyState={
                     <EmptyState
                         icon="layout"
-                        title="No categories found"
-                        description="Start by adding your first product category."
+                        title="Organize your catalogue with categories"
+                        description="Add your first category to help customers find what they need."
                     />
                 }
             />
