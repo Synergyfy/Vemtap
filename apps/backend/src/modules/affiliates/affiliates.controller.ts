@@ -11,17 +11,24 @@ import {
   ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiBody } from '@nestjs/swagger';
 import { AffiliatesService } from './affiliates.service';
 import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service';
 import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
+import { WithdrawRequestDto } from './dto/withdraw-request.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { AffiliateStatsDto } from './dto/affiliate-stats.dto';
+import { AffiliateActivityDto } from './dto/affiliate-activity.dto';
+import { AffiliatePerformanceDto } from './dto/affiliate-performance.dto';
+import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
-import { KycStatus } from './entities/affiliate-profile.entity';
+import { KycStatus, AffiliateProfile } from './entities/affiliate-profile.entity';
+import { AffiliateWithdrawalRequest } from './entities/withdrawal-request.entity';
 
 @ApiTags('Affiliates')
 @ApiBearerAuth()
@@ -36,64 +43,79 @@ export class AffiliatesController {
   @Get('stats')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get current affiliate stats' })
-  async getStats(@Req() req) {
+  @ApiOkResponse({ type: AffiliateStatsDto })
+  async getStats(@Req() req): Promise<AffiliateStatsDto> {
     return this.affiliatesService.getStats(req.user.id);
   }
 
   @Get('activity')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get recent affiliate activity' })
-  async getActivity(@Req() req) {
+  @ApiOkResponse({ type: [AffiliateActivityDto] })
+  async getActivity(@Req() req): Promise<AffiliateActivityDto[]> {
     return this.affiliatesService.getActivity(req.user.id);
   }
 
   @Get('performance')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get earnings performance data' })
-  async getPerformance(@Req() req) {
+  @ApiOkResponse({ type: [AffiliatePerformanceDto] })
+  async getPerformance(@Req() req): Promise<AffiliatePerformanceDto[]> {
     return this.affiliatesService.getPerformance(req.user.id);
   }
 
   @Get('leaderboard')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get global leaderboard' })
-  async getLeaderboard(@Req() req) {
+  @ApiOkResponse({ type: [LeaderboardEntryDto] })
+  async getLeaderboard(@Req() req): Promise<LeaderboardEntryDto[]> {
     return this.affiliatesService.getLeaderboard(req.user.role);
   }
 
   @Get('referrals')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get all referrals for current affiliate' })
-  async getReferrals(@Req() req) {
+  @ApiOkResponse({ description: 'List of referrals' })
+  async getReferrals(@Req() req): Promise<any[]> {
     return this.affiliatesService.getReferrals(req.user.id);
   }
 
   @Get('profile')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get full affiliate profile details (KYC, etc.)' })
-  async getProfile(@Req() req) {
+  @ApiOkResponse({ description: 'Affiliate profile details' })
+  async getProfile(@Req() req): Promise<any> {
     return this.affiliatesService.getProfile(req.user.id);
   }
 
   @Post('profile')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Initialize affiliate profile' })
-  async createProfile(@Req() req) {
+  @ApiOkResponse({ type: AffiliateProfile })
+  async createProfile(@Req() req): Promise<AffiliateProfile> {
     return this.affiliatesService.createProfile(req.user.id);
   }
 
   @Post('profile/update')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update affiliate profile (KYC & Bank)' })
-  async updateProfile(@Req() req, @Body() data: any) {
+  @ApiOkResponse({ type: AffiliateProfile })
+  async updateProfile(
+    @Req() req,
+    @Body() data: UpdateProfileDto,
+  ): Promise<AffiliateProfile> {
     return this.affiliatesService.updateProfile(req.user.id, data);
   }
 
   @Post('withdraw')
   @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Request a withdrawal' })
-  async requestWithdrawal(@Req() req, @Body('amount') amount: number) {
-    return this.affiliatesService.requestWithdrawal(req.user.id, amount);
+  @ApiOkResponse({ type: AffiliateWithdrawalRequest })
+  async requestWithdrawal(
+    @Req() req,
+    @Body() body: WithdrawRequestDto,
+  ): Promise<AffiliateWithdrawalRequest> {
+    return this.affiliatesService.requestWithdrawal(req.user.id, body.amount);
   }
 
   // --- Admin Specific Endpoints ---
