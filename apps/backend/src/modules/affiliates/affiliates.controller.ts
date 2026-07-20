@@ -34,63 +34,63 @@ export class AffiliatesController {
   ) {}
 
   @Get('stats')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get current affiliate stats' })
   async getStats(@Req() req) {
     return this.affiliatesService.getStats(req.user.id);
   }
 
   @Get('activity')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get recent affiliate activity' })
   async getActivity(@Req() req) {
     return this.affiliatesService.getActivity(req.user.id);
   }
 
   @Get('performance')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get earnings performance data' })
   async getPerformance(@Req() req) {
     return this.affiliatesService.getPerformance(req.user.id);
   }
 
   @Get('leaderboard')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get global leaderboard' })
-  async getLeaderboard() {
-    return this.affiliatesService.getLeaderboard();
+  async getLeaderboard(@Req() req) {
+    return this.affiliatesService.getLeaderboard(req.user.role);
   }
 
   @Get('referrals')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get all referrals for current affiliate' })
   async getReferrals(@Req() req) {
     return this.affiliatesService.getReferrals(req.user.id);
   }
 
   @Get('profile')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get full affiliate profile details (KYC, etc.)' })
   async getProfile(@Req() req) {
     return this.affiliatesService.getProfile(req.user.id);
   }
 
   @Post('profile')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Initialize affiliate profile' })
   async createProfile(@Req() req) {
     return this.affiliatesService.createProfile(req.user.id);
   }
 
   @Post('profile/update')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update affiliate profile (KYC & Bank)' })
   async updateProfile(@Req() req, @Body() data: any) {
     return this.affiliatesService.updateProfile(req.user.id, data);
   }
 
   @Post('withdraw')
-  @Roles(UserRole.AGENT)
+  @Roles(UserRole.AGENT, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Request a withdrawal' })
   async requestWithdrawal(@Req() req, @Body('amount') amount: number) {
     return this.affiliatesService.requestWithdrawal(req.user.id, amount);
