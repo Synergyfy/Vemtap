@@ -13,7 +13,7 @@ export class PublicCatalogueController {
   @Get('items/branch/:branchId')
   @ApiOperation({ summary: 'List active items for a specific branch' })
   async listItems(
-    @Param('branchId', ParseUUIDPipe) branchId: string,
+    @Param('branchId') branchId: string,
     @Query() query: CatalogueQueryDto,
   ) {
     return this.catalogueService.findAllItemsPublic(branchId, query);
@@ -42,7 +42,7 @@ export class PublicCatalogueController {
     summary: 'List categories with active items for a specific branch',
   })
   async listCategoriesByBranch(
-    @Param('branchId', ParseUUIDPipe) branchId: string,
+    @Param('branchId') branchId: string,
   ) {
     return this.catalogueService.findAllCategoriesByBranch(branchId);
   }

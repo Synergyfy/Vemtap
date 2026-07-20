@@ -215,17 +215,63 @@ describe('CatalogueService', () => {
   });
 
   describe('Listing', () => {
-    it('should query active items for a branch', async () => {
+    it('should query active items for a branch with UUID', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: '3f8a427d-94c0-4f51-b0db-6e6a17b2b0de',
+      });
       mockQueryBuilder.getManyAndCount.mockResolvedValueOnce([
         [{ id: 'item-1' }],
         1,
       ]);
-      const result = await service.findAllItemsPublic('br-1', {
+      const result = await service.findAllItemsPublic(
+        '3f8a427d-94c0-4f51-b0db-6e6a17b2b0de',
+        {
+          page: 1,
+          limit: 10,
+        },
+      );
+      expect(result.data).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(mockBranchRepo.findOne).toHaveBeenCalledWith({
+        where: { id: '3f8a427d-94c0-4f51-b0db-6e6a17b2b0de', isActive: true },
+      });
+    });
+
+    it('should throw NotFoundException if UUID branch does not exist', async () => {
+      mockBranchRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.findAllItemsPublic('3f8a427d-94c0-4f51-b0db-6e6a17b2b0de', {
+          page: 1,
+          limit: 10,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should query active items for a branch with unique code', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: '3f8a427d-94c0-4f51-b0db-6e6a17b2b0de',
+        uniqueCode: 'BR-CODE99',
+      });
+      mockQueryBuilder.getManyAndCount.mockResolvedValueOnce([
+        [{ id: 'item-1' }],
+        1,
+      ]);
+      const result = await service.findAllItemsPublic('BR-CODE99', {
         page: 1,
         limit: 10,
       });
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
+      expect(mockBranchRepo.findOne).toHaveBeenCalledWith({
+        where: { uniqueCode: 'BR-CODE99', isActive: true },
+      });
+    });
+
+    it('should throw NotFoundException if branch code is not found', async () => {
+      mockBranchRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.findAllItemsPublic('INVALID-CODE', { page: 1, limit: 10 }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });
