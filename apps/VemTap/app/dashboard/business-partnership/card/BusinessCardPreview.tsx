@@ -61,7 +61,7 @@ const isDark = (hex: string) => {
 const FrontSplitRight = ({ accent, business, textDark }: { accent: string; business: BusinessInfo; textDark?: string }) => (
     <div className="h-full w-full flex rounded-[inherit] overflow-hidden">
         <div className="flex-[3] bg-white flex flex-col justify-center px-4 md:px-5 py-3 gap-1.5">
-            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.partner}</p>
+            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.name}</p>
             <p className="text-[9px] md:text-[11px] text-gray-400" style={textDark ? { color: textDark, opacity: 0.65 } : undefined}>{business.role} · {business.category}</p>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><MapPin size={10} className="shrink-0" />{business.location}</div>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Phone size={10} className="shrink-0" />{business.phone}</div>
@@ -84,7 +84,7 @@ const FrontSplitLeft = ({ accent, business, textDark }: { accent: string; busine
             </div>
         </div>
         <div className="flex-[3] bg-white flex flex-col justify-center px-4 md:px-5 py-3 gap-1.5">
-            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.partner}</p>
+            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.name}</p>
             <p className="text-[9px] md:text-[11px] text-gray-400" style={textDark ? { color: textDark, opacity: 0.65 } : undefined}>{business.role} · {business.category}</p>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><MapPin size={10} className="shrink-0" />{business.location}</div>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Phone size={10} className="shrink-0" />{business.phone}</div>
@@ -97,7 +97,7 @@ const FrontSplitLeft = ({ accent, business, textDark }: { accent: string; busine
 const FrontSplitBottom = ({ accent, business, textDark }: { accent: string; business: BusinessInfo; textDark?: string }) => (
     <div className="h-full w-full flex flex-col rounded-[inherit] overflow-hidden">
         <div className="flex-[3] bg-white flex flex-col justify-center px-4 md:px-5 py-3 gap-1.5">
-            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.partner}</p>
+            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.name}</p>
             <p className="text-[9px] md:text-[11px] text-gray-400" style={textDark ? { color: textDark, opacity: 0.65 } : undefined}>{business.role} · {business.category}</p>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><MapPin size={10} className="shrink-0" />{business.location}</div>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Phone size={10} className="shrink-0" />{business.phone}</div>
@@ -117,7 +117,7 @@ const FrontSplitTop = ({ accent, business, textDark }: { accent: string; busines
     <div className="h-full w-full flex flex-col rounded-[inherit] overflow-hidden">
         <div className="flex-1" style={{ backgroundColor: accent }} />
         <div className="flex-[3] bg-white flex flex-col justify-center px-4 md:px-5 py-3 gap-1.5">
-            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.partner}</p>
+            <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.name}</p>
             <p className="text-[9px] md:text-[11px] text-gray-400" style={textDark ? { color: textDark, opacity: 0.65 } : undefined}>{business.role} · {business.category}</p>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><MapPin size={10} className="shrink-0" />{business.location}</div>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Phone size={10} className="shrink-0" />{business.phone}</div>
@@ -139,7 +139,7 @@ const FrontFull = ({ accent, business, textDark }: { accent: string; business: B
     const muted = textDark ? { color: textDark, opacity: 0.5 } : { color: d ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' };
     return (
         <div className="h-full w-full flex flex-col justify-center px-5 gap-2 rounded-[inherit]" style={{ backgroundColor: accent }}>
-            <p className="text-xs md:text-sm font-semibold" style={{ color: tc }}>{business.partner}</p>
+            <p className="text-xs md:text-sm font-semibold" style={{ color: tc }}>{business.name}</p>
             <p className="text-[9px] md:text-[11px]" style={muted}>{business.role} · {business.category}</p>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px]" style={muted}><MapPin size={10} className="shrink-0" />{business.location}</div>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px]" style={muted}><Phone size={10} className="shrink-0" />{business.phone}</div>
@@ -154,7 +154,7 @@ const FrontFull = ({ accent, business, textDark }: { accent: string; business: B
 
 const FrontBorder = ({ accent, business, textDark }: { accent: string; business: BusinessInfo; textDark?: string }) => (
     <div className="h-full w-full bg-white flex flex-col justify-center px-5 gap-1.5 rounded-[inherit]" style={{ border: `3px solid ${accent}` }}>
-        <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.partner}</p>
+        <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.name}</p>
         <p className="text-[9px] md:text-[11px] text-gray-400" style={textDark ? { color: textDark, opacity: 0.65 } : undefined}>{business.role} · {business.category}</p>
         <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><MapPin size={10} className="shrink-0" />{business.location}</div>
         <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Phone size={10} className="shrink-0" />{business.phone}</div>
@@ -173,7 +173,7 @@ const FrontDiagonal = ({ accent, business, textDark }: { accent: string; busines
     <div className="h-full w-full relative overflow-hidden bg-white rounded-[inherit]">
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accent} 65%, transparent 65.5%)` }} />
         <div className="relative z-10 h-full flex flex-col justify-center px-5 gap-1.5">
-            <p className="text-xs md:text-sm font-semibold" style={{ color: tc }}>{business.partner}</p>
+            <p className="text-xs md:text-sm font-semibold" style={{ color: tc }}>{business.name}</p>
             <p className="text-[9px] md:text-[11px]" style={{ color: tc, opacity: 0.7 }}>{business.role} · {business.category}</p>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px]" style={{ color: tc, opacity: 0.6 }}><MapPin size={10} className="shrink-0" />{business.location}</div>
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px]" style={{ color: tc, opacity: 0.6 }}><Phone size={10} className="shrink-0" />{business.phone}</div>
@@ -190,7 +190,7 @@ const FrontDoubleStripe = ({ accent, business, textDark }: { accent: string; bus
     <div className="h-full w-full bg-white flex flex-col justify-center px-5 gap-1.5 relative rounded-[inherit]">
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accent }} />
         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: accent }} />
-        <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.partner}</p>
+        <p className="text-xs md:text-sm font-semibold text-gray-900" style={textDark ? { color: textDark } : undefined}>{business.name}</p>
         <p className="text-[9px] md:text-[11px] text-gray-400" style={textDark ? { color: textDark, opacity: 0.65 } : undefined}>{business.role} · {business.category}</p>
         <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><MapPin size={10} className="shrink-0" />{business.location}</div>
         <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Phone size={10} className="shrink-0" />{business.phone}</div>

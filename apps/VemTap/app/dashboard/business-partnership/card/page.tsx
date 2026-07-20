@@ -6,6 +6,8 @@ import { Share2, Download, Copy, CheckCheck, Smartphone, Monitor, ExternalLink, 
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAffiliateStats } from '@/services/affiliates/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
 import { CardFlip, CardDesignPreview, cardLayouts, MiniLayoutPreview, type BusinessInfo, type CardLayoutId } from './BusinessCardPreview';
 
 const presetColors = [
@@ -30,21 +32,23 @@ const shareActions = [
 
 export default function PartnershipCardPage() {
     const user = useAuthStore(s => s.user);
+    const { data: stats } = useAffiliateStats();
+    const { data: myBusiness } = useMyBusiness();
 
     const business = useMemo((): BusinessInfo => ({
-        name: user?.businessName || 'Your Business',
-        category: 'Technology · Services',
-        location: 'Lagos, Nigeria',
-        phone: user?.phone || '+234 800 000 0000',
-        email: user?.email || 'business@vemtap.com',
-        website: `${(user?.businessName || 'business').toLowerCase().replace(/\s+/g, '')}.vemtap.com`,
+        name: myBusiness?.name || user?.businessName || 'Your Business',
+        category: (typeof myBusiness?.category === 'string' ? myBusiness.category : (myBusiness?.category as any)?.name) || 'Technology · Services',
+        location: myBusiness?.state ? `${myBusiness.state}${myBusiness.city ? ', ' + myBusiness.city : ''}` : 'Lagos, Nigeria',
+        phone: myBusiness?.phone || user?.phone || '+234 800 000 0000',
+        email: myBusiness?.officialEmail || user?.email || 'business@vemtap.com',
+        website: myBusiness?.website || `${(myBusiness?.name || user?.businessName || 'business').toLowerCase().replace(/\s+/g, '')}.vemtap.com`,
         partner: user?.name || 'Business Owner',
         role: 'Business Partner',
         tagline: 'Join me on VEMTAP and grow your business',
-        logo: user?.businessLogo || '/logo.png',
-        referralCode: 'VEN-ABC123',
-        qrValue: `https://vemtap.com/join?ref=VEN-ABC123`,
-    }), [user]);
+        logo: myBusiness?.logoUrl || user?.businessLogo || '/logo.png',
+        referralCode: stats?.referralCode || 'VEN-ABC123',
+        qrValue: `https://vemtap.com/join?ref=${stats?.referralCode || 'VEN-ABC123'}`,
+    }), [user, stats, myBusiness]);
 
     const [accentColor, setAccentColor] = useState('#066CF4');
     const [textDark, setTextDark] = useState('');
@@ -281,12 +285,12 @@ export default function PartnershipCardPage() {
                     </div>
 
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Card Stats</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Referral Stats</h3>
                         <div className="space-y-2.5">
                             {[
-                                { label: 'Views', value: '234' },
-                                { label: 'Shares', value: '56' },
-                                { label: 'QR Scans', value: '89' },
+                                { label: 'Total Referrals', value: String(stats?.totalReferrals || 0) },
+                                { label: 'Active Referrals', value: String(stats?.activeReferrals || 0) },
+                                { label: 'Lifetime Earnings', value: `₦${(stats?.totalEarnings || 0).toLocaleString()}` },
                             ].map((stat) => (
                                 <div key={stat.label} className="flex items-center justify-between">
                                     <span className="text-xs md:text-sm text-gray-500">{stat.label}</span>

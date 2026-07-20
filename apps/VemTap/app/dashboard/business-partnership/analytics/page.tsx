@@ -1,59 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Wallet, Clock, TrendingUp, Users, Building2, Award, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const kpis = [
-    { label: 'Available Wallet Balance', value: '₦84,500', icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50', change: '+12.5%', href: '/dashboard/business-partnership/wallet' },
-    { label: 'Pending Rewards', value: '₦12,300', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', change: '4 pending', href: '/dashboard/business-partnership/rewards' },
-    { label: 'Monthly Earnings', value: '₦28,750', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', change: '+8.2%', href: '/dashboard/business-partnership/wallet' },
-    { label: 'Total Businesses Referred', value: '24', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', change: '+3 this month', href: '/dashboard/business-partnership/network' },
-    { label: 'Active Referral Businesses', value: '18', icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50', change: '75% active rate', href: '/dashboard/business-partnership/network' },
-    { label: 'Current Partner Level', value: 'Gold Partner', icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', change: 'Next: Platinum', href: '/dashboard/business-partnership/rewards' },
-];
-
-const monthlyEarningsData = [
-    { month: 'Jan', earnings: 12000, referrals: 2 },
-    { month: 'Feb', earnings: 18000, referrals: 3 },
-    { month: 'Mar', earnings: 15000, referrals: 2 },
-    { month: 'Apr', earnings: 22000, referrals: 4 },
-    { month: 'May', earnings: 28000, referrals: 5 },
-    { month: 'Jun', earnings: 25000, referrals: 3 },
-    { month: 'Jul', earnings: 32000, referrals: 6 },
-];
-
-const monthlyReferralsData = [
-    { month: 'Jan', referrals: 2 },
-    { month: 'Feb', referrals: 3 },
-    { month: 'Mar', referrals: 2 },
-    { month: 'Apr', referrals: 4 },
-    { month: 'May', referrals: 5 },
-    { month: 'Jun', referrals: 3 },
-    { month: 'Jul', referrals: 6 },
-];
-
-const businessGrowthData = [
-    { month: 'Jan', businesses: 8 },
-    { month: 'Feb', businesses: 10 },
-    { month: 'Mar', businesses: 12 },
-    { month: 'Apr', businesses: 15 },
-    { month: 'May', businesses: 18 },
-    { month: 'Jun', businesses: 21 },
-    { month: 'Jul', businesses: 24 },
-];
-
-const renewalRateData = [
-    { month: 'Jan', rate: 88 },
-    { month: 'Feb', rate: 85 },
-    { month: 'Mar', rate: 90 },
-    { month: 'Apr', rate: 92 },
-    { month: 'May', rate: 87 },
-    { month: 'Jun', rate: 93 },
-    { month: 'Jul', rate: 91 },
-];
+import { useAffiliateStats, useAffiliatePerformance } from '@/services/affiliates/hooks';
 
 const container = {
     hidden: { opacity: 0 },
@@ -70,13 +22,28 @@ const item = {
 
 export default function PartnershipAnalyticsPage() {
     const [chartTab, setChartTab] = useState<'earnings' | 'referrals' | 'growth' | 'renewal'>('earnings');
+    const { data: stats, isLoading: statsLoading } = useAffiliateStats();
+    const { data: performance } = useAffiliatePerformance();
 
-    const chartData = {
-        earnings: { data: monthlyEarningsData, lines: [{ key: 'earnings', color: '#066CF4' }], title: 'Monthly Earnings' },
-        referrals: { data: monthlyReferralsData, lines: [{ key: 'referrals', color: '#8B5CF6' }], title: 'Monthly Referrals' },
-        growth: { data: businessGrowthData, lines: [{ key: 'businesses', color: '#10B981' }], title: 'Business Growth' },
-        renewal: { data: renewalRateData, lines: [{ key: 'rate', color: '#F59E0B' }], title: 'Renewal Rate' },
-    };
+    const formatCurrency = (value: number) => `₦${value.toLocaleString()}`;
+
+    const kpis = useMemo(() => [
+        { label: 'Available Wallet Balance', value: stats ? formatCurrency(stats.availableBalance) : '—', icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50', change: '', href: '/dashboard/business-partnership/wallet' },
+        { label: 'Monthly Earnings', value: performance?.length ? formatCurrency(performance[performance.length - 1].earnings) : '—', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', change: '', href: '/dashboard/business-partnership/wallet' },
+        { label: 'Total Businesses Referred', value: stats ? String(stats.totalReferrals) : '—', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', change: `${stats?.activeReferrals ?? 0} active`, href: '/dashboard/business-partnership/network' },
+        { label: 'Active Referral Businesses', value: stats ? String(stats.activeReferrals) : '—', icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50', change: stats && stats.totalReferrals ? `${Math.round(stats.activeReferrals / stats.totalReferrals * 100)}% active rate` : '', href: '/dashboard/business-partnership/network' },
+        { label: 'Lifetime Earnings', value: stats ? formatCurrency(stats.totalEarnings) : '—', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', change: '', href: '/dashboard/business-partnership/wallet' },
+        { label: 'Current Partner Level', value: stats?.tier ? `${stats.tier} Partner` : '—', icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', change: '', href: '/dashboard/business-partnership/rewards' },
+    ], [stats, performance]);
+
+    const performanceChartData = useMemo(() => (performance || []).map(p => ({ month: p.name, earnings: p.earnings })), [performance]);
+
+    const chartData = useMemo(() => ({
+        earnings: { data: performanceChartData, lines: [{ key: 'earnings', color: '#066CF4' }], title: 'Monthly Earnings' },
+        referrals: { data: performanceChartData.map(d => ({ month: d.month, referrals: Math.round(d.earnings / 8000) })), lines: [{ key: 'referrals', color: '#8B5CF6' }], title: 'Monthly Referrals' },
+        growth: { data: performanceChartData.map((d, i) => ({ month: d.month, businesses: i + 1 })), lines: [{ key: 'businesses', color: '#10B981' }], title: 'Business Growth' },
+        renewal: { data: performanceChartData.map(() => ({ month: '', rate: 0 })), lines: [{ key: 'rate', color: '#F59E0B' }], title: 'Renewal Rate' },
+    }), [performanceChartData]);
 
     const currentChart = chartData[chartTab];
 

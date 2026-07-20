@@ -1,29 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Banknote, Search, Download, Filter, ChevronRight, Copy, CheckCheck, TrendingUp, Clock, Calendar, Building2, Gift, RefreshCw, AlertCircle } from 'lucide-react';
+import { Wallet, ArrowUpRight, CreditCard, Banknote, Search, Download, TrendingUp, Clock, Building2, Gift, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAffiliateStats, useAffiliateActivity } from '@/services/affiliates/hooks';
 
-const transactions = [
-    { id: '1', type: 'Referral Reward', amount: 4500, status: 'Completed', date: '2026-07-14', business: 'TechVault NG', icon: Gift, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { id: '2', type: 'Bonus', amount: 2000, status: 'Completed', date: '2026-07-12', business: 'Welcome Bonus', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { id: '3', type: 'Subscription Payment', amount: -15000, status: 'Completed', date: '2026-07-01', business: 'Monthly Premium', icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
-    { id: '4', type: 'Referral Reward', amount: 3200, status: 'Pending', date: '2026-06-28', business: 'Casa del Sabor', icon: Gift, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { id: '5', type: 'Withdrawal', amount: -25000, status: 'Completed', date: '2026-06-25', business: 'Bank Transfer', icon: Banknote, color: 'text-red-600', bg: 'bg-red-50' },
-    { id: '6', type: 'Referral Reward', amount: 5600, status: 'Completed', date: '2026-06-20', business: 'Serenity Spa', icon: Gift, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { id: '7', type: 'Adjustment', amount: 1000, status: 'Completed', date: '2026-06-15', business: 'Correction', icon: RefreshCw, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { id: '8', type: 'Referral Reward', amount: 8200, status: 'Completed', date: '2026-06-10', business: 'QuickShop Express', icon: Gift, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-];
+const activityIcons: Record<string, { icon: any; color: string; bg: string }> = {
+    referral: { icon: Gift, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    commission: { icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+    withdrawal: { icon: Banknote, color: 'text-red-600', bg: 'bg-red-50' },
+};
 
 export default function PartnershipWalletPage() {
     const [search, setSearch] = useState('');
-    const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
-    const [copied, setCopied] = useState(false);
+    const { data: stats } = useAffiliateStats();
+    const { data: activity, isLoading } = useAffiliateActivity();
+
+    const transactions = useMemo(() => (activity || []).map((a, i) => ({
+        id: String(i),
+        type: a.title,
+        amount: 0,
+        status: 'Completed' as const,
+        date: new Date(a.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        business: a.desc,
+        icon: activityIcons[a.type]?.icon || RefreshCw,
+        color: activityIcons[a.type]?.color || 'text-gray-600',
+        bg: activityIcons[a.type]?.bg || 'bg-gray-50',
+    })), [activity]);
 
     const filteredTransactions = transactions.filter(t => {
-        if (filter === 'completed' && t.status !== 'Completed') return false;
-        if (filter === 'pending' && t.status !== 'Pending') return false;
         if (search) {
             const q = search.toLowerCase();
             return t.business.toLowerCase().includes(q) || t.type.toLowerCase().includes(q);
@@ -42,8 +48,8 @@ export default function PartnershipWalletPage() {
                 <div className="flex items-start justify-between mb-4 md:mb-6">
                     <div>
                         <p className="text-[11px] md:text-sm font-medium text-white/70 mb-1">Available Balance</p>
-                        <h2 className="text-2xl md:text-4xl font-bold">₦84,500</h2>
-                        <p className="text-[11px] md:text-xs text-white/50 mt-1">+₦12,300 pending rewards</p>
+                        <h2 className="text-2xl md:text-4xl font-bold">₦{(stats?.availableBalance || 0).toLocaleString()}</h2>
+                        <p className="text-[11px] md:text-xs text-white/50 mt-1">₦{(stats?.totalEarnings || 0).toLocaleString()} lifetime earnings</p>
                     </div>
                     <div className="size-12 md:size-14 rounded-2xl bg-white/15 flex items-center justify-center backdrop-blur-sm shrink-0">
                         <Wallet size={24} className="text-white" />
@@ -52,10 +58,10 @@ export default function PartnershipWalletPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4">
                     {[
-                        { label: 'Lifetime Earnings', value: '₦287,500' },
-                        { label: 'Credits Used', value: '₦45,000' },
-                        { label: 'Next Payment', value: 'Aug 1, 2026' },
-                        { label: 'Withdrawal Status', value: 'Available' },
+                        { label: 'Lifetime Earnings', value: `₦${(stats?.totalEarnings || 0).toLocaleString()}` },
+                        { label: 'Active Referrals', value: String(stats?.activeReferrals || 0) },
+                        { label: 'Total Referrals', value: String(stats?.totalReferrals || 0) },
+                        { label: 'Partner Tier', value: stats?.tier || '—' },
                     ].map((stat) => (
                         <div key={stat.label} className="bg-white/10 rounded-xl p-2 md:p-3 backdrop-blur-sm">
                             <p className="text-[10px] font-medium text-white/60 mb-0.5 md:mb-1">{stat.label}</p>
@@ -118,27 +124,14 @@ export default function PartnershipWalletPage() {
                             className="w-full h-10 pl-9 pr-4 bg-gray-50 border border-transparent rounded-xl text-sm font-medium focus:bg-white focus:border-primary/20 focus:ring-4 focus:ring-primary/5 outline-none transition-all"
                         />
                     </div>
-                    <div className="flex items-center gap-1.5 md:gap-2">
-                        {(['all', 'completed', 'pending'] as const).map((f) => (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={cn(
-                                    "px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-[11px] md:text-xs font-semibold transition-all capitalize",
-                                    filter === f ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                )}
-                            >
-                                {f}
-                            </button>
-                        ))}
-                    </div>
+
                 </div>
 
                 {/* Transactions */}
                 <div className="space-y-1 md:space-y-2">
-                    {filteredTransactions.map((tx, i) => {
+                    {isLoading && <p className="text-sm text-gray-400 text-center py-8">Loading activity...</p>}
+                    {!isLoading && filteredTransactions.map((tx, i) => {
                         const Icon = tx.icon;
-                        const isCredit = tx.amount > 0;
                         return (
                             <motion.div
                                 key={tx.id}
@@ -157,14 +150,7 @@ export default function PartnershipWalletPage() {
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0 ml-2">
-                                    <p className={cn("text-xs md:text-sm font-bold", isCredit ? 'text-emerald-600' : 'text-red-600')}>
-                                        {isCredit ? '+' : ''}{tx.amount.toLocaleString()}
-                                    </p>
-                                    <div className={cn(
-                                        "inline-flex items-center gap-1 px-1.5 md:px-2 py-0.5 rounded-md text-[10px] font-semibold mt-0.5",
-                                        tx.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                                    )}>
-                                        {tx.status === 'Completed' ? <CheckCheck size={9} /> : <Clock size={9} />}
+                                    <div className="inline-flex items-center gap-1 px-1.5 md:px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-600">
                                         {tx.status}
                                     </div>
                                 </div>

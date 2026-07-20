@@ -7,14 +7,15 @@ import { cn } from '@/lib/utils';
 import { UserPlus, X, Copy, CheckCheck, Download, QrCode, ArrowLeft } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const referralLink = 'https://vemtap.com/join?ref=VEN-ABC123';
+import { useAffiliateStats } from '@/services/affiliates/hooks';
 
 export default function BusinessPartnershipLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const isOverview = pathname === '/dashboard/business-partnership';
     const [inviteOpen, setInviteOpen] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
+    const { data: stats } = useAffiliateStats();
+    const referralLink = `https://vemtap.com/join?ref=${stats?.referralCode || 'VEN-ABC123'}`;
 
     const handleCopy = (key: string, text: string) => {
         navigator.clipboard.writeText(text);
