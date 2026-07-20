@@ -173,10 +173,13 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     // Helper to extract boolean toggle and limit
     const getPerm = (enabled: boolean, limit: number | null | undefined): FeaturePermission => {
         if (!enabled) return { level: 'no' };
+        if (limit === -1) {
+            return { level: 'yes' };
+        }
         if (limit !== null && limit !== undefined && limit > 0) {
             return { level: 'limited', limit };
         }
-        return { level: 'yes' };
+        return { level: 'no' };
     };
 
     features['dashboard'] = { level: 'yes' };
@@ -234,7 +237,7 @@ export function mapConfigToPlanDto(
         const feat = config.features[featId];
         if (!feat || feat.level === 'no') return { enabled: false, limit: null };
         if (feat.level === 'limited') return { enabled: true, limit: feat.limit || null };
-        return { enabled: true, limit: null };
+        return { enabled: true, limit: -1 };
     };
 
     const getEnabledOnly = (featId: string) => {

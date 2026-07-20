@@ -33,6 +33,7 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from '../users/entities/user.entity';
+import { Business } from '../businesses/entities/business.entity';
 
 @Injectable()
 export class AuthService {
@@ -457,25 +458,19 @@ export class AuthService {
       const affiliate = await this.affiliatesService.findByReferralCode(
         registrationData.referralCode,
       );
-      const business = await this.businessesService.findByOwner(user.id);
 
       if (affiliate) {
+        const business = await this.businessesService.findByOwner(user.id);
         await this.affiliatesService.recordReferral(
           affiliate.id,
           business?.id,
           user.id,
         );
       } else {
-        // Check external affiliate system
-        const externalAffiliate =
-          await this.externalAffiliateService.validateReferralCode(
-            registrationData.referralCode,
-          );
-        if (externalAffiliate.valid && business) {
-          await this.businessesService.update(business.id, {
-            referralCode: registrationData.referralCode,
-          } as any);
-        }
+        await this.handleB2BReferralAndPartnership(
+          registrationData.referralCode,
+          user.id,
+        );
       }
     }
 
@@ -662,25 +657,19 @@ export class AuthService {
       const affiliate = await this.affiliatesService.findByReferralCode(
         dto.referralCode,
       );
-      const business = await this.businessesService.findByOwner(updatedUser.id);
 
       if (affiliate) {
+        const business = await this.businessesService.findByOwner(updatedUser.id);
         await this.affiliatesService.recordReferral(
           affiliate.id,
           business?.id,
           updatedUser.id,
         );
       } else {
-        // Check external affiliate system
-        const externalAffiliate =
-          await this.externalAffiliateService.validateReferralCode(
-            dto.referralCode,
-          );
-        if (externalAffiliate.valid && business) {
-          await this.businessesService.update(business.id, {
-            referralCode: dto.referralCode,
-          } as any);
-        }
+        await this.handleB2BReferralAndPartnership(
+          dto.referralCode,
+          updatedUser.id,
+        );
       }
     }
 
@@ -913,5 +902,69 @@ export class AuthService {
     );
 
     return { message: 'Default password resent successfully' };
+  }
+
+  private async handleB2BReferralAndPartnership(referralCode: string, referredUserId: string) {
+    try {
+      const business = await this.businessesService.findByOwner(referredUserId);
+      if (!business) return;
+
+      // Check if referring code belongs to a business
+      let referringBusiness: Business | null = null;
+      try {
+        referringBusiness = await this.otpRepository.manager.findOne(Business, {
+          where: { uniqueCode: referralCode },
+          relations: ['branches'],
+        });
+      } catch (e) {
+        // Not a business
+      }
+
+      if (referringBusiness) {
+        // Record the referral code on the referred business
+        await this.businessesService.update(business.id, {
+          referralCode,
+        } as any);
+
+        // Fetch fresh branches
+        const referredUser = await this.usersService.findOne(referredUserId);
+        const referringBranchId = referringBusiness.branches?.[0]?.id;
+        const referredBranchId = referredUser?.branchId;
+
+        if (referringBranchId && referredBranchId) {
+          const manager = this.otpRepository.manager;
+
+          // Check if partnership already exists
+          const existingPartnership = await manager.findOne('partnerships', {
+            where: [
+              { initiatorBranchId: referringBranchId, recipientBranchId: referredBranchId },
+              { initiatorBranchId: referredBranchId, recipientBranchId: referringBranchId }
+            ]
+          });
+
+          if (!existingPartnership) {
+            await manager.insert('partnerships', {
+              initiatorBranchId: referringBranchId,
+              recipientBranchId: referredBranchId,
+              status: 'Accepted'
+            });
+            console.log(`[PARTNERSHIP] Auto-established B2B partnership between branch ${referringBranchId} and branch ${referredBranchId}`);
+          }
+        }
+      } else {
+        // Fallback to external affiliate validation
+        const externalAffiliate =
+          await this.externalAffiliateService.validateReferralCode(
+            referralCode,
+          );
+        if (externalAffiliate.valid) {
+          await this.businessesService.update(business.id, {
+            referralCode,
+          } as any);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling B2B referral and partnership:', error);
+    }
   }
 }
