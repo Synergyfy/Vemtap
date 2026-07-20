@@ -84,6 +84,14 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
 
   const handleBarcodeScan = (product: any) => {
     if (product) {
+      const existing = cart.find(item => item.productId === product.id);
+      const currentQty = existing?.quantity || 0;
+      const stockQty = product.stockQuantity ?? Infinity;
+      if (currentQty + 1 > stockQty) {
+        toast.error(`Not enough stock for ${product.name}`);
+        setShowBarcodeScanner(false);
+        return;
+      }
       addToCart({
         id: product.id,
         productId: product.id,
@@ -91,6 +99,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         price: product.price,
         costPrice: product.costPrice || 0,
         quantity: 1,
+        stockQuantity: product.stockQuantity,
         sku: product.sku || '',
         barcode: product.barcode || '',
         image: product.image || '',
@@ -260,6 +269,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     price: product.price,
                     costPrice: product.costPrice || 0,
                     quantity: 1,
+                    stockQuantity: product.stockQuantity,
                     sku: product.sku,
                     barcode: product.barcode,
                     image: product.mainImage,
@@ -320,6 +330,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                       price: product.price,
                       costPrice: product.costPrice || 0,
                       quantity: 1,
+                      stockQuantity: product.stockQuantity,
                       sku: product.sku,
                       barcode: product.barcode,
                       image: product.mainImage,

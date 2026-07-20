@@ -388,6 +388,32 @@ export default function OrdersDashboard() {
                   </div>
                 </div>
 
+                {/* Loyalty Points */}
+                {(() => {
+                  const totalPoints = (orderDetail.items || []).reduce((sum: number, item: any) => {
+                    if (item.loyaltyPointsAtOrder) {
+                      return sum + item.loyaltyPointsAtOrder * item.quantity;
+                    }
+                    return sum;
+                  }, 0);
+                  if (totalPoints <= 0) return null;
+                  return (
+                    <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="size-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                            <span className="text-purple-600 text-xs font-black">P</span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-purple-600">Loyalty Points</p>
+                            <p className="text-sm font-black text-purple-700">{totalPoints.toLocaleString()} pts</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Notes */}
                 {orderDetail.notes && (
                   <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
@@ -464,6 +490,11 @@ export default function OrdersDashboard() {
                             </span>
                           )}
                           <span>{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
+                          {(() => {
+                            const pts = (order.items || []).reduce((s: number, i: any) => s + (i.loyaltyPointsAtOrder || 0) * i.quantity, 0);
+                            if (pts <= 0) return null;
+                            return <span className="text-purple-500 flex items-center gap-0.5">P{pts.toLocaleString()}</span>;
+                          })()}
                           <span>{timeAgo(order.createdAt)}</span>
                         </div>
                       </div>

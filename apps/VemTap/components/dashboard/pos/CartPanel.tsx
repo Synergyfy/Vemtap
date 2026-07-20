@@ -187,8 +187,19 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
                   </button>
                   <span className="w-6 text-center text-[11px] font-black text-gray-900">{item.quantity}</span>
                   <button 
-                    onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                    className="size-7 flex items-center justify-center text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm rounded-lg transition-all"
+                    onClick={() => {
+                      if (item.stockQuantity != null && item.quantity >= item.stockQuantity) {
+                        toast.error(`Only ${item.stockQuantity} of ${item.name} available`);
+                        return;
+                      }
+                      updateCartItemQuantity(item.id, item.quantity + 1);
+                    }}
+                    className={cn(
+                      "size-7 flex items-center justify-center rounded-lg transition-all",
+                      item.stockQuantity != null && item.quantity >= item.stockQuantity
+                        ? "text-gray-300 cursor-not-allowed"
+                        : "text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm"
+                    )}
                   >
                     <Plus size={12} />
                   </button>

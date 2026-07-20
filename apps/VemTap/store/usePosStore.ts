@@ -10,6 +10,7 @@ export interface PosCartItem {
   price: number;
   costPrice: number;
   quantity: number;
+  stockQuantity?: number;
   sku: string;
   barcode: string;
   image?: string;
@@ -57,9 +58,11 @@ export const usePosStore = create<PosState>()(
       addToCart: (item) => set((state) => {
         const existing = state.cart.find(i => i.id === item.id);
         if (existing) {
+          const newQty = existing.quantity + item.quantity;
+          const maxStock = existing.stockQuantity ?? Infinity;
           return {
             cart: state.cart.map(i =>
-              i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+              i.id === item.id ? { ...i, quantity: Math.min(newQty, maxStock) } : i
             ),
           };
         }
@@ -73,7 +76,11 @@ export const usePosStore = create<PosState>()(
       updateCartItemQuantity: (id, quantity) => set((state) => ({
         cart: quantity <= 0
           ? state.cart.filter(i => i.id !== id)
-          : state.cart.map(i => i.id === id ? { ...i, quantity } : i),
+          : state.cart.map(i => {
+              if (i.id !== id) return i;
+              const maxStock = i.stockQuantity ?? Infinity;
+              return { ...i, quantity: Math.min(quantity, maxStock) };
+            }),
       })),
 
       updateCartItemDiscount: (id, discount) => set((state) => ({
