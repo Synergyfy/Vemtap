@@ -380,7 +380,7 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
             </div>
 
             {!promotions || promotions.length === 0 ? (
-                <EmptyState icon={Tag} title="No promotions yet" description="Create your first promotion to get started." />
+                <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a promotion to attract new customers and bring them back again." />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {promotions.map((promo) => (
@@ -618,7 +618,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                     ) : errorActive ? (
                         <ErrorState message="Failed to load partners" onRetry={() => refetchActive()} />
                     ) : !activePartners || activePartners.length === 0 ? (
-                        <EmptyState icon={Handshake} title="No active partners" description="Connect with nearby businesses to start sharing customers." />
+                        <EmptyState icon={Handshake} title="Grow together with nearby businesses" description="Partner with other businesses to share customers and grow your reach." />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {activePartners.map((partner) => (
@@ -1067,7 +1067,7 @@ function CustomersTab({ branchId }: { branchId: string }) {
             ) : isError ? (
                 <ErrorState message={error?.message || 'Failed to load customers'} onRetry={() => refetch()} />
             ) : !data || data.data.length === 0 ? (
-                <EmptyState icon={Users} title="No customers found" description="No customer visits match the current filter." />
+                <EmptyState icon={Users} title="Your next customer is out there" description="Adjust your filters to find customers who have visited your business." />
             ) : (
                 <>
                     <div className="bg-white md:rounded-3xl border-y md:border border-gray-100 shadow-sm overflow-hidden -mx-4 md:mx-0">

@@ -23,6 +23,7 @@ import AwardPointsConfirmation from '@/components/loyalty/AwardPointsConfirmatio
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from "@/lib/utils";
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function AwardPointsPage() {
     const router = useRouter();
@@ -122,7 +123,7 @@ export default function AwardPointsPage() {
                         <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
                     </Button>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight">Give Points</h1>
+                        <div className="flex items-center gap-2"><h1 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight">Give Points</h1><PageGuideButton /><AICopilotButton /></div>
                         <p className="text-xs md:text-base text-gray-500 font-medium">Issue loyalty points to your customers</p>
                     </div>
                 </div>

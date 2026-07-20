@@ -175,7 +175,7 @@ export default function WhatsAppOverviewPage() {
                                             <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
                                                 <User size={32} />
                                             </div>
-                                            <p className="font-bold">No customers found</p>
+                                            <p className="font-bold">Your first customer is waiting. Let's capture them today.</p>
                                             <p className="text-sm">Try searching for a different name or phone number.</p>
                                         </div>
                                     ) : (

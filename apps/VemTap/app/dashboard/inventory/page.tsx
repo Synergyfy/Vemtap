@@ -203,7 +203,7 @@ export default function InventoryDashboard() {
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-400 text-sm font-bold">No products found.</td>
+                  <td colSpan={6} className="p-8 text-center text-gray-400 text-sm font-bold">Ready to manage inventory? Add your first product.</td>
                 </tr>
               ) : (
                 filteredItems.map((item: any) => (

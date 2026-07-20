@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function ReferralLinkPage() {
     const { referralLink, generateLink } = useReferralStore();
@@ -31,7 +32,7 @@ export default function ReferralLinkPage() {
             </Link>
 
             <div className="text-center md:text-left mb-12">
-                <h1 className="text-3xl font-black text-gray-900 leading-tight">My Referral Link</h1>
+                <div className="flex items-center gap-2"><h1 className="text-3xl font-black text-gray-900 leading-tight">My Referral Link</h1><PageGuideButton /><AICopilotButton /></div>
                 <p className="text-sm font-medium text-gray-500 mt-1">Share your unique link and earn commissions.</p>
             </div>
 

@@ -218,6 +218,16 @@ export default function DashboardPricingPage() {
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
                             <Crown size={12} className="text-primary" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">{activePlanName}</span>
+                            {activePlan?.badge && (
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                    activePlan.badge === 'free' ? 'bg-green-100 text-green-700' :
+                                    activePlan.badge === 'silver' ? 'bg-gray-100 text-gray-700' :
+                                    activePlan.badge === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-purple-100 text-purple-700'
+                                }`}>
+                                    {activePlan.badge.charAt(0).toUpperCase() + activePlan.badge.slice(1)}
+                                </span>
+                            )}
                         </div>
                         {showTrialCountdown && <TrialCountdown trialEndDate={effectiveTrialEndDate} />}
                         <button
@@ -252,6 +262,16 @@ export default function DashboardPricingPage() {
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
                         <Crown size={12} />
                         {showFreeTrialHeader ? 'Limited Time Offer' : 'Current Plan'}
+                        {activePlan?.badge && (
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                activePlan.badge === 'free' ? 'bg-green-100 text-green-700' :
+                                activePlan.badge === 'silver' ? 'bg-gray-100 text-gray-700' :
+                                activePlan.badge === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-purple-100 text-purple-700'
+                            }`}>
+                                {activePlan.badge.charAt(0).toUpperCase() + activePlan.badge.slice(1)}
+                            </span>
+                        )}
                     </div>
                     <h2 className="text-3xl md:text-5xl font-display font-black text-text-main tracking-tight mb-4">
                         {showFreeTrialHeader ? 'Keep Full Access Before Trial Ends' : `You are on ${activePlanName}`}
@@ -368,9 +388,19 @@ export default function DashboardPricingPage() {
                             )}
 
                             <div className="mb-6">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                                     <h3 className="text-xl font-display font-bold text-text-main">
                                         {plan.name}
+                                        {plan.badge && (
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                                plan.badge === 'free' ? 'bg-green-100 text-green-700' :
+                                                plan.badge === 'silver' ? 'bg-gray-100 text-gray-700' :
+                                                plan.badge === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-purple-100 text-purple-700'
+                                            }`}>
+                                                {plan.badge.charAt(0).toUpperCase() + plan.badge.slice(1)}
+                                            </span>
+                                        )}
                                     </h3>
                                     {isCurrent && (
                                         <span className={`${highlight ? 'bg-white text-primary' : 'bg-primary text-white'} text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest`}>

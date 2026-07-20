@@ -456,7 +456,7 @@ export default function OrdersDashboard() {
                 <div className="size-20 bg-gray-50 rounded-[24px] flex items-center justify-center mb-4 border border-gray-100">
                   <ShoppingBag size={40} className="text-gray-300" />
                 </div>
-                <h3 className="text-xl font-black text-gray-900 mb-2">No orders yet</h3>
+                <h3 className="text-xl font-black text-gray-900 mb-2">Your next order is waiting — customers are ready to buy</h3>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest max-w-xs leading-relaxed">
                   {statusFilter === 'all' ? 'Orders from your public POS will appear here' : `No ${statusFilter} orders found`}
                 </p>

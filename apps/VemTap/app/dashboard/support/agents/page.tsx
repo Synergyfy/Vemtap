@@ -12,6 +12,7 @@ import {
     Clock,
     Filter
 } from 'lucide-react';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 const agents = [
     { id: 1, name: 'Alex Rivera', role: 'Support Lead', status: 'Active', activeTickets: 12, avgResponse: '15m', avatar: null, online: true },
@@ -28,7 +29,7 @@ export default function AgentAssignmentPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Agent Management</h1>
+                    <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Agent Management</h1><PageGuideButton /><AICopilotButton /></div>
                     <p className="text-slate-500 text-sm font-medium mt-1">Assign roles and monitor performance of your support team.</p>
                 </div>
                 <div className="flex items-center gap-3">

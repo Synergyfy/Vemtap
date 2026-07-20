@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { UserPlus, X, Copy, CheckCheck, Download, QrCode, ArrowLeft } from 'lucide-react';
-import ComingSoonOverlay from '@/components/dashboard/ComingSoonOverlay';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -51,10 +50,6 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
 
             {children}
 
-            <ComingSoonOverlay
-                title="Business Partnership"
-                description="Invite other businesses to VEMTAP, earn commissions on every successful referral, and climb the partner leaderboard. Track your rewards, manage your business card, and grow your network — all in one place."
-            />
 
             {/* Floating Action Button */}
             <button

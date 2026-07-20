@@ -12,12 +12,17 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useReferralStore } from '@/store/useReferralStore';
 import Link from 'next/link';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export function ReferralOverviewHeader() {
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-                <h1 className="text-3xl font-black text-gray-900 leading-tight">Referrals & Commissions</h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-black text-gray-900 leading-tight">Referrals & Commissions</h1>
+                    <PageGuideButton />
+                    <AICopilotButton />
+                </div>
                 <p className="text-sm font-medium text-gray-500 mt-1">
                     Grow Vemtap and earn rewards for every business you refer.
                 </p>

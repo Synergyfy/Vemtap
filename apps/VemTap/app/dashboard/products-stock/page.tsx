@@ -169,7 +169,7 @@ export default function ProductsAndStockDashboard() {
               ))}
               {recentProducts.length === 0 && (
                 <div className="text-center py-8 text-gray-400">
-                  <p className="text-xs font-bold uppercase tracking-widest">No products yet</p>
+                  <p className="text-xs font-bold uppercase tracking-widest">Ready to stock your inventory? Add your first product.</p>
                 </div>
               )}
             </div>

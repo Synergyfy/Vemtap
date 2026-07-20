@@ -222,7 +222,7 @@ const ListTab = ({ profiles, filters, setFilters, onView, onUpdateStatus, onDele
                                     <td colSpan={8} className="px-6 py-20 text-center text-gray-400">
                                         <div className="flex flex-col items-center gap-2">
                                             <Building2 size={40} className="text-gray-200" />
-                                            <p className="font-medium">No results found matching your filters</p>
+                                            <p className="font-medium">Try adjusting your filters to find what you're looking for</p>
                                         </div>
                                     </td>
                                 </tr>

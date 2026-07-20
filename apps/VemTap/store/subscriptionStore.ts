@@ -42,15 +42,15 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     hasReachedTeamLimit: (currentTeamCount) => {
         const plan = get().getPlan();
         if (!plan) return false;
-        if (plan.teamMembersLimit === null || plan.teamMembersLimit === -1) return false;
-        return currentTeamCount >= plan.teamMembersLimit;
+        if (plan.teamMembersLimit === -1) return false;
+        return currentTeamCount >= (plan.teamMembersLimit ?? 0);
     },
 
     hasReachedVisitorLimit: (currentVisitorCount) => {
         const plan = get().getPlan();
         if (!plan) return false;
-        if (plan.teamMembersLimit === null || plan.teamMembersLimit === -1) return false;
-        return currentVisitorCount >= (plan.teamMembersLimit * 100);
+        if (plan.teamMembersLimit === -1) return false;
+        return currentVisitorCount >= ((plan.teamMembersLimit ?? 0) * 100);
     }
 }));
 

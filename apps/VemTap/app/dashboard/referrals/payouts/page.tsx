@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useReferralStore } from '@/store/useReferralStore';
 import toast from 'react-hot-toast';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function PayoutsPage() {
     const { stats, requestPayout } = useReferralStore();
@@ -34,7 +35,7 @@ export default function PayoutsPage() {
                 Back to Dashboard
             </Link>
 
-            <h1 className="text-3xl font-black text-gray-900 leading-tight mb-8">Payouts</h1>
+            <div className="flex items-center gap-2 mb-8"><h1 className="text-3xl font-black text-gray-900 leading-tight">Payouts</h1><PageGuideButton /><AICopilotButton /></div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* PAYOUT CARD */}

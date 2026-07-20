@@ -244,8 +244,8 @@ export default function NewVisitorsPage() {
                 emptyState={
                     <EmptyState
                         icon="person_add"
-                        title="No new visitors today"
-                        description="All visitors today are returning customers. That's great for loyalty!"
+                        title="Your first new visitor is just around the corner"
+                        description="Every returning customer was once a new visitor. Keep your welcome messages ready!"
                     />
                 }
             />

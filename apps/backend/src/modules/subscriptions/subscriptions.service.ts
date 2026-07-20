@@ -706,36 +706,28 @@ export class SubscriptionsService {
         : baseTeamLimit;
 
     const baseAutomationsLimit =
-      plan.maxAutomations === -1 || plan.maxAutomations === null
-        ? 'unlimited'
-        : plan.maxAutomations;
+      plan.maxAutomations === -1 ? 'unlimited' : (plan.maxAutomations ?? 0);
     const finalAutomationsLimit =
       typeof baseAutomationsLimit === 'number'
         ? baseAutomationsLimit + addonAutomations
         : baseAutomationsLimit;
 
     const baseCatalogueItemsLimit =
-      plan.maxCatalogueItems === -1 || plan.maxCatalogueItems === null
-        ? 'unlimited'
-        : plan.maxCatalogueItems;
+      plan.maxCatalogueItems === -1 ? 'unlimited' : (plan.maxCatalogueItems ?? 0);
     const finalCatalogueItemsLimit =
       typeof baseCatalogueItemsLimit === 'number'
         ? baseCatalogueItemsLimit + addonCatalogueItems
         : baseCatalogueItemsLimit;
 
     const baseCatalogueCategoriesLimit =
-      plan.maxCatalogueCategories === -1 || plan.maxCatalogueCategories === null
-        ? 'unlimited'
-        : plan.maxCatalogueCategories;
+      plan.maxCatalogueCategories === -1 ? 'unlimited' : (plan.maxCatalogueCategories ?? 0);
     const finalCatalogueCategoriesLimit =
       typeof baseCatalogueCategoriesLimit === 'number'
         ? baseCatalogueCategoriesLimit + addonCatalogueCategories
         : baseCatalogueCategoriesLimit;
 
     const baseCatalogueOffersLimit =
-      plan.maxCatalogueOffers === -1 || plan.maxCatalogueOffers === null
-        ? 'unlimited'
-        : plan.maxCatalogueOffers;
+      plan.maxCatalogueOffers === -1 ? 'unlimited' : (plan.maxCatalogueOffers ?? 0);
     const finalCatalogueOffersLimit =
       typeof baseCatalogueOffersLimit === 'number'
         ? baseCatalogueOffersLimit + addonCatalogueOffers
@@ -854,21 +846,21 @@ export class SubscriptionsService {
         },
         inventory: {
           enabled: plan.inventoryEnabled ?? false,
-          limit: plan.inventoryLimit === null || plan.inventoryLimit === -1 ? 'unlimited' : (plan.inventoryLimit ?? 0),
+          limit: plan.inventoryLimit === -1 ? 'unlimited' : (plan.inventoryLimit ?? 0),
           used: 0,
           remaining: !plan.inventoryEnabled
             ? 0
-            : plan.inventoryLimit === null || plan.inventoryLimit === -1
+            : plan.inventoryLimit === -1
               ? 'unlimited'
               : plan.inventoryLimit ?? 0,
         },
         pos: {
           enabled: plan.posEnabled ?? false,
-          limit: plan.posTerminalLimit === null || plan.posTerminalLimit === -1 ? 'unlimited' : (plan.posTerminalLimit ?? 0),
+          limit: plan.posTerminalLimit === -1 ? 'unlimited' : (plan.posTerminalLimit ?? 0),
           used: 0,
           remaining: !plan.posEnabled
             ? 0
-            : plan.posTerminalLimit === null || plan.posTerminalLimit === -1
+            : plan.posTerminalLimit === -1
               ? 'unlimited'
               : plan.posTerminalLimit ?? 0,
         },
@@ -880,11 +872,11 @@ export class SubscriptionsService {
         },
         forms: {
           enabled: plan.formsEnabled ?? false,
-          limit: plan.formsLimit === null || plan.formsLimit === -1 ? 'unlimited' : (plan.formsLimit ?? 0),
+          limit: plan.formsLimit === -1 ? 'unlimited' : (plan.formsLimit ?? 0),
           used: 0,
           remaining: !plan.formsEnabled
             ? 0
-            : plan.formsLimit === null || plan.formsLimit === -1
+            : plan.formsLimit === -1
               ? 'unlimited'
               : plan.formsLimit ?? 0,
         },
@@ -893,11 +885,11 @@ export class SubscriptionsService {
         },
         marketingKit: {
           enabled: plan.marketingKitEnabled ?? false,
-          limit: plan.marketingKitLimit === null || plan.marketingKitLimit === -1 ? 'unlimited' : (plan.marketingKitLimit ?? 0),
+          limit: plan.marketingKitLimit === -1 ? 'unlimited' : (plan.marketingKitLimit ?? 0),
           used: 0,
           remaining: !plan.marketingKitEnabled
             ? 0
-            : plan.marketingKitLimit === null || plan.marketingKitLimit === -1
+            : plan.marketingKitLimit === -1
               ? 'unlimited'
               : plan.marketingKitLimit ?? 0,
         },
@@ -906,11 +898,11 @@ export class SubscriptionsService {
         },
         staffRoles: {
           enabled: plan.staffRolesEnabled ?? false,
-          limit: plan.staffRolesLimit === null || plan.staffRolesLimit === -1 ? 'unlimited' : (plan.staffRolesLimit ?? 0),
+          limit: plan.staffRolesLimit === -1 ? 'unlimited' : (plan.staffRolesLimit ?? 0),
           used: 0,
           remaining: !plan.staffRolesEnabled
             ? 0
-            : plan.staffRolesLimit === null || plan.staffRolesLimit === -1
+            : plan.staffRolesLimit === -1
               ? 'unlimited'
               : plan.staffRolesLimit ?? 0,
         },
@@ -919,11 +911,11 @@ export class SubscriptionsService {
         },
         qrCodes: {
           enabled: plan.qrCodesEnabled ?? false,
-          limit: plan.qrCodesLimit === null || plan.qrCodesLimit === -1 ? 'unlimited' : (plan.qrCodesLimit ?? 0),
+          limit: plan.qrCodesLimit === -1 ? 'unlimited' : (plan.qrCodesLimit ?? 0),
           used: 0,
           remaining: !plan.qrCodesEnabled
             ? 0
-            : plan.qrCodesLimit === null || plan.qrCodesLimit === -1
+            : plan.qrCodesLimit === -1
               ? 'unlimited'
               : plan.qrCodesLimit ?? 0,
         },

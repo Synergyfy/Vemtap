@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import {
   AffiliateProfile,
   KycStatus,
@@ -22,6 +22,7 @@ import {
 import { User, UserRole } from '../users/entities/user.entity';
 import { SettingsService } from '../settings/settings.service';
 import { ExternalAffiliateService } from './external-affiliate.service';
+import { Business, BusinessStatus } from '../businesses/entities/business.entity';
 
 @Injectable()
 export class AffiliatesService {
@@ -40,6 +41,52 @@ export class AffiliatesService {
     private readonly dataSource: DataSource,
     private readonly externalAffiliateService: ExternalAffiliateService,
   ) {}
+
+  /**
+   * Shared helper: fetch user and throw if not found.
+   * Avoids repeated userRepository.findOne calls across every public method.
+   */
+  private async resolveUser(userId: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  /**
+   * Helper to get or auto-create affiliate profile (Agents only).
+   * Business owners/managers bypass this — their data lives in the Business table.
+   */
+  private async getOrCreateProfile(userId: string): Promise<AffiliateProfile> {
+    let profile = await this.profileRepository.findOne({
+      where: { userId },
+      relations: ['user'],
+    });
+    if (!profile) {
+      try {
+        profile = await this.createProfile(userId);
+        // Ensure user relation is fully loaded after creation
+        if (!profile.user) {
+          profile = await this.profileRepository.findOne({
+            where: { id: profile.id },
+            relations: ['user'],
+          });
+        }
+      } catch (error) {
+        // Handle concurrent profile creation — fetch the one that won the race
+        profile = await this.profileRepository.findOne({
+          where: { userId },
+          relations: ['user'],
+        });
+        if (!profile) {
+          throw error;
+        }
+      }
+    }
+    if (!profile) {
+      throw new NotFoundException('Could not retrieve or create affiliate profile');
+    }
+    return profile;
+  }
 
   /**
    * Creates an affiliate profile for a user
@@ -137,11 +184,41 @@ export class AffiliatesService {
    * Gets stats for an affiliate's dashboard
    */
   async getStats(userId: string) {
-    const profile = await this.profileRepository.findOne({
-      where: { userId },
-    });
+    const user = await this.resolveUser(userId);
 
-    if (!profile) throw new NotFoundException('Affiliate profile not found');
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      const businessRepository = this.dataSource.getRepository(Business);
+      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      if (!business) {
+        return {
+          totalEarnings: 0,
+          availableBalance: 0,
+          totalReferrals: 0,
+          activeReferrals: 0,
+          referralCode: '',
+          tier: 'Bronze',
+        };
+      }
+
+      const totalReferrals = await businessRepository.count({
+        where: { referralCode: business.uniqueCode },
+      });
+
+      const activeReferrals = await businessRepository.count({
+        where: { referralCode: business.uniqueCode, status: BusinessStatus.ACTIVE },
+      });
+
+      return {
+        totalEarnings: Number(business.balance),
+        availableBalance: Number(business.balance),
+        totalReferrals,
+        activeReferrals,
+        referralCode: business.uniqueCode,
+        tier: 'Bronze',
+      };
+    }
+
+    const profile = await this.getOrCreateProfile(userId);
 
     const totalReferrals = await this.referralRepository.count({
       where: { affiliateId: profile.id },
@@ -165,8 +242,27 @@ export class AffiliatesService {
    * Gets a list of all referrals for an affiliate
    */
   async getReferrals(userId: string): Promise<any[]> {
-    const profile = await this.profileRepository.findOne({ where: { userId } });
-    if (!profile) throw new NotFoundException('Affiliate profile not found');
+    const user = await this.resolveUser(userId);
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      const businessRepository = this.dataSource.getRepository(Business);
+      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      if (!business) return [];
+
+      const referred = await businessRepository.find({
+        where: { referralCode: business.uniqueCode },
+        order: { createdAt: 'DESC' },
+      });
+
+      return referred.map(b => ({
+        id: b.id,
+        status: b.status === 'active' ? 'Converted' : 'Pending',
+        createdAt: b.createdAt,
+        referredBusiness: b,
+      }));
+    }
+
+    const profile = await this.getOrCreateProfile(userId);
 
     return this.referralRepository.find({
       where: { affiliateId: profile.id },
@@ -182,8 +278,13 @@ export class AffiliatesService {
     userId: string,
     amount: number,
   ): Promise<AffiliateWithdrawalRequest> {
-    const profile = await this.profileRepository.findOne({ where: { userId } });
-    if (!profile) throw new NotFoundException('Affiliate profile not found');
+    const user = await this.resolveUser(userId);
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      throw new BadRequestException(
+        'Business owners manage withdrawals through the business finance flow',
+      );
+    }
+    const profile = await this.getOrCreateProfile(userId);
 
     const settings = await this.settingsService.getGlobalSettings();
     const minWithdrawal = settings.affiliateMinimumWithdrawal || 5000;
@@ -198,38 +299,76 @@ export class AffiliatesService {
       throw new BadRequestException('Insufficient balance');
     }
 
-    const request = this.withdrawalRepository.create({
-      affiliateId: profile.id,
-      amount,
-      status: WithdrawalStatus.PENDING,
+    return this.dataSource.transaction(async (manager) => {
+      // Re-fetch the profile inside the transaction with a write lock to prevent race conditions
+      const txnProfile = await manager.findOne(AffiliateProfile, {
+        where: { id: profile.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!txnProfile) {
+        throw new NotFoundException('Affiliate profile not found');
+      }
+
+      if (Number(txnProfile.availableBalance) < amount) {
+        throw new BadRequestException('Insufficient balance');
+      }
+
+      const request = manager.create(AffiliateWithdrawalRequest, {
+        affiliateId: txnProfile.id,
+        amount,
+        status: WithdrawalStatus.PENDING,
+      });
+
+      txnProfile.availableBalance = Number(txnProfile.availableBalance) - amount;
+      await manager.save(txnProfile);
+
+      return manager.save(request);
     });
-
-    // Deduct from available balance immediately to prevent double spending
-    profile.availableBalance -= amount;
-    await this.profileRepository.save(profile);
-
-    return this.withdrawalRepository.save(request);
   }
 
   /**
    * Gets recent activity for an affiliate
    */
   async getActivity(userId: string, limit = 5): Promise<any[]> {
+    const user = await this.resolveUser(userId);
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      const businessRepository = this.dataSource.getRepository(Business);
+      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      if (!business) return [];
+
+      const referred = await businessRepository.find({
+        where: { referralCode: business.uniqueCode },
+        order: { createdAt: 'DESC' },
+        take: limit,
+      });
+
+      return referred.map(b => ({
+        type: 'referral',
+        title: 'New Partner Joined',
+        desc: `${b.name} signed up`,
+        time: b.createdAt,
+      }));
+    }
+
+    const profile = await this.getOrCreateProfile(userId);
+
     const referrals = await this.referralRepository.find({
-      where: { affiliateId: userId },
+      where: { affiliateId: profile.id },
       order: { createdAt: 'DESC' },
       take: limit,
     });
 
     const commissions = await this.commissionRepository.find({
-      where: { affiliateId: userId },
+      where: { affiliateId: profile.id },
       order: { createdAt: 'DESC' },
       take: limit,
       relations: ['referredBusiness'],
     });
 
     const withdrawals = await this.withdrawalRepository.find({
-      where: { affiliateId: userId },
+      where: { affiliateId: profile.id },
       order: { createdAt: 'DESC' },
       take: limit,
     });
@@ -268,21 +407,8 @@ export class AffiliatesService {
    * Gets real earnings performance for chart (grouped by month)
    */
   async getPerformance(userId: string): Promise<any[]> {
-    const profile = await this.profileRepository.findOne({ where: { userId } });
-    if (!profile) throw new NotFoundException('Affiliate profile not found');
+    const user = await this.resolveUser(userId);
 
-    const rawData = await this.commissionRepository
-      .createQueryBuilder('c')
-      .select("TO_CHAR(c.createdAt, 'Mon')", 'month')
-      .addSelect('SUM(c.amount)', 'earnings')
-      .where('c.affiliateId = :affiliateId', { affiliateId: profile.id })
-      .andWhere('c.status = :status', { status: CommissionStatus.PAID })
-      .groupBy("TO_CHAR(c.createdAt, 'Mon')")
-      .addGroupBy("DATE_TRUNC('month', c.createdAt)")
-      .orderBy("DATE_TRUNC('month', c.createdAt)", 'ASC')
-      .getRawMany();
-
-    // Map to frontend format
     const monthNames = [
       'Jan',
       'Feb',
@@ -298,6 +424,46 @@ export class AffiliatesService {
       'Dec',
     ];
 
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      const businessRepository = this.dataSource.getRepository(Business);
+      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      if (!business) {
+        return monthNames.slice(0, 7).map((name) => ({ name, earnings: 0 }));
+      }
+
+      const rawData = await businessRepository
+        .createQueryBuilder('b')
+        .select("TO_CHAR(b.createdAt, 'Mon')", 'month')
+        .addSelect('COUNT(b.id)', 'earnings')
+        .where('b.referralCode = :referralCode', { referralCode: business.uniqueCode })
+        .groupBy("TO_CHAR(b.createdAt, 'Mon')")
+        .addGroupBy("DATE_TRUNC('month', b.createdAt)")
+        .orderBy("DATE_TRUNC('month', b.createdAt)", 'ASC')
+        .getRawMany();
+
+      if (rawData.length === 0) {
+        return monthNames.slice(0, 7).map((name) => ({ name, earnings: 0 }));
+      }
+
+      return rawData.map((item) => ({
+        name: item.month,
+        earnings: Number(item.earnings),
+      }));
+    }
+
+    const profile = await this.getOrCreateProfile(userId);
+
+    const rawData = await this.commissionRepository
+      .createQueryBuilder('c')
+      .select("TO_CHAR(c.createdAt, 'Mon')", 'month')
+      .addSelect('SUM(c.amount)', 'earnings')
+      .where('c.affiliateId = :affiliateId', { affiliateId: profile.id })
+      .andWhere('c.status = :status', { status: CommissionStatus.PAID })
+      .groupBy("TO_CHAR(c.createdAt, 'Mon')")
+      .addGroupBy("DATE_TRUNC('month', c.createdAt)")
+      .orderBy("DATE_TRUNC('month', c.createdAt)", 'ASC')
+      .getRawMany();
+
     // Ensure we have at least some data for the chart to render nicely
     if (rawData.length === 0) {
       return monthNames.slice(0, 7).map((name) => ({ name, earnings: 0 }));
@@ -310,14 +476,57 @@ export class AffiliatesService {
   }
 
   /**
-   * Gets leaderboard
+   * Gets leaderboard (filtered by role type to separate agents vs business owners)
    */
-  async getLeaderboard(limit = 10): Promise<any[]> {
-    const topProfiles = await this.profileRepository.find({
-      order: { totalEarnings: 'DESC' },
-      take: limit,
-      relations: ['user'],
-    });
+  async getLeaderboard(currentUserRole?: UserRole, limit = 10): Promise<any[]> {
+    if (currentUserRole === UserRole.OWNER || currentUserRole === UserRole.MANAGER) {
+      const businessRepository = this.dataSource.getRepository(Business);
+      const rawLeaderboard = await businessRepository
+        .createQueryBuilder('b')
+        .select('b.referralCode', 'referralCode')
+        .addSelect('COUNT(b.id)', 'referredCount')
+        .where('b.referralCode IS NOT NULL')
+        .groupBy('b.referralCode')
+        .orderBy('COUNT(b.id)', 'DESC')
+        .take(limit)
+        .getRawMany();
+
+      const uniqueCodes = rawLeaderboard.map(item => item.referralCode).filter(Boolean);
+      if (uniqueCodes.length === 0) return [];
+
+      const referringBusinesses = await businessRepository.find({
+        where: { uniqueCode: In(uniqueCodes) },
+      });
+
+      return rawLeaderboard
+        .map((item, idx) => {
+          const referring = referringBusinesses.find(b => b.uniqueCode === item.referralCode);
+          if (!referring) return null;
+          return {
+            name: referring.name,
+            earnings: Number(referring.balance),
+            rank: idx + 1,
+            avatar: referring.logoUrl || null,
+            referred: Number(item.referredCount),
+            points: Number(item.referredCount) * 100,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    const qb = this.profileRepository.createQueryBuilder('p')
+      .innerJoinAndSelect('p.user', 'u');
+
+    if (currentUserRole) {
+      if (currentUserRole === UserRole.AGENT) {
+        qb.where('u.role = :role', { role: UserRole.AGENT });
+      }
+    }
+
+    qb.orderBy('p.totalEarnings', 'DESC')
+      .take(limit);
+
+    const topProfiles = await qb.getMany();
 
     return topProfiles.map((p, idx) => ({
       name: `${p.user.firstName} ${p.user.lastName}`,
@@ -330,21 +539,41 @@ export class AffiliatesService {
   /**
    * Gets the full profile for an affiliate
    */
-  async getProfile(userId: string): Promise<AffiliateProfile> {
-    const profile = await this.profileRepository.findOne({
-      where: { userId },
-      relations: ['user'],
-    });
-    if (!profile) throw new NotFoundException('Affiliate profile not found');
-    return profile;
+  async getProfile(userId: string): Promise<AffiliateProfile | Record<string, unknown>> {
+    const user = await this.resolveUser(userId);
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      const businessRepository = this.dataSource.getRepository(Business);
+      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      if (!business) throw new NotFoundException('Business not found');
+
+      // Return a business-shaped profile summary — NOT an AffiliateProfile.
+      // kycStatus reflects the actual business status rather than a hardcoded value.
+      return {
+        id: business.id,
+        userId,
+        referralCode: business.uniqueCode,
+        totalEarnings: Number(business.balance),
+        availableBalance: Number(business.balance),
+        kycStatus: business.status === BusinessStatus.ACTIVE ? KycStatus.VERIFIED : KycStatus.PENDING,
+        bankAccountDetails: null,
+      };
+    }
+
+    return this.getOrCreateProfile(userId);
   }
 
   /**
    * Updates an affiliate profile (KYC & Bank details)
    */
   async updateProfile(userId: string, data: any): Promise<AffiliateProfile> {
-    const profile = await this.profileRepository.findOne({ where: { userId } });
-    if (!profile) throw new NotFoundException('Affiliate profile not found');
+    const user = await this.resolveUser(userId);
+    if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
+      throw new BadRequestException(
+        'Business owners do not have an affiliate profile to update',
+      );
+    }
+    const profile = await this.getOrCreateProfile(userId);
 
     if (data.bankAccountDetails) {
       profile.bankAccountDetails = {
@@ -393,62 +622,71 @@ export class AffiliatesService {
     status: WithdrawalStatus,
     note?: string,
   ) {
-    const request = await this.withdrawalRepository.findOne({
-      where: { id },
-      relations: ['affiliate'],
-    });
-
-    if (!request) throw new NotFoundException('Withdrawal request not found');
+    // Pre-flight check outside transaction to give early errors
+    const existing = await this.withdrawalRepository.findOne({ where: { id } });
+    if (!existing) throw new NotFoundException('Withdrawal request not found');
     if (
-      request.status !== WithdrawalStatus.PENDING &&
-      request.status !== WithdrawalStatus.APPROVED
+      existing.status !== WithdrawalStatus.PENDING &&
+      existing.status !== WithdrawalStatus.APPROVED
     ) {
-      throw new BadRequestException(
-        'Request has already been processed or rejected',
-      );
+      throw new BadRequestException('Request has already been processed or rejected');
     }
 
-    request.status = status;
-    request.processedById = adminId;
-    request.processedAt = new Date();
-    request.note = note || request.note;
-
-    // If approved and marked as PAID, sync with external system
+    // If PAID, fire external sync BEFORE the transaction (network call shouldn't hold a DB lock)
     if (status === WithdrawalStatus.PAID) {
       const profile = await this.profileRepository.findOne({
-        where: { id: request.affiliateId },
+        where: { id: existing.affiliateId },
         relations: ['user'],
       });
-
-      if (profile && profile.bankAccountDetails) {
+      if (profile?.bankAccountDetails) {
         try {
           await this.externalAffiliateService.processWithdrawal({
             email: profile.user.email,
-            amount: Number(request.amount),
+            amount: Number(existing.amount),
             bankName: profile.bankAccountDetails.bankName,
             accountNumber: profile.bankAccountDetails.accountNumber,
             accountName: profile.bankAccountDetails.accountName,
-            reference: request.id,
+            reference: existing.id,
           });
         } catch (error: any) {
           console.error(
             'Failed to sync withdrawal with external affiliate system:',
             error.message,
           );
-          // We don't throw here to avoid blocking the local update, but in production we might want to
+          // Log but don't block — DB update proceeds regardless
         }
       }
     }
 
-    // If rejected, refund the balance
-    if (status === WithdrawalStatus.REJECTED) {
-      const profile = request.affiliate;
-      profile.availableBalance =
-        Number(profile.availableBalance) + Number(request.amount);
-      await this.profileRepository.save(profile);
-    }
+    // Wrap both the status update and the optional refund in a single transaction
+    return this.dataSource.transaction(async (manager) => {
+      const request = await manager.findOne(AffiliateWithdrawalRequest, {
+        where: { id },
+        relations: ['affiliate'],
+        lock: { mode: 'pessimistic_write' },
+      });
 
-    return this.withdrawalRepository.save(request);
+      if (!request) throw new NotFoundException('Withdrawal request not found');
+
+      request.status = status;
+      request.processedById = adminId;
+      request.processedAt = new Date();
+      request.note = note || request.note;
+
+      // If rejected, refund the balance atomically inside the same transaction
+      if (status === WithdrawalStatus.REJECTED) {
+        await manager
+          .createQueryBuilder()
+          .update(AffiliateProfile)
+          .set({
+            availableBalance: () => `"availableBalance" + ${Number(request.amount)}`,
+          })
+          .where('id = :id', { id: request.affiliateId })
+          .execute();
+      }
+
+      return manager.save(request);
+    });
   }
 
   /**
@@ -599,14 +837,15 @@ export class AffiliatesService {
   }
 
   private async updateAffiliateBalance(affiliateId: string, amount: number) {
-    const profile = await this.profileRepository.findOne({
-      where: { id: affiliateId },
-    });
-    if (profile) {
-      profile.totalEarnings = Number(profile.totalEarnings) + Number(amount);
-      profile.availableBalance =
-        Number(profile.availableBalance) + Number(amount);
-      await this.profileRepository.save(profile);
-    }
+    // Atomic increment — avoids read-modify-write race condition under concurrent commission processing
+    await this.profileRepository
+      .createQueryBuilder()
+      .update(AffiliateProfile)
+      .set({
+        totalEarnings: () => `"totalEarnings" + ${amount}`,
+        availableBalance: () => `"availableBalance" + ${amount}`,
+      })
+      .where('id = :id', { id: affiliateId })
+      .execute();
   }
 }

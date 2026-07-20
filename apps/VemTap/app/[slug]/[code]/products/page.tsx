@@ -429,7 +429,7 @@ export default function ProductsPage() {
                 {products.length === 0 && (
                     <div className="py-20 text-center space-y-4">
                         <ShoppingBag size={48} className="mx-auto text-slate-200" />
-                        <p className="text-outline font-bold">No products found matching your criteria.</p>
+                        <p className="text-outline font-bold">No products match your search. Try browsing all categories.</p>
                     </div>
                 )}
             </main>
