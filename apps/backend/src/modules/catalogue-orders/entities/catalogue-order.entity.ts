@@ -90,6 +90,15 @@ export class CatalogueOrder extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   refundedById: string | null;
 
+  @ApiProperty({ description: 'Staff who accepted/processed this order', nullable: true })
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'attendedById' })
+  attendedByUser: User | null;
+
+  @ApiProperty({ description: 'ID of the staff member who accepted/processed this order', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  attendedById: string | null;
+
   @Column({ type: 'timestamp', nullable: true })
   refundedAt: Date | null;
 

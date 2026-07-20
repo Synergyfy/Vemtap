@@ -362,6 +362,13 @@ export class CatalogueOrderService {
     });
     if (!order) throw new NotFoundException('Order not found');
 
+    if (
+      (order.status === CatalogueOrderStatus.NEW && status === CatalogueOrderStatus.PROCESSING) ||
+      (order.status === CatalogueOrderStatus.PROCESSING && status === CatalogueOrderStatus.COMPLETED)
+    ) {
+      order.attendedById = staff.id;
+    }
+
     // If order is cancelled/rejected and stock was deducted, return it
     if (
       (status === CatalogueOrderStatus.CANCELLED ||
@@ -653,7 +660,14 @@ export class CatalogueOrderService {
 
     const [data, total] = await this.orderRepository.findAndCount({
       where,
-      relations: ['items', 'items.item', 'items.offer', 'customer', 'branch'],
+      relations: [
+        'items',
+        'items.item',
+        'items.offer',
+        'customer',
+        'branch',
+        'attendedByUser',
+      ],
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
@@ -671,6 +685,7 @@ export class CatalogueOrderService {
         'items.offer',
         'branch',
         'branch.business',
+        'attendedByUser',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -679,7 +694,7 @@ export class CatalogueOrderService {
   async findOneOrder(orderId: string, businessId: string) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId, businessId },
-      relations: ['items', 'items.item', 'items.offer', 'customer'],
+      relations: ['items', 'items.item', 'items.offer', 'customer', 'attendedByUser'],
     });
     if (!order) throw new NotFoundException('Order not found');
     return order;

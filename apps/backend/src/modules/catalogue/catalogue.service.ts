@@ -249,13 +249,34 @@ export class CatalogueService {
     return this.itemRepository.save(item);
   }
 
+  private async resolveBranchId(branchIdOrCode: string): Promise<string> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(branchIdOrCode);
+    if (isUuid) {
+      const branch = await this.branchRepository.findOne({
+        where: { id: branchIdOrCode, isActive: true },
+      });
+      if (!branch) {
+        throw new NotFoundException(`Branch not found`);
+      }
+      return branch.id;
+    }
+    const branch = await this.branchRepository.findOne({
+      where: { uniqueCode: branchIdOrCode, isActive: true },
+    });
+    if (!branch) {
+      throw new NotFoundException(`Branch with code ${branchIdOrCode} not found`);
+    }
+    return branch.id;
+  }
+
   // --- Public Listing ---
 
   async findAllItemsPublic(branchId: string, query: CatalogueQueryDto) {
+    const resolvedBranchId = await this.resolveBranchId(branchId);
     const qb = this.itemRepository
       .createQueryBuilder('item')
       .innerJoin('item.branches', 'branch', 'branch.id = :branchId', {
-        branchId,
+        branchId: resolvedBranchId,
       })
       .leftJoinAndSelect('item.category', 'category')
       .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
@@ -324,12 +345,13 @@ export class CatalogueService {
   }
 
   async findAllCategoriesByBranch(branchId: string) {
+    const resolvedBranchId = await this.resolveBranchId(branchId);
     // Return categories that have at least one active, non-suspended item in this branch
     const categories = await this.categoryRepository
       .createQueryBuilder('category')
       .innerJoin('category.items', 'item')
       .innerJoin('item.branches', 'branch', 'branch.id = :branchId', {
-        branchId,
+        branchId: resolvedBranchId,
       })
       .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
       .andWhere('item.isSuspended = :isSuspended', { isSuspended: false })
@@ -341,21 +363,20 @@ export class CatalogueService {
   }
 
   async findOneItem(id: string, branchId?: string) {
-    const where: any = { id };
-    const relations = ['category'];
     if (branchId) {
       // Verification that it belongs to the branch
+      const resolvedBranchId = await this.resolveBranchId(branchId);
       const item = await this.itemRepository.findOne({
         where: { id },
         relations: ['branches', 'category'],
       });
-      if (!item || !item.branches.some((b) => b.id === branchId)) {
+      if (!item || !item.branches.some((b) => b.id === resolvedBranchId)) {
         throw new NotFoundException('Item not found in this branch');
       }
       return item;
     }
     return this.itemRepository.findOne({
-      where,
+      where: { id },
       relations: ['branches', 'category'],
     });
   }
