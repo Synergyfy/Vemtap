@@ -266,7 +266,7 @@ export default function ServicesPage() {
                     {services.length === 0 && (
                         <div className="py-20 text-center space-y-4">
                             <Calendar size={48} className="mx-auto text-slate-200" />
-                            <p className="text-outline font-bold">No services found.</p>
+                            <p className="text-outline font-bold">Services coming soon. Check back to book your appointment.</p>
                         </div>
                     )}
                 </section>

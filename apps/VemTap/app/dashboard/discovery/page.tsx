@@ -16,6 +16,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const NearbyMap = dynamic(() => import('@/components/dashboard/discovery/NearbyMap'), { ssr: false });
 const LocationSetupModal = dynamic(() => import('@/components/dashboard/branches/LocationSetupModal'), { ssr: false });
+import ComingSoonOverlay from '@/components/dashboard/ComingSoonOverlay';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { 
     useDiscoveryOverview,
@@ -119,11 +120,16 @@ export default function DiscoveryPage() {
     const { activeBranchId, isAllBranches } = useActiveBranch();
     
     return (
-        <div className="p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
+        <div className="relative p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
             <PageHeader 
                 title="Discovery Network" 
                 description="Get more customers from nearby businesses."
                 isSticky={false}
+            />
+            
+            <ComingSoonOverlay
+                title="Discovery Network"
+                description="Get discovered by nearby customers and grow your reach. Promote your offers, connect with local shoppers, and track how many new customers find your business through VEMTAP's discovery network."
             />
             
             {!isCreatingPromo ? (
@@ -374,7 +380,7 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
             </div>
 
             {!promotions || promotions.length === 0 ? (
-                <EmptyState icon={Tag} title="No promotions yet" description="Create your first promotion to get started." />
+                <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a promotion to attract new customers and bring them back again." />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {promotions.map((promo) => (
@@ -440,27 +446,53 @@ function PartnersTab({ branchId }: { branchId: string }) {
     const updateBranchMutation = useUpdateBranch();
     const { data: branches = [] } = useBranches();
 
-    // Browser live location for accurate map pin (refreshes per session)
+    // Browser live location for accurate map pin (continuous GPS watch)
     const [liveLocation, setLiveLocation] = React.useState<{ lat: number; lng: number } | null>(null);
     const [locationError, setLocationError] = React.useState<string | null>(null);
-    const locationFetched = React.useRef(false);
+    const [gpsLoading, setGpsLoading] = React.useState(false);
+    const watchIdRef = React.useRef<number | null>(null);
 
-    React.useEffect(() => {
-        if (locationFetched.current) return;
-        locationFetched.current = true;
+    const startGpsWatch = React.useCallback(() => {
         if (!navigator.geolocation) {
             setLocationError('Geolocation not supported');
             return;
         }
-        navigator.geolocation.getCurrentPosition(
-            (pos) => setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            (err) => {
-                const msg = err.code === err.PERMISSION_DENIED ? 'Permission denied' : 'Could not get location';
-                setLocationError(msg);
+        setGpsLoading(true);
+        setLocationError(null);
+        // Clear any existing watch
+        if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+        }
+        watchIdRef.current = navigator.geolocation.watchPosition(
+            (pos) => {
+                setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setGpsLoading(false);
+                setLocationError(null);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+            (err) => {
+                const msg = err.code === err.PERMISSION_DENIED
+                    ? 'Location permission denied. Enable GPS in your browser settings.'
+                    : err.code === err.TIMEOUT
+                        ? 'GPS timeout. Try again in an open area.'
+                        : 'Could not get GPS location.';
+                setLocationError(msg);
+                setGpsLoading(false);
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
         );
     }, []);
+
+    // Start GPS when "Find Partners" tab opens; stop on unmount or when leaving tab
+    React.useEffect(() => {
+        if (view !== 'find') return;
+        startGpsWatch();
+        return () => {
+            if (watchIdRef.current !== null) {
+                navigator.geolocation.clearWatch(watchIdRef.current);
+                watchIdRef.current = null;
+            }
+        };
+    }, [view, startGpsWatch]);
 
     // Fallback to stored branch coordinates if browser location unavailable
     const currentBranch = React.useMemo(() => {
@@ -474,6 +506,16 @@ function PartnersTab({ branchId }: { branchId: string }) {
         }
         return undefined;
     }, [liveLocation, currentBranch]);
+
+    React.useEffect(() => {
+        if (currentBranch) {
+            console.log('📌 Branch DB coordinates:', { lat: currentBranch.latitude, lng: currentBranch.longitude, name: currentBranch.name, id: currentBranch.id });
+        }
+        if (branchLocation) {
+            console.log('📍 Resolved map location (used for map):', branchLocation);
+            console.log('🔗 https://www.google.com/maps?q=' + branchLocation.lat + ',' + branchLocation.lng);
+        }
+    }, [currentBranch, branchLocation]);
 
     // Detect "no location coordinates" error
     const isNoLocationError = nearbyError && 
@@ -576,7 +618,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                     ) : errorActive ? (
                         <ErrorState message="Failed to load partners" onRetry={() => refetchActive()} />
                     ) : !activePartners || activePartners.length === 0 ? (
-                        <EmptyState icon={Handshake} title="No active partners" description="Connect with nearby businesses to start sharing customers." />
+                        <EmptyState icon={Handshake} title="Grow together with nearby businesses" description="Partner with other businesses to share customers and grow your reach." />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {activePartners.map((partner) => (
@@ -722,6 +764,28 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                     <span>100m</span>
                                     <span>10km</span>
                                 </div>
+                            </div>
+
+                            {/* GPS Status */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    {gpsLoading ? (
+                                        <Loader2 size={14} className="animate-spin text-gray-400 shrink-0" />
+                                    ) : liveLocation ? (
+                                        <span className="size-2.5 rounded-full bg-emerald-500 shrink-0 shadow-sm shadow-emerald-200" />
+                                    ) : (
+                                        <span className="size-2.5 rounded-full bg-red-400 shrink-0" />
+                                    )}
+                                    <span className="text-[10px] font-bold text-gray-500 truncate">
+                                        {gpsLoading ? 'Getting GPS...' : locationError ? locationError : liveLocation ? `${liveLocation.lat.toFixed(6)}, ${liveLocation.lng.toFixed(6)}` : 'No GPS signal'}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={startGpsWatch}
+                                    className="text-[9px] font-black uppercase tracking-widest text-primary hover:underline shrink-0 ml-2"
+                                >
+                                    Refresh
+                                </button>
                             </div>
                             {loadingNearby ? (
                                 [1, 2, 3].map(i => (
@@ -1003,7 +1067,7 @@ function CustomersTab({ branchId }: { branchId: string }) {
             ) : isError ? (
                 <ErrorState message={error?.message || 'Failed to load customers'} onRetry={() => refetch()} />
             ) : !data || data.data.length === 0 ? (
-                <EmptyState icon={Users} title="No customers found" description="No customer visits match the current filter." />
+                <EmptyState icon={Users} title="Your next customer is out there" description="Adjust your filters to find customers who have visited your business." />
             ) : (
                 <>
                     <div className="bg-white md:rounded-3xl border-y md:border border-gray-100 shadow-sm overflow-hidden -mx-4 md:mx-0">

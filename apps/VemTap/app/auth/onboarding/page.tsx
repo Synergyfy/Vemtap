@@ -45,7 +45,7 @@ function OnboardingContent() {
                 setStatus('success');
                 setMessage('Success! Redirecting you to your new dashboard...');
 
-                toast.success('Account created successfully! Welcome to VemTap.');
+                toast.success("Let's help you bring your next customer back. Your dashboard is ready!");
 
                 setTimeout(() => {
                     router.push('/dashboard/settings/subscription');

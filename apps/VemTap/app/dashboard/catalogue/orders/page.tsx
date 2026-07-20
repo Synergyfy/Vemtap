@@ -123,7 +123,7 @@ export default function OrdersPage() {
                       <div className="size-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
                          <ClipboardList size={40} />
                       </div>
-                      <h4 className="text-lg font-black text-gray-900 mb-2">No orders found</h4>
+                      <h4 className="text-lg font-black text-gray-900 mb-2">Your first order is coming — share your QR code to start</h4>
                       <p className="text-sm font-medium text-gray-400">Share your ordering QR code to start receiving requests.</p>
                    </div>
                 )}

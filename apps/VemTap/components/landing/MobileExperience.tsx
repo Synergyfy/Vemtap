@@ -23,8 +23,8 @@ export default function MobileExperience() {
                                         <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl shadow-primary/30">
                                             <Zap size={28} className="text-white fill-white" />
                                         </div>
-                                        <h4 className="font-display font-black text-gray-900 tracking-tight">Welcome to VemTap</h4>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Instant Registration</p>
+                                        <h4 className="font-display font-black text-gray-900 tracking-tight">Let's bring your next customer back</h4>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Quick Registration</p>
                                     </div>
                                     <div className="p-8 space-y-6">
                                         {[

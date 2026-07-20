@@ -146,7 +146,7 @@ export default function CreateSegmentModal({ isOpen, onClose }: CreateSegmentMod
                             ) : visitors.length === 0 ? (
                                 <div className="p-12 text-center">
                                     <Users className="mx-auto text-slate-200 mb-2" size={32} />
-                                    <p className="text-sm text-slate-400 font-medium">No customers found</p>
+                                    <p className="text-sm text-slate-400 font-medium">Your first customer is waiting. Let's capture them today.</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-50">

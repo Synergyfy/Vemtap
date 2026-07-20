@@ -608,7 +608,7 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                         ))}
                                         {allItems.length === 0 && (
                                             <div className="py-8 text-center text-text-secondary text-xs italic">
-                                                No items found in this branch
+                                                This branch hasn't added items yet. Add products or services to get started.
                                             </div>
                                         )}
                                     </div>

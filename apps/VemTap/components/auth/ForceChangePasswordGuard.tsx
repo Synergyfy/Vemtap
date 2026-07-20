@@ -40,7 +40,7 @@ export const ForceChangePasswordGuard = ({ children }: { children: React.ReactNo
             // Update local user state so the guard releases
             await updateUser({ isPasswordChanged: true });
             
-            notify.success('Security PIN set successfully! Welcome to VemTap.');
+            notify.success("Let's help you bring your next customer back. Security set up!");
         } catch (error: any) {
             notify.error(error.message || 'Verification failed. Please check your temporary PIN.');
         }

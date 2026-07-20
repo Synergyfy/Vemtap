@@ -279,7 +279,7 @@ export default function ActiveFormsPage() {
 
                                     {activeItems.length === 0 ? (
                                         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-xs text-gray-500 text-center">
-                                            No items in sequence. Add items below to build your UBL page.
+                                            Start building your customer experience. Add items to create your page.
                                         </div>
                                     ) : (
                                         <DraggableButtonList

@@ -158,7 +158,7 @@ export default function ReceiveStockScreen() {
                   <Plus size={18} className="text-[#066CF4]" />
                 </button>
               )) : (
-                <div className="p-4 text-center text-gray-400 text-xs font-bold">No products found</div>
+                <div className="p-4 text-center text-gray-400 text-xs font-bold">Receive your first shipment to start tracking inventory</div>
               )}
             </div>
           )}

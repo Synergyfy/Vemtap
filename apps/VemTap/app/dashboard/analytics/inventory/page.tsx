@@ -109,7 +109,7 @@ export default function InventoryReports() {
         ) : (
           <div className="flex flex-col items-center justify-center min-h-[200px] text-gray-300">
             <Package size={40} className="mb-3 opacity-30" />
-            <p className="text-xs font-black uppercase tracking-widest">No inventory data yet</p>
+            <p className="text-xs font-black uppercase tracking-widest">Start tracking your inventory to see insights here</p>
             {!activeBranchId && (
               <p className="text-[10px] text-gray-400 mt-1">Select a branch to view stock levels</p>
             )}

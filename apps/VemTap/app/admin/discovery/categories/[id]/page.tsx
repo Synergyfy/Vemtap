@@ -146,7 +146,7 @@ export default function DiscoveryCategoryDetailPage() {
                             ) : (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-16 text-center text-text-secondary text-sm">
-                                        No data available for this tab yet.
+                                        Data will populate once businesses start engaging in this category.
                                     </td>
                                 </tr>
                             )}

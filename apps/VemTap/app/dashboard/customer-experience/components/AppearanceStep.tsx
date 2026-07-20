@@ -49,7 +49,7 @@ export function AppearanceStep() {
             await updateMutation.mutateAsync({
                 formAppearanceColor: brandColor,
             });
-            toast.success('Appearance settings saved successfully');
+            toast.success("Your page looks great! Customers will love the experience.");
         } catch (error) {
             console.error('Failed to save appearance', error);
             toast.error('Failed to save appearance settings');

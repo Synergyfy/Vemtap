@@ -183,7 +183,7 @@ export default function MarketingAssetsDashboardPage() {
                     <Layers size={32} />
                 </div>
                 <div className="space-y-1">
-                    <h4 className="font-bold text-gray-900 text-lg">No assets created yet</h4>
+                    <h4 className="font-bold text-gray-900 text-lg">Your first marketing asset is waiting to be created</h4>
                     <p className="text-sm text-gray-400 font-medium">Click the button above to get started.</p>
                 </div>
             </div>

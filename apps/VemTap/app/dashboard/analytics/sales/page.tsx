@@ -91,7 +91,7 @@ export default function DetailedSalesReports() {
             </div>
           ) : (
             <div className="flex items-center justify-center min-h-[180px] text-gray-300 text-xs font-black uppercase tracking-widest">
-              No sales data yet
+              Your first sale is closer than you think — start capturing customers today
             </div>
           )}
         </div>
@@ -118,7 +118,7 @@ export default function DetailedSalesReports() {
             </div>
           ) : (
             <div className="flex items-center justify-center min-h-[180px] text-gray-300 text-xs font-black uppercase tracking-widest">
-              No payment data yet
+              Payment insights will appear once customers start transacting
             </div>
           )}
         </div>

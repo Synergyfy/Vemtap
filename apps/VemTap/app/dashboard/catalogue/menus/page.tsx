@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function ConfigureMenuPage() {
     const [categories, setCategories] = useState([
@@ -30,7 +31,7 @@ export default function ConfigureMenuPage() {
                     </Link>
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Catalogue Manager</p>
-                        <h1 className="text-2xl font-black text-gray-900 leading-none">Digital Menu Builder</h1>
+                        <div className="flex items-center gap-2"><h1 className="text-2xl font-black text-gray-900 leading-none">Digital Menu Builder</h1><PageGuideButton /><AICopilotButton /></div>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">

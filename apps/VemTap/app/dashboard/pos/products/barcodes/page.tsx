@@ -234,7 +234,7 @@ export default function BarcodeCenter() {
           {filtered.length === 0 ? (
             <div className="p-12 text-center">
               <Package size={32} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-sm font-bold text-gray-400">No products found</p>
+              <p className="text-sm font-bold text-gray-400">Generate barcodes once you've added products to your catalogue</p>
             </div>
           ) : (
             filtered.map((item: any) => {

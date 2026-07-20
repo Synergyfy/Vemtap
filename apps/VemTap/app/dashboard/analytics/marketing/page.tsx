@@ -5,6 +5,7 @@ import { AnalyticsStatsCards } from '@/components/dashboard/analytics/AnalyticsD
 import { Megaphone, Send, MailOpen, MousePointer, Loader2 } from 'lucide-react';
 import { useMessagingAnalytics } from '@/services/messaging/hooks';
 import { useMessagingCampaigns } from '@/services/messaging/hooks';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function MarketingAnalyticsPage() {
     const { data: analytics, isLoading: analyticsLoading } = useMessagingAnalytics();
@@ -30,7 +31,7 @@ export default function MarketingAnalyticsPage() {
 
     return (
         <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
-            <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Marketing Analytics</h2>
+            <div className="flex items-center gap-2"><h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Marketing Analytics</h2><PageGuideButton /><AICopilotButton /></div>
             <AnalyticsStatsCards stats={stats} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="rounded-[40px] bg-white border border-gray-100 p-10 shadow-sm min-h-[300px] flex items-center justify-center">

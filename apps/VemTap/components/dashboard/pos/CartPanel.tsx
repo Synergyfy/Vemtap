@@ -92,7 +92,7 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
             <ShoppingBagIcon />
           </div>
         </div>
-        <h3 className="text-xl font-black text-gray-900 mb-2">Cart is empty</h3>
+        <h3 className="text-xl font-black text-gray-900 mb-2">Your next sale starts here</h3>
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest max-w-[200px] leading-relaxed">
           Scan a barcode or tap products to add them to the cart
         </p>

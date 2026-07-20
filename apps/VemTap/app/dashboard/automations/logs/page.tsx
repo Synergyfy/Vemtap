@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function AutomationLogsPage() {
     const logs = [
@@ -31,7 +32,7 @@ export default function AutomationLogsPage() {
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 leading-tight">Activity Logs</h1>
+                    <div className="flex items-center gap-2"><h1 className="text-3xl font-black text-gray-900 leading-tight">Activity Logs</h1><PageGuideButton /><AICopilotButton /></div>
                     <p className="text-sm font-medium text-gray-500 mt-1">
                         Track every automated action in real-time.
                     </p>

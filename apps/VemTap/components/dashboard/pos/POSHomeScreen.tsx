@@ -368,7 +368,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
             <div className="size-20 bg-gray-50 rounded-[24px] flex items-center justify-center text-gray-300 mb-4 border border-gray-100">
               <Search size={32} />
             </div>
-            <h3 className="text-lg font-black text-gray-900 mb-1">No products found</h3>
+            <h3 className="text-lg font-black text-gray-900 mb-1">Start adding products to ring up your first sale</h3>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Try adjusting your search or category</p>
           </div>
         )}

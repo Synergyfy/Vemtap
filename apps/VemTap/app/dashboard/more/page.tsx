@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSudoStore } from '@/store/useSudoStore';
 import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 const MORE_CARDS = [
     {
@@ -85,7 +86,7 @@ export default function MoreLandingPage() {
     return (
         <div className="w-full px-4 md:px-8 py-8 space-y-8 pb-24">
             <div className="space-y-2">
-                <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">More</h1>
+                <div className="flex items-center gap-2"><h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">More</h1><PageGuideButton /><AICopilotButton /></div>
                 <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-2xl">
                     Access analytics, QRThrive, and business settings.
                 </p>

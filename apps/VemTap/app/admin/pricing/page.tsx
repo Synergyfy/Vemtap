@@ -6,8 +6,10 @@ import {
     Tag, Plus, Trash2, Edit3, Save, X, Check,
     Zap, Shield, Globe, Crown, ChevronUp, ChevronDown, Loader2,
     Layers, Package, Users, GitBranch, Info, Percent,
-    Activity, ShoppingCart, TrendingUp, BarChart3, Clock, Layout
+    Activity, ShoppingCart, TrendingUp, BarChart3, Clock, Layout,
+    Sparkles, Coins, Smartphone, MessageSquare, History
 } from 'lucide-react';
+import { useSystemSettingsStore, type AICreditPackage } from '@/store/useSystemSettingsStore';
 import Tooltip from '@/components/ui/Tooltip';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,6 +45,7 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     maxCatalogueOffers: string;
     automationsLimit: string;
     qrThrivePlanId?: string;
+    badge?: 'free' | 'silver' | 'gold' | 'platinum';
 };
 
 type EditableAddOnForm = {
@@ -95,6 +98,7 @@ const defaultNewPlan: EditablePlanForm = {
     description: '',
     isPopular: false,
     qrThrivePlanId: '',
+    badge: undefined,
 };
 
 const defaultNewAddOn: EditableAddOnForm = {
@@ -160,6 +164,7 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     description: plan.description || '',
     isPopular: !!plan.isPopular,
     qrThrivePlanId: plan.qrThrivePlanId || '',
+    badge: plan.badge || undefined,
 });
 
 const toEditableAddOn = (addon: AddOn): EditableAddOnForm => ({
@@ -386,7 +391,13 @@ const BundleDiscountsTab = () => {
 };
 
 export default function AdminPricingPage() {
-    const [activeTab, setActiveTab] = useState<'plans' | 'addons' | 'permissions'>('plans');
+    const [activeTab, setActiveTab] = useState<'plans' | 'addons' | 'permissions' | 'ai-credits' | 'messaging-costs'>('plans');
+
+    // System Settings for AI Credits & Messaging Costs
+    const systemSettingsStore = useSystemSettingsStore();
+    const [localMessagingCosts, setLocalMessagingCosts] = useState({ ...systemSettingsStore.messagingCosts });
+    const [localAiCreditPrice, setLocalAiCreditPrice] = useState(systemSettingsStore.aiCreditPrice);
+    const [localAiCreditPackages, setLocalAiCreditPackages] = useState<AICreditPackage[]>([...systemSettingsStore.aiCreditPackages]);
     
     // Plans State
     const [editingPlan, setEditingPlan] = useState<EditablePlanForm | null>(null);
@@ -438,6 +449,45 @@ export default function AdminPricingPage() {
     }, [plans]);
 
     const orderChanged = JSON.stringify(orderedPlans.map(p => p.id)) !== JSON.stringify(originalOrderIds);
+
+    // Sync local settings with store
+    useEffect(() => {
+        setLocalMessagingCosts({ ...systemSettingsStore.messagingCosts });
+        setLocalAiCreditPrice(systemSettingsStore.aiCreditPrice);
+        setLocalAiCreditPackages([...systemSettingsStore.aiCreditPackages]);
+    }, [systemSettingsStore.messagingCosts, systemSettingsStore.aiCreditPrice, systemSettingsStore.aiCreditPackages]);
+
+    const handleSaveMessagingCosts = () => {
+        systemSettingsStore.updateSettings({ messagingCosts: localMessagingCosts });
+        notify.success('Messaging costs updated successfully');
+    };
+
+    const handleSaveAiCredits = () => {
+        systemSettingsStore.updateSettings({
+            aiCreditPrice: localAiCreditPrice,
+            aiCreditPackages: localAiCreditPackages
+        });
+        notify.success('AI credits configuration updated successfully');
+    };
+
+    const addAiPackage = () => {
+        const newPkg: AICreditPackage = {
+            id: crypto.randomUUID?.() || Date.now().toString(),
+            credits: 100,
+            price: 5000,
+            popular: false,
+            isActive: true
+        };
+        setLocalAiCreditPackages(prev => [...prev, newPkg]);
+    };
+
+    const removeAiPackage = (id: string) => {
+        setLocalAiCreditPackages(prev => prev.filter(p => p.id !== id));
+    };
+
+    const updateAiPackage = (id: string, updates: Partial<AICreditPackage>) => {
+        setLocalAiCreditPackages(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    };
 
     const handleSaveOrder = () => {
         // Here you would typically send the new IDs array to the backend
@@ -599,6 +649,7 @@ export default function AdminPricingPage() {
         description: plan.description || '',
         isPopular: !!plan.isPopular,
         qrThrivePlanId: plan.qrThrivePlanId || undefined,
+        badge: plan.badge || undefined,
     });
 
     const handleSave = async () => {
@@ -779,11 +830,11 @@ export default function AdminPricingPage() {
                             <span className="text-xs font-black uppercase tracking-widest">Pricing Management</span>
                         </div>
                         <h1 className="text-4xl font-display font-bold text-text-main">
-                            {activeTab === 'plans' ? 'Subscription Plans' : activeTab === 'addons' ? 'Add-ons & Discounts' : 'Plan Permissions'}
+                            {activeTab === 'plans' ? 'Subscription Plans' : activeTab === 'addons' ? 'Add-ons & Discounts' : activeTab === 'messaging-costs' ? 'Messaging Costs' : activeTab === 'ai-credits' ? 'AI Credits' : 'Plan Permissions'}
                         </h1>
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        <div className="bg-slate-100 p-1 rounded-xl flex">
+                        <div className="bg-slate-100 p-1 rounded-xl flex flex-wrap">
                             <button
                                 onClick={() => setActiveTab('plans')}
                                 className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'plans' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -801,6 +852,18 @@ export default function AdminPricingPage() {
                                 className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'permissions' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
                                 Permissions
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('messaging-costs')}
+                                className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'messaging-costs' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Messaging
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('ai-credits')}
+                                className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'ai-credits' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                AI Credits
                             </button>
                         </div>
                         {activeTab === 'plans' ? (
@@ -820,14 +883,14 @@ export default function AdminPricingPage() {
                                     <Plus size={18} /> Add New Plan
                                 </button>
                             </>
-                        ) : (
+                        ) : activeTab === 'addons' ? (
                             <button
                                 onClick={openCreateAddOn}
                                 className="h-12 px-6 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                             >
                                 <Plus size={18} /> Create Add-on
                             </button>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 
@@ -1003,10 +1066,23 @@ export default function AdminPricingPage() {
                                                         {!plan.isPopular && plan.id !== 'free' && plan.id !== 'basic' && <Shield size={24} />}
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <h3 className="font-bold text-text-main text-lg">{plan.name}</h3>
-                                                    <p className="text-xs font-bold text-primary">{plan.isPopular ? 'Most Popular' : 'Tier Plan'}</p>
-                                                </div>
+<div>
+                                                      <h3 className="font-bold text-text-main text-lg">{plan.name}</h3>
+                                                      <div className="flex items-center gap-2 mt-1">
+                                                          {plan.isPopular && <span className="text-xs font-bold text-primary">Most Popular</span>}
+                                                          {plan.badge && (
+                                                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                                                  plan.badge === 'free' ? 'bg-green-100 text-green-700' :
+                                                                  plan.badge === 'silver' ? 'bg-gray-100 text-gray-700' :
+                                                                  plan.badge === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                  'bg-purple-100 text-purple-700'
+                                                              }`}>
+                                                              {plan.badge.charAt(0).toUpperCase() + plan.badge.slice(1)}
+                                                          </span>
+                                                          )}
+                                                          {!plan.isPopular && !plan.badge && <span className="text-xs font-bold text-primary">Tier Plan</span>}
+                                                      </div>
+                                                  </div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <button
@@ -1102,6 +1178,227 @@ export default function AdminPricingPage() {
                     </div>
                 ) : activeTab === 'permissions' ? (
                     <PlanPermissionsTab plans={plans} isLoading={plansLoading} />
+                ) : activeTab === 'messaging-costs' ? (
+                    <div className="bg-white rounded-3xl border border-gray-100 p-8 space-y-8 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                                    <MessageSquare size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-black text-text-main uppercase tracking-tight">Messaging Costs</h2>
+                                    <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Credits charged per outbound message</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleSaveMessagingCosts}
+                                className="h-10 px-5 bg-primary text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                            >
+                                <Save size={14} />
+                                Save
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                                        <Smartphone size={20} className="text-primary" />
+                                    </div>
+                                    <h3 className="font-bold text-slate-800">SMS Gateway</h3>
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                    Standard SMS cost application-wide. This will be deducted from business credits for every sent message.
+                                </p>
+                                <div className="space-y-1.5 pt-2">
+                                    <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Cost per SMS (Credits)</label>
+                                    <input
+                                        type="number"
+                                        value={localMessagingCosts.sms}
+                                        onChange={(e) => setLocalMessagingCosts({ ...localMessagingCosts, sms: Number(e.target.value) })}
+                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-black text-lg text-primary outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-emerald-50/30 rounded-2xl border border-emerald-100 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                                        <MessageSquare size={20} className="text-emerald-500" />
+                                    </div>
+                                    <h3 className="font-bold text-slate-800">WhatsApp Bridge</h3>
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                    WhatsApp Business API costs. Typically higher due to Meta conversation-based pricing.
+                                </p>
+                                <div className="space-y-1.5 pt-2">
+                                    <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Cost per WhatsApp (Credits)</label>
+                                    <input
+                                        type="number"
+                                        value={localMessagingCosts.whatsapp}
+                                        onChange={(e) => setLocalMessagingCosts({ ...localMessagingCosts, whatsapp: Number(e.target.value) })}
+                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-black text-lg text-emerald-600 outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
+                            <History size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-bold text-amber-800">Propagation Note</p>
+                                <p className="text-[10px] text-amber-700 font-medium leading-relaxed mt-0.5">
+                                    Changes to messaging costs will apply immediately to all new outbound messages. Existing scheduled campaigns will retain their original pricing.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : activeTab === 'ai-credits' ? (
+                    <div className="bg-white rounded-3xl border border-gray-100 p-8 space-y-8 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                                    <Sparkles size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-black text-text-main uppercase tracking-tight">AI Credits Configuration</h2>
+                                    <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Set per-credit price and manage packages users can purchase</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleSaveAiCredits}
+                                className="h-10 px-5 bg-primary text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                            >
+                                <Save size={14} />
+                                Save
+                            </button>
+                        </div>
+
+                        {/* Per-Credit Price */}
+                        <div className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl border border-purple-100 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                                    <Coins size={20} className="text-purple-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800">Per-Credit Price</h3>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Cost per single AI credit</p>
+                                </div>
+                            </div>
+                            <div className="space-y-1.5 pt-2">
+                                <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Price per Credit (₦)</label>
+                                <div className="relative max-w-xs">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">₦</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={localAiCreditPrice}
+                                        onChange={(e) => setLocalAiCreditPrice(Number(e.target.value))}
+                                        className="w-full h-12 pl-8 pr-4 bg-white border border-gray-200 rounded-xl font-black text-lg text-purple-600 outline-none focus:ring-4 focus:ring-purple-500/10 transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Credit Packages */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-slate-800">Credit Packages</h3>
+                                <button
+                                    onClick={addAiPackage}
+                                    className="py-2 px-4 bg-primary text-white rounded-xl font-bold text-[10px] uppercase tracking-wider shadow-md hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                                >
+                                    <Plus size={14} />
+                                    Add Package
+                                </button>
+                            </div>
+
+                            {localAiCreditPackages.length === 0 ? (
+                                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="text-sm text-slate-400 font-medium">No packages configured yet.</p>
+                                    <p className="text-xs text-slate-300 mt-1">Add a package above to display purchase options to users.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {localAiCreditPackages.map((pkg) => (
+                                        <div
+                                            key={pkg.id}
+                                            className="flex flex-col md:flex-row md:items-center justify-between p-5 border border-slate-100 rounded-2xl hover:bg-slate-50/50 transition-colors gap-4"
+                                        >
+                                            <div className="flex items-center gap-4 flex-1">
+                                                <div className="size-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                                                    <Sparkles size={16} />
+                                                </div>
+                                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black uppercase text-slate-400">Credits</label>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={pkg.credits}
+                                                            onChange={(e) => updateAiPackage(pkg.id, { credits: Number(e.target.value) })}
+                                                            className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/10"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black uppercase text-slate-400">Price (₦)</label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₦</span>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                value={pkg.price}
+                                                                onChange={(e) => updateAiPackage(pkg.id, { price: Number(e.target.value) })}
+                                                                className="w-full h-9 pl-6 pr-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/10"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1 flex items-end">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={pkg.popular}
+                                                                onChange={(e) => updateAiPackage(pkg.id, { popular: e.target.checked })}
+                                                                className="size-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                                                            />
+                                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Popular</span>
+                                                        </label>
+                                                    </div>
+                                                    <div className="space-y-1 flex items-end">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={pkg.isActive}
+                                                                onChange={(e) => updateAiPackage(pkg.id, { isActive: e.target.checked })}
+                                                                className="size-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500/20"
+                                                            />
+                                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Active</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => removeAiPackage(pkg.id)}
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex gap-3">
+                            <Sparkles size={20} className="text-purple-600 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-bold text-purple-800">User-Facing Display</p>
+                                <p className="text-[10px] text-purple-700 font-medium leading-relaxed mt-0.5">
+                                    These packages will be shown on the AI Credits page at <strong>/dashboard/ai</strong>. Only active packages are displayed. Changes take effect immediately.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                     <div className="space-y-12">
                         <BundleDiscountsTab />
@@ -1412,6 +1709,25 @@ export default function AdminPricingPage() {
                                             <Info size={12} className="text-slate-400 cursor-help" />
                                         </Tooltip>
                                     </label>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                        Badge
+                                        <Tooltip content="Display a badge on the plan card (Free, Silver, Gold, Platinum). Free plans get 'Free' badge automatically.">
+                                            <Info size={12} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
+                                    <select
+                                        value={currentPlan.badge || ''}
+                                        onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, badge: (e.target.value || undefined) as EditablePlanForm['badge'] } : prev))}
+                                        className="w-36 h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    >
+                                        <option value="">None</option>
+                                        <option value="free">Free</option>
+                                        <option value="silver">Silver</option>
+                                        <option value="gold">Gold</option>
+                                        <option value="platinum">Platinum</option>
+                                    </select>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <input
