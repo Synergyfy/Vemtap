@@ -64,7 +64,7 @@ export default function NotificationsPage() {
                         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                             <Bell className="text-gray-300" size={32} />
                         </div>
-                        <h3 className="text-lg font-bold text-text-main mb-1">No notifications yet</h3>
+                        <h3 className="text-lg font-bold text-text-main mb-1">We'll notify you when something important happens</h3>
                         <p className="text-sm text-text-secondary max-w-xs">
                             When you have new activity or alerts, they will appear here.
                         </p>

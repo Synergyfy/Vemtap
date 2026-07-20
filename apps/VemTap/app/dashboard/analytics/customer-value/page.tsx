@@ -6,6 +6,7 @@ import { Star, TrendingUp, Users, Target, Loader2 } from 'lucide-react';
 import { usePosDashboard } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function CustomerValuePage() {
     const { activeBranchId } = useActiveBranch();
@@ -48,7 +49,7 @@ export default function CustomerValuePage() {
 
     return (
         <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
-            <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Customer Value Analytics</h2>
+            <div className="flex items-center gap-2"><h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Customer Value Analytics</h2><PageGuideButton /><AICopilotButton /></div>
             <AnalyticsStatsCards stats={stats} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="rounded-[40px] bg-white border border-gray-100 p-10 shadow-sm min-h-[300px] flex items-center justify-center">

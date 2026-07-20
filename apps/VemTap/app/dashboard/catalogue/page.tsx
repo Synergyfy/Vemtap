@@ -68,8 +68,8 @@ export default function CatalogueOverviewPage() {
                                 <div className="size-16 md:size-20 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-6 text-gray-300">
                                     <Plus size={32} className="md:w-10 md:h-10" />
                                 </div>
-                                <h4 className="text-base md:text-lg font-black text-gray-900 mb-2">No items yet</h4>
-                                <p className="text-xs md:text-sm font-medium text-gray-400 mb-8">Start adding your {isProductBased ? 'products' : 'services'} to grow.</p>
+                                <h4 className="text-base md:text-lg font-black text-gray-900 mb-2">Your first {isProductBased ? 'product' : 'service'} is waiting to be listed</h4>
+                                <p className="text-xs md:text-sm font-medium text-gray-400 mb-8">Start showing customers what you offer. Every listing brings you closer to your next sale.</p>
                                 <Link href="/dashboard/catalogue/products"><Button className="bg-[#066CF4] rounded-2xl h-12 md:h-14 px-6 md:px-8 font-black uppercase tracking-widest text-[10px] md:text-xs">Add First Item</Button></Link>
                             </div>
                         ) : (

@@ -126,7 +126,7 @@ export default function InventoryStockList() {
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-500">
               <Package size={48} className="mb-4 text-gray-300" />
-              <p className="text-sm font-black text-gray-900">No stock records found</p>
+              <p className="text-sm font-black text-gray-900">Ready to track your inventory? Add your first stock record.</p>
             </div>
           )}
         </div>

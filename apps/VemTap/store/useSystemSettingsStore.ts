@@ -13,6 +13,14 @@ export interface BundleDiscountTier {
   label: string;
 }
 
+export interface AICreditPackage {
+  id: string;
+  credits: number;
+  price: number;
+  popular: boolean;
+  isActive: boolean;
+}
+
 export interface SystemSettingsState {
   messagingCosts: MessagingCosts;
   platformName: string;
@@ -23,6 +31,8 @@ export interface SystemSettingsState {
   passwordExpiry: boolean;
   addOnBundleDiscounts: BundleDiscountTier[];
   onboardingVideoUrl: string;
+  aiCreditPrice: number;
+  aiCreditPackages: AICreditPackage[];
 
   setMessagingCosts: (costs: MessagingCosts) => void;
   updateSettings: (updates: Partial<SystemSettingsState>) => void;
@@ -33,8 +43,8 @@ export const useSystemSettingsStore = create<SystemSettingsState>()(
   persist(
     (set) => ({
       messagingCosts: {
-        sms: 15.0, // Default 15 credits
-        whatsapp: 25.0 // Default 25 credits
+        sms: 15.0,
+        whatsapp: 25.0
       },
       platformName: 'VemTap',
       supportEmail: 'support@VemTap.com',
@@ -44,6 +54,13 @@ export const useSystemSettingsStore = create<SystemSettingsState>()(
       passwordExpiry: false,
       addOnBundleDiscounts: [],
       onboardingVideoUrl: '',
+      aiCreditPrice: 50,
+      aiCreditPackages: [
+        { id: '1', credits: 50, price: 2500, popular: false, isActive: true },
+        { id: '2', credits: 200, price: 9000, popular: true, isActive: true },
+        { id: '3', credits: 500, price: 20000, popular: false, isActive: true },
+        { id: '4', credits: 1000, price: 35000, popular: false, isActive: true },
+      ],
 
       setMessagingCosts: (costs) => set({ messagingCosts: costs }),
       updateSettings: (updates) => set((state) => ({ ...state, ...updates })),

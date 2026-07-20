@@ -145,7 +145,7 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
                     <div className="size-12 rounded-full bg-gray-50 mx-auto flex items-center justify-center text-gray-400 mb-3">
                       <User size={20} />
                     </div>
-                    <p className="text-sm font-bold text-gray-900">No customers found</p>
+                    <p className="text-sm font-bold text-gray-900">Your first customer is waiting. Let's capture them today.</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1 mb-4">Try a different search or add a new one</p>
                     <button
                       onClick={() => setActiveTab('new')}

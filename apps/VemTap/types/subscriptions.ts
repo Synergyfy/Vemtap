@@ -62,6 +62,7 @@ export interface SubscriptionPlan {
     isActive: boolean;
     description: string;
     isPopular: boolean;
+    badge?: 'free' | 'silver' | 'gold' | 'platinum';
 }
 
 export interface Subscription {

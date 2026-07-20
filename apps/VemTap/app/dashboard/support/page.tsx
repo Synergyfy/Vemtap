@@ -18,6 +18,7 @@ import {
 import { useUserSupportTickets } from '@/services/support/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import Spinner from '@/components/ui/Spinner';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 const supportCategories = [
     { id: 'tech', name: 'Technical Issue' },
@@ -76,7 +77,7 @@ export default function SupportDashboard() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Support Tickets</h1>
+                    <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Support Tickets</h1><PageGuideButton /><AICopilotButton /></div>
                     <p className="text-slate-500 text-sm font-medium mt-1">Reach out to the admin team for help with your account, billing, or technical issues.</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -150,7 +151,7 @@ export default function SupportDashboard() {
                     ) : (
                         <div className="p-8 text-center text-slate-500">
                             <Ticket size={48} className="mx-auto mb-4 text-slate-300" />
-                            <h3 className="font-bold text-lg">No tickets yet</h3>
+                            <h3 className="font-bold text-lg">Your support tickets will appear here</h3>
                             <p className="text-sm">Click "New Ticket" to create your first support request.</p>
                         </div>
                     )}

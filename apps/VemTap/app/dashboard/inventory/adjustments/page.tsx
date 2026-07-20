@@ -130,7 +130,7 @@ export default function StockAdjustmentsScreen() {
                   <Plus size={18} className="text-amber-500" />
                 </button>
               )) : (
-                <div className="p-4 text-center text-gray-400 text-xs font-bold">No products found</div>
+                <div className="p-4 text-center text-gray-400 text-xs font-bold">Adjustments will appear here once you have products in stock</div>
               )}
             </div>
           )}

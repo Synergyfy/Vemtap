@@ -293,10 +293,10 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         >
             <div className="space-y-4">
                 <h1 className="text-4xl font-display font-black text-text-main tracking-tight">
-                    Welcome To Vemtap 👋
+                    Let's help you bring your next customer back.
                 </h1>
                 <p className="text-text-secondary text-lg font-medium leading-relaxed">
-                    Let's set up your business in a few quick steps.
+                    That's a promise. We'll guide you through everything you need to start capturing and reconnecting with customers.
                 </p>
             </div>
 

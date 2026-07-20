@@ -554,7 +554,7 @@ export default function CataloguePage() {
                             <div className="py-20 text-center space-y-4 col-span-full">
                                 {activeTab === 'products' ? <ShoppingBag size={48} className="mx-auto text-slate-200" /> : <Calendar size={48} className="mx-auto text-slate-200" />}
                                 <p className="text-outline font-bold">
-                                    {activeTab === 'products' ? 'No products found.' : 'No services found.'}
+                                    {activeTab === 'products' ? 'New products arriving soon. Check back!' : 'Services coming soon. Stay tuned!'}
                                 </p>
                             </div>
                         )}

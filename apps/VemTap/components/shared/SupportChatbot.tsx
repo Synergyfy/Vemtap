@@ -151,7 +151,7 @@ export default function SupportChatbot() {
         if (history.length === 0 && isAuthenticated) {
             addMessage({
                 role: 'assistant',
-                content: `Hi ${user?.firstName || 'there'}! 👋 Welcome to VemTap Support. A member of our team is ready to help you.`
+                content: `Hi ${user?.firstName || 'there'}! 👋 We're here to help you bring every customer back. A member of our team is ready to help you.`
             });
         }
     }, [history.length, addMessage, isAuthenticated, user]);

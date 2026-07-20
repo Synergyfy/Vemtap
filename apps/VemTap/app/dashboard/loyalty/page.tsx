@@ -175,7 +175,7 @@ export default function LoyaltyOverviewPage() {
                                     </div>
                                 </div>
                             )) : (
-                                <p className="text-sm text-gray-400 text-center py-6">No trend data available</p>
+                                <p className="text-sm text-gray-400 text-center py-6">Trends will show up as your loyalty program grows. Keep engaging!</p>
                             )}
                         </div>
                     </section>

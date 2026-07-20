@@ -13,7 +13,7 @@ import {
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
     MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
     ClipboardCheck, Search, Star, Pin, PinOff, ChevronLeft, ChevronRight, LayoutDashboard,
-    X, MoreHorizontal, User, Download
+    X, MoreHorizontal, User, Download, Sun, Moon, Crown
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -32,6 +32,9 @@ import OwnerSearch from './OwnerSearch';
 import toast from 'react-hot-toast';
 import { NAVIGATION_SECTIONS, MenuItem, NavSection } from '@/constants/ownerNavigation';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import AICopilotDrawer from '@/components/ai/AICopilotDrawer';
+import { useAIStore } from '@/store/useAIStore';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -147,7 +150,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-
+    const isAICopilotOpen = useAIStore((state) => state.isCopilotOpen);
+    const setCopilotOpen = useAIStore((state) => state.setCopilotOpen);
     const queryClient = useQueryClient();
 
     const { data } = useQuery({
@@ -440,7 +444,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 </nav>
 
                 {/* Download App */}
-                <div className="border-t border-gray-100 px-3 pt-4 pb-2">
+                <div className="border-t border-gray-100 px-3 pt-4 pb-2 space-y-1">
                     <button
                         onClick={handleDownloadApp}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-gray-700 hover:bg-gray-100 hover:text-gray-900 ${isCollapsed ? 'justify-center' : ''}`}
@@ -495,6 +499,18 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 </span>
                             </Link>
                         )}
+                        {/* Subscription Plan Badge */}
+                        {activeSubscription && (
+                            <Tooltip content={`Current Plan: ${activeSubscription.plan.name}`} side="bottom">
+                                <button
+                                    onClick={() => router.push(getLinkWithBranch('/dashboard/settings/subscription'))}
+                                    className="size-9 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all"
+                                    title="View your subscription plan"
+                                >
+                                    <Crown size={18} className="fill-current" />
+                                </button>
+                            </Tooltip>
+                        )}
                         <button onClick={() => setShowNotifications(!showNotifications)} className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
                             <Bell size={18} />
                             {unreadCount > 0 && <span className="absolute top-2 right-2 size-1.5 bg-red-500 rounded-full border border-white" />}
@@ -547,6 +563,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     {children}
                 </main>
             </div>
+
+            {/* AI Copilot - available on every page */}
+            <AICopilotDrawer isOpen={isAICopilotOpen} onClose={() => setCopilotOpen(false)} />
 
             <UpgradeModal isOpen={upgradeModal.isOpen} onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} featureName={upgradeModal.featureName} />
             <SubscriptionExpiredModal isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')} />

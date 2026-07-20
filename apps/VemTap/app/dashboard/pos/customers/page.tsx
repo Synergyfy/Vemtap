@@ -147,7 +147,7 @@ export default function CustomersDirectory() {
             </table>
             {filtered.length === 0 && customers.length > 0 && (
               <div className="p-12 text-center">
-                <p className="text-sm font-bold text-gray-400">No customers match your search</p>
+                <p className="text-sm font-bold text-gray-400">Couldn't find that customer. Try a different name or phone number.</p>
               </div>
             )}
           </div>

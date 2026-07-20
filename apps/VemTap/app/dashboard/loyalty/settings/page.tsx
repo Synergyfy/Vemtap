@@ -51,7 +51,7 @@ export default function LoyaltySettingsPage() {
                 spendingBasePoints: formState.spendingBasePoints,
             });
             setIsDirty(false);
-            toast.success('Settings saved successfully');
+            toast.success("Your loyalty settings are ready. Customers will love earning rewards!");
         } catch (error: any) {
             toast.error(error?.message || 'Failed to save settings');
         }
