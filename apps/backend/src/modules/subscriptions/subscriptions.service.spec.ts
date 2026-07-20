@@ -93,7 +93,7 @@ describe('SubscriptionsService', () => {
     findOne: jest.fn().mockResolvedValue(mockBusiness),
   };
 
-  const mockUserRepo = { update: jest.fn() };
+  const mockUserRepo = { update: jest.fn(), count: jest.fn() };
   const mockBranchRepo = { find: jest.fn() };
   const mockDeviceRepo = { count: jest.fn() };
 
@@ -136,10 +136,10 @@ describe('SubscriptionsService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        { provide: getRepositoryToken(CatalogueItem), useValue: {} },
-        { provide: getRepositoryToken(CatalogueOffer), useValue: {} },
-        { provide: getRepositoryToken(CatalogueCategory), useValue: {} },
-        { provide: getRepositoryToken(AutomationRule), useValue: {} },
+        { provide: getRepositoryToken(CatalogueItem), useValue: { count: jest.fn().mockResolvedValue(0) } },
+        { provide: getRepositoryToken(CatalogueOffer), useValue: { count: jest.fn().mockResolvedValue(0) } },
+        { provide: getRepositoryToken(CatalogueCategory), useValue: { count: jest.fn().mockResolvedValue(0) } },
+        { provide: getRepositoryToken(AutomationRule), useValue: { count: jest.fn().mockResolvedValue(0) } },
         SubscriptionsService,
         {
           provide: getRepositoryToken(Subscription),
@@ -379,6 +379,135 @@ describe('SubscriptionsService', () => {
         'AUTH_TRIAL',
       );
       expect(trialWithAuth.status).toBe(SubscriptionStatus.ACTIVE);
+    });
+  });
+
+  describe('getCapabilities', () => {
+    it('should return capability features and correctly treat -1 as unlimited for teamMembers and loyaltyPrograms', async () => {
+      const unlimitedPlan = {
+        ...mockPlan,
+        teamMembersEnabled: true,
+        teamMembersLimit: -1,
+        loyaltyEnabled: true,
+        loyaltyLimit: -1,
+        automationsEnabled: true,
+        maxAutomations: -1,
+      };
+      
+      const activeSub = {
+        ...mockSubscription,
+        plan: unlimitedPlan,
+      };
+
+      mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
+      mockBranchRepo.find.mockResolvedValueOnce([{ id: 'br-1', isMainBranch: true }]);
+      mockUserRepo.count.mockResolvedValueOnce(2);
+      mockDeviceRepo.count.mockResolvedValueOnce(0);
+
+      const result = await service.getCapabilities('b1');
+
+      expect(result.capabilities.teamMembers).toEqual({
+        enabled: true,
+        limit: 'unlimited',
+        used: 2,
+        remaining: 'unlimited',
+      });
+
+      expect(result.capabilities.loyaltyPrograms).toEqual({
+        enabled: true,
+        limit: 'unlimited',
+        used: 0,
+        remaining: 'unlimited',
+      });
+
+      expect(result.capabilities.automations).toEqual({
+        enabled: true,
+        limit: 'unlimited',
+        used: 0,
+        remaining: 'unlimited',
+      });
+    });
+
+    it('should return capability features and correctly treat positive limits as finite for teamMembers and loyaltyPrograms', async () => {
+      const finitePlan = {
+        ...mockPlan,
+        teamMembersEnabled: true,
+        teamMembersLimit: 5,
+        loyaltyEnabled: true,
+        loyaltyLimit: 3,
+        maxAutomations: 10,
+      };
+      
+      const activeSub = {
+        ...mockSubscription,
+        plan: finitePlan,
+      };
+
+      mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
+      mockBranchRepo.find.mockResolvedValueOnce([{ id: 'br-1', isMainBranch: true }]);
+      mockUserRepo.count.mockResolvedValueOnce(2);
+      mockDeviceRepo.count.mockResolvedValueOnce(0);
+
+      const result = await service.getCapabilities('b1');
+
+      expect(result.capabilities.teamMembers).toEqual({
+        enabled: true,
+        limit: 5,
+        used: 2,
+        remaining: 3,
+      });
+
+      expect(result.capabilities.loyaltyPrograms).toEqual({
+        enabled: true,
+        limit: 3,
+        used: 0,
+        remaining: 3,
+      });
+    });
+
+    it('should treat null limits as 0/disabled and not unlimited', async () => {
+      const nullLimitPlan = {
+        ...mockPlan,
+        teamMembersEnabled: true,
+        teamMembersLimit: null,
+        loyaltyEnabled: true,
+        loyaltyLimit: null,
+        automationsEnabled: true,
+        maxAutomations: null,
+      };
+      
+      const activeSub = {
+        ...mockSubscription,
+        plan: nullLimitPlan,
+      };
+
+      mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
+      mockBranchRepo.find.mockResolvedValueOnce([{ id: 'br-1', isMainBranch: true }]);
+      mockUserRepo.count.mockResolvedValueOnce(2);
+      mockDeviceRepo.count.mockResolvedValueOnce(0);
+
+      const result = await service.getCapabilities('b1');
+
+      expect(result.capabilities.teamMembers).toEqual({
+        enabled: true,
+        limit: 0,
+        used: 2,
+        remaining: 0,
+      });
+
+      expect(result.capabilities.loyaltyPrograms).toEqual({
+        enabled: true,
+        limit: 0,
+        used: 0,
+        remaining: 0,
+      });
+
+      expect(result.capabilities.automations).toEqual({
+        enabled: true,
+        limit: 0,
+        used: 0,
+        remaining: 0,
+      });
     });
   });
 });
