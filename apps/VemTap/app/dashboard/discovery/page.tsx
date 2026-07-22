@@ -1702,13 +1702,16 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                         </div>
                         <h3 className="text-3xl font-semibold text-gray-800 mb-4">Ready to Publish!</h3>
                         <p className="text-gray-500 text-lg mb-8 max-w-md mx-auto">Your promotion will immediately be visible to customers and businesses nearby.</p>
-                        <Button 
-                            onClick={handlePublish} 
-                            className="rounded-full px-12 py-6 text-lg font-bold bg-primary hover:bg-primary/90"
-                            disabled={createOffer.isPending}
-                        >
-                            {createOffer.isPending ? 'Publishing...' : 'Publish Promotion'}
-                        </Button>
+                        <div className="flex items-center justify-center gap-4">
+                            <Button variant="ghost" onClick={() => setStep(4)} className="font-bold">Back</Button>
+                            <Button 
+                                onClick={handlePublish} 
+                                className="rounded-full px-12 py-6 text-lg font-bold bg-primary hover:bg-primary/90"
+                                disabled={createOffer.isPending}
+                            >
+                                {createOffer.isPending ? 'Publishing...' : 'Publish Promotion'}
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>
