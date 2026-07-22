@@ -43,7 +43,7 @@ export class BranchesController {
   }
 
   @Get()
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all branches for the business' })
   async findAll(@Request() req) {
     const businessId = await this.getBusinessId(req.user);
@@ -51,7 +51,7 @@ export class BranchesController {
   }
 
   @Get(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a specific branch' })
   async findOne(@Request() req, @Param('id') id: string) {
     const businessId = await this.getBusinessId(req.user);

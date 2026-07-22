@@ -21,7 +21,7 @@ export class BusinessDashboardController {
   constructor(private readonly dashboardService: BusinessDashboardService) {}
 
   @Get()
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get business dashboard data (stats, visitors, devices, etc.)',
   })

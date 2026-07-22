@@ -27,7 +27,7 @@ export class AnalyticsController {
 
   @Get('dashboard')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('analytics')
+  @Permissions('analytics', 'dashboard')
   @RequireAnalyticsLevel('basic')
   @ApiOperation({ summary: 'Get main dashboard analytics' })
   async getDashboardAnalytics(
