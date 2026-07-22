@@ -29,6 +29,11 @@ export interface ReceiptData {
   paymentMethod: string;
   amountPaid: number;
   change: number;
+  showLoyaltyOnReceipt?: boolean;
+  loyaltyPointsEarned?: number;
+  redeemedReward?: string | null;
+  rewardDiscount?: number;
+  redeemedPromotion?: { claimCode: string; offerName: string } | null;
 }
 
 interface ReceiptProps {
@@ -38,7 +43,7 @@ interface ReceiptProps {
 
 export default function Receipt({ data, showActions = false }: ReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
-  const { business, receiptNumber, createdAt, cashierName, customer, hideCustomerInfo, items, subtotal, discountAmount, total, paymentMethod, amountPaid, change } = data;
+  const { business, receiptNumber, createdAt, cashierName, customer, hideCustomerInfo, items, subtotal, discountAmount, total, paymentMethod, amountPaid, change, showLoyaltyOnReceipt, loyaltyPointsEarned, redeemedReward, rewardDiscount, redeemedPromotion } = data;
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -88,6 +93,9 @@ export default function Receipt({ data, showActions = false }: ReceiptProps) {
       '',
       ...items.map(i => `${i.productName} x${i.quantity} — ₦${i.totalPrice.toLocaleString()}`),
       '',
+      ...(showLoyaltyOnReceipt && loyaltyPointsEarned && loyaltyPointsEarned > 0 ? [`Loyalty Points: +${loyaltyPointsEarned}`] : []),
+      ...(redeemedReward && rewardDiscount ? [`Reward: ${redeemedReward} -₦${rewardDiscount.toLocaleString()}`] : []),
+      ...(redeemedPromotion ? [`Deal: ${redeemedPromotion.offerName} (${redeemedPromotion.claimCode})`] : []),
       `Subtotal: ₦${subtotal.toLocaleString()}`,
       ...(discountAmount > 0 ? [`Discount: -₦${discountAmount.toLocaleString()}`] : []),
       `*Total: ₦${total.toLocaleString()}*`,
@@ -146,6 +154,24 @@ export default function Receipt({ data, showActions = false }: ReceiptProps) {
             </div>
           ))}
         </div>
+
+        {showLoyaltyOnReceipt && loyaltyPointsEarned && loyaltyPointsEarned > 0 && (
+          <div className="text-center text-[10px] mb-3 py-2 px-3 bg-amber-50 border border-amber-100 rounded-md">
+            <span className="font-bold text-amber-700">+{loyaltyPointsEarned} loyalty points earned</span>
+          </div>
+        )}
+
+        {redeemedReward && rewardDiscount && rewardDiscount > 0 && (
+          <div className="text-center text-[10px] mb-3 py-2 px-3 bg-emerald-50 border border-emerald-100 rounded-md">
+            <span className="font-bold text-emerald-700">{redeemedReward} — ₦{rewardDiscount.toLocaleString()} reward discount</span>
+          </div>
+        )}
+
+        {redeemedPromotion && (
+          <div className="text-center text-[10px] mb-3 py-2 px-3 bg-blue-50 border border-blue-100 rounded-md">
+            <span className="font-bold text-blue-700">{redeemedPromotion.offerName} — {redeemedPromotion.claimCode}</span>
+          </div>
+        )}
 
         <div className="space-y-1 text-[11px] mb-4 border-b border-dashed border-gray-300 pb-4">
           <div className="flex justify-between">

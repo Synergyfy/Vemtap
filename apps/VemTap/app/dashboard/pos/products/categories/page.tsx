@@ -170,7 +170,7 @@ export default function CategoriesList() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"  />
           <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-md mx-4 p-8 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between mb-8">
               <div>

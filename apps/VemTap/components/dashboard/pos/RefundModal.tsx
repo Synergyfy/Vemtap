@@ -41,6 +41,7 @@ export function RefundModal({ isOpen, onClose, sale, onRefund, isPending }: Refu
     }))
   );
   const [reason, setReason] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const hasSelectedItems = items.some(i => i.refundQty > 0);
   const selectedForRefund = items.filter(i => i.refundQty > 0);
@@ -51,22 +52,24 @@ export function RefundModal({ isOpen, onClose, sale, onRefund, isPending }: Refu
   if (!isOpen) return null;
 
   const handleSubmit = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirm = () => {
     if (refundType === 'full') {
-      if (!window.confirm(`Refund entire sale ${sale.receiptNumber}?`)) return;
       onRefund({ status: 'refunded', reason: reason || undefined });
     } else {
       const refundItems = selectedForRefund.map(i => ({
         saleItemId: i.id,
         quantity: i.refundQty,
       }));
-      if (!window.confirm(`Partial refund ₦${totalRefund.toLocaleString()} for ${selectedForRefund.length} item(s)?`)) return;
       onRefund({ status: 'partial_refund', reason: reason || undefined, refundItems });
     }
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"  />
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -140,33 +143,69 @@ export function RefundModal({ isOpen, onClose, sale, onRefund, isPending }: Refu
         </div>
 
         <div className="border-t border-gray-100 p-6 shrink-0 space-y-3">
-          {hasSelectedItems && (
-            <div className="flex justify-between items-center px-1">
-              <span className="text-xs font-black uppercase tracking-widest text-gray-500">Refund Total</span>
-              <span className="text-lg font-black text-red-600">₦{totalRefund.toLocaleString()}</span>
+          {showConfirm ? (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+                <p className="text-sm font-bold text-amber-800 mb-1">Confirm {refundType === 'full' ? 'Full' : 'Partial'} Refund</p>
+                {refundType === 'full' ? (
+                  <p className="text-xs text-amber-700">Refund entire sale <strong>{sale.receiptNumber}</strong>?</p>
+                ) : (
+                  <p className="text-xs text-amber-700">Refund <strong>₦{totalRefund.toLocaleString()}</strong> for <strong>{selectedForRefund.length} item(s)</strong>?</p>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowConfirm(false)} className="flex-1 h-12 rounded-xl border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
+                  Go Back
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={isPending}
+                  className={cn(
+                    "flex-1 h-12 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
+                    refundType === 'full'
+                      ? "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20"
+                      : "bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-500/20"
+                  )}
+                >
+                  {isPending ? (
+                    <><Loader2 size={16} className="animate-spin" /> Processing...</>
+                  ) : (
+                    <><RotateCcw size={14} /> Confirm Refund</>
+                  )}
+                </button>
+              </div>
             </div>
+          ) : (
+            <>
+              {hasSelectedItems && (
+                <div className="flex justify-between items-center px-1">
+                  <span className="text-xs font-black uppercase tracking-widest text-gray-500">Refund Total</span>
+                  <span className="text-lg font-black text-red-600">₦{totalRefund.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button onClick={onClose} className="flex-1 h-12 rounded-xl border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={isPending}
+                  className={cn(
+                    "flex-1 h-12 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
+                    refundType === 'full'
+                      ? "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20"
+                      : "bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-500/20"
+                  )}
+                >
+                  {isPending ? (
+                    <><Loader2 size={16} className="animate-spin" /> Processing...</>
+                  ) : (
+                    <><RotateCcw size={14} /> {refundType === 'full' ? 'Full Refund' : `Partial Refund (${selectedForRefund.length} items)`}</>
+                  )}
+                </button>
+              </div>
+            </>
           )}
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 h-12 rounded-xl border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isPending}
-              className={cn(
-                "flex-1 h-12 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
-                refundType === 'full'
-                  ? "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20"
-                  : "bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-500/20"
-              )}
-            >
-              {isPending ? (
-                <><Loader2 size={16} className="animate-spin" /> Processing...</>
-              ) : (
-                <><RotateCcw size={14} /> {refundType === 'full' ? 'Full Refund' : `Partial Refund (${selectedForRefund.length} items)`}</>
-              )}
-            </button>
-          </div>
         </div>
       </motion.div>
     </div>

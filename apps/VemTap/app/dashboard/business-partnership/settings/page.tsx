@@ -2,59 +2,18 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Globe, Lock, CreditCard, Share2, Languages, Shield, Building2, ChevronRight, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Bell, Globe, Lock, CreditCard, Share2, Languages, Shield, Building2, ChevronRight, Wallet, ArrowUpRight, X, CheckCheck, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const settingsSections = [
-    {
-        label: 'Payments & Wallet',
-        icon: CreditCard,
-        items: [
-            { label: 'Automatic Subscription Payment', description: 'Auto-pay your monthly subscription from wallet balance', type: 'toggle', value: true },
-            { label: 'Withdrawal Bank', description: 'Access Bank · 1234567890 · Chidi Okonkwo', type: 'action' },
-            { label: 'Minimum Withdrawal', description: '₦5,000 minimum withdrawal amount', type: 'info' },
-        ]
-    },
-    {
-        label: 'Notifications',
-        icon: Bell,
-        items: [
-            { label: 'Referral Rewards', description: 'Get notified when you earn a referral reward', type: 'toggle', value: true },
-            { label: 'New Referrals', description: 'Get notified when a business joins through your link', type: 'toggle', value: true },
-            { label: 'Milestone Alerts', description: 'Get notified when you reach a new milestone', type: 'toggle', value: true },
-            { label: 'Weekly Summary', description: 'Receive weekly partnership performance summary', type: 'toggle', value: false },
-        ]
-    },
-    {
-        label: 'Sharing Preferences',
-        icon: Share2,
-        items: [
-            { label: 'Default Share Channel', description: 'WhatsApp is your default sharing channel', type: 'action' },
-            { label: 'Auto-generate QR Code', description: 'Automatically generate QR code for new referral links', type: 'toggle', value: true },
-            { label: 'Include Business Card', description: 'Attach your partnership card when sharing links', type: 'toggle', value: true },
-        ]
-    },
-    {
-        label: 'Privacy & Security',
-        icon: Shield,
-        items: [
-            { label: 'Show on Leaderboard', description: 'Display your business name on the public leaderboard', type: 'toggle', value: true },
-            { label: 'Show Earnings Publicly', description: 'Display your earnings on the leaderboard', type: 'toggle', value: false },
-            { label: 'Profile Visibility', description: 'Your partnership profile is visible to all businesses', type: 'action' },
-        ]
-    },
-    {
-        label: 'Language & Region',
-        icon: Globe,
-        items: [
-            { label: 'Language', description: 'English (Nigeria)', type: 'action' },
-            { label: 'Currency', description: 'NGN - Nigerian Naira', type: 'action' },
-            { label: 'Region', description: 'Lagos, Nigeria', type: 'action' },
-        ]
-    },
-];
+import { useAffiliateProfile, useAffiliateStats, useRequestWithdrawal, useUpdateAffiliateProfile } from '@/services/affiliates/hooks';
 
 export default function PartnershipSettingsPage() {
+    const { data: profile } = useAffiliateProfile();
+    const { data: stats } = useAffiliateStats();
+    const withdrawMutation = useRequestWithdrawal();
+    const updateProfileMutation = useUpdateAffiliateProfile();
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [withdrawOpen, setWithdrawOpen] = useState(false);
+    const [withdrawStatus, setWithdrawStatus] = useState<string | null>(null);
     const [toggles, setToggles] = useState<Record<string, boolean>>({
         'Automatic Subscription Payment': true,
         'Referral Rewards': true,
@@ -70,6 +29,63 @@ export default function PartnershipSettingsPage() {
     const toggle = (label: string) => {
         setToggles(prev => ({ ...prev, [label]: !prev[label] }));
     };
+
+    const bankDisplay = profile?.bankAccountDetails
+        ? `${profile.bankAccountDetails.bankName || 'Bank'} · ${profile.bankAccountDetails.accountNumber || '—'} · ${profile.bankAccountDetails.accountName || '—'}`
+        : 'No bank details set';
+
+    const handleWithdraw = async () => {
+        const amount = parseInt(withdrawAmount, 10);
+        if (!amount || amount <= 0) return;
+        try {
+            setWithdrawStatus('processing');
+            await withdrawMutation.mutateAsync({ amount });
+            setWithdrawStatus('success');
+            setWithdrawAmount('');
+            setTimeout(() => { setWithdrawOpen(false); setWithdrawStatus(null); }, 2000);
+        } catch {
+            setWithdrawStatus('error');
+        }
+    };
+
+    const settingsSections = [
+        {
+            label: 'Payments & Wallet',
+            icon: CreditCard,
+            items: [
+                { label: 'Available Balance', description: stats ? `₦${stats.availableBalance.toLocaleString()}` : '—', type: 'info' as const },
+                { label: 'Withdrawal Bank', description: bankDisplay, type: 'action' as const },
+                { label: 'Partner Tier', description: stats?.tier || '—', type: 'info' as const },
+            ]
+        },
+        {
+            label: 'Notifications',
+            icon: Bell,
+            items: [
+                { label: 'Referral Rewards', description: 'Get notified when you earn a referral reward', type: 'toggle' as const, value: true },
+                { label: 'New Referrals', description: 'Get notified when a business joins through your link', type: 'toggle' as const, value: true },
+                { label: 'Milestone Alerts', description: 'Get notified when you reach a new milestone', type: 'toggle' as const, value: true },
+                { label: 'Weekly Summary', description: 'Receive weekly partnership performance summary', type: 'toggle' as const, value: false },
+            ]
+        },
+        {
+            label: 'Sharing Preferences',
+            icon: Share2,
+            items: [
+                { label: 'Referral Code', description: profile?.referralCode || stats?.referralCode || '—', type: 'info' as const },
+                { label: 'Auto-generate QR Code', description: 'Automatically generate QR code for new referral links', type: 'toggle' as const, value: true },
+            ]
+        },
+        {
+            label: 'KYC & Profile',
+            icon: Shield,
+            items: [
+                { label: 'KYC Status', description: profile?.kycStatus || 'unverified', type: 'info' as const },
+                { label: 'ID Type', description: profile?.idType || 'Not set', type: 'info' as const },
+                { label: 'Bank Account', description: bankDisplay, type: 'info' as const },
+            ]
+        },
+    ];
 
     return (
         <div className="max-w-3xl space-y-5 md:space-y-6">
@@ -125,6 +141,48 @@ export default function PartnershipSettingsPage() {
                     </motion.div>
                 );
             })}
+
+            {/* Withdraw Action */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+            >
+                <div className="flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-b border-gray-50">
+                    <div className="size-8 md:size-9 rounded-xl bg-gray-50 flex items-center justify-center text-gray-500 shrink-0">
+                        <Wallet size={16} />
+                    </div>
+                    <h3 className="text-xs md:text-sm font-semibold text-gray-900">Withdraw Funds</h3>
+                </div>
+                <div className="p-4 md:p-6">
+                    <p className="text-[11px] md:text-xs text-gray-500 mb-3">Available balance: <strong className="text-gray-900">₦{(stats?.availableBalance || 0).toLocaleString()}</strong></p>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            value={withdrawAmount}
+                            onChange={e => setWithdrawAmount(e.target.value)}
+                            placeholder="Amount (NGN)"
+                            className="flex-1 h-10 md:h-11 px-3 md:px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <button
+                            onClick={handleWithdraw}
+                            disabled={withdrawMutation.isPending || !withdrawAmount}
+                            className="h-10 md:h-11 px-4 md:px-6 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-2"
+                        >
+                            <ArrowUpRight size={15} /> Withdraw
+                        </button>
+                    </div>
+                    {withdrawStatus === 'success' && (
+                        <p className="text-[11px] text-emerald-600 mt-2 flex items-center gap-1"><CheckCheck size={13} /> Withdrawal request submitted!</p>
+                    )}
+                    {withdrawStatus === 'error' && (
+                        <p className="text-[11px] text-red-600 mt-2 flex items-center gap-1"><AlertCircle size={13} /> Withdrawal failed. Try again.</p>
+                    )}
+                    {withdrawMutation.isPending && (
+                        <p className="text-[11px] text-gray-500 mt-2">Processing...</p>
+                    )}
+                </div>
+            </motion.div>
         </div>
     );
 }

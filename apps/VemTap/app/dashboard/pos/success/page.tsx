@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePosStore } from '@/store/usePosStore';
 import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
-import { CheckCircle2, ArrowLeft, WifiOff, Coins } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, WifiOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
@@ -24,6 +24,30 @@ export default function POSSuccessScreen() {
     if (!activeBranchId) return null;
     return branches.find(b => b.id === activeBranchId);
   }, [branches, activeBranchId]);
+
+  const saleLoyaltyData = React.useMemo(() => {
+    if (!lastCompletedSale) return null;
+    try {
+      const parsed = JSON.parse(lastCompletedSale.notes || '{}');
+      if (parsed.showLoyaltyOnReceipt && parsed.loyaltyPointsEarned) {
+        return {
+          showLoyaltyOnReceipt: true,
+          loyaltyPointsEarned: parsed.loyaltyPointsEarned,
+          rewardDiscount: parsed.rewardDiscount || 0,
+          redeemedReward: parsed.redeemedReward || null,
+          redeemedPromotion: parsed.redeemedPromotion || null,
+        };
+      }
+      return {
+        showLoyaltyOnReceipt: false,
+        loyaltyPointsEarned: parsed.loyaltyPointsEarned || 0,
+        rewardDiscount: parsed.rewardDiscount || 0,
+        redeemedReward: parsed.redeemedReward || null,
+        redeemedPromotion: parsed.redeemedPromotion || null,
+      };
+    } catch {}
+    return { showLoyaltyOnReceipt: false, loyaltyPointsEarned: 0, rewardDiscount: 0, redeemedReward: null, redeemedPromotion: null };
+  }, [lastCompletedSale?.notes]);
 
   useEffect(() => {
     setHydrated(true);
@@ -65,6 +89,10 @@ export default function POSSuccessScreen() {
     paymentMethod: lastCompletedSale.paymentMethod,
     amountPaid: lastCompletedSale.amountPaid,
     change: lastCompletedSale.change,
+    showLoyaltyOnReceipt: saleLoyaltyData?.showLoyaltyOnReceipt || false,
+    loyaltyPointsEarned: saleLoyaltyData?.loyaltyPointsEarned || 0,
+    redeemedReward: saleLoyaltyData?.redeemedReward || null,
+    redeemedPromotion: saleLoyaltyData?.redeemedPromotion || null,
   };
 
   return (
@@ -112,26 +140,6 @@ export default function POSSuccessScreen() {
               </div>
             </div>
           )}
-
-          {/* Loyalty Points Earned */}
-          {(() => {
-            const { lastEarnedPoints, lastEarnedCustomerId, customers, clearLastEarned } = usePosLoyaltyStore.getState();
-            const customer = customers.find(c => c.id === lastEarnedCustomerId);
-            if (lastEarnedPoints > 0 && customer) {
-              return (
-                <div className="mb-6 p-3 rounded-2xl bg-amber-50/70 border border-amber-100 flex items-center gap-2.5 w-full">
-                  <div className="size-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                    <Coins size={18} className="text-amber-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-[11px] font-black text-amber-800">+{lastEarnedPoints} Points Earned!</p>
-                    <p className="text-[9px] font-medium text-amber-600">{customer.name} — New balance: {customer.totalPoints} pts</p>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })()}
 
           <button
             onClick={() => { usePosLoyaltyStore.getState().clearLastEarned(); router.push('/dashboard/pos'); }}

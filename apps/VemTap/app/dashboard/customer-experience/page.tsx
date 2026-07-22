@@ -47,7 +47,6 @@ type FlowStep = 'hub' | 'deploy' | 'preview';
 
 const ALL_SYSTEM_ACTIONS = [
     { id: 'system:order', title: 'Place Order', subtitle: 'Browse our Full Menu', icon: ShoppingBag },
-    { id: 'system:service', title: 'Book Service', subtitle: 'Reservations & Slots', icon: CalendarDays },
     { id: 'system:offers', title: 'See Offers', subtitle: 'Exclusive Hot Deals', icon: Gift },
     { id: 'system:whatsapp', title: 'WhatsApp', subtitle: 'Instant Support', icon: MessageCircle },
     { id: 'system:forms', title: 'Fill Feedback', subtitle: 'Share your thoughts', icon: FileText },
@@ -273,7 +272,6 @@ export default function CustomerExperienceRedesignPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setEmptyModal({ show: false, id: null })}
                             className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
                         />
                         <motion.div 
@@ -993,20 +991,6 @@ function ScreenPreview({
                 </PhoneFrame>
             </div>
 
-            <div className="flex bg-white/10 p-2 rounded-3xl gap-2 backdrop-blur-md">
-                {['check-in', 'ubl', 'outcome'].map((id) => (
-                    <button
-                        key={id}
-                        onClick={() => setPreviewTab(id as any)}
-                        className={cn(
-                            "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
-                            previewTab === id ? "bg-white text-gray-900 shadow-xl" : "text-white/60 hover:text-white"
-                        )}
-                    >
-                        {id.replace('-', ' ')}
-                    </button>
-                ))}
-            </div>
         </motion.div>
     );
 }
@@ -1045,20 +1029,6 @@ function ScreenPreviewSide({
                 </PhoneFrame>
             </div>
 
-            <div className="flex bg-white p-1 rounded-2xl gap-1 shadow-sm border border-gray-100">
-                {['check-in', 'ubl', 'outcome'].map((id) => (
-                    <button
-                        key={id}
-                        onClick={() => setPreviewTab(id as any)}
-                        className={cn(
-                            "px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                            previewTab === id ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-900"
-                        )}
-                    >
-                        {id.replace('-', ' ')}
-                    </button>
-                ))}
-            </div>
         </div>
     );
 }

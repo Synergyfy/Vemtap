@@ -1,41 +1,84 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, MapPin, Clock, Users, Share2, CheckCircle2,
-    Loader2, Gift, ShieldCheck, Copy, X, ChevronRight, Phone, Mail,
-    User, UserPlus, Lock, Navigation, MessageCircle, ExternalLink,
+    Loader2, Gift, ShieldCheck, Copy, X, ChevronRight, Phone,
+    Navigation, MessageCircle, ExternalLink,
     Link as LinkIcon,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { MOCK_PROMOTIONS, formatPromoPrice, formatPromoDate, getPromoDaysLeft } from '@/lib/mock/promotions';
-import { cn } from '@/lib/utils';
+import type { MockPromotion } from '@/lib/mock/promotions';
+import { usePublicOfferDetails, useRequestClaimOtp, useVerifyClaimOtp } from '@/services/deals/hooks';
 import { toast } from 'react-hot-toast';
 
-type ClaimStep = 'phone' | 'welcome_back' | 'signup' | 'otp' | 'success';
+type ClaimStep = 'phone' | 'otp' | 'success';
+
+function offerToPromotion(offer: any): MockPromotion | null {
+    if (!offer || !offer.id) return null;
+    const branch = offer.branch || {};
+    return {
+        id: offer.id,
+        name: offer.name || '',
+        description: offer.description || '',
+        longDescription: offer.longDescription || offer.description || '',
+        terms: offer.terms || [],
+        businessName: branch.name || '',
+        businessSlug: branch.username || branch.uniqueCode || '',
+        businessLogo: branch.logoUrl || undefined,
+        category: 'Services' as any,
+        discountPercent: offer.discountPercent || (offer.pricingType === 'percentage_discount' ? Number(offer.discountValue) : undefined),
+        discountAmount: offer.pricingType === 'fixed_discount_price' ? Number(offer.discountValue) : undefined,
+        originalPrice: Number(offer.originalPrice || offer.calculatedPrice || 0),
+        dealPrice: Number(offer.dealPrice || offer.calculatedPrice || 0),
+        image: offer.mainImage || '',
+        startDate: offer.startDate || '',
+        endDate: offer.endDate || '',
+        audience: offer.audience || '',
+        location: branch.address || '',
+        claimedCount: offer.claimedCount || 0,
+        maxClaims: offer.maxClaims || 0,
+    };
+}
 
 export default function PromotionDetailPage() {
     const params = useParams();
     const id = params.id as string;
-    const promotion = MOCK_PROMOTIONS.find(p => p.id === id);
+
+    const mockPromotion = MOCK_PROMOTIONS.find(p => p.id === id);
+    const { data: offerData, isLoading, isError } = usePublicOfferDetails(id);
+    const promotion = useMemo(() => mockPromotion || offerToPromotion(offerData), [mockPromotion, offerData]);
 
     const [showClaimModal, setShowClaimModal] = useState(false);
     const [claimStep, setClaimStep] = useState<ClaimStep>('phone');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [claimForm, setClaimForm] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        password: '',
-    });
+    const [claimName, setClaimName] = useState('');
+    const [claimEmail, setClaimEmail] = useState('');
+    const [claimPhone, setClaimPhone] = useState('');
     const [otp, setOtp] = useState('');
-    const [claimCode, setClaimCode] = useState('');
+    const [couponCode, setCouponCode] = useState('');
     const [showShareModal, setShowShareModal] = useState(false);
+
+    const requestClaimOtp = useRequestClaimOtp();
+    const verifyClaimOtp = useVerifyClaimOtp();
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col">
+                <Navbar />
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <Loader2 size={40} className="animate-spin text-primary mb-4" />
+                    <h1 className="text-2xl font-black text-gray-900 mb-2">Loading deal...</h1>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
 
     if (!promotion) {
         return (
@@ -43,8 +86,10 @@ export default function PromotionDetailPage() {
                 <Navbar />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <Gift size={64} className="text-gray-200 mb-4" />
-                    <h1 className="text-2xl font-black text-gray-900 mb-2">Promotion Not Found</h1>
-                    <p className="text-gray-500 font-bold mb-8">This deal may have expired or doesn&apos;t exist.</p>
+                    <h1 className="text-2xl font-black text-gray-900 mb-2">{isError ? 'Failed to load' : 'Promotion Not Found'}</h1>
+                    <p className="text-gray-500 font-bold mb-8">
+                        {isError ? 'Unable to fetch this deal. Please try again.' : 'This deal may have expired or doesn&apos;t exist.'}
+                    </p>
                     <Link
                         href="/promotions"
                         className="px-8 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
@@ -60,60 +105,36 @@ export default function PromotionDetailPage() {
     const daysLeft = getPromoDaysLeft(promotion.endDate);
     const claimPercent = Math.round((promotion.claimedCount / promotion.maxClaims) * 100);
 
-    const handlePhoneSubmit = () => {
-        if (!claimForm.phone || claimForm.phone.length < 10) {
-            toast.error('Please enter a valid phone number');
-            return;
-        }
+    const handlePhoneSubmit = async () => {
+        if (!claimName.trim()) { toast.error('Please enter your name'); return; }
+        if (!claimEmail.trim() || !claimEmail.includes('@')) { toast.error('Please enter a valid email'); return; }
+        if (!claimPhone || claimPhone.length < 10) { toast.error('Please enter a valid phone number'); return; }
         setIsSubmitting(true);
-        setTimeout(() => {
-            setIsSubmitting(false);
-            // Simulate: check if phone exists
-            const phoneExists = claimForm.phone.startsWith('080');
-            if (phoneExists) {
-                setClaimStep('welcome_back');
-            } else {
-                setClaimStep('signup');
-            }
-        }, 1000);
-    };
-
-    const handleWelcomeBackSubmit = () => {
-        if (!claimForm.email) {
-            toast.error('Please enter your email');
-            return;
-        }
-        setIsSubmitting(true);
-        setTimeout(() => {
-            setIsSubmitting(false);
+        try {
+            await requestClaimOtp.mutateAsync({ phone: claimPhone, offerId: id, firstName: claimName.trim(), email: claimEmail.trim() });
             setClaimStep('otp');
-        }, 1000);
-    };
-
-    const handleSignupSubmit = () => {
-        if (!claimForm.firstName || !claimForm.email || !claimForm.password) {
-            toast.error('Please fill in all required fields');
-            return;
-        }
-        setIsSubmitting(true);
-        setTimeout(() => {
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to request OTP');
+        } finally {
             setIsSubmitting(false);
-            setClaimStep('otp');
-        }, 1500);
+        }
     };
 
-    const handleOtpVerify = () => {
+    const handleOtpVerify = async () => {
         if (otp.length < 4) {
             toast.error('Please enter the verification code');
             return;
         }
         setIsSubmitting(true);
-        setTimeout(() => {
-            const code = `VEM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            setClaimCode(code);
-            setIsSubmitting(false);
+        try {
+            const result = await verifyClaimOtp.mutateAsync({ email: claimEmail, offerId: id, code: otp });
+            setCouponCode(result.claim?.claimCode || '');
             setClaimStep('success');
-        }, 1500);
+        } catch (err: any) {
+            toast.error(err?.message || 'Invalid verification code');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleShare = () => {
@@ -151,7 +172,9 @@ export default function PromotionDetailPage() {
         setShowClaimModal(false);
         setClaimStep('phone');
         setOtp('');
-        setClaimForm({ firstName: '', lastName: '', email: '', phone: '', password: '' });
+        setClaimName('');
+        setClaimEmail('');
+        setClaimPhone('');
     };
 
     return (
@@ -499,23 +522,43 @@ export default function PromotionDetailPage() {
                                             </div>
                                             <h2 className="text-xl font-headline font-bold text-gray-900">Claim Your Deal</h2>
                                             <p className="text-sm text-gray-500 font-medium">
-                                                Start by entering your phone number to claim <strong>{promotion.name}</strong>.
+                                                Enter your details to claim <strong>{promotion.name}</strong>.
                                             </p>
                                         </div>
 
-                                        <div>
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                Phone Number *
-                                            </label>
-                                            <div className="relative">
-                                                <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Full Name *</label>
                                                 <input
-                                                    type="tel"
-                                                    value={claimForm.phone}
-                                                    onChange={(e) => setClaimForm(f => ({ ...f, phone: e.target.value }))}
-                                                    className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                    placeholder="0801 234 5678"
+                                                    type="text"
+                                                    value={claimName}
+                                                    onChange={(e) => setClaimName(e.target.value)}
+                                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                    placeholder="John Doe"
                                                 />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Email Address *</label>
+                                                <input
+                                                    type="email"
+                                                    value={claimEmail}
+                                                    onChange={(e) => setClaimEmail(e.target.value)}
+                                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                    placeholder="john@example.com"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Phone Number *</label>
+                                                <div className="relative">
+                                                    <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                    <input
+                                                        type="tel"
+                                                        value={claimPhone}
+                                                        onChange={(e) => setClaimPhone(e.target.value)}
+                                                        className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                        placeholder="0801 234 5678"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
@@ -527,7 +570,7 @@ export default function PromotionDetailPage() {
                                             {isSubmitting ? (
                                                 <Loader2 size={18} className="animate-spin" />
                                             ) : (
-                                                <>Continue <ChevronRight size={16} /></>
+                                                <>Get Verification Code <ChevronRight size={16} /></>
                                             )}
                                         </button>
 
@@ -537,148 +580,7 @@ export default function PromotionDetailPage() {
                                     </motion.div>
                                 )}
 
-                                {/* Step 2: Welcome back */}
-                                {claimStep === 'welcome_back' && (
-                                    <motion.div
-                                        key="welcome_back"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 20 }}
-                                        className="p-6 md:p-8 space-y-6"
-                                    >
-                                        <div className="space-y-2">
-                                            <div className="size-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
-                                                <User size={28} className="text-blue-500" />
-                                            </div>
-                                            <h2 className="text-xl font-headline font-bold text-gray-900">Welcome back!</h2>
-                                            <p className="text-sm text-gray-500 font-medium">
-                                                We found an account linked to <strong>{claimForm.phone}</strong>. Enter your email to continue.
-                                            </p>
-                                        </div>
 
-                                        <div>
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                Email Address *
-                                            </label>
-                                            <div className="relative">
-                                                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                                <input
-                                                    type="email"
-                                                    value={claimForm.email}
-                                                    onChange={(e) => setClaimForm(f => ({ ...f, email: e.target.value }))}
-                                                    className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                    placeholder="chidi@example.com"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={handleWelcomeBackSubmit}
-                                            disabled={isSubmitting}
-                                            className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                                        >
-                                            {isSubmitting ? (
-                                                <Loader2 size={18} className="animate-spin" />
-                                            ) : (
-                                                <>Continue <ChevronRight size={16} /></>
-                                            )}
-                                        </button>
-
-                                        <button
-                                            onClick={() => setClaimStep('phone')}
-                                            className="w-full text-xs font-bold text-gray-400 hover:text-primary transition-colors"
-                                        >
-                                            ← Use a different number
-                                        </button>
-                                    </motion.div>
-                                )}
-
-                                {/* Step 3: Sign up */}
-                                {claimStep === 'signup' && (
-                                    <motion.div
-                                        key="signup"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 20 }}
-                                        className="p-6 md:p-8 space-y-6"
-                                    >
-                                        <div className="space-y-2">
-                                            <div className="size-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
-                                                <UserPlus size={28} className="text-primary" />
-                                            </div>
-                                            <h2 className="text-xl font-headline font-bold text-gray-900">Create an account</h2>
-                                            <p className="text-sm text-gray-500 font-medium">
-                                                Quick setup to claim <strong>{promotion.name}</strong>.
-                                            </p>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                    First Name *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={claimForm.firstName}
-                                                    onChange={(e) => setClaimForm(f => ({ ...f, firstName: e.target.value }))}
-                                                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                    placeholder="Chidi"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                    Email Address *
-                                                </label>
-                                                <div className="relative">
-                                                    <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                                    <input
-                                                        type="email"
-                                                        value={claimForm.email}
-                                                        onChange={(e) => setClaimForm(f => ({ ...f, email: e.target.value }))}
-                                                        className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                        placeholder="chidi@example.com"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                                    Create Password *
-                                                </label>
-                                                <div className="relative">
-                                                    <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                                    <input
-                                                        type="password"
-                                                        value={claimForm.password}
-                                                        onChange={(e) => setClaimForm(f => ({ ...f, password: e.target.value }))}
-                                                        className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                        placeholder="Min. 8 characters"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={handleSignupSubmit}
-                                            disabled={isSubmitting}
-                                            className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                                        >
-                                            {isSubmitting ? (
-                                                <Loader2 size={18} className="animate-spin" />
-                                            ) : (
-                                                <>Create & Continue <ChevronRight size={16} /></>
-                                            )}
-                                        </button>
-
-                                        <button
-                                            onClick={() => setClaimStep('phone')}
-                                            className="w-full text-xs font-bold text-gray-400 hover:text-primary transition-colors"
-                                        >
-                                            ← Use a different number
-                                        </button>
-                                    </motion.div>
-                                )}
 
                                 {/* Step 4: OTP */}
                                 {claimStep === 'otp' && (
@@ -695,7 +597,7 @@ export default function PromotionDetailPage() {
                                             </div>
                                             <h2 className="text-xl font-headline font-bold text-gray-900">Verify Your Identity</h2>
                                             <p className="text-sm text-gray-500 font-medium">
-                                                We&apos;ve sent a verification code to <strong>{claimForm.phone}</strong>. Enter it below to confirm your claim.
+                                                We&apos;ve sent a verification code to <strong>{claimEmail}</strong>. Enter it below to confirm your claim.
                                             </p>
                                         </div>
 
@@ -763,14 +665,14 @@ export default function PromotionDetailPage() {
                                                 Your Claim Code
                                             </p>
                                             <p className="text-3xl font-black text-primary tracking-[0.3em] font-display">
-                                                {claimCode}
+                                                {couponCode}
                                             </p>
                                         </div>
 
                                         <div className="space-y-3">
                                             <button
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(claimCode);
+                                                    navigator.clipboard.writeText(couponCode);
                                                     toast.success('Code copied!');
                                                 }}
                                                 className="w-full h-12 bg-gray-50 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 border border-gray-100"
@@ -788,7 +690,7 @@ export default function PromotionDetailPage() {
                                         </div>
 
                                         <p className="text-[10px] text-gray-400 font-bold">
-                                            This code is valid for 7 days. You&apos;ll also receive a confirmation at {claimForm.email}.
+                                            This code is valid for {promotion?.endDate ? getPromoDaysLeft(promotion.endDate) : 7} days.
                                         </p>
                                     </motion.div>
                                 )}

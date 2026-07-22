@@ -41,7 +41,7 @@ export class CatalogueOfferClaim extends AbstractBaseEntity {
   @Column()
   phone: string;
 
-  @ApiProperty({ example: 'VEM-CLAIM-A2B3C4' })
+  @ApiProperty({ example: 'VEM-BR123XYZ9-A2B3' })
   @Column({ unique: true })
   @Index()
   claimCode: string;

@@ -48,6 +48,22 @@ export default function SingleTransactionScreen() {
     );
   };
 
+  const saleLoyaltyData = React.useMemo(() => {
+    if (!sale) return null;
+    try {
+      const parsed = JSON.parse(sale.notes || '{}');
+      if (parsed.showLoyaltyOnReceipt && parsed.loyaltyPointsEarned) {
+        return {
+          showLoyaltyOnReceipt: true,
+          loyaltyPointsEarned: parsed.loyaltyPointsEarned,
+          rewardDiscount: parsed.rewardDiscount || 0,
+          redeemedReward: parsed.redeemedReward || null,
+        };
+      }
+    } catch {}
+    return null;
+  }, [sale?.notes]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-80px)]">
@@ -110,6 +126,18 @@ export default function SingleTransactionScreen() {
                   </div>
                 ))}
               </div>
+
+              {saleLoyaltyData && (
+                <div className="text-center text-[10px] mb-3 py-2 px-3 bg-amber-50 border border-amber-100 rounded-md">
+                  <span className="font-bold text-amber-700">+{saleLoyaltyData.loyaltyPointsEarned} loyalty points earned</span>
+                </div>
+              )}
+
+              {saleLoyaltyData?.redeemedReward && (
+                <div className="text-center text-[10px] mb-3 py-2 px-3 bg-emerald-50 border border-emerald-100 rounded-md">
+                  <span className="font-bold text-emerald-700">{saleLoyaltyData.redeemedReward} — ₦{saleLoyaltyData.rewardDiscount.toLocaleString()} reward discount</span>
+                </div>
+              )}
 
               <div className="space-y-1 text-xs mb-6 border-b border-dashed border-gray-300 pb-4">
                 <div className="flex justify-between"><span>Subtotal:</span> <span>₦{sale.subtotal.toLocaleString()}</span></div>

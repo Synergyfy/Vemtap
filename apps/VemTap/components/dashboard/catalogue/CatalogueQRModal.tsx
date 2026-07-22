@@ -132,7 +132,7 @@ export function CatalogueQRModal({ isOpen, onClose, businessCode, businessName, 
                         <div className="space-y-3">
                             {viewState === 'initial' && (
                                 <div className="flex flex-col gap-3">
-                                    <Button onClick={() => setViewState('download')} className="w-full h-14 rounded-2xl bg-gray-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs shadow-xl transition-all">
+                                    <Button  className="w-full h-14 rounded-2xl bg-gray-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs shadow-xl transition-all">
                                         <Download className="mr-2" size={18} />
                                         Download QR
                                     </Button>

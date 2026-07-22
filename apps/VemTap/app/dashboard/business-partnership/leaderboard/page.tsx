@@ -2,26 +2,16 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Trophy, Medal, TrendingUp, Award, Star, Users, ChevronRight, MapPin, Globe, Calendar } from 'lucide-react';
+import { Building2, Trophy, Award, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLeaderboard, useAffiliateStats } from '@/services/affiliates/hooks';
 
 const tabs = ['My Area', 'My City', 'My State', 'Nigeria', 'Monthly', 'All Time'] as const;
 
-const leaderboard = [
-    { rank: 1, name: 'QuickShop Express', badge: 'Diamond Partner', referred: 47, earnings: 284500, points: 12850, logo: null },
-    { rank: 2, name: 'TechVault NG', badge: 'Platinum Partner', referred: 38, earnings: 212000, points: 10200, logo: null },
-    { rank: 3, name: 'Serenity Spa', badge: 'Platinum Partner', referred: 32, earnings: 189000, points: 8900, logo: null },
-    { rank: 4, name: 'Your Business', badge: 'Gold Partner', referred: 24, earnings: 145000, points: 7200, logo: null, isUser: true },
-    { rank: 5, name: 'Casa del Sabor', badge: 'Gold Partner', referred: 22, earnings: 128000, points: 6800, logo: null },
-    { rank: 6, name: 'AutoPro Workshop', badge: 'Silver Partner', referred: 18, earnings: 95000, points: 5100, logo: null },
-    { rank: 7, name: 'Velvet & Thread', badge: 'Silver Partner', referred: 15, earnings: 78000, points: 4300, logo: null },
-    { rank: 8, name: 'Glow Studio', badge: 'Network Member', referred: 10, earnings: 52000, points: 2900, logo: null },
-];
-
-const rankColors = ['text-amber-500', 'text-gray-400', 'text-amber-700', 'text-blue-500', 'text-gray-600'];
-
 export default function PartnershipLeaderboardPage() {
     const [activeTab, setActiveTab] = useState<typeof tabs[number]>('My Area');
+    const { data: leaderboard, isLoading } = useLeaderboard();
+    const { data: stats } = useAffiliateStats();
 
     return (
         <div className="space-y-6">
@@ -45,11 +35,13 @@ export default function PartnershipLeaderboardPage() {
 
             {/* Leaderboard */}
             <div className="space-y-1.5 md:space-y-2">
-                {leaderboard.map((entry, i) => {
-                    const isUser = entry.isUser;
+                {isLoading && <p className="text-sm text-gray-400 text-center py-8">Loading leaderboard...</p>}
+                {!isLoading && leaderboard?.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No entries yet.</p>}
+                {(leaderboard || []).slice(0, 20).map((entry, i) => {
+                    const isUser = entry.name.toLowerCase().includes('your') || (stats?.referralCode && entry.name.includes(stats.referralCode));
                     return (
                         <motion.div
-                            key={entry.rank}
+                            key={entry.rank || i}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.05 }}
@@ -72,7 +64,11 @@ export default function PartnershipLeaderboardPage() {
                             {/* Avatar + Name */}
                             <div className="flex items-center gap-2.5 md:gap-3 flex-1 min-w-0">
                                 <div className={cn("size-10 md:size-11 rounded-xl flex items-center justify-center shrink-0", isUser ? 'bg-primary/10' : 'bg-gray-50')}>
-                                    <Building2 size={20} className={isUser ? 'text-primary' : 'text-gray-400'} />
+                                    {entry.avatar ? (
+                                        <img src={entry.avatar} alt="" className="size-full rounded-xl object-cover" />
+                                    ) : (
+                                        <Building2 size={20} className={isUser ? 'text-primary' : 'text-gray-400'} />
+                                    )}
                                 </div>
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-1.5 md:gap-2">
@@ -81,33 +77,33 @@ export default function PartnershipLeaderboardPage() {
                                         </p>
                                         {isUser && <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 md:px-2 py-0.5 rounded-md shrink-0">You</span>}
                                     </div>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <Award size={9} className="text-amber-500 shrink-0" />
-                                        <span className="text-[10px] md:text-[11px] text-gray-500 truncate">{entry.badge}</span>
-                                    </div>
                                 </div>
                             </div>
 
                             {/* Stats */}
                             <div className="hidden sm:flex items-center gap-6">
-                                <div className="text-right">
-                                    <p className="text-xs text-gray-400">Referred</p>
-                                    <p className="text-sm font-semibold text-gray-900">{entry.referred}</p>
-                                </div>
+                                {entry.referred !== undefined && (
+                                    <div className="text-right">
+                                        <p className="text-xs text-gray-400">Referred</p>
+                                        <p className="text-sm font-semibold text-gray-900">{entry.referred}</p>
+                                    </div>
+                                )}
                                 <div className="text-right">
                                     <p className="text-xs text-gray-400">Earnings</p>
                                     <p className="text-sm font-semibold text-emerald-600">₦{entry.earnings.toLocaleString()}</p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-gray-400">Points</p>
-                                    <p className="text-sm font-semibold text-gray-900">{entry.points.toLocaleString()}</p>
-                                </div>
+                                {entry.points !== undefined && (
+                                    <div className="text-right">
+                                        <p className="text-xs text-gray-400">Points</p>
+                                        <p className="text-sm font-semibold text-gray-900">{entry.points.toLocaleString()}</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Mobile stats */}
                             <div className="sm:hidden text-right">
                                 <p className="text-xs font-semibold text-emerald-600">₦{entry.earnings.toLocaleString()}</p>
-                                <p className="text-[10px] text-gray-400">{entry.referred} referred</p>
+                                {entry.referred !== undefined && <p className="text-[10px] text-gray-400">{entry.referred} referred</p>}
                             </div>
                         </motion.div>
                     );

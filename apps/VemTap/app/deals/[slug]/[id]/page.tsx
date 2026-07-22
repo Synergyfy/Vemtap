@@ -153,7 +153,7 @@ export default function PromotionDetailPage() {
                             >
                                 <motion.img
                                     key={activePhotoIndex}
-                                    src={photos[activePhotoIndex] || offer.mainImage}
+                                    src={photos[activePhotoIndex] || offer.mainImage || ''}
                                     alt={business.name}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}

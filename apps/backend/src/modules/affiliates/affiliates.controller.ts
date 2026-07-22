@@ -26,6 +26,7 @@ import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { KycStatus, AffiliateProfile } from './entities/affiliate-profile.entity';
 import { AffiliateWithdrawalRequest } from './entities/withdrawal-request.entity';
@@ -116,6 +117,20 @@ export class AffiliatesController {
     @Body() body: WithdrawRequestDto,
   ): Promise<AffiliateWithdrawalRequest> {
     return this.affiliatesService.requestWithdrawal(req.user.id, body.amount);
+  }
+
+  @Public()
+  @Post('track-visit')
+  @ApiOperation({ summary: 'Track a referral visit (Public)' })
+  async trackVisit(@Body('referralCode') referralCode: string) {
+    return this.affiliatesService.trackVisit(referralCode);
+  }
+
+  @Public()
+  @Get('referrer-info')
+  @ApiOperation({ summary: 'Get referrer info by referral code (Public)' })
+  async getReferrerInfo(@Query('code') code: string) {
+    return this.affiliatesService.getReferrerInfo(code);
   }
 
   // --- Admin Specific Endpoints ---

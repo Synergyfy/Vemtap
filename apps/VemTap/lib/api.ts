@@ -175,6 +175,23 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
             }
         }
 
+        // Global Conflict / Duplicate Handling
+        if ((response.status === 400 || response.status === 409) && errorData.message) {
+            const msgToLower = errorData.message.toLowerCase();
+            if (msgToLower.includes('already exist') || msgToLower.includes('taken') || msgToLower.includes('duplicate') || msgToLower.includes('in use')) {
+                try {
+                    const { useConflictStore } = await import('@/store/useConflictStore');
+                    // Ensure this runs on the client to avoid hydration/SSR issues with Zustand in Next.js
+                    if (typeof window !== 'undefined') {
+                        useConflictStore.getState().openConflict(errorData.message);
+                    }
+                    // We can also throw the error so the local catch block still knows it failed
+                } catch (e) {
+                    console.error('Failed to trigger conflict store state', e);
+                }
+            }
+        }
+
         throw new Error(errorData.message || `API Error: ${response.status}`);
     }
 

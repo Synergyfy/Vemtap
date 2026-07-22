@@ -13,7 +13,7 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 const navLinks = [
     { label: 'Home', href: '/' },
     { label: 'Features', href: '/features' },
-    { label: 'Nearby Deals', href: '/promotions' },
+    { label: 'Nearby Deals', href: '/deals' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'How It Works', href: '/how-it-works' },
 ];

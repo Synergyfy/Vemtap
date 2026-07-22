@@ -17,8 +17,9 @@ import { cn } from '@/lib/utils';
 import type { MockPromotion } from '@/lib/mock/promotions';
 import type { GeolocationCoordinates } from '@/lib/geolocation';
 
-function toPromotionBusiness(business: DealOffer['business']): PromotionBusiness {
-    if (!business) {
+function toPromotionBusiness(offer: DealOffer): PromotionBusiness {
+    const branch = offer.branch;
+    if (!branch) {
         return {
             id: '',
             name: 'Unknown Business',
@@ -34,43 +35,44 @@ function toPromotionBusiness(business: DealOffer['business']): PromotionBusiness
         };
     }
     return {
-        id: business.id,
-        name: business.name,
-        slug: business.slug,
-        logo: business.logo || '',
-        photos: business.photos || [],
-        categoryId: business.categoryId,
-        categoryName: business.categoryName,
-        address: business.address,
-        hours: business.hours || [],
-        rating: business.rating || 0,
-        totalReviews: business.totalReviews || 0,
+        id: branch.id,
+        name: branch.name,
+        slug: branch.username || branch.uniqueCode || '',
+        logo: branch.logoUrl || '',
+        photos: [],
+        categoryId: '',
+        categoryName: '',
+        address: branch.address || '',
+        hours: [],
+        rating: 0,
+        totalReviews: 0,
     };
 }
 
 function toPromotion(offer: DealOffer): Promotion {
     const discountPercent = offer.pricingType === 'percentage_discount' && offer.discountValue
-        ? offer.discountValue : undefined;
+        ? Number(offer.discountValue) : undefined;
     const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
-        ? offer.discountValue : undefined;
+        ? Number(offer.discountValue) : undefined;
+    const calcPrice = Number(offer.calculatedPrice);
     const originalPrice = discountPercent
-        ? Math.round(offer.calculatedPrice / (1 - discountPercent / 100))
+        ? Math.round(calcPrice / (1 - discountPercent / 100))
         : discountAmount
-            ? offer.calculatedPrice + discountAmount
-            : offer.calculatedPrice;
+            ? calcPrice + discountAmount
+            : calcPrice;
 
     return {
         id: offer.id,
-        business: toPromotionBusiness(offer.business),
+        business: toPromotionBusiness(offer),
         title: offer.name,
         description: offer.description,
         longDescription: offer.longDescription || offer.description,
         terms: offer.terms || [],
-        discountPercent,
+        discountPercent: discountPercent || offer.discountPercent || undefined,
         discountAmount,
-        originalPrice,
-        dealPrice: offer.calculatedPrice,
-        image: offer.mainImage,
+        originalPrice: offer.originalPrice || originalPrice,
+        dealPrice: Number(offer.dealPrice || offer.calculatedPrice),
+        image: offer.mainImage || '',
         startDate: offer.startDate || '',
         endDate: offer.endDate || '',
         claimedCount: offer.claimedCount,
@@ -152,7 +154,7 @@ export default function PromotionsPage() {
     const promotions = useMemo(() => {
         if (!offersData?.data) return [];
         return offersData.data
-            .filter((offer): offer is DealOffer => !!offer && !!offer.id && !!offer.business)
+            .filter((offer): offer is DealOffer => !!offer && !!offer.id && !!offer.branch)
             .map(toPromotion);
     }, [offersData]);
 

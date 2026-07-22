@@ -9,9 +9,6 @@ import {
 import { toast } from 'react-hot-toast';
 import { checkPhone, requestClaimOtp, verifyClaimOtp } from '@/services/deals/hooks';
 
-import { useCheckPhone } from '@/services/users/hooks';
-import { useRequestClaimOtp, useVerifyClaim } from '@/services/catalogue/hooks';
-
 type JoinStep = 'phone' | 'otp' | 'new-account' | 'success';
 
 interface JoinOfferModalProps {
@@ -26,9 +23,10 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
     const [step, setStep] = useState<JoinStep>('phone');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [phone, setPhone] = useState('');
+    const [firstName, setFirstName] = useState('');
     const [otp, setOtp] = useState('');
     const [claimCode, setClaimCode] = useState('');
-    const [reference, setReference] = useState('');
+    const [userEmail, setUserEmail] = useState('');
     const [accountForm, setAccountForm] = useState({ name: '', email: '', password: '' });
 
     const handlePhoneSubmit = async () => {
@@ -36,12 +34,17 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
             toast.error('Please enter a valid phone number');
             return;
         }
+        if (!firstName.trim()) {
+            toast.error('Please enter your name');
+            return;
+        }
         setIsSubmitting(true);
         try {
             const res = await checkPhone(phone);
+            const email = res.email || '';
+            setUserEmail(email);
             if (res.exists) {
-                const otpRes = await requestClaimOtp({ phone, offerId });
-                setReference(otpRes.reference);
+                await requestClaimOtp({ phone, offerId, firstName: firstName.trim(), email });
                 setStep('otp');
                 toast('Welcome back! We found your account.', { icon: '👋' });
             } else {
@@ -61,8 +64,8 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
         }
         setIsSubmitting(true);
         try {
-            const res = await verifyClaimOtp({ phone, code: otp, reference });
-            setClaimCode(res.couponCode);
+            const res = await verifyClaimOtp({ email: userEmail || accountForm.email, offerId, code: otp });
+            setClaimCode(res.claim?.claimCode || '');
             setStep('success');
         } catch (err: any) {
             toast.error(err?.message || 'Invalid verification code');
@@ -78,8 +81,7 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
         }
         setIsSubmitting(true);
         try {
-            const otpRes = await requestClaimOtp({ phone, offerId });
-            setReference(otpRes.reference);
+            await requestClaimOtp({ phone, offerId, firstName: accountForm.name.trim(), email: accountForm.email.trim() });
             setStep('otp');
         } catch (err: any) {
             toast.error(err?.message || 'Failed to create account');
@@ -93,9 +95,10 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
         setTimeout(() => {
             setStep('phone');
             setPhone('');
+            setFirstName('');
             setOtp('');
             setClaimCode('');
-            setReference('');
+            setUserEmail('');
             setAccountForm({ name: '', email: '', password: '' });
         }, 300);
     };
@@ -146,6 +149,22 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
 
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+                                    Full Name
+                                </label>
+                                <div className="relative">
+                                    <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
+                                        className="w-full h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                        placeholder="Chidi Okonkwo"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
                                     Phone Number
                                 </label>
                                 <div className="relative">
@@ -162,7 +181,7 @@ export default function JoinOfferModal({ isOpen, onClose, offerTitle, businessNa
 
                             <button
                                 onClick={handlePhoneSubmit}
-                                disabled={isSubmitting || phone.length < 10}
+                                disabled={isSubmitting || phone.length < 10 || !firstName.trim()}
                                 className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                                 {isSubmitting ? (
