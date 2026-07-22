@@ -5,7 +5,7 @@ import {
     Activity, Users, MapPin, Store, Tag, Plus, Target, CheckCircle2, ArrowRight,
     Settings, Search, Handshake, TrendingUp, RefreshCw, X, Image as ImageIcon,
     ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2, Navigation, Crosshair,
-    Trash2
+    Trash2, Clock, Users, ArrowRight
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/dashboard/PageHeader';
@@ -1584,19 +1584,19 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                 ></textarea>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
+                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="datetime-local"]')?.showPicker())}>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                                     <input 
-                                        type="date" 
+                                        type="datetime-local" 
                                         value={startDate}
                                         onChange={e => setStartDate(e.target.value)}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                     />
                                 </div>
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
+                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="datetime-local"]')?.showPicker())}>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
                                     <input 
-                                        type="date" 
+                                        type="datetime-local" 
                                         value={endDate}
                                         onChange={e => setEndDate(e.target.value)}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
@@ -1676,16 +1676,107 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                 {step === 4 && (
                     <div className="space-y-6 animate-in fade-in">
                         <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Preview your Deal</h3>
-                        
-                        <div className="max-w-sm mx-auto bg-gray-50 rounded-3xl p-6 border border-gray-100 shadow-sm relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-blue-500 to-purple-600"></div>
-                            <div className="relative mt-16 bg-white rounded-2xl p-6 shadow-xl">
-                                <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+
+                        {/* Card matching public PromotionCard design */}
+                        <div className="max-w-sm mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                            {/* Image */}
+                            <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
+                                {imageUrl && (
+                                    <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                                {/* Discount badge */}
+                                {offerType === 'discount' && discountType === 'percentage' && discountValue && (
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                        {discountValue}% OFF
+                                    </div>
+                                )}
+                                {offerType === 'discount' && discountType === 'fixed' && discountValue && (
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                        SAVE ₦{Number(discountValue).toLocaleString()}
+                                    </div>
+                                )}
+                                {offerType === 'special_deal' && originalPrice && dealPrice && (
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                        SAVE ₦{(Number(originalPrice) - Number(dealPrice)).toLocaleString()}
+                                    </div>
+                                )}
+                                {offerType === 'free_item' && freeItemName && (
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                        FREE
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-4 space-y-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
                                     {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                </p>
+
+                                <h3 className="font-headline font-bold text-gray-900 text-base leading-tight line-clamp-1">
+                                    {title || 'Your Deal Title'}
+                                </h3>
+
+                                <p className="text-xs text-gray-500 font-medium line-clamp-2 leading-relaxed">
+                                    {description || 'Deal description goes here.'}
+                                </p>
+
+                                {/* Price */}
+                                {(offerType === 'special_deal' || offerType === 'discount' || offerType === 'free_item') && (
+                                    <div className="flex items-baseline gap-2 pt-1">
+                                        {offerType === 'special_deal' && dealPrice && (
+                                            <>
+                                                <span className="text-lg font-black text-primary font-display tracking-tight">
+                                                    ₦{Number(dealPrice).toLocaleString()}
+                                                </span>
+                                                {originalPrice && (
+                                                    <span className="text-xs text-gray-400 line-through font-bold">
+                                                        ₦{Number(originalPrice).toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </>
+                                        )}
+                                        {offerType === 'discount' && (
+                                            <>
+                                                <span className="text-xs text-gray-400 font-medium">Discount applied at checkout</span>
+                                            </>
+                                        )}
+                                        {offerType === 'free_item' && freeItemName && (
+                                            <span className="text-lg font-black text-primary font-display tracking-tight">
+                                                Free
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Date range */}
+                                {(startDate || endDate) && (
+                                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                                        <Clock size={10} className="text-gray-400" />
+                                        <span className="text-[10px] text-gray-400 font-bold">
+                                            {startDate ? new Date(startDate).toLocaleDateString() : 'Start'} — {endDate ? new Date(endDate).toLocaleDateString() : 'End'}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Audience */}
+                                {audience && (
+                                    <div className="flex items-center gap-1">
+                                        <Users size={10} className="text-primary" />
+                                        <span className="text-[10px] font-bold text-primary">
+                                            For: {audience.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-between pt-1">
+                                    <span className="text-[10px] text-gray-400 font-bold">Preview</span>
+                                    <span className="flex items-center gap-1 text-xs font-black text-primary">
+                                        View Offer <ArrowRight size={12} />
+                                    </span>
                                 </div>
-                                <h4 className="text-xl font-semibold text-gray-800 mb-2">{title || 'Your Deal Title'}</h4>
-                                <p className="text-sm text-gray-500 mb-6">{description || 'Deal description goes here.'}</p>
-                                <Button className="w-full rounded-full font-bold">Redeem Offer</Button>
                             </div>
                         </div>
 
@@ -1697,13 +1788,43 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                 )}
 
                 {step === 5 && (
-                    <div className="space-y-6 animate-in fade-in text-center py-12">
-                        <div className="size-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <CheckCircle2 size={48} />
+                    <div className="space-y-6 animate-in fade-in text-center">
+                        <div className="size-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle2 size={40} />
                         </div>
-                        <h3 className="text-3xl font-semibold text-gray-800 mb-4">Ready to Publish!</h3>
-                        <p className="text-gray-500 text-lg mb-8 max-w-md mx-auto">Your deal will immediately be visible to customers and businesses nearby.</p>
-                        <div className="flex items-center justify-center gap-4">
+                        <h3 className="text-2xl font-semibold text-gray-800 mb-2">Ready to Publish!</h3>
+                        <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">Your deal will immediately be visible to customers and businesses nearby.</p>
+
+                        {/* Mini preview card */}
+                        <div className="max-w-xs mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-left">
+                            <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
+                                {imageUrl && (
+                                    <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                {offerType === 'discount' && discountType === 'percentage' && discountValue && (
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                        {discountValue}% OFF
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-3 space-y-1.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                    {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                </p>
+                                <h3 className="font-headline font-bold text-gray-900 text-sm leading-tight line-clamp-1">
+                                    {title || 'Your Deal Title'}
+                                </h3>
+                                {offerType === 'special_deal' && dealPrice && (
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-base font-black text-primary">₦{Number(dealPrice).toLocaleString()}</span>
+                                        {originalPrice && <span className="text-xs text-gray-400 line-through font-bold">₦{Number(originalPrice).toLocaleString()}</span>}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-4 mt-6">
                             <Button variant="ghost" onClick={() => setStep(4)} className="font-bold">Back</Button>
                             <Button 
                                 onClick={handlePublish} 
