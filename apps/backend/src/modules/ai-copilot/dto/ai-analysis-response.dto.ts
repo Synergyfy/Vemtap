@@ -1,6 +1,12 @@
 export type AIInsightType = 'trend' | 'opportunity' | 'risk' | 'improvement' | 'summary';
-
 export type AIInsightSeverity = 'positive' | 'info' | 'warning' | 'critical';
+
+export interface AIInsightMetric {
+  label: string;
+  value: string;
+  change?: string;
+  isUp?: boolean;
+}
 
 export interface AIInsight {
   id: string;
@@ -8,20 +14,7 @@ export interface AIInsight {
   severity: AIInsightSeverity;
   title: string;
   description: string;
-  metric?: {
-    label: string;
-    value: string;
-    change?: string;
-    isUp?: boolean;
-  };
-}
-
-export interface AIQuickAction {
-  id: string;
-  label: string;
-  icon: string;
-  route: string;
-  credits?: number;
+  metric?: AIInsightMetric;
 }
 
 export interface AIRecommendation {
@@ -34,14 +27,12 @@ export interface AIRecommendation {
   credits?: number;
 }
 
-export interface BusinessFact {
+export interface AIQuickAction {
+  id: string;
   label: string;
-  value: string;
-  trend?: {
-    value: string;
-    isUp: boolean;
-  };
-  period?: string;
+  icon: string;
+  route: string;
+  credits?: number;
 }
 
 export interface AIAnalysisResponse {
@@ -53,21 +44,3 @@ export interface AIAnalysisResponse {
   generatedAt: string;
   creditsUsed: number;
 }
-
-export interface AIAnalysisRequest {
-  page: string;
-  context: Record<string, unknown>;
-}
-
-export interface AICredits {
-  available: number;
-  used: number;
-  limit: number;
-  enabled: boolean;
-}
-
-export const AI_CREDIT_COST = {
-  quickAnalysis: 1,
-  deepAnalysis: 10,
-  generateContent: 5,
-} as const;

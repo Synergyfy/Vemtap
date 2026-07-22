@@ -180,4 +180,19 @@ export class SavePlanPermissionsDto {
   @IsNumber()
   @IsOptional()
   qrCodesLimit?: number;
+
+  // --- AI Copilot ---
+
+  @ApiPropertyOptional({ description: 'Is AI Copilot enabled on this plan?', example: true })
+  @IsBoolean()
+  @IsOptional()
+  aiCopilotEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Monthly AI Copilot credit allowance. 0 = disabled. -1 = unlimited.',
+    example: 50,
+  })
+  @IsNumber()
+  @IsOptional()
+  aiCredits?: number;
 }

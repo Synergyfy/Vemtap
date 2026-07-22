@@ -147,6 +147,13 @@ export class Plan extends AbstractBaseEntity {
   @Column({ type: 'int', nullable: true })
   qrCodesLimit: number | null;
 
+  // AI Copilot
+  @Column({ default: false })
+  aiCopilotEnabled: boolean;
+
+  @Column({ type: 'int', default: 0 })
+  aiCredits: number; // Monthly AI credit allowance. 0 = disabled. -1 = unlimited.
+
   @Column({ type: 'timestamp', nullable: true })
   permissionsConfiguredAt: Date | null;
 
