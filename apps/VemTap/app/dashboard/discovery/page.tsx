@@ -5,7 +5,7 @@ import {
     Activity, Users, MapPin, Store, Tag, Plus, Target, CheckCircle2, ArrowRight,
     Settings, Search, Handshake, TrendingUp, RefreshCw, X, Image as ImageIcon,
     ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2, Navigation, Crosshair,
-    Trash2, Clock, Users, ArrowRight
+    Trash2, Clock
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/dashboard/PageHeader';
