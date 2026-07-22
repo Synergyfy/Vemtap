@@ -1370,7 +1370,9 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [startDate, setStartDate] = useState('');
+    const [startTime, setStartTime] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [endTime, setEndTime] = useState('');
     const [audience, setAudience] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [isUploading, setIsUploading] = useState(false);
@@ -1406,8 +1408,8 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
             itemIds: catalogueItems.map((item: any) => item.id),
             offerType: offerType.toLowerCase().replace(/\s+/g, '_'),
             audience: audience?.toLowerCase().replace(/\s+/g, '_'),
-            startDate: startDate ? new Date(startDate).toISOString() : undefined,
-            endDate: endDate ? new Date(endDate).toISOString() : undefined,
+            startDate: startDate ? new Date(`${startDate}T${startTime || '00:00'}`).toISOString() : undefined,
+            endDate: endDate ? new Date(`${endDate}T${endTime || '23:59'}`).toISOString() : undefined,
         };
 
         switch (offerType) {
@@ -1584,21 +1586,41 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                 ></textarea>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="datetime-local"]')?.showPicker())}>
+                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                                     <input 
-                                        type="datetime-local" 
+                                        type="date" 
                                         value={startDate}
                                         onChange={e => setStartDate(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                     />
                                 </div>
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="datetime-local"]')?.showPicker())}>
+                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Start Time</label>
+                                    <input 
+                                        type="time" 
+                                        value={startTime}
+                                        onChange={e => setStartTime(e.target.value)}
+                                        className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
+                                    />
+                                </div>
+                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
                                     <input 
-                                        type="datetime-local" 
+                                        type="date" 
                                         value={endDate}
                                         onChange={e => setEndDate(e.target.value)}
+                                        min={startDate || new Date().toISOString().split('T')[0]}
+                                        className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
+                                    />
+                                </div>
+                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">End Time</label>
+                                    <input 
+                                        type="time" 
+                                        value={endTime}
+                                        onChange={e => setEndTime(e.target.value)}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                     />
                                 </div>
@@ -1756,7 +1778,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                     <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                                         <Clock size={10} className="text-gray-400" />
                                         <span className="text-[10px] text-gray-400 font-bold">
-                                            {startDate ? new Date(startDate).toLocaleDateString() : 'Start'} — {endDate ? new Date(endDate).toLocaleDateString() : 'End'}
+                                            {startDate ? `${new Date(startDate).toLocaleDateString()} ${startTime || ''}` : 'Start'} — {endDate ? `${new Date(endDate).toLocaleDateString()} ${endTime || ''}` : 'End'}
                                         </span>
                                     </div>
                                 )}
