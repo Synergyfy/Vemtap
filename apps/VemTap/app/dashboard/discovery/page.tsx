@@ -1377,19 +1377,62 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     const fileInputRef = useRef<HTMLInputElement>(null);
     const createOffer = useCreateCatalogueOffer();
 
+    // Type-specific fields
+    const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+    const [discountValue, setDiscountValue] = useState('');
+    const [originalPrice, setOriginalPrice] = useState('');
+    const [dealPrice, setDealPrice] = useState('');
+    const [freeItemName, setFreeItemName] = useState('');
+    const [freeItemValue, setFreeItemValue] = useState('');
+    const [minOrderAmount, setMinOrderAmount] = useState('');
+
+    const resetTypeFields = () => {
+        setDiscountType('percentage');
+        setDiscountValue('');
+        setOriginalPrice('');
+        setDealPrice('');
+        setFreeItemName('');
+        setFreeItemValue('');
+        setMinOrderAmount('');
+    };
+
     const handlePublish = () => {
-        createOffer.mutate({
+        const payload: any = {
             name: title,
             description,
             mainImage: imageUrl || undefined,
             branchId,
             itemIds: [],
-            pricingType: 'sum',
             offerType: offerType.toLowerCase().replace(/\s+/g, '_'),
             audience: audience?.toLowerCase().replace(/\s+/g, '_'),
             startDate: startDate ? new Date(startDate).toISOString() : undefined,
             endDate: endDate ? new Date(endDate).toISOString() : undefined,
-        }, {
+        };
+
+        switch (offerType) {
+            case 'discount':
+                payload.pricingType = discountType === 'percentage' ? 'percentage_discount' : 'fixed_discount_price';
+                payload.discountValue = Number(discountValue) || 0;
+                break;
+            case 'free_item':
+                payload.pricingType = 'sum';
+                payload.discountValue = Number(freeItemValue) || 0;
+                if (freeItemName) payload.description = `${freeItemName} - ${description}`.trim();
+                break;
+            case 'special_deal':
+                payload.pricingType = 'fixed_discount_price';
+                payload.discountValue = (Number(originalPrice) - Number(dealPrice)) || 0;
+                payload.fixedPrice = Number(dealPrice) || 0;
+                break;
+            case 'free_delivery':
+                payload.pricingType = 'sum';
+                if (minOrderAmount) payload.description = `Free delivery on orders above ₦${Number(minOrderAmount).toLocaleString()}. ${description}`.trim();
+                break;
+            default:
+                payload.pricingType = 'sum';
+        }
+
+        createOffer.mutate(payload, {
             onSuccess: () => {
                 alert('Promotion published successfully!');
                 onCancel();
@@ -1454,6 +1497,12 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                     <div className="space-y-6 animate-in fade-in">
                         <h3 className="text-xl font-semibold text-gray-800 mb-6">Promotion Details</h3>
                         <div className="space-y-4">
+                            <div className="mb-2">
+                                <span className="text-xs font-bold text-primary uppercase tracking-wider bg-primary/10 px-3 py-1 rounded-full">
+                                    {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                </span>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
                                 <input 
@@ -1464,6 +1513,65 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                     className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                 />
                             </div>
+
+                            {offerType === 'discount' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Discount Type</label>
+                                        <div className="flex gap-2 p-1 bg-gray-50 rounded-2xl">
+                                            {(['percentage', 'fixed'] as const).map(t => (
+                                                <button key={t} type="button" onClick={() => setDiscountType(t)}
+                                                    className={cn("flex-1 py-3 rounded-xl text-sm font-bold transition-all", discountType === t ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-800")}>
+                                                    {t === 'percentage' ? 'Percentage %' : 'Fixed Amount ₦'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Discount {discountType === 'percentage' ? 'Percentage' : 'Amount'} *</label>
+                                        <div className="relative">
+                                            <input type="number" value={discountValue} onChange={e => setDiscountValue(e.target.value)} placeholder={discountType === 'percentage' ? 'e.g. 15' : 'e.g. 2000'} className="w-full p-4 pl-10 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{discountType === 'percentage' ? '%' : '₦'}</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {offerType === 'free_item' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Free Item Name *</label>
+                                        <input type="text" value={freeItemName} onChange={e => setFreeItemName(e.target.value)} placeholder="e.g. Small Chips" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Item Value (₦) *</label>
+                                        <input type="number" value={freeItemValue} onChange={e => setFreeItemValue(e.target.value)} placeholder="e.g. 1500" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
+                                        <p className="text-xs text-gray-400 mt-1.5 font-medium">The price the customer would normally pay for this item</p>
+                                    </div>
+                                </>
+                            )}
+
+                            {offerType === 'special_deal' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Original Price (₦) *</label>
+                                        <input type="number" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)} placeholder="e.g. 5000" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Price (₦) *</label>
+                                        <input type="number" value={dealPrice} onChange={e => setDealPrice(e.target.value)} placeholder="e.g. 3500" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
+                                    </div>
+                                </>
+                            )}
+
+                            {offerType === 'free_delivery' && (
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Minimum Order Amount (₦)</label>
+                                    <input type="number" value={minOrderAmount} onChange={e => setMinOrderAmount(e.target.value)} placeholder="e.g. 3000 (leave empty for no minimum)" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
+                                    <p className="text-xs text-gray-400 mt-1.5 font-medium">Orders above this amount qualify for free delivery</p>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                                 <textarea 
@@ -1537,7 +1645,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                             </div>
                         </div>
                         <div className="flex justify-between pt-6">
-                            <Button variant="ghost" onClick={() => setStep(1)} className="font-bold">Back</Button>
+                            <Button variant="ghost" onClick={() => { setStep(1); resetTypeFields(); }} className="font-bold">Back</Button>
                             <Button onClick={() => setStep(3)} disabled={!title} className="rounded-full px-8 font-bold">Next</Button>
                         </div>
                     </div>
