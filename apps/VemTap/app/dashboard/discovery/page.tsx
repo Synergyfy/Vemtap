@@ -1602,6 +1602,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                         type="time" 
                                         value={startTime}
                                         onChange={e => setStartTime(e.target.value)}
+                                        min={startDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                     />
                                 </div>
@@ -1621,6 +1622,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                         type="time" 
                                         value={endTime}
                                         onChange={e => setEndTime(e.target.value)}
+                                        min={endDate === startDate && startTime ? startTime : endDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                     />
                                 </div>
