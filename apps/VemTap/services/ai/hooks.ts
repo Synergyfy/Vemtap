@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAIStore } from '@/store/useAIStore';
-import { getAIAnalysis } from './mock';
+import { api } from '@/lib/api';
 import type { AIAnalysisResponse, AIAnalysisRequest } from './types';
 import { AI_CREDIT_COST } from './types';
 
@@ -12,9 +12,14 @@ export function useAIAnalysis(page: string) {
     queryFn: async () => {
       const store = useAIStore.getState();
       const context = store.analysisContext[page] ?? {};
-      const response = await getAIAnalysis(page, context);
-      store.setLastUpdated(page, response.generatedAt);
-      store.consumeCredits(response.creditsUsed);
+      
+      const response: AIAnalysisResponse = await api.post('/ai/analyze', {
+        page,
+        context,
+      });
+
+      store.setLastUpdated(page, response.generatedAt || new Date().toISOString());
+      store.consumeCredits(response.creditsUsed || 1);
       return response;
     },
     enabled: refreshKey > 0,
