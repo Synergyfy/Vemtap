@@ -79,6 +79,7 @@ import InstallPWA from "@/components/shared/InstallPWA";
 import GoogleAuthProvider from "./providers/GoogleAuthProvider";
 import AdminViewerBanner from "@/components/admin/control-tower/AdminViewerBanner";
 import FloatingBackButton from "@/components/shared/FloatingBackButton";
+import ConflictModal from "@/components/ui/ConflictModal";
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -100,6 +101,7 @@ export default function RootLayout({
                     <AuthProvider>
                         <GoogleAuthProvider>
                             <ToastProvider />
+                            <ConflictModal />
                             <AdminViewerBanner />
                             {children}
                             <CookieBanner />

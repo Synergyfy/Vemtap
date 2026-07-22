@@ -13,6 +13,7 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
 import { TapJourneyContainer } from '@/components/visitor/TapJourneyContainer';
+import { useTrackReferralVisit } from '@/services/affiliates/hooks';
 
 interface BusinessPublicPageClientProps {
     slug: string;
@@ -26,6 +27,15 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
     const storeDeviceCode = useCustomerFlowStore(state => state.deviceCode);
     const queryCode = searchParams.get('code');
     const deviceCode = storeDeviceCode || queryCode;
+
+    const referralCode = searchParams.get('ref');
+    const trackVisit = useTrackReferralVisit();
+
+    useEffect(() => {
+        if (referralCode && typeof window !== 'undefined') {
+            trackVisit.mutate({ referralCode });
+        }
+    }, []);
 
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);

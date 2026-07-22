@@ -4,15 +4,17 @@ import React, { useState } from 'react';
 import { usePosStore } from '@/store/usePosStore';
 import { useHoldPosSale } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { UserPlus, Tag, Plus, Minus, X, ArrowRight, User } from 'lucide-react';
+import { UserPlus, Tag, Plus, Minus, X, ArrowRight, User, AlertTriangle, Package, TicketCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { CustomerSelectorModal } from './CustomerSelectorModal';
 import { DiscountModal } from './DiscountModal';
+import RedeemCodeModal from './RedeemCodeModal';
 import PublicCustomerForm from './PublicCustomerForm';
 import toast from 'react-hot-toast';
 import { useCreateCatalogueOrder } from '@/services/catalogue/hooks';
 import { usePosSettingsStore } from '@/store/usePosSettingsStore';
+import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
 
 interface CartPanelProps {
   onNavigate?: () => void;
@@ -36,7 +38,9 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
     attachedCustomer,
     attachCustomer,
     cartDiscount,
-    setCartDiscount
+    setCartDiscount,
+    redeemedPromotion,
+    setRedeemedPromotion
   } = usePosStore();
 
   const posSettings = usePosSettingsStore();
@@ -44,7 +48,9 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
   const [showOptions, setShowOptions] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stockLimitItem, setStockLimitItem] = useState<{ id: string; name: string; stockQuantity: number; productId: string } | null>(null);
 
   const subtotal = getCartSubtotal();
   const total = getCartTotal();
@@ -133,7 +139,16 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
         <CustomerSelectorModal 
           isOpen={isCustomerModalOpen}
           onClose={() => setIsCustomerModalOpen(false)}
-          onSelectCustomer={(customer) => attachCustomer(customer)}
+          onSelectCustomer={(customer) => {
+            attachCustomer(customer);
+            const loyaltyState = usePosLoyaltyStore.getState();
+            const exists = loyaltyState.customers.find(c => c.id === customer.id);
+            if (!exists) {
+              usePosLoyaltyStore.setState(s => ({
+                customers: [...s.customers, { id: customer.id, name: customer.name, phone: customer.phone, totalPoints: customer.pointsBalance || 0 }]
+              }));
+            }
+          }}
           selectedCustomerId={attachedCustomer?.id}
         />
       )}
@@ -145,6 +160,51 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
         currentDiscount={cartDiscount}
         subtotal={subtotal}
       />
+
+      <RedeemCodeModal
+        isOpen={isRedeemModalOpen}
+        onClose={() => setIsRedeemModalOpen(false)}
+        onRedeemed={(promotion) => {
+          setRedeemedPromotion(promotion);
+          setIsRedeemModalOpen(false);
+        }}
+      />
+
+      {/* Stock Limit Modal */}
+      {stockLimitItem && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"  />
+          <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 text-center">
+              <div className="size-16 mx-auto mb-4 rounded-2xl bg-amber-50 flex items-center justify-center">
+                <AlertTriangle size={28} className="text-amber-500" />
+              </div>
+              <h3 className="text-base font-bold text-gray-900 mb-2">Stock Limit Reached</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                You only have <strong className="text-gray-900">{stockLimitItem.stockQuantity}</strong> of{' '}
+                <strong className="text-gray-900">{stockLimitItem.name}</strong> remaining.
+              </p>
+              <p className="text-xs text-gray-400 mt-2">Click below to update the product quantity in inventory.</p>
+              <div className="flex flex-col gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    router.push(`/dashboard/inventory?editProductId=${stockLimitItem.productId}`);
+                  }}
+                  className="w-full h-11 bg-[#066CF4] text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
+                >
+                  <Package size={15} /> Update Inventory
+                </button>
+                <button
+                  onClick={() => setStockLimitItem(null)}
+                  className="w-full h-11 bg-gray-50 text-gray-600 rounded-xl font-medium text-sm hover:bg-gray-100 transition-all"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cart Items */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -187,8 +247,19 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
                   </button>
                   <span className="w-6 text-center text-[11px] font-black text-gray-900">{item.quantity}</span>
                   <button 
-                    onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                    className="size-7 flex items-center justify-center text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm rounded-lg transition-all"
+                    onClick={() => {
+                      if (item.stockQuantity != null && item.quantity >= item.stockQuantity) {
+                        setStockLimitItem({ id: item.id, name: item.name, stockQuantity: item.stockQuantity, productId: item.productId });
+                        return;
+                      }
+                      updateCartItemQuantity(item.id, item.quantity + 1);
+                    }}
+                    className={cn(
+                      "size-7 flex items-center justify-center rounded-lg transition-all",
+                      item.stockQuantity != null && item.quantity >= item.stockQuantity
+                        ? "text-gray-300 cursor-not-allowed"
+                        : "text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm"
+                    )}
                   >
                     <Plus size={12} />
                   </button>
@@ -212,6 +283,12 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
               <span>-₦{discount.toLocaleString()}</span>
             </div>
           )}
+          {redeemedPromotion && (
+            <div className="flex justify-between text-[11px] font-bold text-blue-500">
+              <span className="flex items-center gap-1"><TicketCheck size={12} /> {redeemedPromotion.offerName}</span>
+              <span className="text-[9px] uppercase tracking-wider">Redeemed</span>
+            </div>
+          )}
           {posSettings.taxEnabled && !posSettings.pricesIncludeTax && tax > 0 && (
             <div className="flex justify-between text-[11px] font-bold text-gray-500">
               <span>{posSettings.taxLabel || 'Tax'}</span>
@@ -224,8 +301,8 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
           </div>
         </div>
 
-        {/* Customer & Discount */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        {/* Customer, Discount & Claim Code */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <button
             onClick={() => setIsCustomerModalOpen(true)}
             className={cn(
@@ -236,7 +313,7 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
             )}
           >
             {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
-            {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Add Customer'}
+            {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Customer'}
           </button>
           <button
             onClick={() => setIsDiscountModalOpen(true)}
@@ -248,7 +325,19 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
             )}
           >
             <Tag size={14} />
-            {discount > 0 ? `Discount Applied` : 'Add Discount'}
+            {discount > 0 ? 'Discount' : 'Discount'}
+          </button>
+          <button
+            onClick={() => setIsRedeemModalOpen(true)}
+            className={cn(
+              "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
+              redeemedPromotion
+                ? "bg-blue-50 border-blue-100 text-blue-600"
+                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+            )}
+          >
+            <TicketCheck size={14} />
+            {redeemedPromotion ? 'Claimed' : 'Claim Code'}
           </button>
         </div>
 

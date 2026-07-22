@@ -72,6 +72,7 @@ import { getCategoryIcon } from '@/lib/category-icons';
 import { useUpdateBusiness } from '@/services/businesses/hooks';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import type { PricingPlan } from '@/types/pricing';
+import { usePricingPlans } from '@/services/pricing/hooks';
 import { useSubscribe } from '@/services/subscriptions/hooks';
 import type { SubscribeRequest } from '@/services/subscriptions/types';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
@@ -80,6 +81,7 @@ import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
 import LocationStep from './components/LocationStep';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
+import { useReferrerInfo } from '@/services/affiliates/hooks';
 
 // --- Types ---
 type Step = 1 | 2 | '2A' | 3 | '3A' | 4 | 5 | '5A' | 6 | 7;
@@ -117,6 +119,7 @@ interface OnboardingData {
     isVisible: boolean;
     planId: string;
     billingCycle?: 'monthly' | 'quarterly' | 'yearly';
+    isTrial?: boolean;
     latitude?: number;
     longitude?: number;
 }
@@ -152,6 +155,9 @@ export default function OnboardingPage() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState<Step>(1);
     const [data, setData] = useState<Partial<OnboardingData>>({});
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const refCode = searchParams?.get('ref') || null;
+    const { data: referrer } = useReferrerInfo(refCode);
 
     const handleNext = (newData?: Partial<OnboardingData>) => {
         if (newData) setData(prev => ({ ...prev, ...newData }));
@@ -249,17 +255,17 @@ export default function OnboardingPage() {
             <main className="flex-1 overflow-y-auto pb-24">
                 <div className="max-w-xl mx-auto px-6 pt-12">
                     <AnimatePresence mode="wait">
-                        {currentStep === 1 && <WelcomeStep onNext={() => handleNext()} />}
+                        {currentStep === 1 && <WelcomeStep onNext={() => handleNext()} referrer={referrer} />}
                         {currentStep === 2 && <CategoryStep data={data} onNext={handleNext} />}
                         {currentStep === '2A' && <CategoryConfirmation onNext={() => handleNext()} />}
-                        {currentStep === 3 && <DetailsStep data={data} onNext={handleNext} />}
+                        {currentStep === 3 && <DetailsStep data={data} onNext={handleNext} refCode={refCode} />}
                         {currentStep === '3A' && (
                             <LocationStep
                                 address={data.address || { street: '', city: '', state: '', country: '', zip: '' }}
                                 onNext={(locationData) => handleNext(locationData)}
                             />
                         )}
-                        {currentStep === 4 && <OperatingStep data={data} onNext={handleNext} />}
+                        {currentStep === 4 && <OperatingStep data={data} onNext={handleNext} refCode={refCode} />}
                         {currentStep === 5 && <SubscriptionStep data={data} onNext={handleNext} />}
                         {currentStep === '5A' && <PlanConfirmation data={data} onNext={handleNext} onBack={handleBack} />}
                         {currentStep === 6 && <PaymentStep data={data} onNext={handleNext} />}
@@ -272,7 +278,7 @@ export default function OnboardingPage() {
 }
 
 // --- Screen 1: Welcome ---
-function WelcomeStep({ onNext }: { onNext: () => void }) {
+function WelcomeStep({ onNext, referrer }: { onNext: () => void; referrer?: { referralCode: string; businessName: string } | null }) {
     const onboardingVideoUrl = useSystemSettingsStore((s) => s.onboardingVideoUrl);
     const checklist = [
         { label: 'Business Category', id: 2 },
@@ -335,6 +341,25 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
                     <Play size={48} className="text-gray-300 mb-4" />
                     <p className="text-sm font-bold text-text-secondary">Onboarding Video</p>
                     <p className="text-xs text-text-secondary opacity-60 mt-1">Video will appear here once set by admin</p>
+                </div>
+            )}
+
+            {referrer && (
+                <div className="bg-gradient-to-br from-primary/5 via-primary/[0.03] to-transparent rounded-[2rem] p-6 border border-primary/10">
+                    <div className="flex items-center gap-4">
+                        <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Star size={20} className="text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">You Were Referred!</p>
+                            <p className="text-sm font-bold text-text-main">
+                                You were referred by <span className="text-primary">{referrer.businessName}</span>
+                            </p>
+                            <p className="text-[11px] font-medium text-text-secondary mt-0.5">
+                                Referral code: <span className="font-bold text-text-main">{referrer.referralCode}</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -567,7 +592,7 @@ function CategoryConfirmation({ onNext }: { onNext: () => void }) {
 }
 
 // --- Screen 3: Business Details ---
-function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
+function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: any) => void, refCode?: string | null }) {
     const [localData, setLocalData] = useState({
         businessName: data.businessName || '',
         logo: data.logo || null,
@@ -635,6 +660,7 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     xUrl: localData.socials.x || undefined,
                     linkedinUrl: localData.socials.linkedin || undefined,
                     whatsappNumber: localData.socials.whatsapp || undefined,
+                    ...(refCode ? { referralCode: refCode } : {}),
                 }
             });
 
@@ -989,7 +1015,7 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
 }
 
 // --- Screen 4: Business Operating Details ---
-function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
+function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: any) => void, refCode?: string | null }) {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const currentUser = useAuthStore((state) => state.user);
     
@@ -1038,6 +1064,7 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
                     }), {} as Record<string, { open: string; close: string; closed: boolean }>),
                     timezone: localData.timezone,
                     isVisible: localData.isVisible,
+                    ...(refCode ? { referralCode: refCode } : {}),
                 }
             });
             onNext(localData);
@@ -1246,161 +1273,109 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
     );
 }
 
+// Helper function to format limit strings
+const formatLimit = (value: number | string | undefined | null, label: string) => {
+    if (value === undefined || value === null || value === 0 || value === '0') return null;
+    if (value === -1 || value === 'unlimited') return `Unlimited ${label}`;
+    return `${value} ${label}`;
+};
+
+// Helper function to extract all features and limits configured for a plan
+const normalizePlanFeatures = (plan: PricingPlan) => {
+    const baseFeatures = Array.isArray(plan.features) ? plan.features.filter(Boolean) : [];
+    const derivedFeatures: string[] = [];
+
+    const smsCredits = formatLimit(plan.smsCredits, 'SMS Credits');
+    const whatsappCredits = formatLimit(plan.whatsappCredits, 'WhatsApp Credits');
+    const emailCredits = formatLimit(plan.emailCredits, 'Email Credits');
+    const teamMembersLimit = formatLimit(plan.teamMembersLimit, 'Team Members');
+    const loyaltyLimit = formatLimit(plan.loyaltyLimit, 'Loyalty Points');
+    const branchLimit = formatLimit(plan.branchLimit, 'Branches');
+    const catalogueLimit = formatLimit(plan.maxCatalogueItems, 'Catalogue Items');
+    const posLimit = formatLimit(plan.posTerminalLimit, 'POS Terminals');
+    const inventoryLimit = formatLimit(plan.inventoryLimit, 'Inventory Items');
+    const formsLimit = formatLimit(plan.formsLimit, 'Custom Forms');
+    const aiCredits = formatLimit(plan.aiCredits, 'AI Copilot Credits');
+    const marketingKitLimit = formatLimit(plan.marketingKitLimit, 'Marketing Kits');
+    const qrCodesLimit = formatLimit(plan.qrCodesLimit, 'QR Codes');
+
+    if (smsCredits) derivedFeatures.push(smsCredits);
+    if (whatsappCredits) derivedFeatures.push(whatsappCredits);
+    if (emailCredits) derivedFeatures.push(emailCredits);
+    if (teamMembersLimit) derivedFeatures.push(teamMembersLimit);
+    if (loyaltyLimit) derivedFeatures.push(loyaltyLimit);
+    if (branchLimit) derivedFeatures.push(branchLimit);
+    if (catalogueLimit) derivedFeatures.push(catalogueLimit);
+    if (posLimit) derivedFeatures.push(posLimit);
+    if (inventoryLimit) derivedFeatures.push(inventoryLimit);
+    if (formsLimit) derivedFeatures.push(formsLimit);
+    if (aiCredits) derivedFeatures.push(aiCredits);
+    if (marketingKitLimit) derivedFeatures.push(marketingKitLimit);
+    if (qrCodesLimit) derivedFeatures.push(qrCodesLimit);
+
+    if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
+        derivedFeatures.push(`${plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1)} Analytics`);
+    }
+
+    if (plan.automationsEnabled) derivedFeatures.push('Automated Messaging & Campaigns');
+    if (plan.inAppChatEnabled) derivedFeatures.push('In-App Customer Live Chat');
+    if (plan.visitorsEnabled) derivedFeatures.push('Visitor Analytics & Insights');
+    if (plan.activityLogEnabled) derivedFeatures.push('Activity Audit Logging');
+    if (plan.staffRolesEnabled) derivedFeatures.push('Custom Staff Roles & Permissions');
+    if (plan.discoveryEnabled) derivedFeatures.push('Public Directory Listing');
+
+    return {
+        base: baseFeatures,
+        limits: derivedFeatures,
+    };
+};
+
 // --- Screen 5: Subscription Selection ---
 function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [selectedPlan, setSelectedPlan] = useState(data.planId || '');
-    const plans = useSubscriptionStore((s) => s.plans);
-    const pricingLoading = useSubscriptionStore((s) => s.isLoading);
+    const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
+    const activePlans = plans.filter((p: PricingPlan) => p.isActive);
 
-    const formatPrice = (plan: PricingPlan) => {
-        if (plan.isFree) return '₦0';
-        let price: number;
-        if (billingCycle === 'yearly') price = plan.yearlyPrice || plan.monthlyPrice * 12;
-        else if (billingCycle === 'quarterly') price = plan.quarterlyPrice || plan.monthlyPrice * 3;
-        else price = plan.monthlyPrice;
-        return `₦${price.toLocaleString()}`;
+    const getPrice = (plan: PricingPlan) => {
+        if (plan.isFree) return 0;
+        if (billingCycle === 'yearly') return plan.yearlyPrice || plan.monthlyPrice * 12;
+        if (billingCycle === 'quarterly') return plan.quarterlyPrice || plan.monthlyPrice * 3;
+        return plan.monthlyPrice;
     };
 
-    const getBillingTotal = (plan: PricingPlan) => {
+    const getPeriodLabel = (plan: PricingPlan) => {
         if (plan.isFree) return '';
-        if (billingCycle === 'yearly') return `₦${(plan.yearlyPrice || plan.monthlyPrice * 12).toLocaleString()} billed annually`;
-        if (billingCycle === 'quarterly') return `₦${(plan.quarterlyPrice || plan.monthlyPrice * 3).toLocaleString()} billed quarterly`;
-        return '';
+        if (billingCycle === 'yearly') return '/yr';
+        if (billingCycle === 'quarterly') return '/qtr';
+        return '/mo';
     };
 
-    const getBillingPeriodLabel = (plan: PricingPlan) => {
-        if (plan.isFree) return '';
-        return billingCycle === 'yearly' ? '/yr' : billingCycle === 'quarterly' ? '/qtr' : '/mo';
+    const getDiscount = (cycle: string) => {
+        if (cycle === 'yearly') return 'Save 20%';
+        if (cycle === 'quarterly') return 'Save 10%';
+        return null;
     };
 
-    const renderHighlightedCard = (plan: PricingPlan, idx: number) => {
-        const isSelected = selectedPlan === plan.id;
-        const isHighlighted = plan.isPopular;
-
-        return (
-            <motion.button
-                key={plan.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                onClick={() => setSelectedPlan(plan.id)}
-                className={`relative flex flex-col text-left rounded-3xl border-2 transition-all duration-200 overflow-hidden h-full ${
-                    isSelected
-                        ? 'border-primary ring-4 ring-primary/10 shadow-xl shadow-primary/10'
-                        : isHighlighted
-                            ? 'border-primary/30 shadow-lg hover:shadow-xl'
-                            : 'border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200'
-                } ${isSelected ? (isHighlighted ? 'bg-primary' : 'bg-primary/5') : isHighlighted ? 'bg-white' : 'bg-white'}`}
-            >
-                {/* Most Popular Badge */}
-                {isHighlighted && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                        <div className="px-4 py-1 bg-primary text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-primary/30">
-                            Most Popular
-                        </div>
-                    </div>
-                )}
-
-                <div className="p-6 sm:p-7 flex flex-col flex-1">
-                    {/* Plan Name & Description */}
-                    <div className="space-y-2 mb-4">
-                        <h3 className={`text-base sm:text-lg font-black leading-snug ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
-                            {plan.name}
-                        </h3>
-                        {plan.description && (
-                            <p className={`text-xs font-medium leading-relaxed ${isSelected && isHighlighted ? 'text-white/80' : 'text-text-secondary'}`}>
-                                {plan.description}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Pricing */}
-                    <div className="space-y-1 mb-4">
-                        <div className={`flex items-baseline gap-1 ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
-                            <span className="text-2xl sm:text-3xl font-black tracking-tight">{formatPrice(plan)}</span>
-                            <span className={`text-xs sm:text-sm font-bold ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                {getBillingPeriodLabel(plan)}
-                            </span>
-                        </div>
-                        {getBillingTotal(plan) && (
-                            <p className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/60' : 'text-text-secondary/60'}`}>
-                                {getBillingTotal(plan)}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Free Trial Badge */}
-                    {plan.trialDurationDays > 0 && !plan.isFree && (
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 ${
-                            isSelected && isHighlighted ? 'bg-white/20 text-white' : 'bg-green-50 text-green-700'
-                        }`}>
-                            <Zap size={12} />
-                            {plan.trialDurationDays}-Day Free Trial
-                        </div>
-                    )}
-
-                    {/* Divider */}
-                    <div className={`border-t mb-4 ${isSelected && isHighlighted ? 'border-white/20' : 'border-gray-100'}`} />
-
-                    {/* Features */}
-                    <div className="space-y-3 flex-1">
-                        <p className={`text-[10px] font-black uppercase tracking-[0.15em] ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                            What's Included
-                        </p>
-                        <div className="space-y-2.5">
-                            {plan.features.map((feature: string, i: number) => (
-                                <div key={i} className="flex items-start gap-2.5">
-                                    <CheckCircle2 
-                                        size={14} 
-                                        className={`shrink-0 mt-0.5 ${isSelected && isHighlighted ? 'text-white' : 'text-green-500'}`} 
-                                    />
-                                    <span className={`text-xs font-medium leading-snug ${isSelected && isHighlighted ? 'text-white/90' : 'text-text-main'}`}>
-                                        {feature}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Usage Limits */}
-                    <div className={`mt-4 pt-3 space-y-2 ${isSelected && isHighlighted ? 'border-t border-white/20' : 'border-t border-gray-100'}`}>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                            {plan.messagingEnabled && (
-                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                    SMS: {plan.smsCredits === -1 ? 'Unlimited' : `${plan.smsCredits}/mo`}
-                                </div>
-                            )}
-                            {plan.teamMembersEnabled && (
-                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                    Team: {plan.teamMembersLimit === -1 ? 'Unlimited' : `${plan.teamMembersLimit} members`}
-                                </div>
-                            )}
-                            {plan.branchesEnabled && (
-                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                    Branches: {plan.branchLimit === -1 ? 'Unlimited' : `${plan.branchLimit}`}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Selected Indicator */}
-                {isSelected && (
-                    <div className={`px-6 py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest ${
-                        isHighlighted ? 'bg-white/15 text-white' : 'bg-primary/10 text-primary'
-                    }`}>
-                        <CheckCircle2 size={14} />
-                        Selected
-                    </div>
-                )}
-            </motion.button>
-        );
+    const getSavings = (plan: PricingPlan, cycle: string) => {
+        if (plan.isFree) return null;
+        const monthly = plan.monthlyPrice;
+        if (cycle === 'yearly') {
+            const total = plan.yearlyPrice || monthly * 12;
+            const saved = monthly * 12 - total;
+            return saved > 0 ? `Save ₦${saved.toLocaleString()}/yr` : null;
+        }
+        if (cycle === 'quarterly') {
+            const total = plan.quarterlyPrice || monthly * 3;
+            const saved = monthly * 3 - total;
+            return saved > 0 ? `Save ₦${saved.toLocaleString()}/qtr` : null;
+        }
+        return null;
     };
 
-    const renderRegularCard = (plan: PricingPlan, idx: number) => {
-        return renderHighlightedCard(plan, idx);
+    const handleSelectPlan = (planId: string, isTrial: boolean) => {
+        setSelectedPlan(planId);
+        onNext({ planId, billingCycle, isTrial });
     };
 
     return (
@@ -1409,42 +1384,37 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-10 pb-20"
+            className="space-y-8 pb-32 md:pb-20"
         >
             <div className="text-center space-y-3">
-                <span className="inline-block px-3 py-1 bg-primary/5 text-primary text-[9px] font-black uppercase tracking-[0.2em] rounded-full">
+                <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
                     Transparent Pricing
                 </span>
                 <h1 className="text-3xl sm:text-4xl font-display font-black text-text-main tracking-tight">
-                    Choose Your Plan
+                    Choose Your Subscription Plan
                 </h1>
-                <p className="text-text-secondary font-medium max-w-md mx-auto">
-                    Select the plan that best fits your business growth needs. Upgrade or cancel anytime.
+                <p className="text-text-secondary font-medium max-w-md mx-auto text-sm sm:text-base">
+                    Select a plan to launch your business. Start with a free trial or subscribe directly.
                 </p>
             </div>
 
             {/* Billing Toggle */}
             <div className="flex justify-center">
-                <div className="bg-gray-100/80 p-1.5 rounded-2xl flex items-center gap-1 relative">
+                <div className="bg-gray-100/80 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner">
                     {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                         <button
                             key={cycle}
                             onClick={() => setBillingCycle(cycle)}
-                            className={`relative px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                            className={`relative px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                 billingCycle === cycle
-                                    ? 'bg-white shadow-lg shadow-black/5 text-primary scale-[1.02]'
-                                    : 'text-text-secondary hover:text-text-main'
+                                    ? 'bg-white shadow-md text-primary scale-[1.02]'
+                                    : 'text-text-secondary/70 hover:text-text-main'
                             }`}
                         >
-                            {cycle}
-                            {cycle === 'yearly' && (
-                                <span className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-green-500 text-white text-[7px] font-black uppercase tracking-widest rounded-full">
-                                    -20%
-                                </span>
-                            )}
-                            {cycle === 'quarterly' && (
-                                <span className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-green-500 text-white text-[7px] font-black uppercase tracking-widest rounded-full">
-                                    -10%
+                            {cycle === 'monthly' ? 'Monthly' : cycle === 'quarterly' ? 'Quarterly' : 'Yearly'}
+                            {getDiscount(cycle) && (
+                                <span className="block text-[7px] text-emerald-600 font-black tracking-wider -mt-0.5">
+                                    {getDiscount(cycle)}
                                 </span>
                             )}
                         </button>
@@ -1452,29 +1422,175 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                 </div>
             </div>
 
-            {pricingLoading || plans.length === 0 ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            {plansLoading ? (
+                <div className="flex items-center justify-center py-24">
+                    <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </div>
+            ) : activePlans.length === 0 ? (
+                <div className="text-center py-16">
+                    <p className="text-text-secondary font-medium">No plans available at the moment.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto items-stretch">
-                    {plans.map((plan: PricingPlan, idx: number) => (
-                        plan.isPopular ? renderHighlightedCard(plan, idx) : renderRegularCard(plan, idx)
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    {activePlans.map((plan: PricingPlan) => {
+                        const isSelected = selectedPlan === plan.id;
+                        const isPopular = plan.isPopular;
+                        const price = getPrice(plan);
+                        const periodLabel = getPeriodLabel(plan);
+                        const savings = getSavings(plan, billingCycle);
+                        const trialDays = plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
+                        const features = normalizePlanFeatures(plan);
+
+                        return (
+                            <div
+                                key={plan.id}
+                                className={`relative rounded-[32px] border-2 transition-all duration-300 flex flex-col overflow-hidden ${
+                                    isSelected
+                                        ? 'border-primary shadow-2xl shadow-primary/20 ring-4 ring-primary/10'
+                                        : isPopular
+                                            ? 'border-primary/30 shadow-xl hover:shadow-2xl'
+                                            : 'border-gray-100 shadow-md hover:shadow-xl hover:border-gray-200'
+                                } ${isPopular ? 'md:scale-[1.02] z-10' : ''}`}
+                            >
+                                {/* Popular Badge */}
+                                {isPopular && (
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                                        <div className="px-5 py-1.5 bg-gradient-to-r from-primary to-blue-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-primary/30">
+                                            Most Popular Choice
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Card Header */}
+                                <div className={`p-6 sm:p-7 ${isSelected && isPopular ? 'bg-primary text-white' : isPopular ? 'bg-gradient-to-b from-primary/[0.04] to-transparent' : 'bg-white'}`}>
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div>
+                                            <h3 className={`text-xl font-black ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
+                                                {plan.name}
+                                            </h3>
+                                            {plan.description && (
+                                                <p className={`text-xs font-medium mt-1 ${isSelected && isPopular ? 'text-white/80' : 'text-text-secondary'}`}>
+                                                    {plan.description}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {plan.isFree ? (
+                                            <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest shrink-0">
+                                                Free Forever
+                                            </div>
+                                        ) : trialDays > 0 && (
+                                            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[9px] font-black uppercase tracking-widest shrink-0 border border-amber-500/20">
+                                                <Zap size={11} className="fill-amber-500 text-amber-500" />
+                                                {trialDays}-Day Free Trial
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Price */}
+                                    <div className={`flex items-baseline gap-1 ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
+                                        {plan.isFree ? (
+                                            <span className="text-3xl sm:text-4xl font-black">Free</span>
+                                        ) : (
+                                            <>
+                                                <span className="text-3xl sm:text-4xl font-black tracking-tight">₦{price.toLocaleString()}</span>
+                                                {periodLabel && (
+                                                    <span className={`text-xs font-bold ${isSelected && isPopular ? 'text-white/70' : 'text-text-secondary/70'}`}>
+                                                        {periodLabel}
+                                                    </span>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Savings */}
+                                    {savings && (
+                                        <p className={`text-[11px] font-bold mt-1 ${isSelected && isPopular ? 'text-white/80' : 'text-emerald-600'}`}>
+                                            {savings}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Features & Limits Section */}
+                                <div className={`px-6 sm:px-7 py-5 flex-1 bg-gray-50/50 space-y-6 ${isSelected && isPopular ? 'bg-primary/5' : ''}`}>
+                                    {/* Included Features */}
+                                    {features.base.length > 0 && (
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-secondary/70 mb-3">
+                                                Key Included Features
+                                            </p>
+                                            <div className="space-y-2.5">
+                                                {features.base.map((feature: string, i: number) => (
+                                                    <div key={`base-${i}`} className="flex items-start gap-3">
+                                                        <div className="size-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-100">
+                                                            <CheckCircle2 size={12} strokeWidth={3} />
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-text-main leading-snug">
+                                                            {feature}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Derived Capabilities & Limits */}
+                                    {features.limits.length > 0 && (
+                                        <div className="pt-3 border-t border-gray-200/60">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-secondary/70 mb-3">
+                                                Plan Limits & Capacities
+                                            </p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {features.limits.map((item: string, i: number) => (
+                                                    <div key={`limit-${i}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-2xs">
+                                                        <div className="size-2 rounded-full bg-primary shrink-0" />
+                                                        <span className="text-[11px] font-bold text-text-main line-clamp-1">
+                                                            {item}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="p-6 sm:p-7 bg-white border-t border-gray-100 space-y-2.5 mt-auto">
+                                    {trialDays > 0 && !plan.isFree ? (
+                                        <>
+                                            <button
+                                                onClick={() => handleSelectPlan(plan.id, true)}
+                                                className="w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                                            >
+                                                <Zap size={13} className="fill-white" />
+                                                Start {trialDays}-Day Free Trial
+                                            </button>
+                                            <button
+                                                onClick={() => handleSelectPlan(plan.id, false)}
+                                                className="w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all bg-gray-900 text-white hover:bg-black shadow-md active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                                            >
+                                                Subscribe Now (₦{price.toLocaleString()})
+                                                <ArrowRight size={13} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleSelectPlan(plan.id, false)}
+                                            className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer ${
+                                                isSelected
+                                                    ? 'bg-primary text-white shadow-xl shadow-primary/20'
+                                                    : 'bg-primary text-white hover:bg-primary-hover shadow-lg'
+                                            }`}
+                                        >
+                                            {plan.isFree ? 'Choose Free Plan' : `Subscribe Now (₦${price.toLocaleString()})`}
+                                            <ArrowRight size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
-
-            <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0 mt-4">
-                <div className="max-w-xl mx-auto">
-                    <Button 
-                        disabled={!selectedPlan}
-                        onClick={() => onNext({ planId: selectedPlan, billingCycle })}
-                        className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
-                    >
-                        {plans.find(p => p.id === selectedPlan)?.isFree ? 'Continue' : 'Continue to Payment'} <ArrowRight size={18} />
-                    </Button>
-                </div>
-            </div>
         </motion.div>
     );
 }
@@ -1482,7 +1598,9 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
 // --- Screen 5A: Plan Confirmation ---
 function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingData>, onNext: (d: any) => void, onBack: () => void }) {
     const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
-    const planFeatures = plan?.features || [];
+    const isTrial = data.isTrial || false;
+    const trialDays = plan?.isFree ? 0 : (plan?.trialDurationDays || plan?.freeDurationDays || 14);
+    const features = plan ? normalizePlanFeatures(plan) : { base: [], limits: [] };
 
     return (
         <motion.div
@@ -1490,46 +1608,84 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
-            className="space-y-12 text-center py-12"
+            className="space-y-8 text-center py-8"
         >
-            <div className="space-y-4">
-                <h1 className="text-4xl font-display font-black text-text-main tracking-tight uppercase">You Selected {plan?.name || data.planId} Plan</h1>
-                <p className="text-text-secondary font-medium">Great choice! Let's get your subscription active.</p>
+            <div className="space-y-3">
+                <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
+                    Confirm Selection
+                </span>
+                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                    {isTrial ? `Start ${trialDays}-Day Free Trial` : `Subscribe to ${plan?.name || 'Selected'} Plan`}
+                </h1>
+                <p className="text-text-secondary font-medium max-w-sm mx-auto text-sm">
+                    {isTrial
+                        ? `You are starting a ${trialDays}-day free trial. You won't be charged the subscription fee until your trial expires.`
+                        : 'Review your selected plan before proceeding to payment.'}
+                </p>
             </div>
 
-            <div className="max-w-sm mx-auto bg-gray-50 rounded-[2.5rem] p-10 border border-gray-100 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 size-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                <div className="relative z-10 space-y-6">
-                    <div className="size-20 bg-primary text-white rounded-3xl mx-auto flex items-center justify-center shadow-lg">
-                        <Star size={40} />
+            <div className="max-w-md mx-auto bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-2xl relative overflow-hidden text-left space-y-6">
+                <div className="flex items-center justify-between pb-6 border-b border-gray-100">
+                    <div className="flex items-center gap-4">
+                        <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
+                            {isTrial ? <Zap size={24} className="fill-primary" /> : <Crown size={24} />}
+                        </div>
+                        <div>
+                            <h3 className="font-black text-xl text-text-main">{plan?.name || data.planId}</h3>
+                            <p className="text-xs text-text-secondary font-medium">
+                                Billed {data.billingCycle || 'monthly'}
+                            </p>
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <h3 className="font-black text-2xl text-text-main capitalize">{plan?.name || data.planId} Plan</h3>
-                        <p className="text-xs text-text-secondary font-medium">Billed {plan?.isFree ? 'Once' : 'Automatically'}</p>
+                    {isTrial ? (
+                        <span className="px-3 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[9px] font-black uppercase tracking-widest rounded-full">
+                            {trialDays}-Day Trial
+                        </span>
+                    ) : (
+                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest rounded-full">
+                            {plan?.isFree ? 'Free' : 'Direct Sub'}
+                        </span>
+                    )}
+                </div>
+
+                {/* Trial Explanation / Notice */}
+                {isTrial && (
+                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/60 space-y-2">
+                        <p className="text-xs font-black text-amber-900 flex items-center gap-2">
+                            <Shield size={14} className="text-amber-600" /> Bank Details & Card Verification Notice
+                        </p>
+                        <p className="text-[11px] font-medium text-amber-800 leading-relaxed">
+                            A ₦100 refundable bank verification deposit is required via Paystack to authorize your payment card. Your free trial is active for {trialDays} days. Auto-deduction will begin when your free trial ends unless cancelled.
+                        </p>
                     </div>
-                    <div className="pt-6 border-t border-gray-200 space-y-3">
-                        {planFeatures.map((f, i) => (
+                )}
+
+                {/* Key Plan Features list */}
+                <div className="space-y-3 pt-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Plan Inclusions</p>
+                    <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
+                        {[...features.base, ...features.limits].map((f, i) => (
                             <div key={i} className="flex items-center gap-2 text-xs font-bold text-text-main">
-                                <CheckCircle2 size={16} className="text-green-500" />
-                                {f}
+                                <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
+                                <span>{f}</span>
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
 
-            <div className="space-y-4 pt-8">
+            <div className="space-y-3 pt-4 max-w-md mx-auto">
                 <Button 
                     onClick={() => onNext({})}
-                    className="w-full max-w-sm mx-auto bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3"
+                    className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer"
                 >
-                    {plan?.isFree ? 'Complete Setup' : 'Continue To Payment'} <ArrowRight size={18} />
+                    {plan?.isFree ? 'Complete Free Setup' : isTrial ? 'Proceed to Bank Verification (₦100)' : 'Proceed to Payment'} <ArrowRight size={18} />
                 </Button>
                 <button 
                     onClick={onBack}
-                    className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary transition-colors"
+                    className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary transition-colors cursor-pointer"
                 >
-                    Change Plan
+                    Change Plan Or Billing Cycle
                 </button>
             </div>
         </motion.div>
@@ -1544,13 +1700,16 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
     const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
     const subscribe = useSubscribe();
 
+    const isTrialMode = data.isTrial || false;
     const billingCycle = data.billingCycle || 'monthly';
-    const subtotal = plan?.isFree ? 0 : billingCycle === 'yearly'
+    const planPrice = plan?.isFree ? 0 : billingCycle === 'yearly'
         ? (plan?.yearlyPrice || (plan?.monthlyPrice || 0) * 12)
         : billingCycle === 'quarterly'
             ? (plan?.quarterlyPrice || (plan?.monthlyPrice || 0) * 3)
             : (plan?.monthlyPrice || 0);
-    const tax = Math.round(subtotal * 0.075);
+
+    const subtotal = isTrialMode ? 100 : planPrice;
+    const tax = isTrialMode ? 0 : Math.round(subtotal * 0.075);
     const total = subtotal + tax;
 
     const handlePay = async () => {
@@ -1581,6 +1740,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     planId: plan!.id,
                     billingPeriod: billingCycle,
                     businessId: user?.businessId,
+                    isTrial: isTrialMode,
                     paymentReference: `mock-ref-${Date.now()}`,
                 });
                 setIsProcessing(false);
@@ -1613,6 +1773,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                         planId: plan!.id,
                         billingPeriod: billingCycle,
                         businessId: user?.businessId,
+                        isTrial: isTrialMode,
                         paymentReference: response.reference,
                     }).then(() => {
                         setIsProcessing(false);
@@ -1636,8 +1797,10 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20 text-center space-y-6">
                 <div className="size-24 border-8 border-primary/20 border-t-primary rounded-full animate-spin" />
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-display font-black text-text-main tracking-tight">Processing Payment</h1>
-                    <p className="text-text-secondary font-medium">Please do not close this page.</p>
+                    <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                        {isTrialMode ? 'Verifying Bank Card...' : 'Processing Payment...'}
+                    </h1>
+                    <p className="text-text-secondary font-medium">Please complete the Paystack transaction. Do not close this page.</p>
                 </div>
             </motion.div>
         );
@@ -1646,12 +1809,18 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
     if (isSuccess) {
         return (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-20 text-center space-y-6">
-                <div className="size-24 bg-green-50 text-green-600 rounded-full flex items-center justify-center shadow-lg shadow-green-100">
+                <div className="size-24 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-emerald-100">
                     <CheckCircle2 size={48} />
                 </div>
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-display font-black text-text-main tracking-tight">Payment Successful 🎉</h1>
-                    <p className="text-text-secondary font-medium">Your subscription has been activated.</p>
+                    <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                        {isTrialMode ? 'Bank Verified & Trial Activated! 🎉' : 'Payment Successful! 🎉'}
+                    </h1>
+                    <p className="text-text-secondary font-medium max-w-sm">
+                        {isTrialMode
+                            ? 'Your bank details have been verified and your free trial is now active.'
+                            : 'Your subscription has been activated successfully.'}
+                    </p>
                 </div>
             </motion.div>
         );
@@ -1663,107 +1832,245 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="space-y-12 pb-20"
+            className="space-y-8 pb-20"
         >
-            <div className="space-y-4 text-center">
-                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">Complete Your Subscription</h1>
-                <p className="text-text-secondary font-medium">Safe and secure payment gateway.</p>
+            <div className="space-y-3 text-center">
+                <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
+                    Secure Payment Gateway
+                </span>
+                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                    {isTrialMode ? 'Bank Details & Verification Deposit' : 'Complete Your Subscription'}
+                </h1>
+                <p className="text-text-secondary font-medium text-sm max-w-md mx-auto">
+                    {isTrialMode
+                        ? 'Authorize your bank card for auto-deduction after your free trial ends.'
+                        : 'Secure checkout powered by Paystack.'}
+                </p>
             </div>
 
             {/* Order Summary Card */}
-            <div className="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 space-y-6">
-                <div className="flex items-center justify-between">
+            <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-xl space-y-6 max-w-md mx-auto">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                     <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Order Summary</span>
-                    <Badge variant="outline" className="border-primary/20 text-primary capitalize">{plan?.name || data.planId}</Badge>
+                    <Badge variant="outline" className="border-primary/20 text-primary capitalize font-black">{plan?.name || data.planId}</Badge>
                 </div>
-                <div className="space-y-3">
-                    <div className="flex justify-between text-sm font-bold text-text-main">
-                        <span>{billingCycle === 'yearly' ? 'Yearly' : billingCycle === 'quarterly' ? 'Quarterly' : 'Monthly'} Subscription</span>
-                        <span>₦{subtotal.toLocaleString()}</span>
+                
+                {isTrialMode ? (
+                    <div className="space-y-4">
+                        <div className="flex justify-between text-sm font-bold text-text-main">
+                            <span>Plan Trial ({plan?.name})</span>
+                            <span className="text-emerald-600 font-black">Free Trial</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold text-text-main">
+                            <span>Bank Card Verification Deposit</span>
+                            <span>₦100</span>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-xs space-y-1.5">
+                            <p className="font-bold text-text-main flex items-center gap-1.5">
+                                <Shield size={14} className="text-primary" /> Auto-Renewal Schedule
+                            </p>
+                            <p className="text-text-secondary text-[11px] leading-relaxed">
+                                After your trial expires, ₦{planPrice.toLocaleString()} will be automatically charged {billingCycle === 'yearly' ? 'annually' : billingCycle === 'quarterly' ? 'quarterly' : 'monthly'}.
+                            </p>
+                        </div>
+                        <div className="pt-4 border-t border-gray-200 flex justify-between text-xl font-black text-primary">
+                            <span>Deposit Amount</span>
+                            <span>₦100</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between text-sm font-bold text-text-secondary opacity-50">
-                        <span>Tax (7.5%)</span>
-                        <span>₦{tax.toLocaleString()}</span>
+                ) : (
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-sm font-bold text-text-main">
+                            <span>{billingCycle === 'yearly' ? 'Yearly' : billingCycle === 'quarterly' ? 'Quarterly' : 'Monthly'} Subscription</span>
+                            <span>₦{subtotal.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold text-text-secondary opacity-60">
+                            <span>Tax (7.5%)</span>
+                            <span>₦{tax.toLocaleString()}</span>
+                        </div>
+                        <div className="pt-4 border-t border-gray-200 flex justify-between text-xl font-black text-primary">
+                            <span>Total Due</span>
+                            <span>{plan?.isFree ? 'Free' : `₦${total.toLocaleString()}`}</span>
+                        </div>
                     </div>
-                    <div className="pt-4 border-t border-gray-200 flex justify-between text-xl font-black text-primary">
-                        <span>Total</span>
-                        <span>{plan?.isFree ? 'Free' : `₦${total.toLocaleString()}`}</span>
-                    </div>
-                </div>
+                )}
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
-                <div className="max-w-xl mx-auto">
-                    <Button 
-                        onClick={handlePay}
-                        disabled={isProcessing}
-                        className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
-                    >
-                        {plan?.isFree ? 'Activate Free Plan' : 'Pay Now'} <ArrowRight size={18} />
-                    </Button>
-                </div>
+            <div className="max-w-md mx-auto">
+                <Button 
+                    onClick={handlePay}
+                    disabled={isProcessing}
+                    className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer"
+                >
+                    {plan?.isFree ? 'Activate Free Plan' : isTrialMode ? 'Pay ₦100 & Start Free Trial' : 'Pay Now & Activate Subscription'} <ArrowRight size={18} />
+                </Button>
             </div>
         </motion.div>
     );
 }
 
-// --- Screen 7: Onboarding Complete ---
+// --- Screen 7: Onboarding Complete & Business Summary ---
 function CompleteStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: () => void }) {
+    const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
+    const isTrial = data.isTrial || false;
+    const activeSocialsCount = Object.values(data.socials || {}).filter(Boolean).length;
+
     return (
         <motion.div
             key="complete"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-12 text-center pb-20"
+            className="space-y-10 pb-20 max-w-2xl mx-auto"
         >
-            <div className="relative flex justify-center py-12">
-                <div className="relative size-64 flex items-center justify-center">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: [0, 1.2, 1] }} className="absolute inset-0 bg-primary rounded-full blur-[80px] opacity-20" />
-                    <div className="relative z-10 bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100">
-                        <div className="size-24 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <CheckCircle2 size={48} />
+            {/* Top Celebration Card */}
+            <div className="text-center space-y-4 pt-6">
+                <div className="relative inline-flex items-center justify-center">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+                    <div className="size-24 bg-gradient-to-tr from-emerald-500 to-teal-400 text-white rounded-3xl flex items-center justify-center shadow-xl shadow-emerald-500/20 relative z-10">
+                        <CheckCircle2 size={48} strokeWidth={2.5} />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <span className="inline-block px-4 py-1.5 bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-full border border-emerald-500/20">
+                        Business Ready & Verified
+                    </span>
+                    <h1 className="text-3xl sm:text-4xl font-display font-black text-text-main tracking-tight">
+                        Welcome Aboard, {data.businessName || 'Partner'}! 🎉
+                    </h1>
+                    <p className="text-text-secondary text-sm font-medium leading-relaxed max-w-md mx-auto">
+                        Your business profile, location, operating hours, and subscription have been configured.
+                    </p>
+                </div>
+            </div>
+
+            {/* Executive Business Summary Card */}
+            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-2xl overflow-hidden text-left">
+                {/* Header Banner */}
+                <div className="bg-gradient-to-r from-slate-900 via-primary to-slate-900 p-8 text-white relative overflow-hidden">
+                    <div className="absolute -right-10 -bottom-10 size-40 bg-white/10 rounded-full blur-2xl" />
+                    <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="size-16 rounded-2xl bg-white p-1 shadow-lg shrink-0 overflow-hidden flex items-center justify-center">
+                                {data.logo ? (
+                                    <img src={data.logo} alt="Business Logo" className="size-full object-cover rounded-xl" />
+                                ) : (
+                                    <LogoIcon className="text-primary size-8" />
+                                )}
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-2xl font-black tracking-tight">{data.businessName || 'Business Name'}</h2>
+                                    <Shield size={18} className="text-emerald-400 fill-emerald-400/20" />
+                                </div>
+                                <p className="text-xs text-white/80 font-medium mt-0.5 flex items-center gap-2">
+                                    <Badge className="bg-white/20 text-white border-0 text-[9px] font-black uppercase tracking-widest">
+                                        {data.category || 'Business'}
+                                    </Badge>
+                                    <span>•</span>
+                                    <span>{data.address?.city || 'Nigeria'}</span>
+                                </p>
+                            </div>
                         </div>
-                        <h1 className="text-3xl font-display font-black text-text-main tracking-tight">Your Business Is Ready</h1>
+                        <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-black uppercase tracking-widest px-3.5 py-1.5 shadow-md">
+                            Active Account
+                        </Badge>
+                    </div>
+                </div>
+
+                {/* Details Grid */}
+                <div className="p-8 space-y-8">
+                    {/* Grid Section 1: Subscription & Account Status */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Subscription Plan</span>
+                                <Crown size={16} className="text-primary" />
+                            </div>
+                            <p className="text-lg font-black text-text-main capitalize">{plan?.name || data.planId || 'Standard'}</p>
+                            <p className="text-xs font-semibold text-primary">
+                                {isTrial ? '14-Day Free Trial Active' : 'Paid Subscription Active'}
+                            </p>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Billing Schedule</span>
+                                <Clock size={16} className="text-text-secondary" />
+                            </div>
+                            <p className="text-lg font-black text-text-main capitalize">{data.billingCycle || 'Monthly'}</p>
+                            <p className="text-xs font-semibold text-emerald-600">Auto-Debit Card Verified</p>
+                        </div>
+                    </div>
+
+                    {/* Grid Section 2: Contact & Location */}
+                    <div className="space-y-4 pt-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Contact & Location Details</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-medium">
+                            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-gray-50/70 border border-gray-100">
+                                <Mail size={16} className="text-primary shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-black uppercase text-gray-400">Official Email</p>
+                                    <p className="font-bold text-text-main truncate">{data.contact?.email || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-gray-50/70 border border-gray-100">
+                                <MessageCircle size={16} className="text-green-600 shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-black uppercase text-gray-400">WhatsApp / Phone</p>
+                                    <p className="font-bold text-text-main truncate">{data.contact?.whatsapp || data.contact?.phone || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-gray-50/70 border border-gray-100 sm:col-span-2">
+                                <MapPin size={16} className="text-primary shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-black uppercase text-gray-400">Physical Address</p>
+                                    <p className="font-bold text-text-main truncate">
+                                        {data.address?.street ? `${data.address.street}, ${data.address.city}, ${data.address.state}` : 'Default Address Set'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Active Capabilities Badges */}
+                    <div className="space-y-3 pt-2 border-t border-gray-100">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Activated Platform Features</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                'My Business QR Code',
+                                'Customer Capture Form',
+                                'Automated Campaigns',
+                                'Catalogue & POS System',
+                                'Loyalty Rewards Engine',
+                                'Real-time Analytics',
+                                `${activeSocialsCount} Social Link${activeSocialsCount !== 1 ? 's' : ''}`
+                            ].map((item, i) => (
+                                <Badge key={i} variant="secondary" className="bg-primary/5 text-primary text-[10px] font-black uppercase tracking-wider px-3 py-1.5 border border-primary/10 flex items-center gap-1.5">
+                                    <CheckCircle2 size={12} className="text-emerald-500" />
+                                    {item}
+                                </Badge>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="space-y-4">
-                <p className="text-text-secondary text-lg font-medium leading-relaxed max-w-sm mx-auto">
-                    Your Vemtap account has been successfully configured.
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                    {['My Business QR', 'Capture Customers', 'Build Database', 'Marketing Campaigns', 'Track Growth'].map((item, i) => (
-                        <Badge key={i} variant="secondary" className="bg-gray-100 text-text-main text-[10px] font-black uppercase tracking-widest px-4 py-2 border-0">
-                            ✓ {item}
-                        </Badge>
-                    ))}
-                </div>
-            </div>
-
-            <div className="max-w-sm mx-auto bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 text-left space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Business Summary</h3>
-                <div className="space-y-2 text-sm font-bold text-text-main">
-                    <div className="flex justify-between"><span>NAME</span><span className="text-primary">{data.businessName}</span></div>
-                    <div className="flex justify-between uppercase"><span>PLAN</span><span className="text-primary">{data.planId}</span></div>
-                    <div className="flex justify-between uppercase"><span>STATUS</span><span className="text-green-600">Active</span></div>
-                </div>
-            </div>
-
-            <div className="space-y-4 pt-8 max-w-sm mx-auto">
+            {/* Next Steps / Actions */}
+            <div className="space-y-3 max-w-md mx-auto pt-2">
                 <Button 
                     onClick={onNext}
-                    className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3"
+                    className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer"
                 >
-                    Go To Dashboard <ArrowRight size={18} />
+                    Go To My Dashboard <ArrowRight size={18} />
                 </Button>
                 <Button 
                     variant="outline"
-                    className="w-full border-2 border-gray-100 text-text-secondary font-black uppercase tracking-widest text-[10px] py-8 rounded-2xl hover:bg-gray-50 transition-all"
+                    onClick={() => window.location.href = '/dashboard/engagement/qr'}
+                    className="w-full border-2 border-gray-200 text-text-main font-black uppercase tracking-widest text-[10px] py-7 rounded-2xl hover:bg-gray-50 transition-all cursor-pointer"
                 >
-                    Manage My Business QR
+                    View & Download My Business QR Code
                 </Button>
             </div>
         </motion.div>
     );
 }
+

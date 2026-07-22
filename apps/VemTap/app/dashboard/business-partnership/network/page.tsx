@@ -2,33 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Calendar, MessageSquare, Share2, ChevronRight, X, Clock, TrendingUp, MapPin, Mail, Phone, Smartphone, ExternalLink, CheckCheck, Copy } from 'lucide-react';
+import { Building2, MessageSquare, Share2, ChevronRight, X, Clock, TrendingUp, MapPin, Mail, Phone, Smartphone, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const mockBusinesses = [
-    { id: '1', name: 'Casa del Sabor', category: 'Food & Drinks', logo: null, subscription: 'Premium', status: 'Active', renewalDate: '2026-09-15', introduced: 3, monthlyCommission: 4500, partnerSince: 'Jan 2026' },
-    { id: '2', name: 'TechVault NG', category: 'Electronics', logo: null, subscription: 'Business', status: 'Active', renewalDate: '2026-08-01', introduced: 5, monthlyCommission: 8200, partnerSince: 'Mar 2026' },
-    { id: '3', name: 'Velvet & Thread', category: 'Fashion', logo: null, subscription: 'Starter', status: 'Active', renewalDate: '2026-10-20', introduced: 1, monthlyCommission: 1200, partnerSince: 'Apr 2026' },
-    { id: '4', name: 'Glow Studio', category: 'Health & Beauty', logo: null, subscription: 'Premium', status: 'Active', renewalDate: '2026-07-30', introduced: 2, monthlyCommission: 3800, partnerSince: 'Feb 2026' },
-    { id: '5', name: 'Skyline Rooftop Bar', category: 'Food & Drinks', logo: null, subscription: 'Business', status: 'Inactive', renewalDate: '2026-06-01', introduced: 0, monthlyCommission: 0, partnerSince: 'Jan 2026' },
-    { id: '6', name: 'AutoPro Workshop', category: 'Services', logo: null, subscription: 'Starter', status: 'Active', renewalDate: '2026-12-15', introduced: 4, monthlyCommission: 2100, partnerSince: 'May 2026' },
-    { id: '7', name: 'Serenity Spa', category: 'Health & Beauty', logo: null, subscription: 'Premium', status: 'Active', renewalDate: '2026-11-01', introduced: 2, monthlyCommission: 5600, partnerSince: 'Mar 2026' },
-    { id: '8', name: 'QuickShop Express', category: 'Services', logo: null, subscription: 'Business', status: 'Active', renewalDate: '2026-09-30', introduced: 6, monthlyCommission: 9400, partnerSince: 'Feb 2026' },
-];
-
-const categoryColors: Record<string, string> = {
-    'Food & Drinks': 'bg-orange-500',
-    'Electronics': 'bg-blue-500',
-    'Fashion': 'bg-pink-500',
-    'Health & Beauty': 'bg-purple-500',
-    'Services': 'bg-emerald-500',
-};
-
-const subscriptionBadges: Record<string, string> = {
-    'Starter': 'bg-gray-100 text-gray-600',
-    'Business': 'bg-blue-50 text-blue-600',
-    'Premium': 'bg-amber-50 text-amber-600',
-};
+import { useReferrals } from '@/services/affiliates/hooks';
 
 const messageChannels = [
     { id: 'chat', label: 'In-App Chat', icon: MessageSquare, desc: 'Send a message via VEMTAP chat' },
@@ -38,42 +14,56 @@ const messageChannels = [
 ];
 
 const drawerSections = [
-    { label: 'Renewal History', icon: Calendar, content: 'No renewal history available for this business yet.' },
     { label: 'Activity Timeline', icon: Clock, content: 'No recent activity recorded for this business.' },
     { label: 'Commission Generated', icon: TrendingUp, content: 'Commission breakdown will be available after the first billing cycle.' },
     { label: 'Discovery Performance', icon: MapPin, content: 'Discovery performance metrics are being calculated.' },
 ];
 
 export default function PartnershipNetworkPage() {
-    const [selectedBusiness, setSelectedBusiness] = useState<typeof mockBusinesses[0] | null>(null);
-    const [messageBusiness, setMessageBusiness] = useState<typeof mockBusinesses[0] | null>(null);
+    const { data: referrals, isLoading } = useReferrals();
+    const [selectedBusiness, setSelectedBusiness] = useState<any | null>(null);
+    const [messageBusiness, setMessageBusiness] = useState<any | null>(null);
     const [activeSection, setActiveSection] = useState<string | null>(null);
-    const [copiedSection, setCopiedSection] = useState<string | null>(null);
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
     const handleSectionClick = (label: string) => {
         setActiveSection(activeSection === label ? null : label);
     };
 
+    const filtered = (referrals || []).filter(r => {
+        if (statusFilter === 'all') return true;
+        const s = r.referredBusiness?.status || r.status;
+        return s.toLowerCase() === statusFilter.toLowerCase();
+    });
+
+    const formatDate = (d: string) => {
+        if (!d) return '—';
+        return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
+
     return (
         <div className="space-y-5 md:space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 md:gap-3">
-                <p className="text-xs md:text-sm text-gray-500 font-medium">{mockBusinesses.length} businesses in your network</p>
+                <p className="text-xs md:text-sm text-gray-500 font-medium">{referrals?.length || 0} businesses in your network</p>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <select className="flex-1 sm:flex-none h-9 md:h-10 px-2.5 md:px-3 bg-white border border-gray-200 rounded-xl text-[11px] md:text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20">
-                        <option>All Status</option>
-                        <option>Active</option>
-                        <option>Inactive</option>
-                    </select>
-                    <select className="flex-1 sm:flex-none h-9 md:h-10 px-2.5 md:px-3 bg-white border border-gray-200 rounded-xl text-[11px] md:text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20">
-                        <option>All Categories</option>
-                        <option>Food & Drinks</option>
-                        <option>Electronics</option>
-                        <option>Fashion</option>
-                        <option>Health & Beauty</option>
-                        <option>Services</option>
+                    <select
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value)}
+                        className="flex-1 sm:flex-none h-9 md:h-10 px-2.5 md:px-3 bg-white border border-gray-200 rounded-xl text-[11px] md:text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="converted">Converted</option>
                     </select>
                 </div>
             </div>
+
+            {isLoading && <p className="text-sm text-gray-400 text-center py-12">Loading referrals...</p>}
+
+            {!isLoading && filtered.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-12">No referrals yet. Start sharing your link!</p>
+            )}
 
             {/* Business Cards */}
             <motion.div
@@ -81,79 +71,82 @@ export default function PartnershipNetworkPage() {
                 animate={{ opacity: 1 }}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4"
             >
-                {mockBusinesses.map((business, i) => (
-                    <motion.div
-                        key={business.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 hover:shadow-lg hover:border-primary/20 transition-all duration-300 group cursor-pointer"
-                        onClick={() => setSelectedBusiness(business)}
-                    >
-                        <div className="flex items-start justify-between mb-3 md:mb-4">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="size-11 md:size-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 shrink-0">
-                                    <Building2 size={22} />
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-sm font-semibold text-gray-900 truncate">{business.name}</h3>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <div className={cn("size-1.5 md:size-2 rounded-full shrink-0", business.status === 'Active' ? 'bg-emerald-500' : 'bg-gray-300')} />
-                                        <span className="text-[11px] font-medium text-gray-500">{business.status}</span>
+                {filtered.map((ref, i) => {
+                    const biz = ref.referredBusiness || {};
+                    return (
+                        <motion.div
+                            key={ref.id || i}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 hover:shadow-lg hover:border-primary/20 transition-all duration-300 group cursor-pointer"
+                            onClick={() => setSelectedBusiness(ref)}
+                        >
+                            <div className="flex items-start justify-between mb-3 md:mb-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="size-11 md:size-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 shrink-0">
+                                        {biz.logoUrl ? (
+                                            <img src={biz.logoUrl} alt="" className="size-full rounded-xl object-cover" />
+                                        ) : (
+                                            <Building2 size={22} />
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className="text-sm font-semibold text-gray-900 truncate">{biz.name || 'Unknown Business'}</h3>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <div className={cn("size-1.5 md:size-2 rounded-full shrink-0", (biz.status === 'active' || ref.status === 'Converted') ? 'bg-emerald-500' : 'bg-gray-300')} />
+                                            <span className="text-[11px] font-medium text-gray-500">{biz.status || ref.status || 'Pending'}</span>
+                                        </div>
                                     </div>
                                 </div>
+                                <ChevronRight size={16} className="text-gray-300 group-hover:text-primary transition-colors shrink-0" />
                             </div>
-                            <ChevronRight size={16} className="text-gray-300 group-hover:text-primary transition-colors shrink-0" />
-                        </div>
 
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-[11px] md:text-xs">
-                                <span className="text-gray-400 font-medium">Category</span>
-                                <span className="flex items-center gap-1.5">
-                                    <span className={cn("size-1.5 md:size-2 rounded-full shrink-0", categoryColors[business.category] || 'bg-gray-400')} />
-                                    {business.category}
-                                </span>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-[11px] md:text-xs">
+                                    <span className="text-gray-400 font-medium">Status</span>
+                                    <span className={cn(
+                                        "px-1.5 md:px-2 py-0.5 rounded-md text-[10px] font-semibold",
+                                        ref.status === 'Converted' ? 'bg-emerald-50 text-emerald-600' :
+                                        ref.status === 'Expired' ? 'bg-red-50 text-red-600' :
+                                        'bg-amber-50 text-amber-600'
+                                    )}>{ref.status || 'Pending'}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] md:text-xs">
+                                    <span className="text-gray-400 font-medium">Category</span>
+                                    <span className="text-gray-600 font-medium">{biz.category?.name || (biz.categoryId ? '—' : '—')}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] md:text-xs">
+                                    <span className="text-gray-400 font-medium">Phone</span>
+                                    <span className="text-gray-600 font-medium">{biz.phone || '—'}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] md:text-xs">
+                                    <span className="text-gray-400 font-medium">Referred</span>
+                                    <span className="text-gray-600 font-medium">{formatDate(ref.createdAt)}</span>
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between text-[11px] md:text-xs">
-                                <span className="text-gray-400 font-medium">Subscription</span>
-                                <span className={cn("px-1.5 md:px-2 py-0.5 rounded-md text-[10px] font-semibold", subscriptionBadges[business.subscription])}>
-                                    {business.subscription}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between text-[11px] md:text-xs">
-                                <span className="text-gray-400 font-medium">Renewal</span>
-                                <span className="text-gray-600 font-medium">{business.renewalDate}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-[11px] md:text-xs">
-                                <span className="text-gray-400 font-medium">Introduced</span>
-                                <span className="text-gray-600 font-medium">{business.introduced} businesses</span>
-                            </div>
-                            <div className="flex items-center justify-between text-[11px] md:text-xs">
-                                <span className="text-gray-400 font-medium">Commission</span>
-                                <span className="text-emerald-600 font-semibold">₦{business.monthlyCommission.toLocaleString()}/mo</span>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 mt-3 md:mt-4 pt-2.5 md:pt-3 border-t border-gray-50">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setMessageBusiness(business); }}
-                                className="flex-1 h-10 md:h-11 bg-gray-50 hover:bg-gray-100 rounded-lg text-[11px] md:text-xs font-medium text-gray-600 transition-colors flex items-center justify-center gap-1.5"
-                            >
-                                <MessageSquare size={13} /> Message
-                            </button>
-                            <button className="flex-1 h-10 md:h-11 bg-gray-50 hover:bg-gray-100 rounded-lg text-[11px] md:text-xs font-medium text-gray-600 transition-colors flex items-center justify-center gap-1.5">
-                                <Share2 size={13} /> Share
-                            </button>
-                        </div>
-                    </motion.div>
-                ))}
+                            <div className="flex items-center gap-2 mt-3 md:mt-4 pt-2.5 md:pt-3 border-t border-gray-50">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setMessageBusiness(ref); }}
+                                    className="flex-1 h-10 md:h-11 bg-gray-50 hover:bg-gray-100 rounded-lg text-[11px] md:text-xs font-medium text-gray-600 transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <MessageSquare size={13} /> Message
+                                </button>
+                                <button className="flex-1 h-10 md:h-11 bg-gray-50 hover:bg-gray-100 rounded-lg text-[11px] md:text-xs font-medium text-gray-600 transition-colors flex items-center justify-center gap-1.5">
+                                    <Share2 size={13} /> Share
+                                </button>
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </motion.div>
 
             {/* Side Drawer */}
             <AnimatePresence>
                 {selectedBusiness && (
                     <>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedBusiness(null); setActiveSection(null); }} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" />
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}  className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" />
                         <motion.div
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
@@ -172,26 +165,30 @@ export default function PartnershipNetworkPage() {
                                 <div className="bg-gray-50 rounded-2xl p-4 md:p-6 mb-4 md:mb-6">
                                     <div className="flex items-center gap-3 md:gap-4 mb-4">
                                         <div className="size-14 md:size-16 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 shadow-sm shrink-0">
-                                            <Building2 size={28} />
+                                            {selectedBusiness.referredBusiness?.logoUrl ? (
+                                                <img src={selectedBusiness.referredBusiness.logoUrl} alt="" className="size-full rounded-2xl object-cover" />
+                                            ) : (
+                                                <Building2 size={28} />
+                                            )}
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-base md:text-lg font-bold text-gray-900 truncate">{selectedBusiness.name}</h3>
+                                            <h3 className="text-base md:text-lg font-bold text-gray-900 truncate">{selectedBusiness.referredBusiness?.name || 'Unknown Business'}</h3>
                                             <div className="flex items-center gap-1.5 mt-0.5 md:mt-1 flex-wrap">
-                                                <span className={cn("size-1.5 md:size-2 rounded-full shrink-0", selectedBusiness.status === 'Active' ? 'bg-emerald-500' : 'bg-gray-300')} />
-                                                <span className="text-[11px] md:text-sm text-gray-500">{selectedBusiness.status}</span>
+                                                <span className={cn("size-1.5 md:size-2 rounded-full shrink-0", (selectedBusiness.referredBusiness?.status === 'active' || selectedBusiness.status === 'Converted') ? 'bg-emerald-500' : 'bg-gray-300')} />
+                                                <span className="text-[11px] md:text-sm text-gray-500">{selectedBusiness.referredBusiness?.status || selectedBusiness.status || 'Pending'}</span>
                                                 <span className="text-gray-300 hidden xs:inline">·</span>
-                                                <span className="text-[11px] md:text-sm text-gray-500">Partner since {selectedBusiness.partnerSince}</span>
+                                                <span className="text-[11px] md:text-sm text-gray-500">Referred {formatDate(selectedBusiness.createdAt)}</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 md:gap-4">
                                         <div className="bg-white rounded-xl p-3">
-                                            <p className="text-[10px] md:text-[11px] font-medium text-gray-400 mb-1">Monthly Commission</p>
-                                            <p className="text-base md:text-lg font-bold text-emerald-600">₦{selectedBusiness.monthlyCommission.toLocaleString()}</p>
+                                            <p className="text-[10px] md:text-[11px] font-medium text-gray-400 mb-1">Referral Status</p>
+                                            <p className="text-base md:text-lg font-bold text-gray-900">{selectedBusiness.status || 'Pending'}</p>
                                         </div>
                                         <div className="bg-white rounded-xl p-3">
-                                            <p className="text-[10px] md:text-[11px] font-medium text-gray-400 mb-1">Businesses Introduced</p>
-                                            <p className="text-base md:text-lg font-bold text-gray-900">{selectedBusiness.introduced}</p>
+                                            <p className="text-[10px] md:text-[11px] font-medium text-gray-400 mb-1">Category</p>
+                                            <p className="text-base md:text-lg font-bold text-gray-900">{selectedBusiness.referredBusiness?.category?.name || '—'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -245,7 +242,7 @@ export default function PartnershipNetworkPage() {
             <AnimatePresence>
                 {messageBusiness && (
                     <>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMessageBusiness(null)} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" />
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}  className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -256,7 +253,7 @@ export default function PartnershipNetworkPage() {
                                 <div className="flex items-start justify-between mb-4 md:mb-5">
                                     <div className="min-w-0">
                                         <h3 className="text-base md:text-lg font-bold text-gray-900">Message</h3>
-                                        <p className="text-xs md:text-sm text-gray-500 mt-0.5">Choose how to contact {messageBusiness.name}</p>
+                                        <p className="text-xs md:text-sm text-gray-500 mt-0.5">Choose how to contact {messageBusiness.referredBusiness?.name || 'this business'}</p>
                                     </div>
                                     <button onClick={() => setMessageBusiness(null)} className="size-9 md:size-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0 ml-3">
                                         <X size={16} className="text-gray-500" />

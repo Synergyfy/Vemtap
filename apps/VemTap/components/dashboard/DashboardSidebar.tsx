@@ -21,6 +21,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import { useMarketingAssets, useAnalyticsOverview } from '@/services/marketing-assets/hooks';
+import { useBusinessClaims } from '@/services/catalogue/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
 import UpgradeModal from './UpgradeModal';
@@ -162,7 +163,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const notifications = (data?.notifications || []).filter((n: any) => n.scope === 'DASHBOARD');
     const unreadCount = notifications.filter((n: any) => !n.read).length;
-    const pendingRedemptions = 0;
+    const { data: claimsData } = useBusinessClaims();
+    const pendingRedemptions = (claimsData || []).filter((c: any) => c.status === 'claimed').length;
 
     const { data: assets } = useMarketingAssets();
     const { data: marketingAnalytics } = useAnalyticsOverview();
@@ -367,7 +369,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                 {!isCollapsed && <span className="text-[15px] font-semibold truncate">{item.label}</span>}
                                                             </div>
                                                             {!isCollapsed && (
-                                                                ['preferences', 'analytics-overview'].includes(item.id) ? (
+                                                                ['preferences', 'analytics-overview', 'discovery'].includes(item.id) ? (
                                                                     <div className={`size-6 rounded-lg flex items-center justify-center transition-all ${
                                                                         isMenuExpanded ? 'bg-primary/10 text-primary' : 'bg-gray-100/80 text-gray-400'
                                                                     }`}>
@@ -380,18 +382,23 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         </button>
                                                         {!isCollapsed && isMenuExpanded && (
                                                             <div className="ml-9 space-y-1 border-l border-gray-100 pl-4 py-1">
-                                                                {item.submenu.map((sub, idx) => (
-                                                                    <Link 
-                                                                        key={idx}
-                                                                        href={withBranch(sub.href)}
-                                                                        onClick={() => setIsMobileOpen(false)}
-                                                                         className={`block text-[15px] font-medium py-2 transition-colors ${
-                                                                            isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700'
-                                                                        }`}
-                                                                    >
-                                                                        {sub.label}
-                                                                    </Link>
-                                                                ))}
+                                                                 {item.submenu.filter(sub => {
+                                                                     if (isOwnerOrAdmin) return true;
+                                                                     if (userPermissions.includes(item.permission!)) return true;
+                                                                     const subKey = `${item.permission}:${sub.label.toLowerCase().replace(/\s+/g, '-')}`;
+                                                                     return userPermissions.includes(subKey);
+                                                                 }).map((sub, idx) => (
+                                                                     <Link 
+                                                                         key={idx}
+                                                                         href={withBranch(sub.href)}
+                                                                         onClick={() => setIsMobileOpen(false)}
+                                                                          className={`block text-[15px] font-medium py-2 transition-colors ${
+                                                                             isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700'
+                                                                         }`}
+                                                                     >
+                                                                         {sub.label}
+                                                                     </Link>
+                                                                 ))}
                                                             </div>
                                                         )}
                                                     </div>
@@ -511,6 +518,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 </button>
                             </Tooltip>
                         )}
+                        <Link href={withBranch('/dashboard/catalogue/orders')} className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
+                            <ShoppingBag size={18} />
+                            {pendingRedemptions > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white">
+                                {pendingRedemptions > 99 ? '99+' : pendingRedemptions}
+                            </span>}
+                        </Link>
                         <button onClick={() => setShowNotifications(!showNotifications)} className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
                             <Bell size={18} />
                             {unreadCount > 0 && <span className="absolute top-2 right-2 size-1.5 bg-red-500 rounded-full border border-white" />}

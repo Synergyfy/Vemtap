@@ -1,7 +1,7 @@
 import {
     Home, Users, Gift, BarChart, Settings, HelpCircle,
     MessageSquare, ShieldCheck, MessageCircle, Zap, ShoppingBag, QrCode, FileText, Palette,
-    Package, Target, Globe, Star, LayoutDashboard, Megaphone, Workflow, Share2, 
+    Package, Globe, Star, LayoutDashboard, Megaphone, Workflow, Share2, 
     LineChart, CreditCard, Layers, Globe2, Cpu, BookOpen, Settings2, Wallet, 
     UserCheck, Wand2, BarChart3, TrendingUp, Search, Users2, Download
 } from 'lucide-react';
@@ -54,6 +54,22 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
         label: 'My Store',
         items: [
             {
+                id: 'sales',
+                label: 'Sales',
+                icon: CreditCard,
+                href: '/dashboard/sales',
+                roles: ['owner', 'manager', 'cashier', 'staff'],
+                permission: 'pos',
+                submenu: [
+                    { label: 'Sales Dashboard', href: '/dashboard/sales' },
+                    { label: 'POS Home', href: '/dashboard/pos' },
+                    { label: 'Orders', href: '/dashboard/catalogue/orders' },
+                    { label: 'Settings', href: '/dashboard/pos/settings' },
+                    { label: 'Help', href: '/dashboard/pos/support' },
+                ],
+                keywords: ['pos', 'checkout', 'register', 'sales', 'transaction', 'orders']
+            },
+            {
                 id: 'products-stock',
                 label: 'Products & Stock',
                 icon: Package,
@@ -66,21 +82,6 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                     { label: 'Inventory', href: '/dashboard/inventory' },
                 ],
                 keywords: ['products', 'stock', 'inventory', 'warehouse', 'reorder', 'catalogue']
-            },
-            {
-                id: 'sales',
-                label: 'Sales',
-                icon: CreditCard,
-                href: '/dashboard/sales',
-                roles: ['owner', 'manager', 'cashier', 'staff'],
-                permission: 'pos',
-                submenu: [
-                    { label: 'Sales Dashboard', href: '/dashboard/sales' },
-                    { label: 'POS Home', href: '/dashboard/pos' },
-                    { label: 'Settings', href: '/dashboard/pos/settings' },
-                    { label: 'Help', href: '/dashboard/pos/support' },
-                ],
-                keywords: ['pos', 'checkout', 'register', 'sales', 'transaction', 'orders']
             },
             {
                 id: 'commerce-customers',
@@ -167,22 +168,11 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 href: '/dashboard/discovery',
                 roles: ['owner', 'manager', 'marketing'],
                 permission: 'discovery',
-                keywords: ['network', 'marketplace', 'discovery', 'leads', 'traffic', 'promotions']
-            }
-        ]
-    },
-    {
-        id: 'section-partnership',
-        label: '',
-        items: [
-            {
-                id: 'business-partnership',
-                label: 'Business Partnership',
-                icon: null,
-                href: '/dashboard/business-partnership',
-                roles: ['owner', 'manager'],
-                permission: 'partnership',
-                keywords: ['partner', 'partnership', 'referral', 'network', 'commission', 'invite', 'collaborate']
+                submenu: [
+                    { label: 'Get Customers', href: '/dashboard/discovery' },
+                    { label: 'Business Partnership', href: '/dashboard/business-partnership' },
+                ],
+                keywords: ['network', 'marketplace', 'discovery', 'leads', 'traffic', 'promotions', 'partner', 'partnership', 'referral', 'commission', 'invite', 'collaborate']
             }
         ]
     },
