@@ -12,7 +12,7 @@ interface AIState {
   analysisContext: Record<string, AnalysisContext>;
 
   triggerAnalysis: (page: string, context?: AnalysisContext) => void;
-  consumeCredits: (amount: number) => void;
+  setCredits: (credits: AICredits) => void;
   setLastUpdated: (page: string, timestamp: string) => void;
   cacheAnalysis: (page: string, analysis: AIAnalysisResponse) => void;
   clearAnalysis: (page: string) => void;
@@ -26,8 +26,10 @@ export const useAIStore = create<AIState>()(
   persist(
     (set) => ({
       credits: {
-        available: 100,
+        available: 0,
         used: 0,
+        limit: 0,
+        enabled: false,
       },
       refreshKeys: {},
       lastUpdated: {},
@@ -49,13 +51,8 @@ export const useAIStore = create<AIState>()(
           } : {}),
         })),
 
-      consumeCredits: (amount) =>
-        set((state) => ({
-          credits: {
-            available: Math.max(0, state.credits.available - amount),
-            used: state.credits.used + amount,
-          },
-        })),
+      setCredits: (credits) =>
+        set({ credits }),
 
       setLastUpdated: (page, timestamp) =>
         set((state) => ({
@@ -88,8 +85,10 @@ export const useAIStore = create<AIState>()(
       resetCredits: () =>
         set({
           credits: {
-            available: 100,
+            available: 0,
             used: 0,
+            limit: 0,
+            enabled: false,
           },
         }),
 

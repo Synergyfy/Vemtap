@@ -95,13 +95,46 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         return collapsed.has(sectionId);
     }, [collapsed]);
 
+    const updateDirectLimit = useCallback((featureId: string, limitVal: number) => {
+        if (!selectedPlanId) return;
+        const val = isNaN(limitVal) || limitVal < 1 ? 1 : limitVal;
+        setConfigs(prev => {
+            const plan = prev[selectedPlanId];
+            if (!plan) return prev;
+            return {
+                ...prev,
+                [selectedPlanId]: {
+                    ...plan,
+                    features: {
+                        ...plan.features,
+                        [featureId]: {
+                            ...plan.features[featureId],
+                            level: 'limited',
+                            limit: val,
+                        },
+                    },
+                },
+            };
+        });
+    }, [selectedPlanId]);
+
+    const openLimitModal = useCallback((featureId: string) => {
+        if (!selectedPlanId || !config) return;
+        const perm = config.features[featureId];
+        const defaultFeat = PERMISSION_SECTIONS.flatMap(s => s.features).find(f => f.id === featureId);
+        const currentVal = perm?.limit ?? defaultFeat?.defaultLimit ?? 50;
+        setLimitModal({ planId: selectedPlanId, featureId, currentLimit: currentVal });
+        setLimitInput(String(currentVal));
+    }, [selectedPlanId, config]);
+
     const setFeatureLevel = useCallback((featureId: string, level: PermissionLevel) => {
         if (!selectedPlanId) return;
         setConfigs(prev => {
             const plan = prev[selectedPlanId];
             if (!plan) return prev;
             const current = plan.features[featureId] || { level: 'no', limit: undefined };
-            const newLimit = level === 'yes' ? undefined : (level === 'limited' ? (current.limit || 1) : undefined);
+            const defaultFeat = PERMISSION_SECTIONS.flatMap(s => s.features).find(f => f.id === featureId);
+            const newLimit = level === 'yes' ? undefined : (level === 'limited' ? (current.limit || defaultFeat?.defaultLimit || 50) : undefined);
             return {
                 ...prev,
                 [selectedPlanId]: {
@@ -114,13 +147,6 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
             };
         });
     }, [selectedPlanId]);
-
-    const openLimitModal = useCallback((featureId: string) => {
-        if (!selectedPlanId || !config) return;
-        const perm = config.features[featureId];
-        setLimitModal({ planId: selectedPlanId, featureId, currentLimit: perm?.limit || 1 });
-        setLimitInput(String(perm?.limit || 1));
-    }, [selectedPlanId, config]);
 
     const saveLimit = useCallback(() => {
         if (!limitModal) return;
@@ -355,11 +381,20 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                                                                     {feature.label}
                                                                 </p>
                                                             </div>
-                                                            {/* Limit info */}
-                                                            {perm.level === 'limited' && perm.limit !== undefined && (
-                                                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded shrink-0">
-                                                                    {perm.limit} {feature.limitUnit || ''}
-                                                                </span>
+                                                            {/* Inline editable limit input */}
+                                                            {perm.level === 'limited' && (
+                                                                <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200/80 rounded-lg px-2 py-1 shrink-0 shadow-sm">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        value={perm.limit ?? 50}
+                                                                        onChange={(e) => updateDirectLimit(feature.id, parseInt(e.target.value, 10))}
+                                                                        className="w-16 h-6 text-xs font-black text-amber-800 bg-white border border-amber-300 rounded text-center outline-none focus:ring-2 focus:ring-amber-500/30"
+                                                                    />
+                                                                    <span className="text-[10px] font-bold text-amber-700">
+                                                                        {feature.limitUnit || ''}
+                                                                    </span>
+                                                                </div>
                                                             )}
                                                             {perm.level === 'yes' && (
                                                                 <span className="text-[10px] font-bold text-green-600 shrink-0">

@@ -924,6 +924,11 @@ export class SubscriptionsService {
           sms: plan.smsCredits || 0,
           email: plan.emailCredits || 0,
           whatsapp: plan.whatsappCredits || 0,
+          ai: plan.aiCredits ?? 0,
+        },
+        aiCopilot: {
+          enabled: plan.aiCopilotEnabled ?? false,
+          credits: plan.aiCredits ?? 0,
         },
       },
       addOns: addOnsInfo,
