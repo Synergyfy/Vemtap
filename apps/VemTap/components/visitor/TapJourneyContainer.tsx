@@ -193,7 +193,7 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
 
     const handleAction = async (id: string) => {
         if (id === 'order') {
-            router.push(`/${slug}/${activeDeviceCode}/products`);
+            router.push(`/b/${activeDeviceCode}/pos`);
         } else if (id === 'service') {
             if (serviceCount === 1) {
                 try {

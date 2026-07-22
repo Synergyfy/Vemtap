@@ -118,6 +118,13 @@ export interface Order {
             name: string;
         };
     };
+    attendedById?: string | null;
+    attendedByUser?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        name?: string;
+    } | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -347,6 +354,24 @@ export const verifyClaim = async (data: VerifyClaimDto) => {
 
 export const getOfferDetails = async (id: string) => {
     return await api.get(`/catalogue/offers/public/details/${id}`);
+};
+
+export interface ClaimRedeemResponse {
+    success: boolean;
+    message: string;
+    claim: {
+        id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+        status: string;
+        offerName: string;
+    };
+}
+
+export const redeemClaim = async (code: string): Promise<ClaimRedeemResponse> => {
+    return await api.post(`/catalogue/offers/claim/redeem/${code}`, {});
 };
 
 export const createOffer = async (data: CreateCatalogueOfferDto) => {
@@ -598,5 +623,11 @@ export const useDeleteCatalogueOffer = () => {
 export const useCreateCatalogueOrder = () => {
     return useMutation({
         mutationFn: createOrder,
+    });
+};
+
+export const useRedeemClaim = () => {
+    return useMutation<ClaimRedeemResponse, Error, string>({
+        mutationFn: redeemClaim,
     });
 };

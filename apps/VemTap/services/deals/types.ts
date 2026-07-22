@@ -32,28 +32,31 @@ export interface DealOffer {
     discountValue: number | null;
     fixedPrice: number | null;
     calculatedPrice: number;
-    mainImage: string;
+    mainImage: string | null;
     galleryImages?: string[];
-    startDate?: string;
-    endDate?: string;
+    startDate?: string | null;
+    endDate?: string | null;
     claimedCount: number;
     maxClaims: number;
     isTrending?: boolean;
     status: string;
     views?: number;
-    business: DealBusiness;
+    business?: DealBusiness;
+    branch?: any;
     branchId?: string;
     businessId?: string;
+    originalPrice?: number;
+    dealPrice?: string;
+    discountPercent?: number;
+    offerType?: string;
+    audience?: string;
 }
 
 export interface PaginatedOffersResponse {
     data: DealOffer[];
-    meta: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-    };
+    total: number;
+    page: number;
+    limit: number;
 }
 
 export interface DealsQueryParams {
@@ -68,11 +71,14 @@ export interface DealsQueryParams {
 
 export interface CheckPhoneResponse {
     exists: boolean;
+    email?: string;
 }
 
 export interface ClaimRequestDto {
     phone: string;
     offerId: string;
+    firstName: string;
+    email: string;
 }
 
 export interface ClaimRequestResponse {
@@ -82,13 +88,17 @@ export interface ClaimRequestResponse {
 }
 
 export interface ClaimVerifyDto {
-    phone: string;
+    email: string;
+    offerId: string;
     code: string;
-    reference: string;
 }
 
 export interface ClaimVerifyResponse {
-    couponCode: string;
     message?: string;
-    expiresAt?: string;
+    claim?: {
+        id: string;
+        claimCode: string;
+        expiresAt: string;
+        status: string;
+    };
 }

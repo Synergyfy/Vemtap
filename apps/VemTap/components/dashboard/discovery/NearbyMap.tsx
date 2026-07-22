@@ -1,27 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// Partner marker icon (blue square with "S")
-const partnerIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#066CF4;color:white;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:2px solid white">S</div>',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
-});
-
-// User location marker icon (green circle with white dot)
-const userIcon = L.divIcon({
-  className: '',
-  html: '<div style="position:relative;width:24px;height:24px"><div style="background:#10B981;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;background:white;border-radius:50%"></div></div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -16],
-});
+import React, { useCallback, useRef, useState } from 'react';
+import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF, CircleF } from '@react-google-maps/api';
 
 interface Partner {
   id: string;
@@ -36,73 +16,181 @@ interface Partner {
 interface NearbyMapProps {
   partners: Partner[];
   center?: { lat: number; lng: number };
+  radius?: number;
   onSelectPartner?: (partner: Partner) => void;
 }
 
-export default function NearbyMap({ partners, center, onSelectPartner }: NearbyMapProps) {
-  const [mounted, setMounted] = useState(false);
+const defaultCenter = { lat: 6.5244, lng: 3.3792 };
 
-  useEffect(() => {
-    setMounted(true);
+const mapContainerStyle = { width: '100%', height: '400px', borderRadius: '24px' };
+
+const mapOptions: google.maps.MapOptions = {
+  disableDefaultUI: false,
+  zoomControl: true,
+  streetViewControl: false,
+  fullscreenControl: false,
+  mapTypeControl: false,
+  styles: [
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  ],
+};
+
+function createMarkerIcon(bg: string, label: string, size: number = 32): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <rect width="${size}" height="${size}" rx="8" fill="${bg}" stroke="white" stroke-width="2"/>
+    <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="system-ui">${label}</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+const partnerMarker = createMarkerIcon('#066CF4', 'S');
+const userMarkerSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+    <circle cx="14" cy="14" r="12" fill="#10B981" stroke="white" stroke-width="3"/>
+    <circle cx="14" cy="14" r="4" fill="white"/>
+  </svg>`
+)}`;
+
+export default function NearbyMap({ partners, center, radius, onSelectPartner }: NearbyMapProps) {
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  });
+
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [userInfoOpen, setUserInfoOpen] = useState(false);
+  const [userAddress, setUserAddress] = useState('');
+
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    setUserAddress('Loading address...');
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+        { headers: { 'User-Agent': 'VemTap/1.0' } },
+      );
+      const data = await res.json();
+      setUserAddress(data?.display_name || 'Address not found');
+    } catch {
+      setUserAddress('Address not found');
+    }
   }, []);
-
-  if (!mounted) return null;
 
   const validPartners = partners.filter(p => p.latitude && p.longitude);
 
-  const mapCenter: [number, number] = center
-    ? [center.lat, center.lng]
+  const mapCenter = center
+    ? center
     : validPartners.length > 0
-      ? [
-          validPartners.reduce((sum, p) => sum + (p.latitude || 0), 0) / validPartners.length,
-          validPartners.reduce((sum, p) => sum + (p.longitude || 0), 0) / validPartners.length,
-        ]
-      : [6.5244, 3.3792]; // Default: Lagos, Nigeria
+      ? {
+          lat: validPartners.reduce((sum, p) => sum + (p.latitude || 0), 0) / validPartners.length,
+          lng: validPartners.reduce((sum, p) => sum + (p.longitude || 0), 0) / validPartners.length,
+        }
+      : defaultCenter;
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+  }, []);
+
+  const handlePartnerClick = useCallback((partner: Partner) => {
+    setSelectedPartner(partner);
+    setUserInfoOpen(false);
+    onSelectPartner?.(partner);
+  }, [onSelectPartner]);
+
+  if (loadError) {
+    return (
+      <div className="w-full h-[400px] rounded-3xl bg-gray-50 flex items-center justify-center text-gray-400 text-sm">
+        Failed to load Google Maps
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="w-full h-[400px] rounded-3xl bg-gray-50 flex items-center justify-center text-gray-400 text-sm animate-pulse">
+        Loading map...
+      </div>
+    );
+  }
 
   return (
-    <MapContainer
+    <GoogleMap
+      mapContainerStyle={mapContainerStyle}
       center={mapCenter}
       zoom={validPartners.length > 0 ? 13 : 12}
-      className="w-full h-[400px] rounded-3xl z-0"
-      scrollWheelZoom={true}
+      onLoad={onMapLoad}
+      options={mapOptions}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-
-      {/* User location pin */}
       {center && (
-        <Marker position={[center.lat, center.lng]} icon={userIcon}>
-          <Popup>
-            <div className="text-center min-w-[120px]">
-              <p className="font-bold text-sm text-gray-900">Your Location</p>
-            </div>
-          </Popup>
-        </Marker>
+        <MarkerF
+          position={center}
+          icon={{
+            url: userMarkerSvg,
+            scaledSize: new google.maps.Size(28, 28),
+            anchor: new google.maps.Point(14, 14),
+          }}
+          zIndex={999}
+          onClick={() => {
+            setSelectedPartner(null);
+            setUserInfoOpen(true);
+            reverseGeocode(center.lat, center.lng);
+          }}
+        />
       )}
 
-      {/* Partner pins */}
-      {validPartners.map((partner) => (
-        <Marker
-          key={partner.id}
-          position={[partner.latitude!, partner.longitude!]}
-          icon={partnerIcon}
-          eventHandlers={{
-            click: () => onSelectPartner?.(partner),
+      {center && radius !== undefined && (
+        <CircleF
+          center={center}
+          radius={radius}
+          options={{
+            fillColor: '#066CF4',
+            fillOpacity: 0.08,
+            strokeColor: '#066CF4',
+            strokeOpacity: 0.3,
+            strokeWeight: 2,
           }}
+        />
+      )}
+
+      {center && userInfoOpen && (
+        <InfoWindowF
+          position={center}
+          onCloseClick={() => setUserInfoOpen(false)}
+          options={{ pixelOffset: new google.maps.Size(0, -14) }}
         >
-          <Popup>
-            <div className="text-center min-w-[140px]">
-              <p className="font-bold text-sm text-gray-900">{partner.businessName}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{partner.type}</p>
-              {partner.distance && (
-                <p className="text-xs text-blue-600 font-medium mt-1">{partner.distance}</p>
-              )}
-            </div>
-          </Popup>
-        </Marker>
+          <div className="text-center min-w-[160px] p-1">
+            <p className="text-xs text-gray-500 font-medium">{userAddress}</p>
+          </div>
+        </InfoWindowF>
+      )}
+
+      {validPartners.map((partner) => (
+        <MarkerF
+          key={partner.id}
+          position={{ lat: partner.latitude!, lng: partner.longitude! }}
+          icon={{
+            url: partnerMarker,
+            scaledSize: new google.maps.Size(32, 32),
+            anchor: new google.maps.Point(16, 32),
+          }}
+          onClick={() => handlePartnerClick(partner)}
+        />
       ))}
-    </MapContainer>
+
+      {selectedPartner && selectedPartner.latitude && selectedPartner.longitude && (
+        <InfoWindowF
+          position={{ lat: selectedPartner.latitude, lng: selectedPartner.longitude }}
+          onCloseClick={() => setSelectedPartner(null)}
+          options={{ pixelOffset: new google.maps.Size(0, -32) }}
+        >
+          <div className="text-center min-w-[140px] p-1">
+            <p className="font-bold text-sm text-gray-900">{selectedPartner.businessName}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{selectedPartner.type}</p>
+            {selectedPartner.distance && (
+              <p className="text-xs text-blue-600 font-medium mt-1">{selectedPartner.distance}</p>
+            )}
+          </div>
+        </InfoWindowF>
+      )}
+    </GoogleMap>
   );
 }

@@ -21,12 +21,18 @@ export interface PosCartItem {
 
 export type PaymentMethodType = 'cash' | 'transfer' | 'card' | 'split';
 
+export interface RedeemedPromotion {
+    claimCode: string;
+    offerName: string;
+}
+
 interface PosState {
   cart: PosCartItem[];
   cartDiscount: { type: 'percentage' | 'fixed'; value: number } | null;
   attachedCustomer: { id: string; name: string; phone: string; email?: string } | null;
   lastCompletedSale: PosSaleResponse | null;
   manualLoyaltyPoints: number;
+  redeemedPromotion: RedeemedPromotion | null;
 
   addToCart: (item: Omit<PosCartItem, 'discount'>) => void;
   removeFromCart: (id: string) => void;
@@ -35,6 +41,7 @@ interface PosState {
   setCartDiscount: (discount: { type: 'percentage' | 'fixed'; value: number } | null) => void;
   attachCustomer: (customer: { id: string; name: string; phone: string; email?: string } | null) => void;
   clearCart: () => void;
+  setRedeemedPromotion: (promotion: RedeemedPromotion | null) => void;
 
   getCartSubtotal: () => number;
   getCartDiscountAmount: () => number;
@@ -54,6 +61,7 @@ export const usePosStore = create<PosState>()(
       attachedCustomer: null,
       lastCompletedSale: null,
       manualLoyaltyPoints: 0,
+      redeemedPromotion: null,
 
       addToCart: (item) => set((state) => {
         const existing = state.cart.find(i => i.id === item.id);
@@ -91,7 +99,9 @@ export const usePosStore = create<PosState>()(
 
       attachCustomer: (attachedCustomer) => set({ attachedCustomer }),
 
-      clearCart: () => set({ cart: [], cartDiscount: null, attachedCustomer: null, manualLoyaltyPoints: 0 }),
+      setRedeemedPromotion: (redeemedPromotion) => set({ redeemedPromotion }),
+
+      clearCart: () => set({ cart: [], cartDiscount: null, attachedCustomer: null, manualLoyaltyPoints: 0, redeemedPromotion: null }),
 
       getCartSubtotal: () => {
         return get().cart.reduce((acc, item) => acc + (item.price * item.quantity) - item.discount, 0);

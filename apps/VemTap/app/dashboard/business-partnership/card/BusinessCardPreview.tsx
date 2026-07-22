@@ -69,8 +69,8 @@ const FrontSplitRight = ({ accent, business, textDark }: { accent: string; busin
             <p className="text-[8px] md:text-[10px] text-gray-400 truncate" style={textDark ? { color: textDark, opacity: 0.5 } : undefined}>{business.website}</p>
         </div>
         <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: accent }}>
-            <div className="size-14 md:size-16 bg-white rounded-xl p-1.5">
-                <QRCodeSVG value={business.qrValue} size={44} />
+            <div className="size-14 md:size-16 bg-white rounded-xl p-1.5 flex items-center justify-center">
+                <QRCodeSVG value={business.qrValue} size={44} style={{ width: '100%', height: '100%' }} />
             </div>
         </div>
     </div>
@@ -79,8 +79,8 @@ const FrontSplitRight = ({ accent, business, textDark }: { accent: string; busin
 const FrontSplitLeft = ({ accent, business, textDark }: { accent: string; business: BusinessInfo; textDark?: string }) => (
     <div className="h-full w-full flex rounded-[inherit] overflow-hidden">
         <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: accent }}>
-            <div className="size-14 md:size-16 bg-white rounded-xl p-1.5">
-                <QRCodeSVG value={business.qrValue} size={44} />
+            <div className="size-14 md:size-16 bg-white rounded-xl p-1.5 flex items-center justify-center">
+                <QRCodeSVG value={business.qrValue} size={44} style={{ width: '100%', height: '100%' }} />
             </div>
         </div>
         <div className="flex-[3] bg-white flex flex-col justify-center px-4 md:px-5 py-3 gap-1.5">
@@ -104,8 +104,8 @@ const FrontSplitBottom = ({ accent, business, textDark }: { accent: string; busi
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500 truncate" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Mail size={10} className="shrink-0" />{business.email}</div>
             <p className="text-[8px] md:text-[10px] text-gray-400 truncate" style={textDark ? { color: textDark, opacity: 0.5 } : undefined}>{business.website}</p>
             <div className="flex justify-center mt-1">
-                <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1">
-                    <QRCodeSVG value={business.qrValue} size={36} />
+                <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1 flex items-center justify-center">
+                    <QRCodeSVG value={business.qrValue} size={36} style={{ width: '100%', height: '100%' }} />
                 </div>
             </div>
         </div>
@@ -124,8 +124,8 @@ const FrontSplitTop = ({ accent, business, textDark }: { accent: string; busines
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500 truncate" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Mail size={10} className="shrink-0" />{business.email}</div>
             <p className="text-[8px] md:text-[10px] text-gray-400 truncate" style={textDark ? { color: textDark, opacity: 0.5 } : undefined}>{business.website}</p>
             <div className="flex justify-center mt-1">
-                <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1">
-                    <QRCodeSVG value={business.qrValue} size={36} />
+                <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1 flex items-center justify-center">
+                    <QRCodeSVG value={business.qrValue} size={36} style={{ width: '100%', height: '100%' }} />
                 </div>
             </div>
         </div>
@@ -146,7 +146,7 @@ const FrontFull = ({ accent, business, textDark }: { accent: string; business: B
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] truncate" style={muted}><Mail size={10} className="shrink-0" />{business.email}</div>
             <p className="text-[8px] md:text-[10px] truncate" style={muted}>{business.website}</p>
             <div className="flex justify-center mt-1">
-                <div className="size-11 md:size-12 bg-white rounded-lg p-1"><QRCodeSVG value={business.qrValue} size={36} /></div>
+                <div className="size-11 md:size-12 bg-white rounded-lg p-1 flex items-center justify-center"><QRCodeSVG value={business.qrValue} size={36} style={{ width: '100%', height: '100%' }} /></div>
             </div>
         </div>
     );
@@ -161,7 +161,7 @@ const FrontBorder = ({ accent, business, textDark }: { accent: string; business:
         <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500 truncate" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Mail size={10} className="shrink-0" />{business.email}</div>
         <p className="text-[8px] md:text-[10px] text-gray-400 truncate" style={textDark ? { color: textDark, opacity: 0.5 } : undefined}>{business.website}</p>
         <div className="flex justify-center mt-1">
-            <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1"><QRCodeSVG value={business.qrValue} size={36} /></div>
+            <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1 flex items-center justify-center"><QRCodeSVG value={business.qrValue} size={36} style={{ width: '100%', height: '100%' }} /></div>
         </div>
     </div>
 );
@@ -180,7 +180,7 @@ const FrontDiagonal = ({ accent, business, textDark }: { accent: string; busines
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] truncate" style={{ color: tc, opacity: 0.6 }}><Mail size={10} className="shrink-0" />{business.email}</div>
             <p className="text-[8px] md:text-[10px] truncate" style={{ color: tc, opacity: 0.5 }}>{business.website}</p>
             <div className="flex justify-center mt-1">
-                <div className="size-11 md:size-12 bg-white/90 rounded-lg p-1"><QRCodeSVG value={business.qrValue} size={36} /></div>
+                <div className="size-11 md:size-12 bg-white/90 rounded-lg p-1 flex items-center justify-center"><QRCodeSVG value={business.qrValue} size={36} style={{ width: '100%', height: '100%' }} /></div>
             </div>
         </div>
     </div>
@@ -197,7 +197,7 @@ const FrontDoubleStripe = ({ accent, business, textDark }: { accent: string; bus
         <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-gray-500 truncate" style={textDark ? { color: textDark, opacity: 0.6 } : undefined}><Mail size={10} className="shrink-0" />{business.email}</div>
         <p className="text-[8px] md:text-[10px] text-gray-400 truncate" style={textDark ? { color: textDark, opacity: 0.5 } : undefined}>{business.website}</p>
         <div className="flex justify-center mt-1">
-            <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1"><QRCodeSVG value={business.qrValue} size={36} /></div>
+            <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1 flex items-center justify-center"><QRCodeSVG value={business.qrValue} size={36} style={{ width: '100%', height: '100%' }} /></div>
         </div>
     </div>
 );
@@ -301,7 +301,7 @@ const BackDoubleStripe = ({ accent, business, textDark }: { accent: string; busi
 );
 
 /* ─── Component maps ─── */
-const faceComponents = {
+export const faceComponents = {
     front: {
         'split-right': FrontSplitRight,
         'split-left': FrontSplitLeft,

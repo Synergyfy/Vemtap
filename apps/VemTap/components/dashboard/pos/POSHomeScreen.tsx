@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Search, LayoutGrid, List, Loader2, ScanLine, ChevronDown } from 'lucide-react';
+import { ShoppingBag, Search, LayoutGrid, List, Loader2, ScanLine, ChevronDown, Clock } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/services/catalogue/hooks';
@@ -10,6 +10,7 @@ import POSPageHeader from './shared/POSPageHeader';
 import BarcodeScanner from '@/components/dashboard/catalogue/BarcodeScanner';
 import toast from 'react-hot-toast';
 import { cacheProducts } from '@/lib/offline/db';
+import { useRouter } from 'next/navigation';
 
 interface POSHomeScreenProps {
   onOpenCart?: () => void;
@@ -19,6 +20,7 @@ interface POSHomeScreenProps {
 }
 
 export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = false, headerActions }: POSHomeScreenProps) {
+  const router = useRouter();
   const { cart, addToCart } = usePosStore();
   const { activeBranchId } = useActiveBranch();
   
@@ -140,7 +142,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
       <div className="shrink-0 px-4 md:px-0 mb-4 space-y-4">
         {/* Search bar + Quick Actions row */}
         <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-lg">
+          <div className="relative flex-1 max-w-[320px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
@@ -156,6 +158,12 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
           {headerActions && (
             <div className="hidden md:flex items-center gap-2 shrink-0">
               {headerActions}
+              <button
+                onClick={() => router.push('/dashboard/pos/sales')}
+                className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                <Clock size={12} /> History
+              </button>
             </div>
           )}
         </div>

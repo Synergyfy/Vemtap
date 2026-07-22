@@ -9,6 +9,7 @@ interface Customer {
   name: string;
   phone: string;
   email?: string;
+  pointsBalance?: number;
 }
 
 interface CustomerSelectorModalProps {
@@ -125,7 +126,8 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
                           id: visitor.id,
                           name: `${visitor.firstName} ${visitor.lastName || ''}`.trim(),
                           phone: visitor.phone,
-                          email: visitor.email || undefined
+                          email: visitor.email || undefined,
+                          pointsBalance: visitor.loyaltyProfile?.pointsBalance || 0
                         });
                         onClose();
                       }}

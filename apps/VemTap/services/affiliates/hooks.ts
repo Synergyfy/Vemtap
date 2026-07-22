@@ -64,3 +64,9 @@ export const useRequestWithdrawal = () => {
     },
   });
 };
+
+export const useTrackReferralVisit = () => {
+  return useMutation<void, Error, { referralCode: string }>({
+    mutationFn: ({ referralCode }) => api.post(`/affiliates/track-visit`, { referralCode }),
+  });
+};

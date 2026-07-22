@@ -362,6 +362,12 @@ export default function OrdersDashboard() {
                       <span>Table: {orderDetail.tableNumber}</span>
                     </div>
                   )}
+                  {orderDetail.attendedByUser && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#066CF4] bg-[#066CF4]/5 px-3 py-1.5 rounded-lg">
+                      <User size={12} />
+                      <span>Attended by: {orderDetail.attendedByUser.name || `${orderDetail.attendedByUser.firstName} ${orderDetail.attendedByUser.lastName}`}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Order Items */}
