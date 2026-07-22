@@ -95,7 +95,7 @@ export default function Receipt({ data, showActions = false }: ReceiptProps) {
       '',
       ...(showLoyaltyOnReceipt && loyaltyPointsEarned && loyaltyPointsEarned > 0 ? [`Loyalty Points: +${loyaltyPointsEarned}`] : []),
       ...(redeemedReward && rewardDiscount ? [`Reward: ${redeemedReward} -₦${rewardDiscount.toLocaleString()}`] : []),
-      ...(redeemedPromotion ? [`Promotion: ${redeemedPromotion.offerName} (${redeemedPromotion.claimCode})`] : []),
+      ...(redeemedPromotion ? [`Deal: ${redeemedPromotion.offerName} (${redeemedPromotion.claimCode})`] : []),
       `Subtotal: ₦${subtotal.toLocaleString()}`,
       ...(discountAmount > 0 ? [`Discount: -₦${discountAmount.toLocaleString()}`] : []),
       `*Total: ₦${total.toLocaleString()}*`,
