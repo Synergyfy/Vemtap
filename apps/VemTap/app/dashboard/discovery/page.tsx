@@ -5,7 +5,7 @@ import {
     Activity, Users, MapPin, Store, Tag, Plus, Target, CheckCircle2, ArrowRight,
     Settings, Search, Handshake, TrendingUp, RefreshCw, X, Image as ImageIcon,
     ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2, Navigation, Crosshair,
-    Trash2, Clock
+    Trash2
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/dashboard/PageHeader';
@@ -30,7 +30,7 @@ import {
     useInvitePartner,
     useRespondToInvitation,
 } from '@/services/discovery/hooks';
-import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer, useCatalogueItems } from '@/services/catalogue/hooks';
+import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer } from '@/services/catalogue/hooks';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import type { DiscoveryCustomer, ActivePartner, NearbyPartner, UpdateDiscoverySettingsDto } from '@/services/discovery/types';
 import { useUpdateBranch, useBranches } from '@/services/branches/hooks';
@@ -125,15 +125,15 @@ export default function DiscoveryPage() {
                 description="Get more customers from nearby businesses."
                 isSticky={false}
             />
-            
 
+            
             {!isCreatingPromo ? (
                 <>
                     {/* Navigation */}
                     <div className="mt-4 md:mt-8 flex overflow-x-auto no-scrollbar mb-6 md:mb-8 sticky top-0 z-10 bg-white/90 backdrop-blur-md py-3 -mx-4 px-4 md:mx-0 md:px-0 md:static md:bg-transparent md:py-0 md:border-b md:border-gray-200 space-x-2 md:space-x-6">
                         {[
                             { id: 'overview', label: 'Overview' },
-                            { id: 'promotions', label: 'Deals' },
+                            { id: 'promotions', label: 'Promotions' },
                             { id: 'partners', label: 'Partners' },
                             { id: 'customers', label: 'Customers' },
                             { id: 'results', label: 'Results' },
@@ -240,7 +240,7 @@ function OverviewTab({ branchId, onNavigate, onCreatePromo }: { branchId: string
                     <div className="size-12 rounded-full bg-white/20 flex items-center justify-center">
                         <Plus size={24} />
                     </div>
-                    <span className="font-bold text-lg">Create Deal</span>
+                    <span className="font-bold text-lg">Create Promotion</span>
                 </Button>
                 <Button onClick={() => onNavigate('partners')} variant="outline" className="h-auto p-6 flex flex-col items-center justify-center gap-3 rounded-3xl border-gray-200 hover:bg-gray-50">
                     <div className="size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
@@ -262,7 +262,7 @@ function OverviewTab({ branchId, onNavigate, onCreatePromo }: { branchId: string
                     
                     <div className="space-y-6">
                         <div>
-                            <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Best Deal</div>
+                            <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Best Promotion</div>
                             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                                 <div className="flex items-center gap-3">
                                     <div className="size-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
@@ -362,20 +362,20 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
     }
 
     if (isError) {
-        return <ErrorState message={error?.message || 'Failed to load deals'} onRetry={() => refetch()} />;
+        return <ErrorState message={error?.message || 'Failed to load promotions'} onRetry={() => refetch()} />;
     }
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-800">My Deals</h3>
+                <h3 className="text-xl font-semibold text-gray-800">My Promotions</h3>
                 <Button onClick={onCreatePromo} className="rounded-full font-bold gap-2">
-                    <Plus size={16} /> Create Deal
+                    <Plus size={16} /> Create Promotion
                 </Button>
             </div>
 
             {!promotions || promotions.length === 0 ? (
-                <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a deal to attract new customers and bring them back again." />
+                <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a promotion to attract new customers and bring them back again." />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {promotions.map((promo) => (
@@ -460,6 +460,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
         }
         watchIdRef.current = navigator.geolocation.watchPosition(
             (pos) => {
+                console.log('🛰️ Device GPS coordinates updated:', { lat: pos.coords.latitude, lng: pos.coords.longitude });
                 setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
                 setGpsLoading(false);
                 setLocationError(null);
@@ -524,6 +525,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
         setLocationMessage('Getting your current location...');
         try {
             const pos = await getBrowserLocation();
+            console.log('🛰️ Device GPS coordinates fetched:', pos);
             await updateBranchMutation.mutateAsync({
                 id: branchId,
                 updates: { latitude: pos.lat, longitude: pos.lng },
@@ -710,7 +712,6 @@ function PartnersTab({ branchId }: { branchId: string }) {
                             <NearbyMap
                                 partners={nearbyPartnersList}
                                 center={branchLocation}
-                                radius={radius}
                                 onSelectPartner={(partner) => setConnectingTo({ id: partner.id, name: partner.name })}
                             />
 
@@ -1242,7 +1243,7 @@ function ResultsTab({ branchId }: { branchId: string }) {
                     <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
                         <h3 className="text-lg font-semibold text-gray-800 mb-2">Performance Over Time</h3>
                         <p className="text-sm text-gray-600 mb-8 bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                            <strong>What does this mean?</strong> This chart shows how many people <em>saw</em> your deals (the light gray bars) compared to how many actually <em>visited</em> your store (the blue bars). A taller blue bar means your deals are working well and driving real foot traffic!
+                            <strong>What does this mean?</strong> This chart shows how many people <em>saw</em> your promotions (the light gray bars) compared to how many actually <em>visited</em> your store (the blue bars). A taller blue bar means your promotions are working well and driving real foot traffic!
                         </p>
                         <div className="h-[300px] w-full">
                             {data.timeline.length === 0 ? (
@@ -1305,7 +1306,7 @@ function SettingsTab({ branchId }: { branchId: string }) {
     const toggles: { key: keyof UpdateDiscoverySettingsDto; title: string; description: string }[] = [
         { key: 'joinDiscoveryNetwork', title: 'Join Discovery Network', description: 'Allow your business to be discovered by locals.' },
         { key: 'receivePartnerRequests', title: 'Receive Partner Requests', description: 'Allow other businesses to request partnerships.' },
-        { key: 'allowPromotions', title: 'Allow Deals', description: 'Show your active deals on the network.' },
+        { key: 'allowPromotions', title: 'Allow Promotions', description: 'Show your active promotions on the network.' },
     ];
 
     const notifications: { key: keyof UpdateDiscoverySettingsDto; title: string }[] = [
@@ -1370,78 +1371,32 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [startDate, setStartDate] = useState('');
-    const [startTime, setStartTime] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [endTime, setEndTime] = useState('');
     const [audience, setAudience] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const createOffer = useCreateCatalogueOffer();
-    const { data: catalogueItems = [] } = useCatalogueItems({ branchId }, { enabled: !!branchId });
-
-    // Type-specific fields
-    const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
-    const [discountValue, setDiscountValue] = useState('');
-    const [originalPrice, setOriginalPrice] = useState('');
-    const [dealPrice, setDealPrice] = useState('');
-    const [freeItemName, setFreeItemName] = useState('');
-    const [freeItemValue, setFreeItemValue] = useState('');
-    const [minOrderAmount, setMinOrderAmount] = useState('');
-
-    const resetTypeFields = () => {
-        setDiscountType('percentage');
-        setDiscountValue('');
-        setOriginalPrice('');
-        setDealPrice('');
-        setFreeItemName('');
-        setFreeItemValue('');
-        setMinOrderAmount('');
-    };
 
     const handlePublish = () => {
-        const payload: any = {
+        createOffer.mutate({
             name: title,
             description,
             mainImage: imageUrl || undefined,
             branchId,
-            itemIds: catalogueItems.map((item: any) => item.id),
+            itemIds: [],
+            pricingType: 'sum',
             offerType: offerType.toLowerCase().replace(/\s+/g, '_'),
             audience: audience?.toLowerCase().replace(/\s+/g, '_'),
-            startDate: startDate ? new Date(`${startDate}T${startTime || '00:00'}`).toISOString() : undefined,
-            endDate: endDate ? new Date(`${endDate}T${endTime || '23:59'}`).toISOString() : undefined,
-        };
-
-        switch (offerType) {
-            case 'discount':
-                payload.pricingType = discountType === 'percentage' ? 'percentage_discount' : 'fixed_discount_price';
-                payload.discountValue = Number(discountValue) || 0;
-                break;
-            case 'free_item':
-                payload.pricingType = 'sum';
-                payload.discountValue = Number(freeItemValue) || 0;
-                if (freeItemName) payload.description = `${freeItemName} - ${description}`.trim();
-                break;
-            case 'special_deal':
-                payload.pricingType = 'fixed_discount_price';
-                payload.discountValue = (Number(originalPrice) - Number(dealPrice)) || 0;
-                payload.fixedPrice = Number(dealPrice) || 0;
-                break;
-            case 'free_delivery':
-                payload.pricingType = 'sum';
-                if (minOrderAmount) payload.description = `Free delivery on orders above ₦${Number(minOrderAmount).toLocaleString()}. ${description}`.trim();
-                break;
-            default:
-                payload.pricingType = 'sum';
-        }
-
-        createOffer.mutate(payload, {
+            startDate: startDate ? new Date(startDate).toISOString() : undefined,
+            endDate: endDate ? new Date(endDate).toISOString() : undefined,
+        }, {
             onSuccess: () => {
-                alert('Deal published successfully!');
+                alert('Promotion published successfully!');
                 onCancel();
             },
             onError: (err) => {
-                alert(err.message || 'Failed to create deal');
+                alert(err.message || 'Failed to create promotion');
             },
         });
     };
@@ -1469,7 +1424,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 min-h-[600px] animate-in slide-in-from-right-8 duration-300">
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-50">
                 <div>
-                    <h2 className="text-2xl font-semibold text-gray-800">Create Deal</h2>
+                    <h2 className="text-2xl font-semibold text-gray-800">Create Promotion</h2>
                     <div className="text-sm font-bold text-gray-400 mt-1">Step {step} of 5</div>
                 </div>
                 <Button variant="ghost" onClick={onCancel} className="text-gray-400 hover:text-gray-800 rounded-full size-10 p-0"><X size={20} /></Button>
@@ -1498,14 +1453,8 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
 
                 {step === 2 && (
                     <div className="space-y-6 animate-in fade-in">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-6">Deal Details</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-6">Promotion Details</h3>
                         <div className="space-y-4">
-                            <div className="mb-2">
-                                <span className="text-xs font-bold text-primary uppercase tracking-wider bg-primary/10 px-3 py-1 rounded-full">
-                                    {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                                </span>
-                            </div>
-
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
                                 <input 
@@ -1516,65 +1465,6 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                     className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                 />
                             </div>
-
-                            {offerType === 'discount' && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Discount Type</label>
-                                        <div className="flex gap-2 p-1 bg-gray-50 rounded-2xl">
-                                            {(['percentage', 'fixed'] as const).map(t => (
-                                                <button key={t} type="button" onClick={() => setDiscountType(t)}
-                                                    className={cn("flex-1 py-3 rounded-xl text-sm font-bold transition-all", discountType === t ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-800")}>
-                                                    {t === 'percentage' ? 'Percentage %' : 'Fixed Amount ₦'}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Discount {discountType === 'percentage' ? 'Percentage' : 'Amount'} *</label>
-                                        <div className="relative">
-                                            <input type="number" value={discountValue} onChange={e => setDiscountValue(e.target.value)} placeholder={discountType === 'percentage' ? 'e.g. 15' : 'e.g. 2000'} className="w-full p-4 pl-10 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{discountType === 'percentage' ? '%' : '₦'}</span>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-
-                            {offerType === 'free_item' && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Free Item Name *</label>
-                                        <input type="text" value={freeItemName} onChange={e => setFreeItemName(e.target.value)} placeholder="e.g. Small Chips" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Item Value (₦) *</label>
-                                        <input type="number" value={freeItemValue} onChange={e => setFreeItemValue(e.target.value)} placeholder="e.g. 1500" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
-                                        <p className="text-xs text-gray-400 mt-1.5 font-medium">The price the customer would normally pay for this item</p>
-                                    </div>
-                                </>
-                            )}
-
-                            {offerType === 'special_deal' && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Original Price (₦) *</label>
-                                        <input type="number" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)} placeholder="e.g. 5000" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Price (₦) *</label>
-                                        <input type="number" value={dealPrice} onChange={e => setDealPrice(e.target.value)} placeholder="e.g. 3500" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
-                                    </div>
-                                </>
-                            )}
-
-                            {offerType === 'free_delivery' && (
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Minimum Order Amount (₦)</label>
-                                    <input type="number" value={minOrderAmount} onChange={e => setMinOrderAmount(e.target.value)} placeholder="e.g. 3000 (leave empty for no minimum)" className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" min="0" />
-                                    <p className="text-xs text-gray-400 mt-1.5 font-medium">Orders above this amount qualify for free delivery</p>
-                                </div>
-                            )}
-
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                                 <textarea 
@@ -1586,43 +1476,21 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                 ></textarea>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
+                                <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                                     <input 
                                         type="date" 
                                         value={startDate}
                                         onChange={e => setStartDate(e.target.value)}
-                                        min={new Date().toISOString().split('T')[0]}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                     />
                                 </div>
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Start Time</label>
-                                    <input 
-                                        type="time" 
-                                        value={startTime}
-                                        onChange={e => setStartTime(e.target.value)}
-                                        min={startDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                                        className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
-                                    />
-                                </div>
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
+                                <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
                                     <input 
                                         type="date" 
                                         value={endDate}
                                         onChange={e => setEndDate(e.target.value)}
-                                        min={startDate || new Date().toISOString().split('T')[0]}
-                                        className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
-                                    />
-                                </div>
-                                <div onClick={e => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">End Time</label>
-                                    <input 
-                                        type="time" 
-                                        value={endTime}
-                                        onChange={e => setEndTime(e.target.value)}
-                                        min={endDate === startDate && startTime ? startTime : endDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
                                         className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none" 
                                     />
                                 </div>
@@ -1670,7 +1538,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                             </div>
                         </div>
                         <div className="flex justify-between pt-6">
-                            <Button variant="ghost" onClick={() => { setStep(1); resetTypeFields(); }} className="font-bold">Back</Button>
+                            <Button variant="ghost" onClick={() => setStep(1)} className="font-bold">Back</Button>
                             <Button onClick={() => setStep(3)} disabled={!title} className="rounded-full px-8 font-bold">Next</Button>
                         </div>
                     </div>
@@ -1678,7 +1546,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
 
                 {step === 3 && (
                     <div className="space-y-6 animate-in fade-in">
-                        <h3 className="text-xl font-semibold text-gray-800 text-center mb-8">Show this deal to:</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 text-center mb-8">Show this promotion to:</h3>
                         <div className="grid grid-cols-1 gap-4">
                             {[
                                 { label: 'Nearby Customers', value: 'nearby_customers' },
@@ -1699,108 +1567,17 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
 
                 {step === 4 && (
                     <div className="space-y-6 animate-in fade-in">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Preview your Deal</h3>
-
-                        {/* Card matching public PromotionCard design */}
-                        <div className="max-w-sm mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                            {/* Image */}
-                            <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
-                                {imageUrl && (
-                                    <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
-                                )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                                {/* Discount badge */}
-                                {offerType === 'discount' && discountType === 'percentage' && discountValue && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
-                                        {discountValue}% OFF
-                                    </div>
-                                )}
-                                {offerType === 'discount' && discountType === 'fixed' && discountValue && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
-                                        SAVE ₦{Number(discountValue).toLocaleString()}
-                                    </div>
-                                )}
-                                {offerType === 'special_deal' && originalPrice && dealPrice && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
-                                        SAVE ₦{(Number(originalPrice) - Number(dealPrice)).toLocaleString()}
-                                    </div>
-                                )}
-                                {offerType === 'free_item' && freeItemName && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
-                                        FREE
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Content */}
-                            <div className="p-4 space-y-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+                        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Preview your Promotion</h3>
+                        
+                        <div className="max-w-sm mx-auto bg-gray-50 rounded-3xl p-6 border border-gray-100 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-blue-500 to-purple-600"></div>
+                            <div className="relative mt-16 bg-white rounded-2xl p-6 shadow-xl">
+                                <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
                                     {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                                </p>
-
-                                <h3 className="font-headline font-bold text-gray-900 text-base leading-tight line-clamp-1">
-                                    {title || 'Your Deal Title'}
-                                </h3>
-
-                                <p className="text-xs text-gray-500 font-medium line-clamp-2 leading-relaxed">
-                                    {description || 'Deal description goes here.'}
-                                </p>
-
-                                {/* Price */}
-                                {(offerType === 'special_deal' || offerType === 'discount' || offerType === 'free_item') && (
-                                    <div className="flex items-baseline gap-2 pt-1">
-                                        {offerType === 'special_deal' && dealPrice && (
-                                            <>
-                                                <span className="text-lg font-black text-primary font-display tracking-tight">
-                                                    ₦{Number(dealPrice).toLocaleString()}
-                                                </span>
-                                                {originalPrice && (
-                                                    <span className="text-xs text-gray-400 line-through font-bold">
-                                                        ₦{Number(originalPrice).toLocaleString()}
-                                                    </span>
-                                                )}
-                                            </>
-                                        )}
-                                        {offerType === 'discount' && (
-                                            <>
-                                                <span className="text-xs text-gray-400 font-medium">Discount applied at checkout</span>
-                                            </>
-                                        )}
-                                        {offerType === 'free_item' && freeItemName && (
-                                            <span className="text-lg font-black text-primary font-display tracking-tight">
-                                                Free
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Date range */}
-                                {(startDate || endDate) && (
-                                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                                        <Clock size={10} className="text-gray-400" />
-                                        <span className="text-[10px] text-gray-400 font-bold">
-                                            {startDate ? `${new Date(startDate).toLocaleDateString()} ${startTime || ''}` : 'Start'} — {endDate ? `${new Date(endDate).toLocaleDateString()} ${endTime || ''}` : 'End'}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Audience */}
-                                {audience && (
-                                    <div className="flex items-center gap-1">
-                                        <Users size={10} className="text-primary" />
-                                        <span className="text-[10px] font-bold text-primary">
-                                            For: {audience.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div className="flex items-center justify-between pt-1">
-                                    <span className="text-[10px] text-gray-400 font-bold">Preview</span>
-                                    <span className="flex items-center gap-1 text-xs font-black text-primary">
-                                        View Offer <ArrowRight size={12} />
-                                    </span>
                                 </div>
+                                <h4 className="text-xl font-semibold text-gray-800 mb-2">{title || 'Your Promotion Title'}</h4>
+                                <p className="text-sm text-gray-500 mb-6">{description || 'Promotion description goes here.'}</p>
+                                <Button className="w-full rounded-full font-bold">Redeem Offer</Button>
                             </div>
                         </div>
 
@@ -1812,52 +1589,19 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                 )}
 
                 {step === 5 && (
-                    <div className="space-y-6 animate-in fade-in text-center">
-                        <div className="size-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <CheckCircle2 size={40} />
+                    <div className="space-y-6 animate-in fade-in text-center py-12">
+                        <div className="size-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle2 size={48} />
                         </div>
-                        <h3 className="text-2xl font-semibold text-gray-800 mb-2">Ready to Publish!</h3>
-                        <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">Your deal will immediately be visible to customers and businesses nearby.</p>
-
-                        {/* Mini preview card */}
-                        <div className="max-w-xs mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-left">
-                            <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
-                                {imageUrl && (
-                                    <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
-                                )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                {offerType === 'discount' && discountType === 'percentage' && discountValue && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
-                                        {discountValue}% OFF
-                                    </div>
-                                )}
-                            </div>
-                            <div className="p-3 space-y-1.5">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
-                                    {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                                </p>
-                                <h3 className="font-headline font-bold text-gray-900 text-sm leading-tight line-clamp-1">
-                                    {title || 'Your Deal Title'}
-                                </h3>
-                                {offerType === 'special_deal' && dealPrice && (
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-base font-black text-primary">₦{Number(dealPrice).toLocaleString()}</span>
-                                        {originalPrice && <span className="text-xs text-gray-400 line-through font-bold">₦{Number(originalPrice).toLocaleString()}</span>}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-center gap-4 mt-6">
-                            <Button variant="ghost" onClick={() => setStep(4)} className="font-bold">Back</Button>
-                            <Button 
-                                onClick={handlePublish} 
-                                className="rounded-full px-12 py-6 text-lg font-bold bg-primary hover:bg-primary/90"
-                                disabled={createOffer.isPending}
-                            >
-                                {createOffer.isPending ? 'Publishing...' : 'Publish Deal'}
-                            </Button>
-                        </div>
+                        <h3 className="text-3xl font-semibold text-gray-800 mb-4">Ready to Publish!</h3>
+                        <p className="text-gray-500 text-lg mb-8 max-w-md mx-auto">Your promotion will immediately be visible to customers and businesses nearby.</p>
+                        <Button 
+                            onClick={handlePublish} 
+                            className="rounded-full px-12 py-6 text-lg font-bold bg-primary hover:bg-primary/90"
+                            disabled={createOffer.isPending}
+                        >
+                            {createOffer.isPending ? 'Publishing...' : 'Publish Promotion'}
+                        </Button>
                     </div>
                 )}
             </div>

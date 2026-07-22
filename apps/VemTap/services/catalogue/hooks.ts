@@ -631,3 +631,14 @@ export const useRedeemClaim = () => {
         mutationFn: redeemClaim,
     });
 };
+
+export const getBusinessClaims = async () => {
+    return await api.get('/catalogue/offers/claims');
+};
+
+export const useBusinessClaims = () => {
+    return useQuery({
+        queryKey: ['catalogue', 'offers', 'claims'],
+        queryFn: getBusinessClaims,
+    });
+};

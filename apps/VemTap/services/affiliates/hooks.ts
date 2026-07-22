@@ -71,6 +71,15 @@ export const useTrackReferralVisit = () => {
   });
 };
 
+export const useReferrerInfo = (code: string | null) => {
+  return useQuery<{ referralCode: string; businessName: string }, Error>({
+    queryKey: ['referrer-info', code],
+    queryFn: () => api.get(`/affiliates/referrer-info?code=${code}`),
+    enabled: !!code,
+    staleTime: 1000 * 60 * 60,
+  });
+};
+
 // --- Admin hooks ---
 
 export const useAdminAffiliateStats = () => {

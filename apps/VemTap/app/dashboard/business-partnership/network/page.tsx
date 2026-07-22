@@ -146,7 +146,7 @@ export default function PartnershipNetworkPage() {
             <AnimatePresence>
                 {selectedBusiness && (
                     <>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedBusiness(null); setActiveSection(null); }} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" />
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}  className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" />
                         <motion.div
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
@@ -242,7 +242,7 @@ export default function PartnershipNetworkPage() {
             <AnimatePresence>
                 {messageBusiness && (
                     <>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMessageBusiness(null)} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" />
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}  className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}

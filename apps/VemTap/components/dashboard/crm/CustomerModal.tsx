@@ -61,7 +61,7 @@ export function CustomerModal({ isOpen, onClose }: CustomerModalProps) {
                         <input
                             type="tel"
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                             className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/20 transition-all"
                             placeholder="+234 800 000 0000"
                         />

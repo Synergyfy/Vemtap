@@ -46,8 +46,6 @@ export default function GetStartedPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isGoogleUser, setIsGoogleUser] = useState(false);
-
-    // Form State
     const [formData, setFormData] = useState({
         businessName: '',
         firstName: '',
@@ -56,7 +54,16 @@ export default function GetStartedPage() {
         phone: '',
         password: '',
         confirmPassword: '',
+        referralCode: '',
     });
+
+    const refCode = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null;
+
+    useEffect(() => {
+        if (refCode) {
+            setFormData(p => ({ ...p, referralCode: refCode }));
+        }
+    }, []);
 
     // OTP verification states
     const [otpCode, setOtpCode] = useState('');
@@ -170,6 +177,7 @@ export default function GetStartedPage() {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
+                ...(formData.referralCode ? { referralCode: formData.referralCode } : {}),
             };
             const response = await registerOwner(ownerPayload);
 
@@ -193,6 +201,7 @@ export default function GetStartedPage() {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
+                ...(formData.referralCode ? { referralCode: formData.referralCode } : {}),
             };
             const response = await registerOwner(ownerPayload);
 
@@ -457,8 +466,21 @@ export default function GetStartedPage() {
                                                 <input 
                                                     type="tel" 
                                                     value={formData.phone} 
-                                                    onChange={(e) => setFormData({...formData, phone: e.target.value})} 
+                                                    onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})} 
                                                     placeholder="Phone Number" 
+                                                    className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Referral Code <span className="text-gray-300 normal-case tracking-normal">(Optional)</span></label>
+                                            <div className="relative">
+                                                <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                <input 
+                                                    type="text" 
+                                                    value={formData.referralCode} 
+                                                    onChange={(e) => setFormData({...formData, referralCode: e.target.value})} 
+                                                    placeholder="e.g. VEM-XXXXX" 
                                                     className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
                                                 />
                                             </div>

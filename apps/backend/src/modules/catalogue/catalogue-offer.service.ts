@@ -499,6 +499,7 @@ export class CatalogueOfferService {
 
     const offer = await this.offerRepository.findOne({
       where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
+      relations: ['branch'],
     });
     if (!offer) {
       throw new NotFoundException('Promotion not found or inactive');
@@ -543,8 +544,9 @@ export class CatalogueOfferService {
     otpRecord.isVerified = true;
     await this.otpRepository.save(otpRecord);
 
-    const randomString = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const claimCode = `VEM-CLAIM-${randomString}`;
+    const branchCode = offer.branch?.uniqueCode || 'XXXXX';
+    const randomString = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const claimCode = `VEM-${branchCode}-${randomString}`;
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -622,6 +624,14 @@ export class CatalogueOfferService {
         offerName: claim.offer.name,
       },
     };
+  }
+
+  async getBusinessClaims(businessId: string) {
+    return this.claimRepository.find({
+      where: { offer: { businessId } },
+      relations: ['offer', 'offer.items'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
   private async clearCache(branchId: string, offerId?: string) {

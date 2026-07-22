@@ -32,6 +32,7 @@ describe('CatalogueOfferService', () => {
     quantity: 10,
     businessId: 'biz-1',
     pricingType: CatalogueOfferPricingType.SUM,
+    branch: { uniqueCode: 'BR123XYZ9' },
   };
 
   const mockOtpRecord = {
@@ -52,7 +53,7 @@ describe('CatalogueOfferService', () => {
   const mockClaim = {
     id: 'claim-1',
     offerId: 'offer-1',
-    claimCode: 'VEM-CLAIM-123456',
+    claimCode: 'VEM-BR123XYZ9-123456',
     status: CatalogueOfferClaimStatus.CLAIMED,
     expiresAt: new Date(Date.now() + 604800000), // 7 days
     offer: mockOffer,
@@ -178,7 +179,7 @@ describe('CatalogueOfferService', () => {
       });
 
       expect(result.message).toBe('Deal claimed successfully');
-      expect(result.claim.claimCode).toMatch(/^VEM-CLAIM-[A-Z0-9]{6}$/);
+      expect(result.claim.claimCode).toMatch(/^VEM-[A-Z0-9]{9}-[A-Z0-9]{4}$/);
       expect(claimRepo.save).toHaveBeenCalled();
       expect(otpRepo.save).toHaveBeenCalled();
     });
@@ -195,7 +196,7 @@ describe('CatalogueOfferService', () => {
       });
 
       expect(result.message).toBe('Deal already claimed');
-      expect(result.claim.claimCode).toBe('VEM-CLAIM-123456');
+      expect(result.claim.claimCode).toBe('VEM-BR123XYZ9-123456');
     });
 
     it('should throw BadRequestException if OTP code is incorrect', async () => {
@@ -215,7 +216,7 @@ describe('CatalogueOfferService', () => {
     it('should redeem claim successfully and increment offer visits', async () => {
       claimRepo.findOne.mockResolvedValue(mockClaim);
 
-      const result = await service.redeemClaim('VEM-CLAIM-123456', 'biz-1');
+      const result = await service.redeemClaim('VEM-BR123XYZ9-123456', 'biz-1');
 
       expect(result.success).toBe(true);
       expect(result.claim.status).toBe(CatalogueOfferClaimStatus.REDEEMED);
@@ -227,7 +228,7 @@ describe('CatalogueOfferService', () => {
       claimRepo.findOne.mockResolvedValue(mockClaim);
 
       await expect(
-        service.redeemClaim('VEM-CLAIM-123456', 'different-biz')
+        service.redeemClaim('VEM-BR123XYZ9-123456', 'different-biz')
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -238,7 +239,7 @@ describe('CatalogueOfferService', () => {
       });
 
       await expect(
-        service.redeemClaim('VEM-CLAIM-123456', 'biz-1')
+        service.redeemClaim('VEM-BR123XYZ9-123456', 'biz-1')
       ).rejects.toThrow(BadRequestException);
     });
   });

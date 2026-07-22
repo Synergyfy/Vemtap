@@ -284,7 +284,7 @@ export default function BranchSwitcher() {
                                     type="text"
                                     placeholder="Phone (optional)"
                                     value={newBranchPhone}
-                                    onChange={(e) => setNewBranchPhone(e.target.value)}
+                                    onChange={(e) => setNewBranchPhone(e.target.value.replace(/\D/g, ''))}
                                     className="w-full h-10 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                 />
                                 <div className="flex gap-2 pt-1">

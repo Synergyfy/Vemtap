@@ -72,6 +72,7 @@ import { getCategoryIcon } from '@/lib/category-icons';
 import { useUpdateBusiness } from '@/services/businesses/hooks';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import type { PricingPlan } from '@/types/pricing';
+import { usePricingPlans } from '@/services/pricing/hooks';
 import { useSubscribe } from '@/services/subscriptions/hooks';
 import type { SubscribeRequest } from '@/services/subscriptions/types';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
@@ -80,6 +81,7 @@ import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
 import LocationStep from './components/LocationStep';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
+import { useReferrerInfo } from '@/services/affiliates/hooks';
 
 // --- Types ---
 type Step = 1 | 2 | '2A' | 3 | '3A' | 4 | 5 | '5A' | 6 | 7;
@@ -152,6 +154,9 @@ export default function OnboardingPage() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState<Step>(1);
     const [data, setData] = useState<Partial<OnboardingData>>({});
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const refCode = searchParams?.get('ref') || null;
+    const { data: referrer } = useReferrerInfo(refCode);
 
     const handleNext = (newData?: Partial<OnboardingData>) => {
         if (newData) setData(prev => ({ ...prev, ...newData }));
@@ -249,17 +254,17 @@ export default function OnboardingPage() {
             <main className="flex-1 overflow-y-auto pb-24">
                 <div className="max-w-xl mx-auto px-6 pt-12">
                     <AnimatePresence mode="wait">
-                        {currentStep === 1 && <WelcomeStep onNext={() => handleNext()} />}
+                        {currentStep === 1 && <WelcomeStep onNext={() => handleNext()} referrer={referrer} />}
                         {currentStep === 2 && <CategoryStep data={data} onNext={handleNext} />}
                         {currentStep === '2A' && <CategoryConfirmation onNext={() => handleNext()} />}
-                        {currentStep === 3 && <DetailsStep data={data} onNext={handleNext} />}
+                        {currentStep === 3 && <DetailsStep data={data} onNext={handleNext} refCode={refCode} />}
                         {currentStep === '3A' && (
                             <LocationStep
                                 address={data.address || { street: '', city: '', state: '', country: '', zip: '' }}
                                 onNext={(locationData) => handleNext(locationData)}
                             />
                         )}
-                        {currentStep === 4 && <OperatingStep data={data} onNext={handleNext} />}
+                        {currentStep === 4 && <OperatingStep data={data} onNext={handleNext} refCode={refCode} />}
                         {currentStep === 5 && <SubscriptionStep data={data} onNext={handleNext} />}
                         {currentStep === '5A' && <PlanConfirmation data={data} onNext={handleNext} onBack={handleBack} />}
                         {currentStep === 6 && <PaymentStep data={data} onNext={handleNext} />}
@@ -272,7 +277,7 @@ export default function OnboardingPage() {
 }
 
 // --- Screen 1: Welcome ---
-function WelcomeStep({ onNext }: { onNext: () => void }) {
+function WelcomeStep({ onNext, referrer }: { onNext: () => void; referrer?: { referralCode: string; businessName: string } | null }) {
     const onboardingVideoUrl = useSystemSettingsStore((s) => s.onboardingVideoUrl);
     const checklist = [
         { label: 'Business Category', id: 2 },
@@ -335,6 +340,25 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
                     <Play size={48} className="text-gray-300 mb-4" />
                     <p className="text-sm font-bold text-text-secondary">Onboarding Video</p>
                     <p className="text-xs text-text-secondary opacity-60 mt-1">Video will appear here once set by admin</p>
+                </div>
+            )}
+
+            {referrer && (
+                <div className="bg-gradient-to-br from-primary/5 via-primary/[0.03] to-transparent rounded-[2rem] p-6 border border-primary/10">
+                    <div className="flex items-center gap-4">
+                        <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Star size={20} className="text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">You Were Referred!</p>
+                            <p className="text-sm font-bold text-text-main">
+                                You were referred by <span className="text-primary">{referrer.businessName}</span>
+                            </p>
+                            <p className="text-[11px] font-medium text-text-secondary mt-0.5">
+                                Referral code: <span className="font-bold text-text-main">{referrer.referralCode}</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -567,7 +591,7 @@ function CategoryConfirmation({ onNext }: { onNext: () => void }) {
 }
 
 // --- Screen 3: Business Details ---
-function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
+function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: any) => void, refCode?: string | null }) {
     const [localData, setLocalData] = useState({
         businessName: data.businessName || '',
         logo: data.logo || null,
@@ -635,6 +659,7 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     xUrl: localData.socials.x || undefined,
                     linkedinUrl: localData.socials.linkedin || undefined,
                     whatsappNumber: localData.socials.whatsapp || undefined,
+                    ...(refCode ? { referralCode: refCode } : {}),
                 }
             });
 
@@ -989,7 +1014,7 @@ function DetailsStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
 }
 
 // --- Screen 4: Business Operating Details ---
-function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
+function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: any) => void, refCode?: string | null }) {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const currentUser = useAuthStore((state) => state.user);
     
@@ -1038,6 +1063,7 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
                     }), {} as Record<string, { open: string; close: string; closed: boolean }>),
                     timezone: localData.timezone,
                     isVisible: localData.isVisible,
+                    ...(refCode ? { referralCode: refCode } : {}),
                 }
             });
             onNext(localData);
@@ -1250,157 +1276,43 @@ function OperatingStep({ data, onNext }: { data: Partial<OnboardingData>, onNext
 function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [selectedPlan, setSelectedPlan] = useState(data.planId || '');
-    const plans = useSubscriptionStore((s) => s.plans);
-    const pricingLoading = useSubscriptionStore((s) => s.isLoading);
+    const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
+    const activePlans = plans.filter((p: PricingPlan) => p.isActive);
 
-    const formatPrice = (plan: PricingPlan) => {
-        if (plan.isFree) return '₦0';
-        let price: number;
-        if (billingCycle === 'yearly') price = plan.yearlyPrice || plan.monthlyPrice * 12;
-        else if (billingCycle === 'quarterly') price = plan.quarterlyPrice || plan.monthlyPrice * 3;
-        else price = plan.monthlyPrice;
-        return `₦${price.toLocaleString()}`;
+    const getPrice = (plan: PricingPlan) => {
+        if (plan.isFree) return 0;
+        if (billingCycle === 'yearly') return plan.yearlyPrice || plan.monthlyPrice * 12;
+        if (billingCycle === 'quarterly') return plan.quarterlyPrice || plan.monthlyPrice * 3;
+        return plan.monthlyPrice;
     };
 
-    const getBillingTotal = (plan: PricingPlan) => {
+    const getPeriodLabel = (plan: PricingPlan) => {
         if (plan.isFree) return '';
-        if (billingCycle === 'yearly') return `₦${(plan.yearlyPrice || plan.monthlyPrice * 12).toLocaleString()} billed annually`;
-        if (billingCycle === 'quarterly') return `₦${(plan.quarterlyPrice || plan.monthlyPrice * 3).toLocaleString()} billed quarterly`;
-        return '';
+        if (billingCycle === 'yearly') return '/yr';
+        if (billingCycle === 'quarterly') return '/qtr';
+        return '/mo';
     };
 
-    const getBillingPeriodLabel = (plan: PricingPlan) => {
-        if (plan.isFree) return '';
-        return billingCycle === 'yearly' ? '/yr' : billingCycle === 'quarterly' ? '/qtr' : '/mo';
+    const getDiscount = (cycle: string) => {
+        if (cycle === 'yearly') return 'Save 20%';
+        if (cycle === 'quarterly') return 'Save 10%';
+        return null;
     };
 
-    const renderHighlightedCard = (plan: PricingPlan, idx: number) => {
-        const isSelected = selectedPlan === plan.id;
-        const isHighlighted = plan.isPopular;
-
-        return (
-            <motion.button
-                key={plan.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                onClick={() => setSelectedPlan(plan.id)}
-                className={`relative flex flex-col text-left rounded-3xl border-2 transition-all duration-200 overflow-hidden h-full ${
-                    isSelected
-                        ? 'border-primary ring-4 ring-primary/10 shadow-xl shadow-primary/10'
-                        : isHighlighted
-                            ? 'border-primary/30 shadow-lg hover:shadow-xl'
-                            : 'border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200'
-                } ${isSelected ? (isHighlighted ? 'bg-primary' : 'bg-primary/5') : isHighlighted ? 'bg-white' : 'bg-white'}`}
-            >
-                {/* Most Popular Badge */}
-                {isHighlighted && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                        <div className="px-4 py-1 bg-primary text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-primary/30">
-                            Most Popular
-                        </div>
-                    </div>
-                )}
-
-                <div className="p-6 sm:p-7 flex flex-col flex-1">
-                    {/* Plan Name & Description */}
-                    <div className="space-y-2 mb-4">
-                        <h3 className={`text-base sm:text-lg font-black leading-snug ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
-                            {plan.name}
-                        </h3>
-                        {plan.description && (
-                            <p className={`text-xs font-medium leading-relaxed ${isSelected && isHighlighted ? 'text-white/80' : 'text-text-secondary'}`}>
-                                {plan.description}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Pricing */}
-                    <div className="space-y-1 mb-4">
-                        <div className={`flex items-baseline gap-1 ${isSelected && isHighlighted ? 'text-white' : 'text-text-main'}`}>
-                            <span className="text-2xl sm:text-3xl font-black tracking-tight">{formatPrice(plan)}</span>
-                            <span className={`text-xs sm:text-sm font-bold ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                {getBillingPeriodLabel(plan)}
-                            </span>
-                        </div>
-                        {getBillingTotal(plan) && (
-                            <p className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/60' : 'text-text-secondary/60'}`}>
-                                {getBillingTotal(plan)}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Free Trial Badge */}
-                    {plan.trialDurationDays > 0 && !plan.isFree && (
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 ${
-                            isSelected && isHighlighted ? 'bg-white/20 text-white' : 'bg-green-50 text-green-700'
-                        }`}>
-                            <Zap size={12} />
-                            {plan.trialDurationDays}-Day Free Trial
-                        </div>
-                    )}
-
-                    {/* Divider */}
-                    <div className={`border-t mb-4 ${isSelected && isHighlighted ? 'border-white/20' : 'border-gray-100'}`} />
-
-                    {/* Features */}
-                    <div className="space-y-3 flex-1">
-                        <p className={`text-[10px] font-black uppercase tracking-[0.15em] ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                            What's Included
-                        </p>
-                        <div className="space-y-2.5">
-                            {plan.features.map((feature: string, i: number) => (
-                                <div key={i} className="flex items-start gap-2.5">
-                                    <CheckCircle2 
-                                        size={14} 
-                                        className={`shrink-0 mt-0.5 ${isSelected && isHighlighted ? 'text-white' : 'text-green-500'}`} 
-                                    />
-                                    <span className={`text-xs font-medium leading-snug ${isSelected && isHighlighted ? 'text-white/90' : 'text-text-main'}`}>
-                                        {feature}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Usage Limits */}
-                    <div className={`mt-4 pt-3 space-y-2 ${isSelected && isHighlighted ? 'border-t border-white/20' : 'border-t border-gray-100'}`}>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                            {plan.messagingEnabled && (
-                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                    SMS: {plan.smsCredits === -1 ? 'Unlimited' : `${plan.smsCredits}/mo`}
-                                </div>
-                            )}
-                            {plan.teamMembersEnabled && (
-                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                    Team: {plan.teamMembersLimit === -1 ? 'Unlimited' : `${plan.teamMembersLimit} members`}
-                                </div>
-                            )}
-                            {plan.branchesEnabled && (
-                                <div className={`text-[11px] font-medium ${isSelected && isHighlighted ? 'text-white/70' : 'text-text-secondary'}`}>
-                                    Branches: {plan.branchLimit === -1 ? 'Unlimited' : `${plan.branchLimit}`}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Selected Indicator */}
-                {isSelected && (
-                    <div className={`px-6 py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest ${
-                        isHighlighted ? 'bg-white/15 text-white' : 'bg-primary/10 text-primary'
-                    }`}>
-                        <CheckCircle2 size={14} />
-                        Selected
-                    </div>
-                )}
-            </motion.button>
-        );
-    };
-
-    const renderRegularCard = (plan: PricingPlan, idx: number) => {
-        return renderHighlightedCard(plan, idx);
+    const getSavings = (plan: PricingPlan, cycle: string) => {
+        if (plan.isFree) return null;
+        const monthly = plan.monthlyPrice;
+        if (cycle === 'yearly') {
+            const total = plan.yearlyPrice || monthly * 12;
+            const saved = monthly * 12 - total;
+            return saved > 0 ? `Save ₦${saved.toLocaleString()}/yr` : null;
+        }
+        if (cycle === 'quarterly') {
+            const total = plan.quarterlyPrice || monthly * 3;
+            const saved = monthly * 3 - total;
+            return saved > 0 ? `Save ₦${saved.toLocaleString()}/qtr` : null;
+        }
+        return null;
     };
 
     return (
@@ -1409,42 +1321,37 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-10 pb-20"
+            className="space-y-8 pb-32 md:pb-20"
         >
             <div className="text-center space-y-3">
-                <span className="inline-block px-3 py-1 bg-primary/5 text-primary text-[9px] font-black uppercase tracking-[0.2em] rounded-full">
+                <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
                     Transparent Pricing
                 </span>
                 <h1 className="text-3xl sm:text-4xl font-display font-black text-text-main tracking-tight">
                     Choose Your Plan
                 </h1>
-                <p className="text-text-secondary font-medium max-w-md mx-auto">
-                    Select the plan that best fits your business growth needs. Upgrade or cancel anytime.
+                <p className="text-text-secondary font-medium max-w-md mx-auto text-sm sm:text-base">
+                    Pick the perfect plan for your business. Upgrade or switch anytime.
                 </p>
             </div>
 
             {/* Billing Toggle */}
             <div className="flex justify-center">
-                <div className="bg-gray-100/80 p-1.5 rounded-2xl flex items-center gap-1 relative">
+                <div className="bg-gray-100/80 p-1 rounded-2xl flex items-center gap-1">
                     {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                         <button
                             key={cycle}
                             onClick={() => setBillingCycle(cycle)}
-                            className={`relative px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                            className={`relative px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                 billingCycle === cycle
-                                    ? 'bg-white shadow-lg shadow-black/5 text-primary scale-[1.02]'
-                                    : 'text-text-secondary hover:text-text-main'
+                                    ? 'bg-white shadow-md shadow-black/5 text-primary'
+                                    : 'text-text-secondary/60 hover:text-text-main'
                             }`}
                         >
-                            {cycle}
-                            {cycle === 'yearly' && (
-                                <span className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-green-500 text-white text-[7px] font-black uppercase tracking-widest rounded-full">
-                                    -20%
-                                </span>
-                            )}
-                            {cycle === 'quarterly' && (
-                                <span className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-green-500 text-white text-[7px] font-black uppercase tracking-widest rounded-full">
-                                    -10%
+                            {cycle === 'monthly' ? 'Monthly' : cycle === 'quarterly' ? 'Quarterly' : 'Yearly'}
+                            {getDiscount(cycle) && (
+                                <span className="block text-[7px] text-emerald-500 font-black tracking-wider -mt-0.5">
+                                    {getDiscount(cycle)}
                                 </span>
                             )}
                         </button>
@@ -1452,29 +1359,189 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                 </div>
             </div>
 
-            {pricingLoading || plans.length === 0 ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            {plansLoading ? (
+                <div className="flex items-center justify-center py-24">
+                    <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </div>
+            ) : activePlans.length === 0 ? (
+                <div className="text-center py-16">
+                    <p className="text-text-secondary font-medium">No plans available at the moment.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto items-stretch">
-                    {plans.map((plan: PricingPlan, idx: number) => (
-                        plan.isPopular ? renderHighlightedCard(plan, idx) : renderRegularCard(plan, idx)
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
+                    {activePlans.map((plan: PricingPlan, idx: number) => {
+                        const isSelected = selectedPlan === plan.id;
+                        const isPopular = plan.isPopular;
+                        const price = getPrice(plan);
+                        const periodLabel = getPeriodLabel(plan);
+                        const savings = getSavings(plan, billingCycle);
+                        const trialDays = plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
+
+                        return (
+                            <div
+                                key={plan.id}
+                                className={`relative rounded-[32px] border-2 transition-all duration-300 flex flex-col overflow-hidden ${
+                                    isSelected
+                                        ? 'border-primary shadow-xl shadow-primary/10'
+                                        : isPopular
+                                            ? 'border-primary/20 shadow-lg hover:shadow-xl'
+                                            : 'border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200'
+                                } ${isPopular ? 'md:scale-105 z-10' : ''}`}
+                            >
+                                {/* Popular Badge */}
+                                {isPopular && (
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                                        <div className="px-5 py-1.5 bg-gradient-to-r from-primary to-blue-500 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-primary/30">
+                                            Most Popular
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Card Header */}
+                                <div className={`p-6 sm:p-7 ${isSelected && isPopular ? 'bg-primary' : isPopular ? 'bg-gradient-to-b from-primary/[0.03] to-transparent' : ''}`}>
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div>
+                                            <h3 className={`text-lg font-black ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
+                                                {plan.name}
+                                            </h3>
+                                            {plan.description && (
+                                                <p className={`text-xs font-medium mt-1 ${isSelected && isPopular ? 'text-white/70' : 'text-text-secondary'}`}>
+                                                    {plan.description}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {plan.isFree ? (
+                                            <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest shrink-0">
+                                                Free
+                                            </div>
+                                        ) : trialDays > 0 && (
+                                            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-[9px] font-black uppercase tracking-widest shrink-0">
+                                                <Zap size={10} />
+                                                {trialDays}-Day Trial
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Price */}
+                                    <div className={`flex items-baseline gap-1 ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
+                                        {plan.isFree ? (
+                                            <span className="text-3xl sm:text-4xl font-black">Free</span>
+                                        ) : (
+                                            <>
+                                                <span className="text-3xl sm:text-4xl font-black tracking-tight">₦{price.toLocaleString()}</span>
+                                                {periodLabel && (
+                                                    <span className={`text-xs font-bold ${isSelected && isPopular ? 'text-white/60' : 'text-text-secondary/60'}`}>
+                                                        {periodLabel}
+                                                    </span>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Savings */}
+                                    {savings && (
+                                        <p className={`text-[11px] font-bold mt-1 ${isSelected && isPopular ? 'text-white/60' : 'text-emerald-500'}`}>
+                                            {savings}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Features */}
+                                <div className={`px-6 sm:px-7 py-5 flex-1 ${isSelected && isPopular ? 'bg-primary/5' : ''}`}>
+                                    <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-4 ${isSelected && isPopular ? 'text-primary/70' : 'text-text-secondary/60'}`}>
+                                        Everything You Get
+                                    </p>
+                                    <div className="space-y-3">
+                                        {plan.features.map((feature: string, i: number) => (
+                                            <div key={i} className="flex items-start gap-3">
+                                                <div className={`size-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                                                    isSelected && isPopular ? 'bg-primary/10 text-primary' : 'bg-emerald-50 text-emerald-500'
+                                                }`}>
+                                                    <CheckCircle2 size={11} strokeWidth={4} />
+                                                </div>
+                                                <span className={`text-xs font-medium leading-snug ${isSelected && isPopular ? 'text-text-main' : 'text-text-main'}`}>
+                                                    {feature}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Limits */}
+                                    <div className={`mt-5 pt-4 space-y-2 ${isSelected && isPopular ? 'border-t border-primary/10' : 'border-t border-gray-100'}`}>
+                                        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                                            {plan.messagingEnabled && (
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`size-1.5 rounded-full ${isSelected && isPopular ? 'bg-primary' : 'bg-gray-300'}`} />
+                                                    <span className="text-[10px] font-bold text-text-secondary">
+                                                        SMS: {plan.smsCredits === -1 ? 'Unlimited' : `${plan.smsCredits}/mo`}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {plan.teamMembersEnabled && (
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`size-1.5 rounded-full ${isSelected && isPopular ? 'bg-primary' : 'bg-gray-300'}`} />
+                                                    <span className="text-[10px] font-bold text-text-secondary">
+                                                        Team: {plan.teamMembersLimit === -1 ? 'Unlimited' : `${plan.teamMembersLimit}`}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {plan.branchesEnabled && (
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`size-1.5 rounded-full ${isSelected && isPopular ? 'bg-primary' : 'bg-gray-300'}`} />
+                                                    <span className="text-[10px] font-bold text-text-secondary">
+                                                        Branches: {plan.branchLimit === -1 ? 'Unlimited' : `${plan.branchLimit}`}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {plan.catalogueEnabled && (
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`size-1.5 rounded-full ${isSelected && isPopular ? 'bg-primary' : 'bg-gray-300'}`} />
+                                                    <span className="text-[10px] font-bold text-text-secondary">
+                                                        Catalogue: {plan.maxCatalogueItems === -1 ? 'Unlimited' : `${plan.maxCatalogueItems} items`}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* CTA Button */}
+                                <div className={`px-6 sm:px-7 pb-6 sm:pb-7 ${isSelected && isPopular ? 'bg-primary/5' : ''}`}>
+                                    <button
+                                        onClick={() => setSelectedPlan(plan.id)}
+                                        className={`w-full h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-[0.97] flex items-center justify-center gap-2 ${
+                                            isSelected
+                                                ? isPopular
+                                                    ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                                                    : 'bg-primary text-white shadow-lg shadow-primary/20'
+                                                : isPopular
+                                                    ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg'
+                                                    : 'bg-gray-100 text-text-secondary hover:bg-gray-200 hover:text-text-main'
+                                        }`}
+                                    >
+                                        {isSelected ? (
+                                            <>
+                                                <CheckCircle2 size={12} />
+                                                {plan.isFree ? 'Selected — Continue' : `Selected — Continue to Payment`}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {plan.isFree ? 'Choose Free' : trialDays > 0 ? `Start ${trialDays}-Day Trial` : `Choose ${plan.name}`}
+                                                <ArrowRight size={12} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {/* Bottom selected indicator line */}
+                                {isSelected && (
+                                    <div className={`h-1 w-full ${isPopular ? 'bg-primary' : 'bg-primary/60'}`} />
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
-
-            <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0 mt-4">
-                <div className="max-w-xl mx-auto">
-                    <Button 
-                        disabled={!selectedPlan}
-                        onClick={() => onNext({ planId: selectedPlan, billingCycle })}
-                        className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
-                    >
-                        {plans.find(p => p.id === selectedPlan)?.isFree ? 'Continue' : 'Continue to Payment'} <ArrowRight size={18} />
-                    </Button>
-                </div>
-            </div>
         </motion.div>
     );
 }

@@ -173,7 +173,7 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
       {/* Stock Limit Modal */}
       {stockLimitItem && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setStockLimitItem(null)} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"  />
           <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 text-center">
               <div className="size-16 mx-auto mb-4 rounded-2xl bg-amber-50 flex items-center justify-center">

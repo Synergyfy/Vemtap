@@ -512,7 +512,7 @@ export default function CompliancePage() {
             {/* Agreement Preview Modal */}
             {selectedItem && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 lg:p-8 animate-in fade-in duration-200">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-md" onClick={() => setSelectedItem(null)}></div>
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-md" ></div>
                     <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100">
                         <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                             <div className="flex items-center gap-4">

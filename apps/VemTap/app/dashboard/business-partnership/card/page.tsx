@@ -50,13 +50,8 @@ export default function PartnershipCardPage() {
     }, [branches, activeBranchId]);
 
     const publicUrl = useMemo(() => {
-        const base = activeBranch?.username
-            ? `${origin}/${activeBranch.username}`
-            : activeBranch?.uniqueCode
-                ? `${origin}/${activeBranch.uniqueCode}`
-                : `${origin}/your-business`;
-        const ref = stats?.referralCode || 'VEN-ABC123';
-        return `${base}?ref=${ref}`;
+        const ref = stats?.referralCode || activeBranch?.uniqueCode || '';
+        return `${origin}/get-started?ref=${ref}`;
     }, [origin, activeBranch, stats]);
 
     const business = useMemo((): BusinessInfo => ({
@@ -70,7 +65,7 @@ export default function PartnershipCardPage() {
         role: 'Business Partner',
         tagline: 'Join me on VEMTAP and grow your business',
         logo: myBusiness?.logoUrl || user?.businessLogo || '/logo.png',
-        referralCode: stats?.referralCode || 'VEN-ABC123',
+        referralCode: stats?.referralCode || activeBranch?.uniqueCode || 'VEM-REFERRAL',
         qrValue: publicUrl,
     }), [user, stats, myBusiness, publicUrl]);
 
