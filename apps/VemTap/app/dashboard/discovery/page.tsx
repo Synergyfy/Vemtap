@@ -16,7 +16,6 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const NearbyMap = dynamic(() => import('@/components/dashboard/discovery/NearbyMap'), { ssr: false });
 const LocationSetupModal = dynamic(() => import('@/components/dashboard/branches/LocationSetupModal'), { ssr: false });
-import ComingSoonOverlay from '@/components/dashboard/ComingSoonOverlay';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { 
     useDiscoveryOverview,
@@ -126,11 +125,7 @@ export default function DiscoveryPage() {
                 description="Get more customers from nearby businesses."
                 isSticky={false}
             />
-            
-            <ComingSoonOverlay
-                title="Discovery Network"
-                description="Get discovered by nearby customers and grow your reach. Promote your offers, connect with local shoppers, and track how many new customers find your business through VEMTAP's discovery network."
-            />
+
             
             {!isCreatingPromo ? (
                 <>
@@ -465,6 +460,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
         }
         watchIdRef.current = navigator.geolocation.watchPosition(
             (pos) => {
+                console.log('🛰️ Device GPS coordinates updated:', { lat: pos.coords.latitude, lng: pos.coords.longitude });
                 setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
                 setGpsLoading(false);
                 setLocationError(null);
@@ -529,6 +525,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
         setLocationMessage('Getting your current location...');
         try {
             const pos = await getBrowserLocation();
+            console.log('🛰️ Device GPS coordinates fetched:', pos);
             await updateBranchMutation.mutateAsync({
                 id: branchId,
                 updates: { latitude: pos.lat, longitude: pos.lng },

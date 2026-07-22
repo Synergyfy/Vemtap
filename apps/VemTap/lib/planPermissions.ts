@@ -83,6 +83,7 @@ export const PERMISSION_SECTIONS: PermissionSection[] = [
         label: 'Analytics',
         features: [
             { id: 'analytics', label: 'Advanced Analytics', parentId: undefined, defaultLevel: 'limited', defaultLimit: 3, limitUnit: 'months', limitPlaceholder: 'Months of data' },
+            { id: 'ai-copilot', label: 'AI Copilot Assistant', parentId: 'analytics', defaultLevel: 'limited', defaultLimit: 50, limitUnit: 'credits/mo', limitPlaceholder: 'Monthly credits' },
         ],
     },
     {
@@ -213,6 +214,7 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     features['activity-log'] = { level: plan.activityLogEnabled ? 'yes' : 'no' };
     features['locations'] = getPerm(plan.branchesEnabled, plan.branchLimit);
     features['qr-codes'] = getPerm(!!plan.qrCodesEnabled, plan.qrCodesLimit);
+    features['ai-copilot'] = getPerm(!!plan.aiCopilotEnabled, plan.aiCredits);
     
     // Settings, Profile, Subscription, Support
     features['settings'] = { level: 'yes' };
@@ -327,6 +329,11 @@ export function mapConfigToPlanDto(
     const qrCodes = getEnabledAndLimit('qr-codes');
     dto.qrCodesEnabled = qrCodes.enabled;
     dto.qrCodesLimit = qrCodes.limit;
+
+    // AI Copilot
+    const aiCopilot = getEnabledAndLimit('ai-copilot');
+    dto.aiCopilotEnabled = aiCopilot.enabled;
+    dto.aiCredits = aiCopilot.limit;
 
     return dto;
 }

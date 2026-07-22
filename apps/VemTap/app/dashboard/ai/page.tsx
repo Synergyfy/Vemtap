@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Coins, TrendingUp, History, Zap, ArrowRight, ExternalLink } from 'lucide-react';
 import { useAIStore } from '@/store/useAIStore';
+import { useAICredits } from '@/services/ai/hooks';
 import { AI_CREDIT_COST } from '@/services/ai/types';
 import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
 
@@ -12,10 +13,12 @@ const naira = (amount: number) =>
 
 export default function AICreditsPage() {
   const router = useRouter();
+  useAICredits();
   const credits = useAIStore((state) => state.credits);
   const lastUpdated = useAIStore((state) => state.lastUpdated);
   const settings = useSystemSettingsStore();
 
+  const isUnlimited = credits.limit === -1;
   const activePackages = settings.aiCreditPackages.filter(p => p.isActive);
   const usageHistory = Object.entries(lastUpdated)
     .filter(([_, ts]) => ts)
@@ -45,8 +48,12 @@ export default function AICreditsPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-500 mb-1">Available Credits</p>
-                <p className="text-4xl font-black text-gray-900">{credits.available}</p>
-                <p className="text-sm text-gray-400 mt-1">{credits.used} credits used total</p>
+                <p className="text-4xl font-black text-gray-900">
+                  {isUnlimited ? 'Unlimited' : credits.available}
+                </p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {isUnlimited ? 'Unlimited allowance on your plan' : `${credits.used} of ${credits.limit} credits used this month`}
+                </p>
               </div>
             </div>
             <div className="flex gap-3">

@@ -57,6 +57,8 @@ const normalizePlan = (raw: any): PricingPlan => ({
     activityLogEnabled: Boolean(raw?.activityLogEnabled),
     qrCodesEnabled: Boolean(raw?.qrCodesEnabled),
     qrCodesLimit: raw?.qrCodesLimit !== undefined && raw?.qrCodesLimit !== null ? toNumber(raw.qrCodesLimit) : null,
+    aiCopilotEnabled: Boolean(raw?.aiCopilotEnabled),
+    aiCredits: raw?.aiCredits !== undefined && raw?.aiCredits !== null ? toNumber(raw.aiCredits) : 0,
     permissionsConfiguredAt: raw?.permissionsConfiguredAt ? String(raw.permissionsConfiguredAt) : null,
 });
 
@@ -77,7 +79,8 @@ const toPlanPayload = (plan: Partial<PricingPlan>) => {
         'visitorsEnabled', 'inAppChatEnabled', 'formsEnabled', 'formsLimit',
         'businessQrEnabled', 'marketingKitEnabled', 'marketingKitLimit',
         'discoveryEnabled', 'staffRolesEnabled', 'staffRolesLimit',
-        'activityLogEnabled', 'qrCodesEnabled', 'qrCodesLimit'
+        'activityLogEnabled', 'qrCodesEnabled', 'qrCodesLimit',
+        'aiCopilotEnabled', 'aiCredits'
     ];
 
     fields.forEach(field => {
