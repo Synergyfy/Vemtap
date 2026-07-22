@@ -49,6 +49,8 @@ export interface PricingPlan {
     activityLogEnabled?: boolean;
     qrCodesEnabled?: boolean;
     qrCodesLimit?: number | null;
+    aiCopilotEnabled?: boolean;
+    aiCredits?: number | null;
     permissionsConfiguredAt?: string | null;
     badge?: 'free' | 'silver' | 'gold' | 'platinum';
 }

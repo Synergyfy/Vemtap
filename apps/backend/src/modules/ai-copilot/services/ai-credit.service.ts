@@ -30,23 +30,43 @@ export class AiCreditService {
     return { periodStart, periodEnd };
   }
 
-  /** Resolves the active plan's aiCredits limit for a given businessId. Returns 0 if no plan. */
-  private async getPlanCreditLimit(businessId: string): Promise<{ limit: number; enabled: boolean }> {
+  /** Resolves the active plan's aiCredits limit for a given businessId (or branchId fallback). Returns 0 if no plan. */
+  private async getPlanCreditLimit(targetId: string): Promise<{ limit: number; enabled: boolean; businessId: string }> {
     try {
-      const sub = await this.subscriptionRepo.findOne({
-        where: { businessId, status: SubscriptionStatus.ACTIVE },
+      let sub = await this.subscriptionRepo.findOne({
+        where: { businessId: targetId, status: SubscriptionStatus.ACTIVE },
         relations: ['plan'],
         order: { createdAt: 'DESC' },
       });
 
-      if (!sub?.plan) return { limit: 0, enabled: false };
+      let resolvedBusinessId = targetId;
+
+      // Fallback: If targetId is a branchId, resolve its parent businessId
+      if (!sub) {
+        const branch = await this.dataSource.getRepository('branches').findOne({
+          where: { id: targetId },
+          select: ['businessId'],
+        }).catch(() => null);
+
+        if (branch?.businessId) {
+          resolvedBusinessId = branch.businessId;
+          sub = await this.subscriptionRepo.findOne({
+            where: { businessId: resolvedBusinessId, status: SubscriptionStatus.ACTIVE },
+            relations: ['plan'],
+            order: { createdAt: 'DESC' },
+          });
+        }
+      }
+
+      if (!sub?.plan) return { limit: 0, enabled: false, businessId: resolvedBusinessId };
       return {
         limit: sub.plan.aiCredits ?? 0,
         enabled: sub.plan.aiCopilotEnabled ?? false,
+        businessId: resolvedBusinessId,
       };
     } catch (e) {
-      this.logger.warn(`[AiCreditService] Could not resolve plan for business ${businessId}: ${e.message}`);
-      return { limit: 0, enabled: false };
+      this.logger.warn(`[AiCreditService] Could not resolve plan for target ${targetId}: ${e.message}`);
+      return { limit: 0, enabled: false, businessId: targetId };
     }
   }
 
@@ -54,16 +74,25 @@ export class AiCreditService {
   private async getOrCreateUsageRow(businessId: string): Promise<AiCreditUsage> {
     const { periodStart, periodEnd } = this.getCurrentPeriod();
 
-    let row = await this.usageRepo.findOne({
+    const existing = await this.usageRepo.findOne({
       where: { businessId, periodStart },
     });
 
-    if (!row) {
-      row = this.usageRepo.create({ businessId, used: 0, periodStart, periodEnd });
-      row = await this.usageRepo.save(row);
+    if (existing) {
+      return existing;
     }
 
-    return row;
+    try {
+      const newRow = this.usageRepo.create({ businessId, used: 0, periodStart, periodEnd });
+      return await this.usageRepo.save(newRow);
+    } catch (e) {
+      // Handle race condition if concurrent request created row in parallel
+      const fallback = await this.usageRepo.findOne({ where: { businessId, periodStart } });
+      if (fallback) {
+        return fallback;
+      }
+      throw e;
+    }
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -71,8 +100,8 @@ export class AiCreditService {
   /**
    * Returns the real credit balance for a business for the current billing period.
    */
-  async getStatus(businessId: string): Promise<{ available: number; used: number; limit: number; enabled: boolean }> {
-    const { limit, enabled } = await this.getPlanCreditLimit(businessId);
+  async getStatus(targetId: string): Promise<{ available: number; used: number; limit: number; enabled: boolean }> {
+    const { limit, enabled, businessId } = await this.getPlanCreditLimit(targetId);
 
     if (!enabled || limit === 0) {
       return { available: 0, used: 0, limit: 0, enabled: false };
@@ -94,8 +123,8 @@ export class AiCreditService {
    * Deducts one credit from the business's balance for the current period.
    * Throws ForbiddenException if the business has run out of credits or AI is not enabled on their plan.
    */
-  async consume(businessId: string): Promise<void> {
-    const { limit, enabled } = await this.getPlanCreditLimit(businessId);
+  async consume(targetId: string): Promise<void> {
+    const { limit, enabled, businessId } = await this.getPlanCreditLimit(targetId);
 
     if (!enabled || limit === 0) {
       throw new ForbiddenException(

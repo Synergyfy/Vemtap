@@ -25,11 +25,18 @@ import { ResponseParser } from './prompts/response-parser';
 import { OpenAIClient } from './openai/openai.client';
 import { LocalFallbackService } from './services/local-fallback.service';
 
+import { AiCreditService } from './services/ai-credit.service';
+
 describe('AiCopilotService', () => {
   let service: AiCopilotService;
 
   const mockDataSource = {
     query: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockAiCreditService = {
+    consume: jest.fn().mockResolvedValue(undefined),
+    getStatus: jest.fn().mockResolvedValue({ available: 99, used: 1, limit: 100, enabled: true }),
   };
 
   beforeEach(async () => {
@@ -58,6 +65,10 @@ describe('AiCopilotService', () => {
         ResponseParser,
         OpenAIClient,
         LocalFallbackService,
+        {
+          provide: AiCreditService,
+          useValue: mockAiCreditService,
+        },
         {
           provide: ConfigService,
           useValue: {
