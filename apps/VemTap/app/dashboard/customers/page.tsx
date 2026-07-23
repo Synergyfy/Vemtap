@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
     CRMOverviewHeader, 
     CRMStatsCards, 
@@ -9,15 +9,20 @@ import {
     CRMRecentCustomers 
 } from '@/components/dashboard/crm/CRMOverview';
 import { CRMGrowthChart } from '@/components/dashboard/crm/CRMChart';
-import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
+import { useVisitors, useVisitorStats, useActivityFeed } from '@/services/visitors/hooks';
+import { useAIStore } from '@/store/useAIStore';
 import { Users, UserPlus, Repeat, Activity } from 'lucide-react';
 
 export default function CustomersDashboard() {
     const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, { limit: 5 });
     const { data: statsData, isLoading: isLoadingStats } = useVisitorStats();
+    const { data: activityData, isLoading: isLoadingActivity } = useActivityFeed();
+
+    const setAnalysisContext = useAIStore((state) => state.triggerAnalysis);
 
     const visitors = paginatedData?.data || [];
-    const isLoading = isLoadingVisitors || isLoadingStats;
+    const activities = activityData?.data || [];
+    const isLoading = isLoadingVisitors || isLoadingStats || isLoadingActivity;
 
     const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
         ...s,
@@ -25,6 +30,25 @@ export default function CustomersDashboard() {
         color: s.color === 'blue' ? 'text-blue-600' : s.color === 'green' ? 'text-emerald-600' : s.color === 'purple' ? 'text-purple-600' : 'text-amber-600',
         icon: s.icon === 'group' ? Users : s.icon === 'person_add' ? UserPlus : s.icon === 'repeat' ? Repeat : Activity
     })) : [];
+
+    // Set AI analysis context with customer data
+    const customerContext = useMemo(() => ({
+        totalCustomers: statsData?.stats?.find(s => s.label.toLowerCase().includes('total'))?.value || paginatedData?.total?.toString() || '0',
+        recentCustomers: visitors.slice(0, 5).map(v => v.name || v.firstName || v.phone).filter(Boolean),
+        newThisMonth: statsData?.stats?.find(s => s.label.toLowerCase().includes('new this month'))?.value || '0',
+        returningVisitors: statsData?.stats?.find(s => s.label.toLowerCase().includes('returning'))?.value || '0',
+        averageFrequency: statsData?.stats?.find(s => s.label.toLowerCase().includes('frequency') || s.label.toLowerCase().includes('avg'))?.value || '0',
+        recentActivity: activities.slice(0, 10).map(a => ({ userName: a.userName, type: a.type, timestamp: a.timestamp })),
+    }), [statsData, paginatedData, visitors, activities]);
+
+    useEffect(() => {
+        useAIStore.setState(state => ({
+            analysisContext: {
+                ...state.analysisContext,
+                customers: customerContext,
+            },
+        }));
+    }, [customerContext]);
 
     if (isLoading) {
         return (
@@ -76,7 +100,7 @@ export default function CustomersDashboard() {
                          <div className="flex items-center justify-between mb-6 px-1">
                             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Activity Log</h2>
                         </div>
-                        <CRMActivityFeed />
+                        <CRMActivityFeed activities={activities} />
                     </section>
                 </div>
             </div>

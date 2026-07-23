@@ -1,15 +1,16 @@
 import React from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Users, ShoppingBag, TrendingUp, MoreHorizontal, Wand2, Settings } from 'lucide-react';
-import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useSudoStore } from '@/store/useSudoStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canAccessMenuItem } from '@/lib/utils/nav-filter';
 
-export default function DashboardMobileNav() {
+interface DashboardMobileNavProps {
+    onOpenSidebar?: () => void;
+}
+
+export default function DashboardMobileNav({ onOpenSidebar }: DashboardMobileNavProps) {
     const pathname = usePathname();
-    const { getLinkWithBranch } = useActiveBranch();
     const { activeSession } = useSudoStore();
     const isAdminMode = activeSession !== null;
     const user = useAuthStore((state) => state.user);
@@ -87,9 +88,9 @@ export default function DashboardMobileNav() {
                     const Icon = item.icon;
 
                     return (
-                        <Link
+                        <button
                             key={item.href}
-                            href={getLinkWithBranch(item.href)}
+                            onClick={onOpenSidebar}
                             className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
                                 isActive ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
                             }`}
@@ -106,7 +107,7 @@ export default function DashboardMobileNav() {
                             }`}>
                                 {item.label}
                             </span>
-                        </Link>
+                        </button>
                     );
                 })}
             </div>

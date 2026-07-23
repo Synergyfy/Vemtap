@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCatalogueOrders, useCatalogueOrderDetails, useUpdateCatalogueOrderStatus, useBusinessClaims, OrderStatus, useRedeemClaim } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { usePosStore } from '@/store/usePosStore';
+import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
 import toast from 'react-hot-toast';
@@ -110,9 +111,20 @@ export default function OrdersDashboard() {
 
   const { data: orderDetail, isLoading: loadingDetail } = useCatalogueOrderDetails(selectedOrderId ?? '');
 
-  const addItemsToCartAndCheckout = (items: any[], goToPayment = false) => {
+  const addItemsToCartAndCheckout = (items: any[], goToPayment = false, customer?: { id: string; firstName?: string; lastName?: string; phone?: string; email?: string } | null) => {
     const posStore = usePosStore.getState();
     posStore.clearCart();
+    if (customer?.id) {
+      const name = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Customer';
+      posStore.attachCustomer({ id: customer.id, name, phone: customer.phone || '', email: customer.email });
+      const loyaltyState = usePosLoyaltyStore.getState();
+      const exists = loyaltyState.customers.find(c => c.id === customer.id);
+      if (!exists) {
+        usePosLoyaltyStore.setState(s => ({
+          customers: [...s.customers, { id: customer.id, name, phone: customer.phone || '', totalPoints: 0 }]
+        }));
+      }
+    }
     items.forEach((item: any) => {
       const product = item.item || item;
       const cartItem = {
@@ -137,7 +149,7 @@ export default function OrdersDashboard() {
       toast.error('No items in this order');
       return;
     }
-    addItemsToCartAndCheckout(orderDetail.items, false);
+    addItemsToCartAndCheckout(orderDetail.items, false, orderDetail.customer);
     updateStatus.mutate(
       { id: selectedOrderId!, status: 'processing' as OrderStatus },
       { onSuccess: () => toast.success('Order added to cart! You can review items before payment.') }
@@ -149,7 +161,7 @@ export default function OrdersDashboard() {
       toast.error('No items in this order');
       return;
     }
-    addItemsToCartAndCheckout(orderDetail.items, true);
+    addItemsToCartAndCheckout(orderDetail.items, false, orderDetail.customer);
     updateStatus.mutate(
       { id: selectedOrderId!, status: 'processing' as OrderStatus },
       { onSuccess: () => toast.success('Continuing payment for this order') }
@@ -420,7 +432,7 @@ export default function OrdersDashboard() {
                           </button>
                           <div className="grid grid-cols-2 gap-2">
                             <button
-                              onClick={() => { addItemsToCartAndCheckout(orderDetail.items, false); toast.success('Items added to cart for review'); }}
+                              onClick={() => { addItemsToCartAndCheckout(orderDetail.items, false, orderDetail.customer); toast.success('Items added to cart for review'); }}
                               disabled={updateStatus.isPending}
                               className="h-12 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >

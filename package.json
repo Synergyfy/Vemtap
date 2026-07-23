@@ -25,6 +25,7 @@
         "turbo": "^2.8.10"
     },
     "pnpm": {
+        "neverBuiltDependencies": ["axios"],
         "supportedArchitectures": {
             "os": [
                 "linux",
