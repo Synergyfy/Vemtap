@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Coins, TrendingUp, History, Zap, ArrowRight, ExternalLink } from 'lucide-react';
+import { Sparkles, Coins, TrendingUp, History, Zap, ArrowRight, ExternalLink, Calculator } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAIStore } from '@/store/useAIStore';
 import { useAICredits } from '@/services/ai/hooks';
 import { AI_CREDIT_COST } from '@/services/ai/types';
@@ -17,6 +18,8 @@ export default function AICreditsPage() {
   const credits = useAIStore((state) => state.credits);
   const lastUpdated = useAIStore((state) => state.lastUpdated);
   const settings = useSystemSettingsStore();
+  const [customAmount, setCustomAmount] = useState('');
+  const [customCredits, setCustomCredits] = useState(0);
 
   const isUnlimited = credits.limit === -1;
   const activePackages = settings.aiCreditPackages.filter(p => p.isActive);
@@ -24,6 +27,13 @@ export default function AICreditsPage() {
     .filter(([_, ts]) => ts)
     .sort(([, a], [, b]) => new Date(b).getTime() - new Date(a).getTime())
     .slice(0, 20);
+
+  const creditPrice = settings.aiCreditPrice || 50;
+  const handleCustomAmountChange = (value: string) => {
+    const num = parseInt(value.replace(/[^0-9]/g, ''), 10) || 0;
+    setCustomAmount(num.toLocaleString());
+    setCustomCredits(Math.floor(num / creditPrice));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -178,6 +188,50 @@ export default function AICreditsPage() {
           <p className="text-xs text-gray-400 text-center mt-6">
             Credits never expire. Purchases are non-refundable. Contact support for custom packages.
           </p>
+        </div>
+
+        {/* Custom Amount */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Calculator size={20} className="text-purple-600" />
+            <h2 className="text-lg font-bold text-gray-900">Custom Amount</h2>
+          </div>
+          <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
+            <div className="flex-1 w-full">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">
+                Enter amount (NGN)
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-400">₦</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={customAmount}
+                  onChange={(e) => handleCustomAmountChange(e.target.value)}
+                  placeholder="0"
+                  className="w-full h-14 pl-10 pr-4 rounded-xl border-2 border-gray-200 bg-white text-2xl font-black text-gray-900 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none transition-all placeholder:text-gray-300"
+                />
+              </div>
+              {customCredits > 0 && (
+                <p className="text-sm text-gray-500 mt-2">
+                  You get <span className="font-black text-purple-600">{customCredits.toLocaleString()} AI credits</span> (₦{creditPrice.toLocaleString()} / credit)
+                </p>
+              )}
+            </div>
+            <button
+              disabled={customCredits === 0}
+              className="h-14 px-8 rounded-xl bg-purple-600 text-white font-black text-sm hover:bg-purple-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-600/20 shrink-0"
+              onClick={() => {
+                const numAmount = parseInt(customAmount.replace(/[^0-9]/g, ''), 10) || 0;
+                const ref = `CUSTOM-AI-${Date.now()}`;
+                // Purchase call would go here
+                toast.success(`Purchasing ${customCredits} AI credits for ${naira(numAmount)}`);
+              }}
+            >
+              <Zap size={18} />
+              Buy Custom Credits
+            </button>
+          </div>
         </div>
       </main>
     </div>

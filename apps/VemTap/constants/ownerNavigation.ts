@@ -63,7 +63,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 submenu: [
                     { label: 'Sales Dashboard', href: '/dashboard/sales' },
                     { label: 'POS Home', href: '/dashboard/pos' },
-                    { label: 'Orders', href: '/dashboard/catalogue/orders' },
+                    { label: 'Orders', href: '/dashboard/pos/orders' },
                     { label: 'Settings', href: '/dashboard/pos/settings' },
                     { label: 'Help', href: '/dashboard/pos/support' },
                 ],
@@ -189,6 +189,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 permission: 'analytics',
                 submenu: [
                     { label: 'Overview', href: '/dashboard/analytics' },
+                    { label: 'AI Reports', href: '/dashboard/analytics/ai-reports' },
                     { label: 'Sales Reports', href: '/dashboard/analytics/sales' },
                     { label: 'Inventory Reports', href: '/dashboard/analytics/inventory' },
                     { label: 'Customers', href: '/dashboard/analytics/customers' },
@@ -197,7 +198,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                     { label: 'Marketing', href: '/dashboard/analytics/marketing' },
                     { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
                 ],
-                keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts', 'advanced']
+                keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts', 'advanced', 'ai', 'reports']
             }
         ]
     },
@@ -257,8 +258,6 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 submenu: [
                     { label: 'Profile', href: '/dashboard/settings/profile' },
                     { label: 'Subscription', href: '/dashboard/settings/subscription' },
-                    { label: 'AI Credits', href: '/dashboard/ai' },
-                    { label: 'AI Reports', href: '/dashboard/ai/reports' },
                     { label: 'Support', href: '/dashboard/support' },
                     { label: 'Compliance', href: '/dashboard/compliance' },
                 ]

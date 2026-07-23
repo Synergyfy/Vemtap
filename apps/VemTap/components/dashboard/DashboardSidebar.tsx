@@ -13,7 +13,7 @@ import {
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
     MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
     ClipboardCheck, Search, Star, Pin, PinOff, ChevronLeft, ChevronRight, LayoutDashboard,
-    X, MoreHorizontal, User, Download, Sun, Moon, Crown
+    X, MoreHorizontal, User, Download, Sun, Moon, Crown, ArrowRight, CheckCircle2
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -21,9 +21,11 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import { useMarketingAssets, useAnalyticsOverview } from '@/services/marketing-assets/hooks';
-import { useBusinessClaims } from '@/services/catalogue/hooks';
+import { useBusinessClaims, useCatalogueOrders } from '@/services/catalogue/hooks';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
+import Modal from '@/components/ui/Modal';
 import UpgradeModal from './UpgradeModal';
 import InstallAppModal from './InstallAppModal';
 import SubscriptionExpiredModal from './SubscriptionExpiredModal';
@@ -51,22 +53,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [favorites, setFavorites] = useState<string[]>(['pos', 'visitors', 'in-app-chat']); // Default favorites
+    const [showTaskModal, setShowTaskModal] = useState(false);
     
     useEffect(() => {
         setIsMounted(true);
-        // Load favorites from local storage if available
         const savedFavs = localStorage.getItem('vt-sidebar-favs');
         if (savedFavs) setFavorites(JSON.parse(savedFavs));
-        
-        // Load collapsed state
-        const savedCollapsed = localStorage.getItem('vt-sidebar-collapsed');
-        
-        // Collapse by default on POS route, otherwise respect saved state
-        if (pathname?.includes('/dashboard/pos')) {
-            setIsCollapsed(true);
-        } else if (savedCollapsed === 'true') {
-            setIsCollapsed(true);
-        }
+
+        setIsCollapsed(true);
     }, [pathname]);
 
     const toggleCollapse = () => {
@@ -149,8 +143,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const [expandedSections, setExpandedSections] = useState<string[]>(['section-dashboard', 'section-customers']);
 
-    const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const wasCollapsedRef = useRef(false);
     const isAICopilotOpen = useAIStore((state) => state.isCopilotOpen);
     const setCopilotOpen = useAIStore((state) => state.setCopilotOpen);
     const queryClient = useQueryClient();
@@ -165,19 +159,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const unreadCount = notifications.filter((n: any) => !n.read).length;
     const { data: claimsData } = useBusinessClaims();
     const pendingRedemptions = (claimsData || []).filter((c: any) => c.status === 'claimed').length;
+    const { data: ordersData } = useCatalogueOrders({ branchId: activeBranchId ?? undefined, status: 'new' });
+    const newOrdersCount = ordersData?.total ?? 0;
 
     const { data: assets } = useMarketingAssets();
     const { data: marketingAnalytics } = useAnalyticsOverview();
-    const pendingSetupCount = useMemo(() => {
-        let count = 0;
-        if (!myBusiness?.logoUrl) count++;
-        if (!assets || assets.length === 0) count++;
-        if (!((marketingAnalytics?.totals?.downloads ?? 0) > 0)) count++;
-        const visitorsCount = data?.stats?.totalVisitors?.toString() || '0';
-        if (visitorsCount === '0') count++;
-        count++; 
-        return count;
-    }, [myBusiness, assets, marketingAnalytics, data]);
+    const { checklistItems, completedCount, totalCount, percentage: onboardingPercentage } = useOnboarding();
+    const pendingSetupCount = totalCount - completedCount;
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -359,7 +347,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                 {item.submenu ? (
                                                     <div className="space-y-1">
                                                         <button
-                                                            onClick={(e) => handleItemClick(e, item)}
+                                                            onClick={(e) => {
+                                                                if (isCollapsed) {
+                                                                    wasCollapsedRef.current = true;
+                                                                    toggleCollapse();
+                                                                    return;
+                                                                }
+                                                                handleItemClick(e, item);
+                                                            }}
                                                              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
                                                                 active ? 'bg-primary/5 text-primary font-semibold' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                                             }`}
@@ -389,10 +384,16 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                      return userPermissions.includes(subKey);
                                                                  }).map((sub, idx) => (
                                                                      <Link 
-                                                                         key={idx}
-                                                                         href={withBranch(sub.href)}
-                                                                         onClick={() => setIsMobileOpen(false)}
-                                                                          className={`block text-[15px] font-medium py-2 transition-colors ${
+                                                                          key={idx}
+                                                                          href={withBranch(sub.href)}
+                                                                          onClick={() => {
+                                                                              setIsMobileOpen(false);
+                                                                              if (wasCollapsedRef.current) {
+                                                                                  wasCollapsedRef.current = false;
+                                                                                  toggleCollapse();
+                                                                              }
+                                                                          }}
+                                                                           className={`block text-[15px] font-medium py-2 transition-colors ${
                                                                              isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700'
                                                                          }`}
                                                                      >
@@ -403,10 +404,21 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <Link
-                                                        href={withBranch(item.href!)}
-                                                        onClick={() => setIsMobileOpen(false)}
-                                                         className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
+                                                    <button
+                                                        onClick={() => {
+                                                            if (isCollapsed) {
+                                                                wasCollapsedRef.current = true;
+                                                                toggleCollapse();
+                                                                return;
+                                                            }
+                                                            router.push(withBranch(item.href!));
+                                                            setIsMobileOpen(false);
+                                                            if (wasCollapsedRef.current) {
+                                                                wasCollapsedRef.current = false;
+                                                                toggleCollapse();
+                                                            }
+                                                        }}
+                                                         className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
                                                             active ? 'bg-primary/10 text-primary font-semibold border-l-[3px] border-primary' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                                         }`}
                                                     >
@@ -424,7 +436,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                 )}
                                                             </div>
                                                         )}
-                                                    </Link>
+                                                    </button>
                                                 )}
 
                                                 {/* Tooltip & Favorite Toggle on Hover */}
@@ -499,35 +511,117 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                     <div className="flex items-center gap-2 lg:gap-3">
                         {pendingSetupCount > 0 && (
-                            <Link href={withBranch("/dashboard")} className="relative size-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary hover:bg-primary/10 transition-all border border-transparent">
+                            <button onClick={() => setShowTaskModal(true)} className="relative size-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary hover:bg-primary/10 transition-all border border-transparent">
                                 <ClipboardCheck size={18} />
                                 <span className="absolute -top-1 -right-1 size-4 bg-primary text-white text-[8px] font-black rounded-full border-2 border-white flex items-center justify-center">
                                     {pendingSetupCount}
                                 </span>
-                            </Link>
+                            </button>
                         )}
-                        {/* Subscription Plan Badge */}
-                        {activeSubscription && (
-                            <Tooltip content={`Current Plan: ${activeSubscription.plan.name}`} side="bottom">
-                                <button
-                                    onClick={() => router.push(getLinkWithBranch('/dashboard/settings/subscription'))}
-                                    className="size-9 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all"
-                                    title="View your subscription plan"
-                                >
-                                    <Crown size={18} className="fill-current" />
+                        <DropdownMenu>
+                            <DropdownMenuTrigger>
+                                <button className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
+                                    <ShoppingBag size={18} />
+                                    {newOrdersCount > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white">
+                                        {newOrdersCount > 99 ? '99+' : newOrdersCount}
+                                    </span>}
                                 </button>
-                            </Tooltip>
-                        )}
-                        <Link href={withBranch('/dashboard/catalogue/orders')} className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
-                            <ShoppingBag size={18} />
-                            {pendingRedemptions > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white">
-                                {pendingRedemptions > 99 ? '99+' : pendingRedemptions}
-                            </span>}
-                        </Link>
-                        <button onClick={() => setShowNotifications(!showNotifications)} className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
-                            <Bell size={18} />
-                            {unreadCount > 0 && <span className="absolute top-2 right-2 size-1.5 bg-red-500 rounded-full border border-white" />}
-                        </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-64 mt-2" align="end">
+                                <div className="px-3 py-2 border-b border-gray-50">
+                                    <p className="text-xs font-semibold text-gray-900">New Orders</p>
+                                </div>
+                                {newOrdersCount > 0 ? (
+                                    <>
+                                        <div className="px-3 py-4 text-center">
+                                            <p className="text-sm font-bold text-gray-900">{newOrdersCount} new order{newOrdersCount !== 1 ? 's' : ''}</p>
+                                            <p className="text-[10px] text-gray-400 mt-0.5">awaiting your attention</p>
+                                        </div>
+                                        <div className="border-t border-gray-50 px-2 py-1.5">
+                                            <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/pos/orders'))} className="rounded-lg">
+                                                <ShoppingBag size={14} />
+                                                <span>Open Orders</span>
+                                            </DropdownMenuItem>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="px-3 py-6 text-center">
+                                        <ShoppingBag size={20} className="mx-auto text-gray-300 mb-2" />
+                                        <p className="text-xs text-gray-400">No new orders</p>
+                                    </div>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger>
+                                <button className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
+                                    <Bell size={18} />
+                                    {unreadCount > 0 && <span className="absolute top-2 right-2 size-1.5 bg-red-500 rounded-full border border-white" />}
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-72 mt-2" align="end">
+                                <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-gray-900">Notifications</p>
+                                    {unreadCount > 0 && (
+                                        <button onClick={() => readAllMutation.mutate()} className="text-[10px] text-primary font-semibold hover:underline">
+                                            Mark all read
+                                        </button>
+                                    )}
+                                </div>
+                                {notifications.length > 0 ? (
+                                    <>
+                                        <div className="max-h-64 overflow-y-auto">
+                                            {notifications.slice(0, 5).map((n: any) => (
+                                                <DropdownMenuItem key={n.id} className="flex flex-col items-start px-3 py-2.5 border-b border-gray-50 last:border-b-0 rounded-none cursor-default">
+                                                    <div className="flex items-start gap-2 w-full">
+                                                        <div className={`mt-1 size-2 rounded-full shrink-0 ${n.read ? 'bg-gray-200' : 'bg-primary'}`} />
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-xs font-semibold text-gray-900 truncate">{n.title}</p>
+                                                            <p className="text-[10px] text-gray-400 line-clamp-2 mt-0.5">{n.message}</p>
+                                                            {n.timestamp && (
+                                                                <p className="text-[9px] text-gray-300 mt-1">{new Date(n.timestamp).toLocaleDateString()}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 mt-2 ml-4 w-full">
+                                                        {n.actionUrl && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (!n.read) readNotificationMutation.mutate(n.id);
+                                                                    router.push(withBranch(n.actionUrl));
+                                                                }}
+                                                                className="text-[10px] font-semibold text-primary hover:underline"
+                                                            >
+                                                                Open
+                                                            </button>
+                                                        )}
+                                                        {!n.read && (
+                                                            <button
+                                                                onClick={() => readNotificationMutation.mutate(n.id)}
+                                                                className="text-[10px] text-gray-400 hover:text-gray-600 hover:underline"
+                                                            >
+                                                                Dismiss
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </div>
+                                        <div className="border-t border-gray-50 px-2 py-1.5">
+                                            <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/settings/notifications'))} className="rounded-lg">
+                                                <Bell size={14} />
+                                                <span>View All Notifications</span>
+                                            </DropdownMenuItem>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="px-3 py-6 text-center">
+                                        <Bell size={20} className="mx-auto text-gray-300 mb-2" />
+                                        <p className="text-xs text-gray-400">No messages yet</p>
+                                    </div>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
 
                         <div className="h-6 w-px bg-gray-100 mx-1 hidden sm:block" />
 
@@ -548,6 +642,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     <div className="px-3 py-2 border-b border-gray-50 mb-1">
                                         <p className="text-xs font-semibold text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
                                         <p className="text-[10px] font-medium text-gray-400 truncate">{user?.email}</p>
+                                        {activeSubscription?.plan?.name && (
+                                            <p className="text-[10px] font-semibold text-primary mt-0.5 truncate">
+                                                {activeSubscription.plan.name}
+                                            </p>
+                                        )}
                                     </div>
                                     <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/settings/profile'))}>
                                         <User size={14} />
@@ -580,10 +679,46 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             {/* AI Copilot - available on every page */}
             <AICopilotDrawer isOpen={isAICopilotOpen} onClose={() => setCopilotOpen(false)} />
 
+            {/* Task List Modal */}
+            <Modal isOpen={showTaskModal} onClose={() => setShowTaskModal(false)} title="Activation Checklist" description={`${pendingSetupCount} of ${totalCount} tasks remaining`} size="md">
+                <div className="space-y-3">
+                    {/* Progress */}
+                    <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                        <div className="h-2 flex-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${onboardingPercentage}%` }} />
+                        </div>
+                        <span className="text-xs font-black text-primary">{onboardingPercentage}% Complete</span>
+                    </div>
+                    {/* Checklist Items */}
+                    {checklistItems.filter(i => !i.isCompleted).map((item) => (
+                        <button key={item.id} onClick={() => { router.push(withBranch(item.route)); setShowTaskModal(false); }} className="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all text-left group">
+                            <div className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center shrink-0">
+                                <item.icon size={20} />
+                            </div>
+                            <div className="flex-1 min-w-0 text-left">
+                                <p className="text-sm font-bold text-gray-900">{item.title}</p>
+                                <p className="text-xs text-gray-400 font-medium">{item.description}</p>
+                            </div>
+                            <ArrowRight size={16} className="text-gray-300 group-hover:text-primary transition-colors shrink-0" />
+                        </button>
+                    ))}
+                    {/* All completed state */}
+                    {pendingSetupCount === 0 && (
+                        <div className="flex flex-col items-center py-8 text-center">
+                            <div className="size-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-3">
+                                <CheckCircle2 size={24} />
+                            </div>
+                            <p className="text-sm font-bold text-gray-900">All tasks completed!</p>
+                            <p className="text-xs text-gray-400 font-medium mt-1">You're all set up and ready to go.</p>
+                        </div>
+                    )}
+                </div>
+            </Modal>
+
             <UpgradeModal isOpen={upgradeModal.isOpen} onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} featureName={upgradeModal.featureName} />
             <SubscriptionExpiredModal isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')} />
             <InstallAppModal isOpen={showInstallModal} onClose={() => setShowInstallModal(false)} onInstall={handleInstallApp} />
-            {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
+            {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav onOpenSidebar={() => setIsMobileOpen(true)} />}
         </div>
     );
 }

@@ -216,7 +216,7 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
                   {insufficient && (
                     <p className="text-[10px] text-red-500 font-medium mt-3">
                       Insufficient credits.{' '}
-                      <a href="/dashboard/ai" className="underline font-bold">Buy more via Add-Ons</a>
+                      <a href="/dashboard/settings/subscription" className="underline font-bold">Buy more via Add-Ons</a>
                     </p>
                   )}
                 </div>

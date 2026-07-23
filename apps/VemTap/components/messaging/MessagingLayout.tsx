@@ -13,8 +13,9 @@ interface MessagingLayoutProps {
 export default function MessagingLayout({ children }: MessagingLayoutProps) {
     const pathname = usePathname();
     const isChatRoute = pathname.includes('/messaging/chat');
+    const isCreditsRoute = pathname.includes('/messaging/credits');
 
-    if (isChatRoute) {
+    if (isChatRoute || isCreditsRoute) {
         return (
             <div className="h-full min-h-0 flex flex-col bg-gray-50">
                 <div className="flex-1 min-h-0 overflow-hidden">
