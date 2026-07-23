@@ -63,14 +63,15 @@ export default function DashboardPage() {
         ] : [];
         const allStats = analyticsStats.length > 0 ? analyticsStats : dashboardStats;
         
-        const visitorsToday = allStats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
-        const customersCaptured = allStats.find(s => s.label.toLowerCase().includes('new customers'))?.value || '0';
+        const totalVisitors = allStats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
+        const customersCaptured = allStats.find(s => s.label.toLowerCase().includes('new customers'))?.value ||
+                                  allStats.find(s => s.label.toLowerCase().includes('new visitors'))?.value || '0';
         const salesValue = allStats.find(s => s.label.toLowerCase().includes('sales'))?.value ||
                           allStats.find(s => s.label.toLowerCase().includes('revenue'))?.value || '₦0';
         const activeLoyalty = loyaltyStats?.stats?.find(s => s.label.toLowerCase().includes('active'))?.value || '0';
         
         return [
-            { label: "Today's Visitors", value: visitorsToday, icon: Users, color: 'bg-blue-500' },
+            { label: "Total Visitors", value: totalVisitors, icon: Users, color: 'bg-blue-500' },
             { label: "Customers Captured", value: customersCaptured, icon: UserPlus, color: 'bg-emerald-500' },
             { label: "Sales Today", value: salesValue, icon: ShoppingBag, color: 'bg-purple-500' },
             { label: "Active Loyalty Members", value: activeLoyalty, icon: Gift, color: 'bg-amber-500' }

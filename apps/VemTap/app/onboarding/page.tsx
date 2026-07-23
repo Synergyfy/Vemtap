@@ -2064,7 +2064,7 @@ function CompleteStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                 </Button>
                 <Button 
                     variant="outline"
-                    onClick={() => window.location.href = '/dashboard/engagement/qr'}
+                    onClick={() => window.location.href = '/dashboard/customer-experience'}
                     className="w-full border-2 border-gray-200 text-text-main font-black uppercase tracking-widest text-[10px] py-7 rounded-2xl hover:bg-gray-50 transition-all cursor-pointer"
                 >
                     View & Download My Business QR Code

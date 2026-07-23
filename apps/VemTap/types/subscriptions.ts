@@ -30,6 +30,7 @@ export interface SubscriptionCapabilities {
       sms: number;
       email: number;
       whatsapp: number;
+      ai: number;
     };
   };
 }
