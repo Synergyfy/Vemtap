@@ -12,7 +12,7 @@ import { toast } from 'react-hot-toast';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness } from '@/services/businesses/hooks';
 
-import { useBranches, useCreateBranch, useDeleteBranch, useUpdateBranch } from '@/services/branches/hooks';
+import { useBranches, useCreateBranch, useDeleteBranch, useUpdateBranch, useRequestDeleteBranchOtp } from '@/services/branches/hooks';
 import { Branch } from '@/services/branches/types';
 import { Loader2 } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
@@ -31,6 +31,7 @@ function BranchesContent() {
     const createBranchMutation = useCreateBranch();
     const updateBranchMutation = useUpdateBranch();
     const deleteBranchMutation = useDeleteBranch();
+    const requestOtpMutation = useRequestDeleteBranchOtp();
 
     const branches = branchesData || [];
     const businessName = business?.name || storeName;
@@ -134,8 +135,17 @@ function BranchesContent() {
     };
 
     const handleConfirmDelete = () => {
+        if (!branchToDelete) return;
         setIsDeleteModalOpen(false);
         setIsOtpModalOpen(true);
+        requestOtpMutation.mutate(branchToDelete.id, {
+            onSuccess: (res) => {
+                toast.success(res.message || 'Verification code sent for branch deletion');
+            },
+            onError: () => {
+                toast.error('Failed to request verification code');
+            }
+        });
     };
 
     const handleVerifyOtp = () => {
@@ -144,23 +154,18 @@ function BranchesContent() {
             return;
         }
 
-        // Mock OTP verification (123456 is the mock code)
-        if (otp === '123456') {
-            if (branchToDelete) {
-                deleteBranchMutation.mutate(branchToDelete.id, {
-                    onSuccess: () => {
-                        toast.success('Branch deleted successfully');
-                        setIsOtpModalOpen(false);
-                        setBranchToDelete(null);
-                        setOtp('');
-                    },
-                    onError: () => {
-                        toast.error('Failed to delete branch');
-                    }
-                });
-            }
-        } else {
-            toast.error('Invalid OTP. Please try again.');
+        if (branchToDelete) {
+            deleteBranchMutation.mutate({ id: branchToDelete.id, otp }, {
+                onSuccess: () => {
+                    toast.success('Branch deleted successfully');
+                    setIsOtpModalOpen(false);
+                    setBranchToDelete(null);
+                    setOtp('');
+                },
+                onError: (err: any) => {
+                    toast.error(err?.message || 'Failed to delete branch');
+                }
+            });
         }
     };
 
@@ -509,7 +514,7 @@ function BranchesContent() {
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 text-center block">Verification Code (Mock: 123456)</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 text-center block">Enter 6-Digit Verification Code</label>
                                 <input
                                     type="text"
                                     placeholder="000000"

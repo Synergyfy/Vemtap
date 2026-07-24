@@ -5,6 +5,8 @@ import { UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { BranchesService } from '../branches/branches.service';
+import { BusinessesService } from '../businesses/businesses.service';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -45,6 +47,15 @@ describe('UsersController', () => {
   };
   const mockReq = { user: { id: 'user-1', branchId: 'branch-1' } };
 
+  const mockBusinessesService = {
+    findOne: jest.fn(),
+  };
+
+  const mockQrThriveService = {
+    getMappingByUserId: jest.fn(),
+    provisionUser: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
@@ -52,6 +63,8 @@ describe('UsersController', () => {
         { provide: UsersService, useValue: mockUsersService },
         { provide: SubscriptionsService, useValue: mockSubscriptionsService },
         { provide: BranchesService, useValue: mockBranchesService },
+        { provide: BusinessesService, useValue: mockBusinessesService },
+        { provide: QrThriveService, useValue: mockQrThriveService },
       ],
     }).compile();
 

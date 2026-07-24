@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUpdateBusiness } from '@/services/businesses/hooks';
 import { toast } from 'react-hot-toast';
 
 export default function DeviceSettingsPage() {
@@ -17,7 +18,6 @@ export default function DeviceSettingsPage() {
     } = useCustomerFlowStore();
     const { user } = useAuthStore();
 
-    // Fix for ReferenceError: window is not defined
     const [origin, setOrigin] = useState('');
     const [mounted, setMounted] = useState(false);
 
@@ -26,6 +26,8 @@ export default function DeviceSettingsPage() {
     const [privacy, setPrivacy] = useState(customPrivacyMessage || "Your data is only used for session verification and loyalty tracking.");
     const [reward, setReward] = useState(customRewardMessage || "Get 10% OFF your next visit!");
     const [rewardEnabled, setRewardEnabled] = useState(hasRewardSetup);
+    const [oneTapSignIn, setOneTapSignIn] = useState(true);
+    const [cooldownPeriod, setCooldownPeriod] = useState(60);
 
     useEffect(() => {
         setMounted(true);
@@ -33,6 +35,8 @@ export default function DeviceSettingsPage() {
             setOrigin(window.location.origin);
         }
     }, []);
+
+    const updateBusinessMutation = useUpdateBusiness();
 
     const handleSave = () => {
         updateCustomSettings({
@@ -42,10 +46,30 @@ export default function DeviceSettingsPage() {
             rewardMessage: reward,
             rewardEnabled: rewardEnabled
         });
-        toast.success('Configuration saved locally');
+
+        updateBusinessMutation.mutate(
+            {
+                posSettings: {
+                    loyaltyEnabled: rewardEnabled,
+                    welcomeMessage: welcome,
+                    successMessage: success,
+                    privacyMessage: privacy,
+                    rewardMessage: reward,
+                    oneTapSignIn,
+                    cooldownPeriod,
+                } as any,
+            },
+            {
+                onSuccess: () => {
+                    toast.success('Device configuration saved to backend');
+                },
+                onError: (err: any) => {
+                    toast.error(err?.message || 'Saved locally');
+                },
+            }
+        );
     };
 
-    // Prevent rendering until mounted to avoid hydration mismatch
     if (!mounted) return null;
 
     return (
@@ -73,7 +97,12 @@ export default function DeviceSettingsPage() {
                                 <p className="text-xs text-text-secondary mt-1">Automatically check-in returning users without form submission</p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" defaultChecked className="sr-only peer" />
+                                <input
+                                    type="checkbox"
+                                    checked={oneTapSignIn}
+                                    onChange={(e) => setOneTapSignIn(e.target.checked)}
+                                    className="sr-only peer"
+                                />
                                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:inset-s-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                             </label>
                         </div>
@@ -86,14 +115,19 @@ export default function DeviceSettingsPage() {
                                 <p className="text-xs text-text-secondary mt-1">Seconds to wait before allowing another tap from the same device</p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <input type="number" defaultValue={60} className="w-20 h-10 bg-gray-50 border border-gray-100 rounded-lg px-3 text-sm font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-primary/20" />
+                                <input
+                                    type="number"
+                                    value={cooldownPeriod}
+                                    onChange={(e) => setCooldownPeriod(parseInt(e.target.value) || 0)}
+                                    className="w-20 h-10 bg-gray-50 border border-gray-100 rounded-lg px-3 text-sm font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-primary/20"
+                                />
                                 <span className="text-xs font-bold text-text-secondary">Sec</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Default UI */}
+                {/* Default UI Customization */}
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                     <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                         <h3 className="font-display font-bold text-text-main">Visitor Journey Customization</h3>
@@ -143,7 +177,7 @@ export default function DeviceSettingsPage() {
                                     const businessSlug = user?.businessName?.replace(/\s+/g, '-').toUpperCase() || 'MY-STORE';
                                     const url = `${origin}/tap/${businessSlug}/PLATE-01`;
                                     navigator.clipboard.writeText(url);
-                                    toast.success('Hierarchical device link copied');
+                                    toast.success('Device link copied');
                                 }} className="text-white/40 hover:text-white transition-colors">
                                     <span className="material-icons-round text-sm">content_copy</span>
                                 </button>

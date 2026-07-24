@@ -203,6 +203,7 @@ export default function StaffDirectory() {
           name: `${form.firstName} ${form.lastName}`.trim(),
           role: form.role as any, permissions: form.permissions,
         },
+        branchId: activeBranchId ?? undefined,
       });
       toast.success('Staff updated!');
       setShowEditModal(false);

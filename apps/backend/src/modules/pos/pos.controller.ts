@@ -20,6 +20,7 @@ import { PosSaleQueryDto } from './dto/pos-sale-query.dto';
 import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
 import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
+import { PosCustomerQueryDto } from './dto/pos-customer-query.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -180,6 +181,26 @@ export class PosController {
     @Req() req: RequestWithUser,
   ) {
     return this.posService.getTopProducts(req.user.businessId, branchId);
+  }
+
+  @Get('customers')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'List POS customers with aggregated stats' })
+  async listCustomers(
+    @Query() query: PosCustomerQueryDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.findCustomers(req.user.businessId, query);
+  }
+
+  @Get('customers/:id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get POS customer detail with purchase history' })
+  async getCustomer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.findCustomerById(id, req.user.businessId);
   }
 
   @Patch('products/:id/stock')

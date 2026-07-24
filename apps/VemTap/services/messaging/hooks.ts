@@ -18,7 +18,9 @@ import {
     TriggerType,
     ActionType,
     AutomationLog,
-    AutomationPerformance
+    AutomationPerformance,
+    ChannelSettings,
+    UpdateChannelSettingsPayload
 } from './types';
 
 import { BusinessCredit } from '@/lib/api/credit-plans';
@@ -626,3 +628,48 @@ export const useRemoveSegmentMembers = () => {
         },
     });
 };
+
+// ─── Channel Settings ─────────────────────────────────────────────────────────
+
+export const useChannelSettings = (branchId?: string) => {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    return useQuery<ChannelSettings, Error>({
+        queryKey: ['messaging', 'channel-settings', branchId || 'global'],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (branchId) params.append('branchId', branchId);
+            const queryString = params.toString();
+            const url = `/messaging/channel-settings${queryString ? `?${queryString}` : ''}`;
+            return await api.get(url);
+        },
+        enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+    });
+};
+
+export const useUpdateChannelSettings = () => {
+    const queryClient = useQueryClient();
+    return useMutation<ChannelSettings, Error, UpdateChannelSettingsPayload>({
+        mutationFn: async (payload) => {
+            return await api.patch('/messaging/channel-settings', payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'channel-settings'] });
+        },
+    });
+};
+
+export const useGenerateDnsRecords = () => {
+    const queryClient = useQueryClient();
+    return useMutation<ChannelSettings, Error, { domain?: string; branchId?: string }>({
+        mutationFn: async (payload) => {
+            return await api.post('/messaging/channel-settings/generate-dns-records', payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'channel-settings'] });
+        },
+    });
+};
+
+

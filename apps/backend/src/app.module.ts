@@ -61,6 +61,7 @@ import { PosModule } from './modules/pos/pos.module';
 import { InventoryCountingModule } from './modules/inventory-counting/inventory-counting.module';
 import { LegalComplianceModule } from './modules/legal-compliance/legal-compliance.module';
 import { AiCopilotModule } from './modules/ai-copilot/ai-copilot.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
 
 @Module({
   imports: [
@@ -177,6 +178,7 @@ import { AiCopilotModule } from './modules/ai-copilot/ai-copilot.module';
     InventoryCountingModule,
     LegalComplianceModule,
     AiCopilotModule,
+    FeedbackModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

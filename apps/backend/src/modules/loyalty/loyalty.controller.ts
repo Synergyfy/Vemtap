@@ -188,7 +188,8 @@ export class LoyaltyController {
     @Request() req: { user: User },
     @Query('branchId') branchId?: string,
   ) {
-    const businessId = (req.user as any)?.businessId;
+    const user = req.user as any;
+    const businessId = user?.businessId || user?.business?.id || user?.branch?.businessId;
     return this.loyaltyService.getBusinessLoyaltyStats(businessId, branchId);
   }
 

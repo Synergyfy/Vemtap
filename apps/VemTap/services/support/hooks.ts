@@ -67,3 +67,16 @@ export const useAssignTicket = (ticketId: string) => {
     },
   });
 };
+
+export const useCreateSupportTicket = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { subject: string; message: string; category?: string; priority?: string }) =>
+      api.post('/support/tickets', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-support-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+    },
+  });
+};
+
