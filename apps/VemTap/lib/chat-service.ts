@@ -38,5 +38,5 @@ export async function generateChatResponse(messages: ChatMessage[], context?: st
   }
 
   // 3. Ultimate Fallback
-  return "I'm currently in basic mode and couldn't find a specific answer to that. For detailed assistance, please reach out to our support team at support@vemtap.io. We're here to help!";
+  return "Sorry, I can't answer this for now. Can I connect you to a human agent?";
 }
