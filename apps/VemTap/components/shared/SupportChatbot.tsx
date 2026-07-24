@@ -334,22 +334,30 @@ export default function SupportChatbot() {
         <div className="font-sans">
             <AnimatePresence>
                 {!isOpen && isVisible && (
-                    <motion.button
+                    <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        onClick={() => setIsOpen(true)}
-                        className="fixed bottom-6 right-6 z-60 group focus:outline-none"
-                        aria-label="Open chat"
+                        className="fixed bottom-6 right-6 z-60"
                     >
-                        <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
-                        <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-blue-500/50 active:scale-95">
-                            <MessageCircle className="text-white" size={28} />
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                                <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        <Draggable nodeRef={floatingButtonRef} bounds="parent">
+                            <div ref={floatingButtonRef} className="cursor-grab active:cursor-grabbing">
+                                <button
+                                    onClick={() => setIsOpen(true)}
+                                    className="relative transition-transform active:scale-90 focus:outline-none"
+                                    aria-label="Open chat"
+                                >
+                                    <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
+                                    <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center hover:scale-110 hover:shadow-blue-500/50 transition-all duration-300">
+                                        <MessageCircle className="text-white" size={28} />
+                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                            <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                                        </div>
+                                    </div>
+                                </button>
                             </div>
-                        </div>
-                    </motion.button>
+                        </Draggable>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
