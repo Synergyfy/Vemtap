@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { ShoppingBag, CheckCircle, Loader2, ChevronRight, Phone, User, Package, ArrowLeft, AlertCircle, X, BarChart3, TrendingUp, RotateCcw, MessageSquare, Gift, Tag, CalendarDays, Star, Zap } from 'lucide-react';
+import { ShoppingBag, CheckCircle, Loader2, ChevronRight, Phone, User, Package, ArrowLeft, AlertCircle, X, BarChart3, TrendingUp, RotateCcw, MessageSquare, Gift, Tag, CalendarDays, Star, Zap, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCatalogueOrders, useCatalogueOrderDetails, useUpdateCatalogueOrderStatus, useBusinessClaims, OrderStatus, useRedeemClaim } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -38,6 +38,12 @@ function timeAgo(dateStr: string) {
   return `${d}d ago`;
 }
 
+interface StockWarningItem {
+  name: string;
+  orderedQty: number;
+  availableQty: number;
+}
+
 export default function OrdersDashboard() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
@@ -50,6 +56,9 @@ export default function OrdersDashboard() {
   const [refundItemIds, setRefundItemIds] = useState<Set<string>>(new Set());
   const redeemClaim = useRedeemClaim();
   const { data: claimsData, isLoading: claimsLoading } = useBusinessClaims();
+
+  const [stockWarningAffected, setStockWarningAffected] = useState<StockWarningItem[] | null>(null);
+  const stockWarningRef = useRef<{ allItems: any[]; goToPayment: boolean } | null>(null);
 
   const { data: ordersData, isLoading } = useCatalogueOrders({
     branchId: activeBranchId ?? undefined,
@@ -121,7 +130,7 @@ export default function OrdersDashboard() {
         name: product.name || 'Item',
         price: Number(item.priceAtOrder || product.price || 0),
         costPrice: Number(product.costPrice || 0),
-        quantity: item.quantity || 1,
+        quantity: item.quantity ?? 1,
         stockQuantity: product.stockQuantity,
         sku: product.sku || '',
         barcode: product.barcode || '',
@@ -132,12 +141,50 @@ export default function OrdersDashboard() {
     router.push(goToPayment ? '/dashboard/pos/payment' : '/dashboard/pos');
   };
 
+  const checkStockAndProceed = (items: any[], goToPayment: boolean) => {
+    const affected: StockWarningItem[] = [];
+    items.forEach((item: any) => {
+      const product = item.item || item;
+      if (product.stockQuantity != null && Number(product.stockQuantity) < Number(item.quantity)) {
+        affected.push({
+          name: product.name || 'Item',
+          orderedQty: Number(item.quantity),
+          availableQty: Number(product.stockQuantity),
+        });
+      }
+    });
+    if (affected.length > 0) {
+      stockWarningRef.current = { allItems: items, goToPayment };
+      setStockWarningAffected(affected);
+    } else {
+      addItemsToCartAndCheckout(items, goToPayment);
+    }
+  };
+
+  const handleStockWarningProceed = () => {
+    const data = stockWarningRef.current;
+    if (!data) return;
+    const adjustedItems = data.allItems
+      .map((item: any) => {
+        const product = item.item || item;
+        const avail = Number(product.stockQuantity);
+        if (product.stockQuantity != null && avail < Number(item.quantity)) {
+          return { ...item, quantity: Math.max(0, avail) };
+        }
+        return item;
+      })
+      .filter((item: any) => (item.quantity ?? 1) > 0);
+    setStockWarningAffected(null);
+    stockWarningRef.current = null;
+    addItemsToCartAndCheckout(adjustedItems, data.goToPayment);
+  };
+
   const handleAcceptOrder = () => {
     if (!orderDetail?.items || orderDetail.items.length === 0) {
       toast.error('No items in this order');
       return;
     }
-    addItemsToCartAndCheckout(orderDetail.items, false);
+    checkStockAndProceed(orderDetail.items, false);
     updateStatus.mutate(
       { id: selectedOrderId!, status: 'processing' as OrderStatus },
       { onSuccess: () => toast.success('Order added to cart! You can review items before payment.') }
@@ -149,7 +196,7 @@ export default function OrdersDashboard() {
       toast.error('No items in this order');
       return;
     }
-    addItemsToCartAndCheckout(orderDetail.items, true);
+    checkStockAndProceed(orderDetail.items, true);
     updateStatus.mutate(
       { id: selectedOrderId!, status: 'processing' as OrderStatus },
       { onSuccess: () => toast.success('Continuing payment for this order') }
@@ -160,11 +207,11 @@ export default function OrdersDashboard() {
     try {
       const res = await redeemClaim.mutateAsync(claim.claimCode);
       if (claim.offer?.items?.length > 0) {
-        addItemsToCartAndCheckout(claim.offer.items.map((item: any) => ({
+        checkStockAndProceed(claim.offer.items.map((item: any) => ({
           item: item,
           quantity: 1,
           priceAtOrder: claim.offer.calculatedPrice,
-        })));
+        })), false);
       }
       toast.success(`${res.claim.offerName || 'Deal'} accepted!`);
     } catch (err: any) {
@@ -420,7 +467,7 @@ export default function OrdersDashboard() {
                           </button>
                           <div className="grid grid-cols-2 gap-2">
                             <button
-                              onClick={() => { addItemsToCartAndCheckout(orderDetail.items, false); toast.success('Items added to cart for review'); }}
+                              onClick={() => { checkStockAndProceed(orderDetail.items, false); toast.success('Items added to cart for review'); }}
                               disabled={updateStatus.isPending}
                               className="h-12 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
@@ -538,6 +585,49 @@ export default function OrdersDashboard() {
                     <button onClick={() => setShowRefundModal(false)} className="flex-1 h-12 bg-gray-50 text-gray-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all">Cancel</button>
                     <button onClick={handleRefundConfirm} disabled={updateStatus.isPending || refundItemIds.size === 0} className="flex-1 h-12 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 transition-all disabled:opacity-40 flex items-center justify-center gap-2">
                       {updateStatus.isPending ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}Confirm Refund
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Stock Warning Modal */}
+          <AnimatePresence>
+            {stockWarningAffected && (
+              <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setStockWarningAffected(null); stockWarningRef.current = null; }} />
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-lg rounded-3xl overflow-hidden relative shadow-2xl">
+                  <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-amber-50/50">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center"><AlertTriangle size={18} className="text-amber-600" /></div>
+                      <div><h3 className="text-lg font-black text-gray-900">Low Stock Warning</h3><p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Some items have insufficient inventory</p></div>
+                    </div>
+                    <button onClick={() => { setStockWarningAffected(null); stockWarningRef.current = null; }} className="size-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all"><X size={16} /></button>
+                  </div>
+                  <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                    <p className="text-xs font-bold text-gray-500">The following items don't have enough stock for the full order quantity:</p>
+                    <div className="space-y-2">
+                      {stockWarningAffected.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-200 rounded-2xl">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-black text-gray-900 truncate">{item.name}</p>
+                            <p className="text-[10px] font-bold text-gray-400 mt-0.5">
+                              Ordered: <span className="text-gray-600">{item.orderedQty}</span> &middot; Available: <span className={item.availableQty > 0 ? 'text-amber-600' : 'text-red-500'}>{item.availableQty}</span>
+                            </p>
+                          </div>
+                          <span className={cn("text-xs font-black px-2.5 py-1 rounded-lg", item.availableQty > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600')}>
+                            {item.availableQty > 0 ? `${item.availableQty} available` : 'Out of stock'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-6 border-t border-gray-100 flex gap-3">
+                    <button onClick={() => { setStockWarningAffected(null); stockWarningRef.current = null; }} className="flex-1 h-12 bg-gray-50 text-gray-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all">Cancel</button>
+                    <button onClick={handleStockWarningProceed} className="flex-1 h-12 bg-amber-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-600 transition-all flex items-center justify-center gap-2">
+                      <ShoppingBag size={14} />
+                      Add Available Stock Only
                     </button>
                   </div>
                 </motion.div>
