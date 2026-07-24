@@ -3,10 +3,11 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { ShoppingBag, CheckCircle, Loader2, ChevronRight, Phone, User, Package, ArrowLeft, AlertCircle, X, BarChart3, TrendingUp, RotateCcw, MessageSquare, Gift, Tag, CalendarDays, Star, Zap, AlertTriangle } from 'lucide-react';
+import { ShoppingBag, CheckCircle, Loader2, ChevronRight, Phone, User, Package, ArrowLeft, AlertCircle, X, BarChart3, TrendingUp, RotateCcw, MessageSquare, Gift, Tag, CalendarDays, Star, Zap, AlertTriangle, Clock, TicketCheck, ShieldCheck, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCatalogueOrders, useCatalogueOrderDetails, useUpdateCatalogueOrderStatus, useBusinessClaims, OrderStatus, useRedeemClaim } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches } from '@/services/branches/hooks';
 import { usePosStore } from '@/store/usePosStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
@@ -56,9 +57,17 @@ export default function OrdersDashboard() {
   const [refundItemIds, setRefundItemIds] = useState<Set<string>>(new Set());
   const redeemClaim = useRedeemClaim();
   const { data: claimsData, isLoading: claimsLoading } = useBusinessClaims();
+  const { data: branches } = useBranches();
 
   const [stockWarningAffected, setStockWarningAffected] = useState<StockWarningItem[] | null>(null);
   const stockWarningRef = useRef<{ allItems: any[]; goToPayment: boolean } | null>(null);
+
+  const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [completingClaimId, setCompletingClaimId] = useState<string | null>(null);
+
+  const currentBranch = branches?.find((b: any) => b.id === activeBranchId);
+  const branchCodePrefix = currentBranch?.uniqueCode ? `VEM-${currentBranch.uniqueCode}-` : 'VEM-';
 
   const { data: ordersData, isLoading } = useCatalogueOrders({
     branchId: activeBranchId ?? undefined,
@@ -219,10 +228,20 @@ export default function OrdersDashboard() {
     }
   };
 
-  const handleMarkCustomDealComplete = async (claim: any) => {
+  const handleMarkCompleteClick = (claimId: string) => {
+    setCompletingClaimId(claimId);
+    setShowCompleteConfirm(true);
+  };
+
+  const handleConfirmComplete = async () => {
+    const claim = claims.find((c: any) => c.id === completingClaimId);
+    if (!claim) return;
     try {
       const res = await redeemClaim.mutateAsync(claim.claimCode);
       toast.success(`${res.claim.offerName} marked as completed!`);
+      setShowCompleteConfirm(false);
+      setCompletingClaimId(null);
+      setSelectedClaimId(null);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to complete deal');
     }
@@ -653,91 +672,206 @@ export default function OrdersDashboard() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {claimsLoading ? (
-              <div className="flex items-center justify-center py-20"><Loader2 size={32} className="animate-spin text-gray-400" /></div>
-            ) : claims.length === 0 ? (
-              <div className="bg-white border border-gray-100 rounded-[32px] shadow-sm flex flex-col items-center justify-center text-center p-12">
-                <div className="size-20 bg-gray-50 rounded-[24px] flex items-center justify-center mb-4 border border-gray-100"><Gift size={40} className="text-gray-300" /></div>
-                <h3 className="text-xl font-black text-gray-900 mb-2">No deal claims yet</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest max-w-xs leading-relaxed">Customers will appear here when they claim your promotions</p>
-              </div>
-            ) : (
-              claims.map((claim: any) => {
-                const statusLabel = claim.status === 'claimed' ? 'Pending' : claim.status === 'redeemed' ? 'Redeemed' : claim.status;
-                const statusColor = claim.status === 'claimed' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100';
-                const hasProducts = claim.offer?.items?.length > 0;
-                const isPending = claim.status === 'claimed';
+          {selectedClaimId ? (
+            /* ── Claim Detail Panel ── */
+            (() => {
+              const claim = claims.find((c: any) => c.id === selectedClaimId);
+              if (!claim) return null;
+              const isPending = claim.status === 'claimed';
+              const hasProducts = claim.offer?.items?.length > 0;
+              return (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-gray-100 rounded-[32px] shadow-sm">
+                  <div className="p-6 border-b border-gray-100 flex items-center gap-4">
+                    <button onClick={() => setSelectedClaimId(null)} className="size-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-all">
+                      <ArrowLeft size={18} />
+                    </button>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-black text-gray-900">Deal Claim Details</h3>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Code: {claim.claimCode}</p>
+                    </div>
+                    <span className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border", isPending ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200')}>
+                      {isPending ? 'Pending' : 'Redeemed'}
+                    </span>
+                  </div>
 
-                return (
-                  <motion.div
-                    key={claim.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="size-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
-                        <Gift size={22} className="text-violet-600" />
+                  <div className="p-6 space-y-6">
+                    {/* Deal / Offer Info */}
+                    <div className="bg-violet-50 rounded-2xl p-5 space-y-3">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-violet-400">Deal Offer</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center"><Gift size={18} /></div>
+                        <div>
+                          <p className="text-sm font-black text-gray-900">{claim.offer?.name || 'N/A'}</p>
+                          <p className="text-[10px] font-bold text-gray-400">
+                            {hasProducts ? `${claim.offer.items.length} product${claim.offer.items.length > 1 ? 's' : ''}` : 'Custom / Offline deal'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h4 className="text-sm font-black text-gray-900 truncate">{claim.firstName} {claim.lastName}</h4>
-                          <span className={cn("px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border", statusColor)}>
-                            {statusLabel}
-                          </span>
+                    </div>
+
+                    {/* Customer Info */}
+                    <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Customer</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-xl bg-[#066CF4]/10 text-[#066CF4] flex items-center justify-center"><User size={18} /></div>
+                        <div>
+                          <p className="text-sm font-black text-gray-900">{claim.firstName} {claim.lastName || ''}</p>
+                          {claim.phone && <a href={`tel:${claim.phone}`} className="text-[10px] font-bold text-[#066CF4] hover:underline">{claim.phone}</a>}
+                          {claim.email && <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1"><Mail size={10} />{claim.email}</p>}
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 flex-wrap">
-                          <span className="flex items-center gap-1"><Phone size={10} />{claim.phone}</span>
-                          <span className="flex items-center gap-1"><Tag size={10} />{claim.claimCode}</span>
-                          {claim.offer?.name && <span className="flex items-center gap-1"><Gift size={10} />{claim.offer.name}</span>}
-                          <span>{timeAgo(claim.createdAt)}</span>
+                      </div>
+                    </div>
+
+                    {/* Timeline: Claimed & Redeemed */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Activity</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="size-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5"><Clock size={14} className="text-amber-600" /></div>
+                          <div>
+                            <p className="text-xs font-black text-gray-900">Claimed via Web / Form</p>
+                            <p className="text-[9px] font-bold text-gray-400">{new Date(claim.createdAt).toLocaleString()}</p>
+                          </div>
                         </div>
-                        {hasProducts && (
-                          <div className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-600">
-                            <Package size={10} />
-                            {claim.offer.items.length} product{claim.offer.items.length > 1 ? 's' : ''} in this deal
+                        {!isPending && (
+                          <div className="flex items-start gap-3">
+                            <div className="size-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5"><ShieldCheck size={14} className="text-emerald-600" /></div>
+                            <div>
+                              <p className="text-xs font-black text-gray-900">Redeemed by Staff</p>
+                              <p className="text-[9px] font-bold text-gray-400">{new Date(claim.updatedAt).toLocaleString()}</p>
+                            </div>
                           </div>
                         )}
                       </div>
-                      <div className="shrink-0 space-y-2">
-                        {isPending && (
-                          <>
-                            {hasProducts ? (
-                              <button
-                                onClick={() => handleAcceptClaim(claim)}
-                                disabled={redeemClaim.isPending}
-                                className="w-full h-10 px-4 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                              >
-                                {redeemClaim.isPending ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-                                Accept & Add to Cart
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleMarkCustomDealComplete(claim)}
-                                disabled={redeemClaim.isPending}
-                                className="w-full h-10 px-4 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                              >
-                                {redeemClaim.isPending ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                                Mark Complete
-                              </button>
-                            )}
-                          </>
-                        )}
-                        {claim.status === 'redeemed' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                            <CheckCircle size={12} />Redeemed
-                          </span>
-                        )}
+                    </div>
+
+                    {/* Claim Code */}
+                    <div className="bg-gray-50 rounded-2xl p-5">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Claim Code</h4>
+                      <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
+                        <p className="text-sm font-black text-gray-900 tracking-wider font-mono">{claim.claimCode}</p>
                       </div>
                     </div>
-                  </motion.div>
-                );
-              })
-            )}
-          </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 space-y-2">
+                      {isPending && (
+                        <>
+                          {hasProducts ? (
+                            <button
+                              onClick={() => handleAcceptClaim(claim)}
+                              disabled={redeemClaim.isPending}
+                              className="w-full h-14 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                            >
+                              {redeemClaim.isPending ? <Loader2 size={16} className="animate-spin" /> : <Zap size={18} />}
+                              Accept & Add to Cart
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleMarkCompleteClick(claim.id)}
+                              disabled={redeemClaim.isPending}
+                              className="w-full h-14 bg-emerald-500 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                            >
+                              {redeemClaim.isPending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={18} />}
+                              Mark as Completed
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {!isPending && (
+                        <p className="text-center text-[10px] font-bold text-emerald-600 uppercase tracking-widest py-2 flex items-center justify-center gap-1.5">
+                          <CheckCircle size={12} /> This claim has been redeemed
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })()
+          ) : (
+            /* ── Claim List ── */
+            <div className="space-y-3">
+              {claimsLoading ? (
+                <div className="flex items-center justify-center py-20"><Loader2 size={32} className="animate-spin text-gray-400" /></div>
+              ) : claims.length === 0 ? (
+                <div className="bg-white border border-gray-100 rounded-[32px] shadow-sm flex flex-col items-center justify-center text-center p-12">
+                  <div className="size-20 bg-gray-50 rounded-[24px] flex items-center justify-center mb-4 border border-gray-100"><Gift size={40} className="text-gray-300" /></div>
+                  <h3 className="text-xl font-black text-gray-900 mb-2">No deal claims yet</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest max-w-xs leading-relaxed">Customers will appear here when they claim your promotions</p>
+                </div>
+              ) : (
+                claims.map((claim: any) => {
+                  const isPending = claim.status === 'claimed';
+                  const hasProducts = claim.offer?.items?.length > 0;
+                  return (
+                    <button key={claim.id} onClick={() => setSelectedClaimId(claim.id)}
+                      className="w-full bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-left group active:scale-[0.99]"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="size-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
+                          <Gift size={22} className="text-violet-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h4 className="text-sm font-black text-gray-900 truncate">{claim.firstName} {claim.lastName || ''}</h4>
+                            <span className={cn("size-2 rounded-full shrink-0", isPending ? 'bg-amber-500' : 'bg-emerald-500')} />
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 flex-wrap">
+                            {claim.phone && <span className="flex items-center gap-1"><Phone size={10} />{claim.phone}</span>}
+                            <span className="flex items-center gap-1"><Tag size={10} />{claim.claimCode}</span>
+                            {claim.offer?.name && <span className="flex items-center gap-1"><Gift size={10} />{claim.offer.name}</span>}
+                            <span>{timeAgo(claim.createdAt)}</span>
+                          </div>
+                          {hasProducts && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[8px] font-black uppercase tracking-widest">Has Products</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className={cn("inline-block px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest", isPending ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>
+                            {isPending ? 'Pending' : 'Redeemed'}
+                          </span>
+                          <div className="mt-2 flex items-center justify-end"><ChevronRight size={16} className="text-gray-300 group-hover:text-gray-500 transition-colors" /></div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
         </>
       )}
+
+      {/* Mark Complete Confirmation Modal */}
+      <AnimatePresence>
+        {showCompleteConfirm && (
+          <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowCompleteConfirm(false); setCompletingClaimId(null); }} />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-sm rounded-3xl overflow-hidden relative shadow-2xl">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center"><CheckCircle size={18} className="text-emerald-600" /></div>
+                  <div><h3 className="text-lg font-black text-gray-900">Complete Claim</h3><p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Confirm redemption</p></div>
+                </div>
+                <button onClick={() => { setShowCompleteConfirm(false); setCompletingClaimId(null); }} className="size-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all"><X size={16} /></button>
+              </div>
+              <div className="p-6">
+                <p className="text-sm font-bold text-gray-600">Are you sure you want to mark this claim as completed?</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-2">This will mark the deal as redeemed and cannot be undone.</p>
+              </div>
+              <div className="p-6 border-t border-gray-100 flex gap-3">
+                <button onClick={() => { setShowCompleteConfirm(false); setCompletingClaimId(null); }} className="flex-1 h-12 bg-gray-50 text-gray-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all">Cancel</button>
+                <button onClick={handleConfirmComplete} disabled={redeemClaim.isPending} className="flex-1 h-12 bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  {redeemClaim.isPending ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                  Yes, Mark Complete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

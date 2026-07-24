@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { TicketCheck, X, Loader2, CheckCircle2, User, Phone, Mail } from 'lucide-react';
 import { useRedeemClaim } from '@/services/catalogue/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches } from '@/services/branches/hooks';
 import type { RedeemedPromotion } from '@/store/usePosStore';
 import { usePosStore } from '@/store/usePosStore';
 import toast from 'react-hot-toast';
@@ -15,35 +17,45 @@ interface RedeemCodeModalProps {
 }
 
 export default function RedeemCodeModal({ isOpen, onClose, onRedeemed }: RedeemCodeModalProps) {
-    const [code, setCode] = useState('');
+    const { activeBranchId } = useActiveBranch();
+    const { data: branches } = useBranches();
+    const currentBranch = branches?.find((b: any) => b.id === activeBranchId);
+    const codePrefix = useMemo(() => {
+        if (!currentBranch?.uniqueCode) return 'VEM-';
+        return `VEM-${currentBranch.uniqueCode}-`;
+    }, [currentBranch]);
+
+    const [suffix, setSuffix] = useState('');
     const [result, setResult] = useState<{ offerName: string; claimCode: string; firstName?: string; lastName?: string; email?: string; phone?: string } | null>(null);
     const redeemClaim = useRedeemClaim();
 
     if (!isOpen) return null;
 
+    const fullCode = `${codePrefix}${suffix}`.toUpperCase();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const trimmedCode = code.trim().toUpperCase();
-        if (!trimmedCode) {
-            toast.error('Please enter a claim code');
+        const trimmedSuffix = suffix.trim().toUpperCase();
+        if (!trimmedSuffix) {
+            toast.error('Please enter the code from the customer\'s card');
             return;
         }
 
         try {
-            const res = await redeemClaim.mutateAsync(trimmedCode);
+            const res = await redeemClaim.mutateAsync(fullCode);
             const customerName = [res.claim.firstName, res.claim.lastName].filter(Boolean).join(' ');
             setResult({
                 offerName: res.claim.offerName,
-                claimCode: trimmedCode,
+                claimCode: fullCode,
                 firstName: res.claim.firstName,
                 lastName: res.claim.lastName,
                 email: res.claim.email,
                 phone: res.claim.phone,
             });
-            onRedeemed({ claimCode: trimmedCode, offerName: res.claim.offerName });
+            onRedeemed({ claimCode: fullCode, offerName: res.claim.offerName });
             if (res.claim.phone) {
                 usePosStore.getState().attachCustomer({
-                    id: res.claim.id || trimmedCode,
+                    id: res.claim.id || fullCode,
                     name: customerName || 'Customer',
                     phone: res.claim.phone,
                     email: res.claim.email,
@@ -56,7 +68,7 @@ export default function RedeemCodeModal({ isOpen, onClose, onRedeemed }: RedeemC
     };
 
     const handleClose = () => {
-        setCode('');
+        setSuffix('');
         setResult(null);
         redeemClaim.reset();
         onClose();
@@ -76,7 +88,7 @@ export default function RedeemCodeModal({ isOpen, onClose, onRedeemed }: RedeemC
                     <div>
                         <h2 className="text-xl font-black text-gray-900">Redeem Claim Code</h2>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">
-                            Enter the customer&apos;s claim code
+                            Enter the code from the customer&apos;s deal card
                         </p>
                     </div>
                     <button onClick={handleClose} className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
@@ -136,20 +148,22 @@ export default function RedeemCodeModal({ isOpen, onClose, onRedeemed }: RedeemC
                             <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
                                 Claim Code
                             </label>
-                            <div className="relative">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <TicketCheck size={18} />
+                            <div className="flex items-stretch gap-1.5">
+                                <div className="flex items-center h-14 px-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-black text-gray-500 tracking-wider select-none">
+                                    <TicketCheck size={16} className="text-gray-400 mr-2 shrink-0" />
+                                    <span className="font-mono">{codePrefix}</span>
                                 </div>
                                 <input
                                     type="text"
-                                    value={code}
-                                    onChange={e => setCode(e.target.value.toUpperCase())}
-                                    placeholder="VEM-BRANCHCODE-XXXX"
-                                    className="w-full h-14 pl-12 pr-4 rounded-2xl border border-gray-200 text-lg font-black tracking-wider focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all uppercase"
+                                    value={suffix}
+                                    onChange={e => setSuffix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                                    placeholder="Enter last 4-6 digits"
+                                    maxLength={6}
+                                    className="w-28 h-14 px-3 rounded-2xl border border-gray-200 text-lg font-black tracking-wider font-mono focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all uppercase text-center"
                                 />
                             </div>
                             <p className="text-[10px] font-bold text-gray-400 mt-2">
-                                Ask the customer for their claim code
+                                Only type the last <strong>4-6 characters</strong> from the customer&apos;s deal card
                             </p>
                         </div>
 
@@ -163,7 +177,7 @@ export default function RedeemCodeModal({ isOpen, onClose, onRedeemed }: RedeemC
                             </button>
                             <button
                                 type="submit"
-                                disabled={redeemClaim.isPending || !code.trim()}
+                                disabled={redeemClaim.isPending || !suffix.trim()}
                                 className="flex-1 h-14 bg-primary text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-primary/90 disabled:opacity-50 disabled:shadow-none active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
                                 {redeemClaim.isPending ? (
