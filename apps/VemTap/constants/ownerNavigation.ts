@@ -213,12 +213,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 href: '/dashboard/staff',
                 roles: ['owner', 'manager'],
                 permission: 'staff',
-                submenu: [
-                    { label: 'Directory', href: '/dashboard/staff' },
-                    { label: 'Roles & Permissions', href: '/dashboard/staff/roles' },
-                    { label: 'Activity Log', href: '/dashboard/staff/activity' },
-                ],
-                keywords: ['team', 'employees', 'cashiers', 'managers', 'roles', 'permissions']
+                keywords: ['team', 'employees', 'cashiers', 'managers', 'roles', 'permissions', 'activity', 'log']
             },
             {
                 id: 'branches',
