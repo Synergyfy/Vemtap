@@ -35,6 +35,20 @@ export default function SupportChatbot() {
     const [liveTicketId, setLiveTicketId] = useState<string | null>(null);
     const [isGuestIdentified, setIsGuestIdentified] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
+
+    const [userRole, setUserRole] = useState<UserRole>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('vemtap_user_role') as UserRole;
+        }
+        return null;
+    });
+    const [showRoleSelector, setShowRoleSelector] = useState(false);
+
+    const storeUserRole = (role: UserRole) => {
+        setUserRole(role);
+        localStorage.setItem('vemtap_user_role', role || '');
+        setShowRoleSelector(false);
+    };
     
     // Hooks
     const escalateMutation = useEscalateChat();
@@ -302,20 +316,6 @@ export default function SupportChatbot() {
     const handleFollowUpClick = (question: string) => {
         addMessage({ role: 'user', content: question });
         sendQuery(question);
-    };
-
-    const [userRole, setUserRole] = useState<UserRole>(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('vemtap_user_role') as UserRole;
-        }
-        return null;
-    });
-    const [showRoleSelector, setShowRoleSelector] = useState(false);
-
-    const storeUserRole = (role: UserRole) => {
-        setUserRole(role);
-        localStorage.setItem('vemtap_user_role', role || '');
-        setShowRoleSelector(false);
     };
 
     return (
