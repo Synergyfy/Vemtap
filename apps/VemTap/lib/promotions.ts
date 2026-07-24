@@ -66,6 +66,9 @@ export interface Promotion {
     claimedCount: number;
     maxClaims: number;
     isTrending: boolean;
+    audience?: string;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────

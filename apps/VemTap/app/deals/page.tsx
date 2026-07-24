@@ -78,6 +78,9 @@ function toPromotion(offer: DealOffer): Promotion {
         claimedCount: offer.claimedCount,
         maxClaims: offer.maxClaims,
         isTrending: offer.isTrending || false,
+        audience: offer.audience,
+        maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+        claimCodePrefix: offer.claimCodePrefix,
     };
 }
 
@@ -99,10 +102,12 @@ function toMockPromotion(p: Promotion): MockPromotion {
         image: p.image,
         startDate: p.startDate,
         endDate: p.endDate,
-        audience: '',
+        audience: p.audience || '',
         location: p.business.address,
         claimedCount: p.claimedCount,
         maxClaims: p.maxClaims,
+        maxClaimsPerCustomer: p.maxClaimsPerCustomer,
+        claimCodePrefix: p.claimCodePrefix,
     };
 }
 
@@ -153,8 +158,15 @@ export default function PromotionsPage() {
 
     const promotions = useMemo(() => {
         if (!offersData?.data) return [];
+        const now = new Date();
         return offersData.data
-            .filter((offer): offer is DealOffer => !!offer && !!offer.id && !!offer.branch)
+            .filter((offer): offer is DealOffer => {
+                if (!offer || !offer.id || !offer.branch) return false;
+                if (!offer.startDate && !offer.endDate) return false;
+                if (offer.endDate && new Date(offer.endDate) < now) return false;
+                if (offer.startDate && new Date(offer.startDate) > now) return false;
+                return true;
+            })
             .map(toPromotion);
     }, [offersData]);
 

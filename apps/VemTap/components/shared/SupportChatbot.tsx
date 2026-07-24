@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2 } from 'lucide-react';
+import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2, Briefcase, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { useEscalateChat, useSendSupportMessage, useSupportTicket, useUserSupportTickets } from '@/services/support/hooks';
 import { useSupportSocket } from '@/hooks/useSupportSocket';
 import { toast } from 'react-hot-toast';
+
+type UserRole = 'business_owner' | 'customer' | null;
 
 export default function SupportChatbot() {
     const pathname = usePathname();
@@ -34,6 +36,20 @@ export default function SupportChatbot() {
     const [liveTicketId, setLiveTicketId] = useState<string | null>(null);
     const [isGuestIdentified, setIsGuestIdentified] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
+
+    const [userRole, setUserRole] = useState<UserRole>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('vemtap_user_role') as UserRole;
+        }
+        return null;
+    });
+    const [showRoleSelector, setShowRoleSelector] = useState(false);
+
+    const storeUserRole = (role: UserRole) => {
+        setUserRole(role);
+        localStorage.setItem('vemtap_user_role', role || '');
+        setShowRoleSelector(false);
+    };
     
     // Hooks
     const escalateMutation = useEscalateChat();
@@ -146,15 +162,28 @@ export default function SupportChatbot() {
         }
     }, [socket, handedToAgent, liveTicketId, addMessage, user?.id]);
 
-    // Initial greeting if history is empty and logged in
+// Determine user role and show selector only for guests
     useEffect(() => {
-        if (history.length === 0 && isAuthenticated) {
-            addMessage({
-                role: 'assistant',
-                content: `Hi ${user?.firstName || 'there'}! 👋 We're here to help you bring every customer back. A member of our team is ready to help you.`
-            });
+        if (isOpen && history.length === 0) {
+            if (isAuthenticated && user?.role) {
+                const mappedRole: UserRole = ['owner', 'manager', 'staff', 'admin', 'agent'].includes(user.role) ? 'business_owner' : 'customer';
+                setUserRole(mappedRole);
+                localStorage.setItem('vemtap_user_role', mappedRole || '');
+                if (mappedRole === 'business_owner') {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Business Owner**, I can help you with managing your branches, catalogue, promotions, analytics, and more. How can I assist you today?` });
+                } else {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Customer**, I can help you with discovering deals, earning rewards, and using VemTap at your favorite businesses. How can I help you today?` });
+                }
+            } else {
+                const stored = localStorage.getItem('vemtap_user_role');
+                if (stored && !userRole) {
+                    setUserRole(stored as UserRole);
+                } else if (!userRole && !stored) {
+                    setShowRoleSelector(true);
+                }
+            }
         }
-    }, [history.length, addMessage, isAuthenticated, user]);
+    }, [isOpen, history.length, userRole, isAuthenticated, user?.role, addMessage, user?.firstName]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -200,6 +229,7 @@ export default function SupportChatbot() {
                 guestName: guestDetails.name,
                 guestEmail: guestDetails.email,
                 sessionId: sessionId || undefined,
+                userRole: userRole || undefined,
                 history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
             });
 
@@ -220,10 +250,10 @@ export default function SupportChatbot() {
         } catch (error) {
             addMessage({
                 role: 'assistant',
-                content: "I'm having trouble connecting right now. Please try again later.",
+                content: "Sorry, I can't answer this for now. Can I connect you to a human agent?",
                 buttons: [
+                    { label: 'Connect to Agent', action: 'action', value: 'escalate' },
                     { label: 'Try Again', action: 'action', value: userText },
-                    { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
                 ],
             });
         } finally {
@@ -288,15 +318,11 @@ export default function SupportChatbot() {
     const handleContactSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate a slight delay for better UX
         setTimeout(() => {
             setIsLoading(false);
             setIsGuestIdentified(true);
-            addMessage({
-                role: 'assistant',
-                content: `Hi ${contactForm.name}! 👋 I'm the VemTap Support Bot. How can I help you today?`
-            });
-        }, 800);
+            setShowRoleSelector(true);
+        }, 400);
     };
 
     const handleFollowUpClick = (question: string) => {
@@ -304,56 +330,25 @@ export default function SupportChatbot() {
         sendQuery(question);
     };
 
-    const nodeRef = useRef<HTMLDivElement>(null);
-    const windowRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
-
     return (
         <div className="font-sans">
             <AnimatePresence>
                 {!isOpen && isVisible && (
-                    <motion.div
+                    <motion.button
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        className="fixed inset-0 pointer-events-none z-60"
+className="fixed bottom-6 right-6 z-60"
                     >
-                        <Draggable 
-                            nodeRef={floatingButtonRef}
-                            bounds="parent"
-                            onStart={(e, data) => {
-                                setDragStartPos({ x: data.x, y: data.y });
-                            }}
-                            onDrag={(e, data) => {
-                                const dx = Math.abs(data.x - dragStartPos.x);
-                                const dy = Math.abs(data.y - dragStartPos.y);
-                                if (dx > 5 || dy > 5) {
-                                    setIsDragging(true);
-                                }
-                            }}
-                            onStop={() => { 
-                                setTimeout(() => setIsDragging(false), 100); 
-                            }}
-                        >
-                            <div 
-                                ref={floatingButtonRef} 
-                                className="pointer-events-auto absolute bottom-20 sm:bottom-6 right-4 sm:right-6 group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing"
-                            >
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); if (!isDragging) setIsVisible(false); }}
-                                    className="cancel-drag bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <X size={14} />
-                                </button>
+                        <Draggable nodeRef={floatingButtonRef} bounds="parent">
+                            <div ref={floatingButtonRef} className="cursor-grab active:cursor-grabbing">
                                 <button
-                                    onClick={() => {
-                                        if (!isDragging) setIsOpen(true);
-                                    }}
-                                    className="relative transition-transform active:scale-90"
+                                    onClick={() => setIsOpen(true)}
+                                    className="relative transition-transform active:scale-90 focus:outline-none"
+                                    aria-label="Open chat"
                                 >
                                     <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
-                                    <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-hover:shadow-blue-500/50">
+                                    <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center hover:scale-110 hover:shadow-blue-500/50 transition-all duration-300">
                                         <MessageCircle className="text-white" size={28} />
                                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                                             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
@@ -362,7 +357,7 @@ export default function SupportChatbot() {
                                 </button>
                             </div>
                         </Draggable>
-                    </motion.div>
+                    </motion.button>
                 )}
             </AnimatePresence>
 
@@ -408,7 +403,53 @@ export default function SupportChatbot() {
                                 </div>
 
                                 <div className="flex-1 overflow-hidden flex flex-col bg-gray-50/50">
-                                    {(!isAuthenticated && !isGuestIdentified) ? (
+                                    {showRoleSelector ? (
+                                        <div className="flex-1 overflow-y-auto p-6 flex flex-col">
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col">
+                                                <div className="bg-white rounded-3xl border border-gray-100 p-6 mb-6 shadow-sm">
+                                                    <div className="size-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-4">
+                                                        <Info size={24} />
+                                                    </div>
+                                                    <h4 className="text-lg font-bold text-gray-900 mb-2">Welcome to VemTap Support!</h4>
+                                                    <p className="text-sm text-gray-500 leading-relaxed">To give you the best experience, please tell us who you are:</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        storeUserRole('business_owner');
+                                                        addMessage({ role: 'assistant', content: `Hi${contactForm.name ? ' ' + contactForm.name : ''}! 👋 I'm the VemTap Support Bot. As a **Business Owner**, I can help you with managing your branches, catalogue, promotions, analytics, and more. How can I assist you today?` });
+                                                    }}
+                                                    className="w-full text-left bg-white border-2 border-transparent hover:border-blue-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all group active:scale-[0.99] mb-3"
+                                                >
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="size-12 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition-colors">
+                                                            <Briefcase size={24} className="text-indigo-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h5 className="text-sm font-black text-gray-900 mb-1">Business Owner</h5>
+                                                            <p className="text-[10px] font-medium text-gray-500 leading-relaxed">You own or manage a business and use VemTap to promote your services, engage customers, and grow your revenue.</p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        storeUserRole('customer');
+                                                        addMessage({ role: 'assistant', content: `Hi${contactForm.name ? ' ' + contactForm.name : ''}! 👋 I'm the VemTap Support Bot. As a **Customer**, I can help you with discovering deals, earning rewards, and using VemTap at your favorite businesses. How can I help you today?` });
+                                                    }}
+                                                    className="w-full text-left bg-white border-2 border-transparent hover:border-blue-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all group active:scale-[0.99]"
+                                                >
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="size-12 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                                                            <Users size={24} className="text-emerald-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h5 className="text-sm font-black text-gray-900 mb-1">Customer / Consumer</h5>
+                                                            <p className="text-[10px] font-medium text-gray-500 leading-relaxed">You visit businesses that use VemTap to discover deals, earn rewards, and enjoy personalized experiences.</p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </motion.div>
+                                        </div>
+                                    ) : (!isAuthenticated && !isGuestIdentified) ? (
                                         <div className="flex-1 overflow-y-auto p-8 flex flex-col">
                                             {isSubmitted ? (
                                                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center text-center py-10">
@@ -446,19 +487,51 @@ export default function SupportChatbot() {
                                     ) : (
                                         <>
                                             <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
-                                                {history.map((message, idx) => (
+                                                    {history.map((message, idx) => (
                                                     <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} key={idx} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`flex max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-3 items-end`}>
-                                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm ${message.role === 'user' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-gray-100 text-indigo-600'}`}>
-                                                                {message.role === 'user' ? <User size={14} /> : <Headset size={14} />}
-                                                            </div>
-                                                            <div className={`rounded-2xl px-5 py-3.5 shadow-sm relative ${message.role === 'user' ? 'bg-linear-to-br from-indigo-600 to-indigo-500 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
-                                                                <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                                                                <div className={`text-[9px] font-bold mt-1.5 flex items-center justify-between gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
-                                                                    <span>{message.role === 'assistant' && !message.interactionId ? 'Support Bot' : ''}</span>
-                                                                    <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        <div className={`flex flex-col max-w-[85%] ${message.role === 'user' ? 'items-end' : 'items-start'} gap-2`}>
+                                                            <div className={`flex ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-3 items-end`}>
+                                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm ${message.role === 'user' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-gray-100 text-indigo-600'}`}>
+                                                                    {message.role === 'user' ? <User size={14} /> : <Headset size={14} />}
+                                                                </div>
+                                                                <div className={`rounded-2xl px-5 py-3.5 shadow-sm relative ${message.role === 'user' ? 'bg-linear-to-br from-indigo-600 to-indigo-500 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
+                                                                    <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                                                                    <div className={`text-[9px] font-bold mt-1.5 flex items-center justify-between gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
+                                                                        <span>{message.role === 'assistant' && !message.interactionId ? 'Support Bot' : ''}</span>
+                                                                        <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                            {message.buttons && message.buttons.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 ml-11">
+                                                                    {message.buttons.map((btn, bi) => (
+                                                                        <button
+                                                                            key={bi}
+                                                                            onClick={() => {
+                                                                                if (btn.action === 'url') window.open(btn.value, '_blank');
+                                                                                else if (btn.action === 'action' && btn.value === 'escalate') handleEscalate();
+                                                                                else if (btn.action === 'action') sendQuery(btn.value);
+                                                                            }}
+                                                                            className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 shadow-sm"
+                                                                        >
+                                                                            {btn.label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {message.followUp && message.followUp.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 ml-11">
+                                                                    {message.followUp.map((q, qi) => (
+                                                                        <button
+                                                                            key={qi}
+                                                                            onClick={() => handleFollowUpClick(q)}
+                                                                            className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-xl text-[10px] font-bold text-blue-600 hover:bg-blue-100 transition-all active:scale-95"
+                                                                        >
+                                                                            {q}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </motion.div>
                                                 ))}

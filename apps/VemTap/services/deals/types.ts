@@ -39,6 +39,7 @@ export interface DealOffer {
     claimedCount: number;
     maxClaims: number;
     isTrending?: boolean;
+    isExpired?: boolean;
     status: string;
     views?: number;
     business?: DealBusiness;
@@ -50,6 +51,9 @@ export interface DealOffer {
     discountPercent?: number;
     offerType?: string;
     audience?: string;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
+    quantity?: number;
 }
 
 export interface PaginatedOffersResponse {

@@ -157,11 +157,17 @@ export class CatalogueOfferService {
   async findAllOffersAdmin(businessId: string, branchId?: string) {
     const where: any = { businessId };
     if (branchId) where.branchId = branchId;
-    return this.offerRepository.find({
+    const offers = await this.offerRepository.find({
       where,
       relations: ['items', 'branch', 'reward'],
       order: { createdAt: 'DESC' },
     });
+    // Map offers to include computed fields
+    return offers.map(offer => ({
+      ...offer,
+      maxClaims: offer.quantity,
+      claimedCount: 0, // Could be computed but skip for perf
+    }));
   }
 
   async findAllOffersPublic(branchId: string, query: CatalogueOfferQueryDto) {
@@ -183,7 +189,10 @@ export class CatalogueOfferService {
       .where('offer.branchId = :branchId', { branchId })
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
-      });
+      })
+      .andWhere(
+        '(offer.endDate IS NULL OR offer.endDate >= NOW())',
+      );
 
     if (search) {
       qb.andWhere('offer.name ILIKE :search', { search: `%${search}%` });
@@ -236,6 +245,9 @@ export class CatalogueOfferService {
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('branch.business', 'business')
       .where('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE })
+      .andWhere(
+        '(offer.endDate IS NULL OR offer.endDate >= NOW())',
+      )
       .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
         joinDiscoveryNetwork: true,
       })
@@ -319,6 +331,11 @@ export class CatalogueOfferService {
           claimedCount,
           maxClaims: offer.quantity || 100,
           isTrending,
+          isExpired: offer.endDate ? new Date() > new Date(offer.endDate) : false,
+          maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+          audienceTarget: offer.audienceTarget,
+          terms: offer.terms,
+          claimCodePrefix: offer.claimCodePrefix,
         };
       }),
     );
@@ -373,6 +390,9 @@ export class CatalogueOfferService {
 
     const isTrending = offer.views > 50 || offer.visits > 10;
 
+    const now = new Date();
+    const isExpired = offer.endDate ? now > new Date(offer.endDate) : false;
+
     const mappedOffer = {
       ...offer,
       originalPrice,
@@ -381,12 +401,16 @@ export class CatalogueOfferService {
       claimedCount,
       maxClaims: offer.quantity || 100,
       isTrending,
-      terms: [
+      isExpired,
+      maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+      audienceTarget: offer.audienceTarget,
+      terms: offer.terms || [
         'Valid during business hours',
         'Cannot be combined with other offers',
         'Valid for 7 days after claiming',
       ],
       longDescription: offer.description,
+      claimCodePrefix: offer.claimCodePrefix,
     };
 
     try {
@@ -499,10 +523,35 @@ export class CatalogueOfferService {
 
     const offer = await this.offerRepository.findOne({
       where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
-      relations: ['branch'],
+      relations: ['branch', 'branch.business'],
     });
     if (!offer) {
       throw new NotFoundException('Promotion not found or inactive');
+    }
+
+    // Check offer expiration by endDate
+    if (offer.endDate && new Date() > new Date(offer.endDate)) {
+      throw new BadRequestException('This deal has ended. Look out for new deals from this business.');
+    }
+
+    // Check audienceTarget: new vs returning customers
+    if (offer.audienceTarget && offer.audienceTarget !== 'all') {
+      const existingCustomerClaim = await this.claimRepository.findOne({
+        where: {
+          offer: { businessId: offer.businessId },
+          email,
+          status: In([CatalogueOfferClaimStatus.CLAIMED, CatalogueOfferClaimStatus.REDEEMED]),
+        },
+        relations: ['offer'],
+      });
+
+      if (offer.audienceTarget === 'new_customers' && existingCustomerClaim) {
+        throw new BadRequestException('This deal is for new customers only. You have previously claimed a deal from this business.');
+      }
+
+      if (offer.audienceTarget === 'returning_customers' && !existingCustomerClaim) {
+        throw new BadRequestException('This deal is for returning customers only. Visit this business first to qualify.');
+      }
     }
 
     // Idempotency: If already claimed, return the existing claim details
@@ -526,6 +575,20 @@ export class CatalogueOfferService {
       };
     }
 
+    // Check maxClaimsPerCustomer
+    if (offer.maxClaimsPerCustomer !== null && offer.maxClaimsPerCustomer !== undefined) {
+      const customerClaimsCount = await this.claimRepository.count({
+        where: {
+          offerId: offer.id,
+          email,
+          status: In([CatalogueOfferClaimStatus.CLAIMED, CatalogueOfferClaimStatus.REDEEMED]),
+        },
+      });
+      if (customerClaimsCount >= offer.maxClaimsPerCustomer) {
+        throw new BadRequestException(`You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`);
+      }
+    }
+
     if (offer.quantity !== null && offer.quantity !== undefined) {
       const claimedCount = await this.claimRepository.count({
         where: {
@@ -545,8 +608,9 @@ export class CatalogueOfferService {
     await this.otpRepository.save(otpRecord);
 
     const branchCode = offer.branch?.uniqueCode || 'XXXXX';
+    const prefix = offer.claimCodePrefix || 'VEM';
     const randomString = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const claimCode = `VEM-${branchCode}-${randomString}`;
+    const claimCode = `${prefix}-${branchCode}-${randomString}`;
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -577,21 +641,31 @@ export class CatalogueOfferService {
   }
 
   async redeemClaim(code: string, businessId: string) {
-    const claim = await this.claimRepository.findOne({
-      where: { claimCode: code },
-      relations: ['offer'],
-    });
+    // Support partial match: if code is short (4-6 chars), search by suffix
+    let claim: CatalogueOfferClaim | null;
+    if (code.length >= 4 && code.length <= 6) {
+      claim = await this.claimRepository
+        .createQueryBuilder('claim')
+        .leftJoinAndSelect('claim.offer', 'offer')
+        .where('claim.claimCode LIKE :suffix', { suffix: `%-${code}` })
+        .getOne();
+    } else {
+      claim = await this.claimRepository.findOne({
+        where: { claimCode: code },
+        relations: ['offer'],
+      });
+    }
 
     if (!claim) {
-      throw new NotFoundException('Claim code not found');
+      throw new NotFoundException('The claim code you entered is not recognised. Please check and try again.');
     }
 
     if (claim.offer.businessId !== businessId) {
-      throw new ForbiddenException('Unauthorized to redeem this claim');
+      throw new ForbiddenException('This claim code belongs to a different business and cannot be redeemed here.');
     }
 
     if (claim.status === CatalogueOfferClaimStatus.REDEEMED) {
-      throw new BadRequestException('This claim has already been redeemed');
+      throw new BadRequestException('This claim code has already been used. Each code can only be redeemed once.');
     }
 
     if (
@@ -602,7 +676,12 @@ export class CatalogueOfferService {
         claim.status = CatalogueOfferClaimStatus.EXPIRED;
         await this.claimRepository.save(claim);
       }
-      throw new BadRequestException('This claim has expired');
+      throw new BadRequestException('This claim code has expired. The customer may need to claim the deal again.');
+    }
+
+    // Check if the offer itself has expired
+    if (claim.offer.endDate && new Date() > new Date(claim.offer.endDate)) {
+      throw new BadRequestException('The deal associated with this code has ended. Please ask the customer to check for active deals.');
     }
 
     claim.status = CatalogueOfferClaimStatus.REDEEMED;

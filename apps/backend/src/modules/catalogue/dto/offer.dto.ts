@@ -108,6 +108,29 @@ export class CreateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   audience?: string;
+
+  @ApiPropertyOptional({ example: ['Valid during business hours', 'Cannot be combined with other offers'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  terms?: string[];
+
+  @ApiPropertyOptional({ example: 'VEM' })
+  @IsOptional()
+  @IsString()
+  claimCodePrefix?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  maxClaimsPerCustomer?: number;
+
+  @ApiPropertyOptional({ example: 'all' })
+  @IsOptional()
+  @IsString()
+  audienceTarget?: string;
 }
 
 export class UpdateCatalogueOfferDto {
@@ -200,6 +223,29 @@ export class UpdateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   audience?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  terms?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  claimCodePrefix?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  maxClaimsPerCustomer?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  audienceTarget?: string;
 }
 
 export class CatalogueOfferQueryDto {
