@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2, Briefcase, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
