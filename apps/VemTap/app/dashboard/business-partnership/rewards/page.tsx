@@ -1,37 +1,56 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Award, Star, Zap, Crown, Lock, CheckCircle, TrendingUp, Gift, Target, Shield, Gem } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAffiliateStats } from '@/services/affiliates/hooks';
 
-const badges = [
-    { id: 'network-member', label: 'Network Member', icon: Award, color: 'text-gray-400', bg: 'bg-gray-50', gradient: 'from-gray-300 to-gray-400', requirement: 'Join the partnership program', benefit: 'Basic partnership features', unlocked: true, unlockedDate: 'Jan 2026' },
-    { id: 'silver-partner', label: 'Silver Partner', icon: Star, color: 'text-gray-500', bg: 'bg-gray-100', gradient: 'from-gray-400 to-gray-300', requirement: 'Refer 5 businesses', benefit: '5% commission rate', unlocked: true, unlockedDate: 'Mar 2026' },
-    { id: 'gold-partner', label: 'Gold Partner', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50', gradient: 'from-amber-400 to-yellow-500', requirement: 'Refer 15 businesses', benefit: '8% commission rate', unlocked: true, unlockedDate: 'Jun 2026' },
-    { id: 'platinum-partner', label: 'Platinum Partner', icon: Shield, color: 'text-blue-500', bg: 'bg-blue-50', gradient: 'from-blue-400 to-blue-600', requirement: 'Refer 30 businesses', benefit: '12% commission rate', unlocked: false, progress: 60 },
-    { id: 'diamond-partner', label: 'Diamond Partner', icon: Gem, color: 'text-cyan-500', bg: 'bg-cyan-50', gradient: 'from-cyan-400 to-blue-500', requirement: 'Refer 50 businesses', benefit: '15% commission + priority support', unlocked: false, progress: 32 },
-    { id: 'elite-partner', label: 'Elite Partner', icon: Crown, color: 'text-amber-600', bg: 'bg-amber-50', gradient: 'from-amber-600 to-yellow-600', requirement: 'Refer 100 businesses', benefit: '20% commission + exclusive rewards', unlocked: false, progress: 12 },
+const tierThresholds = [
+    { label: 'Network Member', refs: 0, icon: Award, color: 'text-gray-400', bg: 'bg-gray-50', gradient: 'from-gray-300 to-gray-400', benefit: 'Basic partnership features' },
+    { label: 'Silver Partner', refs: 5, icon: Star, color: 'text-gray-500', bg: 'bg-gray-100', gradient: 'from-gray-400 to-gray-300', benefit: '5% commission rate' },
+    { label: 'Gold Partner', refs: 15, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50', gradient: 'from-amber-400 to-yellow-500', benefit: '8% commission rate' },
+    { label: 'Platinum Partner', refs: 30, icon: Shield, color: 'text-blue-500', bg: 'bg-blue-50', gradient: 'from-blue-400 to-blue-600', benefit: '12% commission rate' },
+    { label: 'Diamond Partner', refs: 50, icon: Gem, color: 'text-cyan-500', bg: 'bg-cyan-50', gradient: 'from-cyan-400 to-blue-500', benefit: '15% commission + priority support' },
+    { label: 'Elite Partner', refs: 100, icon: Crown, color: 'text-amber-600', bg: 'bg-amber-50', gradient: 'from-amber-600 to-yellow-600', benefit: '20% commission + exclusive rewards' },
 ];
 
-const milestones = [
-    { label: '5 Referrals', reward: 'Silver Badge + ₦5,000 Bonus', progress: 100, achieved: true },
-    { label: '15 Referrals', reward: 'Gold Badge + ₦15,000 Bonus', progress: 100, achieved: true },
-    { label: '30 Referrals', reward: 'Platinum Badge + ₦30,000 Bonus', progress: 60, achieved: false },
-    { label: '50 Referrals', reward: 'Diamond Badge + ₦75,000 Bonus', progress: 32, achieved: false },
-    { label: '100 Referrals', reward: 'Elite Badge + ₦200,000 Bonus', progress: 12, achieved: false },
-];
-
-const upcomingRewards = [
-    { label: 'Next Milestone Bonus', value: '₦30,000', progress: 60, icon: Gift },
-    { label: 'Discovery Promotion Credit', value: '₦10,000', progress: 45, icon: TrendingUp },
-    { label: 'Campaign Reward', value: 'Premium Feature', progress: 80, icon: Target },
+const milestoneDefs = [
+    { label: '5 Referrals', reward: 'Silver Badge + ₦5,000 Bonus', refs: 5 },
+    { label: '15 Referrals', reward: 'Gold Badge + ₦15,000 Bonus', refs: 15 },
+    { label: '30 Referrals', reward: 'Platinum Badge + ₦30,000 Bonus', refs: 30 },
+    { label: '50 Referrals', reward: 'Diamond Badge + ₦75,000 Bonus', refs: 50 },
+    { label: '100 Referrals', reward: 'Elite Badge + ₦200,000 Bonus', refs: 100 },
 ];
 
 export default function PartnershipRewardsPage() {
-    const currentLevel = 'Gold Partner';
-    const nextLevel = 'Platinum Partner';
-    const progressToNext = 60;
+    const { data: stats } = useAffiliateStats();
+    const totalReferrals = stats?.totalReferrals ?? 0;
+    const currentTier = stats?.tier || 'Network Member';
+
+    const currentTierIndex = Math.max(0, tierThresholds.findIndex(t => t.label.toLowerCase() === currentTier.toLowerCase()));
+    const nextTier = tierThresholds[currentTierIndex + 1];
+    const nextTierRefs = nextTier?.refs ?? totalReferrals;
+    const prevTierRefs = tierThresholds[currentTierIndex]?.refs ?? 0;
+    const progressToNext = nextTier ? Math.min(100, Math.round(((totalReferrals - prevTierRefs) / (nextTierRefs - prevTierRefs)) * 100)) : 100;
+
+    const badges = useMemo(() => tierThresholds.map((t, i) => {
+        const unlocked = totalReferrals >= t.refs;
+        const nextIdx = i > 0 ? tierThresholds[i - 1] : null;
+        const progress = unlocked ? 100 : Math.min(100, Math.round((totalReferrals / t.refs) * 100));
+        return { ...t, id: t.label.toLowerCase().replace(/\s+/g, '-'), unlocked, progress, unlockedDate: unlocked ? 'Achieved' : undefined, requirement: unlocked ? 'Achieved' : `Refer ${t.refs} businesses` };
+    }), [totalReferrals]);
+
+    const milestones = useMemo(() => milestoneDefs.map(m => {
+        const achieved = totalReferrals >= m.refs;
+        const progress = achieved ? 100 : Math.min(100, Math.round((totalReferrals / m.refs) * 100));
+        return { label: m.label, reward: m.reward, progress, achieved };
+    }), [totalReferrals]);
+
+    const nextMilestone = milestones.find(m => !m.achieved);
+    const upcomingRewards = nextMilestone ? [
+        { label: 'Next Milestone Bonus', value: nextMilestone.reward, progress: nextMilestone.progress, icon: Gift },
+    ] : [];
 
     return (
         <div className="space-y-5 md:space-y-8">
@@ -39,37 +58,39 @@ export default function PartnershipRewardsPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 rounded-3xl p-5 md:p-8 text-white"
+                className="bg-gradient-to-br from-primary via-blue-600 to-indigo-600 rounded-3xl p-5 md:p-8 text-white"
             >
                 <div className="flex items-start justify-between mb-4 md:mb-6">
                     <div>
                         <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2">
-                            <Zap size={16} className="text-yellow-200" />
-                            <span className="text-[10px] md:text-xs font-semibold text-yellow-200 uppercase tracking-wider">Current Level</span>
+                            <Zap size={16} className="text-white/70" />
+                            <span className="text-[10px] md:text-xs font-semibold text-white/70 uppercase tracking-wider">Current Level</span>
                         </div>
-                        <h2 className="text-xl md:text-3xl font-bold">{currentLevel}</h2>
-                        <p className="text-xs md:text-sm text-white/70 mt-1">Rank #12 in Nigeria</p>
+                        <h2 className="text-xl md:text-3xl font-bold">{currentTier} Partner</h2>
+                        <p className="text-xs md:text-sm text-white/70 mt-1">{totalReferrals} referrals · {stats?.activeReferrals || 0} active</p>
                     </div>
                     <div className="size-14 md:size-16 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
                         <Award size={28} className="text-white" />
                     </div>
                 </div>
 
-                <div className="bg-white/15 rounded-2xl p-4 md:p-5 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-white/80">Progress to {nextLevel}</span>
-                        <span className="text-sm font-bold text-white">{progressToNext}%</span>
+                {nextTier && (
+                    <div className="bg-white/15 rounded-2xl p-4 md:p-5 backdrop-blur-sm">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-white/80">Progress to {nextTier.label}</span>
+                            <span className="text-sm font-bold text-white">{progressToNext}%</span>
+                        </div>
+                        <div className="h-3 bg-white/20 rounded-full overflow-hidden">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progressToNext}%` }}
+                                transition={{ duration: 1, delay: 0.3 }}
+                                className="h-full bg-white rounded-full"
+                            />
+                        </div>
+                        <p className="text-xs text-white/60 mt-2">Refer {nextTier.refs - totalReferrals} more businesses to unlock {nextTier.label}</p>
                     </div>
-                    <div className="h-3 bg-white/20 rounded-full overflow-hidden">
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progressToNext}%` }}
-                            transition={{ duration: 1, delay: 0.3 }}
-                            className="h-full bg-white rounded-full"
-                        />
-                    </div>
-                    <p className="text-xs text-white/60 mt-2">Refer 9 more businesses to unlock Platinum Partner</p>
-                </div>
+                )}
             </motion.div>
 
             {/* Badge Gallery */}
@@ -101,9 +122,9 @@ export default function PartnershipRewardsPage() {
                                     )}
                                 </div>
                                 <h3 className="text-sm font-bold text-gray-900 mb-1">{badge.label}</h3>
-                                <p className="text-[11px] md:text-xs text-gray-500 mb-3">{isUnlocked ? `Unlocked ${badge.unlockedDate}` : badge.requirement}</p>
+                                <p className="text-[11px] md:text-xs text-gray-500 mb-3">{isUnlocked ? 'Achieved' : badge.requirement}</p>
                                 <div className={cn("text-[11px] md:text-xs font-medium", isUnlocked ? 'text-emerald-600 bg-emerald-50' : 'text-gray-400 bg-gray-50', "px-2.5 py-1 rounded-lg inline-block")}>{badge.benefit}</div>
-                                {!isUnlocked && badge.progress && (
+                                {!isUnlocked && (
                                     <div className="mt-3">
                                         <div className="flex items-center justify-between text-[11px] md:text-xs text-gray-400 mb-1">
                                             <span>Progress</span>

@@ -1,6 +1,7 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette
+    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette,
+    Handshake
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -114,6 +115,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/discovery/dashboard',
         permission: 'admin:all',
         keywords: ['discovery', 'network', 'referrals', 'attribution', 'partnerships', 'nearby']
+    },
+    {
+        id: 'business-partnership',
+        label: 'Business Partnership',
+        icon: Handshake,
+        href: '/admin/business-partnership',
+        permission: 'admin:all',
+        keywords: ['affiliates', 'partners', 'referrals', 'commissions', 'tiers', 'withdrawals', 'payouts']
     },
     {
         id: 'support',

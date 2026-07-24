@@ -113,34 +113,62 @@ export function CRMQuickActions() {
     );
 }
 
-export function CRMActivityFeed() {
-    const activities = [
-        { type: 'registration', user: 'Sarah J.', desc: 'Registered via Main Entrance QR', time: '10 mins ago', icon: UserPlus, color: 'text-blue-500' },
-        { type: 'visit', user: 'Michael K.', desc: 'Visited via NFC Plate Table 4', time: '25 mins ago', icon: Activity, color: 'text-purple-500' },
-        { type: 'order', user: 'Elena R.', desc: 'Placed an order for $45.00', time: '1 hour ago', icon: ShoppingBag, color: 'text-emerald-500' },
-        { type: 'message', user: 'David W.', desc: 'Opened "Weekend Special" WhatsApp', time: '3 hours ago', icon: MessageSquare, color: 'text-rose-500' },
-    ];
+function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+    const d = Math.floor(hrs / 24);
+    return `${d}d ago`;
+}
+
+function getActivityIcon(type: string) {
+    switch (type) {
+        case 'registration': return { icon: UserPlus, color: 'text-blue-500' };
+        case 'visit': return { icon: Activity, color: 'text-purple-500' };
+        case 'order': return { icon: ShoppingBag, color: 'text-emerald-500' };
+        case 'message': return { icon: MessageSquare, color: 'text-rose-500' };
+        default: return { icon: Activity, color: 'text-gray-500' };
+    }
+}
+
+export function CRMActivityFeed({ activities = [] }: { activities?: { id: string; type: string; userName: string; description: string; timestamp: string }[] }) {
+    if (activities.length === 0) {
+        return (
+            <div className="rounded-[2.5rem] bg-white p-8 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                <div className="size-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+                    <Activity size={24} className="text-gray-300" />
+                </div>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No recent activity</p>
+            </div>
+        );
+    }
 
     return (
         <div className="rounded-[2.5rem] bg-white p-8 shadow-sm border border-gray-100">
             <div className="space-y-6">
-                {activities.map((act, i) => (
-                    <div key={i} className="flex gap-4 relative group">
-                        {i < activities.length - 1 && (
-                            <div className="absolute left-6 top-12 bottom-[-24px] w-0.5 bg-gray-50 group-hover:bg-[#066CF4]/5 transition-colors" />
-                        )}
-                        <div className="size-12 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 shadow-sm z-10 transition-transform group-hover:scale-110">
-                            <act.icon size={20} className={act.color} />
-                        </div>
-                        <div className="flex-1 pb-6 border-b border-gray-50 last:border-0">
-                            <div className="flex justify-between items-start mb-1">
-                                <h4 className="text-xs font-black text-gray-900">{act.user}</h4>
-                                <span className="text-[10px] font-bold text-gray-400 uppercase">{act.time}</span>
+                {activities.map((act, i) => {
+                    const { icon: Icon, color } = getActivityIcon(act.type);
+                    return (
+                        <div key={act.id || i} className="flex gap-4 relative group">
+                            {i < activities.length - 1 && (
+                                <div className="absolute left-6 top-12 bottom-[-24px] w-0.5 bg-gray-50 group-hover:bg-[#066CF4]/5 transition-colors" />
+                            )}
+                            <div className="size-12 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 shadow-sm z-10 transition-transform group-hover:scale-110">
+                                <Icon size={20} className={color} />
                             </div>
-                            <p className="text-[10px] font-bold text-gray-400 leading-relaxed uppercase tracking-tight">{act.desc}</p>
+                            <div className="flex-1 pb-6 border-b border-gray-50 last:border-0">
+                                <div className="flex justify-between items-start mb-1">
+                                    <h4 className="text-xs font-black text-gray-900">{act.userName}</h4>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">{timeAgo(act.timestamp)}</span>
+                                </div>
+                                <p className="text-[10px] font-bold text-gray-400 leading-relaxed uppercase tracking-tight">{act.description}</p>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             <Link href="/dashboard/visitors/activity" className="mt-6 block">
                 <Button className="w-full h-12 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-400 text-[10px] font-black uppercase tracking-widest border-none">

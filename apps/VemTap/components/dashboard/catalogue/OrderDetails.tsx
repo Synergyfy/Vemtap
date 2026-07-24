@@ -52,6 +52,15 @@ export function OrderDetailsSummary({ order }: { order: any }) {
                                 <Clock size={14} />
                                 {formattedTime} {order.tableNumber ? `(Table: ${order.tableNumber})` : '(Digital Order)'}
                             </div>
+                            {order.attendedByUser && (
+                                <>
+                                    <div className="hidden md:block size-1 rounded-full bg-gray-200" />
+                                    <div className="flex items-center gap-1.5">
+                                        <User size={14} />
+                                        {order.attendedByUser.name || `${order.attendedByUser.firstName} ${order.attendedByUser.lastName}`}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

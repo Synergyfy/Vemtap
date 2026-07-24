@@ -34,6 +34,19 @@ export default function InventoryDashboard() {
     }
   }, [searchParams, router]);
 
+  // Open edit modal for a specific product if ?editProductId=xxx in URL
+  useEffect(() => {
+    const editId = searchParams.get('editProductId');
+    if (editId && items.length > 0) {
+      const product = items.find((p: any) => p.id === editId);
+      if (product) {
+        setSelectedProduct(product);
+        setShowProductModal(true);
+        router.replace('/dashboard/inventory', { scroll: false });
+      }
+    }
+  }, [searchParams, router, items]);
+
   const filteredItems = items.filter((item: any) => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (item.category?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

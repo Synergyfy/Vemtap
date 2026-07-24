@@ -1,12 +1,17 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Share2, Download, Copy, CheckCheck, Smartphone, Monitor, ExternalLink, Palette, ChevronDown } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
-import { CardFlip, CardDesignPreview, cardLayouts, MiniLayoutPreview, type BusinessInfo, type CardLayoutId } from './BusinessCardPreview';
+import { useAffiliateStats } from '@/services/affiliates/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useBranches } from '@/services/branches/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { CardFlip, CardDesignPreview, cardLayouts, MiniLayoutPreview, faceComponents, type BusinessInfo, type CardLayoutId } from './BusinessCardPreview';
 
 const presetColors = [
     { hex: '#066CF4', label: 'Default Blue' },
@@ -22,29 +27,47 @@ const presetColors = [
 ];
 
 const shareActions = [
-    { label: 'Share Card', icon: Share2 },
-    { label: 'Download PNG', icon: Download },
-    { label: 'Copy Link', icon: Copy },
-    { label: 'Save to Gallery', icon: Download },
-];
+    { label: 'Share Card', icon: Share2, id: 'share' },
+    { label: 'Download PNG', icon: Download, id: 'download' },
+    { label: 'Copy Link', icon: Copy, id: 'copy' },
+    { label: 'Save to Gallery', icon: Download, id: 'save' },
+] as const;
 
 export default function PartnershipCardPage() {
     const user = useAuthStore(s => s.user);
+    const { data: stats } = useAffiliateStats();
+    const { data: myBusiness } = useMyBusiness();
+    const { activeBranchId } = useActiveBranch();
+    const { data: branches = [] } = useBranches();
+
+    const [origin, setOrigin] = useState('');
+    useEffect(() => {
+        if (typeof window !== 'undefined') setOrigin(window.location.origin);
+    }, []);
+
+    const activeBranch = useMemo(() => {
+        return branches.find((b: any) => b.id === activeBranchId) || branches[0];
+    }, [branches, activeBranchId]);
+
+    const publicUrl = useMemo(() => {
+        const ref = stats?.referralCode || activeBranch?.uniqueCode || '';
+        return `${origin}/get-started?ref=${ref}`;
+    }, [origin, activeBranch, stats]);
 
     const business = useMemo((): BusinessInfo => ({
-        name: user?.businessName || 'Your Business',
-        category: 'Technology · Services',
-        location: 'Lagos, Nigeria',
-        phone: user?.phone || '+234 800 000 0000',
-        email: user?.email || 'business@vemtap.com',
-        website: `${(user?.businessName || 'business').toLowerCase().replace(/\s+/g, '')}.vemtap.com`,
+        name: myBusiness?.name || user?.businessName || 'Your Business',
+        category: (typeof myBusiness?.category === 'string' ? myBusiness.category : (myBusiness?.category as any)?.name) || 'Technology · Services',
+        location: myBusiness?.state ? `${myBusiness.state}${myBusiness.city ? ', ' + myBusiness.city : ''}` : 'Lagos, Nigeria',
+        phone: myBusiness?.phone || user?.phone || '+234 800 000 0000',
+        email: myBusiness?.officialEmail || user?.email || 'business@vemtap.com',
+        website: myBusiness?.website || `${(myBusiness?.name || user?.businessName || 'business').toLowerCase().replace(/\s+/g, '')}.vemtap.com`,
         partner: user?.name || 'Business Owner',
         role: 'Business Partner',
         tagline: 'Join me on VEMTAP and grow your business',
-        logo: user?.businessLogo || '/logo.png',
-        referralCode: 'VEN-ABC123',
-        qrValue: `https://vemtap.com/join?ref=VEN-ABC123`,
-    }), [user]);
+        logo: myBusiness?.logoUrl || user?.businessLogo || '/logo.png',
+        referralCode: stats?.referralCode || activeBranch?.uniqueCode || 'VEM-REFERRAL',
+        qrValue: publicUrl,
+    }), [user, stats, myBusiness, publicUrl]);
 
     const [accentColor, setAccentColor] = useState('#066CF4');
     const [textDark, setTextDark] = useState('');
@@ -55,6 +78,9 @@ export default function PartnershipCardPage() {
     const [flipped, setFlipped] = useState(false);
     const [viewMode, setViewMode] = useState<'mobile' | 'desktop'>('mobile');
     const [previewOpen, setPreviewOpen] = useState(false);
+    const cardRef = useRef<HTMLDivElement>(null);
+    const frontRef = useRef<HTMLDivElement>(null);
+    const backRef = useRef<HTMLDivElement>(null);
 
     const handleCopy = (label: string, text: string) => {
         navigator.clipboard.writeText(text);
@@ -62,13 +88,84 @@ export default function PartnershipCardPage() {
         setTimeout(() => setCopied(null), 2000);
     };
 
+    const captureCard = useCallback(async (): Promise<{ front: string | null; back: string | null } | null> => {
+        if (!frontRef.current || !backRef.current) return null;
+        try {
+            const front = await toPng(frontRef.current, { quality: 1, pixelRatio: 2 });
+            const back = await toPng(backRef.current, { quality: 1, pixelRatio: 2 });
+            return { front, back };
+        } catch {
+            return null;
+        }
+    }, []);
+
+    const handleShare = useCallback(async () => {
+        const shareData = {
+            title: business.name,
+            text: `${business.name} — Join me on VEMTAP and grow your business`,
+            url: business.qrValue,
+        };
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch {}
+        } else {
+            await handleCopy('share', business.qrValue);
+        }
+    }, [business]);
+
+    const handleDownload = useCallback(async () => {
+        const dataUrls = await captureCard();
+        if (!dataUrls || !dataUrls.front || !dataUrls.back) return;
+        const name = business.name.replace(/\s+/g, '-').toLowerCase();
+        const link = document.createElement('a');
+        link.download = `${name}-card-front.png`;
+        link.href = dataUrls.front;
+        link.click();
+        setTimeout(() => {
+            const link2 = document.createElement('a');
+            link2.download = `${name}-card-back.png`;
+            link2.href = dataUrls.back!;
+            link2.click();
+        }, 200);
+    }, [captureCard, business]);
+
+    const handleCopyLink = useCallback(() => {
+        handleCopy('copy', business.qrValue);
+    }, [handleCopy, business]);
+
+    const handleSaveToGallery = useCallback(async () => {
+        const dataUrls = await captureCard();
+        if (!dataUrls || !dataUrls.front || !dataUrls.back) return;
+        const name = business.name.replace(/\s+/g, '-').toLowerCase();
+        const link = document.createElement('a');
+        link.download = `${name}-card-front.png`;
+        link.href = dataUrls.front;
+        link.click();
+        setTimeout(() => {
+            const link2 = document.createElement('a');
+            link2.download = `${name}-card-back.png`;
+            link2.href = dataUrls.back!;
+            link2.click();
+        }, 200);
+    }, [captureCard, business]);
+
+    const handleAction = useCallback((id: string) => {
+        switch (id) {
+            case 'share': handleShare(); break;
+            case 'download': handleDownload(); break;
+            case 'copy': handleCopyLink(); break;
+            case 'save': handleSaveToGallery(); break;
+        }
+    }, [handleShare, handleDownload, handleCopyLink, handleSaveToGallery]);
+
     const currentLayout = cardLayouts.find(l => l.id === layout)!;
 
     return (
         <div className="space-y-6 md:space-y-8">
             {/* Preview + Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-2 space-y-4 relative">
                     <div className="flex items-center justify-between">
                         <h2 className="text-base md:text-lg font-semibold text-gray-900">Preview</h2>
                         <div className="flex items-center gap-2">
@@ -99,7 +196,7 @@ export default function PartnershipCardPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-center py-4 md:py-6">
+                    <div className="flex items-center justify-center py-4 md:py-6" ref={cardRef}>
                         <CardFlip
                             accentColor={accentColor}
                             textDark={textDark}
@@ -109,6 +206,16 @@ export default function PartnershipCardPage() {
                             onFlip={() => setFlipped(!flipped)}
                             size={viewMode === 'mobile' ? 'md' : 'lg'}
                         />
+                    </div>
+
+                    {/* Hidden flat capture containers for clean PNG export */}
+                    <div className="absolute left-[-9999px] top-0 pointer-events-none" aria-hidden="true">
+                        <div ref={frontRef} className="w-full max-w-[420px] aspect-[1.586/1] rounded-[20px] overflow-hidden shadow-lg">
+                            {React.createElement(faceComponents.front[layout], { accent: accentColor, textDark, business })}
+                        </div>
+                        <div ref={backRef} className="w-full max-w-[420px] aspect-[1.586/1] rounded-[20px] overflow-hidden shadow-lg mt-4">
+                            {React.createElement(faceComponents.back[layout], { accent: accentColor, textDark, business })}
+                        </div>
                     </div>
 
                     <p className="text-center text-[11px] md:text-xs text-gray-400">
@@ -250,8 +357,8 @@ export default function PartnershipCardPage() {
                                 <p className="text-[11px] md:text-xs text-gray-500 mt-0.5">{business.tagline}</p>
                                 <p className="text-[10px] md:text-[11px] text-gray-400 mt-1 truncate">{business.qrValue}</p>
                             </div>
-                            <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1 shrink-0">
-                                <QRCodeSVG value={business.qrValue} size={viewMode === 'mobile' ? 36 : 40} />
+                            <div className="size-11 md:size-12 bg-gray-50 rounded-lg p-1 shrink-0 flex items-center justify-center">
+                                <QRCodeSVG value={business.qrValue} size={viewMode === 'mobile' ? 36 : 40} style={{ width: '100%', height: '100%' }} />
                             </div>
                         </div>
                     </div>
@@ -267,7 +374,7 @@ export default function PartnershipCardPage() {
                                 return (
                                     <button
                                         key={action.label}
-                                        onClick={() => handleCopy(action.label, business.qrValue)}
+                                        onClick={() => handleAction(action.id)}
                                         className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all group"
                                     >
                                         <div className="size-7 md:size-8 rounded-lg bg-white flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
@@ -281,12 +388,12 @@ export default function PartnershipCardPage() {
                     </div>
 
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Card Stats</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Referral Stats</h3>
                         <div className="space-y-2.5">
                             {[
-                                { label: 'Views', value: '234' },
-                                { label: 'Shares', value: '56' },
-                                { label: 'QR Scans', value: '89' },
+                                { label: 'Total Referrals', value: String(stats?.totalReferrals || 0) },
+                                { label: 'Active Referrals', value: String(stats?.activeReferrals || 0) },
+                                { label: 'Lifetime Earnings', value: `₦${(stats?.totalEarnings || 0).toLocaleString()}` },
                             ].map((stat) => (
                                 <div key={stat.label} className="flex items-center justify-between">
                                     <span className="text-xs md:text-sm text-gray-500">{stat.label}</span>

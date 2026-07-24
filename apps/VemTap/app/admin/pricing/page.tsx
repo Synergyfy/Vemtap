@@ -533,21 +533,6 @@ export default function AdminPricingPage() {
     const isSaving = updateMutation.isPending || addMutation.isPending;
     const isSavingAddOn = addAddOnMutation.isPending || updateAddOnMutation.isPending;
 
-    // For feature limits: -1 = Unlimited, a number = that limit
-    const unlimited = (val: any) => {
-        if (val === -1 || val === '-1') return 'Unlimited';
-        return val;
-    };
-
-    // For messaging credits: 0 = Not included, -1 = Unlimited, else show count
-    const formatCredit = (val: any) => {
-        const n = Number(val);
-        if (val === null || val === undefined || val === '' || isNaN(n)) return 'Not included';
-        if (n === 0) return 'Not included';
-        if (n === -1) return 'Unlimited';
-        return n;
-    };
-
     const formatPrice = (price: number, currency = 'NGN') => {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency, minimumFractionDigits: 0 }).format(Number(price) || 0);
     };
@@ -1115,61 +1100,18 @@ export default function AdminPricingPage() {
                                             {plan.description}
                                         </p>
 
-                                        <div className="grid grid-cols-2 gap-4 text-sm mb-6 pb-6 border-b border-gray-50">
-                                            <div className="space-y-2">
-                                                <p className="font-bold text-text-main">Features</p>
-                                                <div className="space-y-1 text-text-secondary">
-                                                    <p className="flex items-center gap-2">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.messagingEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
-                                                        Messaging: {plan.messagingEnabled ? 'Enabled' : 'Disabled'}
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.analyticsEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
-                                                        Analytics: {plan.analyticsEnabled ? 'Enabled' : 'Disabled'}
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.teamMembersEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
-                                                        Team: {plan.teamMembersEnabled ? 'Enabled' : 'Disabled'}
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.loyaltyEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
-                                                        Loyalty: {plan.loyaltyEnabled ? 'Enabled' : 'Disabled'}
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.branchesEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
-                                                        Branches: {plan.branchesEnabled ? 'Enabled' : 'Disabled'}
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.automationsEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
-                                                        Automations: {plan.automationsEnabled ? 'Enabled' : 'Disabled'}
-                                                    </p>
+                                        {plan.features && plan.features.length > 0 && (
+                                            <div className="space-y-2 mb-6 pb-6 border-b border-gray-50">
+                                                <p className="font-bold text-text-main text-sm">Features</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {plan.features.map((f, fi) => (
+                                                        <span key={fi} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">
+                                                            {f}
+                                                        </span>
+                                                    ))}
                                                 </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <p className="font-bold text-text-main">Limits</p>
-                                                <div className="space-y-1 text-text-secondary">
-                                                    <p>Team Limit: {unlimited(plan.teamMembersLimit)}</p>
-                                                    <p>Branch Limit: {unlimited(plan.branchLimit)}</p>
-                                                    <p>Loyalty Limit: {unlimited(plan.loyaltyLimit)}</p>
-                                                    <p>Automations Limit: {unlimited(plan.maxAutomations)}</p>
-                                                    <p>Trial: {plan.trialDurationDays} days</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 gap-4 text-sm">
-                                            <div className="space-y-2">
-                                                <p className="font-bold text-text-main">Credits</p>
-                                                <div className="flex gap-4 text-text-secondary">
-                                                    {Number(plan.smsCredits) !== 0 && <p>SMS: {formatCredit(plan.smsCredits)}</p>}
-                                                    {Number(plan.whatsappCredits) !== 0 && <p>WA: {formatCredit(plan.whatsappCredits)}</p>}
-                                                    {Number(plan.emailCredits) !== 0 && <p>Email: {formatCredit(plan.emailCredits)}</p>}
-                                                    {Number(plan.smsCredits) === 0 && Number(plan.whatsappCredits) === 0 && Number(plan.emailCredits) === 0 && (
-                                                        <p className="italic opacity-50">No credits included</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        )}
 
                                     </div>
                                 </motion.div>

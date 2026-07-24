@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { PaginatedVisitorResponse, VisitorStatsResponse, Visitor } from './types';
+import { PaginatedVisitorResponse, VisitorStatsResponse, Visitor, PaginatedActivityFeedResponse } from './types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMemo } from 'react';
@@ -290,6 +290,31 @@ export const useMessagingVisitorsByBranch = (branchId?: string, query?: Record<s
         refetchOnWindowFocus: false,
     });
 }
+
+export const useActivityFeed = (branchId?: string, enabled: boolean = true) => {
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isStaff = ['owner', 'admin', 'manager', 'staff'].includes(normalizeRole(role));
+    
+    const contextParams = useMemo(() => 
+        getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches }),
+        [role, businessId, resolvedBranchId, allBranches]
+    );
+
+    return useQuery<PaginatedActivityFeedResponse, Error>({
+        queryKey: ['visitors', 'activity-feed', businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
+        queryFn: async () => {
+            const searchParams = new URLSearchParams(contextParams);
+            return await api.get(`/visitors/activity-feed?${searchParams.toString()}`);
+        },
+        enabled: isAuthenticated && isStaff && enabled,
+        staleTime: 30 * 1000,
+        gcTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
+};
 
 export const useUpdateVisitor = () => {
     const queryClient = useQueryClient();

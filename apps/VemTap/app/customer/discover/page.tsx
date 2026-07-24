@@ -51,7 +51,7 @@ function toPromotion(offer: DealOffer): Promotion {
         discountAmount,
         originalPrice,
         dealPrice: offer.calculatedPrice,
-        image: offer.mainImage,
+        image: offer.mainImage || '',
         startDate: offer.startDate || '',
         endDate: offer.endDate || '',
         claimedCount: offer.claimedCount,

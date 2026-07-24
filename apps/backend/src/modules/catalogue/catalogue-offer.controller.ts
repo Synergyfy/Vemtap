@@ -134,4 +134,14 @@ export class CatalogueOfferController {
   async redeemClaim(@Param('code') code: string, @Req() req: any) {
     return this.offerService.redeemClaim(code, req.user.businessId);
   }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Get('claims')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('inventory')
+  @ApiOperation({ summary: 'Get all promotion claims for the business (Admin)' })
+  async getBusinessClaims(@Req() req: any) {
+    return this.offerService.getBusinessClaims(req.user.businessId);
+  }
 }

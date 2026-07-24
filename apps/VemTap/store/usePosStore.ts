@@ -10,6 +10,7 @@ export interface PosCartItem {
   price: number;
   costPrice: number;
   quantity: number;
+  stockQuantity?: number;
   sku: string;
   barcode: string;
   image?: string;
@@ -20,12 +21,18 @@ export interface PosCartItem {
 
 export type PaymentMethodType = 'cash' | 'transfer' | 'card' | 'split';
 
+export interface RedeemedPromotion {
+    claimCode: string;
+    offerName: string;
+}
+
 interface PosState {
   cart: PosCartItem[];
   cartDiscount: { type: 'percentage' | 'fixed'; value: number } | null;
   attachedCustomer: { id: string; name: string; phone: string; email?: string } | null;
   lastCompletedSale: PosSaleResponse | null;
   manualLoyaltyPoints: number;
+  redeemedPromotion: RedeemedPromotion | null;
 
   addToCart: (item: Omit<PosCartItem, 'discount'>) => void;
   removeFromCart: (id: string) => void;
@@ -34,6 +41,7 @@ interface PosState {
   setCartDiscount: (discount: { type: 'percentage' | 'fixed'; value: number } | null) => void;
   attachCustomer: (customer: { id: string; name: string; phone: string; email?: string } | null) => void;
   clearCart: () => void;
+  setRedeemedPromotion: (promotion: RedeemedPromotion | null) => void;
 
   getCartSubtotal: () => number;
   getCartDiscountAmount: () => number;
@@ -53,13 +61,16 @@ export const usePosStore = create<PosState>()(
       attachedCustomer: null,
       lastCompletedSale: null,
       manualLoyaltyPoints: 0,
+      redeemedPromotion: null,
 
       addToCart: (item) => set((state) => {
         const existing = state.cart.find(i => i.id === item.id);
         if (existing) {
+          const newQty = existing.quantity + item.quantity;
+          const maxStock = existing.stockQuantity ?? Infinity;
           return {
             cart: state.cart.map(i =>
-              i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+              i.id === item.id ? { ...i, quantity: Math.min(newQty, maxStock) } : i
             ),
           };
         }
@@ -73,7 +84,11 @@ export const usePosStore = create<PosState>()(
       updateCartItemQuantity: (id, quantity) => set((state) => ({
         cart: quantity <= 0
           ? state.cart.filter(i => i.id !== id)
-          : state.cart.map(i => i.id === id ? { ...i, quantity } : i),
+          : state.cart.map(i => {
+              if (i.id !== id) return i;
+              const maxStock = i.stockQuantity ?? Infinity;
+              return { ...i, quantity: Math.min(quantity, maxStock) };
+            }),
       })),
 
       updateCartItemDiscount: (id, discount) => set((state) => ({
@@ -84,7 +99,9 @@ export const usePosStore = create<PosState>()(
 
       attachCustomer: (attachedCustomer) => set({ attachedCustomer }),
 
-      clearCart: () => set({ cart: [], cartDiscount: null, attachedCustomer: null, manualLoyaltyPoints: 0 }),
+      setRedeemedPromotion: (redeemedPromotion) => set({ redeemedPromotion }),
+
+      clearCart: () => set({ cart: [], cartDiscount: null, attachedCustomer: null, manualLoyaltyPoints: 0, redeemedPromotion: null }),
 
       getCartSubtotal: () => {
         return get().cart.reduce((acc, item) => acc + (item.price * item.quantity) - item.discount, 0);

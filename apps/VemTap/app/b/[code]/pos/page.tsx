@@ -2,25 +2,49 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import POSHomeScreen from '@/components/dashboard/pos/POSHomeScreen';
 import { CartPanel } from '@/components/dashboard/pos/CartPanel';
 import { usePosStore } from '@/store/usePosStore';
 import { ShoppingCart, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePublicBranch } from '@/services/public/hooks';
 
 export default function PublicPOSPage() {
   const params = useParams();
   const codeParam = params?.code;
   const code = Array.isArray(codeParam) ? codeParam[0] : codeParam || '';
   
+  const { data: branchData, isLoading: loadingBranch } = usePublicBranch(code);
+  const branchId = branchData?.id;
+
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const { cart } = usePosStore();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
+  if (loadingBranch) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={32} className="text-primary animate-spin" />
+          <p className="text-sm font-medium text-gray-400">Loading menu...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!branchId) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50">
+        <p className="text-sm font-medium text-gray-400">Branch not found</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col md:flex-row relative p-4 md:p-6 bg-gray-50">
       <div className="flex-1 overflow-y-auto">
-        <POSHomeScreen onOpenCart={() => setMobileCartOpen(true)} businessCode={code} isPublic={true} />
+        <POSHomeScreen onOpenCart={() => setMobileCartOpen(true)} businessCode={branchId} isPublic={true} />
       </div>
 
       {/* Desktop side-panel */}

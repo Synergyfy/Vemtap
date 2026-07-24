@@ -10,9 +10,10 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
+import { useRewards } from '@/services/loyalty/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import Receipt from '@/components/dashboard/pos/shared/Receipt';
-import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift, X } from 'lucide-react';
+import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift, X, TicketCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CustomerSelectorModal } from '@/components/dashboard/pos/CustomerSelectorModal';
 import OfflineBanner from '@/components/dashboard/pos/OfflineBanner';
@@ -24,7 +25,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
   const cashier = useAuthStore((state) => state.user);
-  const { getCartTotal, getCartSubtotal, getCartDiscountAmount, attachedCustomer, attachCustomer, cart, clearCart, setLastCompletedSale, cartDiscount, manualLoyaltyPoints, setManualLoyaltyPoints } = usePosStore();
+  const { getCartTotal, getCartSubtotal, getCartDiscountAmount, attachedCustomer, attachCustomer, cart, clearCart, setLastCompletedSale, cartDiscount, manualLoyaltyPoints, setManualLoyaltyPoints, redeemedPromotion } = usePosStore();
   const createSale = useCreatePosSale();
   const { data: myBusiness } = useMyBusiness();
   const { data: branches = [] } = useBranches();
@@ -32,8 +33,16 @@ export default function PaymentScreen() {
   const [amountReceived, setAmountReceived] = useState<string>('');
   const [hideCustomerInfoOnReceipt, setHideCustomerInfoOnReceipt] = useState(true);
   const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
+  const [customerPromptSource, setCustomerPromptSource] = useState<'payment' | 'loyalty'>('payment');
   const [localLoyaltyEnabled, setLocalLoyaltyEnabled] = useState(() => usePosSettingsStore.getState().loyaltyEnabled);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showLoyaltyOnReceipt, setShowLoyaltyOnReceipt] = useState(true);
+  const { data: rewards = [] } = useRewards(activeBranchId ?? undefined, !!attachedCustomer);
+  const [redeemedReward, setRedeemedReward] = useState<{ name: string; discount: number } | null>(null);
+  const loyaltyPointsEarned = React.useMemo(() =>
+    cart.reduce((sum, item) =>
+      item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0)
+    + manualLoyaltyPoints, [cart, manualLoyaltyPoints]);
 
   React.useEffect(() => {
     if (cart.length === 0) {
@@ -51,19 +60,21 @@ export default function PaymentScreen() {
   const [splitTransfer, setSplitTransfer] = useState<string>('');
 
   const total = getCartTotal();
+  const rewardDiscount = redeemedReward?.discount || 0;
+  const totalAfterReward = Math.max(0, total - rewardDiscount);
   const receivedNum = parseFloat(amountReceived.replace(/,/g, '')) || 0;
-  const change = Math.max(0, receivedNum - total);
+  const change = Math.max(0, receivedNum - totalAfterReward);
 
   const splitCashNum = parseFloat(splitCash.replace(/,/g, '')) || 0;
   const splitCardNum = parseFloat(splitCard.replace(/,/g, '')) || 0;
   const splitTransferNum = parseFloat(splitTransfer.replace(/,/g, '')) || 0;
   const splitSum = splitCashNum + splitCardNum + splitTransferNum;
-  const splitRemaining = total - splitSum;
+  const splitRemaining = totalAfterReward - splitSum;
 
   const isSufficient = selectedMethod === 'cash' 
-    ? receivedNum >= total 
+    ? receivedNum >= totalAfterReward 
     : selectedMethod === 'split'
-      ? Math.abs(splitSum - total) < 0.01
+      ? Math.abs(splitSum - totalAfterReward) < 0.01
       : selectedMethod !== null;
 
   const goToSuccess = (sale: any) => {
@@ -100,7 +111,7 @@ export default function PaymentScreen() {
 
     const payment = {
       method: selectedMethod,
-      amountPaid: selectedMethod === 'cash' ? receivedNum : total,
+      amountPaid: selectedMethod === 'cash' ? receivedNum : totalAfterReward,
       change: selectedMethod === 'cash' ? change : 0,
       splitDetails,
     };
@@ -114,10 +125,11 @@ export default function PaymentScreen() {
       payment,
       branchId: activeBranchId,
       customerId: attachedCustomer?.id && UUID_RE.test(attachedCustomer.id) ? attachedCustomer.id : undefined,
-      cartDiscountAmount: cartDiscount ? (cartDiscount.type === 'percentage' ? getCartDiscountAmount() : cartDiscount.value) : undefined,
+      cartDiscountAmount: (cartDiscount ? (cartDiscount.type === 'percentage' ? getCartDiscountAmount() : cartDiscount.value) : 0) + rewardDiscount,
       hideCustomerInfoOnReceipt,
       clientRef,
       orderedAt,
+      notes: JSON.stringify({ showLoyaltyOnReceipt, loyaltyPointsEarned, rewardDiscount, redeemedReward: redeemedReward?.name, redeemedPromotion }),
     };
 
     const buildOfflineSale = () => {
@@ -140,12 +152,12 @@ export default function PaymentScreen() {
         subtotal: getCartSubtotal(),
         discountAmount: getCartDiscountAmount(),
         tax: 0,
-        total,
+        total: totalAfterReward,
         paymentMethod: selectedMethod!,
         amountPaid: payment.amountPaid,
         change: payment.change,
         hideCustomerInfoOnReceipt,
-        notes: null,
+      notes: JSON.stringify({ showLoyaltyOnReceipt, loyaltyPointsEarned, rewardDiscount, redeemedReward: redeemedReward?.name, redeemedPromotion }),
         status: 'completed' as any,
         items: cart.map(item => ({
           id: item.productId,
@@ -175,7 +187,7 @@ export default function PaymentScreen() {
           price: item.price,
           discount: item.discount,
         })),
-        total,
+        total: totalAfterReward,
         subtotal: getCartSubtotal(),
         discount: getCartDiscountAmount(),
         paymentMethod: selectedMethod!,
@@ -187,6 +199,7 @@ export default function PaymentScreen() {
         branchId: activeBranchId,
         createdAt: new Date().toISOString(),
         synced: false,
+        notes: JSON.stringify({ showLoyaltyOnReceipt, loyaltyPointsEarned, redeemedPromotion }),
       };
       await saveOfflineOrder(offlineOrder);
       await addToSyncQueue({
@@ -223,6 +236,7 @@ export default function PaymentScreen() {
     if (!selectedMethod || !isSufficient || isProcessing) return;
 
     if (!attachedCustomer) {
+      setCustomerPromptSource('payment');
       setShowCustomerPrompt(true);
       return;
     }
@@ -260,15 +274,18 @@ export default function PaymentScreen() {
     })),
     subtotal: getCartSubtotal(),
     discountAmount: getCartDiscountAmount(),
-    total,
+    total: totalAfterReward,
     paymentMethod: selectedMethod || 'Not selected',
-    amountPaid: selectedMethod === 'cash' ? receivedNum : (selectedMethod ? total : 0),
+    amountPaid: selectedMethod === 'cash' ? receivedNum : (selectedMethod ? totalAfterReward : 0),
     change: selectedMethod === 'cash' ? change : 0,
+    showLoyaltyOnReceipt,
+    loyaltyPointsEarned,
+    redeemedPromotion,
   };
 
   return (
     <div className="min-h-screen pt-4 px-4 md:px-6 pb-32">
-      <POSPageHeader title="Payment" subtitle={`Total: ₦${total.toLocaleString()}`} />
+      <POSPageHeader title="Payment" subtitle={`Total: ₦${totalAfterReward.toLocaleString()}`} />
 
       <OfflineBanner />
 
@@ -286,7 +303,15 @@ export default function PaymentScreen() {
                 </div>
               )}
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Amount Due</p>
-              <h2 className="text-5xl font-black text-[#066CF4] tracking-tight">₦{total.toLocaleString()}</h2>
+              <h2 className="text-5xl font-black text-[#066CF4] tracking-tight">₦{totalAfterReward.toLocaleString()}</h2>
+              {rewardDiscount > 0 && (
+                <p className="text-xs font-bold text-emerald-500 mt-1">₦{rewardDiscount.toLocaleString()} reward discount applied</p>
+              )}
+              {redeemedPromotion && (
+                <p className="text-xs font-bold text-blue-500 mt-1 flex items-center justify-center gap-1">
+                  <TicketCheck size={12} /> {redeemedPromotion.offerName} redeemed
+                </p>
+              )}
               {attachedCustomer && (
                 <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100">
                   For {attachedCustomer.name}
@@ -295,13 +320,11 @@ export default function PaymentScreen() {
             </div>
 
             {localLoyaltyEnabled && attachedCustomer && (() => {
-              const { getPointsBalance, redemptionThreshold } = usePosLoyaltyStore.getState();
-              const settings = usePosSettingsStore.getState();
-              const balance = getPointsBalance(attachedCustomer.id);
+              const balance = usePosLoyaltyStore.getState().getPointsBalance(attachedCustomer.id);
               const autoPts = cart.reduce((sum, item) =>
                 item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
-              const effectiveThreshold = settings.loyaltyRedeemThreshold || redemptionThreshold;
               const totalEarned = autoPts + manualLoyaltyPoints;
+              const availableRewards = rewards.filter(r => r.isActive && (r.pointsRequired ?? r.pointCost) <= balance);
               return (
                 <div className="mb-6 p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
                   <div className="flex items-center justify-between mb-3">
@@ -327,31 +350,93 @@ export default function PaymentScreen() {
                   {totalEarned > 0 && (
                     <p className="text-xs font-bold text-amber-700 mb-2 ml-1">Total to earn: <span className="text-amber-600">+{totalEarned} pts</span></p>
                   )}
-                  {balance >= effectiveThreshold && (
-                    <button className="mt-2 w-full h-10 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-amber-600 transition-all">
-                      <Gift size={14} /> Redeem Points for Discount
-                    </button>
+
+                  {availableRewards.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Available Rewards</p>
+                      {availableRewards.map(r => (
+                        <div key={r.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-amber-200">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-gray-900 truncate">{r.name}</p>
+                            <p className="text-[10px] text-gray-500">{r.pointsRequired ?? r.pointCost} pts</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (!attachedCustomer) return;
+                              const pointsCost = r.pointsRequired ?? r.pointCost;
+                              const balance = usePosLoyaltyStore.getState().getPointsBalance(attachedCustomer.id);
+                              if (balance < pointsCost) {
+                                toast.error('Not enough points');
+                                return;
+                              }
+                              const discountVal = r.value || Math.round(total * 0.1);
+                              usePosLoyaltyStore.getState().deductPoints(attachedCustomer.id, pointsCost);
+                              setRedeemedReward({ name: r.name, discount: discountVal });
+                              toast.success(`${r.name} redeemed! ₦${discountVal.toLocaleString()} discount applied.`);
+                            }}
+                            disabled={!!redeemedReward}
+                            className="shrink-0 h-8 px-3 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all disabled:opacity-50 flex items-center gap-1"
+                          >
+                            <Gift size={12} />
+                            Redeem
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {redeemedReward && (
+                    <div className="mt-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-2">
+                      <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                      <p className="text-xs font-bold text-emerald-700">{redeemedReward.name} — ₦{redeemedReward.discount.toLocaleString()} discount applied</p>
+                    </div>
                   )}
                 </div>
               );
             })()}
 
-            {attachedCustomer && (
-              <div className="mt-6 mb-8 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Loyalty Points</p>
+                <p className="text-[10px] font-bold text-gray-500">Enable loyalty for this transaction</p>
+              </div>
+              <button
+                onClick={() => {
+                  if (!attachedCustomer) {
+                    setCustomerPromptSource('loyalty');
+                    setShowCustomerPrompt(true);
+                  } else {
+                    setLocalLoyaltyEnabled(!localLoyaltyEnabled);
+                  }
+                }}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-colors relative",
+                  localLoyaltyEnabled ? "bg-amber-500" : "bg-gray-200"
+                )}
+              >
+                <div className={cn(
+                  "size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform",
+                  localLoyaltyEnabled ? "translate-x-6.5 left-[2px]" : "translate-x-0.5 left-0"
+                )} />
+              </button>
+            </div>
+
+            {localLoyaltyEnabled && (
+              <div className="mt-3 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Loyalty Points</p>
-                  <p className="text-[10px] font-bold text-gray-500">Enable loyalty for this transaction</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Show Points on Receipt</p>
+                  <p className="text-[10px] font-bold text-gray-500">Display loyalty points on the receipt</p>
                 </div>
                 <button
-                  onClick={() => setLocalLoyaltyEnabled(!localLoyaltyEnabled)}
+                  onClick={() => setShowLoyaltyOnReceipt(!showLoyaltyOnReceipt)}
                   className={cn(
                     "w-12 h-6 rounded-full transition-colors relative",
-                    localLoyaltyEnabled ? "bg-amber-500" : "bg-gray-200"
+                    showLoyaltyOnReceipt ? "bg-amber-500" : "bg-gray-200"
                   )}
                 >
                   <div className={cn(
                     "size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform",
-                    localLoyaltyEnabled ? "translate-x-6.5 left-[2px]" : "translate-x-0.5 left-0"
+                    showLoyaltyOnReceipt ? "translate-x-6.5 left-[2px]" : "translate-x-0.5 left-0"
                   )} />
                 </button>
               </div>
@@ -401,7 +486,7 @@ export default function PaymentScreen() {
                   />
                 </div>
                 <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
-                  {[total, 1000, 5000, 10000, 20000].filter(a => a >= total).map((amt, i) => (
+                  {[totalAfterReward, 1000, 5000, 10000, 20000].filter(a => a >= totalAfterReward).map((amt, i) => (
                     <button
                       key={i}
                       onClick={() => setAmountReceived(amt.toLocaleString())}
@@ -522,12 +607,25 @@ export default function PaymentScreen() {
         selectedCustomerId={attachedCustomer?.id}
         onSelectCustomer={(c) => {
           attachCustomer(c);
+          const loyaltyState = usePosLoyaltyStore.getState();
+          const exists = loyaltyState.customers.find(cust => cust.id === c.id);
+          if (!exists) {
+            usePosLoyaltyStore.setState(s => ({
+              customers: [...s.customers, { id: c.id, name: c.name, phone: c.phone, totalPoints: c.pointsBalance || 0 }]
+            }));
+          }
           setShowCustomerPrompt(false);
-          setTimeout(executePayment, 50);
+          if (customerPromptSource === 'payment') {
+            setTimeout(executePayment, 50);
+          } else {
+            setLocalLoyaltyEnabled(true);
+          }
         }}
         onSkip={() => {
           setShowCustomerPrompt(false);
-          executePayment();
+          if (customerPromptSource === 'payment') {
+            executePayment();
+          }
         }}
       />
     </div>

@@ -58,6 +58,7 @@ export interface Reward {
   description: string;
   rewardType: RewardType;
   pointCost: number;
+  pointsRequired?: number;
   value: number;
   valueAmount?: number;
   validityDays: number;

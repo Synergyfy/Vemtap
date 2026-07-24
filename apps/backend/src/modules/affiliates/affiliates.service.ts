@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource, In, MoreThan } from 'typeorm';
 import {
   AffiliateProfile,
   KycStatus,
@@ -815,6 +815,32 @@ export class AffiliatesService {
 
     profile.kycStatus = status;
     return this.profileRepository.save(profile);
+  }
+
+  async trackVisit(referralCode: string) {
+    const profile = await this.profileRepository.findOne({
+      where: { referralCode: referralCode.toUpperCase() },
+      relations: ['user'],
+    });
+    return { tracked: true, valid: !!profile };
+  }
+
+  async getReferrerInfo(code: string) {
+    const profile = await this.profileRepository.findOne({
+      where: { referralCode: code.toUpperCase() },
+      relations: ['user'],
+    });
+    if (!profile) {
+      throw new NotFoundException('Invalid referral code');
+    }
+    const businessRepo = this.dataSource.getRepository(Business);
+    const business = await businessRepo.findOne({
+      where: { ownerId: profile.userId },
+    });
+    return {
+      referralCode: profile.referralCode,
+      businessName: business?.name || profile.user.firstName || 'A VEMTAP partner',
+    };
   }
 
   // --- Private Helpers ---

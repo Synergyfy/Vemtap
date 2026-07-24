@@ -31,7 +31,7 @@ interface PlanPermissionsTabProps {
 export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissionsTabProps) {
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
-    const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+    const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const [configs, setConfigs] = useState<Record<string, PlanPermissionConfig>>({});
     const [limitModal, setLimitModal] = useState<{
         planId: string;
@@ -79,21 +79,9 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         })).filter(s => s.features.length > 0);
     }, [search]);
 
-    const toggleCollapse = useCallback((sectionId: string) => {
-        setCollapsed(prev => {
-            const next = new Set(prev);
-            if (next.has(sectionId)) next.delete(sectionId);
-            else next.add(sectionId);
-            return next;
-        });
+    const toggleSection = useCallback((sectionId: string) => {
+        setExpandedSection(prev => prev === sectionId ? null : sectionId);
     }, []);
-
-    // Collapse all except first by default
-    const isCollapsed = useCallback((sectionId: string) => {
-        if (collapsed.size === 0 && PERMISSION_SECTIONS[0]?.id === sectionId) return false;
-        if (collapsed.size === 0) return true;
-        return collapsed.has(sectionId);
-    }, [collapsed]);
 
     const updateDirectLimit = useCallback((featureId: string, limitVal: number) => {
         if (!selectedPlanId) return;
@@ -304,19 +292,19 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
             <div className="space-y-4">
                 {filteredSections.map(section => {
                     const sectionConfig = config;
-                    const sectionCollapsed = isCollapsed(section.id);
+                    const isOpen = expandedSection === section.id;
 
                     return (
                         <div key={section.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                             {/* Section header */}
                             <button
-                                onClick={() => toggleCollapse(section.id)}
+                                onClick={() => toggleSection(section.id)}
                                 className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/50 transition-colors"
                             >
                                 <div className="flex items-center gap-3">
-                                    {sectionCollapsed
-                                        ? <ChevronRight size={16} className="text-gray-400" />
-                                        : <ChevronDown size={16} className="text-gray-400" />
+                                    {isOpen
+                                        ? <ChevronDown size={16} className="text-gray-400" />
+                                        : <ChevronRight size={16} className="text-gray-400" />
                                     }
                                     <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider">
                                         {section.label}
@@ -346,7 +334,7 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                             </button>
 
                             <AnimatePresence initial={false}>
-                                {!sectionCollapsed && (
+                                {isOpen && (
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
@@ -357,9 +345,6 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                                         <div className="border-t border-gray-50">
                                             {section.features.map((feature, fi) => {
                                                 const perm = sectionConfig?.features[feature.id] || { level: 'no' as PermissionLevel };
-                                                const hasChildren = feature.parentId === undefined && PERMISSION_SECTIONS.some(s =>
-                                                    s.features.some(f => f.parentId === feature.id)
-                                                );
                                                 const isChild = !!feature.parentId;
                                                 const LevelIcon = getLevelIcon(perm.level);
 
@@ -479,7 +464,7 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                                         Set Feature Limit
                                     </h3>
                                     <p className="text-xs text-gray-400 font-medium">
-                                        {PERMISSION_SECTIONS.flatMap(s => s.features).find(f => f.id === limitModal.featureId)?.label || limitModal.featureId}
+                                        {filteredSections.flatMap(s => s.features).find(f => f.id === limitModal.featureId)?.label || limitModal.featureId}
                                     </p>
                                 </div>
                             </div>
