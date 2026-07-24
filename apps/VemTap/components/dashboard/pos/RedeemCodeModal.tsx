@@ -32,8 +32,6 @@ const [codeInput, setCodeInput] = useState('');
 
     if (!isOpen) return null;
 
-    const fullCode = `${codePrefix}${suffix}`.toUpperCase();
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 const trimmed = codeInput.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
