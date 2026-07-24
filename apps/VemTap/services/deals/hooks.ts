@@ -64,3 +64,11 @@ export const useVerifyClaimOtp = () => {
         mutationFn: verifyClaimOtp,
     });
 };
+
+export const useGenerateDealTerms = () => {
+    return useMutation<{ terms: string[] }, Error, { description: string; offerType?: string; businessName?: string }>({
+        mutationFn: async (payload) => {
+            return api.post('/catalogue/offers/generate-terms', payload);
+        },
+    });
+};

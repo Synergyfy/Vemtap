@@ -50,6 +50,7 @@ export default function OrdersDashboard() {
   const [refundReason, setRefundReason] = useState('');
   const [refundItemIds, setRefundItemIds] = useState<Set<string>>(new Set());
   const redeemClaim = useRedeemClaim();
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
   const { data: claimsData, isLoading: claimsLoading } = useBusinessClaims();
 
   const { data: ordersData, isLoading } = useCatalogueOrders({
@@ -596,7 +597,8 @@ export default function OrdersDashboard() {
                     key={claim.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all"
+                    onClick={() => setSelectedClaim(claim)}
+                    className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
                   >
                     <div className="flex items-start gap-4">
                       <div className="size-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
@@ -660,6 +662,132 @@ export default function OrdersDashboard() {
           </div>
         </>
       )}
+
+      {/* ─── Claim Detail Drawer ─── */}
+      <AnimatePresence>
+        {selectedClaim && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+              onClick={() => setSelectedClaim(null)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-black text-gray-900">Claim Details</h2>
+                  <button onClick={() => setSelectedClaim(null)} className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Customer Info */}
+                <div className="bg-gray-50 rounded-3xl p-5 border border-gray-100 mb-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Customer</p>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="size-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
+                      <User size={22} className="text-violet-600" />
+                    </div>
+                    <div>
+                      <p className="font-black text-gray-900">{selectedClaim.firstName} {selectedClaim.lastName}</p>
+                      <p className="text-xs font-bold text-gray-400">{selectedClaim.email || 'No email'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    <Phone size={14} className="text-gray-400" />
+                    {selectedClaim.phone}
+                  </div>
+                </div>
+
+                {/* Claim Info */}
+                <div className="bg-gray-50 rounded-3xl p-5 border border-gray-100 mb-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Claim Details</p>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Claim Code</span>
+                      <span className="font-black text-primary font-mono tracking-wider">{selectedClaim.claimCode}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Status</span>
+                      <span className={cn("px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border",
+                        selectedClaim.status === 'claimed' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                      )}>
+                        {selectedClaim.status === 'claimed' ? 'Pending' : 'Redeemed'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Claimed</span>
+                      <span className="font-bold text-gray-900">{new Date(selectedClaim.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Expires</span>
+                      <span className={cn("font-bold", new Date(selectedClaim.expiresAt) < new Date() ? "text-red-500" : "text-gray-900")}>
+                        {new Date(selectedClaim.expiresAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Offer Info */}
+                {selectedClaim.offer && (
+                  <div className="bg-gray-50 rounded-3xl p-5 border border-gray-100 mb-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Deal</p>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 font-medium">Name</span>
+                        <span className="font-bold text-gray-900">{selectedClaim.offer.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 font-medium">Price</span>
+                        <span className="font-bold text-primary">₦{Number(selectedClaim.offer.calculatedPrice || 0).toLocaleString()}</span>
+                      </div>
+                      {selectedClaim.offer.items?.length > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-medium">Products</span>
+                          <span className="font-bold text-gray-900">{selectedClaim.offer.items.length} item{selectedClaim.offer.items.length > 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {selectedClaim.status === 'claimed' && (
+                  <div className="space-y-2 mt-6">
+                    {selectedClaim.offer?.items?.length > 0 ? (
+                      <button
+                        onClick={() => { handleAcceptClaim(selectedClaim); setSelectedClaim(null); }}
+                        disabled={redeemClaim.isPending}
+                        className="w-full h-12 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {redeemClaim.isPending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                        Accept & Add to Cart
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { handleMarkCustomDealComplete(selectedClaim); setSelectedClaim(null); }}
+                        disabled={redeemClaim.isPending}
+                        className="w-full h-12 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {redeemClaim.isPending ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                        Mark as Complete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
