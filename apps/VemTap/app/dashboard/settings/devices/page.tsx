@@ -49,15 +49,17 @@ export default function DeviceSettingsPage() {
 
         updateBusinessMutation.mutate(
             {
-                posSettings: {
-                    loyaltyEnabled: rewardEnabled,
-                    welcomeMessage: welcome,
-                    successMessage: success,
-                    privacyMessage: privacy,
-                    rewardMessage: reward,
-                    oneTapSignIn,
-                    cooldownPeriod,
-                } as any,
+                updates: {
+                    posSettings: {
+                        loyaltyEnabled: rewardEnabled,
+                        welcomeMessage: welcome,
+                        successMessage: success,
+                        privacyMessage: privacy,
+                        rewardMessage: reward,
+                        oneTapSignIn,
+                        cooldownPeriod,
+                    },
+                },
             },
             {
                 onSuccess: () => {

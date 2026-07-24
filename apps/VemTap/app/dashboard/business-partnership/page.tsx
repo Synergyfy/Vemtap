@@ -251,13 +251,14 @@ export default function PartnershipOverviewPage() {
                 ) : activityList.length > 0 ? (
                     <div className="space-y-4">
                         {activityList.slice(0, 5).map((act, i) => {
-                            const dateObj = act.timestamp ? new Date(act.timestamp) : null;
+                            const timeVal = act.timestamp || act.time;
+                            const dateObj = timeVal ? new Date(timeVal) : null;
                             const isValidDate = dateObj && !isNaN(dateObj.getTime());
                             return (
                                 <div key={act.id || i} className="flex items-start justify-between py-2 border-b border-gray-50 last:border-0">
                                     <div>
                                         <p className="text-xs md:text-sm font-bold text-gray-900">{act.title || act.type || 'Referral Event'}</p>
-                                        <p className="text-[11px] md:text-xs text-gray-500 mt-0.5">{act.description}</p>
+                                        <p className="text-[11px] md:text-xs text-gray-500 mt-0.5">{act.description || act.desc}</p>
                                     </div>
                                     {isValidDate && (
                                         <span className="text-[10px] md:text-xs font-medium text-gray-400 shrink-0">
