@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2, Briefcase, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
@@ -161,17 +162,28 @@ export default function SupportChatbot() {
         }
     }, [socket, handedToAgent, liveTicketId, addMessage, user?.id]);
 
-    // Show role selector on first open if not set
+// Determine user role and show selector only for guests
     useEffect(() => {
         if (isOpen && history.length === 0) {
-            const hasRole = userRole || localStorage.getItem('vemtap_user_role');
-            if (!hasRole) {
-                setShowRoleSelector(true);
-            } else if (!userRole) {
-                setUserRole(hasRole as UserRole);
+            if (isAuthenticated && user?.role) {
+                const mappedRole: UserRole = ['owner', 'manager', 'staff', 'admin', 'agent'].includes(user.role) ? 'business_owner' : 'customer';
+                setUserRole(mappedRole);
+                localStorage.setItem('vemtap_user_role', mappedRole || '');
+                if (mappedRole === 'business_owner') {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Business Owner**, I can help you with managing your branches, catalogue, promotions, analytics, and more. How can I assist you today?` });
+                } else {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Customer**, I can help you with discovering deals, earning rewards, and using VemTap at your favorite businesses. How can I help you today?` });
+                }
+            } else {
+                const stored = localStorage.getItem('vemtap_user_role');
+                if (stored && !userRole) {
+                    setUserRole(stored as UserRole);
+                } else if (!userRole && !stored) {
+                    setShowRoleSelector(true);
+                }
             }
         }
-    }, [isOpen, history.length, userRole]);
+    }, [isOpen, history.length, userRole, isAuthenticated, user?.role, addMessage, user?.firstName]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -326,17 +338,25 @@ export default function SupportChatbot() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        onClick={() => setIsOpen(true)}
-                        className="fixed bottom-6 right-6 z-60 group focus:outline-none"
-                        aria-label="Open chat"
+className="fixed bottom-6 right-6 z-60"
                     >
-                        <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
-                        <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-blue-500/50 active:scale-95">
-                            <MessageCircle className="text-white" size={28} />
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                                <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        <Draggable nodeRef={floatingButtonRef} bounds="parent">
+                            <div ref={floatingButtonRef} className="cursor-grab active:cursor-grabbing">
+                                <button
+                                    onClick={() => setIsOpen(true)}
+                                    className="relative transition-transform active:scale-90 focus:outline-none"
+                                    aria-label="Open chat"
+                                >
+                                    <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
+                                    <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center hover:scale-110 hover:shadow-blue-500/50 transition-all duration-300">
+                                        <MessageCircle className="text-white" size={28} />
+                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                            <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                                        </div>
+                                    </div>
+                                </button>
                             </div>
-                        </div>
+                        </Draggable>
                     </motion.button>
                 )}
             </AnimatePresence>

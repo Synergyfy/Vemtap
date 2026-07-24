@@ -5,7 +5,7 @@ import {
     Activity, Users, MapPin, Store, Tag, Plus, Target, CheckCircle2, ArrowRight,
     Settings, Search, Handshake, TrendingUp, RefreshCw, X, Image as ImageIcon,
     ChevronRight, CreditCard, Heart, Eye, AlertCircle, Loader2, Navigation, Crosshair,
-    Trash2, Clock
+    Trash2, Clock, Sparkles
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/dashboard/PageHeader';
@@ -32,6 +32,7 @@ import {
     useRespondToInvitation,
 } from '@/services/discovery/hooks';
 import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer, useCatalogueItems } from '@/services/catalogue/hooks';
+import { useGenerateDealTerms } from '@/services/deals/hooks';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import type { DiscoveryCustomer, ActivePartner, NearbyPartner, UpdateDiscoverySettingsDto } from '@/services/discovery/types';
 import { useUpdateBranch, useBranches } from '@/services/branches/hooks';
@@ -348,6 +349,11 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
         }
     };
 
+    const isExpired = (promo: CatalogueOffer) => {
+        if (!promo.endDate) return false;
+        return new Date(promo.endDate) < new Date();
+    };
+
     if (isLoading) {
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -379,8 +385,20 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
                 <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a deal to attract new customers and bring them back again." />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {promotions.map((promo) => (
-                        <div key={promo.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                    {promotions.map((promo) => {
+                        const expired = isExpired(promo);
+                        return (
+                        <div key={promo.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 relative overflow-hidden">
+                            {expired && (
+                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
+                                    Expired
+                                </div>
+                            )}
+                            {promo.status === 'inactive' && !expired && (
+                                <div className="absolute top-0 right-0 bg-gray-400 text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
+                                    Paused
+                                </div>
+                            )}
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="font-semibold text-lg text-gray-800">{promo.name}</h4>
                                 <span className={cn("px-3 py-1 rounded-full text-xs font-bold", promo.status === 'active' ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-600")}>
@@ -388,7 +406,7 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
                                 </span>
                             </div>
                             
-                            <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-2xl">
+                            <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-2xl">
                                 <div>
                                     <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Views</div>
                                     <div className="font-bold text-gray-800">{(promo as any).views ?? '—'}</div>
@@ -403,13 +421,22 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
                                 </div>
                             </div>
 
+                            {(promo as any).quantity != null && (
+                                <div className="mb-4 p-3 bg-blue-50 rounded-2xl border border-blue-100">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="font-semibold text-gray-600">Remaining claims</span>
+                                        <span className="font-bold text-blue-600">{Math.max(0, ((promo as any).quantity || 0) - ((promo as any).claimedCount || 0))} / {(promo as any).quantity}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex gap-2">
                                 <Button variant="outline" className="flex-1 rounded-xl font-bold" disabled>Edit</Button>
                                 <Button 
                                     variant="outline" 
                                     className="flex-1 rounded-xl font-bold"
                                     onClick={() => handleToggleStatus(promo)}
-                                    disabled={updateOffer.isPending}
+                                    disabled={updateOffer.isPending || expired}
                                 >
                                     {promo.status === 'active' ? 'Pause' : 'Resume'}
                                 </Button>
@@ -423,7 +450,8 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
                                 </Button>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -1392,6 +1420,26 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     const [freeItemValue, setFreeItemValue] = useState('');
     const [minOrderAmount, setMinOrderAmount] = useState('');
 
+    // Advanced settings
+    const [dealQuantity, setDealQuantity] = useState('');
+    const [audienceTarget, setAudienceTarget] = useState<'all' | 'new_customers' | 'returning_customers'>('all');
+    const [maxClaimsPerCustomer, setMaxClaimsPerCustomer] = useState('1');
+    const [claimCodePrefix, setClaimCodePrefix] = useState('');
+    const DEFAULT_TERMS = [
+        'Valid during business hours',
+        'Cannot be combined with other offers',
+        'Valid for 7 days after claiming',
+    ];
+    const [dealTerms, setDealTerms] = useState<string[]>(DEFAULT_TERMS);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const generateTerms = useGenerateDealTerms();
+
+    React.useEffect(() => {
+        if (generateTerms.data?.terms) {
+            setDealTerms(generateTerms.data.terms);
+        }
+    }, [generateTerms.data]);
+
     // Delivery Scope (free_delivery)
     const [deliveryScope, setDeliveryScope] = useState<'same_area' | 'city_wide' | 'state_wide' | 'nation_wide' | 'custom_distance'>('same_area');
     const [deliveryRegion, setDeliveryRegion] = useState('');
@@ -1458,6 +1506,11 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
         setProductSource('all');
         setSelectedProductIds([]);
         setProductSearch('');
+        setDealQuantity('');
+        setAudienceTarget('all');
+        setMaxClaimsPerCustomer('1');
+        setClaimCodePrefix('');
+        setDealTerms(DEFAULT_TERMS);
     };
 
     const filteredCatalogueItems = catalogueItems.filter((item: any) =>
@@ -1493,6 +1546,11 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
             audience: audience?.toLowerCase().replace(/\s+/g, '_'),
             startDate: startDate ? new Date(`${startDate}T${startTime || '00:00'}`).toISOString() : undefined,
             endDate: endDate ? new Date(`${endDate}T${endTime || '23:59'}`).toISOString() : undefined,
+            quantity: dealQuantity ? Number(dealQuantity) : undefined,
+            maxClaimsPerCustomer: maxClaimsPerCustomer ? Number(maxClaimsPerCustomer) : undefined,
+            audienceTarget: audienceTarget,
+            claimCodePrefix: claimCodePrefix.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || undefined,
+            terms: dealTerms.length > 0 ? dealTerms : undefined,
         };
 
         switch (offerType) {
@@ -2025,6 +2083,151 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                                 <span className="font-bold text-sm">Upload Image</span>
                                             </>
                                         )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ── Advanced Settings (Collapsible) ── */}
+                            <div className="border-t border-gray-100 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdvanced(!showAdvanced)}
+                                    className="w-full flex items-center justify-between text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                                >
+                                    <span>Advanced Settings</span>
+                                    <ChevronRight size={16} className={cn("transition-transform", showAdvanced && "rotate-90")} />
+                                </button>
+
+                                {showAdvanced && (
+                                    <div className="mt-4 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {/* Quantity */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Total Quantity Available</label>
+                                            <input
+                                                type="number"
+                                                value={dealQuantity}
+                                                onChange={e => setDealQuantity(e.target.value)}
+                                                placeholder="Leave empty for unlimited"
+                                                min="0"
+                                                className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none"
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1.5 font-medium">Once this many people claim the deal, it automatically closes.</p>
+                                        </div>
+
+                                        {/* Audience Target */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-3">Who can claim this deal?</label>
+                                            <div className="flex gap-1 p-1 bg-gray-50 rounded-2xl">
+                                                {[
+                                                    { label: 'Everyone', value: 'all' as const },
+                                                    { label: 'New', value: 'new_customers' as const },
+                                                    { label: 'Returning', value: 'returning_customers' as const },
+                                                ].map(opt => (
+                                                    <button key={opt.value} type="button" onClick={() => setAudienceTarget(opt.value)}
+                                                        className={cn("flex-1 py-2.5 px-1 rounded-xl text-[11px] md:text-sm font-bold transition-all leading-tight text-center", audienceTarget === opt.value ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-800")}>
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-gray-400 mt-1.5 font-medium">
+                                                {audienceTarget === 'all' && 'Anyone can claim this deal.'}
+                                                {audienceTarget === 'new_customers' && 'Only customers who have never claimed a deal from your business can claim.'}
+                                                {audienceTarget === 'returning_customers' && 'Only customers who have previously claimed a deal from your business can claim.'}
+                                            </p>
+                                        </div>
+
+                                        {/* Max Claims Per Customer */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Max Claims Per Customer</label>
+                                            <input
+                                                type="number"
+                                                value={maxClaimsPerCustomer}
+                                                onChange={e => setMaxClaimsPerCustomer(e.target.value)}
+                                                placeholder="1"
+                                                min="0"
+                                                className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none"
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1.5 font-medium">How many times the same customer can claim this deal (0 = unlimited).</p>
+                                        </div>
+
+                                        {/* Claim Code Prefix */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Claim Code Prefix (Optional)</label>
+                                            <input
+                                                type="text"
+                                                value={claimCodePrefix}
+                                                onChange={e => setClaimCodePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                                                placeholder="VEM (Default)"
+                                                maxLength={20}
+                                                className="w-full p-4 bg-gray-50 border-0 rounded-2xl font-bold focus:ring-2 focus:ring-primary outline-none uppercase tracking-wider font-mono"
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1.5 font-medium">
+                                                Custom prefix for claim codes (e.g. EASTER50). Leave empty for default &quot;VEM&quot;. Final code: <strong>{claimCodePrefix || 'VEM'}-BRANCH-XXXX</strong>
+                                            </p>
+                                        </div>
+
+                                        {/* Terms & Conditions */}
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Terms & Conditions</label>
+                                            <p className="text-xs text-gray-400 mb-3 font-medium">Add, edit, or remove terms for this deal. These will be shown to customers when they view the deal.</p>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!title && !description) {
+                                                        alert('Please enter a deal title and description first so AI can generate relevant terms.');
+                                                        return;
+                                                    }
+                                                    generateTerms.mutate({
+                                                        description: `${title}. ${description}`,
+                                                        offerType: offerType,
+                                                    });
+                                                }}
+                                                disabled={generateTerms.isPending}
+                                                className="mb-3 w-full h-10 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:from-purple-600 hover:to-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                                            >
+                                                {generateTerms.isPending ? (
+                                                    <><Loader2 size={14} className="animate-spin" /> Generating Terms...</>
+                                                ) : (
+                                                    <><Sparkles size={14} /> Generate with AI</>
+                                                )}
+                                            </button>
+
+                                            {generateTerms.isError && (
+                                                <p className="text-xs text-red-500 font-medium mb-2">Failed to generate terms. {generateTerms.error?.message || 'Please try again or add terms manually.'}</p>
+                                            )}
+
+                                            <div className="space-y-2">
+                                                {dealTerms.map((term, i) => (
+                                                    <div key={i} className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={term}
+                                                            onChange={e => {
+                                                                const updated = [...dealTerms];
+                                                                updated[i] = e.target.value;
+                                                                setDealTerms(updated);
+                                                            }}
+                                                            className="flex-1 p-3 bg-gray-50 border-0 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary outline-none"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDealTerms(dealTerms.filter((_, idx) => idx !== i))}
+                                                            className="size-9 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors shrink-0"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDealTerms([...dealTerms, ''])}
+                                                className="mt-2 text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                            >
+                                                <Plus size={12} /> Add term
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
