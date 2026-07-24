@@ -30,8 +30,7 @@ export interface InviteStaffRequest {
 }
 
 export interface UpdateStaffRequest {
-    firstName?: string;
-    lastName?: string;
+    name?: string;
     role?: string;
     branchId?: string;
     permissions?: string[];
