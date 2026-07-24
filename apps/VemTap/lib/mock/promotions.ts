@@ -22,6 +22,8 @@ export interface MockPromotion {
     distance?: string;
     claimedCount: number;
     maxClaims: number;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
     businessHours?: string;
 }
 

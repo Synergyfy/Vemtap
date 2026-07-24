@@ -56,6 +56,7 @@ export interface CatalogueOffer {
     id: string;
     name: string;
     description: string;
+    terms?: string[];
     mainImage: string;
     galleryImages?: string[];
     quantity: number | null;
@@ -77,6 +78,9 @@ export interface CatalogueOffer {
     endDate?: string;
     offerType?: string;
     audience?: string;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
+    audienceTarget?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -171,6 +175,7 @@ export interface UpdateItemDto extends Partial<CreateItemDto> {
 export interface CreateCatalogueOfferDto {
     name: string;
     description: string;
+    terms?: string[];
     mainImage?: string;
     galleryImages?: string[];
     quantity?: number;
@@ -185,6 +190,9 @@ export interface CreateCatalogueOfferDto {
     endDate?: string;
     offerType?: string;
     audience?: string;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
+    audienceTarget?: string;
 }
 
 export interface UpdateCatalogueOfferDto extends Partial<CreateCatalogueOfferDto> {
