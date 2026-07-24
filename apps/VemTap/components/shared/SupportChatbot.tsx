@@ -161,17 +161,28 @@ export default function SupportChatbot() {
         }
     }, [socket, handedToAgent, liveTicketId, addMessage, user?.id]);
 
-    // Show role selector on first open if not set
+    // Determine user role and show selector only for guests
     useEffect(() => {
         if (isOpen && history.length === 0) {
-            const hasRole = userRole || localStorage.getItem('vemtap_user_role');
-            if (!hasRole) {
-                setShowRoleSelector(true);
-            } else if (!userRole) {
-                setUserRole(hasRole as UserRole);
+            if (isAuthenticated && user?.role) {
+                const mappedRole: UserRole = ['owner', 'manager', 'staff', 'admin', 'agent'].includes(user.role) ? 'business_owner' : 'customer';
+                setUserRole(mappedRole);
+                localStorage.setItem('vemtap_user_role', mappedRole || '');
+                if (mappedRole === 'business_owner') {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Business Owner**, I can help you with managing your branches, catalogue, promotions, analytics, and more. How can I assist you today?` });
+                } else {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Customer**, I can help you with discovering deals, earning rewards, and using VemTap at your favorite businesses. How can I help you today?` });
+                }
+            } else {
+                const stored = localStorage.getItem('vemtap_user_role');
+                if (stored && !userRole) {
+                    setUserRole(stored as UserRole);
+                } else if (!userRole && !stored) {
+                    setShowRoleSelector(true);
+                }
             }
         }
-    }, [isOpen, history.length, userRole]);
+    }, [isOpen, history.length, userRole, isAuthenticated, user?.role, addMessage, user?.firstName]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
