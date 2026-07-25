@@ -78,7 +78,7 @@ export default function BranchSwitcher() {
         e.stopPropagation();
         if (!confirm(`Delete "${branchName}"? This cannot be undone.`)) return;
         try {
-            await deleteBranchMutation.mutateAsync(branchId);
+            await deleteBranchMutation.mutateAsync({ id: branchId });
             if (activeBranchId === branchId) setActiveBranch(null);
             toast.success(`Branch deleted`);
         } catch {

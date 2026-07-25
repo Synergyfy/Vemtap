@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Store, Receipt, Calculator, Bell, Save, Coins } from 'lucide-react';
+import { Store, Receipt, Calculator, Bell, Save, Coins, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosSettingsStore } from '@/store/usePosSettingsStore';
+import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import toast from 'react-hot-toast';
 
 type SettingsTab = 'business' | 'receipt' | 'tax' | 'notifications' | 'loyalty';
 
@@ -13,6 +15,10 @@ export default function POSSettingsPage() {
   const [saved, setSaved] = useState(false);
 
   const settings = usePosSettingsStore();
+  const { data: business } = useMyBusiness();
+  const updateBusiness = useUpdateBusiness();
+  const isSaving = updateBusiness.isPending;
+
   const [localSettings, setLocalSettings] = useState({
     businessName: '',
     businessAddress: '',
@@ -34,7 +40,13 @@ export default function POSSettingsPage() {
     loyaltyRedeemThreshold: 100,
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (business) {
+      settings.loadFromBusiness(business);
+    }
+  }, [business]);
+
+  useEffect(() => {
     setLocalSettings({
       businessName: settings.businessName,
       businessAddress: settings.businessAddress,
@@ -69,10 +81,23 @@ export default function POSSettingsPage() {
     { id: 'loyalty', label: 'Loyalty', icon: Coins },
   ];
 
-  const handleSave = () => {
+  const handleSave = async () => {
     settings.updateSettings(localSettings);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    const posPayload = settings.getPosSettingsPayload();
+    try {
+      await updateBusiness.mutateAsync({
+        updates: {
+          name: localSettings.businessName,
+          address: localSettings.businessAddress,
+          phone: localSettings.phoneNumber,
+          posSettings: posPayload,
+        },
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      toast.error('Failed to save settings to server. Changes saved locally.');
+    }
   };
 
   return (
@@ -83,15 +108,17 @@ export default function POSSettingsPage() {
         actions={
           <button
             onClick={handleSave}
+            disabled={isSaving}
             className={cn(
               "h-10 md:h-12 px-6 rounded-2xl flex items-center gap-2 transition-all active:scale-95 text-[11px] font-black uppercase tracking-widest",
               saved
                 ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-                : "bg-[#066CF4] text-white shadow-lg shadow-blue-500/20 hover:bg-blue-600"
+                : "bg-[#066CF4] text-white shadow-lg shadow-blue-500/20 hover:bg-blue-600",
+              isSaving && "opacity-70 cursor-not-allowed"
             )}
           >
-            <Save size={16} />
-            {saved ? 'Saved!' : 'Save Changes'}
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSaving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
           </button>
         }
       />

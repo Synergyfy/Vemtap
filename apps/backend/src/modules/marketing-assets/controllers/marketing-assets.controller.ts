@@ -38,7 +38,7 @@ export class MarketingAssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
   @Post()
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Save a customized marketing asset' })
   @ApiResponse({ status: 201, type: MarketingAsset })
   create(@Req() req: RequestWithUser, @Body() createDto: CreateAssetDto) {
@@ -46,7 +46,7 @@ export class MarketingAssetsController {
   }
 
   @Get()
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all marketing assets for the active business' })
   @ApiResponse({ status: 200, type: [MarketingAsset] })
   findAll(
@@ -58,7 +58,7 @@ export class MarketingAssetsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a specific marketing asset' })
   @ApiResponse({ status: 200, type: MarketingAsset })
   findOne(@Req() req: RequestWithUser, @Param('id') id: string) {
@@ -66,7 +66,7 @@ export class MarketingAssetsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Update custom layout config for a marketing asset',
   })
@@ -80,7 +80,7 @@ export class MarketingAssetsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete (deactivate) a marketing asset' })
   @ApiResponse({ status: 204 })
   remove(@Req() req: RequestWithUser, @Param('id') id: string) {
@@ -88,7 +88,7 @@ export class MarketingAssetsController {
   }
 
   @Get(':id/versions')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get version history for a marketing asset' })
   @ApiResponse({ status: 200 })
   getVersions(@Req() req: RequestWithUser, @Param('id') id: string) {
@@ -96,7 +96,7 @@ export class MarketingAssetsController {
   }
 
   @Post(':id/restore/:versionId')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Restore a marketing asset to a prior version state',
   })

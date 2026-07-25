@@ -158,6 +158,7 @@ export default function StaffDirectory() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editTarget, setEditTarget] = useState<string | null>(null);
+  const [originalStaff, setOriginalStaff] = useState<StaffMember | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -250,36 +251,40 @@ export default function StaffDirectory() {
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.firstName || !form.lastName || !form.email) return;
+    const cleanPermissions = form.permissions.filter(p => ALL_PERMISSIONS.includes(p as any));
     try {
       await inviteMutation.mutateAsync({
         firstName: form.firstName, lastName: form.lastName, email: form.email,
         phone: form.phone || undefined, role: form.role as any,
-        permissions: form.permissions, branchId: activeBranchId ?? '',
+        permissions: cleanPermissions, branchId: activeBranchId ?? '',
       });
       toast.success('Invitation sent!');
       setShowInviteModal(false);
       setInviteStep(1);
       setForm(emptyForm);
     } catch (err: any) {
-      const msg = err?.message || '';
-      if (msg.toLowerCase().includes('limit') && msg.toLowerCase().includes('team')) {
+      const msg = err?.message || err?.response?.data?.message || '';
+      const displayMsg = Array.isArray(msg) ? msg.join(', ') : msg;
+      if (typeof displayMsg === 'string' && displayMsg.toLowerCase().includes('limit') && displayMsg.toLowerCase().includes('team')) {
         setShowInviteModal(false);
         setForm(emptyForm);
         setShowLimitModal(true);
       } else if (msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('in use') || msg.toLowerCase().includes('taken')) {
         toast.error('This email already exists. Please use a different email address.');
       } else {
-        toast.error(msg || 'Failed to send invitation');
+        toast.error(displayMsg || 'Failed to send invitation');
       }
     }
   };
 
   const openEditModal = (staff: StaffMember) => {
     setEditTarget(staff.id);
+    setOriginalStaff(staff);
+    const validPermissions = (staff.permissions || []).filter(p => ALL_PERMISSIONS.includes(p as any));
     setForm({
       firstName: staff.firstName || '', lastName: staff.lastName || '',
       email: staff.email || '', phone: staff.phone || '',
-      role: staff.role || 'Staff', permissions: staff.permissions || [],
+      role: staff.role || 'Staff', permissions: validPermissions,
     });
     setShowEditModal(true);
     setOpenDropdown(null);
@@ -288,24 +293,58 @@ export default function StaffDirectory() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
+
+    const updates: Record<string, any> = {};
+
+    const newName = `${form.firstName} ${form.lastName}`.trim();
+    const origName = originalStaff ? `${originalStaff.firstName || ''} ${originalStaff.lastName || ''}`.trim() : '';
+
+    if (newName !== origName) {
+      updates.name = newName;
+    }
+
+    if (originalStaff && form.role !== originalStaff.role) {
+      updates.role = form.role;
+    }
+
+    const cleanPermissions = form.permissions.filter(p => ALL_PERMISSIONS.includes(p as any));
+    const origPermissions = (originalStaff?.permissions || []).filter(p => ALL_PERMISSIONS.includes(p as any));
+
+    const permissionsChanged =
+      cleanPermissions.length !== origPermissions.length ||
+      cleanPermissions.some(p => !origPermissions.includes(p));
+
+    if (permissionsChanged) {
+      updates.permissions = cleanPermissions;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      toast('No changes to save');
+      setShowEditModal(false);
+      setEditTarget(null);
+      setOriginalStaff(null);
+      setForm(emptyForm);
+      return;
+    }
+
     try {
       await updateStaffMutation.mutateAsync({
         id: editTarget,
-        updates: {
-          name: `${form.firstName} ${form.lastName}`.trim(),
-          role: form.role as any, permissions: form.permissions,
-        },
+        updates,
+        branchId: activeBranchId ?? undefined,
       });
       toast.success('Staff updated!');
       setShowEditModal(false);
       setEditTarget(null);
+      setOriginalStaff(null);
       setForm(emptyForm);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || '';
+      const rawMsg = err?.response?.data?.message || err?.message || '';
+      const msg = Array.isArray(rawMsg) ? rawMsg.join(', ') : rawMsg;
       if (typeof msg === 'string' && (msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('in use') || msg.toLowerCase().includes('taken'))) {
         toast.error('This email already exists. Please use a different email address.');
       } else {
-        toast.error(typeof msg === 'string' ? msg : 'Failed to update staff');
+        toast.error(msg || 'Failed to update staff');
       }
     }
   };

@@ -44,6 +44,10 @@ import {
   ReturningVisitorResponseDto,
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
+import {
+  VisitorGrowthQueryDto,
+  VisitorGrowthResponseDto,
+} from './dto/visitor-growth.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import {
   AdminSendMessageDto,
@@ -172,6 +176,24 @@ export class VisitorsController {
   ): Promise<VisitorStatsResponseDto> {
     const context = await this.getResolvedContext(req, filter);
     return this.visitorsService.getStats(context.branchId, context.businessId);
+  }
+
+  @Get('growth-chart')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('visitors')
+  @ApiOperation({ summary: 'Get visitor/customer growth chart data' })
+  @ApiResponse({ type: VisitorGrowthResponseDto })
+  async getGrowthChart(
+    @Req() req: any,
+    @Query() query: VisitorGrowthQueryDto,
+    @Query() filter: BranchFilterDto,
+  ): Promise<VisitorGrowthResponseDto> {
+    const context = await this.getResolvedContext(req, filter);
+    return this.visitorsService.getGrowthChartData(
+      query.range || '7D',
+      context.branchId,
+      context.businessId,
+    );
   }
 
   @Get('new/stats')

@@ -5,6 +5,7 @@ import type {
   OpenRegisterDto,
   PosSaleStatus,
   PosSalesQuery,
+  PosCustomerQuery,
   RegisterHistoryQuery,
   UpdatePosSaleStatusDto,
   BatchSyncRequest,
@@ -59,4 +60,10 @@ export const posApi = {
 
   adjustStock: (id: string, quantity: number) =>
     api.patch(`/pos/products/${id}/stock`, { quantity }),
+
+  getCustomers: (params?: PosCustomerQuery) =>
+    api.get('/pos/customers', { params }),
+
+  getCustomer: (id: string) =>
+    api.get(`/pos/customers/${id}`),
 };

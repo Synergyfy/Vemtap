@@ -10,6 +10,7 @@ import {
   Request,
   ForbiddenException,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -43,7 +44,7 @@ export class BranchesController {
   }
 
   @Get()
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all branches for the business' })
   async findAll(@Request() req) {
     const businessId = await this.getBusinessId(req.user);
@@ -51,7 +52,7 @@ export class BranchesController {
   }
 
   @Get(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a specific branch' })
   async findOne(@Request() req, @Param('id') id: string) {
     const businessId = await this.getBusinessId(req.user);
@@ -75,12 +76,26 @@ export class BranchesController {
     );
   }
 
+  @Post(':id/request-delete-otp')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Request OTP for deleting a branch' })
+  async requestDeleteOtp(@Request() req, @Param('id') id: string) {
+    const businessId = await this.getBusinessId(req.user);
+    return this.branchesService.requestDeleteOtp(businessId, id);
+  }
+
   @Delete(':id')
   @Roles(UserRole.OWNER)
-  @ApiOperation({ summary: 'Delete a branch' })
-  async remove(@Request() req, @Param('id') id: string) {
+  @ApiOperation({ summary: 'Delete a branch with OTP verification' })
+  async remove(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('otp') bodyOtp?: string,
+    @Query('otp') queryOtp?: string,
+  ) {
     const businessId = await this.getBusinessId(req.user);
-    return this.branchesService.remove(businessId, id);
+    const otp = bodyOtp || queryOtp;
+    return this.branchesService.remove(businessId, id, otp);
   }
 
   @Public()

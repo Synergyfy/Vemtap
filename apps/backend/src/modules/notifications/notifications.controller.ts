@@ -91,6 +91,14 @@ export class NotificationsController {
     return this.notificationsService.getUnreadCount(req.user.id);
   }
 
+  @Post('mark-all-read')
+  @Patch('mark-all-read')
+  @ApiOperation({ summary: 'Mark all notifications as read for current user' })
+  @ApiResponse({ status: 200, description: 'All notifications marked as read' })
+  markAllAsRead(@Request() req) {
+    return this.notificationsService.markAllAsRead(req.user.id);
+  }
+
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a specific notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read' })

@@ -94,11 +94,7 @@ export default function WhatsAppOverviewPage() {
                     >
                         <div className="flex items-center gap-2">
                             <Zap size={18} />
-                            Promotion
-                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-black rounded-md flex items-center gap-1 shrink-0 ml-1">
-                                <Lock size={10} />
-                                Coming Soon
-                            </span>
+                            Promotion & Broadcasts
                         </div>
                         {activeTab === 'promotional' && (
                             <motion.div layoutId="wa-tab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />
@@ -218,26 +214,9 @@ export default function WhatsAppOverviewPage() {
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
-                            className="w-full h-full p-4 md:p-8 space-y-8 overflow-y-auto custom-scrollbar relative grayscale-[0.5] opacity-80 pointer-events-none select-none"
+                            className="w-full h-full p-4 md:p-8 space-y-8 overflow-y-auto custom-scrollbar relative"
                         >
-                            {/* Coming Soon Overlay */}
-                            <div className="absolute inset-0 z-50 flex items-center justify-center p-8 pointer-events-auto">
-                                <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-[2.5rem] border border-gray-200 shadow-2xl p-10 text-center scale-100 animate-in fade-in zoom-in duration-300">
-                                    <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                                        <Zap className="text-primary" size={40} />
-                                    </div>
-                                    <h3 className="text-2xl font-black text-text-main tracking-tight">Advanced Messaging</h3>
-                                    <p className="text-sm text-text-secondary mt-3 leading-relaxed">
-                                        WhatsApp Broadcasts, Automated Messages, and Analytics are coming soon to VemTap. 
-                                        We&apos;re currently finalizing our official WhatsApp Business API integration.
-                                    </p>
-                                    <button className="mt-8 px-8 py-3 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition-all text-sm w-full">
-                                        Notify Me When Ready
-                                    </button>
-                                </div>
-                            </div>
-
-                            <ChannelBalance channel="whatsapp" onTopUp={() => {}} />
+                            <ChannelBalance channel="whatsapp" onTopUp={() => setIsTopUpOpen(true)} />
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {channelStats.map((stat, i) => (
@@ -255,29 +234,61 @@ export default function WhatsAppOverviewPage() {
                             </div>
 
                             <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                                <div className="flex items-center justify-between mb-8">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                                     <div>
-                                        <h3 className="text-xl font-display font-black text-text-main">Message Management</h3>
-                                        <p className="text-sm text-text-secondary">Send broadcasts and track marketing performance.</p>
+                                        <h3 className="text-xl font-display font-black text-text-main">WhatsApp Broadcast & Promotions</h3>
+                                        <p className="text-sm text-text-secondary">Send target promotional campaigns to your captured customer base.</p>
                                     </div>
-                                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full border border-amber-100">
-                                        <Clock size={14} />
-                                        <span className="text-[10px] font-black uppercase tracking-wider">Coming Soon</span>
-                                    </div>
+                                    <Link
+                                        href="/dashboard/messaging/whatsapp/send"
+                                        className="px-6 py-3 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all text-sm flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+                                    >
+                                        <Send size={18} />
+                                        New Broadcast
+                                    </Link>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm text-text-secondary opacity-50">
-                                            "Marketing broadcasts and automated sequences will be available here."
+                                    <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-emerald-100 text-emerald-700 rounded-2xl">
+                                                <Zap size={20} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-text-main text-base">Targeted Customer Broadcasts</h4>
+                                                <p className="text-xs text-text-secondary">Reach high-value customer segments instantly.</p>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-4 opacity-30">
-                                            <div className="flex-1 h-12 bg-gray-200 rounded-xl" />
-                                            <div className="flex-1 h-12 bg-gray-200 rounded-xl" />
-                                        </div>
+                                        <p className="text-xs text-text-secondary leading-relaxed">
+                                            Send custom offers, seasonal vouchers, or new menu updates to customer phone numbers collected via QR code check-ins.
+                                        </p>
+                                        <Link
+                                            href="/dashboard/messaging/whatsapp/templates"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:underline"
+                                        >
+                                            View WhatsApp Templates →
+                                        </Link>
                                     </div>
-                                    <div className="relative">
-                                        <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-dashed border-primary/20" />
+
+                                    <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-blue-100 text-blue-700 rounded-2xl">
+                                                <History size={20} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-text-main text-base">Campaign History & Reports</h4>
+                                                <p className="text-xs text-text-secondary">Track delivery and response rates.</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-text-secondary leading-relaxed">
+                                            Monitor performance of all outgoing WhatsApp campaigns and adjust delivery schedules for peak customer engagement.
+                                        </p>
+                                        <Link
+                                            href="/dashboard/messaging/whatsapp/history"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:underline"
+                                        >
+                                            View Campaign History →
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

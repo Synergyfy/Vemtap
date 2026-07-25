@@ -176,8 +176,21 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsObject()
   posSettings?: {
+    currency?: string;
+    receiptHeader?: string;
+    receiptFooter?: string;
+    autoPrintReceipt?: boolean;
+    showLogo?: boolean;
+    taxEnabled?: boolean;
+    taxRate?: number;
+    taxLabel?: string;
+    pricesIncludeTax?: boolean;
     loyaltyEnabled?: boolean;
     loyaltyRedeemThreshold?: number;
+    lowStockAlerts?: boolean;
+    dailySalesSummary?: boolean;
+    newOrderAlert?: boolean;
+    staffActivityAlerts?: boolean;
   };
 
   @ApiPropertyOptional({ example: 'VEM-ABC-1234', description: 'Referral code from an affiliate partner' })

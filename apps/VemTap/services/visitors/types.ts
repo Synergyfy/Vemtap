@@ -83,3 +83,14 @@ export interface Reward {
     createdAt?: string;
     updatedAt?: string;
 }
+
+export interface VisitorGrowthDataPoint {
+    name: string;
+    customers: number;
+}
+
+export interface VisitorGrowthResponse {
+    range: string;
+    data: VisitorGrowthDataPoint[];
+}
+
