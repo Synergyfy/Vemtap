@@ -152,6 +152,20 @@ describe('UsersService', () => {
         BadRequestException,
       );
     });
+
+    it('should accept compound permission keys like pos:pos-home', async () => {
+      const dto = {
+        email: 'pos-staff@example.com',
+        firstName: 'POS',
+        lastName: 'Staff',
+        role: 'Staff',
+        permissions: ['pos', 'pos:pos-home', 'pos:orders'],
+      };
+      userRepository.findOne.mockResolvedValue(null);
+      const result = await service.inviteStaff('br-1', dto as any);
+      expect(result.permissions).toEqual(['pos', 'pos:pos-home', 'pos:orders']);
+      expect(userRepository.save).toHaveBeenCalled();
+    });
   });
 
   describe('updateStaff', () => {
@@ -181,6 +195,21 @@ describe('UsersService', () => {
       await expect(service.updateStaff('1', 'other-br', {})).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('should update staff with compound permission keys', async () => {
+      const existingUser = { id: '1', branchId: 'br-1', firstName: 'Old', role: UserRole.STAFF, roleTag: 'Staff', permissions: ['pos'] };
+      userRepository.findOne.mockResolvedValue(existingUser);
+
+      const updates: any = {
+        name: 'New Name',
+        role: 'Supervisor',
+        permissions: ['pos', 'pos:pos-home', 'pos:orders', 'pos:settings'],
+      };
+      const result = await service.updateStaff('1', 'br-1', updates);
+
+      expect(result.permissions).toEqual(['pos', 'pos:pos-home', 'pos:orders', 'pos:settings']);
+      expect(userRepository.save).toHaveBeenCalled();
     });
   });
 
