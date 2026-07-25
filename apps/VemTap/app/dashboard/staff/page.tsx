@@ -215,14 +215,14 @@ export default function StaffDirectory() {
   }, [form.permissions, getAllPagePermissions]);
 
   const togglePagePermissions = (item: MenuItem) => {
-    const all = getAllPagePermissions(item);
-    const isAllChecked = all.every(p => form.permissions.includes(p));
-    setForm(p => ({
-      ...p,
-      permissions: isAllChecked
-        ? p.permissions.filter(x => !all.includes(x))
-        : [...p.permissions.filter(x => !all.includes(x)), ...all],
-    }));
+    const parentPerm = item.permission || item.id;
+    setForm(p => {
+      if (p.permissions.includes(parentPerm)) {
+        const all = getAllPagePermissions(item);
+        return { ...p, permissions: p.permissions.filter(x => !all.includes(x)) };
+      }
+      return { ...p, permissions: [...p.permissions, parentPerm] };
+    });
   };
 
   const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
@@ -628,7 +628,7 @@ export default function StaffDirectory() {
                                   {item.submenu && (
                                     <div className="ml-9 pl-3.5 border-l-2 border-gray-100 space-y-0.5 mb-1">
                                       {item.submenu.map(sub => {
-                                        const subPerm = item.permission || item.id;
+                                        const subPerm = getSubPermission(item.permission || item.id, sub.label);
                                         const isChecked = form.permissions.includes(subPerm);
                                         return (
                                           <button type="button" key={sub.label} onClick={() => togglePermission(subPerm)}
