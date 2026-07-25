@@ -15,6 +15,7 @@ export interface MockPromotion {
     originalPrice: number;
     dealPrice: number;
     image: string;
+    galleryImages?: string[];
     startDate: string;
     endDate: string;
     audience: string;
@@ -22,6 +23,8 @@ export interface MockPromotion {
     distance?: string;
     claimedCount: number;
     maxClaims: number;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
     businessHours?: string;
 }
 

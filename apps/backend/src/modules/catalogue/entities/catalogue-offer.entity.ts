@@ -132,6 +132,38 @@ export class CatalogueOffer extends AbstractBaseEntity {
   audience: string | null;
 
   @ApiProperty({
+    example: ['Valid during business hours', 'Cannot be combined with other offers'],
+    description: 'Custom terms and conditions for the offer',
+    nullable: true,
+  })
+  @Column({ type: 'simple-json', nullable: true })
+  terms: string[] | null;
+
+  @ApiProperty({
+    example: 'VEM',
+    description: 'Custom prefix for generated claim codes',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', nullable: true, length: 20 })
+  claimCodePrefix: string | null;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Maximum number of times a single customer can claim this offer',
+    nullable: true,
+  })
+  @Column({ type: 'int', nullable: true, default: 1 })
+  maxClaimsPerCustomer: number | null;
+
+  @ApiProperty({
+    example: 'all',
+    description: 'Target audience: all, new_customers, or returning_customers',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', nullable: true, default: 'all' })
+  audienceTarget: string | null;
+
+  @ApiProperty({
     example: 120,
     description: 'Number of times this offer was viewed',
   })

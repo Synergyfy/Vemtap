@@ -77,7 +77,14 @@ export default function PromotionDetailPage() {
     const daysLeft = offer ? getDaysLeft(offer.endDate || '') : 0;
     const claimPct = offer ? getClaimPercent(offer.claimedCount, offer.maxClaims) : 0;
     const CategoryIcon = business ? getCategoryIcon(business.categoryId) : null;
-    const photos = business?.photos || [];
+    const photos = useMemo(() => {
+        const result = [...(business?.photos || [])];
+        if (offer?.mainImage && !result.includes(offer.mainImage)) result.unshift(offer.mainImage);
+        if (offer?.galleryImages?.length) {
+            offer.galleryImages.forEach(img => { if (!result.includes(img)) result.push(img); });
+        }
+        return result;
+    }, [business, offer]);
 
     const discountPercent = offer?.pricingType === 'percentage_discount' && offer.discountValue
         ? offer.discountValue : undefined;
@@ -162,6 +169,12 @@ export default function PromotionDetailPage() {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                                 <div className="absolute top-4 left-4 flex gap-2">
+                                    {offer.isExpired ? (
+                                        <span className="bg-gray-800/80 text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
+                                            Expired
+                                        </span>
+                                    ) : (
+                                        <>
                                     {discountPercent && (
                                         <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
                                             {discountPercent}% OFF
@@ -171,6 +184,8 @@ export default function PromotionDetailPage() {
                                         <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
                                             SAVE {formatDealPrice(discountAmount)}
                                         </span>
+                                    )}
+                                    </>
                                     )}
                                 </div>
 
@@ -285,9 +300,15 @@ export default function PromotionDetailPage() {
 
                                 <button
                                     onClick={() => setShowJoinModal(true)}
-                                    className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                                    disabled={!!offer.isExpired}
+                                    className={cn(
+                                        "w-full h-13 font-black uppercase tracking-widest text-sm rounded-xl transition-colors flex items-center justify-center gap-2",
+                                        offer.isExpired
+                                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                            : "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
+                                    )}
                                 >
-                                    <Gift size={18} /> Join Offer
+                                    <Gift size={18} /> {offer.isExpired ? 'Deal Ended' : 'Join Offer'}
                                 </button>
 
                                 <button

@@ -60,6 +60,14 @@ export default function POSPage() {
   const quickActions = (
     <>
       <button
+        onClick={() => router.push('/dashboard/pos/mode')}
+        className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-md"
+        title="Enter Dedicated Fullscreen POS Mode"
+      >
+        <ShoppingBag size={12} className="text-blue-400" />
+        POS Mode
+      </button>
+      <button
         onClick={handleCopyLink}
         disabled={!publicPosUrl}
         className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-[#066CF4] text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all disabled:opacity-50"
@@ -160,7 +168,7 @@ export default function POSPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0">
               <CartPanel onNavigate={() => setMobileCartOpen(false)} />
             </div>
           </div>

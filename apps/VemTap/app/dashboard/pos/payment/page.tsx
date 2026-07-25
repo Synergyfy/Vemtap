@@ -13,6 +13,8 @@ import { useBranches } from '@/services/branches/hooks';
 import { useRewards } from '@/services/loyalty/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import Receipt from '@/components/dashboard/pos/shared/Receipt';
+import { TouchKeypad } from '@/components/dashboard/pos/TouchKeypad';
+import { QuickCashSelector } from '@/components/dashboard/pos/QuickCashSelector';
 import { Banknote, CreditCard, ArrowRightLeft, Split, CheckCircle2, Loader2, User, Coins, Gift, X, TicketCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CustomerSelectorModal } from '@/components/dashboard/pos/CustomerSelectorModal';
@@ -58,6 +60,7 @@ export default function PaymentScreen() {
   const [splitCash, setSplitCash] = useState<string>('');
   const [splitCard, setSplitCard] = useState<string>('');
   const [splitTransfer, setSplitTransfer] = useState<string>('');
+  const [activeSplitField, setActiveSplitField] = useState<'cash' | 'card' | 'transfer'>('cash');
 
   const total = getCartTotal();
   const rewardDiscount = redeemedReward?.discount || 0;
@@ -442,64 +445,103 @@ export default function PaymentScreen() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              {paymentMethods.map((method) => {
-                const isSelected = selectedMethod === method.id;
-                return (
-                  <button
-                    key={method.id}
-                    onClick={() => setSelectedMethod(method.id as typeof selectedMethod)}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all active:scale-95 relative",
-                      isSelected
-                        ? "border-[#066CF4] bg-[#066CF4]/5 shadow-md shadow-[#066CF4]/10"
-                        : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
-                    )}
-                  >
-                    <div className={cn("size-14 rounded-2xl flex items-center justify-center mb-3", isSelected ? "bg-[#066CF4] text-white" : method.bg + " " + method.color)}>
-                      <method.icon size={24} />
-                    </div>
-                    <span className={cn("text-xs font-black uppercase tracking-widest", isSelected ? "text-[#066CF4]" : "text-gray-900")}>
-                      {method.label}
-                    </span>
-                    {isSelected && <CheckCircle2 className="absolute top-4 right-4 text-[#066CF4]" size={20} />}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Payment Method Selector (Auto-Collapses when selected to eliminate scrolling) */}
+            {selectedMethod ? (
+              <div className="mb-6 flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-gray-200">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const current = paymentMethods.find(m => m.id === selectedMethod);
+                    if (!current) return null;
+                    const Icon = current.icon;
+                    return (
+                      <>
+                        <div className={cn("size-10 rounded-xl flex items-center justify-center bg-[#066CF4] text-white shadow-sm")}>
+                          <Icon size={20} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-black uppercase tracking-widest text-gray-900 block">
+                            {current.label}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-400">Selected Payment Method</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMethod(null)}
+                  className="px-3 py-1.5 rounded-xl bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wider text-[#066CF4] hover:bg-blue-50 hover:border-blue-200 transition-all shadow-sm"
+                >
+                  Change Method
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                {paymentMethods.map((method) => {
+                  return (
+                    <button
+                      key={method.id}
+                      onClick={() => setSelectedMethod(method.id as any)}
+                      className="flex flex-col items-center justify-center p-6 rounded-[24px] border-2 border-gray-100 bg-white hover:border-[#066CF4]/40 hover:bg-blue-50/30 transition-all active:scale-95 relative group shadow-sm"
+                    >
+                      <div className={cn("size-14 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform", method.bg, method.color)}>
+                        <method.icon size={24} />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest text-gray-900">
+                        {method.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {selectedMethod === 'cash' && (
-              <div className="mb-8 p-6 bg-gray-50 rounded-[24px] border border-gray-100">
-                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3">Amount Received</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black text-gray-400">₦</span>
-                  <input
-                    type="text"
-                    value={amountReceived}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, '');
-                      setAmountReceived(val ? Number(val).toLocaleString() : '');
+              <div className="mb-8 p-6 bg-gray-50 rounded-[24px] border border-gray-100 space-y-6">
+                <QuickCashSelector
+                  totalAmount={totalAfterReward}
+                  selectedAmount={receivedNum}
+                  onSelectAmount={(val) => setAmountReceived(val ? val.toLocaleString() : '')}
+                />
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
+                    Exact Amount Received (₦)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black text-gray-400">₦</span>
+                    <input
+                      type="text"
+                      value={amountReceived}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                        setAmountReceived(raw ? Number(raw).toLocaleString() : '');
+                      }}
+                      className="w-full h-16 pl-10 pr-4 rounded-[20px] border border-gray-200 bg-white text-2xl font-black text-gray-900 focus:outline-none focus:border-[#066CF4] focus:ring-4 focus:ring-[#066CF4]/10 transition-all"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                {/* Touch Keypad for touchscreens & mobile */}
+                <div className="pt-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Touch Keypad</span>
+                  <TouchKeypad
+                    value={amountReceived.replace(/,/g, '')}
+                    onChange={(val) => {
+                      const raw = val.replace(/[^0-9]/g, '');
+                      setAmountReceived(raw ? Number(raw).toLocaleString() : '');
                     }}
-                    className="w-full h-16 pl-10 pr-4 rounded-[20px] border border-gray-200 bg-white text-2xl font-black text-gray-900 focus:outline-none focus:border-[#066CF4] focus:ring-4 focus:ring-[#066CF4]/10 transition-all"
-                    placeholder="0"
-                    autoFocus
+                    onClear={() => setAmountReceived('')}
+                    onEnter={handleComplete}
                   />
                 </div>
-                <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
-                  {[totalAfterReward, 1000, 5000, 10000, 20000].filter(a => a >= totalAfterReward).map((amt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setAmountReceived(amt.toLocaleString())}
-                      className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-black text-gray-600 hover:border-[#066CF4] hover:text-[#066CF4] shrink-0"
-                    >
-                      ₦{amt.toLocaleString()}
-                    </button>
-                  ))}
-                </div>
+
                 {receivedNum > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">Change Due</span>
-                    <span className={cn("text-xl font-black", change > 0 ? "text-emerald-500" : "text-gray-400")}>
+                  <div className="pt-4 border-t border-gray-200 flex justify-between items-center bg-white p-4 rounded-2xl border">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">Customer Change</span>
+                    <span className={cn("text-2xl font-black", change >= 0 ? "text-emerald-500" : "text-red-400")}>
                       ₦{change.toLocaleString()}
                     </span>
                   </div>
@@ -508,32 +550,100 @@ export default function PaymentScreen() {
             )}
 
             {selectedMethod === 'split' && (
-              <div className="mb-8 p-6 bg-gray-50 rounded-[24px] border border-gray-100 space-y-4">
+              <div className="mb-8 p-6 bg-gray-50 rounded-[24px] border border-gray-100 space-y-6">
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-1">Split Payment Details</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-1">Cash Amount (₦)</label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSplitField('cash')}
+                    className={cn("p-3 rounded-2xl border-2 text-left transition-all", activeSplitField === 'cash' ? "border-emerald-500 bg-emerald-50/50" : "border-gray-200 bg-white")}
+                  >
+                    <label className="block text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 mb-1 cursor-pointer">Cash Amount (₦)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
-                      <input type="text" value={splitCash} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setSplitCash(val ? Number(val).toLocaleString() : ''); }} className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]" placeholder="0" />
+                      <input
+                        type="text"
+                        value={splitCash}
+                        onFocus={() => setActiveSplitField('cash')}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setSplitCash(val ? Number(val).toLocaleString() : '');
+                        }}
+                        className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-emerald-500"
+                        placeholder="0"
+                      />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-purple-500 mb-1">Card Amount (₦)</label>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveSplitField('card')}
+                    className={cn("p-3 rounded-2xl border-2 text-left transition-all", activeSplitField === 'card' ? "border-purple-500 bg-purple-50/50" : "border-gray-200 bg-white")}
+                  >
+                    <label className="block text-[9px] font-black uppercase tracking-[0.2em] text-purple-600 mb-1 cursor-pointer">Card Amount (₦)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
-                      <input type="text" value={splitCard} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setSplitCard(val ? Number(val).toLocaleString() : ''); }} className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]" placeholder="0" />
+                      <input
+                        type="text"
+                        value={splitCard}
+                        onFocus={() => setActiveSplitField('card')}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setSplitCard(val ? Number(val).toLocaleString() : '');
+                        }}
+                        className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-purple-500"
+                        placeholder="0"
+                      />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Transfer Amount (₦)</label>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveSplitField('transfer')}
+                    className={cn("p-3 rounded-2xl border-2 text-left transition-all", activeSplitField === 'transfer' ? "border-blue-500 bg-blue-50/50" : "border-gray-200 bg-white")}
+                  >
+                    <label className="block text-[9px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 cursor-pointer">Transfer Amount (₦)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
-                      <input type="text" value={splitTransfer} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setSplitTransfer(val ? Number(val).toLocaleString() : ''); }} className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]" placeholder="0" />
+                      <input
+                        type="text"
+                        value={splitTransfer}
+                        onFocus={() => setActiveSplitField('transfer')}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setSplitTransfer(val ? Number(val).toLocaleString() : '');
+                        }}
+                        className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-blue-500"
+                        placeholder="0"
+                      />
                     </div>
-                  </div>
+                  </button>
                 </div>
-                <div className="pt-4 border-t border-gray-200 flex justify-between items-center text-xs">
+
+                {/* Touch Keypad for Split Payment */}
+                <div className="pt-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">
+                    Enter Amount for <strong className="text-[#066CF4] uppercase">{activeSplitField}</strong>
+                  </span>
+                  <TouchKeypad
+                    value={(activeSplitField === 'cash' ? splitCash : activeSplitField === 'card' ? splitCard : splitTransfer).replace(/,/g, '')}
+                    onChange={(val) => {
+                      const raw = val.replace(/[^0-9]/g, '');
+                      const formatted = raw ? Number(raw).toLocaleString() : '';
+                      if (activeSplitField === 'cash') setSplitCash(formatted);
+                      else if (activeSplitField === 'card') setSplitCard(formatted);
+                      else setSplitTransfer(formatted);
+                    }}
+                    onClear={() => {
+                      if (activeSplitField === 'cash') setSplitCash('');
+                      else if (activeSplitField === 'card') setSplitCard('');
+                      else setSplitTransfer('');
+                    }}
+                    onEnter={handleComplete}
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-gray-200 flex justify-between items-center text-xs bg-white p-4 rounded-2xl border">
                   <div>
                     <span className="font-bold text-gray-500 uppercase tracking-widest">Split Sum: </span>
                     <span className="font-black text-gray-900">₦{splitSum.toLocaleString()}</span>
@@ -544,7 +654,7 @@ export default function PaymentScreen() {
                     ) : splitRemaining < 0 ? (
                       <><span className="font-bold text-red-500 uppercase tracking-widest">Overpaid: </span><span className="font-black text-red-500">₦{Math.abs(splitRemaining).toLocaleString()}</span></>
                     ) : (
-                      <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md font-black uppercase tracking-widest">Balanced</span>
+                      <span className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg font-black uppercase tracking-widest">Balanced</span>
                     )}
                   </div>
                 </div>

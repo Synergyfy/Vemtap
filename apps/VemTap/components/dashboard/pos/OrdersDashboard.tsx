@@ -50,6 +50,7 @@ export default function OrdersDashboard() {
   const [refundReason, setRefundReason] = useState('');
   const [refundItemIds, setRefundItemIds] = useState<Set<string>>(new Set());
   const redeemClaim = useRedeemClaim();
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
   const { data: claimsData, isLoading: claimsLoading } = useBusinessClaims();
 
   const { data: ordersData, isLoading } = useCatalogueOrders({
@@ -111,6 +112,67 @@ export default function OrdersDashboard() {
 
   const { data: orderDetail, isLoading: loadingDetail } = useCatalogueOrderDetails(selectedOrderId ?? '');
 
+  const [stockIssueModal, setStockIssueModal] = useState<{
+    isOpen: boolean;
+    issues: Array<{
+      name: string;
+      requestedQty: number;
+      availableQty: number;
+      isOutOfStock: boolean;
+      productId?: string;
+    }>;
+    pendingAction?: () => void;
+  }>({ isOpen: false, issues: [] });
+
+  const validateOrderStockAndProceed = (items: any[], onValid: () => void) => {
+    const issues: Array<{
+      name: string;
+      requestedQty: number;
+      availableQty: number;
+      isOutOfStock: boolean;
+      productId?: string;
+    }> = [];
+
+    items.forEach((item: any) => {
+      const product = item.item || item;
+      const requestedQty = item.quantity || 1;
+      const stockQty = product.stockQuantity;
+
+      // Validate stock quantity if defined
+      if (typeof stockQty === 'number') {
+        if (stockQty <= 0) {
+          issues.push({
+            name: product.name || 'Item',
+            requestedQty,
+            availableQty: 0,
+            isOutOfStock: true,
+            productId: product.id,
+          });
+        } else if (stockQty < requestedQty) {
+          issues.push({
+            name: product.name || 'Item',
+            requestedQty,
+            availableQty: stockQty,
+            isOutOfStock: false,
+            productId: product.id,
+          });
+        }
+      }
+    });
+
+    if (issues.length > 0) {
+      setStockIssueModal({
+        isOpen: true,
+        issues,
+        pendingAction: onValid,
+      });
+      return false;
+    }
+
+    onValid();
+    return true;
+  };
+
   const addItemsToCartAndCheckout = (items: any[], goToPayment = false, customer?: { id: string; firstName?: string; lastName?: string; phone?: string; email?: string } | null) => {
     const posStore = usePosStore.getState();
     posStore.clearCart();
@@ -149,11 +211,13 @@ export default function OrdersDashboard() {
       toast.error('No items in this order');
       return;
     }
-    addItemsToCartAndCheckout(orderDetail.items, false, orderDetail.customer);
-    updateStatus.mutate(
-      { id: selectedOrderId!, status: 'processing' as OrderStatus },
-      { onSuccess: () => toast.success('Order added to cart! You can review items before payment.') }
-    );
+    validateOrderStockAndProceed(orderDetail.items, () => {
+      addItemsToCartAndCheckout(orderDetail.items, false, orderDetail.customer);
+      updateStatus.mutate(
+        { id: selectedOrderId!, status: 'processing' as OrderStatus },
+        { onSuccess: () => toast.success('Order added to cart! You can review items before payment.') }
+      );
+    });
   };
 
   const handleContinuePayment = () => {
@@ -161,11 +225,13 @@ export default function OrdersDashboard() {
       toast.error('No items in this order');
       return;
     }
-    addItemsToCartAndCheckout(orderDetail.items, false, orderDetail.customer);
-    updateStatus.mutate(
-      { id: selectedOrderId!, status: 'processing' as OrderStatus },
-      { onSuccess: () => toast.success('Continuing payment for this order') }
-    );
+    validateOrderStockAndProceed(orderDetail.items, () => {
+      addItemsToCartAndCheckout(orderDetail.items, true, orderDetail.customer);
+      updateStatus.mutate(
+        { id: selectedOrderId!, status: 'processing' as OrderStatus },
+        { onSuccess: () => toast.success('Continuing payment for this order') }
+      );
+    });
   };
 
   const handleAcceptClaim = async (claim: any) => {
@@ -556,6 +622,84 @@ export default function OrdersDashboard() {
               </div>
             )}
           </AnimatePresence>
+
+          {/* Out of Stock / Low Quantity Warning Modal */}
+          <AnimatePresence>
+            {stockIssueModal.isOpen && (
+              <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setStockIssueModal(prev => ({ ...prev, isOpen: false }))} />
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-lg rounded-3xl overflow-hidden relative shadow-2xl z-10">
+                  <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-amber-50/50">
+                    <div className="flex items-center gap-3">
+                      <div className="size-11 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 shadow-sm">
+                        <AlertCircle size={22} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-gray-900">Inventory Warning</h3>
+                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Item Out of Stock / Low Quantity</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setStockIssueModal(prev => ({ ...prev, isOpen: false }))} className="size-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all">
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                    <p className="text-xs font-bold text-gray-500 leading-relaxed">
+                      The following item(s) in this order cannot be completed because they are out of stock or have insufficient available units:
+                    </p>
+
+                    <div className="space-y-3">
+                      {stockIssueModal.issues.map((issue, idx) => (
+                        <div key={idx} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-black text-gray-900 truncate">{issue.name}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                Ordered: <strong className="text-gray-900">{issue.requestedQty}</strong>
+                              </span>
+                              <span className="text-gray-300">•</span>
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                Available: <strong className={issue.isOutOfStock ? "text-red-500" : "text-amber-500"}>{issue.availableQty}</strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0 border",
+                            issue.isOutOfStock
+                              ? "bg-red-50 text-red-600 border-red-200"
+                              : "bg-amber-50 text-amber-600 border-amber-200"
+                          )}>
+                            {issue.isOutOfStock ? 'Out of Stock' : 'Low Stock'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-6 border-t border-gray-100 flex flex-col sm:flex-row gap-3 bg-gray-50/50">
+                    <button
+                      onClick={() => setStockIssueModal(prev => ({ ...prev, isOpen: false }))}
+                      className="flex-1 h-12 bg-white border border-gray-200 text-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all shadow-sm"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStockIssueModal(prev => ({ ...prev, isOpen: false }));
+                        router.push('/dashboard/catalogue/products');
+                      }}
+                      className="flex-1 h-12 bg-[#066CF4] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                    >
+                      <Package size={16} />
+                      Update Stock
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
         </>
       ) : (
         /* ─── DEAL CLAIMS TAB ─── */
@@ -596,7 +740,8 @@ export default function OrdersDashboard() {
                     key={claim.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all"
+                    onClick={() => setSelectedClaim(claim)}
+                    className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
                   >
                     <div className="flex items-start gap-4">
                       <div className="size-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
@@ -660,6 +805,132 @@ export default function OrdersDashboard() {
           </div>
         </>
       )}
+
+      {/* ─── Claim Detail Drawer ─── */}
+      <AnimatePresence>
+        {selectedClaim && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+              onClick={() => setSelectedClaim(null)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-black text-gray-900">Claim Details</h2>
+                  <button onClick={() => setSelectedClaim(null)} className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Customer Info */}
+                <div className="bg-gray-50 rounded-3xl p-5 border border-gray-100 mb-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Customer</p>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="size-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
+                      <User size={22} className="text-violet-600" />
+                    </div>
+                    <div>
+                      <p className="font-black text-gray-900">{selectedClaim.firstName} {selectedClaim.lastName}</p>
+                      <p className="text-xs font-bold text-gray-400">{selectedClaim.email || 'No email'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    <Phone size={14} className="text-gray-400" />
+                    {selectedClaim.phone}
+                  </div>
+                </div>
+
+                {/* Claim Info */}
+                <div className="bg-gray-50 rounded-3xl p-5 border border-gray-100 mb-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Claim Details</p>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Claim Code</span>
+                      <span className="font-black text-primary font-mono tracking-wider">{selectedClaim.claimCode}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Status</span>
+                      <span className={cn("px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border",
+                        selectedClaim.status === 'claimed' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                      )}>
+                        {selectedClaim.status === 'claimed' ? 'Pending' : 'Redeemed'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Claimed</span>
+                      <span className="font-bold text-gray-900">{new Date(selectedClaim.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Expires</span>
+                      <span className={cn("font-bold", new Date(selectedClaim.expiresAt) < new Date() ? "text-red-500" : "text-gray-900")}>
+                        {new Date(selectedClaim.expiresAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Offer Info */}
+                {selectedClaim.offer && (
+                  <div className="bg-gray-50 rounded-3xl p-5 border border-gray-100 mb-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Deal</p>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 font-medium">Name</span>
+                        <span className="font-bold text-gray-900">{selectedClaim.offer.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 font-medium">Price</span>
+                        <span className="font-bold text-primary">₦{Number(selectedClaim.offer.calculatedPrice || 0).toLocaleString()}</span>
+                      </div>
+                      {selectedClaim.offer.items?.length > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-medium">Products</span>
+                          <span className="font-bold text-gray-900">{selectedClaim.offer.items.length} item{selectedClaim.offer.items.length > 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {selectedClaim.status === 'claimed' && (
+                  <div className="space-y-2 mt-6">
+                    {selectedClaim.offer?.items?.length > 0 ? (
+                      <button
+                        onClick={() => { handleAcceptClaim(selectedClaim); setSelectedClaim(null); }}
+                        disabled={redeemClaim.isPending}
+                        className="w-full h-12 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {redeemClaim.isPending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                        Accept & Add to Cart
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { handleMarkCustomDealComplete(selectedClaim); setSelectedClaim(null); }}
+                        disabled={redeemClaim.isPending}
+                        className="w-full h-12 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {redeemClaim.isPending ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                        Mark as Complete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

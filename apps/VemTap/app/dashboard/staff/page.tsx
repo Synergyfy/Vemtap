@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import {
   Users, Plus, MoreVertical, X, Loader2, Check, Trash2, Edit3, Crown, ArrowRight,
-  Activity, Clock, UserCheck, LogIn, Shield, Calendar, Settings,
+  Activity, Clock, UserCheck, LogIn, Shield, Calendar, Settings, ChevronRight,
+  ChevronDown, Home, CreditCard, Package, MessageSquare, Globe2, FileText, QrCode,
+  Palette, Users2, Globe, BarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
@@ -13,6 +15,8 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'react-hot-toast';
 import type { StaffMember } from '@/services/users/types';
+import { NAVIGATION_SECTIONS } from '@/constants/ownerNavigation';
+import type { NavSection, MenuItem, SubmenuItem } from '@/constants/ownerNavigation';
 
 const ALL_PERMISSIONS = [
   'dashboard', 'inventory', 'pos', 'visitors', 'messages', 'engagement',
@@ -26,6 +30,32 @@ const PERMISSION_LABELS: Record<string, string> = {
   discovery: 'Get Customers', analytics: 'Advanced Analytics', staff: 'Staff',
   settings: 'Settings & Locations', qrthrive: 'Explore QRThrive',
 };
+
+const SECTION_ICONS: Record<string, any> = {
+  'section-commerce': Package,
+  'section-engagement': MessageSquare,
+  'section-experience': QrCode,
+  'section-discovery': BarChart,
+  'section-analytics': BarChart,
+  'section-manage': Users2,
+  'section-qrthrive': QrCode,
+  'section-settings': Settings,
+};
+
+function getSubPermission(parentPermission: string, subLabel: string): string {
+  return `${parentPermission}:${subLabel.toLowerCase().replace(/\s+/g, '-')}`;
+}
+
+function getPageIcon(pageId: string): any {
+  const map: Record<string, any> = {
+    overview: Home, sales: CreditCard, 'products-stock': Package,
+    'commerce-customers': Users, 'in-app-chat': MessageSquare,
+    channels: Globe2, 'manage-forms': FileText, 'my-business-qr': QrCode,
+    'marketing-assets': Palette, discovery: BarChart, 'analytics-overview': BarChart,
+    staff: Users2, branches: Globe, 'qr-codes': QrCode, preferences: Settings,
+  };
+  return map[pageId] || Shield;
+}
 
 interface FormState {
   firstName: string; lastName: string; email: string; phone: string; role: string; permissions: string[];
@@ -124,11 +154,77 @@ export default function StaffDirectory() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [inviteStep, setInviteStep] = useState(1);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editTarget, setEditTarget] = useState<string | null>(null);
   const [originalStaff, setOriginalStaff] = useState<StaffMember | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(p => p[sectionId] ? {} : { [sectionId]: true });
+  };
+
+  const ROLE_SUGGESTIONS = ['Manager', 'Cashier', 'Supervisor', 'Inventory', 'Marketing', 'Support', 'Accountant', 'HR'];
+
+  const selectRole = (role: string) => {
+    setForm(p => ({ ...p, role }));
+  };
+
+  const togglePermission = (perm: string) => {
+    setForm(p => {
+      const isAdding = !p.permissions.includes(perm);
+      let updated = isAdding ? [...p.permissions, perm] : p.permissions.filter(x => x !== perm);
+      if (perm.includes(':')) {
+        const parentKey = perm.split(':')[0];
+        if (isAdding && !updated.includes(parentKey)) {
+          updated.push(parentKey);
+        } else if (!isAdding) {
+          const hasOtherSubItems = updated.some(x => x.startsWith(parentKey + ':') && x !== perm);
+          if (!hasOtherSubItems) {
+            updated = updated.filter(x => x !== parentKey);
+          }
+        }
+      }
+      return { ...p, permissions: updated };
+    });
+  };
+
+  const getPageSubPermissions = useCallback((item: MenuItem): string[] => {
+    if (!item.submenu) return [];
+    return item.submenu.map(sub => getSubPermission(item.permission || item.id, sub.label));
+  }, []);
+
+  const getAllPagePermissions = useCallback((item: MenuItem): string[] => {
+    const perms = [item.permission || item.id];
+    if (item.submenu) {
+      perms.push(...item.submenu.map(sub => getSubPermission(item.permission || item.id, sub.label)));
+    }
+    return perms;
+  }, []);
+
+  const isPageFullyChecked = useCallback((item: MenuItem): boolean => {
+    const all = getAllPagePermissions(item);
+    return all.every(p => form.permissions.includes(p));
+  }, [form.permissions, getAllPagePermissions]);
+
+  const isPagePartiallyChecked = useCallback((item: MenuItem): boolean => {
+    const all = getAllPagePermissions(item);
+    const checked = all.filter(p => form.permissions.includes(p));
+    return checked.length > 0 && checked.length < all.length;
+  }, [form.permissions, getAllPagePermissions]);
+
+  const togglePagePermissions = (item: MenuItem) => {
+    const parentPerm = item.permission || item.id;
+    setForm(p => {
+      if (p.permissions.includes(parentPerm)) {
+        const all = getAllPagePermissions(item);
+        return { ...p, permissions: p.permissions.filter(x => !all.includes(x)) };
+      }
+      return { ...p, permissions: [...p.permissions, parentPerm] };
+    });
+  };
 
   const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
 
@@ -152,13 +248,6 @@ export default function StaffDirectory() {
     return buildActivityLog(detailStaff as StaffMember);
   }, [detailStaff]);
 
-  const togglePermission = (perm: string) => {
-    setForm(p => ({
-      ...p,
-      permissions: p.permissions.includes(perm) ? p.permissions.filter(x => x !== perm) : [...p.permissions, perm],
-    }));
-  };
-
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.firstName || !form.lastName || !form.email) return;
@@ -171,6 +260,7 @@ export default function StaffDirectory() {
       });
       toast.success('Invitation sent!');
       setShowInviteModal(false);
+      setInviteStep(1);
       setForm(emptyForm);
     } catch (err: any) {
       const msg = err?.message || err?.response?.data?.message || '';
@@ -179,6 +269,8 @@ export default function StaffDirectory() {
         setShowInviteModal(false);
         setForm(emptyForm);
         setShowLimitModal(true);
+      } else if (msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('in use') || msg.toLowerCase().includes('taken')) {
+        toast.error('This email already exists. Please use a different email address.');
       } else {
         toast.error(displayMsg || 'Failed to send invitation');
       }
@@ -247,9 +339,13 @@ export default function StaffDirectory() {
       setOriginalStaff(null);
       setForm(emptyForm);
     } catch (err: any) {
-      const rawMsg = err?.response?.data?.message;
+      const rawMsg = err?.response?.data?.message || err?.message || '';
       const msg = Array.isArray(rawMsg) ? rawMsg.join(', ') : rawMsg;
-      toast.error(msg || 'Failed to update staff');
+      if (typeof msg === 'string' && (msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('in use') || msg.toLowerCase().includes('taken'))) {
+        toast.error('This email already exists. Please use a different email address.');
+      } else {
+        toast.error(msg || 'Failed to update staff');
+      }
     }
   };
 
@@ -301,31 +397,6 @@ export default function StaffDirectory() {
         <input value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
           placeholder="e.g. Cashier, Manager, Supervisor"
           className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all" />
-      </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Permissions</label>
-          <button type="button" onClick={() =>
-            setForm(p => ({ ...p, permissions: p.permissions.length === ALL_PERMISSIONS.length ? [] : [...ALL_PERMISSIONS] }))
-          } className="text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600">
-            {form.permissions.length === ALL_PERMISSIONS.length ? 'Deselect All' : 'Select All'}
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-          {ALL_PERMISSIONS.map(p => (
-            <label key={p} className={cn("flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all text-xs font-bold",
-              form.permissions.includes(p) ? "border-blue-200 bg-blue-50 text-blue-700" : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300"
-            )}>
-              <div className={cn("size-4 rounded-md border-2 flex items-center justify-center transition-all",
-                form.permissions.includes(p) ? "border-blue-500 bg-blue-500" : "border-gray-300"
-              )}>
-                {form.permissions.includes(p) && <Check size={10} className="text-white" />}
-              </div>
-              <span>{PERMISSION_LABELS[p] || p}</span>
-              <input type="checkbox" checked={form.permissions.includes(p)} onChange={() => togglePermission(p)} className="hidden" />
-            </label>
-          ))}
-        </div>
       </div>
       <button type="submit" disabled={isPending || !form.firstName || !form.lastName || !form.email}
         className="w-full h-12 rounded-2xl bg-[#066CF4] text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50 transition-all">
@@ -469,27 +540,295 @@ export default function StaffDirectory() {
       )}
 
       {showInviteModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => { setShowInviteModal(false); setForm(emptyForm); }} />
-          <div className="relative w-full max-w-lg bg-white rounded-[32px] shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <div><h2 className="text-lg font-black text-gray-900">Invite Member</h2><p className="text-xs font-bold text-gray-400 mt-0.5">Send an invitation email</p></div>
-              <button onClick={() => { setShowInviteModal(false); setForm(emptyForm); }} className="size-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"><X size={16} /></button>
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowInviteModal(false); setForm(emptyForm); setInviteStep(1); }} />
+          <div className="relative w-full sm:max-w-xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[96dvh] sm:max-h-[90dvh] flex flex-col">
+            <div className="flex items-center justify-between p-5 sm:p-7 border-b border-gray-100 shrink-0">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  {[1, 2].map(s => (
+                    <span key={s} className={cn("rounded-full transition-all", s === inviteStep ? "bg-blue-500 w-6 h-2" : s < inviteStep ? "bg-blue-300 w-2 h-2" : "bg-gray-200 w-2 h-2")} />
+                  ))}
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-gray-900">{inviteStep === 1 ? 'Invite Staff' : 'Set Permissions'}</h2>
+                <p className="text-[11px] font-bold text-gray-400 mt-0.5">{inviteStep === 1 ? 'Enter the staff member\'s details' : `Step 2 of 2 — ${form.permissions.length} permission${form.permissions.length !== 1 ? 's' : ''} selected`}</p>
+              </div>
+              <button onClick={() => { setShowInviteModal(false); setForm(emptyForm); setInviteStep(1); }} className="size-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors shrink-0"><X size={18} /></button>
             </div>
-            <form onSubmit={handleInviteSubmit}>{formFields({ buttonLabel: 'Send Invitation', isPending: inviteMutation.isPending })}</form>
+            <div className="flex-1 overflow-y-auto">
+            {inviteStep === 1 && (
+              <form key="step1" onSubmit={e => { e.preventDefault(); setInviteStep(2); }}>
+                <div className="p-5 sm:p-7 space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                        First Name <span className="text-red-400">*</span>
+                        <span title="Staff member's legal first name" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span>
+                      </label>
+                      <input required value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))}
+                        placeholder="e.g. John" className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                        Last Name <span className="text-red-400">*</span>
+                        <span title="Staff member's legal last name" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span>
+                      </label>
+                      <input required value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))}
+                        placeholder="e.g. Doe" className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                      Email Address <span className="text-red-400">*</span>
+                      <span title="We'll send the invitation link to this email" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span>
+                    </label>
+                    <input required type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                      placeholder="staff@company.com" className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                      Phone Number
+                      <span title="Optional. Used for account recovery" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span>
+                    </label>
+                    <input type="tel" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                      placeholder="e.g. +234 801 234 5678" className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                  </div>
+                  <div className="space-y-2.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                      Role Title <span className="text-red-400">*</span>
+                      <span title="Their position or job title within your organization" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span>
+                    </label>
+                    <input value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
+                      placeholder="Type a role or select below"
+                      className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                    <div className="flex flex-wrap gap-2">
+                      {ROLE_SUGGESTIONS.map(role => (
+                        <button key={role} type="button" onClick={() => selectRole(role)}
+                          className={cn("px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all",
+                            form.role === role
+                              ? "bg-blue-500 text-white border-blue-500 shadow-sm"
+                              : "bg-white text-gray-600 border-gray-200 hover:border-blue-200 hover:text-blue-600"
+                          )}>{role}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-5 sm:p-7 pt-0 sm:pt-0">
+                  <button type="submit" disabled={!form.firstName || !form.lastName || !form.email}
+                    className="w-full h-14 rounded-2xl bg-[#066CF4] text-white font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20">
+                    Next Step — Permissions <ArrowRight size={18} />
+                  </button>
+                </div>
+              </form>
+            )}
+            {inviteStep === 2 && (
+              <form key="step2" onSubmit={handleInviteSubmit}>
+                <div className="p-5 sm:p-7 pt-2 space-y-2.5">
+                  {NAVIGATION_SECTIONS.map(section => {
+                    const sectionItems = section.items.filter(item => item.id !== 'staff');
+                    if (sectionItems.length === 0) return null;
+                    const allSectionPerms = sectionItems.flatMap(item => getAllPagePermissions(item));
+                    const sectionCheckedCount = allSectionPerms.filter(p => form.permissions.includes(p)).length;
+                    const sectionTotal = allSectionPerms.length;
+                    const isExpanded = expandedSections[section.id] ?? false;
+                    const sectionLabel = section.label || sectionItems.map(i => i.label).join(', ');
+                    return (
+                      <div key={section.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                        <button type="button" onClick={() => toggleSection(section.id)}
+                          className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            {isExpanded ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
+                            <span className="text-[11px] font-black uppercase tracking-widest text-gray-600">{sectionLabel}</span>
+                          </div>
+                          <span className={cn("text-[10px] font-bold", sectionCheckedCount > 0 ? "text-blue-500" : "text-gray-400")}>{sectionCheckedCount}/{sectionTotal}</span>
+                        </button>
+                        {isExpanded && (
+                          <div className="p-2.5 space-y-1">
+                            {sectionItems.map(item => {
+                              const Icon = getPageIcon(item.id);
+                              const allPerms = getAllPagePermissions(item);
+                              const itemCheckedCount = allPerms.filter(p => form.permissions.includes(p)).length;
+                              const fullyChecked = itemCheckedCount === allPerms.length;
+                              const partiallyChecked = itemCheckedCount > 0 && itemCheckedCount < allPerms.length;
+                              return (
+                                <div key={item.id}>
+                                  <button type="button" onClick={() => togglePagePermissions(item)}
+                                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-blue-50 transition-colors group">
+                                    <div className={cn("size-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0",
+                                      fullyChecked ? "border-blue-500 bg-blue-500" : partiallyChecked ? "border-blue-400 bg-blue-100" : "border-gray-300 group-hover:border-blue-300"
+                                    )}>
+                                      {fullyChecked && <Check size={11} className="text-white" />}
+                                      {partiallyChecked && <div className="size-2 rounded-sm bg-blue-500" />}
+                                    </div>
+                                    <Icon size={15} className={cn("shrink-0", fullyChecked ? "text-blue-500" : "text-gray-400")} />
+                                    <span className={cn("text-sm font-bold flex-1 text-left", fullyChecked ? "text-blue-700" : "text-gray-700")}>{item.label}</span>
+                                    <span className="text-[10px] text-gray-400">{itemCheckedCount}/{allPerms.length}</span>
+                                  </button>
+                                  {item.submenu && (
+                                    <div className="ml-9 pl-3.5 border-l-2 border-gray-100 space-y-0.5 mb-1">
+                                      {item.submenu.map(sub => {
+                                        const subPerm = getSubPermission(item.permission || item.id, sub.label);
+                                        const isChecked = form.permissions.includes(subPerm);
+                                        return (
+                                          <button type="button" key={sub.label} onClick={() => togglePermission(subPerm)}
+                                            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-lg hover:bg-blue-50 transition-colors group">
+                                            <div className={cn("size-4 rounded border-2 flex items-center justify-center transition-all shrink-0",
+                                              isChecked ? "border-blue-500 bg-blue-500" : "border-gray-300 group-hover:border-blue-300"
+                                            )}>
+                                              {isChecked && <Check size={9} className="text-white" />}
+                                            </div>
+                                            <span className={cn("text-xs font-medium flex-1 text-left", isChecked ? "text-blue-600" : "text-gray-500")}>{sub.label}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="p-5 sm:p-7 pt-3 flex gap-3 border-t border-gray-50">
+                  <button type="button" onClick={() => setInviteStep(1)}
+                    className="h-14 px-6 rounded-2xl bg-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors shrink-0">Back</button>
+                  <button type="submit" disabled={inviteMutation.isPending}
+                    className="flex-1 h-14 rounded-2xl bg-[#066CF4] text-white font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20">
+                    {inviteMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : null}
+                    {inviteMutation.isPending ? 'Sending Invitation...' : 'Send Invitation'}
+                  </button>
+                </div>
+              </form>
+            )}
+            </div>
           </div>
         </div>
       )}
 
       {showEditModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => { setShowEditModal(false); setForm(emptyForm); }} />
-          <div className="relative w-full max-w-lg bg-white rounded-[32px] shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <div><h2 className="text-lg font-black text-gray-900">Edit Staff</h2><p className="text-xs font-bold text-gray-400 mt-0.5">Update role & permissions</p></div>
-              <button onClick={() => { setShowEditModal(false); setForm(emptyForm); }} className="size-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"><X size={16} /></button>
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowEditModal(false); setForm(emptyForm); }} />
+          <div className="relative w-full sm:max-w-xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[96dvh] sm:max-h-[90dvh] flex flex-col">
+            <div className="flex items-center justify-between p-5 sm:p-7 border-b border-gray-100 shrink-0">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-gray-900">Edit Staff</h2>
+                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Update role & permissions — {form.permissions.length} selected</p>
+              </div>
+              <button onClick={() => { setShowEditModal(false); setForm(emptyForm); }} className="size-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors shrink-0"><X size={18} /></button>
             </div>
-            <form onSubmit={handleEditSubmit}>{formFields({ buttonLabel: 'Save Changes', isPending: updateStaffMutation.isPending })}</form>
+            <form onSubmit={handleEditSubmit} className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">First Name <span title="Staff member's legal first name" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span></label>
+                    <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))}
+                      className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">Last Name <span title="Staff member's legal last name" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span></label>
+                    <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))}
+                      className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">Role Title <span title="Their position or job title" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold ml-auto">?</span></label>
+                  <input value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
+                    className="w-full h-12 px-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all" />
+                  <div className="flex flex-wrap gap-2">
+                    {ROLE_SUGGESTIONS.map(role => (
+                      <button key={role} type="button" onClick={() => selectRole(role)}
+                        className={cn("px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all",
+                          form.role === role
+                            ? "bg-blue-500 text-white border-blue-500 shadow-sm"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-blue-200 hover:text-blue-600"
+                        )}>{role}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">Permissions <span title="Granular access control for each page" className="size-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 cursor-help text-[8px] font-bold">?</span></label>
+                  </div>
+                  {NAVIGATION_SECTIONS.map(section => {
+                    const sectionItems = section.items.filter(item => item.id !== 'staff');
+                    if (sectionItems.length === 0) return null;
+                    const allSectionPerms = sectionItems.flatMap(item => getAllPagePermissions(item));
+                    const sectionCheckedCount = allSectionPerms.filter(p => form.permissions.includes(p)).length;
+                    const sectionTotal = allSectionPerms.length;
+                    const isExpanded = expandedSections[section.id] ?? false;
+                    const sectionLabel = section.label || sectionItems.map(i => i.label).join(', ');
+                    return (
+                      <div key={section.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                        <button type="button" onClick={() => toggleSection(section.id)}
+                          className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            {isExpanded ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
+                            <span className="text-[11px] font-black uppercase tracking-widest text-gray-600">{sectionLabel}</span>
+                          </div>
+                          <span className={cn("text-[10px] font-bold", sectionCheckedCount > 0 ? "text-blue-500" : "text-gray-400")}>{sectionCheckedCount}/{sectionTotal}</span>
+                        </button>
+                        {isExpanded && (
+                          <div className="p-2.5 space-y-1">
+                            {sectionItems.map(item => {
+                              const Icon = getPageIcon(item.id);
+                              const allPerms = getAllPagePermissions(item);
+                              const itemCheckedCount = allPerms.filter(p => form.permissions.includes(p)).length;
+                              const fullyChecked = itemCheckedCount === allPerms.length;
+                              const partiallyChecked = itemCheckedCount > 0 && itemCheckedCount < allPerms.length;
+                              return (
+                                <div key={item.id}>
+                                  <button type="button" onClick={() => togglePagePermissions(item)}
+                                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-blue-50 transition-colors group">
+                                    <div className={cn("size-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0",
+                                      fullyChecked ? "border-blue-500 bg-blue-500" : partiallyChecked ? "border-blue-400 bg-blue-100" : "border-gray-300 group-hover:border-blue-300"
+                                    )}>
+                                      {fullyChecked && <Check size={11} className="text-white" />}
+                                      {partiallyChecked && <div className="size-2 rounded-sm bg-blue-500" />}
+                                    </div>
+                                    <Icon size={15} className={cn("shrink-0", fullyChecked ? "text-blue-500" : "text-gray-400")} />
+                                    <span className={cn("text-sm font-bold flex-1 text-left", fullyChecked ? "text-blue-700" : "text-gray-700")}>{item.label}</span>
+                                    <span className="text-[10px] text-gray-400">{itemCheckedCount}/{allPerms.length}</span>
+                                  </button>
+                                  {item.submenu && (
+                                    <div className="ml-9 pl-3.5 border-l-2 border-gray-100 space-y-0.5 mb-1">
+                                      {item.submenu.map(sub => {
+                                        const subPerm = getSubPermission(item.permission || item.id, sub.label);
+                                        const isChecked = form.permissions.includes(subPerm);
+                                        return (
+                                          <button type="button" key={sub.label} onClick={() => togglePermission(subPerm)}
+                                            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-lg hover:bg-blue-50 transition-colors group">
+                                            <div className={cn("size-4 rounded border-2 flex items-center justify-center transition-all shrink-0",
+                                              isChecked ? "border-blue-500 bg-blue-500" : "border-gray-300 group-hover:border-blue-300"
+                                            )}>
+                                              {isChecked && <Check size={9} className="text-white" />}
+                                            </div>
+                                            <span className={cn("text-xs font-medium flex-1 text-left", isChecked ? "text-blue-600" : "text-gray-500")}>{sub.label}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="p-5 sm:p-7 pt-0 sm:pt-0 shrink-0">
+                <button type="submit" disabled={updateStaffMutation.isPending}
+                  className="w-full h-14 rounded-2xl bg-[#066CF4] text-white font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20">
+                  {updateStaffMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : null}
+                  {updateStaffMutation.isPending ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

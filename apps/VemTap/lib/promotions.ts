@@ -61,11 +61,15 @@ export interface Promotion {
     originalPrice: number;
     dealPrice: number;
     image: string;
+    galleryImages?: string[];
     startDate: string;
     endDate: string;
     claimedCount: number;
     maxClaims: number;
     isTrending: boolean;
+    audience?: string;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
