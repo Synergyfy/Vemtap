@@ -1403,7 +1403,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     const [endDate, setEndDate] = useState('');
     const [endTime, setEndTime] = useState('');
     const [audience, setAudience] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
+    const [images, setImages] = useState<string[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const startTimeRef = useRef<HTMLInputElement>(null);
@@ -1539,7 +1539,8 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
         const payload: any = {
             name: title,
             description,
-            mainImage: imageUrl || undefined,
+            mainImage: images[0] || undefined,
+            galleryImages: images.length > 1 ? images.slice(1) : undefined,
             branchId,
             itemIds: resolvedItemIds,
             offerType: offerType.toLowerCase().replace(/\s+/g, '_'),
@@ -1601,22 +1602,24 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     };
 
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = e.target.files;
+        if (!files?.length) return;
         setIsUploading(true);
         try {
-            const url = await uploadToCloudinary(file);
-            setImageUrl(url);
+            const remaining = 4 - images.length;
+            const batch = Array.from(files).slice(0, remaining);
+            const urls = await Promise.all(batch.map(f => uploadToCloudinary(f)));
+            setImages(prev => [...prev, ...urls].slice(0, 4));
         } catch {
             alert('Failed to upload image. Please try again.');
         } finally {
             setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    const handleRemoveImage = () => {
-        setImageUrl('');
-        if (fileInputRef.current) fileInputRef.current.value = '';
+    const handleRemoveImage = (index: number) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
     };
 
     return (
@@ -2046,45 +2049,40 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Image</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Images ({images.length}/4)</label>
                                 <input
                                     type="file"
                                     ref={fileInputRef}
                                     onChange={handleImageSelect}
                                     accept="image/*"
+                                    multiple
                                     className="hidden"
                                 />
-                                {imageUrl ? (
-                                    <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-gray-200 group">
-                                        <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveImage}
-                                                className="bg-white/90 text-red-500 p-2 rounded-full hover:bg-white transition-colors"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {images.map((url, idx) => (
+                                        <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border border-gray-200 group">
+                                            <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <button type="button" onClick={() => handleRemoveImage(idx)}
+                                                    className="bg-white/90 text-red-500 p-2 rounded-full hover:bg-white transition-colors">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                            {idx === 0 && <span className="absolute top-1 left-1 bg-primary text-white text-[8px] font-black px-1.5 py-0.5 rounded">Cover</span>}
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 hover:border-primary/30 cursor-pointer transition-colors"
-                                    >
-                                        {isUploading ? (
-                                            <>
-                                                <Loader2 size={24} className="animate-spin mb-2 text-primary" />
-                                                <span className="font-bold text-sm">Uploading...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ImageIcon size={24} className="mb-2" />
-                                                <span className="font-bold text-sm">Upload Image</span>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+                                    ))}
+                                    {images.length < 4 && (
+                                        <div onClick={() => fileInputRef.current?.click()}
+                                            className="aspect-square border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 hover:border-primary/30 cursor-pointer transition-colors">
+                                            {isUploading ? (
+                                                <Loader2 size={18} className="animate-spin text-primary" />
+                                            ) : (
+                                                <ImageIcon size={18} />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1.5 font-medium">Upload up to 4 images. First image is the cover.</p>
                             </div>
 
                             {/* ── Advanced Settings (Collapsible) ── */}
@@ -2132,7 +2130,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                             <p className="text-xs text-gray-400 mt-1.5 font-medium">
                                                 {audienceTarget === 'all' && 'Anyone can claim this deal.'}
                                                 {audienceTarget === 'new_customers' && 'Only customers who have never claimed a deal from your business can claim.'}
-                                                {audienceTarget === 'returning_customers' && 'Only customers who have previously claimed a deal from your business can claim.'}
+                                                {audienceTarget === 'returning_customers' && 'Only customers who have registered or patronized your business before can claim.'}
                                             </p>
                                         </div>
 
@@ -2268,8 +2266,8 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                         <div className="max-w-sm mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
                             {/* Image */}
                             <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
-                                {imageUrl && (
-                                    <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+                                {images[0] && (
+                                    <img src={images[0]} alt={title} className="w-full h-full object-cover" />
                                 )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
@@ -2277,6 +2275,12 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                 {offerType === 'discount' && discountType === 'percentage' && discountValue && (
                                     <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
                                         {discountValue}% OFF
+                                    </div>
+                                )}
+
+                                {images.length > 1 && (
+                                    <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[9px] font-bold">
+                                        1/{images.length}
                                     </div>
                                 )}
                                 {offerType === 'discount' && discountType === 'fixed' && discountValue && (
@@ -2402,8 +2406,8 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                         {/* Mini preview card */}
                         <div className="max-w-xs mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-left">
                             <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
-                                {imageUrl && (
-                                    <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+                                {images[0] && (
+                                    <img src={images[0]} alt={title} className="w-full h-full object-cover" />
                                 )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                                 {offerType === 'discount' && discountType === 'percentage' && discountValue && (
@@ -2414,6 +2418,11 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                 {offerType === 'special_deal' && specialDealType === 'bundle' && dealPrice && selectedItemsTotal > 0 && (
                                     <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
                                         SAVE ₦{(selectedItemsTotal - Number(dealPrice)).toLocaleString()}
+                                    </div>
+                                )}
+                                {images.length > 1 && (
+                                    <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[9px] font-bold">
+                                        1/{images.length}
                                     </div>
                                 )}
                                 {offerType === 'special_deal' && specialDealType === 'custom' && originalPrice && dealPrice && (
