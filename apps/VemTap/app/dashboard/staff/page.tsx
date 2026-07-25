@@ -172,20 +172,35 @@ export default function StaffDirectory() {
   };
 
   const togglePermission = (perm: string) => {
-    setForm(p => ({
-      ...p,
-      permissions: p.permissions.includes(perm) ? p.permissions.filter(x => x !== perm) : [...p.permissions, perm],
-    }));
+    setForm(p => {
+      const isAdding = !p.permissions.includes(perm);
+      let updated = isAdding ? [...p.permissions, perm] : p.permissions.filter(x => x !== perm);
+      if (perm.includes(':')) {
+        const parentKey = perm.split(':')[0];
+        if (isAdding && !updated.includes(parentKey)) {
+          updated.push(parentKey);
+        } else if (!isAdding) {
+          const hasOtherSubItems = updated.some(x => x.startsWith(parentKey + ':') && x !== perm);
+          if (!hasOtherSubItems) {
+            updated = updated.filter(x => x !== parentKey);
+          }
+        }
+      }
+      return { ...p, permissions: updated };
+    });
   };
 
   const getPageSubPermissions = useCallback((item: MenuItem): string[] => {
     if (!item.submenu) return [];
-    const perm = item.permission || item.id;
-    return item.submenu.map(() => perm);
+    return item.submenu.map(sub => getSubPermission(item.permission || item.id, sub.label));
   }, []);
 
   const getAllPagePermissions = useCallback((item: MenuItem): string[] => {
-    return [item.permission || item.id];
+    const perms = [item.permission || item.id];
+    if (item.submenu) {
+      perms.push(...item.submenu.map(sub => getSubPermission(item.permission || item.id, sub.label)));
+    }
+    return perms;
   }, []);
 
   const isPageFullyChecked = useCallback((item: MenuItem): boolean => {
@@ -741,7 +756,7 @@ export default function StaffDirectory() {
                                   {item.submenu && (
                                     <div className="ml-9 pl-3.5 border-l-2 border-gray-100 space-y-0.5 mb-1">
                                       {item.submenu.map(sub => {
-                                        const subPerm = item.permission || item.id;
+                                        const subPerm = getSubPermission(item.permission || item.id, sub.label);
                                         const isChecked = form.permissions.includes(subPerm);
                                         return (
                                           <button type="button" key={sub.label} onClick={() => togglePermission(subPerm)}
