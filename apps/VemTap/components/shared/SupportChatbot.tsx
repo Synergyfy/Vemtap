@@ -233,24 +233,58 @@ export default function SupportChatbot() {
                 history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
             });
 
-            addMessage({
-                role: 'assistant',
-                content: data.content,
-                source: data.source,
-                interactionId: data.id,
-                buttons: data.buttons,
-                followUp: data.followUp,
-            });
+            const replyText = data?.content || data?.message || data?.reply || data?.text;
+            if (replyText) {
+                addMessage({
+                    role: 'assistant',
+                    content: replyText,
+                    source: data.source,
+                    interactionId: data.id,
+                    buttons: data.buttons,
+                    followUp: data.followUp,
+                });
 
-            if (data.content.toLowerCase().includes('connect you with a human') ||
-                data.content.toLowerCase().includes('human agent') ||
-                data.suggestedAction === 'escalate') {
-                setHandedToAgent(true);
+                if (replyText.toLowerCase().includes('connect you with a human') ||
+                    replyText.toLowerCase().includes('human agent') ||
+                    data.suggestedAction === 'escalate') {
+                    setHandedToAgent(true);
+                }
+                return;
             }
+            throw new Error('Empty response from bot API');
         } catch (error) {
+            // Smart Fallback to local Next.js /api/chat endpoint
+            try {
+                const historyItems = history.slice(-5).map(m => ({ role: m.role, content: m.content }));
+                historyItems.push({ role: 'user', content: userText });
+
+                const chatRes = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: historyItems,
+                        context: getContext(),
+                    }),
+                });
+                const chatData = await chatRes.json();
+                const fallbackContent = chatData?.content || chatData?.text || chatData?.message;
+                if (fallbackContent) {
+                    addMessage({
+                        role: 'assistant',
+                        content: fallbackContent,
+                        buttons: [
+                            { label: 'Talk to Human Agent', action: 'action', value: 'escalate' }
+                        ]
+                    });
+                    return;
+                }
+            } catch (fallbackErr) {
+                console.error("Local chat fallback failed:", fallbackErr);
+            }
+
             addMessage({
                 role: 'assistant',
-                content: "Sorry, I can't answer this for now. Can I connect you to a human agent?",
+                content: "I'm having trouble connecting to support right now. Would you like to connect to a human agent?",
                 buttons: [
                     { label: 'Connect to Agent', action: 'action', value: 'escalate' },
                     { label: 'Try Again', action: 'action', value: userText },
