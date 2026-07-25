@@ -5,39 +5,13 @@ import { useRouter } from 'next/navigation';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Users, Search, Phone, Mail, ShoppingBag, Calendar, ArrowUpRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface PosCustomer {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  totalSpent: number;
-  totalVisits: number;
-  lastVisitAt: string;
-  createdAt: string;
-}
-
-// TODO: Replace with real API hook when endpoint is ready
-// import { usePosCustomers } from '@/services/pos/hooks';
-
-const MOCK_CUSTOMERS: PosCustomer[] = [
-  { id: '1', firstName: 'Chioma', lastName: 'Okafor', email: 'chioma.o@example.com', phone: '+234 802 345 6789', totalSpent: 245800, totalVisits: 18, lastVisitAt: '2026-07-10T14:30:00Z', createdAt: '2025-11-03T10:00:00Z' },
-  { id: '2', firstName: 'Emeka', lastName: 'Nwosu', email: 'emeka.n@example.com', phone: '+234 803 456 7890', totalSpent: 182500, totalVisits: 12, lastVisitAt: '2026-07-09T11:15:00Z', createdAt: '2026-01-15T09:00:00Z' },
-  { id: '3', firstName: 'Aisha', lastName: 'Mohammed', email: 'aisha.m@example.com', phone: '+234 805 678 9012', totalSpent: 97200, totalVisits: 7, lastVisitAt: '2026-07-08T16:45:00Z', createdAt: '2026-03-20T12:00:00Z' },
-  { id: '4', firstName: 'Tunde', lastName: 'Balogun', email: 'tunde.b@example.com', phone: '+234 806 789 0123', totalSpent: 534000, totalVisits: 31, lastVisitAt: '2026-07-10T09:00:00Z', createdAt: '2025-06-01T08:00:00Z' },
-  { id: '5', firstName: 'Ngozi', lastName: 'Eze', email: 'ngozi.e@example.com', phone: '+234 807 890 1234', totalSpent: 68900, totalVisits: 5, lastVisitAt: '2026-07-05T13:20:00Z', createdAt: '2026-04-12T11:00:00Z' },
-  { id: '6', firstName: 'Kofi', lastName: 'Mensah', email: 'kofi.m@example.com', phone: '+234 808 901 2345', totalSpent: 310200, totalVisits: 22, lastVisitAt: '2026-07-07T15:10:00Z', createdAt: '2025-09-18T10:00:00Z' },
-  { id: '7', firstName: 'Zainab', lastName: 'Abubakar', email: 'zainab.a@example.com', phone: '+234 809 012 3456', totalSpent: 41000, totalVisits: 3, lastVisitAt: '2026-06-28T10:30:00Z', createdAt: '2026-05-05T09:00:00Z' },
-  { id: '8', firstName: 'Chidi', lastName: 'Okonkwo', email: 'chidi.o@example.com', phone: '+234 810 123 4567', totalSpent: 756000, totalVisits: 45, lastVisitAt: '2026-07-10T12:00:00Z', createdAt: '2025-03-14T08:00:00Z' },
-];
-
-const usePosCustomers = (): { data: PosCustomer[]; isLoading: boolean } => ({ data: MOCK_CUSTOMERS, isLoading: false });
+import { usePosCustomers } from '@/services/pos/hooks';
 
 export default function CustomersDirectory() {
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const { data: customers = [], isLoading } = usePosCustomers();
+  const { data: response, isLoading, isError } = usePosCustomers({ search: search || undefined, limit: 50 });
+  const customers = response?.data ?? [];
 
   const filtered = useMemo(() => {
     if (!search.trim()) return customers;
@@ -54,6 +28,14 @@ export default function CustomersDirectory() {
     return (
       <div className="max-w-7xl mx-auto h-full flex items-center justify-center pt-4 px-4 md:px-0 pb-24 min-h-[400px]">
         <Loader2 className="animate-spin text-primary" size={48} />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-7xl mx-auto h-full flex flex-col items-center justify-center pt-4 px-4 md:px-0 pb-24 min-h-[400px]">
+        <p className="text-sm font-bold text-red-500">Failed to load customers. Please try again.</p>
       </div>
     );
   }
@@ -135,7 +117,7 @@ export default function CustomersDirectory() {
                     <td className="p-4 hidden lg:table-cell">
                       <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
                         <Calendar size={12} className="text-gray-400" />
-                        {new Date(customer.lastVisitAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {customer.lastVisitAt ? new Date(customer.lastVisitAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                       </div>
                     </td>
                     <td className="p-4 text-right">

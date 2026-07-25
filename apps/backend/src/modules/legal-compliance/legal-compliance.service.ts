@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,6 +21,8 @@ import {
 
 @Injectable()
 export class LegalComplianceService {
+  private readonly logger = new Logger(LegalComplianceService.name);
+
   constructor(
     @InjectRepository(LegalAgreement)
     private agreementRepository: Repository<LegalAgreement>,
@@ -27,39 +31,44 @@ export class LegalComplianceService {
   ) {}
 
   async findAll(userId: string): Promise<AgreementResponseDto[]> {
-    const agreements = await this.agreementRepository.find({
-      where: { isActive: true },
-      order: { effectiveDate: 'DESC' },
-    });
+    try {
+      const agreements = await this.agreementRepository.find({
+        where: { isActive: true },
+        order: { effectiveDate: 'DESC' },
+      });
 
-    const acceptances = await this.acceptanceRepository.find({
-      where: { userId },
-      relations: ['agreement'],
-    });
+      const acceptances = await this.acceptanceRepository.find({
+        where: { userId },
+        relations: ['agreement'],
+      });
 
-    const acceptanceMap = new Map(acceptances.map((a) => [a.agreementId, a]));
+      const acceptanceMap = new Map(acceptances.map((a) => [a.agreementId, a]));
 
-    return agreements.map((agreement) => {
-      const acceptance = acceptanceMap.get(agreement.id);
-      return {
-        id: agreement.id,
-        name: agreement.name,
-        slug: agreement.slug,
-        version: agreement.version,
-        contentUrl: agreement.contentUrl,
-        effectiveDate: agreement.effectiveDate,
-        isActive: agreement.isActive,
-        acceptance: acceptance
-          ? {
-              id: acceptance.id,
-              version: acceptance.version,
-              acceptedAt: acceptance.acceptedAt,
-              ipAddress: acceptance.ipAddress,
-              userAgent: acceptance.userAgent,
-            }
-          : null,
-      };
-    });
+      return agreements.map((agreement) => {
+        const acceptance = acceptanceMap.get(agreement.id);
+        return {
+          id: agreement.id,
+          name: agreement.name,
+          slug: agreement.slug,
+          version: agreement.version,
+          contentUrl: agreement.contentUrl,
+          effectiveDate: agreement.effectiveDate,
+          isActive: agreement.isActive,
+          acceptance: acceptance
+            ? {
+                id: acceptance.id,
+                version: acceptance.version,
+                acceptedAt: acceptance.acceptedAt,
+                ipAddress: acceptance.ipAddress,
+                userAgent: acceptance.userAgent,
+              }
+            : null,
+        };
+      });
+    } catch (error: any) {
+      this.logger.error(`Failed to retrieve legal agreements for user ${userId}`, error.stack);
+      return [];
+    }
   }
 
   async findBySlug(slug: string): Promise<LegalAgreement> {
@@ -142,9 +151,11 @@ export class LegalComplianceService {
     });
 
     if (existing) {
-      throw new BadRequestException(
-        `You have already accepted "${agreement.name}"`,
-      );
+      existing.acceptedAt = new Date();
+      if (ipAddress) existing.ipAddress = ipAddress;
+      if (userAgent) existing.userAgent = userAgent;
+      if (signatureHash) existing.signatureHash = signatureHash;
+      return this.acceptanceRepository.save(existing);
     }
 
     const acceptance = this.acceptanceRepository.create({

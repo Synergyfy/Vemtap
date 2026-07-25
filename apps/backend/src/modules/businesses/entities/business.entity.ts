@@ -145,8 +145,21 @@ export class Business extends AbstractBaseEntity {
   })
   @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
   posSettings: {
+    currency?: string;
+    receiptHeader?: string;
+    receiptFooter?: string;
+    autoPrintReceipt?: boolean;
+    showLogo?: boolean;
+    taxEnabled?: boolean;
+    taxRate?: number;
+    taxLabel?: string;
+    pricesIncludeTax?: boolean;
     loyaltyEnabled?: boolean;
     loyaltyRedeemThreshold?: number;
+    lowStockAlerts?: boolean;
+    dailySalesSummary?: boolean;
+    newOrderAlert?: boolean;
+    staffActivityAlerts?: boolean;
   };
 
   // Relation to the owner

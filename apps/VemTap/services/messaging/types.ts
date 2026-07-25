@@ -256,3 +256,49 @@ export interface AutomationPerformance {
         replies: number;
     }>;
 }
+
+export type SmsRoutingMode = 'africa_optimized' | 'global_fastest' | 'cost_optimized';
+export type EmailDomainStatus = 'unverified' | 'verifying' | 'verified';
+
+export interface DnsRecord {
+    type: string;
+    host: string;
+    value: string;
+    status: string;
+    ttl?: number;
+}
+
+export interface ChannelSettings {
+    id?: string;
+    businessId?: string;
+    branchId?: string | null;
+    smsSenderId: string;
+    smsRouting: SmsRoutingMode;
+    whatsappPhoneNumberId?: string | null;
+    whatsappWabaAccountId?: string | null;
+    whatsappSystemUserToken?: string | null;
+    whatsappRequireDoubleOptIn: boolean;
+    whatsappEnableStopAutoReply: boolean;
+    emailFromName?: string | null;
+    emailFromEmail?: string | null;
+    emailCustomDomain?: string | null;
+    emailDomainStatus?: EmailDomainStatus;
+    emailDnsRecords?: DnsRecord[] | null;
+}
+
+export interface UpdateChannelSettingsPayload {
+    branchId?: string;
+    smsSenderId?: string;
+    smsRouting?: SmsRoutingMode;
+    whatsappPhoneNumberId?: string;
+    whatsappWabaAccountId?: string;
+    whatsappSystemUserToken?: string;
+    whatsappRequireDoubleOptIn?: boolean;
+    whatsappEnableStopAutoReply?: boolean;
+    emailFromName?: string;
+    emailFromEmail?: string;
+    emailCustomDomain?: string;
+    generateDnsRecords?: boolean;
+    emailDomainStatus?: EmailDomainStatus;
+}
+

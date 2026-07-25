@@ -45,11 +45,20 @@ export const useUpdateBranch = () => {
     });
 };
 
+export const useRequestDeleteBranchOtp = () => {
+    return useMutation<{ success: boolean; message: string }, Error, string>({
+        mutationFn: async (id: string) => await api.post(`/branches/${id}/request-delete-otp`, {}),
+    });
+};
+
 // ─── Delete a branch ─────────────────────────────────────────────────────────
 export const useDeleteBranch = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, string>({
-        mutationFn: async (id) => await api.delete(`/branches/${id}`),
+    return useMutation<void, Error, { id: string; otp?: string }>({
+        mutationFn: async ({ id, otp }) => {
+            const params = otp ? `?otp=${encodeURIComponent(otp)}` : '';
+            return await api.delete(`/branches/${id}${params}`);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['branches'] });
         },

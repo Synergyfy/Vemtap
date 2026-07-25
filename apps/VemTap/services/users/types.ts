@@ -31,8 +31,9 @@ export interface InviteStaffRequest {
 
 export interface UpdateStaffRequest {
     name?: string;
+    email?: string;
     role?: string;
-    branchId?: string;
+    jobTitle?: string;
     permissions?: string[];
     status?: 'Active' | 'Inactive' | 'Suspended';
 }

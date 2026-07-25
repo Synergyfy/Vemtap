@@ -30,8 +30,10 @@ export default function ManagePlanPage() {
 
     const cancelMutation = useMutation({
         mutationFn: async () => {
-            if (!user?.businessId) throw new Error('Business ID not found');
-            return await api.post(`/subscriptions/cancel/${user.businessId}`, {});
+            if (user?.businessId) {
+                return await api.post(`/subscriptions/cancel/${user.businessId}`, {});
+            }
+            return await api.post('/subscriptions/cancel', {});
         },
         onSuccess: () => {
             toast.success('Subscription cancelled successfully');

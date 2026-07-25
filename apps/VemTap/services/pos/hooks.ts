@@ -8,6 +8,9 @@ import type {
   DashboardResponse,
   TopProductResponse,
   PaginatedResponse,
+  PosCustomer,
+  PosCustomerDetail,
+  PosCustomerQuery,
   CreatePosSaleDto,
   PosSaleStatus,
   HoldPosSaleDto,
@@ -34,6 +37,11 @@ export const posKeys = {
   dashboard: {
     main: (branchId?: string) => ['pos-dashboard', branchId] as const,
     topProducts: (branchId?: string) => ['pos-top-products', branchId] as const,
+  },
+  customers: {
+    all: ['pos-customers'] as const,
+    list: (params?: PosCustomerQuery) => ['pos-customers', 'list', params] as const,
+    detail: (id: string) => ['pos-customers', 'detail', id] as const,
   },
 };
 
@@ -161,3 +169,16 @@ export const useAdjustPosStock = () => {
     },
   });
 };
+
+export const usePosCustomers = (params?: PosCustomerQuery) =>
+  useQuery<PaginatedResponse<PosCustomer>>({
+    queryKey: posKeys.customers.list(params),
+    queryFn: () => posApi.getCustomers(params),
+  });
+
+export const usePosCustomerDetail = (id: string) =>
+  useQuery<PosCustomerDetail>({
+    queryKey: posKeys.customers.detail(id),
+    queryFn: () => posApi.getCustomer(id),
+    enabled: !!id,
+  });

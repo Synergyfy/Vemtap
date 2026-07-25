@@ -8,10 +8,13 @@ export interface AffiliateStats {
 }
 
 export interface AffiliateActivity {
-  type: 'referral' | 'commission' | 'withdrawal';
+  id?: string;
+  type: 'referral' | 'commission' | 'withdrawal' | string;
   title: string;
   desc: string;
+  description?: string;
   time: string;
+  timestamp?: string;
 }
 
 export interface AffiliatePerformance {

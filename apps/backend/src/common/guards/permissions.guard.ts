@@ -29,9 +29,9 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    // Check if user has ALL of the required permissions for this endpoint
+    // Check if user has ANY of the required permissions for this endpoint
     const userPermissions = user.permissions || [];
-    return requiredPermissions.every((permission) =>
+    return requiredPermissions.some((permission) =>
       userPermissions.includes(permission),
     );
   }

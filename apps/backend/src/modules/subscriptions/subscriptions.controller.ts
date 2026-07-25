@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Param,
   UseGuards,
   Request,
   BadRequestException,
@@ -116,6 +117,23 @@ export class SubscriptionsController {
   async getActivePlan(@Request() req) {
     const businessId = await this.getBusinessId(req);
     return this.subscriptionsService.activeSubscription(businessId);
+  }
+
+  @Post('cancel/:businessId')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Cancel subscription for a business by businessId' })
+  @ApiResponse({ status: 200, description: 'Subscription cancelled successfully' })
+  async cancelByBusinessId(@Param('businessId') businessId: string) {
+    return this.subscriptionsService.cancelSubscription(businessId);
+  }
+
+  @Post('cancel')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Cancel current active subscription for current user business' })
+  @ApiResponse({ status: 200, description: 'Subscription cancelled successfully' })
+  async cancelCurrent(@Request() req: any) {
+    const businessId = await this.getBusinessId(req);
+    return this.subscriptionsService.cancelSubscription(businessId);
   }
 
   @Get('capabilities')

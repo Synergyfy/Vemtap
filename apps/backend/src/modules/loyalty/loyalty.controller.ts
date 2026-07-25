@@ -178,6 +178,21 @@ export class LoyaltyController {
     );
   }
 
+  @Get('business-stats')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Fetch business loyalty statistics for dashboard',
+  })
+  @ApiQuery({ name: 'branchId', required: false })
+  async getBusinessStats(
+    @Request() req: { user: User },
+    @Query('branchId') branchId?: string,
+  ) {
+    const user = req.user as any;
+    const businessId = user?.businessId || user?.business?.id || user?.branch?.businessId;
+    return this.loyaltyService.getBusinessLoyaltyStats(businessId, branchId);
+  }
+
   @Post('points/give')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('pos')

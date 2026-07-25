@@ -70,32 +70,45 @@ export function RecentReviewsList({ reviews }: { reviews: any[] }) {
             </div>
 
             <div className="space-y-4">
-                {reviews.map((rev, i) => (
-                    <div key={i} className="group p-6 rounded-[32px] bg-gray-50/50 border border-transparent transition-all hover:bg-white hover:border-gray-100 hover:shadow-xl hover:shadow-black/5">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-4">
-                                <div className="size-12 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-xs text-gray-400">
-                                    {rev.user[0]}
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-black text-gray-900">{rev.user}</h4>
-                                    <div className="flex gap-1 text-amber-400">
-                                       {[...Array(rev.rating)].map((_, j) => <Star key={j} size={12} fill="currentColor" />)}
+                {reviews.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400 font-medium text-xs">
+                        No customer reviews recorded yet.
+                    </div>
+                ) : (
+                    reviews.map((rev, i) => {
+                        const username = rev.user || 'Customer';
+                        const firstChar = username.charAt(0).toUpperCase();
+                        const firstName = username.split(' ')[0] || 'Customer';
+                        const ratingCount = Math.max(0, Math.min(5, rev.rating || 5));
+
+                        return (
+                            <div key={rev.id || i} className="group p-6 rounded-[32px] bg-gray-50/50 border border-transparent transition-all hover:bg-white hover:border-gray-100 hover:shadow-xl hover:shadow-black/5">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-12 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-xs text-gray-400">
+                                            {firstChar}
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-black text-gray-900">{username}</h4>
+                                            <div className="flex gap-1 text-amber-400">
+                                               {[...Array(ratingCount)].map((_, j) => <Star key={j} size={12} fill="currentColor" />)}
+                                            </div>
+                                        </div>
                                     </div>
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{rev.date}</span>
+                                </div>
+                                
+                                <p className="text-xs font-medium text-gray-600 leading-relaxed italic mb-4">"{rev.comment}"</p>
+                                
+                                <div className="flex justify-end">
+                                     <Button variant="ghost" className="h-10 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest text-[#066CF4] hover:bg-blue-50">
+                                         Reply to {firstName}
+                                     </Button>
                                 </div>
                             </div>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{rev.date}</span>
-                        </div>
-                        
-                        <p className="text-xs font-medium text-gray-600 leading-relaxed italic mb-4">"{rev.comment}"</p>
-                        
-                        <div className="flex justify-end">
-                             <Button variant="ghost" className="h-10 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest text-[#066CF4] hover:bg-blue-50">
-                                 Reply to {rev.user.split(' ')[0]}
-                             </Button>
-                        </div>
-                    </div>
-                ))}
+                        );
+                    })
+                )}
             </div>
         </div>
     );

@@ -220,3 +220,43 @@ export interface UpdatePosSaleStatusDto {
   reason?: string;
   refundItems?: RefundItemDto[];
 }
+
+export interface PosCustomer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  createdAt: string;
+  totalSpent: number;
+  totalVisits: number;
+  lastVisitAt: string | null;
+}
+
+export interface PosCustomerDetail {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  createdAt: string;
+  totalSpent: number;
+  totalVisits: number;
+  lastVisitAt: string | null;
+  averageOrderValue: number;
+  lifetimeValue: number;
+  recentPurchases: {
+    id: string;
+    date: string;
+    total: number;
+    items: number;
+    receipt: string;
+  }[];
+}
+
+export interface PosCustomerQuery {
+  page?: number;
+  limit?: number;
+  branchId?: string;
+  search?: string;
+}
