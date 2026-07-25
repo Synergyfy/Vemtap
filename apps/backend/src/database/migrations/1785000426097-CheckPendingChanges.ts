@@ -4,23 +4,11 @@ export class CheckPendingChanges1785000426097 implements MigrationInterface {
     name = 'CheckPendingChanges1785000426097'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" ADD "terms" text`);
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" ADD "claimCodePrefix" character varying(20)`);
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" ADD "maxClaimsPerCustomer" integer DEFAULT '1'`);
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" ADD "audienceTarget" character varying DEFAULT 'all'`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT '0.05'`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT '0.08'`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT '0.01'`);
+        // No-op: Catalogue offer extended fields and settings updates were already applied by migration 1784999888630
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT 0.01`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT 0.08`);
-        await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT 0.05`);
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" DROP COLUMN "audienceTarget"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" DROP COLUMN "maxClaimsPerCustomer"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" DROP COLUMN "claimCodePrefix"`);
-        await queryRunner.query(`ALTER TABLE "catalogue_offers" DROP COLUMN "terms"`);
+        // No-op
     }
-
 }
+
