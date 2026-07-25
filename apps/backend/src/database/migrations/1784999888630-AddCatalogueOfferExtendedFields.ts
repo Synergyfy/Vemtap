@@ -1,4 +1,4 @@
-why import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddCatalogueOfferExtendedFields1784999888630 implements MigrationInterface {
     name = 'AddCatalogueOfferExtendedFields1784999888630'
