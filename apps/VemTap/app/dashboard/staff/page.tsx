@@ -5,6 +5,7 @@ import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { Users, Plus, MoreVertical, X, Loader2, Check, ChevronDown, Trash2, Edit3, Crown, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
+import type { UpdateStaffRequest } from '@/services/users/types';
 import { useCapabilities } from '@/services/subscriptions/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Spinner from '@/components/ui/Spinner';
@@ -45,6 +46,7 @@ export default function StaffDirectory() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editTarget, setEditTarget] = useState<string | null>(null);
+  const [initialForm, setInitialForm] = useState<FormState>(emptyForm);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,11 +92,13 @@ export default function StaffDirectory() {
 
   const openEditModal = (staff: any) => {
     setEditTarget(staff.id);
-    setForm({
+    const initial = {
       firstName: staff.firstName || '', lastName: staff.lastName || '',
       email: staff.email || '', phone: staff.phone || '',
       role: staff.role || 'Staff', permissions: staff.permissions || [],
-    });
+    };
+    setForm(initial);
+    setInitialForm(initial);
     setShowEditModal(true);
     setOpenDropdown(null);
   };
@@ -103,12 +107,23 @@ export default function StaffDirectory() {
     e.preventDefault();
     if (!editTarget) return;
     try {
+      const changes: Partial<UpdateStaffRequest> = {};
+      if (form.firstName !== initialForm.firstName || form.lastName !== initialForm.lastName) {
+        changes.name = `${form.firstName} ${form.lastName}`.trim();
+      }
+      if (form.role !== initialForm.role) changes.role = form.role;
+      if (JSON.stringify(form.permissions) !== JSON.stringify(initialForm.permissions)) {
+        changes.permissions = form.permissions;
+      }
+      if (!Object.keys(changes).length) {
+        setShowEditModal(false);
+        setEditTarget(null);
+        setForm(emptyForm);
+        return;
+      }
       await updateStaffMutation.mutateAsync({
         id: editTarget,
-        updates: {
-          firstName: form.firstName, lastName: form.lastName,
-          role: form.role as any, permissions: form.permissions,
-        },
+        updates: changes,
       });
       toast.success('Staff updated!');
       setShowEditModal(false);
