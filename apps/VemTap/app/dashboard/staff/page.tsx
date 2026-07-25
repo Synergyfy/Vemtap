@@ -505,8 +505,8 @@ export default function StaffDirectory() {
               <button onClick={() => { setShowInviteModal(false); setForm(emptyForm); setInviteStep(1); }} className="size-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors shrink-0"><X size={18} /></button>
             </div>
             <div className="flex-1 overflow-y-auto">
-            {inviteStep === 1 ? (
-              <form onSubmit={e => { e.preventDefault(); setInviteStep(2); }}>
+            {inviteStep === 1 && (
+              <form key="step1" onSubmit={e => { e.preventDefault(); setInviteStep(2); }}>
                 <div className="p-5 sm:p-7 space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -569,8 +569,9 @@ export default function StaffDirectory() {
                   </button>
                 </div>
               </form>
-            ) : (
-              <form onSubmit={handleInviteSubmit}>
+            )}
+            {inviteStep === 2 && (
+              <form key="step2" onSubmit={handleInviteSubmit}>
                 <div className="p-5 sm:p-7 pt-2 space-y-2.5">
                   {NAVIGATION_SECTIONS.map(section => {
                     const sectionItems = section.items.filter(item => item.id !== 'staff');
