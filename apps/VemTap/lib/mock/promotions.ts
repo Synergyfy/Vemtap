@@ -15,6 +15,7 @@ export interface MockPromotion {
     originalPrice: number;
     dealPrice: number;
     image: string;
+    galleryImages?: string[];
     startDate: string;
     endDate: string;
     audience: string;

@@ -77,7 +77,14 @@ export default function PromotionDetailPage() {
     const daysLeft = offer ? getDaysLeft(offer.endDate || '') : 0;
     const claimPct = offer ? getClaimPercent(offer.claimedCount, offer.maxClaims) : 0;
     const CategoryIcon = business ? getCategoryIcon(business.categoryId) : null;
-    const photos = business?.photos || [];
+    const photos = useMemo(() => {
+        const result = [...(business?.photos || [])];
+        if (offer?.mainImage && !result.includes(offer.mainImage)) result.unshift(offer.mainImage);
+        if (offer?.galleryImages?.length) {
+            offer.galleryImages.forEach(img => { if (!result.includes(img)) result.push(img); });
+        }
+        return result;
+    }, [business, offer]);
 
     const discountPercent = offer?.pricingType === 'percentage_discount' && offer.discountValue
         ? offer.discountValue : undefined;

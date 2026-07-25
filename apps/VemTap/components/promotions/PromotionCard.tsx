@@ -67,6 +67,13 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                                 {daysLeft}d left
                             </div>
                         )}
+
+                        {/* Gallery indicator */}
+                        {promotion.galleryImages && promotion.galleryImages.length > 0 && (
+                            <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[9px] font-bold flex items-center gap-1">
+                                <span>1/{promotion.galleryImages.length + 1}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Content */}
