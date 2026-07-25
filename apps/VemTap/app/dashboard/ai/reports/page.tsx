@@ -162,7 +162,7 @@ export default function AIReportsPage() {
         {/* Report Detail Modal */}
         {selectedReport && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSelectedReport(null)} />
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"  />
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">

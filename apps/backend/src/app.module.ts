@@ -60,6 +60,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
 import { PosModule } from './modules/pos/pos.module';
 import { InventoryCountingModule } from './modules/inventory-counting/inventory-counting.module';
 import { LegalComplianceModule } from './modules/legal-compliance/legal-compliance.module';
+import { AiCopilotModule } from './modules/ai-copilot/ai-copilot.module';
 
 @Module({
   imports: [
@@ -175,6 +176,7 @@ import { LegalComplianceModule } from './modules/legal-compliance/legal-complian
     PosModule,
     InventoryCountingModule,
     LegalComplianceModule,
+    AiCopilotModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

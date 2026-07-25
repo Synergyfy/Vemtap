@@ -61,6 +61,11 @@ export interface SubscriptionCapabilities {
       sms: number;
       email: number;
       whatsapp: number;
+      ai: number; // Monthly AI Copilot credit allowance. -1 = unlimited. 0 = disabled.
+    };
+    aiCopilot: {
+      enabled: boolean;
+      credits: number; // Same as credits.ai, exposed explicitly for AI module consumers
     };
   };
   addOns: AddOnCapabilityInfo[];

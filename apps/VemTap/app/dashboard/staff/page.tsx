@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Users, Plus, MoreVertical, X, Loader2, Check, ChevronDown, Trash2, Edit3, Crown, ArrowRight } from 'lucide-react';
+import {
+  Users, Plus, MoreVertical, X, Loader2, Check, Trash2, Edit3, Crown, ArrowRight,
+  Activity, Clock, UserCheck, LogIn, Shield, Calendar, Settings,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
 import type { UpdateStaffRequest } from '@/services/users/types';
@@ -10,6 +13,7 @@ import { useCapabilities } from '@/services/subscriptions/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'react-hot-toast';
+import type { StaffMember } from '@/services/users/types';
 
 const ALL_PERMISSIONS = [
   'dashboard', 'inventory', 'pos', 'visitors', 'messages', 'engagement',
@@ -30,6 +34,84 @@ interface FormState {
 
 const emptyForm: FormState = { firstName: '', lastName: '', email: '', phone: '', role: 'Staff', permissions: [] };
 
+function buildActivityLog(staff: StaffMember) {
+  const entries: { id: string; icon: any; iconBg: string; iconColor: string; title: string; description: string; timestamp: string }[] = [];
+  let idx = 0;
+
+  if (staff.createdAt) {
+    entries.push({
+      id: `created-${idx++}`, icon: UserCheck, iconBg: 'bg-blue-50', iconColor: 'text-blue-600',
+      title: 'Account Created',
+      description: 'Staff member was invited to the team',
+      timestamp: staff.createdAt,
+    });
+  }
+
+  if (staff.lastActive) {
+    entries.push({
+      id: `active-${idx++}`, icon: LogIn, iconBg: 'bg-green-50', iconColor: 'text-green-600',
+      title: 'Last Login',
+      description: 'Staff member last accessed the dashboard',
+      timestamp: staff.lastActive,
+    });
+  }
+
+  if (staff.updatedAt && staff.updatedAt !== staff.createdAt) {
+    entries.push({
+      id: `updated-${idx++}`, icon: Settings, iconBg: 'bg-gray-50', iconColor: 'text-gray-600',
+      title: 'Profile Updated',
+      description: 'Staff details or permissions were modified',
+      timestamp: staff.updatedAt,
+    });
+  }
+
+  if (staff.permissions && staff.permissions.length > 0) {
+    staff.permissions.forEach(p => {
+      entries.push({
+        id: `perm-${idx++}-${p}`, icon: Shield, iconBg: 'bg-purple-50', iconColor: 'text-purple-600',
+        title: `Permission Granted: ${PERMISSION_LABELS[p] || p}`,
+        description: `Has access to ${PERMISSION_LABELS[p] || p} module`,
+        timestamp: staff.updatedAt || staff.createdAt,
+      });
+    });
+  }
+
+  if (staff.status) {
+    const statusLabel = staff.status === 'ACTIVE' || staff.status === 'Active' ? 'Activated' :
+      staff.status === 'INVITED' || staff.status === 'Invited' ? 'Invited' :
+      staff.status === 'SUSPENDED' || staff.status === 'Suspended' ? 'Suspended' : 'Status Changed';
+    entries.push({
+      id: `status-${idx++}`, icon: Activity, iconBg: 'bg-amber-50', iconColor: 'text-amber-600',
+      title: `Account ${statusLabel}`,
+      description: `Current status: ${staff.status}`,
+      timestamp: staff.updatedAt || staff.createdAt,
+    });
+  }
+
+  entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return entries;
+}
+
+function formatDate(dateStr: string | undefined | null) {
+  if (!dateStr) return 'Never';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function timeAgo(dateStr: string | undefined | null) {
+  if (!dateStr) return '';
+  const now = Date.now();
+  const diff = now - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return formatDate(dateStr);
+}
+
 export default function StaffDirectory() {
   const { activeBranchId } = useActiveBranch();
   const { data: staffMembers = [], isLoading } = useStaff();
@@ -49,6 +131,8 @@ export default function StaffDirectory() {
   const [initialForm, setInitialForm] = useState<FormState>(emptyForm);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -58,6 +142,16 @@ export default function StaffDirectory() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const detailStaff = useMemo(
+    () => (detailStaffId ? staffMembers.find(s => s.id === detailStaffId) ?? null : null),
+    [detailStaffId, staffMembers],
+  );
+
+  const activityLog = useMemo(() => {
+    if (!detailStaff) return [];
+    return buildActivityLog(detailStaff as StaffMember);
+  }, [detailStaff]);
 
   const togglePermission = (perm: string) => {
     setForm(p => ({
@@ -90,7 +184,7 @@ export default function StaffDirectory() {
     }
   };
 
-  const openEditModal = (staff: any) => {
+  const openEditModal = (staff: StaffMember) => {
     setEditTarget(staff.id);
     const initial = {
       firstName: staff.firstName || '', lastName: staff.lastName || '',
@@ -139,6 +233,7 @@ export default function StaffDirectory() {
       await removeStaffMutation.mutateAsync(id);
       toast.success('Staff removed');
       setShowDeleteConfirm(null);
+      if (detailStaffId === id) setDetailStaffId(null);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to remove staff');
     }
@@ -269,7 +364,12 @@ export default function StaffDirectory() {
                 const isActive = staff.status === 'Active' || staff.status === 'ACTIVE';
                 const perms = staff.permissions || [];
                 return (
-                <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
+                <tr key={staff.id}
+                  onClick={() => setDetailStaffId(detailStaffId === staff.id ? null : staff.id)}
+                  className={cn(
+                    "hover:bg-gray-50/50 transition-colors cursor-pointer",
+                    detailStaffId === staff.id && "bg-blue-50/50"
+                  )}>
                   <td className="p-4">
                     <div className="flex items-center gap-4">
                       <div className="size-10 rounded-[12px] bg-blue-50 text-blue-600 font-black flex items-center justify-center border border-blue-100 shrink-0">
@@ -302,13 +402,13 @@ export default function StaffDirectory() {
                     <span className={cn("inline-block size-3 rounded-full", isActive ? "bg-emerald-500" : "bg-gray-300")} />
                   </td>
                   <td className="p-4 text-right relative">
-                    <button onClick={() => setOpenDropdown(openDropdown === staff.id ? null : staff.id)}
+                    <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === staff.id ? null : staff.id); }}
                       className="p-2 rounded-xl hover:bg-gray-200 text-gray-400 transition-colors">
                       <MoreVertical size={18} />
                     </button>
                     {openDropdown === staff.id && (
-                      <div ref={dropdownRef} className="absolute right-4 top-12 z-50 w-40 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
-                        <button onClick={() => openEditModal(staff)} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                      <div ref={dropdownRef} className="absolute right-4 top-12 z-50 w-40 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => { openEditModal(staff); setOpenDropdown(null); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                           <Edit3 size={14} /> Edit Role & Permissions
                         </button>
                         <button onClick={() => { setShowDeleteConfirm(staff.id); setOpenDropdown(null); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors">
@@ -333,7 +433,16 @@ export default function StaffDirectory() {
         </div>
       </div>
 
-      {/* Invite Member Modal */}
+      {detailStaff && (
+        <StaffDetailPanel
+          staff={detailStaff}
+          activityLog={activityLog}
+          onEdit={() => { openEditModal(detailStaff as StaffMember); }}
+          onDelete={() => { setShowDeleteConfirm(detailStaff.id); setDetailStaffId(null); }}
+          onClose={() => setDetailStaffId(null)}
+        />
+      )}
+
       {showInviteModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => { setShowInviteModal(false); setForm(emptyForm); }} />
@@ -347,7 +456,6 @@ export default function StaffDirectory() {
         </div>
       )}
 
-      {/* Edit Staff Modal */}
       {showEditModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => { setShowEditModal(false); setForm(emptyForm); }} />
@@ -361,7 +469,6 @@ export default function StaffDirectory() {
         </div>
       )}
 
-      {/* Limit Reached Modal */}
       {showLimitModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowLimitModal(false)} />
@@ -371,14 +478,12 @@ export default function StaffDirectory() {
             </div>
             <h2 className="text-xl font-black text-gray-900 mb-2">Team Member Limit Reached</h2>
             <p className="text-sm font-bold text-gray-500 mb-6 leading-relaxed">
-              You have reached the maximum number of team members allowed on your current plan. 
+              You have reached the maximum number of team members allowed on your current plan.
               Upgrade to add more staff members and unlock additional features.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowLimitModal(false)}
-                className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">
-                Close
-              </button>
+                className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">Close</button>
               <a href="/dashboard/settings/subscription"
                 className="flex-1 h-12 rounded-2xl bg-[#066CF4] text-white font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
                 Upgrade <ArrowRight size={14} />
@@ -388,7 +493,6 @@ export default function StaffDirectory() {
         </div>
       )}
 
-      {/* Delete Confirmation */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowDeleteConfirm(null)} />
@@ -409,6 +513,134 @@ export default function StaffDirectory() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function StaffDetailPanel({ staff, activityLog, onEdit, onDelete, onClose }: {
+  staff: StaffMember; activityLog: ReturnType<typeof buildActivityLog>; onEdit: () => void; onDelete: () => void; onClose: () => void;
+}) {
+  const displayName = `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || staff.email || 'Unnamed';
+  const isActive = staff.status === 'Active' || staff.status === 'ACTIVE';
+  const perms = staff.permissions || [];
+
+  return (
+    <div className="fixed inset-0 z-[200] flex justify-end">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-xl bg-white shadow-2xl overflow-y-auto animate-slide-in">
+        <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-100 flex items-center justify-between p-4 md:p-6">
+          <div className="flex items-center gap-3">
+            <div className="size-12 rounded-[16px] bg-blue-50 text-blue-600 font-black flex items-center justify-center border border-blue-100 text-lg">
+              {displayName.charAt(0)}
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-gray-900">{displayName}</h2>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{staff.email}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="size-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-4 md:p-6 space-y-6">
+          <div className="flex gap-2">
+            <button onClick={onEdit}
+              className="flex-1 h-11 rounded-2xl bg-[#066CF4] text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20">
+              <Edit3 size={14} /> Edit Role & Permissions
+            </button>
+            <button onClick={onDelete}
+              className="h-11 px-5 rounded-2xl bg-red-50 text-red-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-100 transition-all">
+              <Trash2 size={14} /> Remove
+            </button>
+          </div>
+
+          <div className="bg-gray-50 rounded-[24px] p-5 space-y-4">
+            <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500">Profile Details</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">First Name</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{staff.firstName || '-'}</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Last Name</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{staff.lastName || '-'}</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Email</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5 truncate">{staff.email || '-'}</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Phone</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{staff.phone || '-'}</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Role</p>
+                <span className={cn("inline-block mt-1 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest",
+                  staff.role === 'Owner' ? "bg-purple-100 text-purple-600" :
+                  staff.role === 'Manager' ? "bg-blue-100 text-blue-600" :
+                  "bg-gray-200 text-gray-600"
+                )}>{staff.role || 'Staff'}</span>
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Status</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={cn("size-2.5 rounded-full", isActive ? "bg-emerald-500" : "bg-gray-300")} />
+                  <span className="text-sm font-bold text-gray-900">{staff.status}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-[24px] p-5 space-y-3">
+            <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500">Permissions</h3>
+            {perms.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {perms.map(p => (
+                  <span key={p} className="px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center gap-1">
+                    {PERMISSION_LABELS[p] || p}
+                  </span>
+                ))}
+              </div>
+            ) : <p className="text-xs text-gray-400 italic">No permissions assigned</p>}
+          </div>
+
+          <div className="bg-gray-50 rounded-[24px] p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                <Activity size={12} /> Activity Log
+              </h3>
+            </div>
+            {activityLog.length > 0 ? (
+              <div className="space-y-0">
+                {activityLog.map((entry, i) => (
+                  <div key={entry.id} className="relative flex gap-4 pb-5 last:pb-0">
+                    {i < activityLog.length - 1 && (
+                      <div className="absolute left-[15px] top-9 bottom-0 w-px bg-gray-200" />
+                    )}
+                    <div className={cn("size-8 rounded-xl flex items-center justify-center shrink-0", entry.iconBg)}>
+                      <entry.icon size={14} className={entry.iconColor} />
+                    </div>
+                    <div className="flex-1 min-w-0 pt-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-black text-gray-900 truncate">{entry.title}</p>
+                        <span className="text-[8px] font-bold text-gray-400 shrink-0">{timeAgo(entry.timestamp)}</span>
+                      </div>
+                      <p className="text-[9px] font-bold text-gray-400 mt-0.5">{entry.description}</p>
+                      <p className="text-[8px] text-gray-300 mt-0.5">{formatDate(entry.timestamp)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <Clock size={24} className="mx-auto mb-2 text-gray-200" />
+                <p className="text-[10px] font-bold text-gray-400">No activity recorded yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

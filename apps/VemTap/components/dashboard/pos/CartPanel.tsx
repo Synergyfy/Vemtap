@@ -173,7 +173,7 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
       {/* Stock Limit Modal */}
       {stockLimitItem && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setStockLimitItem(null)} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"  />
           <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 text-center">
               <div className="size-16 mx-auto mb-4 rounded-2xl bg-amber-50 flex items-center justify-center">
@@ -303,18 +303,29 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
 
         {/* Customer, Discount & Claim Code */}
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <button
-            onClick={() => setIsCustomerModalOpen(true)}
-            className={cn(
-              "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
-              attachedCustomer
-                ? "bg-blue-50 border-blue-100 text-blue-600"
-                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+          <div className={cn(
+            "flex items-center h-11 rounded-2xl border overflow-hidden transition-all",
+            attachedCustomer
+              ? "bg-blue-50 border-blue-100 text-blue-600"
+              : "bg-white border-gray-200 text-gray-600"
+          )}>
+            <button
+              onClick={() => setIsCustomerModalOpen(true)}
+              className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest h-full"
+            >
+              {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
+              {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Customer'}
+            </button>
+            {attachedCustomer && (
+              <button
+                onClick={() => attachCustomer(null)}
+                className="size-11 flex items-center justify-center text-blue-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 border-l border-blue-100"
+                title="Remove customer"
+              >
+                <X size={13} />
+              </button>
             )}
-          >
-            {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
-            {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Customer'}
-          </button>
+          </div>
           <button
             onClick={() => setIsDiscountModalOpen(true)}
             className={cn(

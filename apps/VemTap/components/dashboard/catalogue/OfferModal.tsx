@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
     X, Plus, Trash2, Image as ImageIcon, 
-    Calculator, Gift, ShoppingBag, Info, Loader2, Save, HelpCircle
+    Calculator, Gift, ShoppingBag, Info, Loader2, Save, HelpCircle,
+    Sparkles, Users, CalendarDays, Hash, FileText
 } from 'lucide-react';
 import Tooltip from '@/components/ui/Tooltip';
 import { 
@@ -50,7 +51,6 @@ const CropperModal: React.FC<{
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"
                 onClick={onClose}
             />
             <motion.div
@@ -115,6 +115,7 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
     const [formData, setFormData] = useState({
         name: '',
         description: '',
+        terms: [] as string[],
         quantity: null as number | null,
         pricingType: 'sum' as CatalogueOfferPricingType,
         discountValue: null as number | null,
@@ -122,7 +123,15 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
         loyaltyPoints: null as number | null,
         rewardId: null as string | null,
         itemIds: [] as string[],
+        audience: 'both' as string,
+        maxClaimsPerCustomer: null as number | null,
+        claimCodePrefix: '' as string,
+        startDate: '' as string,
+        endDate: '' as string,
     });
+
+    const [termsInput, setTermsInput] = useState('');
+    const [generatingTerms, setGeneratingTerms] = useState(false);
 
     const [isUploading, setIsUploading] = useState(false);
     const [localMainFile, setLocalMainFile] = useState<File | null>(null);
@@ -145,6 +154,7 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                 setFormData({
                     name: offer.name,
                     description: offer.description,
+                    terms: offer.terms || [],
                     quantity: offer.quantity,
                     pricingType: offer.pricingType,
                     discountValue: offer.discountValue,
@@ -152,13 +162,20 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                     loyaltyPoints: offer.loyaltyPoints,
                     rewardId: offer.rewardId,
                     itemIds: offer.items?.map(i => i.id) || [],
+                    audience: offer.audience || 'both',
+                    maxClaimsPerCustomer: offer.maxClaimsPerCustomer ?? null,
+                    claimCodePrefix: offer.claimCodePrefix || '',
+                    startDate: offer.startDate ? offer.startDate.split('T')[0] : '',
+                    endDate: offer.endDate ? offer.endDate.split('T')[0] : '',
                 });
+                setTermsInput('');
                 setMainImagePreview(offer.mainImage || '');
                 setGalleryPreviews(offer.galleryImages || []);
             } else {
                 setFormData({
                     name: '',
                     description: '',
+                    terms: [],
                     quantity: null,
                     pricingType: 'sum',
                     discountValue: null,
@@ -166,7 +183,13 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                     loyaltyPoints: null,
                     rewardId: null,
                     itemIds: [],
+                    audience: 'both',
+                    maxClaimsPerCustomer: null,
+                    claimCodePrefix: '',
+                    startDate: '',
+                    endDate: '',
                 });
+                setTermsInput('');
                 setMainImagePreview('');
                 setGalleryPreviews([]);
             }
@@ -260,6 +283,7 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
 
             const basePayload = {
                 ...formData,
+                terms: formData.terms.length > 0 ? formData.terms : undefined,
                 mainImage: mainImageUrl,
                 galleryImages: finalGalleryUrls,
                 quantity: formData.quantity === null ? undefined : formData.quantity,
@@ -267,6 +291,10 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                 fixedPrice: formData.fixedPrice === null ? undefined : formData.fixedPrice,
                 loyaltyPoints: formData.loyaltyPoints === null ? undefined : formData.loyaltyPoints,
                 rewardId: formData.rewardId === null ? undefined : formData.rewardId,
+                maxClaimsPerCustomer: formData.maxClaimsPerCustomer === null ? undefined : formData.maxClaimsPerCustomer,
+                claimCodePrefix: formData.claimCodePrefix.trim() || undefined,
+                startDate: formData.startDate || undefined,
+                endDate: formData.endDate || undefined,
             };
 
             if (offer) {
@@ -367,7 +395,13 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest">Quantity</label>
+                                                <label className="block text-xs font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest flex items-center gap-1.5">
+                                                <Users size={12} />
+                                                Max Claims
+                                                <Tooltip content="Total number of times this deal can be claimed (across all customers). Leave empty for unlimited.">
+                                                    <HelpCircle size={12} className="text-gray-400 cursor-help" />
+                                                </Tooltip>
+                                            </label>
                                                 <input
                                                     type="number"
                                                     placeholder="Unlimited"
@@ -391,6 +425,167 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                                     onChange={e => setFormData({ ...formData, loyaltyPoints: e.target.value ? Number(e.target.value) : null })}
                                                 />
                                             </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Terms & Conditions */}
+                                <section>
+                                    <h3 className="text-sm font-black text-text-main mb-4 flex items-center gap-2">
+                                        <FileText size={16} className="text-violet-500" />
+                                        Terms &amp; Conditions
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={termsInput}
+                                                onChange={e => setTermsInput(e.target.value)}
+                                                placeholder="Add a term (e.g. Valid until Dec 2026)"
+                                                className="flex-1 h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        if (termsInput.trim()) {
+                                                            setFormData(prev => ({ ...prev, terms: [...prev.terms, termsInput.trim()] }));
+                                                            setTermsInput('');
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (termsInput.trim()) {
+                                                        setFormData(prev => ({ ...prev, terms: [...prev.terms, termsInput.trim()] }));
+                                                        setTermsInput('');
+                                                    }
+                                                }}
+                                                className="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-all"
+                                            >
+                                                <Plus size={18} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setGeneratingTerms(true);
+                                                    setTimeout(() => {
+                                                        const generated = [
+                                                            'Offer valid for a limited time only',
+                                                            'Cannot be combined with other promotions',
+                                                            'Valid for the specified products/services only',
+                                                            'Management reserves the right to modify or cancel this offer',
+                                                            'Standard terms and conditions apply',
+                                                        ];
+                                                        setFormData(prev => ({ ...prev, terms: [...new Set([...prev.terms, ...generated])] }));
+                                                        setGeneratingTerms(false);
+                                                        toast.success('Terms & Conditions generated');
+                                                    }, 800);
+                                                }}
+                                                disabled={generatingTerms}
+                                                className="size-12 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 text-white flex items-center justify-center hover:from-violet-600 hover:to-purple-600 transition-all shadow-lg shadow-violet-500/20 disabled:opacity-50"
+                                                title="Auto-generate T&C"
+                                            >
+                                                {generatingTerms ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                                            </button>
+                                        </div>
+                                        {formData.terms.length > 0 && (
+                                            <div className="space-y-1.5">
+                                                {formData.terms.map((term, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100 group">
+                                                        <span className="size-5 rounded-full bg-violet-100 text-violet-600 text-[9px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                                                        <span className="flex-1 text-sm font-medium text-gray-700">{term}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData(prev => ({ ...prev, terms: prev.terms.filter((_, i) => i !== idx) }))}
+                                                            className="size-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 opacity-0 group-hover:opacity-100 transition-all"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {formData.terms.length === 0 && (
+                                            <p className="text-[10px] text-gray-400 italic ml-1">No terms added yet. Type above or use AI to generate.</p>
+                                        )}
+                                    </div>
+                                </section>
+
+                                {/* Deal Configuration */}
+                                <section>
+                                    <h3 className="text-sm font-black text-text-main mb-4 flex items-center gap-2">
+                                        <CalendarDays size={16} className="text-cyan-500" />
+                                        Deal Configuration
+                                    </h3>
+                                    <div className="space-y-4 p-4 bg-cyan-50/30 rounded-2xl border border-cyan-100/50">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    value={formData.startDate}
+                                                    onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest">End Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    value={formData.endDate}
+                                                    onChange={e => setFormData({ ...formData, endDate: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest">Target Audience</label>
+                                            <select
+                                                className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+                                                value={formData.audience}
+                                                onChange={e => setFormData({ ...formData, audience: e.target.value })}
+                                            >
+                                                <option value="both">All Customers (New &amp; Returning)</option>
+                                                <option value="new">New Customers Only</option>
+                                                <option value="returning">Returning Customers Only</option>
+                                            </select>
+                                            <p className="text-[9px] font-bold text-gray-400 mt-1 ml-1">
+                                                {formData.audience === 'new' && 'Only customers who have never visited before can claim'}
+                                                {formData.audience === 'returning' && 'Only customers who have visited before can claim'}
+                                                {formData.audience === 'both' && 'Any customer can claim this deal'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest flex items-center gap-1.5">
+                                                <Hash size={12} />
+                                                Max Claims Per Customer
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                placeholder="Unlimited"
+                                                className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                                                value={formData.maxClaimsPerCustomer || ''}
+                                                onChange={e => setFormData({ ...formData, maxClaimsPerCustomer: e.target.value ? Number(e.target.value) : null })}
+                                            />
+                                            <p className="text-[9px] font-bold text-gray-400 mt-1 ml-1">How many times the same customer can claim this deal</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest flex items-center gap-1.5">
+                                                <Users size={12} />
+                                                Custom Claim Code Prefix
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. EASTER50, SUMMER2026 (leave empty for auto-generated)"
+                                                    className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none uppercase"
+                                                    value={formData.claimCodePrefix}
+                                                    onChange={e => setFormData({ ...formData, claimCodePrefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
+                                                />
+                                            </div>
+                                            <p className="text-[9px] font-bold text-gray-400 mt-1 ml-1">If set, this prefix replaces the branch code in the claim code (e.g. EASTER50-XXXX)</p>
                                         </div>
                                     </div>
                                 </section>

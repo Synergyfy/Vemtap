@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, AlertTriangle, Coins, Clock } from 'lucide-react';
+import { X, Sparkles, AlertTriangle, Coins, Clock, Lock } from 'lucide-react';
 import { usePageAIContext } from '@/hooks/usePageAIContext';
-import { useAIAnalysis } from '@/services/ai/hooks';
+import { useAIAnalysis, useAICredits } from '@/services/ai/hooks';
 import { useAIStore } from '@/store/useAIStore';
 import { AI_CREDIT_COST } from '@/services/ai/types';
 import { AIAdvisorCard, AISkeletonCard } from './index';
@@ -23,27 +23,27 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
   const refreshKey = useAIStore((state) => state.refreshKeys[page] ?? 0);
   const hasBeenTriggered = refreshKey > 0;
 
+  // Fetch real credits when drawer is open
+  useAICredits();
+
   const [showCreditConfirm, setShowCreditConfirm] = useState(false);
-  const [showLowCreditWarning, setShowLowCreditWarning] = useState(false);
 
   const { data: aiAnalysis, isLoading: isAiLoading, error: aiError } = useAIAnalysis(page);
 
-  const totalCredits = credits.available + credits.used;
-  const usagePercent = totalCredits > 0 ? Math.round((credits.used / totalCredits) * 100) : 0;
-  const isLowOnCredits = usagePercent >= 50;
+  const isUnlimited = credits.limit === -1;
+  const isDisabled = !credits.enabled;
+  const usagePercent = isUnlimited
+    ? 0
+    : credits.limit > 0
+      ? Math.round((credits.used / credits.limit) * 100)
+      : 100;
+  const isLowOnCredits = !isUnlimited && credits.limit > 0 && credits.available <= Math.ceil(credits.limit * 0.2);
 
   useEffect(() => {
     if (isOpen) {
-      setShowLowCreditWarning(isLowOnCredits);
       setShowCreditConfirm(false);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setShowLowCreditWarning(isLowOnCredits);
-    }
-  }, [isOpen, isLowOnCredits]);
 
   const handleStartAnalysis = () => {
     setShowCreditConfirm(true);
@@ -64,7 +64,7 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
 
   const currentAnalysis = aiAnalysis || cachedAnalysis;
   const cost = AI_CREDIT_COST.quickAnalysis;
-  const insufficient = credits.available < cost;
+  const insufficient = !isUnlimited && credits.available < cost;
 
   return (
     <AnimatePresence>
@@ -110,36 +110,50 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
 
               {/* AI Credits Banner */}
               <div className="px-4 pb-3">
-                <div className="bg-white rounded-xl border border-gray-100 p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1.5">
-                      <Coins size={12} className="text-amber-500" />
-                      AI Credits
-                    </span>
-                    <span className="text-[11px] font-bold text-gray-900">
-                      {credits.available} / {totalCredits}
-                    </span>
+                {isDisabled ? (
+                  <div className="bg-amber-50 rounded-xl border border-amber-200/60 p-3 flex items-center gap-2.5">
+                    <Lock size={16} className="text-amber-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-amber-900">Plan Upgrade Required</p>
+                      <p className="text-[10px] text-amber-700">AI Copilot is not enabled on your plan.</p>
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        isLowOnCredits ? 'bg-amber-400' : 'bg-emerald-400'
-                      }`}
-                      style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                    />
+                ) : (
+                  <div className="bg-white rounded-xl border border-gray-100 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1.5">
+                        <Coins size={12} className="text-amber-500" />
+                        AI Credits
+                      </span>
+                      <span className="text-[11px] font-bold text-gray-900">
+                        {isUnlimited ? 'Unlimited' : `${credits.available} / ${credits.limit}`}
+                      </span>
+                    </div>
+                    {!isUnlimited && (
+                      <>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              isLowOnCredits ? 'bg-amber-400' : 'bg-emerald-400'
+                            }`}
+                            style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[9px] text-gray-400">{credits.used} used</span>
+                          <span className="text-[9px] text-gray-400">{credits.available} available</span>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[9px] text-gray-400">{credits.used} used</span>
-                    <span className="text-[9px] text-gray-400">{credits.available} available</span>
-                  </div>
-                </div>
+                )}
 
-                {showLowCreditWarning && (
+                {!isDisabled && isLowOnCredits && (
                   <div className="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200/50 rounded-lg px-3 py-2">
                     <AlertTriangle size={12} className="text-amber-500 mt-0.5 shrink-0" />
                     <p className="text-[10px] font-medium text-amber-700 leading-relaxed">
-                      You've used {usagePercent}% of your AI credits.{' '}
-                      <a href="/dashboard/ai" className="underline font-bold">Buy more</a>.
+                      Low on credits ({credits.available} left).{' '}
+                      <a href="/pricing" className="underline font-bold">Upgrade Plan</a>.
                     </p>
                   </div>
                 )}
@@ -202,7 +216,7 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
                   {insufficient && (
                     <p className="text-[10px] text-red-500 font-medium mt-3">
                       Insufficient credits.{' '}
-                      <a href="/dashboard/ai" className="underline font-bold">Buy more via Add-Ons</a>
+                      <a href="/dashboard/settings/subscription" className="underline font-bold">Buy more via Add-Ons</a>
                     </p>
                   )}
                 </div>

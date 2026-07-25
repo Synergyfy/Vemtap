@@ -272,7 +272,6 @@ export default function CustomerExperienceRedesignPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setEmptyModal({ show: false, id: null })}
                             className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
                         />
                         <motion.div 

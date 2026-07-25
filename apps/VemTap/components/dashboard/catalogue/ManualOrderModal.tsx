@@ -262,7 +262,7 @@ export default function ManualOrderModal({ isOpen, onClose, branchId }: ManualOr
                                             <input 
                                                 type="tel"
                                                 value={customerInfo.phone}
-                                                onChange={e => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                                                onChange={e => setCustomerInfo({...customerInfo, phone: e.target.value.replace(/\D/g, '')})}
                                                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-sm font-medium"
                                                 placeholder="+234..."
                                             />

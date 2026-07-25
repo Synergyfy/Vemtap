@@ -58,7 +58,7 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"  />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -195,7 +195,7 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
                     type="tel"
                     required
                     value={newPhone}
-                    onChange={e => setNewPhone(e.target.value)}
+                    onChange={e => setNewPhone(e.target.value.replace(/\D/g, ''))}
                     placeholder="e.g. 08012345678"
                     className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 text-sm font-bold placeholder:font-medium focus:outline-none focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10"
                   />

@@ -33,6 +33,7 @@ export default function PaymentScreen() {
   const [amountReceived, setAmountReceived] = useState<string>('');
   const [hideCustomerInfoOnReceipt, setHideCustomerInfoOnReceipt] = useState(true);
   const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
+  const [customerPromptSource, setCustomerPromptSource] = useState<'payment' | 'loyalty'>('payment');
   const [localLoyaltyEnabled, setLocalLoyaltyEnabled] = useState(() => usePosSettingsStore.getState().loyaltyEnabled);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showLoyaltyOnReceipt, setShowLoyaltyOnReceipt] = useState(true);
@@ -235,6 +236,7 @@ export default function PaymentScreen() {
     if (!selectedMethod || !isSufficient || isProcessing) return;
 
     if (!attachedCustomer) {
+      setCustomerPromptSource('payment');
       setShowCustomerPrompt(true);
       return;
     }
@@ -393,28 +395,33 @@ export default function PaymentScreen() {
               );
             })()}
 
-            {attachedCustomer && (
-              <div className="mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Loyalty Points</p>
-                  <p className="text-[10px] font-bold text-gray-500">Enable loyalty for this transaction</p>
-                </div>
-                <button
-                  onClick={() => setLocalLoyaltyEnabled(!localLoyaltyEnabled)}
-                  className={cn(
-                    "w-12 h-6 rounded-full transition-colors relative",
-                    localLoyaltyEnabled ? "bg-amber-500" : "bg-gray-200"
-                  )}
-                >
-                  <div className={cn(
-                    "size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform",
-                    localLoyaltyEnabled ? "translate-x-6.5 left-[2px]" : "translate-x-0.5 left-0"
-                  )} />
-                </button>
+            <div className="mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Loyalty Points</p>
+                <p className="text-[10px] font-bold text-gray-500">Enable loyalty for this transaction</p>
               </div>
-            )}
+              <button
+                onClick={() => {
+                  if (!attachedCustomer) {
+                    setCustomerPromptSource('loyalty');
+                    setShowCustomerPrompt(true);
+                  } else {
+                    setLocalLoyaltyEnabled(!localLoyaltyEnabled);
+                  }
+                }}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-colors relative",
+                  localLoyaltyEnabled ? "bg-amber-500" : "bg-gray-200"
+                )}
+              >
+                <div className={cn(
+                  "size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform",
+                  localLoyaltyEnabled ? "translate-x-6.5 left-[2px]" : "translate-x-0.5 left-0"
+                )} />
+              </button>
+            </div>
 
-            {attachedCustomer && (
+            {localLoyaltyEnabled && (
               <div className="mt-3 flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-widest text-gray-900">Show Points on Receipt</p>
@@ -608,11 +615,17 @@ export default function PaymentScreen() {
             }));
           }
           setShowCustomerPrompt(false);
-          setTimeout(executePayment, 50);
+          if (customerPromptSource === 'payment') {
+            setTimeout(executePayment, 50);
+          } else {
+            setLocalLoyaltyEnabled(true);
+          }
         }}
         onSkip={() => {
           setShowCustomerPrompt(false);
-          executePayment();
+          if (customerPromptSource === 'payment') {
+            executePayment();
+          }
         }}
       />
     </div>

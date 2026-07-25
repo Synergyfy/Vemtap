@@ -294,7 +294,7 @@ function BranchesContent() {
                 {/* Create Branch Modal */}
                 {isCreateModalOpen && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsCreateModalOpen(false)} />
+                        <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                         <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                             <h3 className="text-3xl font-display font-bold text-text-main mb-2">Add New Branch</h3>
                             <p className="text-text-secondary text-base mb-10 font-medium">Create a new location for {storeName}.</p>
@@ -337,7 +337,7 @@ function BranchesContent() {
                                             <input
                                                 type="tel"
                                                 value={newBranch.phone}
-                                                onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
+                                                onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value.replace(/\D/g, '') })}
                                                 placeholder="+234 801 234 5678"
                                                 className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                             />
@@ -379,7 +379,7 @@ function BranchesContent() {
             {/* Edit Branch Modal */}
             {isEditModalOpen && branchToEdit && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                     <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <h3 className="text-3xl font-display font-bold text-text-main mb-2">Edit Branch</h3>
                         <p className="text-text-secondary text-base mb-10 font-medium">Update details for {resolveBranchName(branchToEdit)}.</p>
@@ -422,7 +422,7 @@ function BranchesContent() {
                                         <input
                                             type="tel"
                                             value={branchToEdit.phone || ''}
-                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, phone: e.target.value })}
+                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, phone: e.target.value.replace(/\D/g, '') })}
                                             placeholder="+234 801 234 5678"
                                             className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                         />
@@ -464,7 +464,7 @@ function BranchesContent() {
             {/* Delete Confirmation Modal */}
             {isDeleteModalOpen && branchToDelete && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                     <div className="relative bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
                         <div className="size-20 rounded-3xl bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-6">
                             <Trash2 size={40} />
@@ -495,7 +495,7 @@ function BranchesContent() {
             {/* OTP Verification Modal */}
             {isOtpModalOpen && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsOtpModalOpen(false)} />
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                     <div className="relative bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between mb-8">
                             <div>

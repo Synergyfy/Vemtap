@@ -15,7 +15,7 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
     const [inviteOpen, setInviteOpen] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
     const { data: stats } = useAffiliateStats();
-    const referralLink = `https://vemtap.com/join?ref=${stats?.referralCode || 'VEN-ABC123'}`;
+    const referralLink = `https://vemtap.com/get-started?ref=${stats?.referralCode || ''}`;
 
     const handleCopy = (key: string, text: string) => {
         navigator.clipboard.writeText(text);

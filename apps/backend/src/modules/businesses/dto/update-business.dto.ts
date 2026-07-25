@@ -179,4 +179,9 @@ export class UpdateBusinessDto {
     loyaltyEnabled?: boolean;
     loyaltyRedeemThreshold?: number;
   };
+
+  @ApiPropertyOptional({ example: 'VEM-ABC-1234', description: 'Referral code from an affiliate partner' })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }

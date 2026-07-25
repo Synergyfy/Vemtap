@@ -1,4 +1,5 @@
 import type { PricingPlan } from '@/types/pricing';
+import { NAVIGATION_SECTIONS } from '@/constants/ownerNavigation';
 
 export type PermissionLevel = 'yes' | 'no' | 'limited';
 
@@ -29,90 +30,179 @@ export interface PlanPermissionConfig {
     features: Record<string, FeaturePermission>;
 }
 
-// ─── All Dashboard Features (from ownerNavigation.ts) ─────────────────────────
+// Maps submenu labels to known PricingPlan feature IDs for backward compatibility
+const FEATURE_ID_MAP: Record<string, string> = {
+    'catalogue': 'catalogue',
+    'inventory': 'inventory',
+    'pos home': 'pos',
+    'orders': 'pos-orders',
+    'settings': 'settings',
+    'help': 'pos-help',
+    'overview': 'nav-overview',
+    'customer list': 'customer-list',
+    'loyalty': 'loyalty',
+    'visitors': 'visitors',
+    'sales dashboard': 'sales-dashboard',
+    'directory': 'staff-directory',
+    'roles & permissions': 'staff-roles',
+    'activity log': 'activity-log',
+    'profile': 'profile',
+    'subscription': 'subscription',
+    'ai credits': 'ai-credits',
+    'ai reports': 'ai-reports',
+    'support': 'support',
+    'compliance': 'compliance',
+    'sales reports': 'analytics-sales',
+    'inventory reports': 'analytics-inventory',
+    'customers': 'analytics-customers',
+    'discovery': 'analytics-discovery',
+    'footfall': 'analytics-footfall',
+    'marketing': 'analytics-marketing',
+    'peak times': 'analytics-peak-times',
+    'get customers': 'discovery',
+    'business partnership': 'business-partnership',
+};
 
-export const PERMISSION_SECTIONS: PermissionSection[] = [
-    {
-        id: 'dashboard',
-        label: 'Dashboard',
-        features: [
-            { id: 'dashboard', label: 'Dashboard', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-        ],
-    },
-    {
-        id: 'my-store',
-        label: 'My Store',
-        features: [
-            { id: 'products-stock', label: 'Products & Stock', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'catalogue', label: 'Catalogue', parentId: 'products-stock', defaultLevel: 'limited', defaultLimit: 50, limitUnit: 'items', limitPlaceholder: 'Max items' },
-            { id: 'inventory', label: 'Inventory', parentId: 'products-stock', defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'sales', label: 'Sales', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'pos', label: 'POS Terminal', parentId: 'sales', defaultLevel: 'limited', defaultLimit: 1, limitUnit: 'terminals', limitPlaceholder: 'Max terminals' },
-            { id: 'customers', label: 'Customers', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'customer-list', label: 'Customer List', parentId: 'customers', defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'loyalty', label: 'Loyalty Programs', parentId: 'customers', defaultLevel: 'limited', defaultLimit: 1, limitUnit: 'programs', limitPlaceholder: 'Max programs' },
-            { id: 'visitors', label: 'Visitors', parentId: 'customers', defaultLevel: 'yes', defaultLimit: undefined },
-        ],
-    },
-    {
-        id: 'customer-engagement',
-        label: 'Customer Engagement',
-        features: [
-            { id: 'in-app-chat', label: 'In-App Chat', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'channels', label: 'Messaging Channels', parentId: undefined, defaultLevel: 'limited', defaultLimit: 100, limitUnit: 'credits/mo', limitPlaceholder: 'Monthly credits' },
-            { id: 'forms', label: 'Forms', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-        ],
-    },
-    {
-        id: 'customer-experience',
-        label: 'Customer Experience',
-        features: [
-            { id: 'business-qr', label: 'Business QR', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'marketing-kit', label: 'Marketing Kit', parentId: undefined, defaultLevel: 'limited', defaultLimit: 5, limitUnit: 'assets', limitPlaceholder: 'Max assets' },
-        ],
-    },
-    {
-        id: 'get-customers',
-        label: 'Get Customers',
-        features: [
-            { id: 'discovery', label: 'Discovery Network', parentId: undefined, defaultLevel: 'no', defaultLimit: undefined },
-        ],
-    },
-    {
-        id: 'analytics',
-        label: 'Analytics',
-        features: [
-            { id: 'analytics', label: 'Advanced Analytics', parentId: undefined, defaultLevel: 'limited', defaultLimit: 3, limitUnit: 'months', limitPlaceholder: 'Months of data' },
-        ],
-    },
-    {
-        id: 'manage',
-        label: 'Manage',
-        features: [
-            { id: 'staff', label: 'Staff', parentId: undefined, defaultLevel: 'limited', defaultLimit: 1, limitUnit: 'members', limitPlaceholder: 'Max staff' },
-            { id: 'staff-roles', label: 'Staff Roles & Permissions', parentId: 'staff', defaultLevel: 'limited', defaultLimit: 1, limitUnit: 'roles', limitPlaceholder: 'Max roles' },
-            { id: 'activity-log', label: 'Activity Log', parentId: 'staff', defaultLevel: 'no', defaultLimit: undefined },
-            { id: 'locations', label: 'Locations (Branches)', parentId: undefined, defaultLevel: 'limited', defaultLimit: 1, limitUnit: 'branches', limitPlaceholder: 'Max branches' },
-        ],
-    },
-    {
-        id: 'qrthrive',
-        label: 'QRThrive',
-        features: [
-            { id: 'qr-codes', label: 'QR Codes', parentId: undefined, defaultLevel: 'limited', defaultLimit: 5, limitUnit: 'codes', limitPlaceholder: 'Max codes' },
-        ],
-    },
-    {
-        id: 'settings',
-        label: 'Settings',
-        features: [
-            { id: 'settings', label: 'Settings', parentId: undefined, defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'profile', label: 'Profile', parentId: 'settings', defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'subscription', label: 'Subscription', parentId: 'settings', defaultLevel: 'yes', defaultLimit: undefined },
-            { id: 'support', label: 'Support', parentId: 'settings', defaultLevel: 'yes', defaultLimit: undefined },
-        ],
-    },
-];
+// Label→ID for parent nav items (used as fallback featureId)
+const PARENT_FEATURE_ID_MAP: Record<string, string> = {
+    'dashboard': 'dashboard',
+    'sales': 'sales',
+    'products & stock': 'products-stock',
+    'customers': 'customers',
+    'in-app chat': 'in-app-chat',
+    'channels': 'channels',
+    'forms': 'forms',
+    'my business qr': 'business-qr',
+    'marketing kit': 'marketing-kit',
+    'get customers': 'discovery',
+    'analytics': 'analytics',
+    'staff': 'staff',
+    'locations': 'locations',
+    'explore qrthrive': 'qr-codes',
+    'settings': 'preferences',
+};
+
+function labelToId(label: string): string {
+    return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function deriveFeatureId(navItemId: string, label: string, parentLabel?: string): string {
+    const lower = label.toLowerCase().trim();
+    if (FEATURE_ID_MAP[lower]) return FEATURE_ID_MAP[lower];
+    if (parentLabel) {
+        const parentLower = parentLabel.toLowerCase().trim();
+        if (PARENT_FEATURE_ID_MAP[parentLower]) {
+            return `${PARENT_FEATURE_ID_MAP[parentLower]}-${labelToId(label)}`;
+        }
+    }
+    const parentKey = parentLabel?.toLowerCase().trim() || '';
+    if (PARENT_FEATURE_ID_MAP[parentKey]) return PARENT_FEATURE_ID_MAP[parentKey];
+    return navItemId;
+}
+
+// ─── Build permission sections from the sidebar navigation tree ──────────
+
+export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
+    return NAVIGATION_SECTIONS
+        .filter(s => s.items.length > 0)
+        .map(section => {
+            const sectionLabel = section.label || section.items[0]?.label || 'General';
+            const features: PlanFeature[] = [];
+
+            section.items.forEach(item => {
+                const itemFeatureId = deriveFeatureId(item.id, item.label);
+
+                if (item.submenu && item.submenu.length > 0) {
+                    // Parent item represents the category
+                    features.push({
+                        id: itemFeatureId,
+                        label: item.label,
+                        parentId: undefined,
+                        defaultLevel: 'yes',
+                        defaultLimit: undefined,
+                    });
+                    // Submenu items are children
+                    item.submenu.forEach(sub => {
+                        const subId = deriveFeatureId(sub.label.toLowerCase(), sub.label, item.label);
+                        features.push({
+                            id: subId,
+                            label: sub.label,
+                            parentId: itemFeatureId,
+                            defaultLevel: 'yes',
+                            defaultLimit: undefined,
+                        });
+                    });
+                } else {
+                    features.push({
+                        id: itemFeatureId,
+                        label: item.label,
+                        parentId: undefined,
+                        defaultLevel: 'yes',
+                        defaultLimit: undefined,
+                    });
+                }
+            });
+
+            return {
+                id: section.id || `section-${labelToId(sectionLabel)}`,
+                label: sectionLabel,
+                features,
+            };
+        });
+}
+
+// ─── Known permission IDs that map to PricingPlan fields ───────────
+
+const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?: number; unit?: string; placeholder?: string }> = {
+    'dashboard': { level: 'yes' },
+    'products-stock': { level: 'yes' },
+    'catalogue': { level: 'limited', limit: 50, unit: 'items', placeholder: 'Max items' },
+    'inventory': { level: 'yes' },
+    'sales': { level: 'yes' },
+    'pos': { level: 'limited', limit: 1, unit: 'terminals', placeholder: 'Max terminals' },
+    'customers': { level: 'yes' },
+    'customer-list': { level: 'yes' },
+    'loyalty': { level: 'limited', limit: 1, unit: 'programs', placeholder: 'Max programs' },
+    'visitors': { level: 'yes' },
+    'in-app-chat': { level: 'yes' },
+    'channels': { level: 'limited', limit: 100, unit: 'credits/mo', placeholder: 'Monthly credits' },
+    'forms': { level: 'yes' },
+    'business-qr': { level: 'yes' },
+    'marketing-kit': { level: 'limited', limit: 5, unit: 'assets', placeholder: 'Max assets' },
+    'discovery': { level: 'no' },
+    'analytics': { level: 'limited', limit: 3, unit: 'months', placeholder: 'Months of data' },
+    'staff': { level: 'limited', limit: 1, unit: 'members', placeholder: 'Max staff' },
+    'staff-roles': { level: 'limited', limit: 1, unit: 'roles', placeholder: 'Max roles' },
+    'activity-log': { level: 'no' },
+    'locations': { level: 'limited', limit: 1, unit: 'branches', placeholder: 'Max branches' },
+    'qr-codes': { level: 'limited', limit: 5, unit: 'codes', placeholder: 'Max codes' },
+    'ai-copilot': { level: 'limited', limit: 50, unit: 'credits/mo', placeholder: 'Monthly credits' },
+    'settings': { level: 'yes' },
+    'profile': { level: 'yes' },
+    'subscription': { level: 'yes' },
+    'support': { level: 'yes' },
+};
+
+// Apply known defaults to the dynamically-built permission tree
+export function applyFeatureDefaults(sections: PermissionSection[]): PermissionSection[] {
+    return sections.map(section => ({
+        ...section,
+        features: section.features.map(f => {
+            const known = PLANNED_FEATURE_DEFAULTS[f.id];
+            if (known) {
+                return {
+                    ...f,
+                    defaultLevel: known.level,
+                    defaultLimit: known.limit,
+                    limitUnit: known.unit,
+                    limitPlaceholder: known.placeholder,
+                };
+            }
+            // Unknown / new features default to unlimited yes
+            return f;
+        }),
+    }));
+}
 
 // ─── Default Permission Presets ────────────────────────────────────────────────
 
@@ -122,10 +212,10 @@ export function buildDefaultPermissions(
 ): PlanPermissionConfig {
     const nameLower = planName.toLowerCase();
     const features: Record<string, FeaturePermission> = {};
+    const sections = applyFeatureDefaults(buildPermissionSectionsFromNavigation());
 
-    PERMISSION_SECTIONS.forEach(section => {
+    sections.forEach(section => {
         section.features.forEach(f => {
-            // Determine level based on plan
             let level: PermissionLevel = 'no';
             if (
                 nameLower.includes('platinum') ||
@@ -143,14 +233,12 @@ export function buildDefaultPermissions(
             } else if (nameLower.includes('free') || nameLower.includes('starter')) {
                 level = f.defaultLevel === 'yes' ? 'yes' : 'no';
             } else {
-                // Unknown plan — conservative defaults
                 level = f.defaultLevel === 'yes' ? 'yes' : 'no';
             }
 
-            // Adjust limits per plan
             let limit = f.defaultLimit;
             if (level === 'yes') {
-                limit = undefined; // Unlimited
+                limit = undefined;
             } else if (level === 'limited') {
                 if (nameLower.includes('silver') || nameLower.includes('basic')) {
                     limit = f.defaultLimit ? Math.floor(f.defaultLimit * 0.5) : 1;
@@ -167,65 +255,74 @@ export function buildDefaultPermissions(
     return { planId, planName, features };
 }
 
+// ─── Legacy PERMISSION_SECTIONS (kept for backward compatibility) ─────
+
+export const PERMISSION_SECTIONS: PermissionSection[] = applyFeatureDefaults(buildPermissionSectionsFromNavigation());
+
+// ─── Map PricingPlan → PlanPermissionConfig ──────────────────────────
+
+function getPerm(enabled: boolean, limit: number | null | undefined): FeaturePermission {
+    if (!enabled) return { level: 'no' };
+    if (limit === -1) return { level: 'yes' };
+    if (limit !== null && limit !== undefined && limit > 0) return { level: 'limited', limit };
+    return { level: 'no' };
+}
+
 export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     const features: Record<string, FeaturePermission> = {};
+    const sections = PERMISSION_SECTIONS;
 
-    // Helper to extract boolean toggle and limit
-    const getPerm = (enabled: boolean, limit: number | null | undefined): FeaturePermission => {
-        if (!enabled) return { level: 'no' };
-        if (limit === -1) {
-            return { level: 'yes' };
-        }
-        if (limit !== null && limit !== undefined && limit > 0) {
-            return { level: 'limited', limit };
-        }
-        return { level: 'no' };
-    };
+    // Always-enabled core features
+    const alwaysYes = ['dashboard', 'products-stock', 'sales', 'customers', 'customer-list', 'settings', 'profile', 'subscription', 'support'];
+    alwaysYes.forEach(id => { features[id] = { level: 'yes' }; });
 
-    features['dashboard'] = { level: 'yes' };
-    features['products-stock'] = { level: 'yes' };
-    features['catalogue'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueItems);
-    features['inventory'] = getPerm(!!plan.inventoryEnabled, plan.inventoryLimit);
-    features['sales'] = { level: 'yes' };
-    features['pos'] = getPerm(!!plan.posEnabled, plan.posTerminalLimit);
-    features['customers'] = { level: 'yes' };
-    features['customer-list'] = { level: 'yes' };
-    features['loyalty'] = getPerm(plan.loyaltyEnabled, plan.loyaltyLimit);
-    features['visitors'] = { level: plan.visitorsEnabled ? 'yes' : 'no' };
-    features['in-app-chat'] = { level: plan.inAppChatEnabled ? 'yes' : 'no' };
-    features['channels'] = { level: plan.messagingEnabled ? 'yes' : 'no' };
-    features['forms'] = getPerm(!!plan.formsEnabled, plan.formsLimit);
-    features['business-qr'] = { level: plan.businessQrEnabled ? 'yes' : 'no' };
-    features['marketing-kit'] = getPerm(!!plan.marketingKitEnabled, plan.marketingKitLimit);
-    features['discovery'] = { level: plan.discoveryEnabled ? 'yes' : 'no' };
-    
-    // Analytics
-    if (!plan.analyticsEnabled) {
-        features['analytics'] = { level: 'no' };
-    } else {
-        features['analytics'] = plan.analyticsLevel === 'basic' 
-            ? { level: 'limited', limit: 3 } // Default basic analytics limit in months
-            : { level: 'yes' };
+    // Known PricingPlan-backed features
+    if (plan) {
+        features['catalogue'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueItems);
+        features['inventory'] = getPerm(!!plan.inventoryEnabled, plan.inventoryLimit);
+        features['pos'] = getPerm(!!plan.posEnabled, plan.posTerminalLimit);
+        features['loyalty'] = getPerm(plan.loyaltyEnabled, plan.loyaltyLimit);
+        features['visitors'] = { level: plan.visitorsEnabled ? 'yes' : 'no' };
+        features['in-app-chat'] = { level: plan.inAppChatEnabled ? 'yes' : 'no' };
+        features['channels'] = { level: plan.messagingEnabled ? 'yes' : 'no' };
+        features['forms'] = getPerm(!!plan.formsEnabled, plan.formsLimit);
+        features['business-qr'] = { level: plan.businessQrEnabled ? 'yes' : 'no' };
+        features['marketing-kit'] = getPerm(!!plan.marketingKitEnabled, plan.marketingKitLimit);
+        features['discovery'] = { level: plan.discoveryEnabled ? 'yes' : 'no' };
+        features['settings'] = { level: 'yes' };
+        features['profile'] = { level: 'yes' };
+        features['subscription'] = { level: 'yes' };
+        features['support'] = { level: 'yes' };
+        features['staff'] = getPerm(plan.teamMembersEnabled, plan.teamMembersLimit);
+        features['staff-roles'] = getPerm(!!plan.staffRolesEnabled, plan.staffRolesLimit);
+        features['activity-log'] = { level: plan.activityLogEnabled ? 'yes' : 'no' };
+        features['locations'] = getPerm(plan.branchesEnabled, plan.branchLimit);
+        features['qr-codes'] = getPerm(!!plan.qrCodesEnabled, plan.qrCodesLimit);
+
+        if (!plan.analyticsEnabled) {
+            features['analytics'] = { level: 'no' };
+        } else {
+            features['analytics'] = plan.analyticsLevel === 'basic'
+                ? { level: 'limited', limit: 3 }
+                : { level: 'yes' };
+        }
+
+        features['ai-copilot'] = getPerm(!!plan.aiCopilotEnabled, plan.aiCredits);
     }
 
-    features['staff'] = getPerm(plan.teamMembersEnabled, plan.teamMembersLimit);
-    features['staff-roles'] = getPerm(!!plan.staffRolesEnabled, plan.staffRolesLimit);
-    features['activity-log'] = { level: plan.activityLogEnabled ? 'yes' : 'no' };
-    features['locations'] = getPerm(plan.branchesEnabled, plan.branchLimit);
-    features['qr-codes'] = getPerm(!!plan.qrCodesEnabled, plan.qrCodesLimit);
-    
-    // Settings, Profile, Subscription, Support
-    features['settings'] = { level: 'yes' };
-    features['profile'] = { level: 'yes' };
-    features['subscription'] = { level: 'yes' };
-    features['support'] = { level: 'yes' };
+    // Fill remaining features from nav tree defaults
+    sections.forEach(section => {
+        section.features.forEach(f => {
+            if (features[f.id] === undefined) {
+                features[f.id] = { level: f.defaultLevel, limit: f.defaultLimit };
+            }
+        });
+    });
 
-    return {
-        planId: plan.id,
-        planName: plan.name,
-        features
-    };
+    return { planId: plan.id, planName: plan.name, features };
 }
+
+// ─── Map PlanPermissionConfig → PricingPlan partial DTO ─────────────
 
 export function mapConfigToPlanDto(
     config: PlanPermissionConfig,
@@ -245,57 +342,42 @@ export function mapConfigToPlanDto(
         return !!feat && feat.level === 'yes';
     };
 
-    // Catalogue
     const catalogue = getEnabledAndLimit('catalogue');
     dto.catalogueEnabled = catalogue.enabled;
     dto.maxCatalogueItems = catalogue.limit;
-    // Retain categories/offers if existing plan, otherwise null
     if (existingPlan) {
         dto.maxCatalogueCategories = catalogue.enabled ? existingPlan.maxCatalogueCategories : null;
         dto.maxCatalogueOffers = catalogue.enabled ? existingPlan.maxCatalogueOffers : null;
     }
 
-    // Inventory
     const inventory = getEnabledAndLimit('inventory');
     dto.inventoryEnabled = inventory.enabled;
     dto.inventoryLimit = inventory.limit;
 
-    // POS
     const pos = getEnabledAndLimit('pos');
     dto.posEnabled = pos.enabled;
     dto.posTerminalLimit = pos.limit;
 
-    // Loyalty
     const loyalty = getEnabledAndLimit('loyalty');
     dto.loyaltyEnabled = loyalty.enabled;
     dto.loyaltyLimit = loyalty.limit;
 
-    // Visitors
     dto.visitorsEnabled = getEnabledOnly('visitors');
-
-    // In-App Chat
     dto.inAppChatEnabled = getEnabledOnly('in-app-chat');
-
-    // Messaging
     dto.messagingEnabled = getEnabledOnly('channels');
 
-    // Forms
     const forms = getEnabledAndLimit('forms');
     dto.formsEnabled = forms.enabled;
     dto.formsLimit = forms.limit;
 
-    // Business QR
     dto.businessQrEnabled = getEnabledOnly('business-qr');
 
-    // Marketing Kit
     const marketing = getEnabledAndLimit('marketing-kit');
     dto.marketingKitEnabled = marketing.enabled;
     dto.marketingKitLimit = marketing.limit;
 
-    // Discovery Network
     dto.discoveryEnabled = getEnabledOnly('discovery');
 
-    // Analytics
     const analyticsFeat = config.features['analytics'];
     if (!analyticsFeat || analyticsFeat.level === 'no') {
         dto.analyticsEnabled = false;
@@ -305,28 +387,27 @@ export function mapConfigToPlanDto(
         dto.analyticsLevel = analyticsFeat.level === 'yes' ? 'advanced' : 'basic';
     }
 
-    // Staff
     const staff = getEnabledAndLimit('staff');
     dto.teamMembersEnabled = staff.enabled;
     dto.teamMembersLimit = staff.limit;
 
-    // Staff Roles
     const staffRoles = getEnabledAndLimit('staff-roles');
     dto.staffRolesEnabled = staffRoles.enabled;
     dto.staffRolesLimit = staffRoles.limit;
 
-    // Activity Log
     dto.activityLogEnabled = getEnabledOnly('activity-log');
 
-    // Locations
     const locations = getEnabledAndLimit('locations');
     dto.branchesEnabled = locations.enabled;
-    dto.branchLimit = locations.limit || 1; // Default to at least 1 branch if enabled
+    dto.branchLimit = locations.limit || 1;
 
-    // QR Codes
     const qrCodes = getEnabledAndLimit('qr-codes');
     dto.qrCodesEnabled = qrCodes.enabled;
     dto.qrCodesLimit = qrCodes.limit;
+
+    const aiCopilot = getEnabledAndLimit('ai-copilot');
+    dto.aiCopilotEnabled = aiCopilot.enabled;
+    dto.aiCredits = aiCopilot.limit;
 
     return dto;
 }

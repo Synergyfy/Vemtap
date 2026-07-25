@@ -62,6 +62,8 @@ export interface AIAnalysisRequest {
 export interface AICredits {
   available: number;
   used: number;
+  limit: number;
+  enabled: boolean;
 }
 
 export const AI_CREDIT_COST = {

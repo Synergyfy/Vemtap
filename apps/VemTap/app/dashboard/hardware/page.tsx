@@ -199,7 +199,7 @@ export default function HardwarePage() {
             {/* Create Modal */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsCreateModalOpen(false)} />
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                     <div className="relative bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl animate-in zoom-in-95 duration-200">
                         <h3 className="text-2xl font-display font-bold text-text-main mb-2">Generate NFC Link</h3>
                         <p className="text-text-secondary text-sm mb-8 font-medium">Create a new unique identifier for your hardware.</p>
