@@ -165,8 +165,10 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
             errorData = { message: `API Error: ${response.status}` };
         }
 
+        const errMsg = Array.isArray(errorData.message) ? errorData.message[0] : (typeof errorData.message === 'string' ? errorData.message : '');
+
         // Global Subscription Expiry Handling
-        if (response.status === 403 && (errorData.message?.toLowerCase().includes('subscription expired') || errorData.message?.toLowerCase().includes('renew to continue'))) {
+        if (response.status === 403 && (errMsg.toLowerCase().includes('subscription expired') || errMsg.toLowerCase().includes('renew to continue'))) {
             try {
                 const { useSubscriptionStore } = await import('@/store/useSubscriptionStore');
                 useSubscriptionStore.getState().setSubscriptionExpired(true);
@@ -176,23 +178,21 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
         }
 
         // Global Conflict / Duplicate Handling
-        if ((response.status === 400 || response.status === 409) && errorData.message) {
-            const msgToLower = errorData.message.toLowerCase();
+        if ((response.status === 400 || response.status === 409) && errMsg) {
+            const msgToLower = errMsg.toLowerCase();
             if (msgToLower.includes('already exist') || msgToLower.includes('taken') || msgToLower.includes('duplicate') || msgToLower.includes('in use')) {
                 try {
                     const { useConflictStore } = await import('@/store/useConflictStore');
-                    // Ensure this runs on the client to avoid hydration/SSR issues with Zustand in Next.js
                     if (typeof window !== 'undefined') {
-                        useConflictStore.getState().openConflict(errorData.message);
+                        useConflictStore.getState().openConflict(errMsg);
                     }
-                    // We can also throw the error so the local catch block still knows it failed
                 } catch (e) {
                     console.error('Failed to trigger conflict store state', e);
                 }
             }
         }
 
-        throw new Error(errorData.message || `API Error: ${response.status}`);
+        throw new Error(errMsg || `API Error: ${response.status}`);
     }
 
     const text = await response.text();

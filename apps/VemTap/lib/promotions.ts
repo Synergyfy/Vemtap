@@ -61,6 +61,7 @@ export interface Promotion {
     originalPrice: number;
     dealPrice: number;
     image: string;
+    galleryImages?: string[];
     startDate: string;
     endDate: string;
     claimedCount: number;
