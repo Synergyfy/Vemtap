@@ -254,6 +254,8 @@ export default function StaffDirectory() {
         setShowInviteModal(false);
         setForm(emptyForm);
         setShowLimitModal(true);
+      } else if (msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('in use') || msg.toLowerCase().includes('taken')) {
+        toast.error('This email already exists. Please use a different email address.');
       } else {
         toast.error(msg || 'Failed to send invitation');
       }
@@ -287,7 +289,12 @@ export default function StaffDirectory() {
       setEditTarget(null);
       setForm(emptyForm);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to update staff');
+      const msg = err?.response?.data?.message || err?.message || '';
+      if (typeof msg === 'string' && (msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('in use') || msg.toLowerCase().includes('taken'))) {
+        toast.error('This email already exists. Please use a different email address.');
+      } else {
+        toast.error(typeof msg === 'string' ? msg : 'Failed to update staff');
+      }
     }
   };
 
