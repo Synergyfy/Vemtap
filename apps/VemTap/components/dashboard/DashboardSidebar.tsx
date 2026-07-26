@@ -13,7 +13,8 @@ import {
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
     MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
     ClipboardCheck, Search, Star, Pin, PinOff, ChevronLeft, ChevronRight, LayoutDashboard,
-    X, MoreHorizontal, User, Download, Sun, Moon, Crown, ArrowRight, CheckCircle2
+    X, MoreHorizontal, User, Download, Sun, Moon, Crown, ArrowRight, CheckCircle2,
+    Maximize2, Minimize2
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -54,6 +55,21 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [favorites, setFavorites] = useState<string[]>(['pos', 'visitors', 'in-app-chat']); // Default favorites
     const [showTaskModal, setShowTaskModal] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    
+    useEffect(() => {
+        const handler = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handler);
+        return () => document.removeEventListener('fullscreenchange', handler);
+    }, []);
+    
+    const toggleFullscreen = () => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            document.documentElement.requestFullscreen();
+        }
+    };
     
     useEffect(() => {
         setIsMounted(true);
@@ -622,6 +638,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <button
+                            onClick={toggleFullscreen}
+                            className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all"
+                            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+                        >
+                            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                        </button>
 
                         <div className="h-6 w-px bg-gray-100 mx-1 hidden sm:block" />
 

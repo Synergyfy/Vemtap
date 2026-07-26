@@ -38,6 +38,7 @@ import { PosSaleQueryDto } from './dto/pos-sale-query.dto';
 import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
 import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
+import { PosCustomerQueryDto } from './dto/pos-customer-query.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User, UserRole } from '../users/entities/user.entity';
@@ -1213,6 +1214,150 @@ export class PosService {
       .map(([productId, data]) => ({ productId, ...data }))
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 10);
+  }
+
+  async findCustomers(businessId: string, query: PosCustomerQueryDto) {
+    if (!businessId) {
+      throw new BadRequestException('Business ID is required');
+    }
+
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // Single aggregated query: joins pos_sales with users, groups by customer
+    const qb = this.saleRepository
+      .createQueryBuilder('sale')
+      .innerJoin('sale.customer', 'customer')
+      .select('customer.id', 'id')
+      .addSelect('customer.firstName', 'firstName')
+      .addSelect('customer.lastName', 'lastName')
+      .addSelect('customer.email', 'email')
+      .addSelect('customer.phone', 'phone')
+      .addSelect('customer.createdAt', 'createdAt')
+      .addSelect('SUM(sale.total)', 'totalSpent')
+      .addSelect('COUNT(sale.id)', 'totalVisits')
+      .addSelect('MAX(sale.orderedAt)', 'lastVisitAt')
+      .where('sale.businessId = :businessId', { businessId })
+      .andWhere('sale.customerId IS NOT NULL')
+      .andWhere('sale.status = :status', { status: SaleStatus.COMPLETED })
+      .groupBy('customer.id')
+      .addGroupBy('customer.firstName')
+      .addGroupBy('customer.lastName')
+      .addGroupBy('customer.email')
+      .addGroupBy('customer.phone')
+      .addGroupBy('customer.createdAt');
+
+    if (query.branchId) {
+      qb.andWhere('sale.branchId = :branchId', { branchId: query.branchId });
+    }
+
+    if (query.search) {
+      // Escape ILIKE wildcards to prevent pattern injection
+      const escaped = query.search.replace(/[%_]/g, (m) => `\\${m}`);
+      qb.andWhere(
+        `(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)`,
+        { search: `%${escaped}%` },
+      );
+    }
+
+    const countQb = qb.clone();
+    const total = await countQb
+      .select('COUNT(DISTINCT customer.id)', 'count')
+      .getRawOne();
+
+    const customers = await qb
+      .orderBy('totalSpent', 'DESC')
+      .offset(skip)
+      .limit(limit)
+      .getRawMany();
+
+    return {
+      data: customers.map((c) => ({
+        id: c.id,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        email: c.email,
+        phone: c.phone,
+        createdAt: c.createdAt,
+        totalSpent: Number(c.totalSpent) || 0,
+        totalVisits: Number(c.totalVisits) || 0,
+        lastVisitAt: c.lastVisitAt,
+      })),
+      total: Number(total?.count) || 0,
+      page,
+      limit,
+    };
+  }
+
+  async findCustomerById(customerId: string, businessId: string) {
+    if (!businessId) {
+      throw new BadRequestException('Business ID is required');
+    }
+
+    // Verify this customer has actually transacted with this business
+    const hasTransacted = await this.saleRepository.findOne({
+      where: { customerId, businessId, status: SaleStatus.COMPLETED },
+      select: ['id'],
+    });
+
+    if (!hasTransacted) {
+      throw new NotFoundException('Customer not found for this business');
+    }
+
+    const customer = await this.userRepository.findOne({
+      where: { id: customerId },
+      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'createdAt'],
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    // Single query: aggregated stats for this customer at this business
+    const stats = await this.saleRepository
+      .createQueryBuilder('sale')
+      .select('SUM(sale.total)', 'totalSpent')
+      .addSelect('COUNT(sale.id)', 'totalVisits')
+      .addSelect('AVG(sale.total)', 'averageOrderValue')
+      .addSelect('MAX(sale.orderedAt)', 'lastVisitAt')
+      .where('sale.customerId = :customerId', { customerId })
+      .andWhere('sale.businessId = :businessId', { businessId })
+      .andWhere('sale.status = :status', { status: SaleStatus.COMPLETED })
+      .getRawOne();
+
+    // Last 10 purchases with items loaded via relation (2 queries total, no N+1)
+    const recentPurchases = await this.saleRepository.find({
+      where: { customerId, businessId, status: SaleStatus.COMPLETED },
+      relations: ['items'],
+      order: { orderedAt: 'DESC' },
+      take: 10,
+    });
+
+    const totalSpent = Number(stats?.totalSpent) || 0;
+    const totalVisits = Number(stats?.totalVisits) || 0;
+    const averageOrderValue = Number(stats?.averageOrderValue) || 0;
+
+    return {
+      id: customer.id,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      email: customer.email,
+      phone: customer.phone,
+      createdAt: customer.createdAt,
+      totalSpent,
+      totalVisits,
+      lastVisitAt: stats?.lastVisitAt || null,
+      averageOrderValue,
+      lifetimeValue: totalSpent,
+      recentPurchases: recentPurchases.map((sale) => ({
+        id: sale.id,
+        date: sale.orderedAt,
+        total: Number(sale.total),
+        items: sale.items?.length || 0,
+        receipt: sale.receiptNumber,
+      })),
+    };
   }
 
   private async generateReceiptNumber(businessId: string, manager?: EntityManager): Promise<string> {

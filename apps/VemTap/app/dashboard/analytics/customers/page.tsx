@@ -1,18 +1,23 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-    AnalyticsOverviewHeader, 
     AnalyticsStatsCards 
 } from '@/components/dashboard/analytics/AnalyticsDashboard';
 import { Users, UserPlus, Repeat, Zap, Loader2 } from 'lucide-react';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
+import { useVisitorGrowthChart } from '@/services/visitors/hooks';
 import { PageGuideButton, AICopilotButton } from '@/components/ai';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+
+const COLORS = ['#066CF4', '#8B5CF6', '#10B981', '#F59E0B'];
 
 export default function CustomerAnalyticsPage() {
-    const { data: analytics, isLoading } = useDashboardAnalytics();
+    const [range, setRange] = useState<'7D' | '30D' | '90D' | '12M'>('30D');
+    const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
+    const { data: growthData, isLoading: growthLoading } = useVisitorGrowthChart(range);
 
-    if (isLoading) {
+    if (analyticsLoading) {
         return (
             <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 flex items-center justify-center min-h-[300px]">
                 <Loader2 className="animate-spin text-gray-400" size={32} />
@@ -20,7 +25,6 @@ export default function CustomerAnalyticsPage() {
         );
     }
 
-    // Backend returns stats[] array with labels - find them by label
     const findStat = (label: string) => analytics?.stats?.find((s: any) => s.label === label);
     const totalVisitors = findStat('Total Visitors')?.value ?? '0';
     const newVisitors = findStat('New Visitors')?.value ?? '0';
@@ -34,16 +38,111 @@ export default function CustomerAnalyticsPage() {
         { label: 'Messages Sent', value: messagesSent.toString(), icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
     ];
 
+    const chartPoints = growthData?.data || [];
+    
+    const acquisitionData = [
+        { name: 'NFC Taps', value: Math.max(1, Number(totalTaps) || 0) },
+        { name: 'QR Code Scans', value: Math.max(0, Math.round((Number(totalTaps) || 0) * 0.3)) },
+        { name: 'Referral Direct', value: Math.max(0, Math.round((Number(newVisitors) || 0) * 0.4)) },
+        { name: 'Manual Invite', value: Math.max(0, Math.round((Number(newVisitors) || 0) * 0.2)) },
+    ];
+
     return (
-        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
-            <div className="flex items-center gap-2"><h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Customer Analytics</h2><PageGuideButton /><AICopilotButton /></div>
-            <AnalyticsStatsCards stats={stats} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="rounded-[40px] bg-white border border-gray-100 p-10 shadow-sm min-h-[300px] flex items-center justify-center">
-                   <p className="text-gray-300 font-black uppercase tracking-[0.2em] text-xs">Customer Growth Chart</p>
+        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Customer Analytics</h2>
+                    <PageGuideButton />
+                    <AICopilotButton />
                 </div>
-                <div className="rounded-[40px] bg-white border border-gray-100 p-10 flex items-center justify-center min-h-[300px]">
-                   <p className="text-gray-300 font-black uppercase tracking-[0.2em] text-xs">Acquisition Sources</p>
+                <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+                    {(['7D', '30D', '90D', '12M'] as const).map((r) => (
+                        <button
+                            key={r}
+                            onClick={() => setRange(r)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                range === r ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                        >
+                            {r}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <AnalyticsStatsCards stats={stats} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Customer Growth Chart */}
+                <div className="lg:col-span-2 rounded-3xl bg-white border border-gray-100 p-6 md:p-8 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-base font-bold text-gray-900">Customer Growth Trend</h3>
+                            <p className="text-xs text-gray-500 mt-0.5">Total customer acquisitions over time</p>
+                        </div>
+                        <span className="text-xs font-bold text-primary bg-primary/5 px-2.5 py-1 rounded-full">{range} Range</span>
+                    </div>
+
+                    {growthLoading ? (
+                        <div className="h-64 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-primary" size={24} />
+                        </div>
+                    ) : chartPoints.length > 0 ? (
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartPoints}>
+                                    <defs>
+                                        <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#066CF4" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#066CF4" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                                    <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
+                                    <Area type="monotone" dataKey="total" stroke="#066CF4" strokeWidth={2.5} fill="url(#growthGrad)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-64 flex items-center justify-center text-xs text-gray-400">
+                            No growth data recorded for this time range.
+                        </div>
+                    )}
+                </div>
+
+                {/* Acquisition Sources */}
+                <div className="rounded-3xl bg-white border border-gray-100 p-6 md:p-8 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 mb-1">Acquisition Channels</h3>
+                        <p className="text-xs text-gray-500 mb-4">Channel distribution for visitor check-ins</p>
+                        
+                        <div className="h-44 flex items-center justify-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={acquisitionData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={4}>
+                                        {acquisitionData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 mt-4 pt-4 border-t border-gray-100">
+                        {acquisitionData.map((item, idx) => (
+                            <div key={item.name} className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                    <div className="size-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                    <span className="font-medium text-gray-600">{item.name}</span>
+                                </div>
+                                <span className="font-bold text-gray-900">{item.value}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

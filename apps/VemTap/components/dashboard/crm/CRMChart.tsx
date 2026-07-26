@@ -5,44 +5,22 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, 
     Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const DATA_BY_RANGE: Record<string, { name: string; customers: number }[]> = {
-    '7D': [
-        { name: 'Mon', customers: 400 },
-        { name: 'Tue', customers: 600 },
-        { name: 'Wed', customers: 500 },
-        { name: 'Thu', customers: 900 },
-        { name: 'Fri', customers: 1200 },
-        { name: 'Sat', customers: 1500 },
-        { name: 'Sun', customers: 1300 },
-    ],
-    '30D': [
-        { name: 'Week 1', customers: 2400 },
-        { name: 'Week 2', customers: 3100 },
-        { name: 'Week 3', customers: 2800 },
-        { name: 'Week 4', customers: 4200 },
-    ],
-    '90D': [
-        { name: 'Jan', customers: 8200 },
-        { name: 'Feb', customers: 9100 },
-        { name: 'Mar', customers: 11400 },
-    ],
-    '12M': [
-        { name: 'Q1', customers: 24000 },
-        { name: 'Q2', customers: 31000 },
-        { name: 'Q3', customers: 28000 },
-        { name: 'Q4', customers: 42000 },
-    ],
-};
+import { useVisitorGrowthChart } from '@/services/visitors/hooks';
 
 const RANGES = ['7D', '30D', '90D', '12M'];
 
-export function CRMGrowthChart() {
+interface CRMGrowthChartProps {
+    branchId?: string;
+}
+
+export function CRMGrowthChart({ branchId }: CRMGrowthChartProps) {
     const [selectedRange, setSelectedRange] = useState('7D');
     const [isOpen, setIsOpen] = useState(false);
-    const data = DATA_BY_RANGE[selectedRange];
+
+    const { data: chartResponse, isLoading } = useVisitorGrowthChart(selectedRange, branchId);
+    const data = chartResponse?.data || [];
 
     return (
         <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
@@ -80,7 +58,12 @@ export function CRMGrowthChart() {
                 </div>
             </div>
 
-            <div className="h-[300px] w-full">
+            <div className="h-[300px] w-full relative">
+                {isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10 rounded-2xl">
+                        <Loader2 className="size-8 text-primary animate-spin" />
+                    </div>
+                )}
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data}>
                         <defs>

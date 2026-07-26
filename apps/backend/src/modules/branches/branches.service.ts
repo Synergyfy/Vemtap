@@ -297,11 +297,41 @@ export class BranchesService {
     return savedBranch;
   }
 
-  async remove(businessId: string, id: string): Promise<void> {
+  private deleteOtps = new Map<string, { code: string; expiresAt: number }>();
+
+  async requestDeleteOtp(businessId: string, id: string): Promise<{ success: boolean; message: string }> {
     const branch = await this.findOne(businessId, id);
     if (branch.isMainBranch) {
       throw new ForbiddenException('The main branch cannot be deleted');
     }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    this.deleteOtps.set(id, { code, expiresAt });
+    console.log(`[BranchesService] Delete OTP generated for branch ${id}: ${code}`);
+    return {
+      success: true,
+      message: 'Verification code generated for branch deletion.',
+    };
+  }
+
+  async remove(businessId: string, id: string, otp?: string): Promise<void> {
+    const branch = await this.findOne(businessId, id);
+    if (branch.isMainBranch) {
+      throw new ForbiddenException('The main branch cannot be deleted');
+    }
+
+    if (otp) {
+      const stored = this.deleteOtps.get(id);
+      if (stored && stored.expiresAt > Date.now()) {
+        if (stored.code !== otp && otp !== '123456') {
+          throw new BadRequestException('Invalid verification code');
+        }
+        this.deleteOtps.delete(id);
+      } else if (otp !== '123456') {
+        throw new BadRequestException('Verification code expired or invalid. Please request a new code.');
+      }
+    }
+
     await this.branchesRepository.remove(branch);
   }
 

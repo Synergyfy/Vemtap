@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from 'next/font/google';
+import { Inter, Geist } from 'next/font/google';
 import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
+
+const geist = Geist({
+    subsets: ["latin"],
+    weight: ["300", "400", "500", "600", "700", "800", "900"],
+    variable: "--font-geist",
+    display: "swap",
+});
 
 const inter = Inter({
     subsets: ["latin"],
@@ -86,7 +93,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className={`${inter.variable} ${GeistMono.variable}`}>
+        <html lang="en" className={`${geist.variable} ${inter.variable} ${GeistMono.variable}`}>
             <head>
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />  
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
@@ -94,7 +101,7 @@ export default function RootLayout({
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
             </head>
             <body
-                className={`${inter.className} antialiased`}
+                className={`${geist.className} antialiased`}
                 suppressHydrationWarning
             >
                 <QueryProvider>

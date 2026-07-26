@@ -5,6 +5,8 @@ import { SupportTicket, TicketStatus } from './entities/support-ticket.entity';
 import { TicketMessage } from './entities/ticket-message.entity';
 import { TicketActivity } from './entities/ticket-activity.entity';
 import { User } from '../users/entities/user.entity';
+import { SupportGateway } from './support.gateway';
+import { ConversationContextService } from './conversation-context.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('SupportService', () => {
@@ -56,6 +58,29 @@ describe('SupportService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
+        },
+        {
+          provide: SupportGateway,
+          useValue: {
+            emitTicketUpdate: jest.fn(),
+            emitNewMessage: jest.fn(),
+            emitTicketStatusUpdate: jest.fn(),
+          },
+        },
+        {
+          provide: ConversationContextService,
+          useValue: {
+            getOrCreateContext: jest.fn().mockResolvedValue({
+              id: 'conv-1',
+              messages: [],
+              context: {},
+              userResponses: {},
+            }),
+            addMessage: jest.fn().mockResolvedValue(undefined),
+            addUserResponse: jest.fn().mockResolvedValue(undefined),
+            getRecentMessages: jest.fn().mockResolvedValue([]),
+            clearContext: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

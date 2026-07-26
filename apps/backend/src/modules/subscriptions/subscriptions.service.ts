@@ -120,6 +120,30 @@ export class SubscriptionsService {
     });
   }
 
+  async cancelSubscription(businessId: string): Promise<{ message: string; subscription: Subscription }> {
+    const sub = await this.subscriptionRepository.findOne({
+      where: {
+        businessId,
+        status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
+      },
+      relations: ['plan'],
+    });
+
+    if (!sub) {
+      throw new NotFoundException('No active or trial subscription found for this business');
+    }
+
+    sub.status = SubscriptionStatus.CANCELED;
+    const updatedSub = await this.subscriptionRepository.save(sub);
+
+    this.logger.log(`Subscription ${sub.id} for business ${businessId} has been cancelled`);
+
+    return {
+      message: 'Subscription cancelled successfully',
+      subscription: updatedSub,
+    };
+  }
+
   async subscribe(
     subscribeDto: SubscribeDto & {
       addonIds?: string[];

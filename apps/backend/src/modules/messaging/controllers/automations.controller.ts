@@ -46,7 +46,7 @@ import { SessionIdDto } from '../dto/session-id.dto';
 @Controller('messaging/automations')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-@Permissions('messaging')
+@Permissions('messages')
 export class AutomationsController {
   constructor(private readonly automationService: AutomationService) {}
 

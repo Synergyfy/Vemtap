@@ -29,6 +29,7 @@ import {
   ReturningVisitorResponseDto,
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
+import { VisitorGrowthResponseDto } from './dto/visitor-growth.dto';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { VisitorSignupDto } from './dto/visitor-signup.dto';
 import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
@@ -323,6 +324,205 @@ export class VisitorsService {
         },
       ],
     };
+  }
+
+  async getGrowthChartData(
+    range: string = '7D',
+    branchId?: string,
+    businessId?: string,
+  ): Promise<VisitorGrowthResponseDto> {
+    const validRanges = ['7D', '30D', '90D', '12M'];
+    const activeRange = validRanges.includes(range) ? range : '7D';
+
+    try {
+      const now = new Date();
+      let startDate = new Date();
+      let buckets: { name: string; customers: number }[] = [];
+
+      if (activeRange === '7D') {
+        startDate.setDate(now.getDate() - 6);
+        startDate.setHours(0, 0, 0, 0);
+
+        const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const countsMap = new Map<string, number>();
+
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(startDate);
+          d.setDate(startDate.getDate() + i);
+          const dayName = daysOfWeek[d.getDay()];
+          countsMap.set(dayName, 0);
+        }
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('DATE(visit.createdAt)', 'date')
+          .addSelect('COUNT(DISTINCT visit.customerId)', 'count')
+          .where('visit.createdAt >= :startDate', { startDate });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const rawResults = await qb.groupBy('DATE(visit.createdAt)').getRawMany();
+
+        rawResults.forEach((row) => {
+          if (!row.date) return;
+          const dateStr = typeof row.date === 'string' ? row.date : row.date.toISOString();
+          const d = new Date(dateStr);
+          // Use UTC day to avoid timezone offset shifts on YYYY-MM-DD strings
+          const dayName = daysOfWeek[isNaN(d.getTime()) ? 0 : d.getUTCDay()];
+          if (countsMap.has(dayName)) {
+            countsMap.set(dayName, parseInt(row.count || '0', 10));
+          }
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      } else if (activeRange === '30D') {
+        startDate.setDate(now.getDate() - 30);
+        const countsMap = new Map<string, number>([
+          ['Week 1', 0],
+          ['Week 2', 0],
+          ['Week 3', 0],
+          ['Week 4', 0],
+        ]);
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('visit.createdAt', 'createdAt')
+          .where('visit.createdAt >= :startDate', { startDate });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const visits = await qb.getRawMany();
+        visits.forEach((v) => {
+          if (!v.createdAt) return;
+          const visitDate = new Date(v.createdAt);
+          if (isNaN(visitDate.getTime())) return;
+
+          const diffDays = Math.floor(
+            (now.getTime() - visitDate.getTime()) / (1000 * 60 * 60 * 24),
+          );
+          let weekKey = 'Week 4';
+          if (diffDays >= 22) weekKey = 'Week 1';
+          else if (diffDays >= 15) weekKey = 'Week 2';
+          else if (diffDays >= 8) weekKey = 'Week 3';
+
+          countsMap.set(weekKey, (countsMap.get(weekKey) || 0) + 1);
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      } else if (activeRange === '90D') {
+        const monthNames = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        startDate.setMonth(now.getMonth() - 2);
+        startDate.setDate(1);
+
+        const countsMap = new Map<string, number>();
+        for (let i = 0; i < 3; i++) {
+          const m = new Date(startDate);
+          m.setMonth(startDate.getMonth() + i);
+          countsMap.set(monthNames[m.getMonth()], 0);
+        }
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('visit.createdAt', 'createdAt')
+          .where('visit.createdAt >= :startDate', { startDate });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const visits = await qb.getRawMany();
+        visits.forEach((v) => {
+          if (!v.createdAt) return;
+          const visitDate = new Date(v.createdAt);
+          if (isNaN(visitDate.getTime())) return;
+
+          const mName = monthNames[visitDate.getMonth()];
+          if (countsMap.has(mName)) {
+            countsMap.set(mName, (countsMap.get(mName) || 0) + 1);
+          }
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      } else if (activeRange === '12M') {
+        const countsMap = new Map<string, number>([
+          ['Q1', 0],
+          ['Q2', 0],
+          ['Q3', 0],
+          ['Q4', 0],
+        ]);
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('visit.createdAt', 'createdAt')
+          .where('visit.createdAt >= :startDate', {
+            startDate: new Date(now.getFullYear(), 0, 1),
+          });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const visits = await qb.getRawMany();
+        visits.forEach((v) => {
+          if (!v.createdAt) return;
+          const visitDate = new Date(v.createdAt);
+          if (isNaN(visitDate.getTime())) return;
+
+          const qIndex = Math.floor(visitDate.getMonth() / 3);
+          const qKey = `Q${qIndex + 1}`;
+          if (countsMap.has(qKey)) {
+            countsMap.set(qKey, (countsMap.get(qKey) || 0) + 1);
+          }
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      }
+
+      return {
+        range: activeRange,
+        data: buckets,
+      };
+    } catch (error) {
+      console.error('[VisitorsService] Error generating growth chart data:', error);
+      throw new BadRequestException('Failed to generate growth chart data');
+    }
   }
 
   async create(

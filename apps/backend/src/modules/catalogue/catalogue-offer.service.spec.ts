@@ -22,6 +22,9 @@ describe('CatalogueOfferService', () => {
   let claimRepo: any;
   let otpRepo: any;
   let mailService: any;
+  let subscriptionsService: any;
+  let branchRepo: any;
+  let itemRepo: any;
 
   const mockOffer = {
     id: 'offer-1',
@@ -86,24 +89,26 @@ describe('CatalogueOfferService', () => {
       sendOtp: jest.fn().mockResolvedValue(true),
     };
 
+    subscriptionsService = {
+      getCapabilities: jest.fn().mockResolvedValue({
+        capabilities: {
+          catalogueOffers: { enabled: true, limit: 'unlimited' },
+        },
+      }),
+    };
+
+    branchRepo = { findOne: jest.fn().mockResolvedValue(null) };
+    itemRepo = { find: jest.fn().mockResolvedValue([]) };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CatalogueOfferService,
         { provide: getRepositoryToken(CatalogueOffer), useValue: offerRepo },
-        { provide: getRepositoryToken(CatalogueItem), useValue: {} },
-        { provide: getRepositoryToken(Branch), useValue: {} },
+        { provide: getRepositoryToken(CatalogueItem), useValue: itemRepo },
+        { provide: getRepositoryToken(Branch), useValue: branchRepo },
         { provide: getRepositoryToken(CatalogueOfferClaim), useValue: claimRepo },
         { provide: getRepositoryToken(Otp), useValue: otpRepo },
-        {
-          provide: SubscriptionsService,
-          useValue: {
-            getCapabilities: jest.fn().mockResolvedValue({
-              capabilities: {
-                catalogueOffers: { enabled: true, limit: 'unlimited' },
-              },
-            }),
-          },
-        },
+        { provide: SubscriptionsService, useValue: subscriptionsService },
         { provide: MailService, useValue: mailService },
         {
           provide: CACHE_MANAGER,
@@ -117,6 +122,67 @@ describe('CatalogueOfferService', () => {
     }).compile();
 
     service = module.get<CatalogueOfferService>(CatalogueOfferService);
+  });
+
+  describe('createOffer', () => {
+    it('should create an offer with galleryImages', async () => {
+      const createDto = {
+        name: 'Summer Deal',
+        description: 'Great summer deal',
+        pricingType: CatalogueOfferPricingType.SUM,
+        branchId: 'branch-1',
+        itemIds: ['item-1'],
+        mainImage: 'https://image.com/main.jpg',
+        galleryImages: ['https://image.com/gal1.jpg', 'https://image.com/gal2.jpg'],
+      };
+      const savedOffer = { id: 'offer-new', ...createDto, businessId: 'biz-1', calculatedPrice: 100 };
+
+      branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
+      itemRepo.find.mockResolvedValue([{ id: 'item-1', branches: [{ id: 'branch-1' }], price: 100 }]);
+      offerRepo.create = jest.fn().mockReturnValue(savedOffer);
+      offerRepo.save = jest.fn().mockResolvedValue(savedOffer);
+
+      const result = await service.createOffer(createDto as any, 'biz-1');
+      expect(result.mainImage).toBe('https://image.com/main.jpg');
+      expect(result.galleryImages).toEqual(['https://image.com/gal1.jpg', 'https://image.com/gal2.jpg']);
+    });
+
+    it('should throw ForbiddenException if catalogue disabled', async () => {
+      subscriptionsService.getCapabilities = jest.fn().mockResolvedValue({
+        capabilities: { catalogueOffers: { enabled: false } },
+      });
+
+      await expect(
+        service.createOffer({ name: 'Test' } as any, 'biz-1')
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('updateOffer', () => {
+    it('should update galleryImages on an offer', async () => {
+      const existingOffer = {
+        id: 'offer-1',
+        name: 'Old Deal',
+        galleryImages: ['https://image.com/old.jpg'],
+        businessId: 'biz-1',
+        branchId: 'branch-1',
+        items: [{ id: 'item-1', branches: [{ id: 'branch-1' }], price: 100 }],
+        calculatedPrice: 50,
+      };
+      offerRepo.findOne = jest.fn().mockResolvedValue(existingOffer);
+      offerRepo.save = jest.fn().mockImplementation((o) => Promise.resolve(o));
+
+      const updateDto = { galleryImages: ['https://image.com/new1.jpg', 'https://image.com/new2.jpg'] };
+      const result = await service.updateOffer('offer-1', updateDto as any, 'biz-1');
+      expect(result.galleryImages).toEqual(['https://image.com/new1.jpg', 'https://image.com/new2.jpg']);
+    });
+
+    it('should throw NotFoundException if offer not found', async () => {
+      offerRepo.findOne = jest.fn().mockResolvedValue(null);
+      await expect(
+        service.updateOffer('invalid', {} as any, 'biz-1')
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 
   describe('requestClaimOtp', () => {

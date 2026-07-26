@@ -14,8 +14,17 @@ export interface ChatMessage {
  * to ensure privacy and reduce client-side complexity.
  */
 export async function generateChatResponse(messages: ChatMessage[], context?: string): Promise<string> {
-  const lastMessage = messages[messages.length - 1].content;
+  if (!messages || messages.length === 0) {
+    return "Hello! How can I help you today?";
+  }
+
+  const lastMsg = messages[messages.length - 1];
+  const lastMessage = lastMsg?.content || '';
   
+  if (!lastMessage.trim()) {
+    return "Hello! How can I help you today?";
+  }
+
   // 1. Try to find in Knowledge Base directly
   const kbContent = searchKnowledgeBase(lastMessage);
   if (kbContent) {

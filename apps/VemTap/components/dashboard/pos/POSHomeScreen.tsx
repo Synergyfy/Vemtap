@@ -21,7 +21,7 @@ interface POSHomeScreenProps {
 
 export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = false, headerActions }: POSHomeScreenProps) {
   const router = useRouter();
-  const { cart, addToCart } = usePosStore();
+  const { cart, addToCart, removeFromCart } = usePosStore();
   const { activeBranchId } = useActiveBranch();
   
   const branchId = isPublic ? businessCode : activeBranchId;
@@ -35,7 +35,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   const [categorySearch, setCategorySearch] = useState('');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const categoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,9 +48,19 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Focus search input automatically for high-speed barcode scanning & manual lookup
+    searchInputRef.current?.focus();
+  }, []);
+
   const filteredProducts = products.filter((p: any) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = p.name.toLowerCase().includes(query) ||
+      (p.barcode && p.barcode.toLowerCase().includes(query)) ||
+      (p.sku && p.sku.toLowerCase().includes(query)) ||
+      (p.brand && p.brand.toLowerCase().includes(query));
     const matchesCategory = activeCategory === 'all' || p.categoryId === activeCategory;
     return matchesSearch && matchesCategory && p.status !== 'suspended' && p.status !== 'out_of_stock';
   });
@@ -132,21 +142,22 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full p-6 md:p-8 overflow-hidden">
       {!isPublic && (
-        <div className="shrink-0 px-4 pt-4 md:px-0 md:pt-0">
+        <div className="shrink-0 mb-6 pt-2 px-4">
           <POSPageHeader title="Point of Sale" showBack={false} />
         </div>
       )}
 
-      <div className="shrink-0 px-4 md:px-0 mb-4 space-y-4">
+      <div className="shrink-0 mb-5 space-y-4 px-4">
         {/* Search bar + Quick Actions row */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-[320px]">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-[360px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Search products or scan barcode..."
+              placeholder="Search products, barcode, SKU, brand..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-12 md:h-14 pl-12 pr-12 rounded-[24px] border border-gray-200 bg-white shadow-sm focus:outline-none focus:border-[#066CF4]/50 focus:ring-4 focus:ring-[#066CF4]/10 text-sm font-bold text-gray-900 transition-all placeholder:font-medium placeholder:text-gray-400"
@@ -232,8 +243,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
       </div>
 
       {/* View toggle */}
-      <div className="shrink-0 px-4 md:px-0 mb-3 flex items-center justify-between">
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{filteredProducts.length} items</span>
+      <div className="shrink-0 mb-4 px-4 flex items-center justify-between">
+        <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{filteredProducts.length} items</span>
         <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
           <button
             onClick={() => setViewMode('list')}
@@ -257,10 +268,10 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
       </div>
 
       {/* Product grid — scrollable independently */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-0 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-6">
         {filteredProducts.length > 0 ? (
           viewMode === 'grid' ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2.5 sm:gap-3">
             {filteredProducts.map((product: any) => {
               const stockWarning = product.stockQuantity <= (product.minStock || 5) && product.stockQuantity > 0;
               const outOfStock = product.stockQuantity === 0;
@@ -269,27 +280,33 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
               return (
                 <button
                   key={product.id}
-                  disabled={outOfStock || inCart}
-                  onClick={() => addToCart({
-                    id: product.id,
-                    productId: product.id,
-                    name: product.name,
-                    price: product.price,
-                    costPrice: product.costPrice || 0,
-                    quantity: 1,
-                    stockQuantity: product.stockQuantity,
-                    sku: product.sku,
-                    barcode: product.barcode,
-                    image: product.mainImage,
-                    enableLoyaltyPoints: product.enableLoyaltyPoints || false,
-                    loyaltyPointsValue: product.loyaltyPointsValue || 0,
-                  })}
+                  disabled={outOfStock}
+                  onClick={() => {
+                    if (inCart) {
+                      removeFromCart(product.id);
+                    } else {
+                      addToCart({
+                        id: product.id,
+                        productId: product.id,
+                        name: product.name,
+                        price: product.price,
+                        costPrice: product.costPrice || 0,
+                        quantity: 1,
+                        stockQuantity: product.stockQuantity,
+                        sku: product.sku,
+                        barcode: product.barcode,
+                        image: product.mainImage,
+                        enableLoyaltyPoints: product.enableLoyaltyPoints || false,
+                        loyaltyPointsValue: product.loyaltyPointsValue || 0,
+                      });
+                    }
+                  }}
                   className={cn(
                     "flex flex-col text-left bg-white border rounded-[28px] p-3 shadow-sm transition-all relative group",
                     outOfStock
                       ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
                       : inCart
-                        ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 cursor-default"
+                        ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 hover:bg-[#066CF4]/10 cursor-pointer"
                         : "border-gray-100 hover:border-[#066CF4]/30 hover:shadow-md active:scale-95"
                   )}
                 >
@@ -300,6 +317,9 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     {stockWarning && !outOfStock && (
                       <span className="bg-amber-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shadow-sm">Low</span>
                     )}
+                    {inCart && (
+                      <span className="bg-[#066CF4] text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shadow-sm">Selected</span>
+                    )}
                   </div>
 
                   <div className="w-full aspect-square bg-gray-50 rounded-[20px] mb-3 flex items-center justify-center border border-gray-100 overflow-hidden relative group-hover:bg-[#066CF4]/5 transition-colors">
@@ -309,12 +329,16 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                       <LayoutGrid size={32} className="text-gray-300 group-hover:text-[#066CF4]/30 transition-colors" />
                     )}
                   </div>
-                  <div className="px-1 flex-1 flex flex-col justify-between">
-                    <h3 className="text-xs font-black text-gray-900 leading-snug line-clamp-2 mb-1">{product.name}</h3>
-                    <div className="flex items-center justify-between mt-auto pt-1">
-                      <span className="text-[11px] font-black text-[#066CF4]">₦{product.price.toLocaleString()}</span>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{product.stockQuantity} left</span>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-xs md:text-sm font-black text-gray-900 truncate mb-1" title={product.name}>
+                      {product.name}
+                    </h3>
+                    <p className="text-xs font-extrabold text-[#066CF4]">
+                      ₦{product.price.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
+                      {product.stockQuantity} left
+                    </p>
                   </div>
                 </button>
               );
@@ -330,27 +354,33 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                 return (
                   <button
                     key={product.id}
-                    disabled={outOfStock || inCart}
-                    onClick={() => addToCart({
-                      id: product.id,
-                      productId: product.id,
-                      name: product.name,
-                      price: product.price,
-                      costPrice: product.costPrice || 0,
-                      quantity: 1,
-                      stockQuantity: product.stockQuantity,
-                      sku: product.sku,
-                      barcode: product.barcode,
-                      image: product.mainImage,
-                      enableLoyaltyPoints: product.enableLoyaltyPoints || false,
-                      loyaltyPointsValue: product.loyaltyPointsValue || 0,
-                    })}
+                    disabled={outOfStock}
+                    onClick={() => {
+                      if (inCart) {
+                        removeFromCart(product.id);
+                      } else {
+                        addToCart({
+                          id: product.id,
+                          productId: product.id,
+                          name: product.name,
+                          price: product.price,
+                          costPrice: product.costPrice || 0,
+                          quantity: 1,
+                          stockQuantity: product.stockQuantity,
+                          sku: product.sku,
+                          barcode: product.barcode,
+                          image: product.mainImage,
+                          enableLoyaltyPoints: product.enableLoyaltyPoints || false,
+                          loyaltyPointsValue: product.loyaltyPointsValue || 0,
+                        });
+                      }
+                    }}
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2.5 bg-white border rounded-2xl shadow-sm transition-all text-left",
                       outOfStock
                         ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
                         : inCart
-                          ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 cursor-default"
+                          ? "border-[#066CF4] ring-2 ring-[#066CF4]/20 bg-[#066CF4]/5 hover:bg-[#066CF4]/10 cursor-pointer"
                           : "border-gray-100 hover:border-[#066CF4]/30 hover:shadow-md active:scale-[0.99]"
                     )}
                   >

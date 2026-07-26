@@ -510,4 +510,15 @@ describe('SubscriptionsService', () => {
       });
     });
   });
+
+  describe('cancelSubscription', () => {
+    it('should cancel active subscription successfully', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce(mockSubscription);
+      mockSubRepository.save.mockImplementationOnce((sub) => Promise.resolve(sub));
+
+      const result = await service.cancelSubscription('b1');
+      expect(result.message).toBe('Subscription cancelled successfully');
+      expect(result.subscription.status).toBe(SubscriptionStatus.CANCELED);
+    });
+  });
 });
