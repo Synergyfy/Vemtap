@@ -15,7 +15,7 @@ import {
 } from '@/services/catalogue/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import toast from 'react-hot-toast';
-import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Coins, HelpCircle, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Coins, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { generateBarcodeValue, isValidBarcode } from '@/lib/barcode';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,6 @@ import Cropper, { Point, Area } from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
-import Tooltip from '@/components/ui/Tooltip';
 
 const CropperModal: React.FC<{
     image: string;
@@ -499,35 +498,22 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 className="space-y-4"
                             >
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center gap-1">
-                                        <label className="text-xs font-semibold text-text-secondary">Product Name *</label>
-                                        <Tooltip content="The name customers will see on your menu and receipts.">
-                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                        </Tooltip>
-                                    </div>
+                                    <label className="text-xs font-semibold text-text-secondary">Product Name *</label>
                                     <input {...register('name')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
+                                    <p className="text-[10px] text-text-secondary font-medium">The name customers will see on your menu and receipts.</p>
                                     {errors.name && <p className="text-[10px] text-red-500 font-semibold">{errors.name.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center gap-1">
-                                        <label className="text-xs font-semibold text-text-secondary">Description *</label>
-                                        <Tooltip content="Detailed information about ingredients, preparation, or usage.">
-                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                        </Tooltip>
-                                    </div>
+                                    <label className="text-xs font-semibold text-text-secondary">Description *</label>
                                     <textarea {...register('description')} rows={3} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none resize-none" placeholder="Detailed product information..." />
+                                    <p className="text-[10px] text-text-secondary font-medium">Detailed information about ingredients, preparation, or usage.</p>
                                     {errors.description && <p className="text-[10px] text-red-500 font-semibold">{errors.description.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">Category *</label>
-                                            <Tooltip content="Group this product under a category for easier browsing.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">Category *</label>
                                         <button type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)} className="text-[10px] text-primary font-semibold hover:underline flex items-center gap-1">
                                             <Plus size={10} /> {isCreatingCategory ? 'Cancel' : 'New Category'}
                                         </button>
@@ -543,19 +529,16 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                                         </select>
                                     )}
+                                    <p className="text-[10px] text-text-secondary font-medium">Group this product under a category for easier browsing.</p>
                                     {errors.categoryId && <p className="text-[10px] text-red-500 font-semibold">{errors.categoryId.message}</p>}
                                 </div>
 
                                 <div className="border-t border-gray-100 pt-3 space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">Weight</label>
-                                            <Tooltip content="Product weight for shipping or serving sizes.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">Weight</label>
                                         <Switch checked={showWeight} onCheckedChange={setShowWeight} />
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-2">Product weight for shipping or serving sizes.</p>
                                     {showWeight && (
                                         <div className="flex gap-2">
                                             <input
@@ -580,14 +563,10 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">Dimensions (L × W × H)</label>
-                                            <Tooltip content="Length, Width, and Height for packaging or shipping.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">Dimensions (L × W × H)</label>
                                         <Switch checked={showDimensions} onCheckedChange={setShowDimensions} />
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-2">Length, Width, and Height for packaging or shipping.</p>
                                     {showDimensions && (
                                         <div className="flex flex-row items-center gap-2">
                                             <div className="grid grid-cols-3 flex-1 gap-1">
@@ -648,23 +627,16 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 className="space-y-4"
                             >
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center gap-1">
-                                        <label className="text-xs font-semibold text-text-secondary">Original Price (₦) *</label>
-                                        <Tooltip content="Base price before any discounts are applied.">
-                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                        </Tooltip>
-                                    </div>
+                                    <label className="text-xs font-semibold text-text-secondary">Original Price (₦) *</label>
                                     <input type="number" step="0.01" {...register('price')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.price ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} />
+                                    <p className="text-[10px] text-text-secondary font-medium">Base price before any discounts are applied.</p>
                                     {errors.price && <p className="text-[10px] text-red-500 font-semibold">{errors.price.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2">
                                         <Tag size={14} className="text-primary" />
                                         <label className="text-xs font-semibold text-text-secondary">Barcode</label>
-                                        <Tooltip content="Scanned at POS to auto-add to cart. Leave empty to auto-generate on save.">
-                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                        </Tooltip>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2">
                                         <input {...register('barcode')} className="w-full sm:flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
@@ -672,6 +644,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             Auto-Generate
                                         </button>
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium">Scanned at POS to auto-add to cart. Leave empty to auto-generate on save.</p>
                                     <canvas ref={barcodeCanvasRef} className="hidden" />
                                     {barcodePreview && (
                                         <div className="mt-2 p-3 bg-white border border-gray-100 rounded-xl flex items-center justify-center">
@@ -682,12 +655,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">Discount Type</label>
-                                            <Tooltip content="Percentage Off reduces price by a fraction, Fixed Price sets a specific discounted amount.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">Discount Type</label>
                                         <select
                                             {...register('discountType')}
                                             className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer"
@@ -696,6 +664,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <option value="percentage">Percentage Off (%)</option>
                                             <option value="fixed">Fixed Price (₦)</option>
                                         </select>
+                                        <p className="text-[10px] text-text-secondary font-medium">Percentage Off reduces price by a fraction, Fixed Price sets a specific amount.</p>
                                     </div>
 
                                     {selectedDiscountType !== 'none' && (
@@ -720,38 +689,26 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">SKU</label>
-                                            <Tooltip content="Stock Keeping Unit — your internal product reference code.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">SKU</label>
                                         <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="Optional" />
+                                        <p className="text-[10px] text-text-secondary font-medium">Stock Keeping Unit — your internal product reference code.</p>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">Branch *</label>
-                                            <Tooltip content="The branch where this product will be available for sale.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">Branch *</label>
                                         <select {...register('branchId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer">
                                             <option value="">Select Branch</option>
                                             {branches.map((branch: any) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
                                         </select>
+                                        <p className="text-[10px] text-text-secondary font-medium">The branch where this product will be available for sale.</p>
                                         {errors.branchId && <p className="text-[10px] text-red-500 font-semibold">{errors.branchId.message}</p>}
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">Stock Quantity</label>
-                                            <Tooltip content="Current inventory count. Leave at 0 for unlimited or digital products.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">Stock Quantity</label>
                                         <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="0" />
+                                        <p className="text-[10px] text-text-secondary font-medium">Current inventory count. Leave at 0 for unlimited or digital products.</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -759,24 +716,18 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <div className="flex items-center gap-2">
                                                 <Coins size={14} className="text-amber-500" />
                                                 <label className="text-xs font-semibold text-text-secondary">Loyalty Points</label>
-                                                <Tooltip content="Award points to customers when this product is purchased.">
-                                                    <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                                </Tooltip>
                                             </div>
                                             <Switch
                                                 checked={watch('enableLoyaltyPoints')}
                                                 onCheckedChange={(v) => setValue('enableLoyaltyPoints', v)}
                                             />
                                         </div>
+                                        <p className="text-[10px] text-text-secondary font-medium">Award points to customers when this product is purchased.</p>
                                         {watch('enableLoyaltyPoints') && (
                                             <div className="space-y-1.5">
-                                                <div className="flex items-center gap-1">
-                                                    <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
-                                                    <Tooltip content="Points earned per unit sold. Customer earns this × quantity.">
-                                                        <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                                    </Tooltip>
-                                                </div>
+                                                <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
                                                 <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-medium text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
+                                                <p className="text-[10px] text-amber-700 font-medium">Points awarded per unit sold. Customer earns this × quantity.</p>
                                             </div>
                                         )}
                                     </div>
@@ -811,13 +762,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 className="space-y-5"
                             >
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-1">
-                                        <label className="text-xs font-semibold text-text-secondary">Main Product Image</label>
-                                        <Tooltip content="Upload a square image. This will be the primary photo on your menu.">
-                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                        </Tooltip>
-                                    </div>
+                                    <label className="text-xs font-semibold text-text-secondary">Main Product Image</label>
                                     <input type="file" ref={mainInputRef} onChange={handleMainUpload} accept="image/*" className="hidden" />
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-1">Upload a square image. This will be the primary photo on your menu.</p>
                                     <div
                                         onClick={() => mainInputRef.current?.click()}
                                         className={cn(
@@ -845,14 +792,10 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-xs font-semibold text-text-secondary">Gallery Images</label>
-                                            <Tooltip content="Additional photos to showcase your product from different angles.">
-                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
-                                            </Tooltip>
-                                        </div>
+                                        <label className="text-xs font-semibold text-text-secondary">Gallery Images</label>
                                         <span className="text-[10px] font-semibold text-gray-400">{galleryPreviews.length} images</span>
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-1">Additional photos to showcase your product from different angles.</p>
                                     <input type="file" ref={galleryInputRef} onChange={handleGalleryUpload} accept="image/*" className="hidden" />
                                     <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                                         {galleryPreviews.map((url, idx) => (
