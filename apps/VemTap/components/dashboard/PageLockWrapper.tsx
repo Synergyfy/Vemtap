@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-import UpgradeModal from './UpgradeModal';
-import { Lock } from 'lucide-react';
+import { Lock, Zap, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 interface PageLockWrapperProps {
   children: React.ReactNode;
@@ -15,7 +15,6 @@ interface PageLockWrapperProps {
 export default function PageLockWrapper({ children, feature, featureName }: PageLockWrapperProps) {
   const pathname = usePathname();
   const { isFeatureLocked, fetchCapabilities, capabilities, isLoading } = useSubscriptionStore();
-  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (!capabilities) {
@@ -23,57 +22,61 @@ export default function PageLockWrapper({ children, feature, featureName }: Page
     }
   }, [capabilities, fetchCapabilities]);
 
-  // Close modal on navigation
-  useEffect(() => {
-    setShowModal(false);
-  }, [pathname]);
-
   const locked = isFeatureLocked(feature);
-
-  useEffect(() => {
-    if (locked && !isLoading) {
-      setShowModal(true);
-    }
-  }, [locked, isLoading]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   if (locked) {
     return (
-      <div className="relative min-h-[calc(100vh-4rem)] bg-gray-50/50 flex flex-col items-center justify-center p-8">
-        <div className="absolute inset-0 overflow-hidden opacity-10 pointer-events-none filter blur-sm">
+      <>
+        {/* Blurred background content */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none select-none blur-sm">
+          <div className="w-full h-full opacity-20">
             {children}
-        </div>
-        
-        <div className="text-center z-10 max-w-md">
-            <div className="size-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-primary mx-auto mb-6 border border-gray-100">
-                <Lock size={40} />
-            </div>
-            <h2 className="text-3xl font-display font-bold text-text-main mb-3">Locked Feature</h2>
-            <p className="text-text-secondary font-medium mb-8">
-                The {featureName} module is not included in your current plan. Please upgrade to unlock this and more.
-            </p>
-            
-            <button
-                onClick={() => setShowModal(true)}
-                className="inline-flex items-center justify-center gap-2 h-12 px-8 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
-            >
-                Upgrade Plan
-            </button>
+          </div>
         </div>
 
-        <UpgradeModal 
-          isOpen={showModal} 
-          onClose={() => setShowModal(false)} 
-          featureName={featureName}
-        />
-      </div>
+        {/* Unclosable lock modal */}
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200">
+            <div className="size-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-6">
+              <Lock size={32} />
+            </div>
+
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              {featureName} Locked
+            </h2>
+            <p className="text-gray-500 font-medium mb-8 leading-relaxed">
+              Your current plan does not include access to {featureName}.
+              Upgrade to unlock this and other advanced tools for your business.
+            </p>
+
+            <div className="space-y-3">
+              <Link
+                href="/dashboard/settings/subscription"
+                className="w-full flex items-center justify-center gap-2 h-12 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+              >
+                <Zap size={18} />
+                View Upgrade Options
+              </Link>
+
+              <a
+                href="mailto:hello@vemtap.com?subject=Premium Trial Request"
+                className="w-full flex items-center justify-center gap-2 h-12 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all"
+              >
+                Contact Sales for a Trial
+                <ArrowRight size={16} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
