@@ -50,7 +50,12 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         level: PermissionLevel,
         limit?: number
     ): Partial<PricingPlan> => {
-        switch (featureId) {
+        // Normalise nav-tree IDs to canonical feature IDs used in mapPlanToConfig
+        const canonicalId = (
+            { branches: 'locations' } as Record<string, string>
+        )[featureId] || featureId;
+
+        switch (canonicalId) {
             case 'catalogue':
                 return {
                     catalogueEnabled: level !== 'no',
