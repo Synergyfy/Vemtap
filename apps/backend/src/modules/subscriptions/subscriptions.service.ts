@@ -586,6 +586,9 @@ export class SubscriptionsService {
    * Retries with exponential backoff on failure (max 3 attempts).
    */
   async syncUserSubscriptionToQrThrive(businessId: string) {
+    if (!this.qrThriveService?.isQrThriveEnabled) {
+      return;
+    }
     try {
       const business = await this.businessRepository.findOne({
         where: { id: businessId },
