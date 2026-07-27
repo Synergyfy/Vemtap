@@ -58,9 +58,9 @@ const CropperModal: React.FC<{
                 animate={{ scale: 1, opacity: 1 }}
                 className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden relative shadow-2xl"
             >
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                     <div>
-                        <h3 className="text-xl font-display font-black text-slate-900">Crop Product Image</h3>
+                        <h3 className="text-lg font-semibold text-slate-900">Crop Product Image</h3>
                         <p className="text-xs text-slate-500 font-medium">Position your image for the best view</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
@@ -80,7 +80,7 @@ const CropperModal: React.FC<{
 
                 <div className="p-6 bg-white flex flex-col gap-6">
                     <div className="space-y-3">
-                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
+                        <div className="flex justify-between text-xs font-semibold uppercase tracking-widest text-slate-400">
                             <span>Zoom</span>
                             <span>{Math.round(zoom * 100)}%</span>
                         </div>
@@ -95,8 +95,8 @@ const CropperModal: React.FC<{
                         />
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={onClose} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all cursor-pointer">Cancel</button>
-                        <button onClick={handleSave} className="flex-2 py-4 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all cursor-pointer">Apply Crop</button>
+                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 font-semibold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-all cursor-pointer">Cancel</button>
+                        <button onClick={handleSave} className="flex-2 py-3 bg-primary text-white font-semibold text-xs uppercase tracking-widest rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all cursor-pointer">Apply Crop</button>
                     </div>
                 </div>
             </motion.div>
@@ -454,21 +454,21 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             >
                 <form onSubmit={handleSubmit(onSubmit)}>
                     {/* Step Indicator */}
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-6">
                         {STEPS.map((step, idx) => (
                             <React.Fragment key={idx}>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 sm:gap-3">
                                     <div className={cn(
-                                        "size-10 rounded-full flex items-center justify-center text-sm font-black transition-all shrink-0",
+                                        "size-8 sm:size-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all shrink-0",
                                         idx < currentStep ? "bg-[#066CF4] text-white" :
                                         idx === currentStep ? "bg-[#066CF4] text-white ring-4 ring-[#066CF4]/20" :
                                         "bg-gray-100 text-gray-400"
                                     )}>
-                                        {idx < currentStep ? <Check size={18} /> : idx + 1}
+                                        {idx < currentStep ? <Check size={14} /> : idx + 1}
                                     </div>
                                     <div className="hidden sm:block">
                                         <p className={cn(
-                                            "text-xs font-black uppercase tracking-widest",
+                                            "text-xs font-semibold",
                                             idx <= currentStep ? "text-gray-900" : "text-gray-400"
                                         )}>{step.title}</p>
                                         <p className="text-[10px] text-gray-400 font-medium">{step.description}</p>
@@ -476,7 +476,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 </div>
                                 {idx < STEPS.length - 1 && (
                                     <div className={cn(
-                                        "flex-1 h-px mx-4",
+                                        "flex-1 h-px mx-2 sm:mx-4",
                                         idx < currentStep ? "bg-[#066CF4]" : "bg-gray-200"
                                     )} />
                                 )}
@@ -485,45 +485,43 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     </div>
 
                     {/* Step Content */}
-                    <div className="min-h-[320px]">
+                    <div className="min-h-[280px]">
                         {currentStep === 0 && (
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="space-y-5"
+                                className="space-y-4"
                             >
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Product Name *</label>
-                                    <input {...register('name')} className={cn("w-full h-14 px-4 bg-gray-50 border rounded-2xl font-bold text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
-                                    <p className="text-[10px] text-text-secondary font-medium ml-1">The name customers will see on your menu and receipts.</p>
-                                    {errors.name && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.name.message}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-text-secondary">Product Name *</label>
+                                    <input {...register('name')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
+                                    {errors.name && <p className="text-[10px] text-red-500 font-semibold">{errors.name.message}</p>}
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Category *</label>
-                                        <button type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)} className="text-[10px] text-primary font-bold uppercase tracking-widest hover:underline flex items-center gap-1">
+                                        <label className="text-xs font-semibold text-text-secondary">Category *</label>
+                                        <button type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)} className="text-[10px] text-primary font-semibold hover:underline flex items-center gap-1">
                                             <Plus size={10} /> {isCreatingCategory ? 'Cancel' : 'New Category'}
                                         </button>
                                     </div>
                                     {isCreatingCategory ? (
                                         <div className="flex gap-2">
-                                            <input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="Category Name" />
-                                            <button type="button" onClick={handleCreateCategory} disabled={!newCategoryName || createCategoryMutation.isPending} className="h-12 px-4 bg-primary text-white rounded-xl font-bold text-sm disabled:opacity-50">Add</button>
+                                            <input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="Category Name" />
+                                            <button type="button" onClick={handleCreateCategory} disabled={!newCategoryName || createCategoryMutation.isPending} className="h-12 px-4 bg-primary text-white rounded-xl font-semibold text-sm disabled:opacity-50">Add</button>
                                         </div>
                                     ) : (
-                                        <select {...register('categoryId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer">
+                                        <select {...register('categoryId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer">
                                             <option value="">Select Category</option>
                                             {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                                         </select>
                                     )}
-                                    {errors.categoryId && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.categoryId.message}</p>}
-                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Group this product under a category for easier browsing.</p>
+                                    {errors.categoryId && <p className="text-[10px] text-red-500 font-semibold">{errors.categoryId.message}</p>}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Weight</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">Weight</label>
                                         <div className="flex gap-2">
                                             <input
                                                 type="number"
@@ -531,21 +529,20 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                 min={0}
                                                 value={weightValue}
                                                 onChange={e => setWeightValue(e.target.value)}
-                                                className="w-24 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                className="w-24 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                 placeholder="0"
                                             />
                                             <select
                                                 value={weightUnit}
                                                 onChange={e => setWeightUnit(e.target.value)}
-                                                className="flex-1 h-12 px-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer"
+                                                className="flex-1 h-12 px-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer"
                                             >
                                                 {weightUnits.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Enter a number and select the unit.</p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Dimensions (L × W × H)</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">Dimensions (L × W × H)</label>
                                         <div className="flex flex-row items-center gap-2">
                                             <div className="grid grid-cols-3 flex-1 gap-1">
                                                 <div className="relative">
@@ -555,10 +552,10 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                         min={0}
                                                         value={dimLength}
                                                         onChange={e => setDimLength(e.target.value)}
-                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                         placeholder="L"
                                                     />
-                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-black text-gray-400">L</span>
+                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-semibold text-gray-400">L</span>
                                                 </div>
                                                 <div className="relative">
                                                     <input
@@ -567,10 +564,10 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                         min={0}
                                                         value={dimWidth}
                                                         onChange={e => setDimWidth(e.target.value)}
-                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                         placeholder="W"
                                                     />
-                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-black text-gray-400">W</span>
+                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-semibold text-gray-400">W</span>
                                                 </div>
                                                 <div className="relative">
                                                     <input
@@ -579,29 +576,27 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                         min={0}
                                                         value={dimHeight}
                                                         onChange={e => setDimHeight(e.target.value)}
-                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        className="w-full h-12 px-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                         placeholder="H"
                                                     />
-                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-black text-gray-400">H</span>
+                                                    <span className="absolute -top-1.5 left-2 bg-gray-50 px-1 text-[8px] font-semibold text-gray-400">H</span>
                                                 </div>
                                             </div>
                                             <select
                                                 value={dimUnit}
                                                 onChange={e => setDimUnit(e.target.value)}
-                                                className="w-16 sm:w-20 h-12 px-1 sm:px-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-[10px] sm:text-xs outline-none cursor-pointer shrink-0"
+                                                className="w-16 sm:w-20 h-12 px-1 sm:px-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-[10px] sm:text-xs outline-none cursor-pointer shrink-0"
                                             >
                                                 {dimUnits.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Length, Width, and Height with unit selector.</p>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Description *</label>
-                                    <textarea {...register('description')} rows={3} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none resize-none" placeholder="Detailed product information about ingredients, preparation, or usage..." />
-                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Detailed information about ingredients, preparation, or usage.</p>
-                                    {errors.description && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.description.message}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-text-secondary">Description *</label>
+                                    <textarea {...register('description')} rows={3} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none resize-none" placeholder="Detailed product information..." />
+                                    {errors.description && <p className="text-[10px] text-red-500 font-semibold">{errors.description.message}</p>}
                                 </div>
                             </motion.div>
                         )}
@@ -610,125 +605,111 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="space-y-5"
+                                className="space-y-4"
                             >
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Original Price (₦) *</label>
-                                    <input type="number" step="0.01" {...register('price')} className={cn("w-full h-14 px-4 bg-gray-50 border rounded-2xl font-bold text-sm outline-none transition-all", errors.price ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} />
-                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Base price before any discounts are applied.</p>
-                                    {errors.price && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.price.message}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-text-secondary">Original Price (₦) *</label>
+                                    <input type="number" step="0.01" {...register('price')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.price ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} />
+                                    {errors.price && <p className="text-[10px] text-red-500 font-semibold">{errors.price.message}</p>}
                                 </div>
 
-                                <div className="p-6 bg-primary/5 rounded-xl border border-primary/10 space-y-4">
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <Tag size={16} className="text-primary" />
-                                            <h4 className="text-xs font-black text-primary uppercase tracking-widest">Pricing & Discounts</h4>
-                                        </div>
-                                        <p className="text-[10px] text-primary/70 font-bold">Percentage Off reduces price by a fraction, Fixed Price sets a specific discounted amount.</p>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Barcode</label>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center gap-2">
+                                        <Tag size={14} className="text-primary" />
+                                        <label className="text-xs font-semibold text-text-secondary">Barcode</label>
+                                    </div>
                                     <div className="flex flex-col sm:flex-row gap-2">
-                                        <input {...register('barcode')} className="w-full sm:flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
-                                        <button type="button" onClick={handleGenerateBarcode} className="w-full sm:w-auto h-12 px-5 bg-[#066CF4]/10 text-[#066CF4] rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#066CF4]/20 transition-all whitespace-nowrap">
+                                        <input {...register('barcode')} className="w-full sm:flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
+                                        <button type="button" onClick={handleGenerateBarcode} className="w-full sm:w-auto h-12 px-5 bg-[#066CF4]/10 text-[#066CF4] rounded-xl font-semibold text-xs hover:bg-[#066CF4]/20 transition-all whitespace-nowrap">
                                             Auto-Generate
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Unique barcode for this product. Scanned at POS to auto-add to cart. Leave empty to auto-generate on save.</p>
                                     <canvas ref={barcodeCanvasRef} className="hidden" />
                                     {barcodePreview && (
                                         <div className="mt-2 p-3 bg-white border border-gray-100 rounded-xl flex items-center justify-center">
-                                            <img src={barcodePreview} alt="Barcode" className="h-14" />
+                                            <img src={barcodePreview} alt="Barcode" className="h-12" />
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">Discount Type</label>
-                                            <select
-                                                {...register('discountType')}
-                                                className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer"
-                                            >
-                                                <option value="none">No Discount</option>
-                                                <option value="percentage">Percentage Off (%)</option>
-                                                <option value="fixed">Fixed Price (₦)</option>
-                                            </select>
-                                        </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">Discount Type</label>
+                                        <select
+                                            {...register('discountType')}
+                                            className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer"
+                                        >
+                                            <option value="none">No Discount</option>
+                                            <option value="percentage">Percentage Off (%)</option>
+                                            <option value="fixed">Fixed Price (₦)</option>
+                                        </select>
+                                    </div>
 
-                                        {selectedDiscountType !== 'none' && (
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
-                                                    {selectedDiscountType === 'percentage' ? 'Percentage (%)' : 'Discounted Price (₦)'}
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        {...register('discountValue')}
-                                                        className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
-                                                    />
-                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
-                                                        {selectedDiscountType === 'percentage' ? <Percent size={14} /> : <span className="text-xs font-bold">₦</span>}
-                                                    </div>
+                                    {selectedDiscountType !== 'none' && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-semibold text-text-secondary">
+                                                {selectedDiscountType === 'percentage' ? 'Percentage (%)' : 'Discounted Price (₦)'}
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    {...register('discountValue')}
+                                                    className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-xl font-medium text-sm outline-none"
+                                                />
+                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
+                                                    {selectedDiscountType === 'percentage' ? <Percent size={14} /> : <span className="text-xs font-semibold">₦</span>}
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">SKU</label>
-                                        <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="Optional" />
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Stock Keeping Unit — your internal product reference code.</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">SKU</label>
+                                        <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="Optional" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Branch *</label>
-                                        <select {...register('branchId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none cursor-pointer">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">Branch *</label>
+                                        <select {...register('branchId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer">
                                             <option value="">Select Branch</option>
                                             {branches.map((branch: any) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
                                         </select>
-                                        {errors.branchId && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.branchId.message}</p>}
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">The branch where this product will be available for sale.</p>
+                                        {errors.branchId && <p className="text-[10px] text-red-500 font-semibold">{errors.branchId.message}</p>}
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Stock Quantity</label>
-                                        <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none" placeholder="0" />
-                                        <p className="text-[10px] text-text-secondary font-medium ml-1">Current inventory count. Leave at 0 for unlimited or digital products.</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">Stock Quantity</label>
+                                        <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="0" />
                                     </div>
 
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" {...register('enableLoyaltyPoints')} className="size-5 accent-amber-500 cursor-pointer" />
                                             <div>
-                                                <p className="text-sm font-bold text-text-main group-hover:text-amber-600 transition-colors flex items-center gap-2">
+                                                <p className="text-sm font-semibold text-text-main group-hover:text-amber-600 transition-colors flex items-center gap-2">
                                                     <Coins size={14} className="text-amber-500" />
-                                                    Enable Loyalty Points
+                                                    Loyalty Points
                                                 </p>
-                                                <p className="text-[10px] text-text-secondary font-medium">Award points to customers when this product is purchased</p>
                                             </div>
                                         </label>
                                         {watch('enableLoyaltyPoints') && (
-                                            <div className="pl-8 space-y-2">
-                                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Points to Award</label>
-                                                <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
-                                                <p className="text-[10px] text-amber-700 font-medium ml-1">Points awarded per unit sold. Customer earns this × quantity.</p>
+                                            <div className="pl-8 space-y-1.5">
+                                                <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
+                                                <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-medium text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col gap-4 pt-2">
+                                <div className="flex flex-col gap-3 pt-1">
                                     <label className="flex items-center gap-3 cursor-pointer group">
                                         <input type="checkbox" {...register('allowBackOrder')} className="size-5 accent-primary cursor-pointer" />
                                         <div>
-                                            <p className="text-sm font-bold text-text-main group-hover:text-primary transition-colors">Allow Back Order</p>
+                                            <p className="text-sm font-semibold text-text-main group-hover:text-primary transition-colors">Allow Back Order</p>
                                             <p className="text-[10px] text-text-secondary font-medium">Customers can order even if out of stock</p>
                                         </div>
                                     </label>
@@ -737,9 +718,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" {...register('applyGlobally')} className="size-5 accent-primary cursor-pointer" />
                                             <div>
-                                                <p className="text-sm font-bold text-text-main group-hover:text-primary transition-colors">Apply Globally</p>
+                                                <p className="text-sm font-semibold text-text-main group-hover:text-primary transition-colors">Apply Globally</p>
                                                 <p className="text-[10px] text-text-secondary font-medium">Update this product across all branches</p>
-                                                <p className="text-[9px] text-amber-600 font-bold uppercase mt-1 italic">Note: Loyalty points will also be applied globally.</p>
                                             </div>
                                         </label>
                                     )}
@@ -751,15 +731,15 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="space-y-6"
+                                className="space-y-5"
                             >
-                                <div className="space-y-4">
-                                    <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Main Product Image</label>
+                                <div className="space-y-3">
+                                    <label className="text-xs font-semibold text-text-secondary">Main Product Image</label>
                                     <input type="file" ref={mainInputRef} onChange={handleMainUpload} accept="image/*" className="hidden" />
                                     <div
                                         onClick={() => mainInputRef.current?.click()}
                                         className={cn(
-                                            "relative h-52 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
+                                            "relative h-44 sm:h-52 rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
                                             mainImagePreview ? "border-solid border-gray-200 bg-white" : "border-gray-200 bg-gray-50 hover:bg-white hover:border-primary/40"
                                         )}
                                     >
@@ -767,7 +747,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <div className="w-full h-full relative group">
                                                 <img src={mainImagePreview} alt="Preview" className="w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <p className="text-white text-xs font-black uppercase">Change Image</p>
+                                                    <p className="text-white text-xs font-semibold">Change Image</p>
                                                 </div>
                                             </div>
                                         ) : (
@@ -775,23 +755,21 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                 <div className="p-3 bg-white rounded-xl shadow-sm border border-gray-100">
                                                     <ImageIcon className="w-6 h-6 text-gray-300" />
                                                 </div>
-                                                <p className="text-[10px] font-black uppercase text-gray-400">Click to Upload</p>
+                                                <p className="text-[10px] font-semibold text-gray-400">Click to Upload</p>
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Upload a square image. This will be the primary photo displayed on your menu.</p>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-black text-text-secondary uppercase tracking-widest">Gallery Images</label>
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase">{galleryPreviews.length} Images</span>
+                                        <label className="text-xs font-semibold text-text-secondary">Gallery Images</label>
+                                        <span className="text-[10px] font-semibold text-gray-400">{galleryPreviews.length} images</span>
                                     </div>
                                     <input type="file" ref={galleryInputRef} onChange={handleGalleryUpload} accept="image/*" className="hidden" />
-                                    <p className="text-[10px] text-text-secondary font-medium -mt-2 ml-1">Additional photos to showcase your product from different angles.</p>
-                                    <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+                                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                                         {galleryPreviews.map((url, idx) => (
-                                            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm group">
+                                            <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-100 shadow-sm group">
                                                 <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <button
@@ -812,9 +790,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                         <button
                                             type="button"
                                             onClick={() => galleryInputRef.current?.click()}
-                                            className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 hover:bg-white hover:border-primary/40 transition-all text-gray-400 hover:text-primary cursor-pointer"
+                                            className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 hover:bg-white hover:border-primary/40 transition-all text-gray-400 hover:text-primary cursor-pointer"
                                         >
-                                            <Plus size={20} />
+                                            <Plus size={18} />
                                         </button>
                                     </div>
                                 </div>
@@ -823,14 +801,14 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                     </div>
 
                     {/* Navigation */}
-                    <div className="flex gap-3 pt-6 border-t border-gray-100 mt-6">
+                    <div className="flex gap-3 pt-5 border-t border-gray-100 mt-5">
                         {currentStep > 0 ? (
-                            <button type="button" onClick={handleBack} className="flex items-center justify-center gap-2 h-12 px-6 bg-gray-50 text-text-secondary font-bold text-sm rounded-xl hover:bg-gray-100 transition-all cursor-pointer">
+                            <button type="button" onClick={handleBack} className="flex items-center justify-center gap-2 h-11 px-5 bg-gray-50 text-text-secondary font-semibold text-sm rounded-xl hover:bg-gray-100 transition-all cursor-pointer">
                                 <ChevronLeft size={16} />
                                 Back
                             </button>
                         ) : (
-                            <button type="button" onClick={onClose} className="flex items-center justify-center gap-2 h-12 px-6 bg-gray-50 text-text-secondary font-bold text-sm rounded-xl hover:bg-gray-100 transition-all cursor-pointer">
+                            <button type="button" onClick={onClose} className="flex items-center justify-center gap-2 h-11 px-5 bg-gray-50 text-text-secondary font-semibold text-sm rounded-xl hover:bg-gray-100 transition-all cursor-pointer">
                                 Cancel
                             </button>
                         )}
@@ -838,7 +816,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                         <div className="flex-1" />
 
                         {currentStep < STEPS.length - 1 ? (
-                            <button key="next-btn" type="button" onClick={handleNext} className="flex items-center justify-center gap-2 h-12 px-8 bg-[#066CF4] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
+                            <button key="next-btn" type="button" onClick={handleNext} className="flex items-center justify-center gap-2 h-11 px-6 bg-[#066CF4] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
                                 Next
                                 <ChevronRight size={16} />
                             </button>
@@ -847,7 +825,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 key="submit-btn"
                                 type="submit"
                                 disabled={isUploading}
-                                className="flex items-center justify-center gap-2 h-12 px-8 bg-[#066CF4] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
+                                className="flex items-center justify-center gap-2 h-11 px-6 bg-[#066CF4] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
                             >
                                 {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                                 {product ? 'Update Changes' : 'Create Product'}
