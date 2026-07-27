@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, ChevronDown, ChevronRight, Check, X, RotateCcw,
@@ -40,6 +40,26 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
     } | null>(null);
     const [limitInput, setLimitInput] = useState('');
 
+    // Tracks the last-saved config snapshot so we only send changed fields on save
+    const originalConfigsRef = useRef<Record<string, PlanPermissionConfig>>({});
+
+    // Computes a partial DTO containing only fields that differ from the original
+    const computePermissionDiff = useCallback((
+        current: PlanPermissionConfig,
+        original: PlanPermissionConfig,
+        plan: PricingPlan
+    ): Partial<PricingPlan> => {
+        const fullDto = mapConfigToPlanDto(current, plan);
+        const originalDto = mapConfigToPlanDto(original, plan);
+        const diff: Partial<PricingPlan> = {};
+        for (const key of Object.keys(fullDto) as (keyof Partial<PricingPlan>)[]) {
+            if (fullDto[key] !== originalDto[key]) {
+                (diff as any)[key] = fullDto[key];
+            }
+        }
+        return diff;
+    }, []);
+
     const selectedPlan = plans.find(p => p.id === selectedPlanId);
     const config = selectedPlanId ? configs[selectedPlanId] : null;
 
@@ -53,7 +73,9 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         plans.forEach(plan => {
             const key = plan.id;
             if (!configs[key]) {
-                newConfigs[key] = mapPlanToConfig(plan);
+                const cfg = mapPlanToConfig(plan);
+                newConfigs[key] = cfg;
+                originalConfigsRef.current[key] = JSON.parse(JSON.stringify(cfg));
             }
         });
         if (Object.keys(newConfigs).length > 0) {
@@ -165,21 +187,30 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         if (!selectedPlan) return;
         const defaults = buildDefaultPermissions(selectedPlan.name, selectedPlan.id);
         setConfigs(prev => ({ ...prev, [selectedPlan.id]: defaults }));
+        originalConfigsRef.current[selectedPlan.id] = JSON.parse(JSON.stringify(defaults));
         toast.success(`${selectedPlan.name} permissions reset to defaults`);
     }, [selectedPlan]);
 
     const handleSave = useCallback(async () => {
         if (!selectedPlanId || !config || !selectedPlan) return;
+        const original = originalConfigsRef.current[selectedPlanId];
+        if (!original) return;
         try {
-            const dto = mapConfigToPlanDto(config, selectedPlan);
+            const dto = computePermissionDiff(config, original, selectedPlan);
+            if (Object.keys(dto).length === 0) {
+                toast('No changes to save');
+                return;
+            }
             await updatePermissionsMutation.mutateAsync({
                 planId: selectedPlanId,
                 permissions: dto
             });
+            // Update the original snapshot to reflect the newly saved state
+            originalConfigsRef.current[selectedPlanId] = JSON.parse(JSON.stringify(config));
         } catch (err) {
             console.error('Failed to save plan permissions:', err);
         }
-    }, [selectedPlanId, config, selectedPlan, updatePermissionsMutation]);
+    }, [selectedPlanId, config, selectedPlan, updatePermissionsMutation, computePermissionDiff]);
 
     const getLevelIcon = (level: PermissionLevel) => {
         switch (level) {
