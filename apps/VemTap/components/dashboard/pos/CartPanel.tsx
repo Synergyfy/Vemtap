@@ -19,9 +19,10 @@ import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
 interface CartPanelProps {
   onNavigate?: () => void;
   isPublic?: boolean;
+  branchId?: string;
 }
 
-export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
+export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranchId }: CartPanelProps) {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
   const holdSale = useHoldPosSale();
@@ -68,12 +69,12 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
     try {
       await createOrder.mutateAsync({
         firstName: attachedCustomer.name.split(' ')[0] || 'Customer',
-        lastName: attachedCustomer.name.split(' ').slice(1).join(' ') || '',
+        lastName: attachedCustomer.name.split(' ').slice(1).join(' ') || attachedCustomer.name.split(' ')[0] || 'Customer',
         phone: attachedCustomer.phone,
         email: attachedCustomer.email || undefined,
-        branchId: isPublic ? '' : (activeBranchId ?? ''),
+        branchId: isPublic ? (publicBranchId ?? '') : (activeBranchId ?? ''),
         tableNumber: undefined,
-        notes: 'Public POS Order',
+        notes: isPublic ? 'Public POS Order' : 'POS Order',
         items: cart.map(i => ({
           itemId: i.productId,
           quantity: i.quantity,
@@ -301,56 +302,58 @@ export function CartPanel({ onNavigate, isPublic = false }: CartPanelProps) {
           </div>
         </div>
 
-        {/* Customer, Discount & Claim Code */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className={cn(
-            "flex items-center h-11 rounded-2xl border overflow-hidden transition-all",
-            attachedCustomer
-              ? "bg-blue-50 border-blue-100 text-blue-600"
-              : "bg-white border-gray-200 text-gray-600"
-          )}>
-            <button
-              onClick={() => setIsCustomerModalOpen(true)}
-              className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest h-full"
-            >
-              {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
-              {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Customer'}
-            </button>
-            {attachedCustomer && (
-              <button
-                onClick={() => attachCustomer(null)}
-                className="size-11 flex items-center justify-center text-blue-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 border-l border-blue-100"
-                title="Remove customer"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={() => setIsDiscountModalOpen(true)}
-            className={cn(
-              "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
-              discount > 0
-                ? "bg-emerald-50 border-emerald-100 text-emerald-600"
-                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-            )}
-          >
-            <Tag size={14} />
-            {discount > 0 ? 'Discount' : 'Discount'}
-          </button>
-          <button
-            onClick={() => setIsRedeemModalOpen(true)}
-            className={cn(
-              "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
-              redeemedPromotion
+        {/* Customer, Discount & Claim Code — actions row only for non-public */}
+        {!isPublic && (
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className={cn(
+              "flex items-center h-11 rounded-2xl border overflow-hidden transition-all",
+              attachedCustomer
                 ? "bg-blue-50 border-blue-100 text-blue-600"
-                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-            )}
-          >
-            <TicketCheck size={14} />
-            {redeemedPromotion ? 'Claimed' : 'Claim Code'}
-          </button>
-        </div>
+                : "bg-white border-gray-200 text-gray-600"
+            )}>
+              <button
+                onClick={() => setIsCustomerModalOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest h-full"
+              >
+                {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
+                {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Customer'}
+              </button>
+              {attachedCustomer && (
+                <button
+                  onClick={() => attachCustomer(null)}
+                  className="size-11 flex items-center justify-center text-blue-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 border-l border-blue-100"
+                  title="Remove customer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setIsDiscountModalOpen(true)}
+              className={cn(
+                "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
+                discount > 0
+                  ? "bg-emerald-50 border-emerald-100 text-emerald-600"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+              )}
+            >
+              <Tag size={14} />
+              {discount > 0 ? 'Discount' : 'Discount'}
+            </button>
+            <button
+              onClick={() => setIsRedeemModalOpen(true)}
+              className={cn(
+                "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
+                redeemedPromotion
+                  ? "bg-blue-50 border-blue-100 text-blue-600"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+              )}
+            >
+              <TicketCheck size={14} />
+              {redeemedPromotion ? 'Claimed' : 'Claim Code'}
+            </button>
+          </div>
+        )}
 
         {!isPublic ? (
           <div className="grid grid-cols-4 gap-2">

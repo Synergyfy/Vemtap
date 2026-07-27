@@ -17,7 +17,6 @@ import {
     FeaturePermission,
     buildDefaultPermissions,
     mapPlanToConfig,
-    mapConfigToPlanDto,
 } from '@/lib/planPermissions';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
@@ -39,6 +38,99 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         currentLimit: number;
     } | null>(null);
     const [limitInput, setLimitInput] = useState('');
+
+    // Tracks only the fields the user has explicitly edited.
+    // This acts as the Update DTO — only what's changed gets sent in the PATCH payload.
+    const [pendingChanges, setPendingChanges] = useState<Partial<PricingPlan>>({});
+
+    // Maps a feature change to its corresponding PricingPlan fields.
+    // This mirrors the backend pattern: Update DTO = Partial<Create DTO>.
+    const getPlanFieldUpdates = useCallback((
+        featureId: string,
+        level: PermissionLevel,
+        limit?: number
+    ): Partial<PricingPlan> => {
+        // Normalise nav-tree IDs to canonical feature IDs used in mapPlanToConfig
+        const canonicalId = (
+            { branches: 'locations' } as Record<string, string>
+        )[featureId] || featureId;
+
+        switch (canonicalId) {
+            case 'catalogue':
+                return {
+                    catalogueEnabled: level !== 'no',
+                    maxCatalogueItems: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
+                };
+            case 'inventory':
+                return {
+                    inventoryEnabled: level !== 'no',
+                    inventoryLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
+                };
+            case 'pos':
+                return {
+                    posEnabled: level !== 'no',
+                    posTerminalLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 1) : null),
+                };
+            case 'loyalty':
+                return {
+                    loyaltyEnabled: level !== 'no',
+                    loyaltyLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 1) : null),
+                };
+            case 'visitors':
+                return { visitorsEnabled: level === 'yes' };
+            case 'in-app-chat':
+                return { inAppChatEnabled: level === 'yes' };
+            case 'channels':
+                return { messagingEnabled: level === 'yes' };
+            case 'forms':
+                return {
+                    formsEnabled: level !== 'no',
+                    formsLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
+                };
+            case 'business-qr':
+                return { businessQrEnabled: level === 'yes' };
+            case 'marketing-kit':
+                return {
+                    marketingKitEnabled: level !== 'no',
+                    marketingKitLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 5) : null),
+                };
+            case 'discovery':
+                return { discoveryEnabled: level === 'yes' };
+            case 'analytics':
+                return level === 'no'
+                    ? { analyticsEnabled: false, analyticsLevel: 'none' as const }
+                    : { analyticsEnabled: true, analyticsLevel: level === 'yes' ? 'advanced' as const : 'basic' as const };
+            case 'staff':
+                return {
+                    teamMembersEnabled: level !== 'no',
+                    teamMembersLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 1) : null),
+                };
+            case 'staff-roles':
+                return {
+                    staffRolesEnabled: level !== 'no',
+                    staffRolesLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 1) : null),
+                };
+            case 'activity-log':
+                return { activityLogEnabled: level === 'yes' };
+            case 'locations':
+                return {
+                    branchesEnabled: level !== 'no',
+                    branchLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 1) : null),
+                };
+            case 'qr-codes':
+                return {
+                    qrCodesEnabled: level !== 'no',
+                    qrCodesLimit: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 5) : null),
+                };
+            case 'ai-copilot':
+                return {
+                    aiCopilotEnabled: level !== 'no',
+                    aiCredits: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
+                };
+            default:
+                return {};
+        }
+    }, []);
 
     const selectedPlan = plans.find(p => p.id === selectedPlanId);
     const config = selectedPlanId ? configs[selectedPlanId] : null;
@@ -65,6 +157,11 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         return true;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plans]);
+
+    // Clear pending changes when switching to a different plan
+    React.useEffect(() => {
+        setPendingChanges({});
+    }, [selectedPlanId]);
 
     // Filter sections/features by search
     const filteredSections = useMemo(() => {
@@ -104,7 +201,8 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                 },
             };
         });
-    }, [selectedPlanId]);
+        setPendingChanges(prev => ({ ...prev, ...getPlanFieldUpdates(featureId, 'limited', val) }));
+    }, [selectedPlanId, getPlanFieldUpdates]);
 
     const openLimitModal = useCallback((featureId: string) => {
         if (!selectedPlanId || !config) return;
@@ -134,7 +232,8 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                 },
             };
         });
-    }, [selectedPlanId]);
+        setPendingChanges(prev => ({ ...prev, ...getPlanFieldUpdates(featureId, level) }));
+    }, [selectedPlanId, getPlanFieldUpdates]);
 
     const saveLimit = useCallback(() => {
         if (!limitModal) return;
@@ -157,29 +256,35 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                 },
             },
         }));
+        setPendingChanges(prev => ({ ...prev, ...getPlanFieldUpdates(limitModal.featureId, 'limited', val) }));
         setLimitModal(null);
         toast.success('Limit updated');
-    }, [limitModal, limitInput]);
+    }, [limitModal, limitInput, getPlanFieldUpdates]);
 
     const resetPlanDefaults = useCallback(() => {
         if (!selectedPlan) return;
         const defaults = buildDefaultPermissions(selectedPlan.name, selectedPlan.id);
         setConfigs(prev => ({ ...prev, [selectedPlan.id]: defaults }));
+        setPendingChanges({});
         toast.success(`${selectedPlan.name} permissions reset to defaults`);
     }, [selectedPlan]);
 
     const handleSave = useCallback(async () => {
-        if (!selectedPlanId || !config || !selectedPlan) return;
+        if (!selectedPlanId || !selectedPlan) return;
+        if (Object.keys(pendingChanges).length === 0) {
+            toast('No changes to save');
+            return;
+        }
         try {
-            const dto = mapConfigToPlanDto(config, selectedPlan);
             await updatePermissionsMutation.mutateAsync({
                 planId: selectedPlanId,
-                permissions: dto
+                permissions: pendingChanges
             });
+            setPendingChanges({});
         } catch (err) {
             console.error('Failed to save plan permissions:', err);
         }
-    }, [selectedPlanId, config, selectedPlan, updatePermissionsMutation]);
+    }, [selectedPlanId, selectedPlan, pendingChanges, updatePermissionsMutation]);
 
     const getLevelIcon = (level: PermissionLevel) => {
         switch (level) {

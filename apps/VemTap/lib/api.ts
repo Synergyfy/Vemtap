@@ -177,6 +177,36 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
             }
         }
 
+        // Feature-level lock detection: e.g. "Catalogue feature is not enabled for your plan"
+        if (response.status === 403 && /feature is not enabled for your plan/i.test(errMsg)) {
+            try {
+                const match = errMsg.match(/^(\w+) feature/i);
+                if (match) {
+                    const rawFeature = match[1].toLowerCase();
+                    const featureToId: Record<string, string> = {
+                        'catalogue': 'catalogue',
+                        'analytics': 'analytics',
+                        'inventory': 'inventory',
+                        'messaging': 'messaging',
+                        'loyalty': 'loyalty',
+                        'branches': 'branches',
+                        'staff': 'staff',
+                        'team': 'teamMembers',
+                        'pos': 'pos',
+                        'visitors': 'visitors',
+                        'forms': 'forms',
+                    };
+                    const featureId = featureToId[rawFeature] || rawFeature;
+                    const { useSubscriptionStore } = await import('@/store/useSubscriptionStore');
+                    useSubscriptionStore.getState().markFeatureLocked(featureId);
+                    // Also refresh capabilities so future navigations see correct state
+                    useSubscriptionStore.getState().fetchCapabilities();
+                }
+            } catch (e) {
+                console.error('Failed to mark feature locked', e);
+            }
+        }
+
         // Global Conflict / Duplicate Handling
         if ((response.status === 400 || response.status === 409) && errMsg) {
             const msgToLower = errMsg.toLowerCase();
