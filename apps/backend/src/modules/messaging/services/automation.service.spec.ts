@@ -13,6 +13,8 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../../subscriptions/entities/subscription.entity';
+import { Visit } from '../../visitors/entities/visit.entity';
+import { Segment } from '../../contacts/entities/segment.entity';
 import { ForbiddenException } from '@nestjs/common';
 
 describe('AutomationService', () => {
@@ -41,7 +43,9 @@ describe('AutomationService', () => {
         {
           provide: getRepositoryToken(AutomationLog),
           useValue: {
-            create: jest.fn().mockImplementation((dto) => dto),
+            create: jest
+              .fn()
+              .mockImplementation((dto: unknown) => dto as AutomationLog),
             save: jest.fn(),
             createQueryBuilder: jest.fn(),
           },
@@ -50,6 +54,21 @@ describe('AutomationService', () => {
           provide: getRepositoryToken(Subscription),
           useValue: {
             findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Visit),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            count: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Segment),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
           },
         },
         {
@@ -97,20 +116,22 @@ describe('AutomationService', () => {
     });
 
     it('should throw if automations disabled in plan', async () => {
-      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+      const mockSub = {
         status: SubscriptionStatus.ACTIVE,
         plan: { automationsEnabled: false },
-      } as any);
+      } as unknown as Subscription;
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue(mockSub);
       await expect(service.validateAutomationLimit(businessId)).rejects.toThrow(
         'Automations are not enabled',
       );
     });
 
     it('should throw if limit reached', async () => {
-      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+      const mockSub = {
         status: SubscriptionStatus.ACTIVE,
         plan: { automationsEnabled: true, maxAutomations: 2 },
-      } as any);
+      } as unknown as Subscription;
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue(mockSub);
       jest.spyOn(ruleRepo, 'count').mockResolvedValue(2);
       await expect(service.validateAutomationLimit(businessId)).rejects.toThrow(
         'maximum allowed automations',
@@ -118,10 +139,11 @@ describe('AutomationService', () => {
     });
 
     it('should pass if limit not reached', async () => {
-      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+      const mockSub = {
         status: SubscriptionStatus.ACTIVE,
         plan: { automationsEnabled: true, maxAutomations: 5 },
-      } as any);
+      } as unknown as Subscription;
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue(mockSub);
       jest.spyOn(ruleRepo, 'count').mockResolvedValue(2);
       await expect(
         service.validateAutomationLimit(businessId),
@@ -129,10 +151,11 @@ describe('AutomationService', () => {
     });
 
     it('should pass if unlimited (-1)', async () => {
-      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue({
+      const mockSub = {
         status: SubscriptionStatus.ACTIVE,
         plan: { automationsEnabled: true, maxAutomations: -1 },
-      } as any);
+      } as unknown as Subscription;
+      jest.spyOn(subscriptionRepo, 'findOne').mockResolvedValue(mockSub);
       await expect(
         service.validateAutomationLimit(businessId),
       ).resolves.not.toThrow();
@@ -143,18 +166,18 @@ describe('AutomationService', () => {
     it('should execute immediate rule', async () => {
       const rule = {
         id: '1',
-        triggerType: TriggerType.FIRST_TAG,
+        triggerType: TriggerType.FIRST_MESSAGE,
         delaySeconds: 0,
         actionType: ActionType.SEND_SMS,
         branchId: 'br1',
         isActive: true,
-      } as any as AutomationRule;
+      } as unknown as AutomationRule;
 
       jest.spyOn(ruleRepo, 'find').mockResolvedValue([rule]);
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
       const executeSpy = jest.spyOn(service, 'executeRule');
 
-      await service.trigger(TriggerType.FIRST_TAG, {
+      await service.trigger(TriggerType.FIRST_MESSAGE, {
         branchId: 'br1',
         customerId: 'c1',
       });
@@ -165,21 +188,22 @@ describe('AutomationService', () => {
     it('should queue delayed rule', async () => {
       const rule = {
         id: '1',
-        triggerType: TriggerType.FIRST_TAG,
+        triggerType: TriggerType.FIRST_MESSAGE,
         delaySeconds: 3600,
         actionType: ActionType.SEND_SMS,
         branchId: 'br1',
         isActive: true,
-      } as any as AutomationRule;
+      } as unknown as AutomationRule;
 
       jest.spyOn(ruleRepo, 'find').mockResolvedValue([rule]);
 
-      await service.trigger(TriggerType.FIRST_TAG, {
+      await service.trigger(TriggerType.FIRST_MESSAGE, {
         branchId: 'br1',
         customerId: 'c1',
       });
 
-      expect(queue.add).toHaveBeenCalledWith(
+      const addSpy = jest.spyOn(queue, 'add');
+      expect(addSpy).toHaveBeenCalledWith(
         'execute-rule',
         expect.objectContaining({ ruleId: '1' }),
         expect.objectContaining({ delay: 3600000 }),
@@ -195,17 +219,19 @@ describe('AutomationService', () => {
         actionConfig: { content: 'Hello' },
         branchId: 'br1',
         isActive: true,
-      } as any as AutomationRule;
+      } as unknown as AutomationRule;
 
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
+      const sendMessageSpy = jest.spyOn(messagingEngine, 'sendMessage');
+      const logSaveSpy = jest.spyOn(logRepo, 'save');
 
       await service.executeRule('1', {
         branchId: 'br1',
         customerId: 'c1',
       });
 
-      expect(messagingEngine.sendMessage).toHaveBeenCalled();
-      expect(logRepo.save).toHaveBeenCalledWith(
+      expect(sendMessageSpy).toHaveBeenCalled();
+      expect(logSaveSpy).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'success' }),
       );
     });
