@@ -92,7 +92,7 @@ export class LocalFallbackService {
   private buildRecommendations(page: string, data: Record<string, unknown>): AIRecommendation[] {
     const recs: AIRecommendation[] = [];
 
-    if ((data.repeatCustomerRate as number) < 40) {
+    if (typeof data.repeatCustomerRate === 'number' && data.repeatCustomerRate < 40) {
       recs.push({
         id: 'fallback-rec-1',
         title: 'Launch a Loyalty Program',

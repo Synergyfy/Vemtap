@@ -157,7 +157,7 @@ export default function AIAdvisorCard({
             {/* Insights */}
             {insights.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 text-gray-500">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                   Key Insights
                 </h4>
                 <div className="space-y-2">
@@ -171,7 +171,7 @@ export default function AIAdvisorCard({
             {/* Recommendations */}
             {recommendations.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 text-gray-500">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                   Recommendations
                 </h4>
                 <div className="space-y-2">
@@ -185,7 +185,7 @@ export default function AIAdvisorCard({
             {/* Quick Actions */}
             {quickActions.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 text-gray-500">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                   Quick Actions
                 </h4>
                 <AIQuickActions actions={quickActions} />

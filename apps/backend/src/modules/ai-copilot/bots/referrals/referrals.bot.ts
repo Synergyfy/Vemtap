@@ -10,12 +10,7 @@ export class ReferralsBot implements IPageBot {
     _branchId: string,
     _context?: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    let totalReferralClicks = 0;
     let totalReferralSignups = 0;
-    let conversionRate = 0;
-    let pendingPayoutsAmount = 0;
-    let totalPaidCommission = 0;
-    let topAdvocate = 'None yet';
 
     try {
       const stats = await this.dataSource.query(
@@ -36,12 +31,7 @@ export class ReferralsBot implements IPageBot {
 
     return {
       page: 'referrals',
-      totalReferralClicks,
       totalReferralSignups,
-      conversionRate,
-      pendingPayoutsAmount,
-      totalPaidCommission,
-      topAdvocate,
       currency: 'NGN',
     };
   }

@@ -20,27 +20,27 @@ export class SalesAnalyticsBot implements IPageBot {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const stats = await this.dataSource.query(
-        `SELECT 
-           COALESCE(SUM(total), 0)::float as rev,
-           COUNT(*)::int as count
-         FROM pos_sales WHERE "branchId" = $1 AND "orderedAt" >= $2 AND status = 'COMPLETED'`,
-        [branchId, thirtyDaysAgo],
-      ).catch(() => []);
-
-      const topPaymentRes = await this.dataSource.query(
-        `SELECT "paymentMethod", COUNT(*)::int as count 
-         FROM pos_sales WHERE "branchId" = $1 AND "orderedAt" >= $2 AND status = 'COMPLETED'
-         GROUP BY "paymentMethod" ORDER BY count DESC LIMIT 1`,
-        [branchId, thirtyDaysAgo]
-      ).catch(() => []);
-
-      const topDayRes = await this.dataSource.query(
-        `SELECT TO_CHAR("orderedAt", 'Day') as day_name, SUM(total) as rev
-         FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
-         GROUP BY day_name ORDER BY rev DESC LIMIT 1`,
-        [branchId]
-      ).catch(() => []);
+      const [stats, topPaymentRes, topDayRes] = await Promise.all([
+        this.dataSource.query(
+          `SELECT 
+             COALESCE(SUM(total), 0)::float as rev,
+             COUNT(*)::int as count
+           FROM pos_sales WHERE "branchId" = $1 AND "orderedAt" >= $2 AND status = 'COMPLETED'`,
+          [branchId, thirtyDaysAgo],
+        ).catch(() => []),
+        this.dataSource.query(
+          `SELECT "paymentMethod", COUNT(*)::int as count 
+           FROM pos_sales WHERE "branchId" = $1 AND "orderedAt" >= $2 AND status = 'COMPLETED'
+           GROUP BY "paymentMethod" ORDER BY count DESC LIMIT 1`,
+          [branchId, thirtyDaysAgo]
+        ).catch(() => []),
+        this.dataSource.query(
+          `SELECT TO_CHAR("orderedAt", 'Day') as day_name, SUM(total) as rev
+           FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
+           GROUP BY day_name ORDER BY rev DESC LIMIT 1`,
+          [branchId]
+        ).catch(() => [])
+      ]);
 
       if (stats && stats.length > 0) {
         grossRevenue30d = Math.round(stats[0].rev || 0);

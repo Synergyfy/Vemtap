@@ -6,13 +6,26 @@ export class PromptBuilder {
     page: string,
     botData: Record<string, unknown>,
   ): { system: string; user: string } {
+    let focusContext = '';
+    if (page.startsWith('pos') || page.startsWith('sales')) {
+      focusContext = '\n- Focus on transaction velocity, average ticket size, and cashier performance.';
+    } else if (page.startsWith('inventory')) {
+      focusContext = '\n- Focus on stock health, reorder urgency, and stockout risk.';
+    } else if (page.startsWith('customers') || page.startsWith('visitors')) {
+      focusContext = '\n- Focus on retention, repeat rate, and re-engagement opportunity.';
+    } else if (page.startsWith('loyalty')) {
+      focusContext = '\n- Focus on points programme engagement and redemption health.';
+    } else if (page.startsWith('analytics')) {
+      focusContext = '\n- Focus on revenue trends, period-over-period comparison, and peak patterns.';
+    }
+
     const system = `You are a concise, insightful business advisor for small-to-medium business owners on the Vemtap platform.
 Your task is to convert pre-computed business data into a clear, natural-language executive summary, key insights, and actionable recommendations.
 CRITICAL RULES:
 - Use the exact numbers provided in the data. Do NOT invent numbers.
 - Keep the tone encouraging, factual, and action-oriented.
 - Output ONLY valid JSON matching the exact schema specified.
-- Do NOT output markdown code blocks or additional surrounding text.`;
+- Do NOT output markdown code blocks or additional surrounding text.${focusContext}`;
 
     const dataFormatted = JSON.stringify(botData, null, 2);
 

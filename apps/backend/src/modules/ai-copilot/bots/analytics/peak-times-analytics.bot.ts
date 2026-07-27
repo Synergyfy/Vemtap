@@ -17,19 +17,20 @@ export class PeakTimesAnalyticsBot implements IPageBot {
     let suggestedPromoWindow = 'N/A';
 
     try {
-      const peakHourRes = await this.dataSource.query(
-        `SELECT EXTRACT(HOUR FROM "orderedAt")::int as hour, COUNT(*)::int as count
-         FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
-         GROUP BY hour ORDER BY count DESC LIMIT 1`,
-        [_branchId]
-      ).catch(() => []);
-
-      const busiestDayRes = await this.dataSource.query(
-        `SELECT TO_CHAR("orderedAt", 'Day') as day_name, COUNT(*)::int as count
-         FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
-         GROUP BY day_name ORDER BY count DESC LIMIT 1`,
-        [_branchId]
-      ).catch(() => []);
+      const [peakHourRes, busiestDayRes] = await Promise.all([
+        this.dataSource.query(
+          `SELECT EXTRACT(HOUR FROM "orderedAt")::int as hour, COUNT(*)::int as count
+           FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
+           GROUP BY hour ORDER BY count DESC LIMIT 1`,
+          [_branchId]
+        ).catch(() => []),
+        this.dataSource.query(
+          `SELECT TO_CHAR("orderedAt", 'Day') as day_name, COUNT(*)::int as count
+           FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
+           GROUP BY day_name ORDER BY count DESC LIMIT 1`,
+          [_branchId]
+        ).catch(() => [])
+      ]);
 
       if (peakHourRes && peakHourRes.length > 0) {
         const h = peakHourRes[0].hour;

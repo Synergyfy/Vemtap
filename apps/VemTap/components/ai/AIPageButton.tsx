@@ -139,7 +139,8 @@ export default function AIPageButton({
   }, [aiAnalysis, cachedAnalysis, pageTitle, role]);
 
   const currentAnalysis = aiAnalysis || cachedAnalysis;
-  const insufficient = credits.available < creditCost;
+  const isUnlimited = credits.limit === -1;
+  const insufficient = !isUnlimited && credits.available < creditCost;
 
   return (
     <>

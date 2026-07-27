@@ -98,11 +98,33 @@ export const useAIStore = create<AIState>()(
     }),
     {
       name: 'vemtap-ai-storage',
-      partialize: (state) => ({
-        credits: state.credits,
-        lastUpdated: state.lastUpdated,
-        activeAnalysis: state.activeAnalysis,
-      }),
+      partialize: (state) => {
+        const now = Date.now();
+        const ONE_DAY = 24 * 60 * 60 * 1000;
+        
+        // Filter out activeAnalysis older than 24 hours
+        const activeAnalysis = Object.entries(state.activeAnalysis).reduce((acc, [page, data]) => {
+          const updatedTimestamp = state.lastUpdated[page];
+          if (updatedTimestamp && (now - Number(updatedTimestamp)) < ONE_DAY) {
+            acc[page] = data;
+          }
+          return acc;
+        }, {} as Record<string, any>);
+        
+        // Also clean up lastUpdated keys
+        const lastUpdated = Object.entries(state.lastUpdated).reduce((acc, [page, timestamp]) => {
+          if ((now - Number(timestamp)) < ONE_DAY) {
+            acc[page] = timestamp;
+          }
+          return acc;
+        }, {} as Record<string, string>);
+
+        return {
+          credits: state.credits,
+          lastUpdated,
+          activeAnalysis,
+        };
+      },
     }
   )
 );
