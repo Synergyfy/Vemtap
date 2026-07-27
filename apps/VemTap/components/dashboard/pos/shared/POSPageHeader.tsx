@@ -16,26 +16,28 @@ interface POSPageHeaderProps {
 export default function POSPageHeader({ title, subtitle, backHref, actions, showBack = true }: POSPageHeaderProps) {
   const router = useRouter();
   return (
-    <div className="flex items-center justify-between gap-3 mb-6 md:mb-8">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between gap-2 md:gap-3 mb-6 md:mb-8">
+      <div className="flex items-center gap-2 md:gap-3 min-w-0">
         {showBack && (
           <button
             onClick={() => backHref ? router.push(backHref) : router.back()}
-            className="size-10 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:border-gray-200 transition-all shadow-sm active:scale-95 shrink-0"
+            className="size-9 md:size-10 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:border-gray-200 transition-all shadow-sm active:scale-95 shrink-0"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} className="md:size-[18px]" />
           </button>
         )}
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg md:text-2xl font-black text-gray-900 leading-tight">{title}</h1>
-            <PageGuideButton />
-            <AICopilotButton />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <h1 className="text-base md:text-2xl font-semibold text-gray-900 leading-tight truncate">{title}</h1>
+            <div className="flex items-center gap-1 shrink-0">
+              <PageGuideButton />
+              <AICopilotButton />
+            </div>
           </div>
-          {subtitle && <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 max-w-[220px] md:max-w-none">{subtitle}</p>}
+          {subtitle && <p className="text-[8px] md:text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-0.5 truncate md:whitespace-normal md:max-w-none">{subtitle}</p>}
         </div>
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
     </div>
   );
 }

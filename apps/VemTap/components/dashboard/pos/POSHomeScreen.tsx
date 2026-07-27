@@ -142,14 +142,14 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   }
 
   return (
-    <div className="flex flex-col h-full p-6 md:p-8 overflow-hidden">
+    <div className="flex flex-col h-full p-4 md:p-8 overflow-hidden">
       {!isPublic && (
-        <div className="shrink-0 mb-6 pt-2 px-4">
+        <div className="shrink-0 mb-4 md:mb-6 pt-2 px-1 md:px-4">
           <POSPageHeader title="Point of Sale" showBack={false} />
         </div>
       )}
 
-      <div className="shrink-0 mb-5 space-y-4 px-4">
+      <div className="shrink-0 mb-4 md:mb-5 space-y-3 md:space-y-4 px-1 md:px-4">
         {/* Search bar + Quick Actions row */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-[360px]">
@@ -243,7 +243,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
       </div>
 
       {/* View toggle */}
-      <div className="shrink-0 mb-4 px-4 flex items-center justify-between">
+      <div className="shrink-0 mb-4 px-1 md:px-4 flex items-center justify-between">
         <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{filteredProducts.length} items</span>
         <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
           <button
@@ -268,7 +268,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
       </div>
 
       {/* Product grid — scrollable independently */}
-      <div className="flex-1 overflow-y-auto px-4 pb-6">
+      <div className="flex-1 overflow-y-auto px-1 md:px-4 pb-6">
         {filteredProducts.length > 0 ? (
           viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2.5 sm:gap-3">
@@ -302,7 +302,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     }
                   }}
                   className={cn(
-                    "flex flex-col text-left bg-white border rounded-[28px] p-3 shadow-sm transition-all relative group",
+                    "flex flex-col text-left bg-white border rounded-2xl md:rounded-[28px] p-3 shadow-sm transition-all relative group",
                     outOfStock
                       ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
                       : inCart
@@ -322,7 +322,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     )}
                   </div>
 
-                  <div className="w-full aspect-square bg-gray-50 rounded-[20px] mb-3 flex items-center justify-center border border-gray-100 overflow-hidden relative group-hover:bg-[#066CF4]/5 transition-colors">
+                  <div className="w-full aspect-square bg-gray-50 rounded-xl md:rounded-[20px] mb-3 flex items-center justify-center border border-gray-100 overflow-hidden relative group-hover:bg-[#066CF4]/5 transition-colors">
                     {product.mainImage ? (
                       <img src={product.mainImage} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
@@ -423,9 +423,9 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         )}
       </div>
 
-      {/* Mobile floating cart button */}
+      {/* Desktop cart bar */}
       {!isPublic && (
-        <div className="shrink-0 md:hidden px-4 pb-4">
+        <div className="shrink-0 hidden md:block px-4 pb-4">
           <button
             onClick={onOpenCart}
             className={cn(

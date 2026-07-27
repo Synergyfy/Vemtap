@@ -14,7 +14,7 @@ export default function AICopilotButton({ className = '' }: AICopilotButtonProps
   return (
     <button
       onClick={toggleCopilot}
-      className={`inline-flex items-center justify-center size-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all ${className}`}
+      className={`inline-flex items-center justify-center size-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all ${className}`}
       title="AI Copilot"
       aria-label="AI Copilot"
     >

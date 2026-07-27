@@ -75,7 +75,7 @@ export default function SingleTransactionScreen() {
   if (!sale) return null;
 
   return (
-    <div className="max-w-4xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
+    <div className="max-w-4xl mx-auto min-h-full flex flex-col pt-4 px-4 md:px-0 pb-24 overflow-y-auto">
       <POSPageHeader
         title={`Receipt ${sale.receiptNumber}`}
         subtitle={`${new Date(sale.createdAt).toLocaleString()} • Cashier: ${sale.cashierName}`}
@@ -87,7 +87,7 @@ export default function SingleTransactionScreen() {
               className="h-10 md:h-12 px-4 rounded-xl bg-red-50 text-red-600 flex items-center gap-2 hover:bg-red-100 transition-colors"
             >
               <RotateCcw size={18} />
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Refund</span>
+              <span className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest hidden sm:inline">Refund</span>
             </button>
           )
         }
@@ -103,7 +103,7 @@ export default function SingleTransactionScreen() {
                 <div className="size-12 bg-gray-50 flex items-center justify-center mx-auto mb-3 rounded-xl overflow-hidden border border-gray-100">
                   <img src={businessLogo} alt="Logo" className="w-full h-full object-contain p-1" />
                 </div>
-                <h2 className="text-lg font-black text-gray-900 uppercase tracking-widest">{businessName} Retail</h2>
+                <h2 className="text-lg font-semibold text-gray-900 uppercase tracking-widest">{businessName} Retail</h2>
               </div>
 
               <div className="space-y-1 mb-6 text-xs">
@@ -143,8 +143,8 @@ export default function SingleTransactionScreen() {
                 <div className="flex justify-between"><span>Subtotal:</span> <span>₦{sale.subtotal.toLocaleString()}</span></div>
                 {sale.discountAmount > 0 && <div className="flex justify-between text-emerald-600"><span>Discount:</span> <span>-₦{sale.discountAmount.toLocaleString()}</span></div>}
                 <div className="flex justify-between items-end mt-2 pt-2">
-                  <span className="font-black uppercase text-gray-900 text-sm">Total:</span>
-                  <span className="font-black text-gray-900 text-lg">₦{sale.total.toLocaleString()}</span>
+                  <span className="font-semibold uppercase text-gray-900 text-sm">Total:</span>
+                  <span className="font-semibold text-gray-900 text-lg">₦{sale.total.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -162,7 +162,7 @@ export default function SingleTransactionScreen() {
               </div>
 
               {sale.status !== 'completed' && (
-                <div className="text-center text-xs text-red-500 font-black uppercase tracking-widest mt-4 p-2 border-2 border-red-500 rounded">
+                <div className="text-center text-xs text-red-500 font-semibold uppercase tracking-widest mt-4 p-2 border-2 border-red-500 rounded">
                   {sale.status.replace('_', ' ')}
                 </div>
               )}
@@ -174,14 +174,14 @@ export default function SingleTransactionScreen() {
 
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Receipt Actions</h3>
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 mb-4">Receipt Actions</h3>
             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={() => window.print()}
                 className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-[#066CF4]/30 hover:bg-[#066CF4]/5 hover:text-[#066CF4] transition-all group"
               >
                 <Printer size={20} className="text-gray-400 group-hover:text-[#066CF4]" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Print</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest">Print</span>
               </button>
               <button 
                 onClick={() => {
@@ -196,7 +196,7 @@ export default function SingleTransactionScreen() {
                 className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-emerald-500/30 hover:bg-emerald-50 hover:text-emerald-600 transition-all group"
               >
                 <MessageCircle size={20} className="text-gray-400 group-hover:text-emerald-500" />
-                <span className="text-[10px] font-black uppercase tracking-widest">WhatsApp</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest">WhatsApp</span>
               </button>
               <button 
                 onClick={() => {
@@ -211,7 +211,7 @@ export default function SingleTransactionScreen() {
                 className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-blue-500/30 hover:bg-blue-50 hover:text-blue-600 transition-all group"
               >
                 <Mail size={20} className="text-gray-400 group-hover:text-blue-500" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Email</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest">Email</span>
               </button>
               <button 
                 onClick={() => {
@@ -221,21 +221,21 @@ export default function SingleTransactionScreen() {
                 className="flex flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-100 p-4 rounded-[20px] hover:border-purple-500/30 hover:bg-purple-50 hover:text-purple-600 transition-all group"
               >
                 <FileText size={20} className="text-gray-400 group-hover:text-purple-500" />
-                <span className="text-[10px] font-black uppercase tracking-widest">PDF Export</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest">PDF Export</span>
               </button>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Transaction Meta</h3>
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 mb-4">Transaction Meta</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center pb-4 border-b border-gray-100">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Transaction ID</span>
-                <span className="text-xs font-black text-gray-900">{sale.id}</span>
+                <span className="text-xs font-semibold text-gray-900">{sale.id}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Items Count</span>
-                <span className="text-xs font-black text-gray-900">{sale.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} units</span>
+                <span className="text-xs font-semibold text-gray-900">{sale.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} units</span>
               </div>
             </div>
           </div>
