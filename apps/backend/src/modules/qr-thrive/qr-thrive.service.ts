@@ -60,7 +60,23 @@ export class QrThriveService implements OnModuleInit {
     );
   }
 
+  public get isQrThriveEnabled(): boolean {
+    const val =
+      this.configService.get<string>('ENABLE_QR_THRIVE') ??
+      this.configService.get<string>('QR_THRIVE_ENABLED');
+    if (val === undefined || val === null || val === '') {
+      return false;
+    }
+    return String(val).toLowerCase() === 'true' || val === '1';
+  }
+
   onModuleInit() {
+    if (!this.isQrThriveEnabled) {
+      this.logger.log(
+        'QR-Thrive integration is DISABLED via ENABLE_QR_THRIVE=false. All outbound HTTP requests are stopped.',
+      );
+      return;
+    }
     if (!this.apiKey) {
       this.logger.warn(
         'QR_THRIVE_API_KEY is not configured. QR-Thrive integration will fail at runtime.',
@@ -223,6 +239,15 @@ export class QrThriveService implements OnModuleInit {
    * Ensures a user exists in QR-Thrive and stores the mapping.
    */
   async syncUser(user: User): Promise<QrThriveUserMapping | null> {
+    if (!this.isQrThriveEnabled) {
+      this.logger.debug(
+        `QR-Thrive integration disabled. Skipping syncUser for user ${user?.id}`,
+      );
+      const existingMapping = await this.userMappingRepo.findOne({
+        where: { userId: user.id },
+      });
+      return existingMapping || null;
+    }
     if (user.role === UserRole.CUSTOMER || user.role === UserRole.ADMIN) {
       this.logger.warn(
         `Skipping QR-Thrive sync for restricted role (${user.role}): ${user.id}`,
@@ -867,6 +892,10 @@ export class QrThriveService implements OnModuleInit {
    * Fetches available plans from QR-Thrive.
    */
   async getPlans() {
+    if (!this.isQrThriveEnabled) {
+      this.logger.debug('QR-Thrive integration disabled. Returning empty plans array.');
+      return [];
+    }
     try {
       const { data } = await firstValueFrom(
         this.httpService.get(`${this.baseUrl}/plans`, {
@@ -883,6 +912,12 @@ export class QrThriveService implements OnModuleInit {
    * Syncs a user's subscription with QR-Thrive.
    */
   async syncSubscription(user: User, qrThrivePlanId: string) {
+    if (!this.isQrThriveEnabled) {
+      this.logger.debug(
+        `QR-Thrive integration disabled. Skipping syncSubscription for user ${user?.id}`,
+      );
+      return;
+    }
     let mapping = await this.getMapping(user, undefined, false);
     if (!mapping) {
       console.log(
