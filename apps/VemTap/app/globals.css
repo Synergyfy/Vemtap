@@ -326,6 +326,30 @@ body {
     text-rendering: optimizeLegibility;
 }
 
+/* ─── Clean Typography Override ─── */
+/* Downgrade heavy font-black (900) and font-extrabold (800) to semibold for a lighter, cleaner feel */
+.dashboard-typography-override .font-black,
+.dashboard-typography-override [class*="font-black"] {
+    font-weight: 600 !important;
+}
+
+.dashboard-typography-override .font-extrabold,
+.dashboard-typography-override [class*="font-extrabold"] {
+    font-weight: 600 !important;
+}
+
+/* Make uppercase tracking labels lighter and more refined */
+.dashboard-typography-override [class*="tracking-widest"],
+.dashboard-typography-override [class*="tracking-[0.2em]"] {
+    letter-spacing: 0.04em !important;
+    font-weight: 500 !important;
+}
+
+/* Lighten deep black text to a softer dark gray */
+.dashboard-typography-override .text-gray-900 {
+    color: #1e293b !important;
+}
+
 /* Tracepos / FOS Dashboard Design Utilities */
 .fos-card {
     background-color: #ffffff;

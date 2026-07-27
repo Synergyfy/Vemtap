@@ -508,8 +508,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* Top Bar */}
                 <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 shrink-0 sticky top-0 z-40">
                     <div className="flex items-center gap-4 flex-1">
-                        <button onClick={() => setIsMobileOpen(true)} className="p-2.5 text-gray-500 hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100">
-                            <Menu size={22} />
+                        <button onClick={() => setIsMobileOpen(true)} className="p-2 text-gray-500 hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100">
+                            <Menu size={20} />
                         </button>
                         
                         <div className="flex items-center gap-3">
@@ -525,20 +525,20 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 lg:gap-3">
+                    <div className="flex items-center gap-1 lg:gap-3">
                         {pendingSetupCount > 0 && (
-                            <button onClick={() => setShowTaskModal(true)} className="relative size-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary hover:bg-primary/10 transition-all border border-transparent">
-                                <ClipboardCheck size={18} />
-                                <span className="absolute -top-1 -right-1 size-4 bg-primary text-white text-[8px] font-black rounded-full border-2 border-white flex items-center justify-center">
+                            <button onClick={() => setShowTaskModal(true)} className="relative size-8 lg:size-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary hover:bg-primary/10 transition-all border border-transparent">
+                                <ClipboardCheck size={15} className="lg:size-[18px]" />
+                                <span className="absolute -top-1 -right-1 size-3.5 lg:size-4 bg-primary text-white text-[7px] lg:text-[8px] font-black rounded-full border-2 border-white flex items-center justify-center">
                                     {pendingSetupCount}
                                 </span>
                             </button>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger>
-                                <button className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
-                                    <ShoppingBag size={18} />
-                                    {newOrdersCount > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white">
+                                <button className="relative size-8 lg:size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
+                                    <ShoppingBag size={15} className="lg:size-[18px]" />
+                                    {newOrdersCount > 0 && <span className="absolute -top-1 -right-1 min-w-[15px] lg:min-w-[18px] h-[15px] lg:h-[18px] bg-red-500 text-white text-[7px] lg:text-[9px] font-black rounded-full flex items-center justify-center px-0.5 lg:px-1 border-2 border-white">
                                         {newOrdersCount > 99 ? '99+' : newOrdersCount}
                                     </span>}
                                 </button>
@@ -570,9 +570,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </DropdownMenu>
                         <DropdownMenu>
                             <DropdownMenuTrigger>
-                                <button className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
-                                    <Bell size={18} />
-                                    {unreadCount > 0 && <span className="absolute top-2 right-2 size-1.5 bg-red-500 rounded-full border border-white" />}
+                                <button className="relative size-8 lg:size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
+                                    <Bell size={15} className="lg:size-[18px]" />
+                                    {unreadCount > 0 && <span className="absolute top-1.5 lg:top-2 right-1.5 lg:right-2 size-1.5 bg-red-500 rounded-full border border-white" />}
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-72 mt-2" align="end">
@@ -640,10 +640,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </DropdownMenu>
                         <button
                             onClick={toggleFullscreen}
-                            className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all"
+                            className="relative hidden lg:flex size-8 lg:size-9 rounded-lg bg-gray-50 items-center justify-center text-gray-400 hover:text-primary transition-all"
                             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
                         >
-                            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                            {isFullscreen ? <Minimize2 size={15} className="lg:size-[16px]" /> : <Maximize2 size={15} className="lg:size-[16px]" />}
                         </button>
 
                         <div className="h-6 w-px bg-gray-100 mx-1 hidden sm:block" />
@@ -651,11 +651,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         <div className="relative">
                             <DropdownMenu>
                                 <DropdownMenuTrigger>
-                                    <button className="size-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm hover:border-primary/20 transition-all">
+                                    <button className="size-8 lg:size-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm hover:border-primary/20 transition-all">
                                         {currentBranchLogo ? (
                                             <img src={currentBranchLogo} alt="Branch Logo" className="size-full object-cover p-1" />
                                         ) : (
-                                            <div className="text-primary font-bold text-xs">
+                                            <div className="text-primary font-bold text-[10px] lg:text-xs">
                                                 {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
                                             </div>
                                         )}

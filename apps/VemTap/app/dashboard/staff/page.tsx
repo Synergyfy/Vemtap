@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
+import type { UpdateStaffRequest } from '@/services/users/types';
 import { useCapabilities } from '@/services/subscriptions/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Spinner from '@/components/ui/Spinner';

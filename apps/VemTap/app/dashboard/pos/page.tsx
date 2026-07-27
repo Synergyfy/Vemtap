@@ -113,7 +113,7 @@ export default function POSPage() {
   );
 
   return (
-    <div className="h-full flex flex-col md:flex-row p-4 md:p-6 gap-4">
+    <div className="h-full flex flex-col md:flex-row p-3 md:p-6 gap-4">
       <OfflineBanner />
 
       {/* Left: Main content — scrolls as a whole */}
@@ -136,7 +136,7 @@ export default function POSPage() {
       {itemCount > 0 && !mobileCartOpen && (
         <button
           onClick={() => setMobileCartOpen(true)}
-          className="md:hidden fixed bottom-28 right-6 z-40 h-16 px-6 bg-[#066CF4] text-white rounded-full flex items-center gap-3 shadow-2xl shadow-blue-500/40 active:scale-95 transition-all animate-in slide-in-from-bottom-4"
+          className="md:hidden fixed bottom-28 right-4 z-40 h-14 px-5 bg-[#066CF4] text-white rounded-full flex items-center gap-2 shadow-2xl shadow-blue-500/40 active:scale-95 transition-all animate-in slide-in-from-bottom-4"
         >
           <ShoppingCart size={20} />
           <span className="text-[12px] font-black uppercase tracking-widest">

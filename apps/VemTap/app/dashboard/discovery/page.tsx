@@ -118,6 +118,7 @@ function LoadingSpinner() {
 export default function DiscoveryPage() {
     const [activeTab, setActiveTab] = useState<TabId>('overview');
     const [isCreatingPromo, setIsCreatingPromo] = useState(false);
+    const [editingPromo, setEditingPromo] = useState<CatalogueOffer | null>(null);
     const { activeBranchId, isAllBranches } = useActiveBranch();
     
     return (
@@ -174,7 +175,7 @@ export default function DiscoveryPage() {
                     {!isAllBranches && (
                         <>
                             {activeTab === 'overview' && <OverviewTab branchId={activeBranchId!} onNavigate={setActiveTab} onCreatePromo={() => setIsCreatingPromo(true)} />}
-                            {activeTab === 'promotions' && <PromotionsTab branchId={activeBranchId!} onCreatePromo={() => setIsCreatingPromo(true)} />}
+                            {activeTab === 'promotions' && <PromotionsTab branchId={activeBranchId!} onCreatePromo={() => setIsCreatingPromo(true)} onEditPromo={(promo) => { setEditingPromo(promo); setIsCreatingPromo(true); }} />}
                             {activeTab === 'partners' && <PartnersTab branchId={activeBranchId!} />}
                             {activeTab === 'customers' && <CustomersTab branchId={activeBranchId!} />}
                             {activeTab === 'results' && <ResultsTab branchId={activeBranchId!} />}
@@ -183,7 +184,7 @@ export default function DiscoveryPage() {
                     )}
                 </>
             ) : (
-                <CreatePromotionFlow branchId={activeBranchId!} onCancel={() => setIsCreatingPromo(false)} />
+                <CreatePromotionFlow branchId={activeBranchId!} editPromo={editingPromo} onCancel={() => { setIsCreatingPromo(false); setEditingPromo(null); }} />
             )}
         </div>
     );
@@ -331,7 +332,7 @@ function OverviewTab({ branchId, onNavigate, onCreatePromo }: { branchId: string
     );
 }
 
-function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreatePromo: () => void }) {
+function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: string; onCreatePromo: () => void; onEditPromo: (promo: CatalogueOffer) => void }) {
     const { data: promotions, isLoading, isError, error, refetch } = useCatalogueOffersAdmin({ branchId });
     const updateOffer = useUpdateCatalogueOffer();
     const deleteOffer = useDeleteCatalogueOffer();
@@ -431,7 +432,7 @@ function PromotionsTab({ branchId, onCreatePromo }: { branchId: string; onCreate
                             )}
 
                             <div className="flex gap-2">
-                                <Button variant="outline" className="flex-1 rounded-xl font-bold" disabled>Edit</Button>
+                                <Button variant="outline" className="flex-1 rounded-xl font-bold" onClick={() => onEditPromo(promo)}>Edit</Button>
                                 <Button 
                                     variant="outline" 
                                     className="flex-1 rounded-xl font-bold"
@@ -1393,7 +1394,8 @@ function SettingsTab({ branchId }: { branchId: string }) {
 // CREATE DEAL FLOW (5 Steps)
 // ==========================================
 
-function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCancel: () => void }) {
+function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: string; onCancel: () => void; editPromo?: CatalogueOffer | null }) {
+    const isEditing = !!editPromo;
     const [step, setStep] = useState(1);
     const [offerType, setOfferType] = useState('');
     const [title, setTitle] = useState('');
@@ -1409,6 +1411,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
     const startTimeRef = useRef<HTMLInputElement>(null);
     const endTimeRef = useRef<HTMLInputElement>(null);
     const createOffer = useCreateCatalogueOffer();
+    const updateOffer = useUpdateCatalogueOffer();
     const { data: catalogueItems = [] } = useCatalogueItems({ branchId }, { enabled: !!branchId });
 
     // Type-specific fields
@@ -1439,6 +1442,39 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
             setDealTerms(generateTerms.data.terms);
         }
     }, [generateTerms.data]);
+
+    // Pre-populate fields when editing an existing promo
+    React.useEffect(() => {
+        if (!editPromo) return;
+        setTitle(editPromo.name || '');
+        setDescription(editPromo.description || '');
+        setImages([editPromo.mainImage, ...(editPromo.galleryImages || [])].filter(Boolean));
+        if (editPromo.startDate) {
+            const sd = new Date(editPromo.startDate);
+            setStartDate(sd.toISOString().split('T')[0]);
+            setStartTime(sd.toTimeString().slice(0, 5));
+        }
+        if (editPromo.endDate) {
+            const ed = new Date(editPromo.endDate);
+            setEndDate(ed.toISOString().split('T')[0]);
+            setEndTime(ed.toTimeString().slice(0, 5));
+        }
+        setOfferType(editPromo.offerType || '');
+        setAudience(editPromo.audience || '');
+        if (editPromo.quantity != null) setDealQuantity(String(editPromo.quantity));
+        setAudienceTarget((editPromo.audienceTarget as any) || 'all');
+        if (editPromo.maxClaimsPerCustomer != null) setMaxClaimsPerCustomer(String(editPromo.maxClaimsPerCustomer));
+        if (editPromo.claimCodePrefix) setClaimCodePrefix(editPromo.claimCodePrefix);
+        if (editPromo.terms && editPromo.terms.length > 0) setDealTerms(editPromo.terms);
+        if (editPromo.pricingType === 'percentage_discount') {
+            setDiscountType('percentage');
+            if (editPromo.discountValue != null) setDiscountValue(String(editPromo.discountValue));
+        } else if (editPromo.pricingType === 'fixed_discount_price') {
+            setDiscountType('fixed');
+            if (editPromo.discountValue != null) setDiscountValue(String(editPromo.discountValue));
+            if (editPromo.fixedPrice != null) setDealPrice(String(editPromo.fixedPrice));
+        }
+    }, [editPromo]);
 
     // Delivery Scope (free_delivery)
     const [deliveryScope, setDeliveryScope] = useState<'same_area' | 'city_wide' | 'state_wide' | 'nation_wide' | 'custom_distance'>('same_area');
@@ -1590,15 +1626,28 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                 payload.pricingType = 'sum';
         }
 
-        createOffer.mutate(payload, {
-            onSuccess: () => {
-                alert('Deal published successfully!');
-                onCancel();
-            },
-            onError: (err) => {
-                alert(err.message || 'Failed to create deal');
-            },
-        });
+        if (isEditing) {
+            delete payload.branchId;
+            updateOffer.mutate({ id: editPromo.id, data: payload }, {
+                onSuccess: () => {
+                    alert('Deal updated successfully!');
+                    onCancel();
+                },
+                onError: (err: any) => {
+                    alert(err.message || 'Failed to update deal');
+                },
+            });
+        } else {
+            createOffer.mutate(payload, {
+                onSuccess: () => {
+                    alert('Deal published successfully!');
+                    onCancel();
+                },
+                onError: (err: any) => {
+                    alert(err.message || 'Failed to create deal');
+                },
+            });
+        }
     };
 
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1626,7 +1675,7 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 min-h-[600px] animate-in slide-in-from-right-8 duration-300">
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-50">
                 <div>
-                    <h2 className="text-2xl font-semibold text-gray-800">Create Deal</h2>
+                    <h2 className="text-2xl font-semibold text-gray-800">{isEditing ? 'Edit Deal' : 'Create Deal'}</h2>
                     <div className="text-sm font-bold text-gray-400 mt-1">Step {step} of 5</div>
                 </div>
                 <Button variant="ghost" onClick={onCancel} className="text-gray-400 hover:text-gray-800 rounded-full size-10 p-0"><X size={20} /></Button>
@@ -1644,15 +1693,24 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                                 { label: 'Free Delivery', value: 'free_delivery', description: 'Offer free delivery on orders above a minimum amount' },
                                 { label: 'Custom Offer', value: 'custom', description: 'Create a custom offer with your own terms' }
                             ].map((offer, i) => (
-                                <button key={i} onClick={() => { setOfferType(offer.value); setStep(2); }} className="w-full p-6 text-left border-2 border-gray-100 rounded-2xl hover:border-primary hover:bg-blue-50 transition-all group flex items-center justify-between">
+                                <button key={i} onClick={() => { setOfferType(offer.value); }} className={cn("w-full p-6 text-left border-2 rounded-2xl transition-all group flex items-center justify-between", offerType === offer.value ? "border-primary bg-blue-50" : "border-gray-100 hover:border-primary hover:bg-blue-50")}>
                                     <div>
-                                        <span className="font-semibold text-gray-700 group-hover:text-primary text-lg">{offer.label}</span>
+                                        <span className={cn("text-lg transition-all", offerType === offer.value ? "text-primary font-bold" : "font-semibold text-gray-700 group-hover:text-primary")}>{offer.label}</span>
                                         <p className="text-sm text-gray-400 mt-1">{offer.description}</p>
                                     </div>
-                                    <ChevronRight className="text-gray-300 group-hover:text-primary shrink-0" />
+                                    <div className={cn("size-7 rounded-full border-2 flex items-center justify-center shrink-0", offerType === offer.value ? "border-primary bg-primary text-white" : "border-gray-300 group-hover:border-primary")}>
+                                        {offerType === offer.value && <CheckCircle2 size={14} />}
+                                    </div>
                                 </button>
                             ))}
                         </div>
+                        {offerType && (
+                            <div className="flex justify-center pt-4">
+                                <Button onClick={() => setStep(2)} className="rounded-full px-10 font-bold">
+                                    Continue <ArrowRight size={16} className="ml-2" />
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -2400,8 +2458,8 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                         <div className="size-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                             <CheckCircle2 size={40} />
                         </div>
-                        <h3 className="text-2xl font-semibold text-gray-800 mb-2">Ready to Publish!</h3>
-                        <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">Your deal will immediately be visible to customers and businesses nearby.</p>
+                        <h3 className="text-2xl font-semibold text-gray-800 mb-2">{isEditing ? 'Ready to Update!' : 'Ready to Publish!'}</h3>
+                        <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">{isEditing ? 'Your deal changes will be saved and immediately visible to customers and businesses nearby.' : 'Your deal will immediately be visible to customers and businesses nearby.'}</p>
 
                         {/* Mini preview card */}
                         <div className="max-w-xs mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-left">
@@ -2458,9 +2516,12 @@ function CreatePromotionFlow({ branchId, onCancel }: { branchId: string; onCance
                             <Button 
                                 onClick={handlePublish} 
                                 className="rounded-full px-12 py-6 text-lg font-bold bg-primary hover:bg-primary/90"
-                                disabled={createOffer.isPending}
+                                disabled={isEditing ? updateOffer.isPending : createOffer.isPending}
                             >
-                                {createOffer.isPending ? 'Publishing...' : 'Publish Deal'}
+                                {isEditing
+                                    ? (updateOffer.isPending ? 'Updating...' : 'Update Deal')
+                                    : (createOffer.isPending ? 'Publishing...' : 'Publish Deal')
+                                }
                             </Button>
                         </div>
                     </div>
