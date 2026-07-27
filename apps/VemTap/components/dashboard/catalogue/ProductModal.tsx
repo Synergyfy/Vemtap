@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import Cropper, { Point, Area } from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Switch } from '@/components/ui/switch';
 
 const CropperModal: React.FC<{
     image: string;
@@ -166,6 +167,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
     const [dimUnit, setDimUnit] = useState('cm');
     const weightUnits = ['kg', 'g', 'lb', 'oz'];
     const dimUnits = ['cm', 'm', 'in', 'ft'];
+    const [showWeight, setShowWeight] = useState(false);
+    const [showDimensions, setShowDimensions] = useState(false);
 
     const mainInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -220,6 +223,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                 });
                 setMainImagePreview(product.mainImage || '');
                 setGalleryPreviews(product.galleryImages || []);
+                setShowWeight(!!product.weight);
+                setShowDimensions(!!product.dimensions);
             } else {
                 reset({
                     name: '',
@@ -499,6 +504,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 </div>
 
                                 <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-text-secondary">Description *</label>
+                                    <textarea {...register('description')} rows={3} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none resize-none" placeholder="Detailed product information..." />
+                                    {errors.description && <p className="text-[10px] text-red-500 font-semibold">{errors.description.message}</p>}
+                                </div>
+
+                                <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
                                         <label className="text-xs font-semibold text-text-secondary">Category *</label>
                                         <button type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)} className="text-[10px] text-primary font-semibold hover:underline flex items-center gap-1">
@@ -519,9 +530,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     {errors.categoryId && <p className="text-[10px] text-red-500 font-semibold">{errors.categoryId.message}</p>}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
+                                <div className="border-t border-gray-100 pt-3 space-y-3">
+                                    <div className="flex items-center justify-between">
                                         <label className="text-xs font-semibold text-text-secondary">Weight</label>
+                                        <Switch checked={showWeight} onCheckedChange={setShowWeight} />
+                                    </div>
+                                    {showWeight && (
                                         <div className="flex gap-2">
                                             <input
                                                 type="number"
@@ -540,9 +554,15 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                 {weightUnits.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
-                                    </div>
-                                    <div className="space-y-1.5">
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
                                         <label className="text-xs font-semibold text-text-secondary">Dimensions (L × W × H)</label>
+                                        <Switch checked={showDimensions} onCheckedChange={setShowDimensions} />
+                                    </div>
+                                    {showDimensions && (
                                         <div className="flex flex-row items-center gap-2">
                                             <div className="grid grid-cols-3 flex-1 gap-1">
                                                 <div className="relative">
@@ -590,13 +610,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                 {dimUnits.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-text-secondary">Description *</label>
-                                    <textarea {...register('description')} rows={3} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none resize-none" placeholder="Detailed product information..." />
-                                    {errors.description && <p className="text-[10px] text-red-500 font-semibold">{errors.description.message}</p>}
+                                    )}
                                 </div>
                             </motion.div>
                         )}
@@ -687,17 +701,18 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" {...register('enableLoyaltyPoints')} className="size-5 accent-amber-500 cursor-pointer" />
-                                            <div>
-                                                <p className="text-sm font-semibold text-text-main group-hover:text-amber-600 transition-colors flex items-center gap-2">
-                                                    <Coins size={14} className="text-amber-500" />
-                                                    Loyalty Points
-                                                </p>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Coins size={14} className="text-amber-500" />
+                                                <label className="text-xs font-semibold text-text-secondary">Loyalty Points</label>
                                             </div>
-                                        </label>
+                                            <Switch
+                                                checked={watch('enableLoyaltyPoints')}
+                                                onCheckedChange={(v) => setValue('enableLoyaltyPoints', v)}
+                                            />
+                                        </div>
                                         {watch('enableLoyaltyPoints') && (
-                                            <div className="pl-8 space-y-1.5">
+                                            <div className="space-y-1.5">
                                                 <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
                                                 <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-medium text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
                                             </div>
