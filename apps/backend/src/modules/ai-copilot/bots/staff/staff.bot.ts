@@ -12,23 +12,23 @@ export class StaffBot implements IPageBot {
   ): Promise<Record<string, unknown>> {
     let activeStaffCount = 0;
     let topStaffByRevenue = 'None';
-    let activeShiftCount = 0;
 
     try {
-      const staffStats = await this.dataSource.query(
-        `SELECT COUNT(*)::int as count FROM users WHERE "branchId" = $1 AND (role = 'Staff' OR "roleTag" IS NOT NULL)`,
-        [_branchId]
-      ).catch(() => []);
-
-      const topStaffStats = await this.dataSource.query(
-        `SELECT u."firstName", u."lastName", SUM(s.total) as revenue 
-         FROM pos_sales s
-         JOIN users u ON u.id = s."cashierId"
-         WHERE s."branchId" = $1 AND s.status = 'COMPLETED'
-         GROUP BY u.id
-         ORDER BY revenue DESC LIMIT 1`,
-        [_branchId]
-      ).catch(() => []);
+      const [staffStats, topStaffStats] = await Promise.all([
+        this.dataSource.query(
+          `SELECT COUNT(*)::int as count FROM users WHERE "branchId" = $1 AND role = 'Staff'`,
+          [_branchId]
+        ).catch(() => []),
+        this.dataSource.query(
+          `SELECT u."firstName", u."lastName", SUM(s.total) as revenue 
+           FROM pos_sales s
+           JOIN users u ON u.id = s."cashierId"
+           WHERE s."branchId" = $1 AND s.status = 'COMPLETED'
+           GROUP BY u.id
+           ORDER BY revenue DESC LIMIT 1`,
+          [_branchId]
+        ).catch(() => [])
+      ]);
 
       if (staffStats && staffStats.length > 0) {
         activeStaffCount = staffStats[0].count || 0;
@@ -46,7 +46,6 @@ export class StaffBot implements IPageBot {
       page: 'staff',
       activeStaffCount,
       topStaffByRevenue,
-      activeShiftCount,
     };
   }
 }

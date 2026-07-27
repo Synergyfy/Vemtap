@@ -11,10 +11,6 @@ export class AutomationsBot implements IPageBot {
     _context?: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     let activeTriggersCount = 0;
-    let welcomeAutomationsSent = 0;
-    let winbackAutomationsSent = 0;
-    let automationWinbackRate = 0;
-    let topPerformingTrigger = 'None';
 
     try {
       const stats = await this.dataSource.query(
@@ -32,10 +28,6 @@ export class AutomationsBot implements IPageBot {
     return {
       page: 'automations',
       activeTriggersCount,
-      welcomeAutomationsSent,
-      winbackAutomationsSent,
-      automationWinbackRate,
-      topPerformingTrigger,
     };
   }
 }

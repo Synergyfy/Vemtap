@@ -37,10 +37,10 @@ export class PosRegisterBot implements IPageBot {
         digitalSalesTotal = Math.round(stats[0].digital || 0);
       }
     } catch (e) {
-      shiftTotalSales = 95000;
-      shiftTransactionCount = 22;
-      cashSalesTotal = 30000;
-      digitalSalesTotal = 65000;
+      shiftTotalSales = 0;
+      shiftTransactionCount = 0;
+      cashSalesTotal = 0;
+      digitalSalesTotal = 0;
     }
 
     return {

@@ -24,7 +24,7 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
   const hasBeenTriggered = refreshKey > 0;
 
   // Fetch real credits when drawer is open
-  useAICredits();
+  const { isLoading: isCreditsLoading } = useAICredits();
 
   const [showCreditConfirm, setShowCreditConfirm] = useState(false);
 
@@ -110,7 +110,12 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
 
               {/* AI Credits Banner */}
               <div className="px-4 pb-3">
-                {isDisabled ? (
+                {isCreditsLoading ? (
+                  <div className="bg-white rounded-xl border border-gray-100 p-3 animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+                    <div className="h-2 bg-gray-200 rounded-full w-full"></div>
+                  </div>
+                ) : isDisabled ? (
                   <div className="bg-amber-50 rounded-xl border border-amber-200/60 p-3 flex items-center gap-2.5">
                     <Lock size={16} className="text-amber-600 shrink-0" />
                     <div>

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { IPageBot } from './bot.interface';
 import { DashboardBot } from './dashboard.bot';
 import { CustomersBot } from './customers.bot';
@@ -21,6 +21,7 @@ import { StaffBot } from './staff/staff.bot';
 @Injectable()
 export class BotRegistry {
   private bots: Map<string, IPageBot> = new Map();
+  private readonly logger = new Logger(BotRegistry.name);
 
   constructor(
     private readonly dashboardBot: DashboardBot,
@@ -94,7 +95,7 @@ export class BotRegistry {
     const mainKey = pageKey.split('/')[0];
     const bot = this.bots.get(pageKey) || this.bots.get(mainKey);
     if (!bot) {
-      console.warn(`[BotRegistry] No bot found for page '${pageKey}'. Falling back to DashboardBot.`);
+      this.logger.warn(`No bot found for page '${pageKey}'. Falling back to DashboardBot.`);
       return this.dashboardBot;
     }
     return bot;

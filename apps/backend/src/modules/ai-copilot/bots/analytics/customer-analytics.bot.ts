@@ -12,9 +12,7 @@ export class CustomerAnalyticsBot implements IPageBot {
   ): Promise<Record<string, unknown>> {
     let totalVisitors = 0;
     let returningVisitorRate = 0;
-    let retentionScore = 78;
     let avgLtv = 0;
-    let topAcquisitionChannel = 'QR Portal';
 
     try {
       const stats = await this.dataSource.query(
@@ -41,9 +39,7 @@ export class CustomerAnalyticsBot implements IPageBot {
       page: 'analytics-customers',
       totalVisitors,
       returningVisitorRate,
-      retentionScore,
       avgLtv,
-      topAcquisitionChannel,
       currency: 'NGN',
     };
   }

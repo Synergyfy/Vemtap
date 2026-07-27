@@ -12,16 +12,15 @@ export class SupportBot implements IPageBot {
   ): Promise<Record<string, unknown>> {
     let totalTicketsCount = 0;
     let openTicketsCount = 0;
-    let avgResolutionTimeHours = 0;
-    let csatScore = 0;
 
     try {
       const stats = await this.dataSource.query(
         `SELECT 
            COUNT(*)::int as total,
-           COUNT(CASE WHEN status != 'Resolved' AND status != 'Cancelled' THEN 1 END)::int as open_count
-         FROM support_tickets 
-         WHERE "userId" IN (SELECT id FROM users WHERE "branchId" = $1)`,
+           COUNT(CASE WHEN t.status != 'Resolved' AND t.status != 'Cancelled' THEN 1 END)::int as open_count
+         FROM support_tickets t
+         JOIN users u ON u.id = t."userId"
+         WHERE u."branchId" = $1`,
         [_branchId],
       ).catch(() => []);
 
@@ -39,8 +38,6 @@ export class SupportBot implements IPageBot {
       page: 'support',
       totalTicketsCount,
       openTicketsCount,
-      avgResolutionTimeHours,
-      csatScore,
     };
   }
 }
