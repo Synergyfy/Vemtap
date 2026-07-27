@@ -23,6 +23,7 @@ import Cropper, { Point, Area } from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
+import Tooltip from '@/components/ui/Tooltip';
 
 const CropperModal: React.FC<{
     image: string;
@@ -498,20 +499,35 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 className="space-y-4"
                             >
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-text-secondary">Product Name *</label>
+                                    <div className="flex items-center gap-1">
+                                        <label className="text-xs font-semibold text-text-secondary">Product Name *</label>
+                                        <Tooltip content="The name customers will see on your menu and receipts.">
+                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                        </Tooltip>
+                                    </div>
                                     <input {...register('name')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
                                     {errors.name && <p className="text-[10px] text-red-500 font-semibold">{errors.name.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-text-secondary">Description *</label>
+                                    <div className="flex items-center gap-1">
+                                        <label className="text-xs font-semibold text-text-secondary">Description *</label>
+                                        <Tooltip content="Detailed information about ingredients, preparation, or usage.">
+                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                        </Tooltip>
+                                    </div>
                                     <textarea {...register('description')} rows={3} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none resize-none" placeholder="Detailed product information..." />
                                     {errors.description && <p className="text-[10px] text-red-500 font-semibold">{errors.description.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-semibold text-text-secondary">Category *</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">Category *</label>
+                                            <Tooltip content="Group this product under a category for easier browsing.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <button type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)} className="text-[10px] text-primary font-semibold hover:underline flex items-center gap-1">
                                             <Plus size={10} /> {isCreatingCategory ? 'Cancel' : 'New Category'}
                                         </button>
@@ -532,7 +548,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="border-t border-gray-100 pt-3 space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-semibold text-text-secondary">Weight</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">Weight</label>
+                                            <Tooltip content="Product weight for shipping or serving sizes.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <Switch checked={showWeight} onCheckedChange={setShowWeight} />
                                     </div>
                                     {showWeight && (
@@ -559,7 +580,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-semibold text-text-secondary">Dimensions (L × W × H)</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">Dimensions (L × W × H)</label>
+                                            <Tooltip content="Length, Width, and Height for packaging or shipping.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <Switch checked={showDimensions} onCheckedChange={setShowDimensions} />
                                     </div>
                                     {showDimensions && (
@@ -622,15 +648,23 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 className="space-y-4"
                             >
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-text-secondary">Original Price (₦) *</label>
+                                    <div className="flex items-center gap-1">
+                                        <label className="text-xs font-semibold text-text-secondary">Original Price (₦) *</label>
+                                        <Tooltip content="Base price before any discounts are applied.">
+                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                        </Tooltip>
+                                    </div>
                                     <input type="number" step="0.01" {...register('price')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.price ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} />
                                     {errors.price && <p className="text-[10px] text-red-500 font-semibold">{errors.price.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
                                         <Tag size={14} className="text-primary" />
                                         <label className="text-xs font-semibold text-text-secondary">Barcode</label>
+                                        <Tooltip content="Scanned at POS to auto-add to cart. Leave empty to auto-generate on save.">
+                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                        </Tooltip>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2">
                                         <input {...register('barcode')} className="w-full sm:flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
@@ -648,7 +682,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-text-secondary">Discount Type</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">Discount Type</label>
+                                            <Tooltip content="Percentage Off reduces price by a fraction, Fixed Price sets a specific discounted amount.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <select
                                             {...register('discountType')}
                                             className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer"
@@ -681,11 +720,21 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-text-secondary">SKU</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">SKU</label>
+                                            <Tooltip content="Stock Keeping Unit — your internal product reference code.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="Optional" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-text-secondary">Branch *</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">Branch *</label>
+                                            <Tooltip content="The branch where this product will be available for sale.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <select {...register('branchId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer">
                                             <option value="">Select Branch</option>
                                             {branches.map((branch: any) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
@@ -696,7 +745,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-text-secondary">Stock Quantity</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">Stock Quantity</label>
+                                            <Tooltip content="Current inventory count. Leave at 0 for unlimited or digital products.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="0" />
                                     </div>
 
@@ -705,6 +759,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <div className="flex items-center gap-2">
                                                 <Coins size={14} className="text-amber-500" />
                                                 <label className="text-xs font-semibold text-text-secondary">Loyalty Points</label>
+                                                <Tooltip content="Award points to customers when this product is purchased.">
+                                                    <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                                </Tooltip>
                                             </div>
                                             <Switch
                                                 checked={watch('enableLoyaltyPoints')}
@@ -713,7 +770,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                         </div>
                                         {watch('enableLoyaltyPoints') && (
                                             <div className="space-y-1.5">
-                                                <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
+                                                <div className="flex items-center gap-1">
+                                                    <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
+                                                    <Tooltip content="Points earned per unit sold. Customer earns this × quantity.">
+                                                        <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                                    </Tooltip>
+                                                </div>
                                                 <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-medium text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
                                             </div>
                                         )}
@@ -749,7 +811,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 className="space-y-5"
                             >
                                 <div className="space-y-3">
-                                    <label className="text-xs font-semibold text-text-secondary">Main Product Image</label>
+                                    <div className="flex items-center gap-1">
+                                        <label className="text-xs font-semibold text-text-secondary">Main Product Image</label>
+                                        <Tooltip content="Upload a square image. This will be the primary photo on your menu.">
+                                            <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                        </Tooltip>
+                                    </div>
                                     <input type="file" ref={mainInputRef} onChange={handleMainUpload} accept="image/*" className="hidden" />
                                     <div
                                         onClick={() => mainInputRef.current?.click()}
@@ -778,7 +845,12 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-semibold text-text-secondary">Gallery Images</label>
+                                        <div className="flex items-center gap-1">
+                                            <label className="text-xs font-semibold text-text-secondary">Gallery Images</label>
+                                            <Tooltip content="Additional photos to showcase your product from different angles.">
+                                                <HelpCircle size={12} className="text-gray-400 cursor-help shrink-0" />
+                                            </Tooltip>
+                                        </div>
                                         <span className="text-[10px] font-semibold text-gray-400">{galleryPreviews.length} images</span>
                                     </div>
                                     <input type="file" ref={galleryInputRef} onChange={handleGalleryUpload} accept="image/*" className="hidden" />
