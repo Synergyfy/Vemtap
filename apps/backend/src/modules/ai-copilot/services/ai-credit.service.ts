@@ -12,6 +12,8 @@ import { Subscription, SubscriptionStatus } from '../../subscriptions/entities/s
 export class AiCreditService {
   private readonly logger = new Logger(AiCreditService.name);
 
+  private readonly planCache = new Map<string, { limit: number; enabled: boolean; businessId: string; timestamp: number }>();
+
   constructor(
     @InjectRepository(AiCreditUsage)
     private readonly usageRepo: Repository<AiCreditUsage>,
@@ -32,6 +34,11 @@ export class AiCreditService {
 
   /** Resolves the active plan's aiCredits limit for a given businessId (or branchId fallback). Returns 0 if no plan. */
   private async getPlanCreditLimit(targetId: string): Promise<{ limit: number; enabled: boolean; businessId: string }> {
+    const cached = this.planCache.get(targetId);
+    if (cached && Date.now() - cached.timestamp < 60000) {
+      return { limit: cached.limit, enabled: cached.enabled, businessId: cached.businessId };
+    }
+
     try {
       let sub = await this.subscriptionRepo.findOne({
         where: { businessId: targetId, status: SubscriptionStatus.ACTIVE },
@@ -58,12 +65,19 @@ export class AiCreditService {
         }
       }
 
-      if (!sub?.plan) return { limit: 0, enabled: false, businessId: resolvedBusinessId };
-      return {
+      if (!sub?.plan) {
+        const result = { limit: 0, enabled: false, businessId: resolvedBusinessId };
+        this.planCache.set(targetId, { ...result, timestamp: Date.now() });
+        return result;
+      }
+      
+      const result = {
         limit: sub.plan.aiCredits ?? 0,
         enabled: sub.plan.aiCopilotEnabled ?? false,
         businessId: resolvedBusinessId,
       };
+      this.planCache.set(targetId, { ...result, timestamp: Date.now() });
+      return result;
     } catch (e) {
       this.logger.warn(`[AiCreditService] Could not resolve plan for target ${targetId}: ${e.message}`);
       return { limit: 0, enabled: false, businessId: targetId };
@@ -134,14 +148,22 @@ export class AiCreditService {
 
     const row = await this.getOrCreateUsageRow(businessId);
 
-    if (limit !== -1 && row.used >= limit) {
-      throw new ForbiddenException(
-        `You have used all ${limit} AI Copilot credits for this month. Upgrade your plan or wait until next month.`,
+    if (limit !== -1) {
+      // Atomic update
+      const result = await this.dataSource.query(
+        `UPDATE ai_credit_usage SET used = used + 1 WHERE id = $1 AND ($2 = -1 OR used < $2) RETURNING used`,
+        [row.id, limit]
       );
+      
+      if (!result || result.length === 0) {
+        throw new ForbiddenException(
+          `You have used all ${limit} AI Copilot credits for this month. Upgrade your plan or wait until next month.`
+        );
+      }
+      this.logger.log(`[AiCreditService] Credit consumed for business ${businessId}. Total used this month: ${result[0].used}`);
+    } else {
+      await this.usageRepo.increment({ id: row.id }, 'used', 1);
+      this.logger.log(`[AiCreditService] Credit consumed for business ${businessId}. Total used this month: ${row.used + 1}`);
     }
-
-    // Atomically increment
-    await this.usageRepo.increment({ id: row.id }, 'used', 1);
-    this.logger.log(`[AiCreditService] Credit consumed for business ${businessId}. Total used this month: ${row.used + 1}`);
   }
 }

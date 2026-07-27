@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
@@ -17,6 +18,7 @@ export class AiCopilotController {
   constructor(private readonly aiCopilotService: AiCopilotService) {}
 
   @Post('analyze')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Analyze a dashboard page using AI copilot' })
   async analyze(
     @Request() req: any,

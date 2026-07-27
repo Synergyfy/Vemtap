@@ -5,11 +5,11 @@ import { AIAnalysisResponse } from '../dto/ai-analysis-response.dto';
 export class ResponseParser {
   parse(rawJson: string, page: string): Omit<AIAnalysisResponse, 'page' | 'generatedAt' | 'creditsUsed'> {
     try {
-      const cleaned = rawJson
-        .replace(/^```json\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim();
+      let cleaned = rawJson.trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        cleaned = match[0];
+      }
 
       const parsed = JSON.parse(cleaned);
 
