@@ -1,34 +1,46 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import POSHomeScreen from '@/components/dashboard/pos/POSHomeScreen';
 import { CartPanel } from '@/components/dashboard/pos/CartPanel';
 import { usePosStore } from '@/store/usePosStore';
 import { ShoppingCart, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useMyBusiness } from '@/services/businesses/hooks';
+import { usePublicBranch, usePublicBusiness } from '@/services/public/hooks';
 
 export default function PublicPOSPage() {
   const params = useParams();
   const codeParam = params?.code;
   const code = Array.isArray(codeParam) ? codeParam[0] : codeParam || '';
 
-  const { data: business, isLoading: loadingBusiness } = useMyBusiness();
+  const { data: myBusiness, isLoading: loadingMyBiz } = useMyBusiness();
+  const { data: branchData } = usePublicBranch(code, !!code && !myBusiness);
+  const { data: businessData } = usePublicBusiness(code, !!code && !myBusiness);
 
-  const branches = business?.branches || [];
+  const rawBranchData = (branchData as any)?.data || branchData;
+  const rawBusinessData = (businessData as any)?.data || businessData;
+
+  const resolvedBusiness = useMemo(() => {
+    if (myBusiness) return myBusiness;
+    if (rawBusinessData?.id) return rawBusinessData;
+    if (rawBranchData?.business) return rawBranchData.business;
+    return null;
+  }, [myBusiness, rawBusinessData, rawBranchData]);
+
+  const branches = resolvedBusiness?.branches || [];
   const matchedBranch = useMemo(
-    () => branches.find((b) => b.uniqueCode === code) || branches[0],
+    () => branches.find((b: any) => b.uniqueCode === code) || branches[0] || null,
     [branches, code]
   );
-  const branchId = matchedBranch?.id || business?.id || '';
+  const branchId = matchedBranch?.id || rawBranchData?.id || '';
 
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const { cart } = usePosStore();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  if (loadingBusiness) {
+  if (loadingMyBiz) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 min-h-screen">
         <div className="flex flex-col items-center gap-3">
@@ -41,8 +53,10 @@ export default function PublicPOSPage() {
 
   if (!branchId) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 min-h-screen">
-        <p className="text-sm font-medium text-gray-400">Branch not found</p>
+      <div className="h-full flex flex-col items-center justify-center bg-gray-50 min-h-screen p-8 text-center">
+        <p className="text-sm font-medium text-gray-400">
+          Menu is not available at the moment. Please try again later.
+        </p>
       </div>
     );
   }
@@ -53,12 +67,10 @@ export default function PublicPOSPage() {
         <POSHomeScreen onOpenCart={() => setMobileCartOpen(true)} businessCode={branchId} isPublic={true} />
       </div>
 
-      {/* Desktop side-panel */}
       <div className="hidden md:block w-[380px] lg:w-[420px] border-l border-gray-100 bg-white h-full relative">
         <CartPanel isPublic={true} branchId={branchId} />
       </div>
 
-      {/* ─── MOBILE: Floating Cart FAB ─── */}
       {itemCount > 0 && !mobileCartOpen && (
         <button
           onClick={() => setMobileCartOpen(true)}
@@ -74,18 +86,14 @@ export default function PublicPOSPage() {
         </button>
       )}
 
-      {/* ─── MOBILE: Cart Drawer Overlay ─── */}
       {mobileCartOpen && (
         <div className="md:hidden fixed inset-0 z-[60] flex flex-col">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMobileCartOpen(false)}
           />
 
-          {/* Drawer */}
           <div className="absolute bottom-0 inset-x-0 bg-white rounded-t-[32px] shadow-2xl max-h-[92vh] flex flex-col animate-in slide-in-from-bottom duration-300">
-            {/* Drag handle + close */}
             <div className="flex items-center justify-between px-6 pt-4 pb-2 shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
               <span className="text-xs font-black text-gray-400 uppercase tracking-widest pt-2">Your Cart</span>
@@ -97,7 +105,6 @@ export default function PublicPOSPage() {
               </button>
             </div>
 
-            {/* Cart content */}
             <div className="flex-1 overflow-y-auto">
               <CartPanel onNavigate={() => setMobileCartOpen(false)} isPublic={true} branchId={branchId} />
             </div>
