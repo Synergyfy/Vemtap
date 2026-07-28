@@ -4,12 +4,16 @@ import React, { useEffect, useMemo } from 'react';
 import DashboardBanner from './DashboardBanner';
 import { useBannerStore, getIconByName } from '@/store/useBannerStore';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import { PartyPopper, Sparkles } from 'lucide-react';
+import { PartyPopper, Sparkles, Bot } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
 
-export default function DashboardBannerWrapper() {
+interface DashboardBannerWrapperProps {
+    onAnalyzeDashboard?: () => void;
+}
+
+export default function DashboardBannerWrapper({ onAnalyzeDashboard }: DashboardBannerWrapperProps) {
     const { slides, fetchBanners } = useBannerStore();
     const { percentage, isComplete, nextPendingItem } = useOnboarding();
     const { activeBranchId } = useActiveBranch();
@@ -59,5 +63,20 @@ export default function DashboardBannerWrapper() {
         return allSlides;
     }, [slides, isComplete, percentage, nextPendingItem]);
 
-    return <DashboardBanner slides={bannerSlides} />;
+    const businessAdvisorSlide = useMemo(() => ({
+        id: 'business-advisor',
+        title: 'Business Advisor',
+        description: 'Get AI-powered insights about your business performance, customer behavior, and growth opportunities.',
+        icon: Bot,
+        actionLabel: 'Analyze Dashboard',
+        onAction: onAnalyzeDashboard,
+        color: 'bg-gradient-to-r from-blue-500 to-purple-600',
+        tag: 'AI'
+    }), [onAnalyzeDashboard]);
+
+    const allSlides = useMemo(() => {
+        return [businessAdvisorSlide, ...bannerSlides];
+    }, [businessAdvisorSlide, bannerSlides]);
+
+    return <DashboardBanner slides={allSlides} />;
 }

@@ -30,6 +30,16 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   const { data: categoriesData = [] } = useCatalogueCategoriesPublic(branchId ?? '');
   const products = productsData?.data ?? [];
   const categories = categoriesData ?? [];
+
+  const getFinalPrice = (item: any) => {
+    const price = Number(item.price) || 0;
+    const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
+    if (!hasDiscount) return price;
+    const dv = Number(item.discountValue) || 0;
+    return item.discountType === 'percentage' ? price - (price * dv / 100) : price - dv;
+  };
+
+  const hasDiscount = (item: any) => item.discountType && item.discountType !== 'none' && item.discountValue;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [categorySearch, setCategorySearch] = useState('');
@@ -108,7 +118,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         id: product.id,
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: getFinalPrice(product),
         costPrice: product.costPrice || 0,
         quantity: 1,
         stockQuantity: product.stockQuantity,
@@ -289,7 +299,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                         id: product.id,
                         productId: product.id,
                         name: product.name,
-                        price: product.price,
+                        price: getFinalPrice(product),
                         costPrice: product.costPrice || 0,
                         quantity: 1,
                         stockQuantity: product.stockQuantity,
@@ -334,7 +344,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                       {product.name}
                     </h3>
                     <p className="text-xs font-extrabold text-[#066CF4]">
-                      ₦{product.price.toLocaleString()}
+                      ₦{getFinalPrice(product).toLocaleString()}
+                      {hasDiscount(product) && <span className="text-[9px] font-bold text-gray-400 line-through ml-1">₦{Number(product.price).toLocaleString()}</span>}
                     </p>
                     <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
                       {product.stockQuantity} left
@@ -394,7 +405,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm md:text-base font-black text-gray-900 truncate">{product.name}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm font-black text-[#066CF4]">₦{product.price.toLocaleString()}</span>
+                        <span className="text-sm font-black text-[#066CF4]">₦{getFinalPrice(product).toLocaleString()}</span>
+                        {hasDiscount(product) && <span className="text-[11px] font-bold text-gray-400 line-through">₦{Number(product.price).toLocaleString()}</span>}
                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{product.stockQuantity} left</span>
                       </div>
                     </div>

@@ -1,51 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCatalogueItems } from '@/services/catalogue/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Package, Plus, Search, Edit2, Archive, AlertTriangle, Upload } from 'lucide-react';
+import { Package, Search, Archive, AlertTriangle, Upload, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import ProductModal from '@/components/dashboard/catalogue/ProductModal';
-import AddProductMethodModal from '@/components/dashboard/catalogue/AddProductMethodModal';
-import BarcodeScanner from '@/components/dashboard/catalogue/BarcodeScanner';
-import { useMyBusiness } from '@/services/businesses/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export default function InventoryDashboard() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { data: business } = useMyBusiness();
-  const activeBranchId = business?.branches?.[0]?.id || '';
-  const { data: items = [], isLoading } = useCatalogueItems({ branchId: activeBranchId });
+  const { activeBranchId } = useActiveBranch();
+  const { data: items = [], isLoading } = useCatalogueItems({ branchId: activeBranchId || undefined });
   
-  const [showMethodModal, setShowMethodModal] = useState(false);
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [scannedProductData, setScannedProductData] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Open method chooser if ?add=true in URL
-  useEffect(() => {
-    if (searchParams.get('add') === 'true') {
-      setShowMethodModal(true);
-      router.replace('/dashboard/inventory', { scroll: false });
-    }
-  }, [searchParams, router]);
+  const getFinalPrice = (item: any) => {
+    const price = Number(item.price) || 0;
+    const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
+    if (!hasDiscount) return price;
+    const discountValue = Number(item.discountValue) || 0;
+    return item.discountType === 'percentage' ? price - (price * discountValue / 100) : price - discountValue;
+  };
 
-  // Open edit modal for a specific product if ?editProductId=xxx in URL
-  useEffect(() => {
-    const editId = searchParams.get('editProductId');
-    if (editId && items.length > 0) {
-      const product = items.find((p: any) => p.id === editId);
-      if (product) {
-        setSelectedProduct(product);
-        setShowProductModal(true);
-        router.replace('/dashboard/inventory', { scroll: false });
-      }
-    }
-  }, [searchParams, router, items]);
+  const hasDiscount = (item: any) => item.discountType && item.discountType !== 'none' && item.discountValue;
 
   const filteredItems = items.filter((item: any) => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -53,80 +32,16 @@ export default function InventoryDashboard() {
     (item.sku || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalValue = items.reduce((sum: number, item: any) => sum + (item.price || 0) * (item.stockQuantity || 0), 0);
+  const totalValue = items.reduce((sum: number, item: any) => sum + (getFinalPrice(item) * (item.stockQuantity || 0)), 0);
+  const totalValueAtFullPrice = items.reduce((sum: number, item: any) => sum + (Number(item.price) || 0) * (item.stockQuantity || 0), 0);
   const outOfStock = items.filter((item: any) => (item.stockQuantity || 0) === 0).length;
   const lowStock = items.filter((item: any) => (item.stockQuantity || 0) > 0 && (item.stockQuantity || 0) <= 5).length;
-
-  const handleEdit = (product: any) => {
-    setSelectedProduct(product);
-    setShowProductModal(true);
-  };
-
-  const handleAdd = () => {
-    setSelectedProduct(null);
-    setScannedProductData(null);
-    setShowMethodModal(true);
-  };
-
-  const handleMethodSelect = (method: 'manual' | 'bulk' | 'barcode') => {
-    setShowMethodModal(false);
-    if (method === 'manual') {
-      setShowProductModal(true);
-    } else if (method === 'bulk') {
-      router.push('/dashboard/catalogue/import');
-    } else if (method === 'barcode') {
-      setShowBarcodeScanner(true);
-    }
-  };
-
-  const handleBarcodeScan = (product: any) => {
-    if (product) {
-      setScannedProductData({
-        name: product.name,
-        price: product.price,
-        description: '',
-        categoryId: '',
-        branchId: activeBranchId,
-        sku: product.sku,
-        barcode: product.barcode,
-        itemType: 'product' as const,
-        discountType: 'none' as const,
-        discountValue: 0,
-        stockQuantity: 0,
-        loyaltyPoints: 0,
-        allowBackOrder: true,
-        applyGlobally: false,
-        mainImage: '',
-        galleryImages: [],
-      });
-      setShowBarcodeScanner(false);
-      setShowProductModal(true);
-    } else {
-      setShowBarcodeScanner(false);
-      setShowMethodModal(true);
-    }
-  };
-
-  const handleCloseProductModal = () => {
-    setShowProductModal(false);
-    setSelectedProduct(null);
-    setScannedProductData(null);
-  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-8 pb-28 md:pb-8">
       <POSPageHeader 
         title="Inventory Manager" 
         subtitle="Source of truth for all your products, stock levels, and pricing"
-        actions={
-          <button 
-            onClick={handleAdd}
-            className="size-10 md:h-12 md:w-auto md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all"
-          >
-            <Plus size={18} />
-            <span className="text-[11px] font-black uppercase tracking-widest hidden md:inline">Add Product</span>
-          </button>
-        }
       />
 
       {/* Stats Grid */}
@@ -148,6 +63,9 @@ export default function InventoryDashboard() {
           <div>
             <h3 className="text-lg md:text-2xl font-black text-gray-900 leading-none mb-0.5 md:mb-1">₦{totalValue.toLocaleString()}</h3>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Inventory Value</p>
+            {totalValueAtFullPrice > totalValue && (
+              <div className="text-[9px] md:text-[10px] font-bold text-amber-500 mt-0.5">was ₦{totalValueAtFullPrice.toLocaleString()}</div>
+            )}
           </div>
         </motion.div>
 
@@ -205,6 +123,7 @@ export default function InventoryDashboard() {
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Category</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Price</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Stock</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Total Value</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
                 <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Actions</th>
               </tr>
@@ -212,11 +131,11 @@ export default function InventoryDashboard() {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-400 text-sm font-bold">Loading products...</td>
+                  <td colSpan={7} className="p-8 text-center text-gray-400 text-sm font-bold">Loading products...</td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-400 text-sm font-bold">Ready to manage inventory? Add your first product.</td>
+                  <td colSpan={7} className="p-8 text-center text-gray-400 text-sm font-bold">No products found. Create products in Catalogue to see them here.</td>
                 </tr>
               ) : (
                 filteredItems.map((item: any) => (
@@ -243,11 +162,24 @@ export default function InventoryDashboard() {
                       <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">{item.category?.name || 'Uncategorized'}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-black text-gray-900">₦{Number(item.price).toLocaleString()}</div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-gray-900">₦{getFinalPrice(item).toLocaleString()}</span>
+                        {hasDiscount(item) && (
+                          <span className="text-[10px] font-bold text-gray-400 line-through">₦{Number(item.price).toLocaleString()}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className={cn("text-sm font-black", (item.stockQuantity || 0) === 0 ? "text-red-500" : (item.stockQuantity || 0) <= 5 ? "text-amber-500" : "text-emerald-500")}>
                         {item.stockQuantity || 0}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-gray-900">₦{(getFinalPrice(item) * (item.stockQuantity || 0)).toLocaleString()}</span>
+                        {hasDiscount(item) && (
+                          <span className="text-[10px] font-bold text-gray-400 line-through">₦{(Number(item.price) * (item.stockQuantity || 0)).toLocaleString()}</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -256,8 +188,11 @@ export default function InventoryDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleEdit(item)} className="p-2 text-gray-400 hover:text-[#066CF4] hover:bg-blue-50 rounded-lg transition-colors">
-                        <Edit2 size={16} />
+                      <button 
+                        onClick={() => router.push(`/dashboard/catalogue/products/${item.id}`)}
+                        className="p-2 text-gray-400 hover:text-[#066CF4] hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        <Eye size={16} />
                       </button>
                     </td>
                   </tr>
@@ -267,34 +202,6 @@ export default function InventoryDashboard() {
           </table>
         </div>
       </div>
-
-      <AddProductMethodModal
-        isOpen={showMethodModal}
-        onSelectMethod={handleMethodSelect}
-        onClose={() => setShowMethodModal(false)}
-      />
-
-      <BarcodeScanner
-        isOpen={showBarcodeScanner}
-        products={items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          barcode: item.barcode || '',
-          image: item.mainImage,
-          categoryId: item.categoryId,
-          sku: item.sku,
-        }))}
-        onScan={handleBarcodeScan}
-        onClose={() => { setShowBarcodeScanner(false); setShowMethodModal(true); }}
-      />
-
-      <ProductModal 
-        isOpen={showProductModal} 
-        onClose={handleCloseProductModal} 
-        product={selectedProduct || scannedProductData} 
-        activeBranchId={activeBranchId} 
-      />
     </div>
   );
 }
