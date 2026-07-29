@@ -157,20 +157,20 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
     'dashboard': { level: 'yes' },
     'products-stock': { level: 'yes' },
     'catalogue': { level: 'limited', limit: 50, unit: 'items', placeholder: 'Max items' },
-    'inventory': { level: 'yes' },
+    'inventory': { level: 'yes', unit: 'items', placeholder: 'Max items' },
     'sales': { level: 'yes' },
-    'pos': { level: 'limited', limit: 1, unit: 'terminals', placeholder: 'Max terminals' },
+    'pos': { level: 'yes' },
     'customers': { level: 'yes' },
     'customer-list': { level: 'yes' },
     'loyalty': { level: 'limited', limit: 1, unit: 'programs', placeholder: 'Max programs' },
     'visitors': { level: 'yes' },
     'in-app-chat': { level: 'yes' },
-    'channels': { level: 'limited', limit: 100, unit: 'credits/mo', placeholder: 'Monthly credits' },
-    'forms': { level: 'yes' },
+    'channels': { level: 'yes' },
+    'forms': { level: 'yes', unit: 'forms', placeholder: 'Max forms' },
     'business-qr': { level: 'yes' },
     'marketing-kit': { level: 'limited', limit: 5, unit: 'assets', placeholder: 'Max assets' },
     'discovery': { level: 'no' },
-    'analytics': { level: 'limited', limit: 3, unit: 'months', placeholder: 'Months of data' },
+    'analytics': { level: 'yes' },
     'staff': { level: 'limited', limit: 1, unit: 'members', placeholder: 'Max staff' },
     'staff-roles': { level: 'limited', limit: 1, unit: 'roles', placeholder: 'Max roles' },
     'activity-log': { level: 'no' },
@@ -182,6 +182,18 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
     'subscription': { level: 'yes' },
     'support': { level: 'yes' },
 };
+
+// Features that offer three configurable states (Yes / Limited / No).
+// All other features are boolean-only toggles (Yes / No).
+const THREE_STATE_FEATURES = new Set([
+    'catalogue', 'loyalty', 'forms', 'marketing-kit',
+    'staff', 'staff-roles', 'locations', 'branches', 'qr-codes', 'ai-copilot',
+    'analytics',
+]);
+
+export function featureSupportsLimit(featureId: string): boolean {
+    return THREE_STATE_FEATURES.has(featureId);
+}
 
 // Apply known defaults to the dynamically-built permission tree
 export function applyFeatureDefaults(sections: PermissionSection[]): PermissionSection[] {
@@ -297,6 +309,7 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
         features['staff-roles'] = getPerm(!!plan.staffRolesEnabled, plan.staffRolesLimit);
         features['activity-log'] = { level: plan.activityLogEnabled ? 'yes' : 'no' };
         features['locations'] = getPerm(plan.branchesEnabled, plan.branchLimit);
+        features['branches'] = features['locations']; // Nav-tree alias
         features['qr-codes'] = getPerm(!!plan.qrCodesEnabled, plan.qrCodesLimit);
 
         if (!plan.analyticsEnabled) {
@@ -339,7 +352,7 @@ export function mapConfigToPlanDto(
 
     const getEnabledOnly = (featId: string) => {
         const feat = config.features[featId];
-        return !!feat && feat.level === 'yes';
+        return !!feat && (feat.level === 'yes' || feat.level === 'limited');
     };
 
     const catalogue = getEnabledAndLimit('catalogue');

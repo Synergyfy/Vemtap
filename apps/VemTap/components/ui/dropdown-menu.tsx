@@ -69,7 +69,7 @@ export function DropdownMenuContent({ children, onClose, className, align = "end
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 10 }}
       className={cn(
-        "absolute z-[100] min-w-[8rem] overflow-hidden rounded-2xl border border-gray-100 bg-white p-1 shadow-xl",
+        "absolute z-[400] min-w-[8rem] overflow-hidden rounded-2xl border border-gray-100 bg-white p-1 shadow-xl",
         align === "end" ? "right-0" : "left-0",
         className
       )}

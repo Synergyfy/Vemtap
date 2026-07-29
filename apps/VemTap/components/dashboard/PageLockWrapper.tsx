@@ -9,6 +9,7 @@ interface PageLockWrapperProps {
   children: React.ReactNode;
   feature: string;
   featureName: string;
+  hideUsage?: boolean;
 }
 
 const FEATURE_TO_CAP_KEY: Record<string, string> = {
@@ -23,9 +24,11 @@ const FEATURE_TO_CAP_KEY: Record<string, string> = {
   'inventory': 'inventory',
   'pos': 'pos',
   'forms': 'forms',
+  'marketing-kit': 'marketingKit',
+  'discovery': 'discovery',
 };
 
-export default function PageLockWrapper({ children, feature, featureName }: PageLockWrapperProps) {
+export default function PageLockWrapper({ children, feature, featureName, hideUsage }: PageLockWrapperProps) {
   const { capabilities, fetchSubscriptionData, isFeatureLocked } = useSubscriptionStore();
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function PageLockWrapper({ children, feature, featureName }: Page
 
   const capKey = FEATURE_TO_CAP_KEY[feature];
   const capData = capKey ? (capabilities.capabilities as any)?.[capKey] : null;
-  const showUsage = capData && (capData.limit !== undefined || capData.used !== undefined);
+  const showUsage = !hideUsage && capData && (capData.limit !== undefined || capData.used !== undefined);
 
   return (
     <>
