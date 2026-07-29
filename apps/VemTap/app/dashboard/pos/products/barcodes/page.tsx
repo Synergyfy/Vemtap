@@ -19,6 +19,16 @@ export default function BarcodeCenter() {
   const { data: business } = useMyBusiness();
   const activeBranchId = business?.branches?.[0]?.id || '';
   const { data: items = [], isLoading } = useCatalogueItems({ branchId: activeBranchId });
+
+  const getFinalPrice = (item: any) => {
+    const price = Number(item.price) || 0;
+    const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
+    if (!hasDiscount) return price;
+    const dv = Number(item.discountValue) || 0;
+    return item.discountType === 'percentage' ? price - (price * dv / 100) : price - dv;
+  };
+
+  const hasDiscount = (item: any) => item.discountType && item.discountType !== 'none' && item.discountValue;
   const updateMutation = useUpdateCatalogueItem();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -263,7 +273,8 @@ export default function BarcodeCenter() {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black text-gray-900 truncate">{item.name}</p>
-                    <p className="text-[10px] font-bold text-gray-400">₦{item.price.toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-gray-400">₦{getFinalPrice(item).toLocaleString()}</p>
+                    {hasDiscount(item) && <p className="text-[9px] font-bold text-gray-400 line-through">₦{Number(item.price).toLocaleString()}</p>}
                   </div>
                   <div className="text-right shrink-0">
                     {hasBarcode ? (

@@ -9,7 +9,7 @@ import {
     TrendingUp, ArrowRight,
     ChevronRight, BarChart3, Settings as SettingsIcon,
     Activity, Sparkles, FileText, Package,
-    ChevronDown, ChevronUp, Bot
+    ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
@@ -24,8 +24,7 @@ import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 
-import { AIAdvisorCard, AISkeletonCard, PageGuideButton, AICopilotButton } from '@/components/ai';
-import { useAIAnalysis } from '@/services/ai/hooks';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 import { useAIStore } from '@/store/useAIStore';
 
 export default function DashboardPage() {
@@ -94,9 +93,6 @@ export default function DashboardPage() {
     // --- AI Integration ---
     const triggerAnalysis = useAIStore((state) => state.triggerAnalysis);
     const refreshKey = useAIStore((state) => state.refreshKeys['dashboard'] ?? 0);
-    const hasBeenTriggered = refreshKey > 0;
-
-    const { data: aiAnalysis, isLoading: isAiLoading, error: aiError, refetch: refetchAi } = useAIAnalysis('dashboard');
 
     const aiContext = useMemo(() => {
         const toNum = (v: unknown) => parseInt(String(v ?? '').replace(/[^0-9]/g, '') || '0', 10);
@@ -118,16 +114,10 @@ export default function DashboardPage() {
         triggerAnalysis('dashboard', aiContext);
     }, [triggerAnalysis, aiContext]);
 
-    const handleAskAI = useCallback((query: string) => {
-        triggerAnalysis('dashboard', aiContext);
-    }, [triggerAnalysis, aiContext]);
-
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             <main className="p-6 max-w-7xl mx-auto">
-                <div className="lg:grid lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] lg:gap-8">
-                    {/* LEFT COLUMN: Business Content */}
-                    <div className="space-y-8 min-w-0">
+                <div className="space-y-8">
                         {/* 1. TOP SECTION: Greeting & Branding */}
                         <section className="space-y-1">
                             <div className="flex items-center justify-between">
@@ -144,7 +134,7 @@ export default function DashboardPage() {
                             </div>
                         </section>
 
-                        <DashboardBannerWrapper />
+                        <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
 
                         <OnboardingChecklist />
 
@@ -442,52 +432,6 @@ export default function DashboardPage() {
                             ))}
                         </section>
                     </div>
-
-                    {/* RIGHT COLUMN: AI Advisor */}
-                    <div className="mt-8 lg:mt-0 space-y-6">
-                        <div className="lg:sticky lg:top-8">
-                            {/* AI Advisor Card */}
-                            {!hasBeenTriggered ? (
-                                <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6">
-                                    <div className="flex items-center gap-3 mb-5">
-                                        <div className="size-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                            <Bot size={18} className="text-white" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-gray-900">Business Advisor</h3>
-                                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">AI-Powered Insights</p>
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 leading-relaxed mb-5">
-                                        Get AI-powered insights about your business performance, customer behavior, and growth opportunities.
-                                    </p>
-                                    <button
-                                        onClick={handleRefreshAnalysis}
-                                        className="w-full h-12 rounded-xl bg-gray-900 text-white text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-all active:scale-95 flex items-center justify-center gap-2"
-                                    >
-                                        <Sparkles size={15} />
-                                        Analyze Dashboard
-                                    </button>
-                                </div>
-                            ) : isAiLoading ? (
-                                <AISkeletonCard />
-                            ) : (
-                                <AIAdvisorCard
-                                    role="Business Advisor"
-                                    page="dashboard"
-                                    insights={aiAnalysis?.insights ?? []}
-                                    recommendations={aiAnalysis?.recommendations ?? []}
-                                    quickActions={aiAnalysis?.quickActions ?? []}
-                                    summary={aiAnalysis?.summary}
-                                    isAnalyzing={isAiLoading}
-                                    error={aiError}
-                                    onRefresh={handleRefreshAnalysis}
-                                    onAskAI={handleAskAI}
-                                />
-                            )}
-                        </div>
-                    </div>
-                </div>
             </main>
         </div>
     );

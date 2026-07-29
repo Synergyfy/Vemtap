@@ -13,6 +13,7 @@ export interface BannerSlide {
     image?: string;
     actionLabel?: string;
     actionUrl?: string;
+    onAction?: () => void;
     color?: string;
     tag?: string;
     isLight?: boolean;
@@ -96,7 +97,13 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
                     <div className="flex items-center justify-between md:flex-col md:items-end gap-4 md:gap-6 shrink-0">
                         {currentSlide.actionLabel && (
                             <button 
-                                onClick={() => currentSlide.actionUrl && (window.location.href = currentSlide.actionUrl)}
+                                onClick={() => {
+                                    if (currentSlide.onAction) {
+                                        currentSlide.onAction();
+                                    } else if (currentSlide.actionUrl) {
+                                        window.location.href = currentSlide.actionUrl;
+                                    }
+                                }}
                                 className={cn(
                                     "h-10 md:h-14 px-6 md:px-8 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs shadow-xl active:scale-95 transition-all flex items-center gap-2",
                                     isLight ? "bg-[#066CF4] text-white shadow-blue-500/20" : "bg-white text-[#066CF4] shadow-black/10"

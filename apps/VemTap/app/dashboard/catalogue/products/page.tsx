@@ -1,26 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { Plus, Edit2, Trash2, Search, ShoppingBag, Eye, LayoutGrid, Coins, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, ShoppingBag, Eye, Coins, MoreVertical, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
-import UsageIndicator from '@/components/dashboard/UsageIndicator';
-import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export default function ProductsPage() {
     const router = useRouter();
     const { activeBranchId } = useActiveBranch();
-    const { capabilities } = useSubscriptionStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('all');
+    const [page, setPage] = useState(1);
+    const perPage = 10;
     
     const { data: items = [], isLoading } = useCatalogueItems({ 
         branchId: activeBranchId || undefined 
@@ -29,6 +28,19 @@ export default function ProductsPage() {
     const deleteMutation = useDeleteCatalogueItem();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!openMenuId) return;
+        const handler = () => setOpenMenuId(null);
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [openMenuId]);
+
+    const toggleMenu = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setOpenMenuId(prev => (prev === id ? null : id));
+    };
 
     const handleEdit = (e: React.MouseEvent, item: CatalogueItem) => {
         e.stopPropagation();
@@ -77,6 +89,12 @@ export default function ProductsPage() {
         const matchesCategory = activeCategory === 'all' || item.categoryId === activeCategory;
         return matchesSearch && matchesCategory;
     });
+
+    const totalPages = Math.max(1, Math.ceil(filteredItems.length / perPage));
+    const paginatedItems = filteredItems.slice((page - 1) * perPage, page * perPage);
+
+    // Reset to page 1 when filters change
+    useEffect(() => { setPage(1); }, [searchQuery, activeCategory]);
 
     // Extract unique categories from items for simple filtering
     const categories = Array.from(new Map(
@@ -150,34 +168,67 @@ export default function ProductsPage() {
             )
         },
         {
+            header: 'Total Value',
+            accessor: (item: CatalogueItem) => {
+                const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
+                const finalPrice = hasDiscount
+                    ? (item.discountType === 'percentage'
+                        ? Number(item.price) - (Number(item.price) * (Number(item.discountValue) / 100))
+                        : Number(item.price) - Number(item.discountValue))
+                    : Number(item.price);
+                const qty = item.itemType === 'service' ? 0 : (item.stockQuantity ?? 0);
+                return (
+                    <div className="flex flex-col">
+                        <span className="font-black text-text-main text-sm">₦{(finalPrice * qty).toLocaleString()}</span>
+                        {hasDiscount && qty > 0 && (
+                            <span className="text-[9px] text-text-secondary line-through font-bold">₦{(Number(item.price) * qty).toLocaleString()}</span>
+                        )}
+                    </div>
+                );
+            }
+        },
+        {
             header: 'Status',
             accessor: (item: CatalogueItem) => getStatusBadge(item.status)
         },
         {
             header: 'Actions',
             accessor: (item: CatalogueItem) => (
-                <div className="flex items-center gap-1.5">
+                <div className="relative">
                     <button
-                        onClick={() => router.push(`/dashboard/catalogue/products/${item.id}`)}
+                        onClick={(e) => toggleMenu(item.id, e)}
                         className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
-                        title="View Details"
                     >
-                        <Eye size={15} />
+                        <MoreVertical size={15} />
                     </button>
-                    <button
-                        onClick={(e) => handleEdit(e, item)}
-                        className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
-                        title="Edit"
-                    >
-                        <Edit2 size={15} />
-                    </button>
-                    <button
-                        onClick={(e) => handleDelete(e, item)}
-                        className="p-2 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
-                        title="Delete"
-                    >
-                        <Trash2 size={15} />
-                    </button>
+                    {openMenuId === item.id && (
+                        <div
+                            className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-100 shadow-xl z-50 py-1 min-w-[140px] overflow-hidden"
+                            onMouseDown={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => { router.push(`/dashboard/catalogue/products/${item.id}`); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-slate-50 hover:text-primary transition-colors text-left"
+                            >
+                                <Eye size={14} />
+                                View Details
+                            </button>
+                            <button
+                                onClick={(e) => { handleEdit(e, item); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-slate-50 hover:text-primary transition-colors text-left"
+                            >
+                                <Edit2 size={14} />
+                                Edit
+                            </button>
+                            <button
+                                onClick={(e) => { handleDelete(e, item); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-red-50 hover:text-red-500 transition-colors text-left"
+                            >
+                                <Trash2 size={14} />
+                                Delete
+                            </button>
+                        </div>
+                    )}
                 </div>
             )
         }
@@ -186,14 +237,6 @@ export default function ProductsPage() {
     return (
         <PageLockWrapper feature="catalogue" featureName="Catalogue">
             <div className="p-4 md:p-8 space-y-6">
-                <div>
-                    <UsageIndicator
-                        label="Products Limit"
-                        usage={capabilities?.capabilities?.catalogueItems}
-                        icon={<ShoppingBag size={18} />}
-                    />
-                </div>
-
                 <PageHeader
                     title="Products & Services"
                     description="Configure your active menu and services"
@@ -221,38 +264,21 @@ export default function ProductsPage() {
                         />
                     </div>
 
-                    <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1">
-                        <button
-                            onClick={() => setActiveCategory('all')}
-                            className={cn(
-                                "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border cursor-pointer",
-                                activeCategory === 'all'
-                                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                                    : "bg-white text-slate-600 border-slate-100 hover:border-slate-300"
-                            )}
-                        >
-                            All Categories
-                        </button>
+                    <select
+                        value={activeCategory}
+                        onChange={(e) => setActiveCategory(e.target.value)}
+                        className="h-12 px-4 bg-white border border-slate-100 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer w-full sm:w-56"
+                    >
+                        <option value="all">All Categories</option>
                         {categories.map((cat: any) => (
-                            <button
-                                key={cat.id}
-                                onClick={() => setActiveCategory(cat.id)}
-                                className={cn(
-                                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border cursor-pointer",
-                                    activeCategory === cat.id
-                                        ? "bg-primary text-white border-primary shadow-sm"
-                                        : "bg-white text-slate-600 border-slate-100 hover:border-slate-300"
-                                )}
-                            >
-                                {cat.name}
-                            </button>
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
-                    </div>
+                    </select>
                 </div>
 
                 <DataTable
                     columns={columns}
-                    data={filteredItems}
+                    data={paginatedItems}
                     isLoading={isLoading}
                     emptyState={
                         <EmptyState
@@ -262,6 +288,39 @@ export default function ProductsPage() {
                         />
                     }
                 />
+
+                {filteredItems.length > 0 && (
+                    <div className="flex items-center justify-center gap-4 bg-white rounded-xl border border-slate-100 px-4 py-3">
+                        <span className="text-xs font-bold text-text-secondary">
+                            Showing {(page - 1) * perPage + 1}–{Math.min(page * perPage, filteredItems.length)} of {filteredItems.length}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page <= 1}
+                                className="p-2 text-text-secondary hover:text-primary hover:bg-slate-50 rounded-lg transition-all disabled:opacity-30 disabled:pointer-events-none"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                <button
+                                    key={p}
+                                    onClick={() => setPage(p)}
+                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${p === page ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:bg-slate-50'}`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                className="p-2 text-text-secondary hover:text-primary hover:bg-slate-50 rounded-lg transition-all disabled:opacity-30 disabled:pointer-events-none"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <ProductModal
                     isOpen={isModalOpen}

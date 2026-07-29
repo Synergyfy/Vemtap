@@ -5,7 +5,7 @@ import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 export default function AutomationsLayout({ children }: { children: React.ReactNode }) {
     return (
-        <PageLockWrapper feature="engagement" featureName="Smart Automations">
+        <PageLockWrapper feature="engagement" featureName="Smart Automations" hideUsage>
             {children}
         </PageLockWrapper>
     );
