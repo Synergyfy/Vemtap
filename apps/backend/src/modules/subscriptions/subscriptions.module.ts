@@ -34,6 +34,7 @@ import { CatalogueCategory } from '../catalogue/entities/catalogue-category.enti
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { AutomationRule } from '../messaging/entities/automation-rule.entity';
       CatalogueOffer,
       AutomationRule,
       BundleDiscount,
+      Reward,
     ]),
     forwardRef(() => BusinessesModule),
     PaymentsModule,

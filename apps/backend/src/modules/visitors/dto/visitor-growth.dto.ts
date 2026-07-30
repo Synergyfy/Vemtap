@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class VisitorGrowthQueryDto {
   @ApiProperty({
@@ -20,8 +21,9 @@ export class VisitorGrowthQueryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  allBranches?: string;
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  allBranches?: boolean;
 }
 
 export class VisitorGrowthPointDto {

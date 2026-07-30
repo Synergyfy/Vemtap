@@ -36,6 +36,7 @@ import {
   RedeemRewardDto,
   BranchIdParamDto,
 } from './dto/loyalty.dto';
+import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import {
   CustomerAnalyticsQueryDto,
@@ -189,8 +190,36 @@ export class LoyaltyController {
     @Query('branchId') branchId?: string,
   ) {
     const user = req.user as any;
-    const businessId = user?.businessId || user?.business?.id || user?.branch?.businessId;
+    const businessId =
+      user?.businessId || user?.business?.id || user?.branch?.businessId;
     return this.loyaltyService.getBusinessLoyaltyStats(businessId, branchId);
+  }
+
+  @Get('rules')
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Get loyalty rules for business/branch' })
+  @ApiQuery({ name: 'branchId', required: false })
+  async getRules(
+    @Request() req: { user: User },
+    @Query('branchId') branchId?: string,
+  ) {
+    const user = req.user as any;
+    const businessId = user?.businessId || user?.business?.id;
+    return this.loyaltyService.getRules(businessId, branchId);
+  }
+
+  @Patch('rules')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update loyalty rules' })
+  @ApiQuery({ name: 'branchId', required: false })
+  async updateRules(
+    @Request() req: { user: User },
+    @Body() dto: UpdateLoyaltyRuleDto,
+    @Query('branchId') branchId?: string,
+  ) {
+    const user = req.user as any;
+    const businessId = user?.businessId || user?.business?.id;
+    return this.loyaltyService.upsertRules(businessId, dto, branchId);
   }
 
   @Post('points/give')

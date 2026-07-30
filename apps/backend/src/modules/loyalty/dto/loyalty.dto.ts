@@ -79,10 +79,23 @@ export class GivePointsDto {
   @IsString()
   customerCode: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    description:
+      'Points to award. If omitted and spendingAmount is provided, points are calculated from the active loyalty rule.',
+  })
+  @IsOptional()
   @IsNumber()
   @Min(1)
-  points: number;
+  points?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Spending amount in currency. If provided without points, points are calculated from the active loyalty rule.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  spendingAmount?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
