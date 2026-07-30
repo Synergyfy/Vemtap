@@ -37,6 +37,7 @@ import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import type { DiscoveryCustomer, ActivePartner, NearbyPartner, UpdateDiscoverySettingsDto } from '@/services/discovery/types';
 import { useUpdateBranch, useBranches } from '@/services/branches/hooks';
 import { getBrowserLocation } from '@/lib/geolocation';
+import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
 
 type TabId = 'overview' | 'promotions' | 'partners' | 'customers' | 'results' | 'settings';
 
@@ -122,7 +123,8 @@ export default function DiscoveryPage() {
     const { activeBranchId, isAllBranches } = useActiveBranch();
     
     return (
-        <div className="relative p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
+        <PartnershipVerificationGuard>
+            <div className="relative p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
             <PageHeader 
                 title="Discovery Network" 
                 description="Get more customers from nearby businesses."
@@ -2527,6 +2529,6 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                     </div>
                 )}
             </div>
-        </div>
+        </PartnershipVerificationGuard>
     );
 }

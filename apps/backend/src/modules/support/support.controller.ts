@@ -169,12 +169,14 @@ export class SupportController {
   @ApiOperation({ summary: 'Get all tickets for current user' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
   async getTickets(
     @Request() req: AuthRequest,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('cursor') cursor?: string,
   ) {
-    return this.supportService.findAll(req.user.id, page, limit);
+    return this.supportService.findAll(req.user.id, page, limit, cursor);
   }
 
   @Get('tickets/:id')
@@ -210,6 +212,7 @@ export class SupportController {
       query.isAssigned,
       query.page,
       query.limit,
+      query.cursor || query.nextCursor,
     );
   }
 

@@ -51,6 +51,7 @@ export class CreditService {
         smsCredits: 0,
         emailCredits: 0,
         whatsappCredits: 0,
+        aiCredits: 0,
       });
       await this.walletRepo.save(wallet);
     }
@@ -80,12 +81,14 @@ export class CreditService {
           smsCredits: 0,
           emailCredits: 0,
           whatsappCredits: 0,
+          aiCredits: 0,
         });
       }
 
       if (channel === Channel.SMS) wallet.smsCredits += amount;
       else if (channel === Channel.EMAIL) wallet.emailCredits += amount;
       else if (channel === Channel.WHATSAPP) wallet.whatsappCredits += amount;
+      else if (channel === Channel.AI) wallet.aiCredits += amount;
 
       await manager.save(wallet);
 
@@ -120,6 +123,7 @@ export class CreditService {
       if (channel === Channel.SMS) balance = wallet.smsCredits;
       else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
       else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
+      else if (channel === Channel.AI) balance = wallet.aiCredits;
 
       if (balance < amount) {
         throw new BadRequestException(`Insufficient ${channel} credits`);
@@ -128,6 +132,7 @@ export class CreditService {
       if (channel === Channel.SMS) wallet.smsCredits -= amount;
       else if (channel === Channel.EMAIL) wallet.emailCredits -= amount;
       else if (channel === Channel.WHATSAPP) wallet.whatsappCredits -= amount;
+      else if (channel === Channel.AI) wallet.aiCredits -= amount;
 
       await manager.save(wallet);
 

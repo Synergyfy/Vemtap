@@ -440,10 +440,7 @@ describe('BranchesService', () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([]);
 
-      const result = await service.findNearbyBranches(
-        sourceBranchId,
-        {} as any,
-      );
+      const result = await service.findNearbyBranches(sourceBranchId, {});
 
       expect(result.source).toEqual({
         id: sourceBranchId,
@@ -460,10 +457,7 @@ describe('BranchesService', () => {
         fartherBranch,
       ]);
 
-      const result = await service.findNearbyBranches(
-        sourceBranchId,
-        {} as any,
-      );
+      const result = await service.findNearbyBranches(sourceBranchId, {});
 
       expect(result.results).toHaveLength(2);
       expect(result.results[0].id).toBe('nearby-1');
@@ -493,7 +487,7 @@ describe('BranchesService', () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([nearbyBranch]);
 
-      await service.findNearbyBranches(sourceBranchId, {} as any);
+      await service.findNearbyBranches(sourceBranchId, {});
 
       expect(mockBranchRepository.query).toHaveBeenCalledWith(
         expect.any(String),
@@ -505,10 +499,7 @@ describe('BranchesService', () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([nearbyBranch]);
 
-      const result = await service.findNearbyBranches(
-        sourceBranchId,
-        {} as any,
-      );
+      const result = await service.findNearbyBranches(sourceBranchId, {});
 
       expect(result.results[0]).not.toHaveProperty('offers');
       expect(
@@ -542,7 +533,7 @@ describe('BranchesService', () => {
 
       const result = await service.findNearbyBranches(sourceBranchId, {
         withPromotions: true,
-      } as any);
+      });
 
       expect(result.results[0]).toHaveProperty('offers');
       expect(result.results[0].offers).toHaveLength(2);
@@ -563,7 +554,7 @@ describe('BranchesService', () => {
 
       const result = await service.findNearbyBranches(sourceBranchId, {
         withPromotions: true,
-      } as any);
+      });
 
       expect(result.results[0].offers).toEqual([]);
     });
@@ -591,7 +582,7 @@ describe('BranchesService', () => {
 
       const result = await service.findNearbyBranches(sourceBranchId, {
         withPromotions: true,
-      } as any);
+      });
 
       expect(result.results[0].offers).toHaveLength(1);
       expect(result.results[1].offers).toEqual([]);
@@ -603,7 +594,7 @@ describe('BranchesService', () => {
 
       await service.findNearbyBranches(sourceBranchId, {
         withPromotions: true,
-      } as any);
+      });
 
       expect(
         mockCatalogueOfferRepository.createQueryBuilder,
@@ -614,10 +605,7 @@ describe('BranchesService', () => {
       mockBranchRepository.findOne.mockResolvedValue(sourceBranch);
       mockBranchRepository.query.mockResolvedValue([nearbyBranch]);
 
-      const result = await service.findNearbyBranches(
-        sourceBranchId,
-        {} as any,
-      );
+      const result = await service.findNearbyBranches(sourceBranchId, {});
 
       expect(result.source).toEqual({
         id: sourceBranchId,

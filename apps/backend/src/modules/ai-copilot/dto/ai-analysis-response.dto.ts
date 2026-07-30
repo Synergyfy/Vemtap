@@ -1,4 +1,5 @@
-export type AIInsightType = 'trend' | 'opportunity' | 'risk' | 'improvement' | 'summary';
+export type AIInsightType =
+  'trend' | 'opportunity' | 'risk' | 'improvement' | 'summary';
 export type AIInsightSeverity = 'positive' | 'info' | 'warning' | 'critical';
 
 export interface AIInsightMetric {

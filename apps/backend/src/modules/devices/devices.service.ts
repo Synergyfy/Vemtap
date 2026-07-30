@@ -16,6 +16,7 @@ import { AdminDeviceQueryDto } from './dto/admin-device-query.dto';
 import { Order, OrderStatus } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { BranchesService } from '../branches/branches.service';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class DevicesService {
@@ -376,17 +377,28 @@ export class DevicesService {
 
     const page = query.page || 1;
     const limit = query.limit || 10;
-    qb.skip((page - 1) * limit).take(limit);
-    qb.orderBy('device.createdAt', 'DESC');
+    const cursor = (query as any).cursor || (query as any).nextCursor;
 
-    const [devices, total] = await qb.getManyAndCount();
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'device',
+    });
 
     return {
-      data: devices,
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
       meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
       },
     };
   }

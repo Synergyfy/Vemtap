@@ -41,9 +41,7 @@ export class PublicCatalogueController {
   @ApiOperation({
     summary: 'List categories with active items for a specific branch',
   })
-  async listCategoriesByBranch(
-    @Param('branchId') branchId: string,
-  ) {
+  async listCategoriesByBranch(@Param('branchId') branchId: string) {
     return this.catalogueService.findAllCategoriesByBranch(branchId);
   }
 }

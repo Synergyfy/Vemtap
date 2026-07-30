@@ -15,14 +15,16 @@ export class LoyaltyBot implements IPageBot {
     let totalPointsRedeemed = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT 
+      const stats = await this.dataSource
+        .query(
+          `SELECT 
            COUNT(DISTINCT "customerId")::int as members,
            COALESCE(SUM(CASE WHEN type = 'earned' THEN amount END), 0)::int as awarded,
            COALESCE(SUM(CASE WHEN type = 'redeemed' THEN amount END), 0)::int as redeemed
          FROM point_transactions WHERE "branchId" = $1`,
-        [branchId],
-      ).catch(() => []);
+          [branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         activeMembers = stats[0].members || 0;
@@ -40,7 +42,10 @@ export class LoyaltyBot implements IPageBot {
       activeMembers,
       totalPointsAwarded,
       totalPointsRedeemed,
-      redemptionRate: totalPointsAwarded > 0 ? Math.round((totalPointsRedeemed / totalPointsAwarded) * 100) : 0,
+      redemptionRate:
+        totalPointsAwarded > 0
+          ? Math.round((totalPointsRedeemed / totalPointsAwarded) * 100)
+          : 0,
     };
   }
 }

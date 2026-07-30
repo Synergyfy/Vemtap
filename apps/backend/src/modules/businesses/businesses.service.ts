@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Repository, In, IsNull } from 'typeorm';
+import { Repository, In, IsNull, Not } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { Business, BusinessStatus } from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
@@ -23,6 +23,7 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import {
   Subscription,
   SubscriptionStatus,
@@ -186,7 +187,7 @@ export class BusinessesService {
 
   async findByCode(uniqueCode: string): Promise<any> {
     const business = await this.businessesRepository.findOne({
-      where: { uniqueCode, status: BusinessStatus.ACTIVE },
+      where: { uniqueCode, status: Not(BusinessStatus.SUSPENDED) },
       relations: ['branches', 'category', 'subcategory', 'owner'],
     });
     if (!business) {
@@ -472,10 +473,20 @@ export class BusinessesService {
 
     const page = query.page || 1;
     const limit = query.limit || 10;
-    qb.skip((page - 1) * limit).take(limit);
-    qb.orderBy('business.createdAt', 'DESC');
+    const cursor = (query as any).cursor || (query as any).nextCursor;
 
-    const [businesses, total] = await qb.getManyAndCount();
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'business',
+    });
+
+    const businesses = result.data;
+    const total = result.total;
 
     // Stats
     const activeCount = await this.businessesRepository.count({
@@ -530,40 +541,66 @@ export class BusinessesService {
     };
   }
 
-  async findSuspendedAdmin(query: { page?: number; limit?: number }) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+  async findSuspendedAdmin(query: {
+    page?: number;
+    limit?: number;
+    cursor?: string;
+  }) {
+    const qb = this.businessesRepository
+      .createQueryBuilder('business')
+      .leftJoinAndSelect('business.owner', 'owner')
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.subcategory', 'subcategory')
+      .where('business.status = :status', { status: BusinessStatus.SUSPENDED });
 
-    const [businesses, total] = await this.businessesRepository.findAndCount({
-      where: { status: BusinessStatus.SUSPENDED },
-      relations: ['owner', 'category', 'subcategory'],
-      order: { suspendedAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: query.cursor,
+      page: query.page,
+      limit: query.limit,
+      sortField: 'suspendedAt',
+      sortOrder: 'DESC',
+      entityAlias: 'business',
     });
 
     return {
-      data: businesses,
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
       meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
       },
     };
   }
 
-  async findPendingVerificationAdmin(query: { page?: number; limit?: number }) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+  async findPendingVerificationAdmin(query: {
+    page?: number;
+    limit?: number;
+    cursor?: string;
+  }) {
+    const qb = this.businessesRepository
+      .createQueryBuilder('business')
+      .leftJoinAndSelect('business.owner', 'owner')
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.subcategory', 'subcategory')
+      .where('business.isVerified = :isVerified', { isVerified: false });
 
-    // 1. Get businesses that are NOT verified
-    const [items, total] = await this.businessesRepository.findAndCount({
-      where: { isVerified: false },
-      relations: ['owner', 'category', 'subcategory'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: query.cursor,
+      page: query.page,
+      limit: query.limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'business',
     });
+
+    const items = result.data;
+    const total = result.total;
 
     // 2. Stats for verification
     const todayStart = new Date();
@@ -594,8 +631,10 @@ export class BusinessesService {
       data: items,
       meta: {
         total,
-        page,
-        lastPage: Math.ceil(total / limit),
+        page: result.page,
+        lastPage: Math.ceil(total / (result.limit || 10)),
+        cursor: result.cursor,
+        nextCursor: result.nextCursor,
       },
       stats: {
         totalPending: total,
@@ -687,7 +726,7 @@ export class BusinessesService {
       registrationNumber: dto.registrationNumber,
       documents: dto.documents,
       engagement: dto.engagement,
-    } as any);
+    });
 
     // Ensure user status is active and linked to branch (linked during this.create)
     user.status = UserStatus.ACTIVE;

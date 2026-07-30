@@ -15,18 +15,21 @@ export class CustomerAnalyticsBot implements IPageBot {
     let avgLtv = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT 
+      const stats = await this.dataSource
+        .query(
+          `SELECT 
            COUNT(*)::int as total,
            COUNT(CASE WHEN "visitCount" > 1 THEN 1 END)::float / NULLIF(COUNT(*), 0) * 100 as return_rate,
            COALESCE(AVG("totalSpend"), 0)::float as avg_spend
          FROM visitors WHERE "branchId" = $1`,
-        [branchId],
-      ).catch(() => []);
+          [branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         totalVisitors = stats[0].total || 0;
-        returningVisitorRate = totalVisitors === 0 ? 0 : Math.round(stats[0].return_rate ?? 0);
+        returningVisitorRate =
+          totalVisitors === 0 ? 0 : Math.round(stats[0].return_rate ?? 0);
         avgLtv = Math.round(stats[0].avg_spend || 0);
       }
     } catch (e) {

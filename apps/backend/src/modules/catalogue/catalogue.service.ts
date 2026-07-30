@@ -23,6 +23,7 @@ import {
 } from './dto/item.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class CatalogueService {
@@ -250,7 +251,10 @@ export class CatalogueService {
   }
 
   private async resolveBranchId(branchIdOrCode: string): Promise<string> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(branchIdOrCode);
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        branchIdOrCode,
+      );
     if (isUuid) {
       const branch = await this.branchRepository.findOne({
         where: { id: branchIdOrCode, isActive: true },
@@ -264,7 +268,9 @@ export class CatalogueService {
       where: { uniqueCode: branchIdOrCode, isActive: true },
     });
     if (!branch) {
-      throw new NotFoundException(`Branch with code ${branchIdOrCode} not found`);
+      throw new NotFoundException(
+        `Branch with code ${branchIdOrCode} not found`,
+      );
     }
     return branch.id;
   }
@@ -316,32 +322,52 @@ export class CatalogueService {
     }
 
     // Sorting
+    let sortField = 'createdAt';
+    let sortOrder: 'ASC' | 'DESC' = 'DESC';
+
     switch (query.sortBy) {
       case 'oldest':
-        qb.orderBy('item.createdAt', 'ASC');
+        sortField = 'createdAt';
+        sortOrder = 'ASC';
         break;
       case 'price_asc':
-        qb.orderBy('item.price', 'ASC');
+        sortField = 'price';
+        sortOrder = 'ASC';
         break;
       case 'price_desc':
-        qb.orderBy('item.price', 'DESC');
+        sortField = 'price';
+        sortOrder = 'DESC';
         break;
       case 'most_popular':
-        // Placeholder for popularity logic, defaulting to newest for now
-        qb.orderBy('item.createdAt', 'DESC');
-        break;
       case 'newest':
       default:
-        qb.orderBy('item.createdAt', 'DESC');
+        sortField = 'createdAt';
+        sortOrder = 'DESC';
         break;
     }
 
-    const [data, total] = await qb
-      .skip(((query.page ?? 1) - 1) * (query.limit ?? 10))
-      .take(query.limit ?? 10)
-      .getManyAndCount();
+    const cursorStr = (query as any).cursor || (query as any).nextCursor;
 
-    return { data, total, page: query.page ?? 1, limit: query.limit ?? 10 };
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: cursorStr,
+      page: query.page,
+      limit: query.limit,
+      sortField,
+      sortOrder,
+      entityAlias: 'item',
+    });
+
+    return {
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+    };
   }
 
   async findAllCategoriesByBranch(branchId: string) {

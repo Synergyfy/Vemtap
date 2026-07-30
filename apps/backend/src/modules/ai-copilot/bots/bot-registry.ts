@@ -95,7 +95,9 @@ export class BotRegistry {
     const mainKey = pageKey.split('/')[0];
     const bot = this.bots.get(pageKey) || this.bots.get(mainKey);
     if (!bot) {
-      this.logger.warn(`No bot found for page '${pageKey}'. Falling back to DashboardBot.`);
+      this.logger.warn(
+        `No bot found for page '${pageKey}'. Falling back to DashboardBot.`,
+      );
       return this.dashboardBot;
     }
     return bot;

@@ -9,6 +9,9 @@ import { Reward } from '../loyalty/entities/reward.entity';
 import { MailService } from '../mail/mail.service';
 import { DevicesService } from '../devices/devices.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { Plan } from '../subscriptions/entities/plan.entity';
+import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('BusinessesService', () => {
@@ -134,6 +137,18 @@ describe('BusinessesService', () => {
           provide: SubscriptionsService,
           useValue: mockSubscriptionsService,
         },
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Plan),
+          useValue: mockRepository,
+        },
+        {
+          provide: getQueueToken('geocoding'),
+          useValue: { add: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -187,7 +202,7 @@ describe('BusinessesService', () => {
       usersRepository.findOne.mockResolvedValue(null);
       mockRepository.findOne.mockResolvedValue(null); // findByOwner
 
-      const result = await service.adminCreate(dto as any);
+      const result = await service.adminCreate(dto);
 
       expect(usersRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({

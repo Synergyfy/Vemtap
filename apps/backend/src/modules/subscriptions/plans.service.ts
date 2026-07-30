@@ -30,7 +30,10 @@ export class PlansService {
     if (plan.branchLimit === null || plan.branchLimit === undefined) {
       plan.branchLimit = 1;
     }
-    if (plan.trialDurationDays === null || plan.trialDurationDays === undefined) {
+    if (
+      plan.trialDurationDays === null ||
+      plan.trialDurationDays === undefined
+    ) {
       plan.trialDurationDays = 30;
     }
   }

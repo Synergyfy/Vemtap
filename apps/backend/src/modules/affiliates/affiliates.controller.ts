@@ -11,7 +11,13 @@ import {
   ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiBody,
+} from '@nestjs/swagger';
 import { AffiliatesService } from './affiliates.service';
 import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service';
 import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
@@ -28,7 +34,10 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
-import { KycStatus, AffiliateProfile } from './entities/affiliate-profile.entity';
+import {
+  KycStatus,
+  AffiliateProfile,
+} from './entities/affiliate-profile.entity';
 import { AffiliateWithdrawalRequest } from './entities/withdrawal-request.entity';
 
 @ApiTags('Affiliates')

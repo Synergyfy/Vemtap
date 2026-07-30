@@ -15,14 +15,16 @@ export class LowStockBot implements IPageBot {
     let estimatedRestockCost = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT 
+      const stats = await this.dataSource
+        .query(
+          `SELECT 
            COUNT(CASE WHEN stock <= "lowStockThreshold" AND stock > 0 THEN 1 END)::int as low_stock,
            COUNT(CASE WHEN stock <= 0 THEN 1 END)::int as out_of_stock,
            COALESCE(SUM(CASE WHEN stock <= "lowStockThreshold" THEN "lowStockThreshold" * price END), 0)::float as restock_cost
          FROM products WHERE "branchId" = $1`,
-        [branchId],
-      ).catch(() => []);
+          [branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         lowStockItemsCount = stats[0].low_stock || 0;

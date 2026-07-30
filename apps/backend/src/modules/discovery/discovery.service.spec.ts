@@ -3,21 +3,46 @@ import { DiscoveryService } from './discovery.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
-import { CatalogueOffer, CatalogueOfferStatus } from '../catalogue/entities/catalogue-offer.entity';
-import { Partnership, PartnershipStatus } from '../partnerships/entities/partnership.entity';
-import { Business, BusinessStatus } from '../businesses/entities/business.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferStatus,
+} from '../catalogue/entities/catalogue-offer.entity';
+import {
+  Partnership,
+  PartnershipStatus,
+} from '../partnerships/entities/partnership.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../businesses/entities/business.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 import { User, UserRole } from '../users/entities/user.entity';
-import { SponsoredCampaign, SponsoredCampaignStatus } from './entities/sponsored-campaign.entity';
+import {
+  SponsoredCampaign,
+  SponsoredCampaignStatus,
+} from './entities/sponsored-campaign.entity';
 import { SponsoredCampaignTransaction } from './entities/sponsored-campaign-transaction.entity';
-import { DiscoveryInvoice, InvoiceStatus } from './entities/discovery-invoice.entity';
+import {
+  DiscoveryInvoice,
+  InvoiceStatus,
+} from './entities/discovery-invoice.entity';
 import { InvoiceLineItem } from './entities/invoice-line-item.entity';
-import { FraudAlert, FraudSeverity, FraudAlertStatus } from './entities/fraud-alert.entity';
+import {
+  FraudAlert,
+  FraudSeverity,
+  FraudAlertStatus,
+} from './entities/fraud-alert.entity';
 import { Report, ReportStatus } from './entities/report.entity';
 import { NotificationLog } from './entities/notification-log.entity';
-import { OfferCategoryType, CategoryTypeStatus } from './entities/offer-category-type.entity';
+import {
+  OfferCategoryType,
+  CategoryTypeStatus,
+} from './entities/offer-category-type.entity';
 import { AuditLog } from '../administration/entities/audit-log.entity';
 import { Setting } from '../settings/entities/setting.entity';
 import { NotFoundException } from '@nestjs/common';
@@ -180,21 +205,54 @@ describe('DiscoveryService', () => {
         DiscoveryService,
         { provide: getRepositoryToken(Branch), useValue: mockBranchRepo },
         { provide: getRepositoryToken(Visit), useValue: mockVisitRepo },
-        { provide: getRepositoryToken(Partnership), useValue: mockPartnershipRepo },
-        { provide: getRepositoryToken(CatalogueOffer), useValue: mockOfferRepo },
+        {
+          provide: getRepositoryToken(Partnership),
+          useValue: mockPartnershipRepo,
+        },
+        {
+          provide: getRepositoryToken(CatalogueOffer),
+          useValue: mockOfferRepo,
+        },
         { provide: getRepositoryToken(Business), useValue: mockBusinessRepo },
-        { provide: getRepositoryToken(Subscription), useValue: mockSubscriptionRepo },
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: mockSubscriptionRepo,
+        },
         { provide: getRepositoryToken(Plan), useValue: mockPlanRepo },
-        { provide: getRepositoryToken(Notification), useValue: mockNotificationRepo },
+        {
+          provide: getRepositoryToken(Notification),
+          useValue: mockNotificationRepo,
+        },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
-        { provide: getRepositoryToken(SponsoredCampaign), useValue: mockSponsoredCampaignRepo },
-        { provide: getRepositoryToken(SponsoredCampaignTransaction), useValue: mockCampaignTransactionRepo },
-        { provide: getRepositoryToken(DiscoveryInvoice), useValue: mockInvoiceRepo },
-        { provide: getRepositoryToken(InvoiceLineItem), useValue: mockLineItemRepo },
-        { provide: getRepositoryToken(FraudAlert), useValue: mockFraudAlertRepo },
+        {
+          provide: getRepositoryToken(SponsoredCampaign),
+          useValue: mockSponsoredCampaignRepo,
+        },
+        {
+          provide: getRepositoryToken(SponsoredCampaignTransaction),
+          useValue: mockCampaignTransactionRepo,
+        },
+        {
+          provide: getRepositoryToken(DiscoveryInvoice),
+          useValue: mockInvoiceRepo,
+        },
+        {
+          provide: getRepositoryToken(InvoiceLineItem),
+          useValue: mockLineItemRepo,
+        },
+        {
+          provide: getRepositoryToken(FraudAlert),
+          useValue: mockFraudAlertRepo,
+        },
         { provide: getRepositoryToken(Report), useValue: mockReportRepo },
-        { provide: getRepositoryToken(NotificationLog), useValue: mockNotificationLogRepo },
-        { provide: getRepositoryToken(OfferCategoryType), useValue: mockCategoryTypeRepo },
+        {
+          provide: getRepositoryToken(NotificationLog),
+          useValue: mockNotificationLogRepo,
+        },
+        {
+          provide: getRepositoryToken(OfferCategoryType),
+          useValue: mockCategoryTypeRepo,
+        },
         { provide: getRepositoryToken(AuditLog), useValue: mockAuditLogRepo },
         { provide: getRepositoryToken(Setting), useValue: mockSettingRepo },
       ],
@@ -248,10 +306,20 @@ describe('DiscoveryService', () => {
       mockQueryBuilder.getManyAndCount.mockResolvedValue([
         [
           {
-            id: 'b1', name: 'TestBiz', status: BusinessStatus.ACTIVE,
+            id: 'b1',
+            name: 'TestBiz',
+            status: BusinessStatus.ACTIVE,
             createdAt: new Date('2025-01-01'),
             category: { name: 'Food' },
-            branches: [{ id: 'br1', name: 'Main', city: 'Abuja', state: 'FCT', isMainBranch: true }],
+            branches: [
+              {
+                id: 'br1',
+                name: 'Main',
+                city: 'Abuja',
+                state: 'FCT',
+                isMainBranch: true,
+              },
+            ],
           },
         ],
         1,
@@ -285,15 +353,15 @@ describe('DiscoveryService', () => {
   describe('getAdminBusinessDetail', () => {
     it('should return business detail', async () => {
       mockBusinessRepo.findOne.mockResolvedValue({
-        id: 'b1', name: 'TestBiz', status: BusinessStatus.ACTIVE,
+        id: 'b1',
+        name: 'TestBiz',
+        status: BusinessStatus.ACTIVE,
         createdAt: new Date('2025-01-01'),
         category: { name: 'Food' },
         branches: [{ id: 'br1', name: 'Main', city: 'Abuja', state: 'FCT' }],
       });
       mockOfferRepo.count.mockResolvedValue(3);
-      mockVisitRepo.count
-        .mockResolvedValueOnce(5)
-        .mockResolvedValueOnce(5);
+      mockVisitRepo.count.mockResolvedValueOnce(5).mockResolvedValueOnce(5);
       mockVisitRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getRawOne.mockResolvedValue({ total: '250000' });
 
@@ -307,7 +375,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing business', async () => {
       mockBusinessRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdminBusinessDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdminBusinessDetail('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -315,10 +385,16 @@ describe('DiscoveryService', () => {
     it('should return paginated offers', async () => {
       mockOfferRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       const mockOffer = {
-        id: 'o1', name: 'Test Offer', status: CatalogueOfferStatus.ACTIVE,
-        businessId: 'b1', offerType: 'Discount',
-        startDate: new Date('2025-01-01'), endDate: new Date('2025-02-01'),
-        views: 100, visits: 20, revenue: 50000,
+        id: 'o1',
+        name: 'Test Offer',
+        status: CatalogueOfferStatus.ACTIVE,
+        businessId: 'b1',
+        offerType: 'Discount',
+        startDate: new Date('2025-01-01'),
+        endDate: new Date('2025-02-01'),
+        views: 100,
+        visits: 20,
+        revenue: 50000,
         business: { name: 'Biz' },
         branch: { name: 'Branch' },
       };
@@ -334,10 +410,16 @@ describe('DiscoveryService', () => {
   describe('getAdminOfferDetail', () => {
     it('should return offer detail with computed metrics', async () => {
       mockOfferRepo.findOne.mockResolvedValue({
-        id: 'o1', name: 'Test Offer', status: CatalogueOfferStatus.ACTIVE,
-        businessId: 'b1', offerType: 'Discount',
-        startDate: new Date('2025-01-01'), endDate: new Date('2025-02-01'),
-        views: 200, visits: 40, revenue: 50000,
+        id: 'o1',
+        name: 'Test Offer',
+        status: CatalogueOfferStatus.ACTIVE,
+        businessId: 'b1',
+        offerType: 'Discount',
+        startDate: new Date('2025-01-01'),
+        endDate: new Date('2025-02-01'),
+        views: 200,
+        visits: 40,
+        revenue: 50000,
         business: { name: 'Biz' },
       });
       mockVisitRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
@@ -355,7 +437,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing offer', async () => {
       mockOfferRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdminOfferDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdminOfferDetail('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -363,14 +447,20 @@ describe('DiscoveryService', () => {
     it('should return paginated referrals', async () => {
       mockVisitRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getManyAndCount.mockResolvedValue([
-        [{
-          id: 'v1', visitType: 'patronage', createdAt: new Date('2025-01-01'),
-          customerId: 'c1', referredByBranchId: 'b1', branchId: 'b2',
-          customer: { firstName: 'John', lastName: 'Doe' },
-          referredByBranch: { name: 'SourceBiz' },
-          branch: { name: 'TargetBiz' },
-          catalogueOffer: { name: 'Special' },
-        }],
+        [
+          {
+            id: 'v1',
+            visitType: 'patronage',
+            createdAt: new Date('2025-01-01'),
+            customerId: 'c1',
+            referredByBranchId: 'b1',
+            branchId: 'b2',
+            customer: { firstName: 'John', lastName: 'Doe' },
+            referredByBranch: { name: 'SourceBiz' },
+            branch: { name: 'TargetBiz' },
+            catalogueOffer: { name: 'Special' },
+          },
+        ],
         1,
       ]);
 
@@ -384,8 +474,13 @@ describe('DiscoveryService', () => {
   describe('getAdminReferralInvestigation', () => {
     it('should return investigation with evidence', async () => {
       mockVisitRepo.findOne.mockResolvedValue({
-        id: 'v1', visitType: 'patronage', createdAt: new Date('2025-01-01'),
-        customerId: 'c1', referredByBranchId: 'b1', branchId: 'b2', ipAddress: '192.168.1.1',
+        id: 'v1',
+        visitType: 'patronage',
+        createdAt: new Date('2025-01-01'),
+        customerId: 'c1',
+        referredByBranchId: 'b1',
+        branchId: 'b2',
+        ipAddress: '192.168.1.1',
         customer: { firstName: 'John', lastName: 'Doe' },
         referredByBranch: { name: 'SourceBiz' },
         branch: { name: 'TargetBiz' },
@@ -400,18 +495,30 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing referral', async () => {
       mockVisitRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdminReferralInvestigation('invalid')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getAdminReferralInvestigation('invalid'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('getAdminPartnerships', () => {
     it('should return paginated partnerships', async () => {
       mockPartnershipRepo.findAndCount.mockResolvedValue([
-        [{
-          id: 'p1', status: PartnershipStatus.ACCEPTED, createdAt: new Date('2025-01-01'),
-          initiatorBranch: { name: 'InitiatorBiz', business: { name: 'BizA' } },
-          recipientBranch: { name: 'RecipientBiz', business: { name: 'BizB' } },
-        }],
+        [
+          {
+            id: 'p1',
+            status: PartnershipStatus.ACCEPTED,
+            createdAt: new Date('2025-01-01'),
+            initiatorBranch: {
+              name: 'InitiatorBiz',
+              business: { name: 'BizA' },
+            },
+            recipientBranch: {
+              name: 'RecipientBiz',
+              business: { name: 'BizB' },
+            },
+          },
+        ],
         1,
       ]);
 
@@ -426,16 +533,28 @@ describe('DiscoveryService', () => {
   describe('getAdminSponsoredCampaigns', () => {
     it('should return paginated campaigns', async () => {
       mockSponsoredCampaignRepo.findAndCount.mockResolvedValue([
-        [{
-          id: 'c1', name: 'Test Campaign', status: SponsoredCampaignStatus.ACTIVE,
-          budget: 100000, spent: 45000, radius: '2km', duration: '30 Days',
-          impressions: 10000, clicks: 500, conversions: 25,
-          business: { name: 'Biz' },
-        }],
+        [
+          {
+            id: 'c1',
+            name: 'Test Campaign',
+            status: SponsoredCampaignStatus.ACTIVE,
+            budget: 100000,
+            spent: 45000,
+            radius: '2km',
+            duration: '30 Days',
+            impressions: 10000,
+            clicks: 500,
+            conversions: 25,
+            business: { name: 'Biz' },
+          },
+        ],
         1,
       ]);
 
-      const result = await service.getAdminSponsoredCampaigns({ page: 1, limit: 10 });
+      const result = await service.getAdminSponsoredCampaigns({
+        page: 1,
+        limit: 10,
+      });
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].name).toBe('Test Campaign');
@@ -445,14 +564,28 @@ describe('DiscoveryService', () => {
   describe('getAdminSponsoredCampaignDetail', () => {
     it('should return campaign detail with transactions', async () => {
       mockSponsoredCampaignRepo.findOne.mockResolvedValue({
-        id: 'c1', name: 'Test Campaign', status: SponsoredCampaignStatus.ACTIVE,
-        budget: 100000, spent: 45000, radius: '2km', duration: '30 Days',
-        impressions: 10000, clicks: 500, conversions: 25,
-        startDate: new Date('2025-01-01'), endDate: new Date('2025-02-01'),
+        id: 'c1',
+        name: 'Test Campaign',
+        status: SponsoredCampaignStatus.ACTIVE,
+        budget: 100000,
+        spent: 45000,
+        radius: '2km',
+        duration: '30 Days',
+        impressions: 10000,
+        clicks: 500,
+        conversions: 25,
+        startDate: new Date('2025-01-01'),
+        endDate: new Date('2025-02-01'),
         business: { name: 'Biz' },
       });
       mockCampaignTransactionRepo.find.mockResolvedValue([
-        { invoiceNo: 'INV-001', date: new Date('2025-01-15'), type: 'Budget Allocation', amount: 45000, status: 'Completed' },
+        {
+          invoiceNo: 'INV-001',
+          date: new Date('2025-01-15'),
+          type: 'Budget Allocation',
+          amount: 45000,
+          status: 'Completed',
+        },
       ]);
 
       const result = await service.getAdminSponsoredCampaignDetail('c1');
@@ -464,18 +597,26 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing campaign', async () => {
       mockSponsoredCampaignRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdminSponsoredCampaignDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getAdminSponsoredCampaignDetail('invalid'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('getAdminBilling', () => {
     it('should return paginated invoices', async () => {
       mockInvoiceRepo.findAndCount.mockResolvedValue([
-        [{
-          id: 'inv1', total: 50000, type: 'Network Subscription', method: 'Wallet',
-          status: InvoiceStatus.PAID, date: new Date('2025-01-01'),
-          business: { name: 'Biz' },
-        }],
+        [
+          {
+            id: 'inv1',
+            total: 50000,
+            type: 'Network Subscription',
+            method: 'Wallet',
+            status: InvoiceStatus.PAID,
+            date: new Date('2025-01-01'),
+            business: { name: 'Biz' },
+          },
+        ],
         1,
       ]);
 
@@ -489,9 +630,15 @@ describe('DiscoveryService', () => {
   describe('getAdminBillingDetail', () => {
     it('should return invoice detail with line items', async () => {
       mockInvoiceRepo.findOne.mockResolvedValue({
-        id: 'inv1', total: 50000, type: 'Campaign Budget Allocation', method: 'VemTap Wallet',
-        status: InvoiceStatus.PAID, date: new Date('2025-01-01'), description: 'Campaign fee',
-        tax: 5000, business: { name: 'Biz' },
+        id: 'inv1',
+        total: 50000,
+        type: 'Campaign Budget Allocation',
+        method: 'VemTap Wallet',
+        status: InvoiceStatus.PAID,
+        date: new Date('2025-01-01'),
+        description: 'Campaign fee',
+        tax: 5000,
+        business: { name: 'Biz' },
         items: [{ description: 'Setup Fee', qty: 1, unitPrice: 45000 }],
       });
 
@@ -503,7 +650,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing invoice', async () => {
       mockInvoiceRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdminBillingDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdminBillingDetail('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -515,8 +664,16 @@ describe('DiscoveryService', () => {
         { sourceId: 'b1', targetId: 'b2', count: '45' },
       ]);
       mockBranchRepo.findOne
-        .mockResolvedValueOnce({ id: 'b1', name: 'BranchA', business: { name: 'BizA' } })
-        .mockResolvedValueOnce({ id: 'b2', name: 'BranchB', business: { name: 'BizB' } });
+        .mockResolvedValueOnce({
+          id: 'b1',
+          name: 'BranchA',
+          business: { name: 'BizA' },
+        })
+        .mockResolvedValueOnce({
+          id: 'b2',
+          name: 'BranchB',
+          business: { name: 'BizB' },
+        });
       mockQueryBuilder.getRawOne.mockResolvedValue({ total: '150000' });
 
       const result = await service.getAdminAttribution();
@@ -532,11 +689,17 @@ describe('DiscoveryService', () => {
     it('should return paginated customers', async () => {
       mockUserRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getManyAndCount.mockResolvedValue([
-        [{
-          id: 'u1', firstName: 'John', lastName: 'Doe',
-          status: 'Active', role: UserRole.CUSTOMER,
-          createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-06-01'),
-        }],
+        [
+          {
+            id: 'u1',
+            firstName: 'John',
+            lastName: 'Doe',
+            status: 'Active',
+            role: UserRole.CUSTOMER,
+            createdAt: new Date('2025-01-01'),
+            updatedAt: new Date('2025-06-01'),
+          },
+        ],
         1,
       ]);
 
@@ -550,13 +713,23 @@ describe('DiscoveryService', () => {
   describe('getAdminCustomerDetail', () => {
     it('should return customer detail with timeline', async () => {
       mockUserRepo.findOne.mockResolvedValue({
-        id: 'u1', firstName: 'John', lastName: 'Doe',
-        email: 'john@test.com', phone: '+2348000000000',
-        status: 'Active', role: UserRole.CUSTOMER,
-        createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-06-01'),
+        id: 'u1',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@test.com',
+        phone: '+2348000000000',
+        status: 'Active',
+        role: UserRole.CUSTOMER,
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-06-01'),
       });
       mockVisitRepo.find.mockResolvedValue([
-        { visitType: 'patronage', createdAt: new Date('2025-06-01'), branch: { name: 'Biz' }, catalogueOffer: {} },
+        {
+          visitType: 'patronage',
+          createdAt: new Date('2025-06-01'),
+          branch: { name: 'Biz' },
+          catalogueOffer: {},
+        },
       ]);
 
       const result = await service.getAdminCustomerDetail('u1');
@@ -568,7 +741,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing customer', async () => {
       mockUserRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdminCustomerDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdminCustomerDetail('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -581,9 +756,7 @@ describe('DiscoveryService', () => {
         .mockResolvedValueOnce([
           { name: 'Abuja', businesses: '10', offers: '25', referrals: '50' },
         ])
-        .mockResolvedValueOnce([
-          { city: 'Abuja', revenue: '500000' },
-        ]);
+        .mockResolvedValueOnce([{ city: 'Abuja', revenue: '500000' }]);
 
       const result = await service.getAdminLocations({ page: 1, limit: 10 });
 
@@ -615,7 +788,9 @@ describe('DiscoveryService', () => {
       mockBranchRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getCount.mockResolvedValue(0);
       mockQueryBuilder.getRawMany.mockResolvedValue([]);
-      await expect(service.getAdminLocationDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdminLocationDetail('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -655,16 +830,29 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing category', async () => {
       mockBusinessRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
-      mockQueryBuilder.getRawOne.mockResolvedValue({ businessCount: '0', offerCount: '0' });
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        businessCount: '0',
+        offerCount: '0',
+      });
 
-      await expect(service.getAdminCategoryDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdminCategoryDetail('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('getAdminCategoryTypes', () => {
     it('should return paginated category types', async () => {
       mockCategoryTypeRepo.findAndCount.mockResolvedValue([
-        [{ id: 'ct1', name: 'Discount', description: 'Discount offers', offerCount: 10, status: CategoryTypeStatus.ACTIVE }],
+        [
+          {
+            id: 'ct1',
+            name: 'Discount',
+            description: 'Discount offers',
+            offerCount: 10,
+            status: CategoryTypeStatus.ACTIVE,
+          },
+        ],
         1,
       ]);
 
@@ -677,11 +865,15 @@ describe('DiscoveryService', () => {
 
   describe('createAdminCategoryType', () => {
     it('should create and return a new category type', async () => {
-      const dto = { name: 'New Type', description: 'Test', status: CategoryTypeStatus.ACTIVE };
+      const dto = {
+        name: 'New Type',
+        description: 'Test',
+        status: CategoryTypeStatus.ACTIVE,
+      };
       mockCategoryTypeRepo.create.mockReturnValue(dto);
       mockCategoryTypeRepo.save.mockResolvedValue({ id: 'new-id', ...dto });
 
-      const result = await service.createAdminCategoryType(dto as any);
+      const result = await service.createAdminCategoryType(dto);
 
       expect(result.id).toBe('new-id');
       expect(mockCategoryTypeRepo.create).toHaveBeenCalledWith(dto);
@@ -692,16 +884,23 @@ describe('DiscoveryService', () => {
     it('should update an existing category type', async () => {
       const existing = { id: 'ct1', name: 'Old Name', description: 'Old' };
       mockCategoryTypeRepo.findOne.mockResolvedValue(existing);
-      mockCategoryTypeRepo.save.mockResolvedValue({ ...existing, name: 'New Name' });
+      mockCategoryTypeRepo.save.mockResolvedValue({
+        ...existing,
+        name: 'New Name',
+      });
 
-      const result = await service.updateAdminCategoryType('ct1', { name: 'New Name' } as any);
+      const result = await service.updateAdminCategoryType('ct1', {
+        name: 'New Name',
+      });
 
       expect(result.name).toBe('New Name');
     });
 
     it('should throw NotFoundException for missing type', async () => {
       mockCategoryTypeRepo.findOne.mockResolvedValue(null);
-      await expect(service.updateAdminCategoryType('invalid', {} as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateAdminCategoryType('invalid', {} as any),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -718,20 +917,28 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing type', async () => {
       mockCategoryTypeRepo.findOne.mockResolvedValue(null);
-      await expect(service.deleteAdminCategoryType('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.deleteAdminCategoryType('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('getAdminFraudAlerts', () => {
     it('should return fraud alerts with dashboard stats', async () => {
       mockFraudAlertRepo.findAndCount.mockResolvedValue([
-        [{
-          id: 'f1', type: 'Velocity Spiking', severity: FraudSeverity.HIGH,
-          status: FraudAlertStatus.FLAGGED, confidence: 94,
-          timestamp: new Date('2025-01-01'), reason: 'Suspicious',
-          business: { name: 'Biz' },
-          customer: { firstName: 'John', lastName: 'Doe' },
-        }],
+        [
+          {
+            id: 'f1',
+            type: 'Velocity Spiking',
+            severity: FraudSeverity.HIGH,
+            status: FraudAlertStatus.FLAGGED,
+            confidence: 94,
+            timestamp: new Date('2025-01-01'),
+            reason: 'Suspicious',
+            business: { name: 'Biz' },
+            customer: { firstName: 'John', lastName: 'Doe' },
+          },
+        ],
         1,
       ]);
       mockFraudAlertRepo.count.mockResolvedValue(1);
@@ -748,16 +955,26 @@ describe('DiscoveryService', () => {
   describe('getAdminNotifications', () => {
     it('should return paginated notification logs', async () => {
       mockNotificationLogRepo.findAndCount.mockResolvedValue([
-        [{
-          id: 'n1', recipientName: 'John Doe', recipientId: 'u1',
-          businessId: 'b1', channel: 'PUSH', status: 'DELIVERED',
-          openStatus: 'OPENED', content: 'Hello',
-          sentAt: new Date('2025-01-01'),
-        }],
+        [
+          {
+            id: 'n1',
+            recipientName: 'John Doe',
+            recipientId: 'u1',
+            businessId: 'b1',
+            channel: 'PUSH',
+            status: 'DELIVERED',
+            openStatus: 'OPENED',
+            content: 'Hello',
+            sentAt: new Date('2025-01-01'),
+          },
+        ],
         1,
       ]);
 
-      const result = await service.getAdminNotifications({ page: 1, limit: 10 });
+      const result = await service.getAdminNotifications({
+        page: 1,
+        limit: 10,
+      });
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].recipient).toBe('John Doe');
@@ -767,12 +984,17 @@ describe('DiscoveryService', () => {
   describe('getAdminReports', () => {
     it('should return paginated reports', async () => {
       mockReportRepo.findAndCount.mockResolvedValue([
-        [{
-          id: 'r1', name: 'Monthly Report', type: 'Full Summary',
-          status: ReportStatus.COMPLETED, fileSize: '2.5MB',
-          createdAt: new Date('2025-01-01'),
-          generatedBy: { firstName: 'Admin' },
-        }],
+        [
+          {
+            id: 'r1',
+            name: 'Monthly Report',
+            type: 'Full Summary',
+            status: ReportStatus.COMPLETED,
+            fileSize: '2.5MB',
+            createdAt: new Date('2025-01-01'),
+            generatedBy: { firstName: 'Admin' },
+          },
+        ],
         1,
       ]);
 
@@ -785,12 +1007,24 @@ describe('DiscoveryService', () => {
 
   describe('generateAdminReport', () => {
     it('should create a new report with PROCESSING status and generatedBy', async () => {
-      const dto = { name: 'New Report', type: 'Performance', dateRange: 'Last 30 days' };
+      const dto = {
+        name: 'New Report',
+        type: 'Performance',
+        dateRange: 'Last 30 days',
+      };
       const adminId = 'admin-1';
-      mockReportRepo.create.mockReturnValue({ ...dto, status: ReportStatus.PROCESSING, generatedBy: { id: adminId } });
-      mockReportRepo.save.mockResolvedValue({ id: 'new-rpt', ...dto, status: ReportStatus.PROCESSING });
+      mockReportRepo.create.mockReturnValue({
+        ...dto,
+        status: ReportStatus.PROCESSING,
+        generatedBy: { id: adminId },
+      });
+      mockReportRepo.save.mockResolvedValue({
+        id: 'new-rpt',
+        ...dto,
+        status: ReportStatus.PROCESSING,
+      });
 
-      const result = await service.generateAdminReport(dto as any, adminId);
+      const result = await service.generateAdminReport(dto, adminId);
 
       expect(mockReportRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ generatedBy: { id: adminId } }),
@@ -803,12 +1037,18 @@ describe('DiscoveryService', () => {
     it('should return paginated audit logs', async () => {
       mockAuditLogRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getManyAndCount.mockResolvedValue([
-        [{
-          id: 'a1', method: 'POST', endpoint: '/admin/businesses',
-          statusCode: 201, businessId: 'b1', ipAddress: '127.0.0.1',
-          createdAt: new Date('2025-01-01'),
-          actor: { firstName: 'Admin', lastName: 'User' },
-        }],
+        [
+          {
+            id: 'a1',
+            method: 'POST',
+            endpoint: '/admin/businesses',
+            statusCode: 201,
+            businessId: 'b1',
+            ipAddress: '127.0.0.1',
+            createdAt: new Date('2025-01-01'),
+            actor: { firstName: 'Admin', lastName: 'User' },
+          },
+        ],
         1,
       ]);
 
@@ -822,9 +1062,15 @@ describe('DiscoveryService', () => {
   describe('getAdminAuditLogDetail', () => {
     it('should return audit log detail', async () => {
       mockAuditLogRepo.findOne.mockResolvedValue({
-        id: 'a1', method: 'POST', endpoint: '/admin/businesses',
-        statusCode: 201, businessId: 'b1', ipAddress: '127.0.0.1',
-        module: 'Discovery', userAgent: 'Chrome', payload: { status: 'Pending' },
+        id: 'a1',
+        method: 'POST',
+        endpoint: '/admin/businesses',
+        statusCode: 201,
+        businessId: 'b1',
+        ipAddress: '127.0.0.1',
+        module: 'Discovery',
+        userAgent: 'Chrome',
+        payload: { status: 'Pending' },
         createdAt: new Date('2025-01-01'),
         actor: { firstName: 'Admin', lastName: 'User' },
       });
@@ -837,7 +1083,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing log', async () => {
       mockAuditLogRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdminAuditLogDetail('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdminAuditLogDetail('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -867,7 +1115,7 @@ describe('DiscoveryService', () => {
       mockSettingRepo.save.mockResolvedValue(existing);
 
       const dto = { enableNetwork: false };
-      const result = await service.updateAdminDiscoverySettings(dto as any);
+      const result = await service.updateAdminDiscoverySettings(dto);
 
       expect(result.success).toBe(true);
     });
@@ -875,7 +1123,9 @@ describe('DiscoveryService', () => {
     it('should create settings when none exist', async () => {
       mockSettingRepo.findOne.mockResolvedValue(null);
 
-      const result = await service.updateAdminDiscoverySettings({ enableNetwork: true } as any);
+      const result = await service.updateAdminDiscoverySettings({
+        enableNetwork: true,
+      });
 
       expect(result.success).toBe(true);
       expect(mockSettingRepo.create).toHaveBeenCalled();
@@ -891,15 +1141,21 @@ describe('DiscoveryService', () => {
         .mockReset()
         .mockResolvedValueOnce({ total: '500' })
         .mockResolvedValueOnce({ total: '0' });
-      mockQueryBuilder.getCount
-        .mockReset()
-        .mockResolvedValue(50);
-      mockVisitRepo.count
-        .mockResolvedValueOnce(30)
-        .mockResolvedValueOnce(500);
-      mockOfferRepo.findOne.mockResolvedValue({ name: 'Best Offer', visits: 100 });
-      mockQueryBuilder.getRawOne.mockResolvedValue({ referredByBranchId: 'p1', count: '20' });
-      mockBranchRepo.findOne.mockResolvedValue({ id: 'p1', name: 'Partner', business: { name: 'PartnerBiz' } });
+      mockQueryBuilder.getCount.mockReset().mockResolvedValue(50);
+      mockVisitRepo.count.mockResolvedValueOnce(30).mockResolvedValueOnce(500);
+      mockOfferRepo.findOne.mockResolvedValue({
+        name: 'Best Offer',
+        visits: 100,
+      });
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        referredByBranchId: 'p1',
+        count: '20',
+      });
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'p1',
+        name: 'Partner',
+        business: { name: 'PartnerBiz' },
+      });
       mockQueryBuilder.clone.mockReturnThis();
       mockQueryBuilder.getMany.mockResolvedValue([]);
 
@@ -912,7 +1168,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing branch', async () => {
       mockBranchRepo.findOne.mockResolvedValue(null);
-      await expect(service.getOverview('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getOverview('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -938,13 +1196,18 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing branch', async () => {
       mockBranchRepo.findOne.mockResolvedValue(null);
-      await expect(service.getResults('invalid', '7days')).rejects.toThrow(NotFoundException);
+      await expect(service.getResults('invalid', '7days')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('getSettings', () => {
     it('should return branch settings', async () => {
-      mockBranchRepo.findOne.mockResolvedValue({ id: 'br1', joinDiscoveryNetwork: true });
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br1',
+        joinDiscoveryNetwork: true,
+      });
 
       const result = await service.getSettings('br1');
 
@@ -953,7 +1216,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing branch', async () => {
       mockBranchRepo.findOne.mockResolvedValue(null);
-      await expect(service.getSettings('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.getSettings('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -961,7 +1226,10 @@ describe('DiscoveryService', () => {
     it('should update branch settings', async () => {
       const branch = { id: 'br1', joinDiscoveryNetwork: false };
       mockBranchRepo.findOne.mockResolvedValue(branch);
-      mockBranchRepo.save.mockResolvedValue({ ...branch, joinDiscoveryNetwork: true });
+      mockBranchRepo.save.mockResolvedValue({
+        ...branch,
+        joinDiscoveryNetwork: true,
+      });
 
       await service.updateSettings('br1', { joinDiscoveryNetwork: true });
 
@@ -970,7 +1238,9 @@ describe('DiscoveryService', () => {
 
     it('should throw NotFoundException for missing branch', async () => {
       mockBranchRepo.findOne.mockResolvedValue(null);
-      await expect(service.updateSettings('invalid', {} as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateSettings('invalid', {} as any),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -978,10 +1248,20 @@ describe('DiscoveryService', () => {
     it('should return partners with referral counts', async () => {
       mockPartnershipRepo.find.mockResolvedValue([
         {
-          id: 'p1', initiatorBranchId: 'br1', recipientBranchId: 'br2',
+          id: 'p1',
+          initiatorBranchId: 'br1',
+          recipientBranchId: 'br2',
           status: PartnershipStatus.ACCEPTED,
-          initiatorBranch: { id: 'br1', name: 'Initiator', business: { name: 'MyBiz', categoryId: 'Retail' } },
-          recipientBranch: { id: 'br2', name: 'Recipient', business: { name: 'PartnerBiz', categoryId: 'Food' } },
+          initiatorBranch: {
+            id: 'br1',
+            name: 'Initiator',
+            business: { name: 'MyBiz', categoryId: 'Retail' },
+          },
+          recipientBranch: {
+            id: 'br2',
+            name: 'Recipient',
+            business: { name: 'PartnerBiz', categoryId: 'Food' },
+          },
         },
       ]);
       mockVisitRepo.count.mockResolvedValue(5);
@@ -996,15 +1276,25 @@ describe('DiscoveryService', () => {
     it('should return paginated customers with origin', async () => {
       mockVisitRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getManyAndCount.mockResolvedValue([
-        [{
-          id: 'v1', visitType: 'patronage', customerId: 'c1',
-          referredByBranchId: null, branchId: 'br1',
-          createdAt: new Date('2025-01-01'),
-          customer: { firstName: 'John', lastName: 'Doe', phone: '+234', email: 'j@t.com' },
-          branch: { name: 'MyBranch' },
-          referredByBranch: null,
-          catalogueOffer: { name: 'Offer' },
-        }],
+        [
+          {
+            id: 'v1',
+            visitType: 'patronage',
+            customerId: 'c1',
+            referredByBranchId: null,
+            branchId: 'br1',
+            createdAt: new Date('2025-01-01'),
+            customer: {
+              firstName: 'John',
+              lastName: 'Doe',
+              phone: '+234',
+              email: 'j@t.com',
+            },
+            branch: { name: 'MyBranch' },
+            referredByBranch: null,
+            catalogueOffer: { name: 'Offer' },
+          },
+        ],
         1,
       ]);
 
@@ -1017,7 +1307,12 @@ describe('DiscoveryService', () => {
 
   describe('submitRecommendation', () => {
     it('should return success', async () => {
-      const dto = { businessName: 'New Biz', ownerName: 'Owner', phone: '+234', email: 'o@t.com' };
+      const dto = {
+        businessName: 'New Biz',
+        ownerName: 'Owner',
+        phone: '+234',
+        email: 'o@t.com',
+      };
       const result = await service.submitRecommendation('br1', dto);
 
       expect(result.success).toBe(true);

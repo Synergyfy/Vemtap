@@ -16,15 +16,17 @@ export class InventoryBot implements IPageBot {
     let totalStockValue = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT 
+      const stats = await this.dataSource
+        .query(
+          `SELECT 
            COUNT(*)::int as total,
            COUNT(CASE WHEN stock <= "lowStockThreshold" AND stock > 0 THEN 1 END)::int as low_stock,
            COUNT(CASE WHEN stock <= 0 THEN 1 END)::int as out_of_stock,
            COALESCE(SUM(stock * price), 0)::float as stock_value
          FROM products WHERE "branchId" = $1`,
-        [branchId],
-      ).catch(() => []);
+          [branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         totalProducts = stats[0].total || 0;

@@ -14,13 +14,15 @@ export class CatalogueBot implements IPageBot {
     let catalogueRevenue = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT 
+      const stats = await this.dataSource
+        .query(
+          `SELECT 
            COUNT(*)::int as count,
            COALESCE(SUM("totalAmount"), 0)::float as revenue
          FROM catalogue_orders WHERE "branchId" = $1`,
-        [branchId],
-      ).catch(() => []);
+          [branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         catalogueOrders = stats[0].count || 0;

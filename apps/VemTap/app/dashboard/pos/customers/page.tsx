@@ -142,9 +142,9 @@ export default function CustomersDirectory() {
             <p className="text-sm font-medium text-gray-500 max-w-sm leading-relaxed">
               Customers added at checkout will appear here. You&apos;ll be able to view their purchase history, contact info, and loyalty activity.
             </p>
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-50 px-4 py-2 rounded-lg mt-6">
-              Awaiting API Endpoint
-            </p>
+            <div className="mt-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold">
+              <span>No customers registered yet</span>
+            </div>
           </div>
         )}
       </div>

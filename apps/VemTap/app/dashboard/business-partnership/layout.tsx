@@ -8,6 +8,7 @@ import { UserPlus, X, Copy, CheckCheck, Download, QrCode, ArrowLeft } from 'luci
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAffiliateStats } from '@/services/affiliates/hooks';
+import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
 
 export default function BusinessPartnershipLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -32,7 +33,8 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
     ];
 
     return (
-        <div className="relative flex flex-col gap-5 md:gap-6 p-4 md:p-8 max-w-7xl mx-auto w-full pb-28 md:pb-10">
+        <PartnershipVerificationGuard>
+            <div className="relative flex flex-col gap-5 md:gap-6 p-4 md:p-8 max-w-7xl mx-auto w-full pb-28 md:pb-10">
             {/* Page Header */}
             <div className="flex items-start gap-3">
                 {!isOverview && (
@@ -151,5 +153,6 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
                 )}
             </AnimatePresence>
         </div>
+        </PartnershipVerificationGuard>
     );
 }

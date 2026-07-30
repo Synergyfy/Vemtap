@@ -3,7 +3,9 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { DiscoveryInvoice } from './discovery-invoice.entity';
 @Entity('invoice_line_items')
 export class InvoiceLineItem extends AbstractBaseEntity {
-  @ManyToOne(() => DiscoveryInvoice, (invoice) => invoice.items, { onDelete: 'CASCADE' })
+  @ManyToOne(() => DiscoveryInvoice, (invoice) => invoice.items, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'invoiceId' })
   invoice: DiscoveryInvoice;
 

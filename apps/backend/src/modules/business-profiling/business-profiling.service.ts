@@ -51,7 +51,7 @@ export class BusinessProfilingService {
         ...aiResult,
         aiSource: 'gemini-1.5-flash',
         pitchSummary: aiResult.salesPitch,
-      } as any;
+      };
     } catch (error) {
       this.logger.error(
         'AI Insight generation failed, falling back to expert system',
@@ -154,7 +154,7 @@ export class BusinessProfilingService {
           ...aiResult,
           aiSource: 'gemini-1.5-flash',
           pitchSummary: aiResult.salesPitch,
-        } as any;
+        };
       } catch (error) {
         this.logger.error(
           'AI Update failed, falling back to expert system',
