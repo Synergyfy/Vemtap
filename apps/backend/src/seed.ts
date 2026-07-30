@@ -320,7 +320,7 @@ async function bootstrap() {
     ];
 
     for (const planData of plansToSeed) {
-      await plansService.create(planData as any);
+      await plansService.create(planData);
       console.log(`Created Subscription Plan: ${planData.name}`);
     }
   }

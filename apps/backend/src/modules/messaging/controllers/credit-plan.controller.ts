@@ -187,6 +187,7 @@ export class CreditPlanController {
       customPurchaseDto.smsAmount,
       customPurchaseDto.whatsappAmount,
       customPurchaseDto.emailAmount,
+      customPurchaseDto.aiAmount || 0,
     );
   }
 

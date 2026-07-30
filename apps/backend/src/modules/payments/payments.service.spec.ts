@@ -86,7 +86,7 @@ describe('PaymentsService', () => {
       mockPaymentRepo.create.mockReturnValue(dto);
       mockPaymentRepo.save.mockResolvedValue({ id: 'pay_1', ...dto });
 
-      const result = await service.recordPayment(dto as any);
+      const result = await service.recordPayment(dto);
       expect(result.id).toBe('pay_1');
       expect(mockPaymentRepo.save).toHaveBeenCalled();
     });

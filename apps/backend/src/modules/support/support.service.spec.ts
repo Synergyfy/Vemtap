@@ -12,6 +12,26 @@ import { NotFoundException } from '@nestjs/common';
 describe('SupportService', () => {
   let service: SupportService;
 
+  const createMockQueryBuilder = (
+    items: any[] = [],
+    totalCount: number = items.length,
+  ) => {
+    const qb: any = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      clone: jest.fn().mockImplementation(() => qb),
+      getCount: jest.fn().mockResolvedValue(totalCount),
+      getMany: jest.fn().mockResolvedValue(items),
+    };
+    return qb;
+  };
+
   const mockTicketRepository = {
     find: jest.fn(),
     findAndCount: jest.fn(),
@@ -19,6 +39,9 @@ describe('SupportService', () => {
     create: jest.fn(),
     save: jest.fn(),
     count: jest.fn(),
+    createQueryBuilder: jest
+      .fn()
+      .mockImplementation(() => createMockQueryBuilder()),
   };
 
   const mockMessageRepository = {
@@ -35,6 +58,9 @@ describe('SupportService', () => {
     findOne: jest.fn(),
     findAndCount: jest.fn(),
     save: jest.fn(),
+    createQueryBuilder: jest
+      .fn()
+      .mockImplementation(() => createMockQueryBuilder()),
   };
 
   beforeEach(async () => {
@@ -95,12 +121,14 @@ describe('SupportService', () => {
   describe('findAllAdmin', () => {
     it('should return paginated tickets', async () => {
       const tickets = [{ id: '1' }, { id: '2' }];
-      mockTicketRepository.findAndCount.mockResolvedValue([tickets, 2]);
+      mockTicketRepository.createQueryBuilder.mockImplementationOnce(() =>
+        createMockQueryBuilder(tickets, 2),
+      );
 
       const result = await service.findAllAdmin();
       expect(result.data).toEqual(tickets);
       expect(result.meta.total).toBe(2);
-      expect(mockTicketRepository.findAndCount).toHaveBeenCalled();
+      expect(mockTicketRepository.createQueryBuilder).toHaveBeenCalled();
     });
   });
 

@@ -22,6 +22,7 @@ import {
   GenerateCustomerImpersonationTokenDto,
   AuditLogFilterDto,
 } from './dto/administration.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { BackendModule } from '../../common/enums/backend-module.enum';
@@ -39,33 +40,44 @@ export class AdministrationService {
     private readonly auditLogRepository: Repository<AuditLog>,
   ) {}
 
-  async listAgents(filter: { page?: number; limit?: number }) {
+  async listAgents(filter: { page?: number; limit?: number; cursor?: string }) {
     const page = filter.page || 1;
     const limit = filter.limit || 10;
 
-    const [data, total] = await this.userRepository.findAndCount({
-      where: { role: UserRole.AGENT },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-      select: [
-        'id',
-        'email',
-        'firstName',
-        'lastName',
-        'role',
-        'status',
-        'permissions',
-        'createdAt',
-      ],
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.email',
+        'user.firstName',
+        'user.lastName',
+        'user.role',
+        'user.status',
+        'user.permissions',
+        'user.createdAt',
+      ])
+      .where('user.role = :role', { role: UserRole.AGENT });
+
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: filter.cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'user',
     });
 
     return {
-      data,
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
       meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
       },
     };
   }
@@ -283,29 +295,45 @@ export class AdministrationService {
   }
 
   async getAuditLogs(filter: AuditLogFilterDto) {
-    const where: FindOptionsWhere<AuditLog> = {};
-    if (filter.actorId) where.actorId = filter.actorId;
-    if (filter.businessId) where.businessId = filter.businessId;
-    if (filter.branchId) where.branchId = filter.branchId;
-    if (filter.module) where.module = filter.module;
+    const qb = this.auditLogRepository
+      .createQueryBuilder('audit_log')
+      .leftJoinAndSelect('audit_log.actor', 'actor')
+      .leftJoinAndSelect('audit_log.business', 'business')
+      .leftJoinAndSelect('audit_log.branch', 'branch');
 
-    const page = filter.page || 1;
-    const limit = filter.limit || 10;
+    if (filter.actorId)
+      qb.andWhere('audit_log.actorId = :actorId', { actorId: filter.actorId });
+    if (filter.businessId)
+      qb.andWhere('audit_log.businessId = :businessId', {
+        businessId: filter.businessId,
+      });
+    if (filter.branchId)
+      qb.andWhere('audit_log.branchId = :branchId', {
+        branchId: filter.branchId,
+      });
+    if (filter.module)
+      qb.andWhere('audit_log.module = :module', { module: filter.module });
 
-    const [data, total] = await this.auditLogRepository.findAndCount({
-      where,
-      relations: ['actor', 'business', 'branch'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: filter.cursor || filter.nextCursor,
+      page: filter.page,
+      limit: filter.limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'audit_log',
     });
 
     return {
-      data,
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
       meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
       },
     };
   }

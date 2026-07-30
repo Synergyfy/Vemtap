@@ -59,7 +59,8 @@ describe('Smoke Test (E2E)', () => {
     for (const route of routes) {
       const url = replacePathParams(route.path);
       try {
-        const req = request(server)[route.method.toLowerCase()](url)
+        const req = request(server)
+          [route.method.toLowerCase()](url)
           .set('Authorization', `Bearer ${adminToken}`)
           .timeout(5000);
 
@@ -100,9 +101,9 @@ describe('Smoke Test (E2E)', () => {
     for (const route of routes) {
       const url = replacePathParams(route.path);
       try {
-        const req = request(server)[route.method.toLowerCase()](url).timeout(
-          5000,
-        );
+        const req = request(server)
+          [route.method.toLowerCase()](url)
+          .timeout(5000);
 
         if (['POST', 'PUT', 'PATCH'].includes(route.method)) {
           req.send({});

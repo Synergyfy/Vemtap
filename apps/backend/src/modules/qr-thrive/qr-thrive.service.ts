@@ -893,7 +893,9 @@ export class QrThriveService implements OnModuleInit {
    */
   async getPlans() {
     if (!this.isQrThriveEnabled) {
-      this.logger.debug('QR-Thrive integration disabled. Returning empty plans array.');
+      this.logger.debug(
+        'QR-Thrive integration disabled. Returning empty plans array.',
+      );
       return [];
     }
     try {
@@ -1187,7 +1189,7 @@ export class QrThriveService implements OnModuleInit {
       await this.branchRepo
         .createQueryBuilder()
         .update(Branch)
-        .set({ mainQrCodeId: null as any, mainQrShortUrl: null as any })
+        .set({ mainQrCodeId: null, mainQrShortUrl: null })
         .where('id = :branchId AND mainQrCodeId = :qrCodeId', {
           branchId,
           qrCodeId,

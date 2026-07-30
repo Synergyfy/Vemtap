@@ -28,6 +28,7 @@ export class SettingsService implements OnModuleInit {
         creditPriceSms: 15.0,
         creditPriceWhatsapp: 25.0,
         creditPriceEmail: 2.0,
+        creditPriceAi: 50.0,
         affiliateDirectCommission: 20,
         affiliateIndirectCommission: 5,
         affiliateCommissionDurationMonths: 3,

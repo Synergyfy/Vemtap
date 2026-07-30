@@ -3,4 +3,5 @@ export enum Channel {
   WHATSAPP = 'WHATSAPP',
   EMAIL = 'EMAIL',
   IN_HOUSE = 'IN_HOUSE',
+  AI = 'AI',
 }

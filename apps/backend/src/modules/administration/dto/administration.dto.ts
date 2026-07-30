@@ -83,7 +83,9 @@ export class GenerateCustomerImpersonationTokenDto {
   expiresAt: string;
 }
 
-export class AuditLogFilterDto {
+import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
+
+export class AuditLogFilterDto extends PaginationQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -103,12 +105,4 @@ export class AuditLogFilterDto {
   @IsOptional()
   @IsEnum(BackendModule)
   module?: BackendModule;
-
-  @ApiProperty({ required: false, default: 1 })
-  @IsOptional()
-  page?: number = 1;
-
-  @ApiProperty({ required: false, default: 10 })
-  @IsOptional()
-  limit?: number = 10;
 }

@@ -58,6 +58,10 @@ export class Setting extends AbstractBaseEntity {
   @Column('decimal', { precision: 10, scale: 2, default: 2.0 })
   creditPriceEmail: number;
 
+  @ApiProperty({ example: 50.0, description: 'Price per AI Credit in NGN' })
+  @Column('decimal', { precision: 10, scale: 2, default: 50.0 })
+  creditPriceAi: number;
+
   @ApiProperty({ example: 'token_123', description: 'WhatsApp API Token' })
   @Column({ nullable: true })
   whatsappApiToken: string;
@@ -124,7 +128,10 @@ export class Setting extends AbstractBaseEntity {
   @Column({ default: 5 })
   discoveryMaxOffersPerDay: number;
 
-  @ApiProperty({ example: 500, description: 'Default discovery radius in meters' })
+  @ApiProperty({
+    example: 500,
+    description: 'Default discovery radius in meters',
+  })
   @Column({ default: 500 })
   discoveryDefaultRadius: number;
 
@@ -136,7 +143,10 @@ export class Setting extends AbstractBaseEntity {
   @Column({ default: 24 })
   discoveryAttributionWindow: number;
 
-  @ApiProperty({ example: true, description: 'Enable push notifications for discovery' })
+  @ApiProperty({
+    example: true,
+    description: 'Enable push notifications for discovery',
+  })
   @Column({ default: true })
   discoveryPushEnabled: boolean;
 
@@ -148,7 +158,10 @@ export class Setting extends AbstractBaseEntity {
   @Column({ default: true })
   discoveryEmailEnabled: boolean;
 
-  @ApiProperty({ example: true, description: 'Require admin approval for discovery changes' })
+  @ApiProperty({
+    example: true,
+    description: 'Require admin approval for discovery changes',
+  })
   @Column({ default: true })
   discoveryApprovalRequired: boolean;
 }

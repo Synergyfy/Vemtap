@@ -10,11 +10,14 @@ export class OpenAIClient {
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    this.model = this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
+    this.model =
+      this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
     if (apiKey) {
       this.client = new OpenAI({ apiKey });
     } else {
-      this.logger.warn('OPENAI_API_KEY is not set. OpenAI analysis calls will fallback locally.');
+      this.logger.warn(
+        'OPENAI_API_KEY is not set. OpenAI analysis calls will fallback locally.',
+      );
     }
   }
 
@@ -22,7 +25,11 @@ export class OpenAIClient {
     return !!this.client;
   }
 
-  async analyze(systemPrompt: string, userPrompt: string, retries = 2): Promise<string> {
+  async analyze(
+    systemPrompt: string,
+    userPrompt: string,
+    retries = 2,
+  ): Promise<string> {
     if (!this.client) {
       throw new Error('OpenAI client is not configured.');
     }
@@ -55,11 +62,13 @@ export class OpenAIClient {
         if (attempt > retries) {
           throw error;
         }
-        this.logger.warn(`OpenAI call failed (attempt ${attempt}): ${error.message}. Retrying in 500ms...`);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        this.logger.warn(
+          `OpenAI call failed (attempt ${attempt}): ${error.message}. Retrying in 500ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
-    
+
     throw new Error('OpenAI call failed after retries');
   }
 }

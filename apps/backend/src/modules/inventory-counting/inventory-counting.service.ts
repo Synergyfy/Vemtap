@@ -22,6 +22,7 @@ import {
   RejectVarianceDto,
 } from './dto/approve-variance.dto';
 import { CountSessionQueryDto } from './dto/count-session-query.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class InventoryCountingService {
@@ -93,21 +94,37 @@ export class InventoryCountingService {
 
   async listSessions(businessId: string, query: CountSessionQueryDto) {
     const { page = 1, limit = 10, status, branchId } = query;
-    const skip = (page - 1) * limit;
+    const qb = this.sessionRepository
+      .createQueryBuilder('session')
+      .leftJoinAndSelect('session.branch', 'branch')
+      .leftJoinAndSelect('session.startedBy', 'startedBy')
+      .leftJoinAndSelect('session.completedBy', 'completedBy')
+      .leftJoinAndSelect('session.approvedBy', 'approvedBy')
+      .where('session.businessId = :businessId', { businessId });
 
-    const where: any = { businessId };
-    if (status) where.status = status;
-    if (branchId) where.branchId = branchId;
+    if (status) qb.andWhere('session.status = :status', { status });
+    if (branchId) qb.andWhere('session.branchId = :branchId', { branchId });
 
-    const [data, total] = await this.sessionRepository.findAndCount({
-      where,
-      relations: ['branch', 'startedBy', 'completedBy', 'approvedBy'],
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'session',
     });
 
-    return { data, total, page, limit };
+    return {
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+    };
   }
 
   async getSession(sessionId: string, businessId: string, user: User) {
@@ -127,7 +144,7 @@ export class InventoryCountingService {
 
     if (isBlindActive && !isManager) {
       session.items = session.items.map((item) => {
-        const safeItem = { ...item } as StockCountItem;
+        const safeItem = { ...item };
         delete (safeItem as any).systemQuantity;
         return safeItem;
       });

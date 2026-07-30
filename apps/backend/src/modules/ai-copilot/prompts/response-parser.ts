@@ -3,7 +3,10 @@ import { AIAnalysisResponse } from '../dto/ai-analysis-response.dto';
 
 @Injectable()
 export class ResponseParser {
-  parse(rawJson: string, page: string): Omit<AIAnalysisResponse, 'page' | 'generatedAt' | 'creditsUsed'> {
+  parse(
+    rawJson: string,
+    page: string,
+  ): Omit<AIAnalysisResponse, 'page' | 'generatedAt' | 'creditsUsed'> {
     try {
       let cleaned = rawJson.trim();
       const match = cleaned.match(/\{[\s\S]*\}/);
@@ -14,7 +17,9 @@ export class ResponseParser {
       const parsed = JSON.parse(cleaned);
 
       return {
-        summary: parsed.summary || `Analysis completed for ${page}. Review your key insights below.`,
+        summary:
+          parsed.summary ||
+          `Analysis completed for ${page}. Review your key insights below.`,
         insights: Array.isArray(parsed.insights)
           ? parsed.insights.map((item: any, idx: number) => ({
               id: item.id || `insight-${idx + 1}`,

@@ -13,13 +13,15 @@ export class ReferralsBot implements IPageBot {
     let totalReferralSignups = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT 
+      const stats = await this.dataSource
+        .query(
+          `SELECT 
            COUNT(*)::int as signups
          FROM affiliate_referrals 
          WHERE "referredBusinessId" = (SELECT "businessId" FROM branches WHERE id = $1 LIMIT 1)`,
-        [_branchId],
-      ).catch(() => []);
+          [_branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         totalReferralSignups = stats[0].signups || 0;

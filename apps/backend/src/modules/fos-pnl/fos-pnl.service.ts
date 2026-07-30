@@ -21,6 +21,7 @@ import {
   ExpenseResponseDto,
   CashFlowEntryDto,
 } from './dto/pnl-response.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class FosPnlService {
@@ -165,13 +166,18 @@ export class FosPnlService {
       });
     }
 
-    const total = await qb.getCount();
-    const page = query.page ?? 1;
-    const perPage = query.perPage ?? 20;
-    const expenses = await qb
-      .skip((page - 1) * perPage)
-      .take(perPage)
-      .getMany();
+    const paginated = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page: query.page,
+      perPage: query.perPage,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'e',
+    });
+
+    const expenses = paginated.data;
+    const total = paginated.total;
 
     return {
       success: true,
@@ -185,6 +191,12 @@ export class FosPnlService {
           createdAt: e.createdAt,
         })),
         total,
+        page: paginated.page,
+        perPage: paginated.perPage,
+        cursor: paginated.cursor,
+        nextCursor: paginated.nextCursor,
+        prevCursor: paginated.prevCursor,
+        hasNextPage: paginated.hasNextPage,
       },
     };
   }
@@ -323,13 +335,18 @@ export class FosPnlService {
       qb.andWhere('cf.type = :type', { type: query.type });
     }
 
-    const total = await qb.getCount();
-    const page = query.page ?? 1;
-    const perPage = query.perPage ?? 20;
-    const cashflows = await qb
-      .skip((page - 1) * perPage)
-      .take(perPage)
-      .getMany();
+    const paginated = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page: query.page,
+      perPage: query.perPage,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'cf',
+    });
+
+    const cashflows = paginated.data;
+    const total = paginated.total;
 
     return {
       success: true,
@@ -343,6 +360,12 @@ export class FosPnlService {
           createdAt: cf.createdAt,
         })),
         total,
+        page: paginated.page,
+        perPage: paginated.perPage,
+        cursor: paginated.cursor,
+        nextCursor: paginated.nextCursor,
+        prevCursor: paginated.prevCursor,
+        hasNextPage: paginated.hasNextPage,
       },
     };
   }

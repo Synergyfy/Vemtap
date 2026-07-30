@@ -8,12 +8,19 @@ import {
 } from './entities/catalogue-offer.entity';
 import { CatalogueItem } from './entities/catalogue-item.entity';
 import { Branch } from '../branches/entities/branch.entity';
-import { CatalogueOfferClaim, CatalogueOfferClaimStatus } from './entities/catalogue-offer-claim.entity';
+import {
+  CatalogueOfferClaim,
+  CatalogueOfferClaimStatus,
+} from './entities/catalogue-offer-claim.entity';
 import { Otp } from '../auth/entities/otp.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { In } from 'typeorm';
 
 describe('CatalogueOfferService', () => {
@@ -73,7 +80,11 @@ describe('CatalogueOfferService', () => {
     claimRepo = {
       count: jest.fn(),
       create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockImplementation((claim) => Promise.resolve({ id: 'claim-123', ...claim })),
+      save: jest
+        .fn()
+        .mockImplementation((claim) =>
+          Promise.resolve({ id: 'claim-123', ...claim }),
+        ),
       findOne: jest.fn(),
     };
     otpRepo = {
@@ -106,7 +117,10 @@ describe('CatalogueOfferService', () => {
         { provide: getRepositoryToken(CatalogueOffer), useValue: offerRepo },
         { provide: getRepositoryToken(CatalogueItem), useValue: itemRepo },
         { provide: getRepositoryToken(Branch), useValue: branchRepo },
-        { provide: getRepositoryToken(CatalogueOfferClaim), useValue: claimRepo },
+        {
+          provide: getRepositoryToken(CatalogueOfferClaim),
+          useValue: claimRepo,
+        },
         { provide: getRepositoryToken(Otp), useValue: otpRepo },
         { provide: SubscriptionsService, useValue: subscriptionsService },
         { provide: MailService, useValue: mailService },
@@ -133,18 +147,34 @@ describe('CatalogueOfferService', () => {
         branchId: 'branch-1',
         itemIds: ['item-1'],
         mainImage: 'https://image.com/main.jpg',
-        galleryImages: ['https://image.com/gal1.jpg', 'https://image.com/gal2.jpg'],
+        galleryImages: [
+          'https://image.com/gal1.jpg',
+          'https://image.com/gal2.jpg',
+        ],
       };
-      const savedOffer = { id: 'offer-new', ...createDto, businessId: 'biz-1', calculatedPrice: 100 };
+      const savedOffer = {
+        id: 'offer-new',
+        ...createDto,
+        businessId: 'biz-1',
+        calculatedPrice: 100,
+      };
 
-      branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
-      itemRepo.find.mockResolvedValue([{ id: 'item-1', branches: [{ id: 'branch-1' }], price: 100 }]);
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([
+        { id: 'item-1', branches: [{ id: 'branch-1' }], price: 100 },
+      ]);
       offerRepo.create = jest.fn().mockReturnValue(savedOffer);
       offerRepo.save = jest.fn().mockResolvedValue(savedOffer);
 
-      const result = await service.createOffer(createDto as any, 'biz-1');
+      const result = await service.createOffer(createDto, 'biz-1');
       expect(result.mainImage).toBe('https://image.com/main.jpg');
-      expect(result.galleryImages).toEqual(['https://image.com/gal1.jpg', 'https://image.com/gal2.jpg']);
+      expect(result.galleryImages).toEqual([
+        'https://image.com/gal1.jpg',
+        'https://image.com/gal2.jpg',
+      ]);
     });
 
     it('should throw ForbiddenException if catalogue disabled', async () => {
@@ -153,7 +183,7 @@ describe('CatalogueOfferService', () => {
       });
 
       await expect(
-        service.createOffer({ name: 'Test' } as any, 'biz-1')
+        service.createOffer({ name: 'Test' } as any, 'biz-1'),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -172,15 +202,23 @@ describe('CatalogueOfferService', () => {
       offerRepo.findOne = jest.fn().mockResolvedValue(existingOffer);
       offerRepo.save = jest.fn().mockImplementation((o) => Promise.resolve(o));
 
-      const updateDto = { galleryImages: ['https://image.com/new1.jpg', 'https://image.com/new2.jpg'] };
-      const result = await service.updateOffer('offer-1', updateDto as any, 'biz-1');
-      expect(result.galleryImages).toEqual(['https://image.com/new1.jpg', 'https://image.com/new2.jpg']);
+      const updateDto = {
+        galleryImages: [
+          'https://image.com/new1.jpg',
+          'https://image.com/new2.jpg',
+        ],
+      };
+      const result = await service.updateOffer('offer-1', updateDto, 'biz-1');
+      expect(result.galleryImages).toEqual([
+        'https://image.com/new1.jpg',
+        'https://image.com/new2.jpg',
+      ]);
     });
 
     it('should throw NotFoundException if offer not found', async () => {
       offerRepo.findOne = jest.fn().mockResolvedValue(null);
       await expect(
-        service.updateOffer('invalid', {} as any, 'biz-1')
+        service.updateOffer('invalid', {} as any, 'biz-1'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -200,7 +238,10 @@ describe('CatalogueOfferService', () => {
       expect(result.message).toBe('Verification OTP sent successfully');
       expect(otpRepo.create).toHaveBeenCalled();
       expect(otpRepo.save).toHaveBeenCalled();
-      expect(mailService.sendOtp).toHaveBeenCalledWith('chidi@example.com', expect.any(String));
+      expect(mailService.sendOtp).toHaveBeenCalledWith(
+        'chidi@example.com',
+        expect.any(String),
+      );
     });
 
     it('should throw NotFoundException if offer does not exist', async () => {
@@ -212,7 +253,7 @@ describe('CatalogueOfferService', () => {
           firstName: 'Chidi',
           email: 'chidi@example.com',
           phone: '+2348012345678',
-        })
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -226,7 +267,7 @@ describe('CatalogueOfferService', () => {
           firstName: 'Chidi',
           email: 'chidi@example.com',
           phone: '+2348012345678',
-        })
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -273,7 +314,7 @@ describe('CatalogueOfferService', () => {
           email: 'chidi@example.com',
           code: 'wrong-code',
           offerId: 'offer-1',
-        })
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -287,14 +328,18 @@ describe('CatalogueOfferService', () => {
       expect(result.success).toBe(true);
       expect(result.claim.status).toBe(CatalogueOfferClaimStatus.REDEEMED);
       expect(claimRepo.save).toHaveBeenCalled();
-      expect(offerRepo.increment).toHaveBeenCalledWith({ id: 'offer-1' }, 'visits', 1);
+      expect(offerRepo.increment).toHaveBeenCalledWith(
+        { id: 'offer-1' },
+        'visits',
+        1,
+      );
     });
 
     it('should throw ForbiddenException if businessId does not match', async () => {
       claimRepo.findOne.mockResolvedValue(mockClaim);
 
       await expect(
-        service.redeemClaim('VEM-BR123XYZ9-123456', 'different-biz')
+        service.redeemClaim('VEM-BR123XYZ9-123456', 'different-biz'),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -305,7 +350,7 @@ describe('CatalogueOfferService', () => {
       });
 
       await expect(
-        service.redeemClaim('VEM-BR123XYZ9-123456', 'biz-1')
+        service.redeemClaim('VEM-BR123XYZ9-123456', 'biz-1'),
       ).rejects.toThrow(BadRequestException);
     });
   });

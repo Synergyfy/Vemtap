@@ -58,7 +58,7 @@ describe('FormsController', () => {
     };
     mockFormsService.createForm.mockResolvedValue(createdForm);
 
-    const result = await controller.create(req as any, createDto as any);
+    const result = await controller.create(req as any, createDto);
 
     expect(service.createForm).toHaveBeenCalledWith('b1', createDto, 'u1');
     expect(result).toEqual(createdForm);

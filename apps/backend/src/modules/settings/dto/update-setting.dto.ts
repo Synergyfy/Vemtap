@@ -68,6 +68,11 @@ export class UpdateSettingDto {
   @IsOptional()
   creditPriceEmail?: number;
 
+  @ApiProperty({ example: 50.0, required: false })
+  @IsNumber()
+  @IsOptional()
+  creditPriceAi?: number;
+
   @ApiProperty({ example: 'token_123', required: false })
   @IsOptional()
   @IsString()

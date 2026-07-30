@@ -27,6 +27,7 @@ describe('DevicesService', () => {
     findOneBy: jest.fn(),
     remove: jest.fn(),
     count: jest.fn(),
+    countBy: jest.fn().mockResolvedValue(0),
   };
 
   const mockOrderRepository = {

@@ -86,7 +86,9 @@ export class CatalogueOfferController {
 
   @Public()
   @Get('public')
-  @ApiOperation({ summary: 'List active promotions across all branches (Public)' })
+  @ApiOperation({
+    summary: 'List active promotions across all branches (Public)',
+  })
   async listAllOffersPublic(@Query() query: PublicCatalogueOffersQueryDto) {
     return this.offerService.findAllOffersPublicGlobal(query);
   }
@@ -140,7 +142,9 @@ export class CatalogueOfferController {
   @Get('claims')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('inventory')
-  @ApiOperation({ summary: 'Get all promotion claims for the business (Admin)' })
+  @ApiOperation({
+    summary: 'Get all promotion claims for the business (Admin)',
+  })
   async getBusinessClaims(@Req() req: any) {
     return this.offerService.getBusinessClaims(req.user.businessId);
   }

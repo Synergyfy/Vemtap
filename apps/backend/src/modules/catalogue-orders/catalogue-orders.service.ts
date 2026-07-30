@@ -363,8 +363,10 @@ export class CatalogueOrderService {
     if (!order) throw new NotFoundException('Order not found');
 
     if (
-      (order.status === CatalogueOrderStatus.NEW && status === CatalogueOrderStatus.PROCESSING) ||
-      (order.status === CatalogueOrderStatus.PROCESSING && status === CatalogueOrderStatus.COMPLETED)
+      (order.status === CatalogueOrderStatus.NEW &&
+        status === CatalogueOrderStatus.PROCESSING) ||
+      (order.status === CatalogueOrderStatus.PROCESSING &&
+        status === CatalogueOrderStatus.COMPLETED)
     ) {
       order.attendedById = staff.id;
     }
@@ -694,7 +696,13 @@ export class CatalogueOrderService {
   async findOneOrder(orderId: string, businessId: string) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId, businessId },
-      relations: ['items', 'items.item', 'items.offer', 'customer', 'attendedByUser'],
+      relations: [
+        'items',
+        'items.item',
+        'items.offer',
+        'customer',
+        'attendedByUser',
+      ],
     });
     if (!order) throw new NotFoundException('Order not found');
     return order;

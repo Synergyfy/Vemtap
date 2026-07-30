@@ -35,7 +35,10 @@ export class AiCopilotService {
     // 3. Build prompts
     const { system, user } = this.promptBuilder.build(page, botData);
 
-    let parsed: Omit<AIAnalysisResponse, 'page' | 'generatedAt' | 'creditsUsed'>;
+    let parsed: Omit<
+      AIAnalysisResponse,
+      'page' | 'generatedAt' | 'creditsUsed'
+    >;
 
     // 4. Try OpenAI analysis if client is available
     if (this.openAiClient.isAvailable()) {
@@ -43,7 +46,9 @@ export class AiCopilotService {
         const rawResponse = await this.openAiClient.analyze(system, user);
         parsed = this.responseParser.parse(rawResponse, page);
       } catch (error) {
-        this.logger.warn(`OpenAI call failed for page "${page}": ${error.message}. Using local fallback heuristics.`);
+        this.logger.warn(
+          `OpenAI call failed for page "${page}": ${error.message}. Using local fallback heuristics.`,
+        );
         parsed = this.localFallback.generate(page, botData);
       }
     } else {
@@ -59,7 +64,12 @@ export class AiCopilotService {
     };
   }
 
-  async getCredits(branchId: string): Promise<{ available: number; used: number; limit: number; enabled: boolean }> {
+  async getCredits(branchId: string): Promise<{
+    available: number;
+    used: number;
+    limit: number;
+    enabled: boolean;
+  }> {
     return this.aiCreditService.getStatus(branchId);
   }
 }

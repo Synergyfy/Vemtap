@@ -17,7 +17,8 @@ export class FeedbackController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get feedback metrics and overview stats' })
   async getStats(@Request() req: any) {
-    const branchId = req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
+    const branchId =
+      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
     return this.feedbackService.getStats(branchId);
   }
 
@@ -25,7 +26,8 @@ export class FeedbackController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get customer feedback reviews list' })
   async getReviews(@Request() req: any) {
-    const branchId = req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
+    const branchId =
+      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
     return this.feedbackService.getReviews(branchId);
   }
 }

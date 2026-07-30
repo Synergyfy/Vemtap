@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsNotEmpty, IsBoolean, IsInt, Min, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNotEmpty,
+  IsBoolean,
+  IsInt,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { CategoryTypeStatus } from '../entities/offer-category-type.entity';
 
 export class CreateCategoryTypeDto {
@@ -14,7 +23,10 @@ export class CreateCategoryTypeDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ enum: CategoryTypeStatus, default: CategoryTypeStatus.ACTIVE })
+  @ApiPropertyOptional({
+    enum: CategoryTypeStatus,
+    default: CategoryTypeStatus.ACTIVE,
+  })
   @IsOptional()
   @IsEnum(CategoryTypeStatus)
   status?: CategoryTypeStatus;

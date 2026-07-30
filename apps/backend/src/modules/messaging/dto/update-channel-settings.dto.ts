@@ -1,6 +1,18 @@
-import { IsOptional, IsString, IsEnum, IsBoolean, IsUUID, MaxLength, MinLength, IsEmail } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsBoolean,
+  IsUUID,
+  MaxLength,
+  MinLength,
+  IsEmail,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { SmsRoutingMode, EmailDomainStatus } from '../entities/messaging-channel-setting.entity';
+import {
+  SmsRoutingMode,
+  EmailDomainStatus,
+} from '../entities/messaging-channel-setting.entity';
 
 export class UpdateChannelSettingsDto {
   @ApiPropertyOptional({ description: 'Branch UUID filter/scope' })
@@ -8,7 +20,10 @@ export class UpdateChannelSettingsDto {
   @IsUUID()
   branchId?: string;
 
-  @ApiPropertyOptional({ description: 'Custom SMS Sender ID', example: 'VemTap' })
+  @ApiPropertyOptional({
+    description: 'Custom SMS Sender ID',
+    example: 'VemTap',
+  })
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -75,7 +90,10 @@ export class UpdateChannelSettingsDto {
   @IsBoolean()
   generateDnsRecords?: boolean;
 
-  @ApiPropertyOptional({ description: 'Email Domain Verification Status', enum: EmailDomainStatus })
+  @ApiPropertyOptional({
+    description: 'Email Domain Verification Status',
+    enum: EmailDomainStatus,
+  })
   @IsOptional()
   @IsEnum(EmailDomainStatus)
   emailDomainStatus?: EmailDomainStatus;

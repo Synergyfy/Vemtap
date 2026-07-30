@@ -23,6 +23,23 @@ describe('FormsService', () => {
     findByCode: jest.fn(),
   };
 
+  const createMockQb = (
+    items: any[] = [{ id: '1', name: 'test' }],
+    total = 1,
+  ) => ({
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    innerJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(items),
+    getManyAndCount: jest.fn().mockResolvedValue([items, total]),
+    getCount: jest.fn().mockResolvedValue(total),
+  });
+
   const mockFormsRepository = {
     create: jest.fn(),
     save: jest.fn(),
@@ -31,6 +48,7 @@ describe('FormsService', () => {
     findOneBy: jest.fn(),
     remove: jest.fn(),
     increment: jest.fn(),
+    createQueryBuilder: jest.fn().mockImplementation(() => createMockQb()),
   };
 
   const mockFormFieldsRepository = {
@@ -57,6 +75,7 @@ describe('FormsService', () => {
     findAndCount: jest.fn(),
     findOne: jest.fn(),
     remove: jest.fn(),
+    createQueryBuilder: jest.fn().mockImplementation(() => createMockQb()),
   };
 
   const mockFormFieldTemplatesRepository = {
@@ -211,7 +230,12 @@ describe('FormsService', () => {
 
       const result = await service.findAllTemplates(query);
 
-      expect(result).toEqual({ items: templates, total: count });
+      expect(result).toEqual({
+        items: templates,
+        total: count,
+        cursor: null,
+        nextCursor: null,
+      });
     });
   });
 

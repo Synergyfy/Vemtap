@@ -18,18 +18,22 @@ export class PeakTimesAnalyticsBot implements IPageBot {
 
     try {
       const [peakHourRes, busiestDayRes] = await Promise.all([
-        this.dataSource.query(
-          `SELECT EXTRACT(HOUR FROM "orderedAt")::int as hour, COUNT(*)::int as count
+        this.dataSource
+          .query(
+            `SELECT EXTRACT(HOUR FROM "orderedAt")::int as hour, COUNT(*)::int as count
            FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
            GROUP BY hour ORDER BY count DESC LIMIT 1`,
-          [_branchId]
-        ).catch(() => []),
-        this.dataSource.query(
-          `SELECT TO_CHAR("orderedAt", 'Day') as day_name, COUNT(*)::int as count
+            [_branchId],
+          )
+          .catch(() => []),
+        this.dataSource
+          .query(
+            `SELECT TO_CHAR("orderedAt", 'Day') as day_name, COUNT(*)::int as count
            FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'
            GROUP BY day_name ORDER BY count DESC LIMIT 1`,
-          [_branchId]
-        ).catch(() => [])
+            [_branchId],
+          )
+          .catch(() => []),
       ]);
 
       if (peakHourRes && peakHourRes.length > 0) {
@@ -41,14 +45,16 @@ export class PeakTimesAnalyticsBot implements IPageBot {
         const endAmPm = next >= 12 ? 'pm' : 'am';
         peakWindow = `${start}${startAmPm} - ${end}${endAmPm}`;
         avgVisitsPerPeakHour = peakHourRes[0].count;
-        
+
         const offPeakHour = (h + 12) % 24;
         const offStart = offPeakHour % 12 === 0 ? 12 : offPeakHour % 12;
         const offStartAmPm = offPeakHour >= 12 ? 'pm' : 'am';
         suggestedPromoWindow = `${offStart}${offStartAmPm} (Off-peak boost)`;
-        
-        if (avgVisitsPerPeakHour > 50) recommendedStaffing = '4 Cashiers, 2 Support Staff';
-        else if (avgVisitsPerPeakHour > 20) recommendedStaffing = '2 Cashiers, 1 Support Staff';
+
+        if (avgVisitsPerPeakHour > 50)
+          recommendedStaffing = '4 Cashiers, 2 Support Staff';
+        else if (avgVisitsPerPeakHour > 20)
+          recommendedStaffing = '2 Cashiers, 1 Support Staff';
         else recommendedStaffing = '1 Cashier';
       }
 

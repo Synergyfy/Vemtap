@@ -7,11 +7,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { Branch } from './entities/branch.entity';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { NearbyBranchesQueryDto } from './dto/nearby-branches-query.dto';
-import { Business } from '../businesses/entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../businesses/entities/business.entity';
 import {
   CatalogueOffer,
   CatalogueOfferStatus,
@@ -229,7 +232,10 @@ export class BranchesService {
 
   async findByCode(uniqueCode: string): Promise<Branch> {
     const branch = await this.branchesRepository.findOne({
-      where: { uniqueCode, isActive: true },
+      where: {
+        uniqueCode,
+        business: { status: Not(BusinessStatus.SUSPENDED) },
+      },
       relations: ['business'],
     });
     if (!branch)
@@ -299,7 +305,10 @@ export class BranchesService {
 
   private deleteOtps = new Map<string, { code: string; expiresAt: number }>();
 
-  async requestDeleteOtp(businessId: string, id: string): Promise<{ success: boolean; message: string }> {
+  async requestDeleteOtp(
+    businessId: string,
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
     const branch = await this.findOne(businessId, id);
     if (branch.isMainBranch) {
       throw new ForbiddenException('The main branch cannot be deleted');
@@ -307,7 +316,9 @@ export class BranchesService {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000;
     this.deleteOtps.set(id, { code, expiresAt });
-    console.log(`[BranchesService] Delete OTP generated for branch ${id}: ${code}`);
+    console.log(
+      `[BranchesService] Delete OTP generated for branch ${id}: ${code}`,
+    );
     return {
       success: true,
       message: 'Verification code generated for branch deletion.',
@@ -328,7 +339,9 @@ export class BranchesService {
         }
         this.deleteOtps.delete(id);
       } else if (otp !== '123456') {
-        throw new BadRequestException('Verification code expired or invalid. Please request a new code.');
+        throw new BadRequestException(
+          'Verification code expired or invalid. Please request a new code.',
+        );
       }
     }
 
