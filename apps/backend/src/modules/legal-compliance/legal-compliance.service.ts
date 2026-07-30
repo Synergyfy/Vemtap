@@ -66,7 +66,10 @@ export class LegalComplianceService {
         };
       });
     } catch (error: any) {
-      this.logger.error(`Failed to retrieve legal agreements for user ${userId}`, error.stack);
+      this.logger.error(
+        `Failed to retrieve legal agreements for user ${userId}`,
+        error.stack,
+      );
       return [];
     }
   }

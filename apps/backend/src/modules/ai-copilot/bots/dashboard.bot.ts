@@ -26,31 +26,41 @@ export class DashboardBot implements IPageBot {
         posRevenueRes,
         repeatRes,
         lowStockRes,
-        campaignRes
+        campaignRes,
       ] = await Promise.all([
-        this.dataSource.query(
-          `SELECT COUNT(*)::int as count FROM visits WHERE "branchId" = $1`,
-          [branchId],
-        ).catch(() => [{ count: 0 }]),
-        this.dataSource.query(
-          `SELECT COALESCE(SUM(total), 0)::float as revenue FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'`,
-          [branchId],
-        ).catch(() => [{ revenue: 0 }]),
-        this.dataSource.query(
-          `SELECT 
+        this.dataSource
+          .query(
+            `SELECT COUNT(*)::int as count FROM visits WHERE "branchId" = $1`,
+            [branchId],
+          )
+          .catch(() => [{ count: 0 }]),
+        this.dataSource
+          .query(
+            `SELECT COALESCE(SUM(total), 0)::float as revenue FROM pos_sales WHERE "branchId" = $1 AND status = 'COMPLETED'`,
+            [branchId],
+          )
+          .catch(() => [{ revenue: 0 }]),
+        this.dataSource
+          .query(
+            `SELECT 
              COUNT(CASE WHEN status = 'returning' THEN 1 END)::float / NULLIF(COUNT(*), 0) * 100 as repeat_rate,
              0 as churn_rate
            FROM visits WHERE "branchId" = $1 AND "createdAt" >= $2`,
-          [branchId, thirtyDaysAgo],
-        ).catch(() => [{ repeat_rate: 0, churn_rate: 0 }]),
-        this.dataSource.query(
-          `SELECT COUNT(*)::int as count FROM products WHERE "branchId" = $1 AND stock <= "lowStockThreshold"`,
-          [branchId],
-        ).catch(() => [{ count: 0 }]),
-        this.dataSource.query(
-          `SELECT COUNT(*)::int as count FROM campaigns WHERE "branchId" = $1 AND status = 'ACTIVE'`,
-          [branchId],
-        ).catch(() => [{ count: 0 }]),
+            [branchId, thirtyDaysAgo],
+          )
+          .catch(() => [{ repeat_rate: 0, churn_rate: 0 }]),
+        this.dataSource
+          .query(
+            `SELECT COUNT(*)::int as count FROM products WHERE "branchId" = $1 AND stock <= "lowStockThreshold"`,
+            [branchId],
+          )
+          .catch(() => [{ count: 0 }]),
+        this.dataSource
+          .query(
+            `SELECT COUNT(*)::int as count FROM campaigns WHERE "branchId" = $1 AND status = 'ACTIVE'`,
+            [branchId],
+          )
+          .catch(() => [{ count: 0 }]),
       ]);
 
       totalCustomers = visitorCountRes[0]?.count || 0;

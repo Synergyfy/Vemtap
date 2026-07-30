@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -16,4 +16,14 @@ export class PaginationQueryDto {
   @IsInt()
   @Min(1)
   limit?: number = 10;
+
+  @ApiPropertyOptional({ description: 'Base64 encoded pagination cursor' })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
+  @ApiPropertyOptional({ description: 'Next cursor alias' })
+  @IsOptional()
+  @IsString()
+  nextCursor?: string;
 }

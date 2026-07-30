@@ -22,6 +22,7 @@ import {
 } from '../../subscriptions/entities/subscription.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Segment } from '../../contacts/entities/segment.entity';
+import { paginateWithCursor } from '../../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class AutomationService {
@@ -198,15 +199,24 @@ export class AutomationService {
 
   // --- Logs & Connections ---
 
-  async findLogs(branchId: string, limit = 50, offset = 0) {
+  async findLogs(branchId: string, limit = 50, offset = 0, cursor?: string) {
     const qb = this.logRepo
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.rule', 'rule')
       .where('rule.branchId = :branchId', { branchId });
 
-    qb.orderBy('log.executedAt', 'DESC').take(limit).skip(offset);
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      offset,
+      limit,
+      sortField: 'executedAt',
+      sortOrder: 'DESC',
+      entityAlias: 'log',
+    });
 
-    const [logs, total] = await qb.getManyAndCount();
+    const logs = result.data;
+    const total = result.total;
 
     return {
       data: logs.map((log) => ({
@@ -218,6 +228,10 @@ export class AutomationService {
         errorReason: log.errorReason,
       })),
       total,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
     };
   }
 

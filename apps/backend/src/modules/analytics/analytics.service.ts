@@ -112,7 +112,10 @@ export class AnalyticsService {
     };
   }
 
-  private async getTargetBranchIds(user: User, branchId?: string): Promise<string[]> {
+  private async getTargetBranchIds(
+    user: User,
+    branchId?: string,
+  ): Promise<string[]> {
     if (branchId && branchId !== 'all') {
       return [branchId];
     }
@@ -134,9 +137,20 @@ export class AnalyticsService {
       const targetBranchIds = await this.getTargetBranchIds(user, branchId);
       if (targetBranchIds.length === 0) {
         const hoursLabels = [
-          '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', 
-          '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', 
-          '6 PM', '7 PM', '8 PM', '9 PM'
+          '8 AM',
+          '9 AM',
+          '10 AM',
+          '11 AM',
+          '12 PM',
+          '1 PM',
+          '2 PM',
+          '3 PM',
+          '4 PM',
+          '5 PM',
+          '6 PM',
+          '7 PM',
+          '8 PM',
+          '9 PM',
         ];
         return {
           stats: [
@@ -145,9 +159,9 @@ export class AnalyticsService {
             { label: 'Repeat Visits', value: '0' },
             { label: 'Avg Daily Visits', value: '0' },
           ],
-          hourlyData: hoursLabels.map(hour => ({ hour, count: 0 })),
+          hourlyData: hoursLabels.map((hour) => ({ hour, count: 0 })),
           trafficByEntrance: [
-            { name: 'Main Entrance Counter', count: 0, percentage: '0%' }
+            { name: 'Main Entrance Counter', count: 0, percentage: '0%' },
           ],
           visitDuration: {
             averageStay: '0 mins',
@@ -161,32 +175,38 @@ export class AnalyticsService {
         };
       }
 
-      const [totalVisits, uniqueRaw, hourlyRaw, entranceRaw] = await Promise.all([
-        this.visitRepo.count({
-          where: { branchId: In(targetBranchIds) },
-        }),
-        this.visitRepo
-          .createQueryBuilder('visit')
-          .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
-          .select('COUNT(DISTINCT visit.customerId)', 'count')
-          .getRawOne(),
-        this.visitRepo
-          .createQueryBuilder('visit')
-          .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
-          .select("EXTRACT(HOUR FROM visit.createdAt)", "hour")
-          .addSelect("COUNT(visit.id)", "count")
-          .groupBy("EXTRACT(HOUR FROM visit.createdAt)")
-          .orderBy("hour", "ASC")
-          .getRawMany(),
-        this.visitRepo
-          .createQueryBuilder('visit')
-          .leftJoin('visit.device', 'device')
-          .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
-          .select("COALESCE(device.name, device.serialNumber, 'Main Entrance')", "entrance")
-          .addSelect("COUNT(visit.id)", "count")
-          .groupBy("COALESCE(device.name, device.serialNumber, 'Main Entrance')")
-          .getRawMany(),
-      ]);
+      const [totalVisits, uniqueRaw, hourlyRaw, entranceRaw] =
+        await Promise.all([
+          this.visitRepo.count({
+            where: { branchId: In(targetBranchIds) },
+          }),
+          this.visitRepo
+            .createQueryBuilder('visit')
+            .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
+            .select('COUNT(DISTINCT visit.customerId)', 'count')
+            .getRawOne(),
+          this.visitRepo
+            .createQueryBuilder('visit')
+            .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
+            .select('EXTRACT(HOUR FROM visit.createdAt)', 'hour')
+            .addSelect('COUNT(visit.id)', 'count')
+            .groupBy('EXTRACT(HOUR FROM visit.createdAt)')
+            .orderBy('hour', 'ASC')
+            .getRawMany(),
+          this.visitRepo
+            .createQueryBuilder('visit')
+            .leftJoin('visit.device', 'device')
+            .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
+            .select(
+              "COALESCE(device.name, device.code, 'Main Entrance')",
+              'entrance',
+            )
+            .addSelect('COUNT(visit.id)', 'count')
+            .groupBy(
+              "COALESCE(device.name, device.serialNumber, 'Main Entrance')",
+            )
+            .getRawMany(),
+        ]);
 
       const uniqueVisitors = parseInt(uniqueRaw?.count || '0', 10);
       const repeatVisits = Math.max(0, totalVisits - uniqueVisitors);
@@ -198,11 +218,22 @@ export class AnalyticsService {
       });
 
       const hoursLabels = [
-        '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', 
-        '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', 
-        '6 PM', '7 PM', '8 PM', '9 PM'
+        '8 AM',
+        '9 AM',
+        '10 AM',
+        '11 AM',
+        '12 PM',
+        '1 PM',
+        '2 PM',
+        '3 PM',
+        '4 PM',
+        '5 PM',
+        '6 PM',
+        '7 PM',
+        '8 PM',
+        '9 PM',
       ];
-      
+
       const hourlyData = hoursLabels.map((label, idx) => {
         const hourNum = idx + 8;
         return {
@@ -213,7 +244,8 @@ export class AnalyticsService {
 
       const trafficByEntrance = (entranceRaw || []).map((row) => {
         const cnt = parseInt(row.count, 10);
-        const pct = totalVisits > 0 ? `${Math.round((cnt / totalVisits) * 100)}%` : '0%';
+        const pct =
+          totalVisits > 0 ? `${Math.round((cnt / totalVisits) * 100)}%` : '0%';
         return {
           name: row.entrance,
           count: cnt,
@@ -226,12 +258,22 @@ export class AnalyticsService {
           { label: 'Total Footfall', value: totalVisits.toLocaleString() },
           { label: 'Unique Visitors', value: uniqueVisitors.toLocaleString() },
           { label: 'Repeat Visits', value: repeatVisits.toLocaleString() },
-          { label: 'Avg Daily Visits', value: Math.ceil(totalVisits / 30).toLocaleString() },
+          {
+            label: 'Avg Daily Visits',
+            value: Math.ceil(totalVisits / 30).toLocaleString(),
+          },
         ],
         hourlyData,
-        trafficByEntrance: trafficByEntrance.length > 0 ? trafficByEntrance : [
-          { name: 'Main Entrance Counter', count: totalVisits, percentage: '100%' }
-        ],
+        trafficByEntrance:
+          trafficByEntrance.length > 0
+            ? trafficByEntrance
+            : [
+                {
+                  name: 'Main Entrance Counter',
+                  count: totalVisits,
+                  percentage: '100%',
+                },
+              ],
         visitDuration: {
           averageStay: '12 mins',
           trendText: '+5%',
@@ -243,8 +285,11 @@ export class AnalyticsService {
         },
       };
     } catch (error) {
-      this.logger.error('[AnalyticsService] Error in getFootfallAnalytics:', error);
-      throw new BadRequestException('Failed to fetch footfall analytics');
+      this.logger.error(
+        '[AnalyticsService] Error in getFootfallAnalytics:',
+        error,
+      );
+      throw error;
     }
   }
 
@@ -252,15 +297,34 @@ export class AnalyticsService {
     try {
       const targetBranchIds = await this.getTargetBranchIds(user, branchId);
       const hoursLabels = [
-        '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', 
-        '1 PM', '2 PM', '3 PM', '4 PM', '5 PM'
+        '8 AM',
+        '9 AM',
+        '10 AM',
+        '11 AM',
+        '12 PM',
+        '1 PM',
+        '2 PM',
+        '3 PM',
+        '4 PM',
+        '5 PM',
       ];
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const days = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
 
       if (targetBranchIds.length === 0) {
         return {
           hoursLabels,
-          weeklyData: days.map(day => ({ day, hours: new Array(10).fill(0) })),
+          weeklyData: days.map((day) => ({
+            day,
+            hours: new Array(10).fill(0),
+          })),
           smartSuggestion: { peakTime: 'N/A' },
         };
       }
@@ -268,11 +332,11 @@ export class AnalyticsService {
       const rawMatrix = await this.visitRepo
         .createQueryBuilder('visit')
         .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
-        .select("EXTRACT(ISODOW FROM visit.createdAt)", "dow")
-        .addSelect("EXTRACT(HOUR FROM visit.createdAt)", "hour")
-        .addSelect("COUNT(visit.id)", "count")
-        .groupBy("EXTRACT(ISODOW FROM visit.createdAt)")
-        .addGroupBy("EXTRACT(HOUR FROM visit.createdAt)")
+        .select('EXTRACT(ISODOW FROM visit.createdAt)', 'dow')
+        .addSelect('EXTRACT(HOUR FROM visit.createdAt)', 'hour')
+        .addSelect('COUNT(visit.id)', 'count')
+        .groupBy('EXTRACT(ISODOW FROM visit.createdAt)')
+        .addGroupBy('EXTRACT(HOUR FROM visit.createdAt)')
         .getRawMany();
 
       const matrix: number[][] = days.map(() => new Array(10).fill(0));
@@ -280,7 +344,7 @@ export class AnalyticsService {
       let peakDay = 'Friday';
       let peakHourLabel = '2 PM - 4 PM';
 
-      (rawMatrix || []).forEach(row => {
+      (rawMatrix || []).forEach((row) => {
         const dow = parseInt(row.dow, 10);
         const hour = parseInt(row.hour, 10);
         const count = parseInt(row.count, 10);
@@ -311,7 +375,10 @@ export class AnalyticsService {
         },
       };
     } catch (error) {
-      this.logger.error('[AnalyticsService] Error in getPeakTimesAnalytics:', error);
+      this.logger.error(
+        '[AnalyticsService] Error in getPeakTimesAnalytics:',
+        error,
+      );
       throw new BadRequestException('Failed to fetch peak times analytics');
     }
   }

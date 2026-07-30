@@ -50,6 +50,23 @@ describe('PosService', () => {
     findAndCount: jest.fn().mockResolvedValue([[], 0]),
     find: jest.fn().mockResolvedValue([]),
     count: jest.fn().mockResolvedValue(0),
+    createQueryBuilder: jest.fn().mockImplementation(() => ({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest
+        .fn()
+        .mockResolvedValue([{ id: 'sale-1', receiptNumber: 'RCT-001' }]),
+      getManyAndCount: jest
+        .fn()
+        .mockResolvedValue([[{ id: 'sale-1', receiptNumber: 'RCT-001' }], 1]),
+      getCount: jest.fn().mockResolvedValue(1),
+    })),
   };
 
   const mockSaleItemRepo = {
@@ -583,11 +600,6 @@ describe('PosService', () => {
 
   describe('findAllSales', () => {
     it('should return paginated sales', async () => {
-      mockSaleRepo.findAndCount.mockResolvedValue([
-        [{ id: 'sale-1', receiptNumber: 'RCT-001' }],
-        1,
-      ]);
-
       const result = await service.findAllSales('bus-1', {
         page: 1,
         limit: 10,
@@ -595,15 +607,13 @@ describe('PosService', () => {
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
-      expect(mockSaleRepo.findAndCount).toHaveBeenCalled();
+      expect(mockSaleRepo.createQueryBuilder).toHaveBeenCalled();
     });
 
     it('should apply search filter', async () => {
-      mockSaleRepo.findAndCount.mockResolvedValue([[], 0]);
-
       await service.findAllSales('bus-1', { search: 'RCT-001' });
 
-      expect(mockSaleRepo.findAndCount).toHaveBeenCalled();
+      expect(mockSaleRepo.createQueryBuilder).toHaveBeenCalled();
     });
   });
 

@@ -1,9 +1,10 @@
-import { IsEnum, IsInt, IsOptional, IsBoolean, Min } from 'class-validator';
+import { IsEnum, IsOptional, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TicketType } from '../entities/support-ticket.entity';
+import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
-export class FindTicketsAdminDto {
+export class FindTicketsAdminDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     enum: TicketType,
     description: 'Filter by ticket type',
@@ -17,18 +18,4 @@ export class FindTicketsAdminDto {
   @IsBoolean()
   @Type(() => Boolean)
   isAssigned?: boolean;
-
-  @ApiPropertyOptional({ description: 'Page number', default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ description: 'Items per page', default: 10 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit?: number = 10;
 }

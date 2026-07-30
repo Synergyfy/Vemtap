@@ -15,10 +15,12 @@ export class MessagingBot implements IPageBot {
     let activeCampaigns = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT COUNT(*)::int as count FROM messaging_logs WHERE "branchId" = $1`,
-        [branchId],
-      ).catch(() => []);
+      const stats = await this.dataSource
+        .query(
+          `SELECT COUNT(*)::int as count FROM messaging_logs WHERE "branchId" = $1`,
+          [branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         totalMessagesSent = stats[0].count || 0;

@@ -1,10 +1,4 @@
-import {
-  Entity,
-  Column,
-  ManyToOne,
-  JoinColumn,
-  Index,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { CatalogueOffer } from './catalogue-offer.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -46,7 +40,10 @@ export class CatalogueOfferClaim extends AbstractBaseEntity {
   @Index()
   claimCode: string;
 
-  @ApiProperty({ enum: CatalogueOfferClaimStatus, default: CatalogueOfferClaimStatus.CLAIMED })
+  @ApiProperty({
+    enum: CatalogueOfferClaimStatus,
+    default: CatalogueOfferClaimStatus.CLAIMED,
+  })
   @Column({
     type: 'enum',
     enum: CatalogueOfferClaimStatus,

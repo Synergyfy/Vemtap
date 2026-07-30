@@ -6,6 +6,7 @@ import { BranchesService } from '../branches/branches.service';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BusinessStatus } from '../businesses/entities/business.entity';
 
 describe('PartnershipsService', () => {
   let service: PartnershipsService;
@@ -27,6 +28,7 @@ describe('PartnershipsService', () => {
     manager: {
       createQueryBuilder: jest.fn(() => ({
         innerJoinAndSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
@@ -84,10 +86,39 @@ describe('PartnershipsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('should throw ForbiddenException if initiator business is not active', async () => {
+      mockBranchesService.findById
+        .mockResolvedValueOnce({
+          id: 'branch-1',
+          businessId: 'bus-1',
+          business: { status: BusinessStatus.PENDING },
+        })
+        .mockResolvedValueOnce({
+          id: 'branch-2',
+          businessId: 'bus-2',
+          business: { status: BusinessStatus.ACTIVE },
+        });
+
+      await expect(
+        service.invitePartnership(
+          { initiatorBranchId: 'branch-1', recipientBranchId: 'branch-2' },
+          user,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('should throw BadRequestException if branches are of the same business', async () => {
       mockBranchesService.findById
-        .mockResolvedValueOnce({ id: 'branch-1', businessId: 'bus-1' })
-        .mockResolvedValueOnce({ id: 'branch-2', businessId: 'bus-1' });
+        .mockResolvedValueOnce({
+          id: 'branch-1',
+          businessId: 'bus-1',
+          business: { status: BusinessStatus.ACTIVE },
+        })
+        .mockResolvedValueOnce({
+          id: 'branch-2',
+          businessId: 'bus-1',
+          business: { status: BusinessStatus.ACTIVE },
+        });
 
       await expect(
         service.invitePartnership(
@@ -99,8 +130,16 @@ describe('PartnershipsService', () => {
 
     it('should throw ForbiddenException if user has no access to initiator branch', async () => {
       mockBranchesService.findById
-        .mockResolvedValueOnce({ id: 'branch-1', businessId: 'bus-1' })
-        .mockResolvedValueOnce({ id: 'branch-2', businessId: 'bus-2' });
+        .mockResolvedValueOnce({
+          id: 'branch-1',
+          businessId: 'bus-1',
+          business: { status: BusinessStatus.ACTIVE },
+        })
+        .mockResolvedValueOnce({
+          id: 'branch-2',
+          businessId: 'bus-2',
+          business: { status: BusinessStatus.ACTIVE },
+        });
       mockBranchesService.checkBranchAccess.mockResolvedValue(false);
 
       await expect(
@@ -113,8 +152,16 @@ describe('PartnershipsService', () => {
 
     it('should create a new partnership invitation if valid', async () => {
       mockBranchesService.findById
-        .mockResolvedValueOnce({ id: 'branch-1', businessId: 'bus-1' })
-        .mockResolvedValueOnce({ id: 'branch-2', businessId: 'bus-2' });
+        .mockResolvedValueOnce({
+          id: 'branch-1',
+          businessId: 'bus-1',
+          business: { status: BusinessStatus.ACTIVE },
+        })
+        .mockResolvedValueOnce({
+          id: 'branch-2',
+          businessId: 'bus-2',
+          business: { status: BusinessStatus.ACTIVE },
+        });
       mockBranchesService.checkBranchAccess.mockResolvedValue(true);
       mockPartnershipRepository.findOne.mockResolvedValue(null);
       mockPartnershipRepository.create.mockReturnValue({

@@ -25,20 +25,24 @@ export class CustomersBot implements IPageBot {
 
     try {
       const [stats, spendStats] = await Promise.all([
-        this.dataSource.query(
-          `SELECT 
+        this.dataSource
+          .query(
+            `SELECT 
              COUNT(DISTINCT "customerId")::int as total,
              COUNT(DISTINCT CASE WHEN "createdAt" >= $2 THEN "customerId" END)::int as new_this_month,
              COUNT(DISTINCT CASE WHEN status = 'returning' THEN "customerId" END)::float / NULLIF(COUNT(DISTINCT "customerId"), 0) * 100 as repeat_rate,
              0 as churn_rate,
              0 as inactive_count
            FROM visits WHERE "branchId" = $1`,
-          [branchId, thirtyDaysAgo],
-        ).catch(() => []),
-        this.dataSource.query(
-          `SELECT COALESCE(AVG(total), 0)::float as avg_spend FROM pos_sales WHERE "branchId" = $1 AND "customerId" IS NOT NULL`,
-          [branchId]
-        ).catch(() => [])
+            [branchId, thirtyDaysAgo],
+          )
+          .catch(() => []),
+        this.dataSource
+          .query(
+            `SELECT COALESCE(AVG(total), 0)::float as avg_spend FROM pos_sales WHERE "branchId" = $1 AND "customerId" IS NOT NULL`,
+            [branchId],
+          )
+          .catch(() => []),
       ]);
 
       if (stats && stats.length > 0) {

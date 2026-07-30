@@ -153,7 +153,13 @@ export class AdminReferralInvestigationResponseDto {
   customer: { name: string; id: string; history: string };
 
   @ApiProperty({ type: Object })
-  referral: { id: string; source: string; target: string; timestamp: string; offer: string };
+  referral: {
+    id: string;
+    source: string;
+    target: string;
+    timestamp: string;
+    offer: string;
+  };
 
   @ApiProperty({ type: [Object] })
   evidence: { label: string; val: string; conflict: boolean; note: string }[];
@@ -231,7 +237,13 @@ export class AdminSponsoredCampaignDetailResponseDto extends AdminSponsoredCampa
   cpc: string;
 
   @ApiProperty({ type: [Object] })
-  transactions: { invoiceNo: string; date: string; type: string; amount: number; status: string }[];
+  transactions: {
+    invoiceNo: string;
+    date: string;
+    type: string;
+    amount: number;
+    status: string;
+  }[];
 
   @ApiProperty({ type: [Object] })
   auditLog: { action: string; admin: string; time: string; detail: string }[];
@@ -276,13 +288,24 @@ export class AdminBillingDetailResponseDto extends AdminBillingResponseDto {
 
 export class AdminAttributionResponseDto {
   @ApiProperty({ type: [Object] })
-  paths: { from: string; to: string; flow: number; conversion: string; revenue: string }[];
+  paths: {
+    from: string;
+    to: string;
+    flow: number;
+    conversion: string;
+    revenue: string;
+  }[];
 
   @ApiProperty()
   window: number;
 
   @ApiProperty({ type: Object })
-  metrics: { attributedVisits: number; attributedPurchases: number; attributedRevenue: string; avgAttributionTime: string };
+  metrics: {
+    attributedVisits: number;
+    attributedPurchases: number;
+    attributedRevenue: string;
+    avgAttributionTime: string;
+  };
 }
 
 export class AdminCustomerResponseDto {
@@ -322,10 +345,21 @@ export class AdminCustomerDetailResponseDto extends AdminCustomerResponseDto {
   optInDate: string;
 
   @ApiProperty({ type: Object })
-  stats: { totalVisits: number; offersReceived: number; offersRedeemed: number; totalReferrals: number; totalSpend: number };
+  stats: {
+    totalVisits: number;
+    offersReceived: number;
+    offersRedeemed: number;
+    totalReferrals: number;
+    totalSpend: number;
+  };
 
   @ApiProperty({ type: [Object] })
-  activityTimeline: { action: string; via: string; time: string; val: string | null }[];
+  activityTimeline: {
+    action: string;
+    via: string;
+    time: string;
+    val: string | null;
+  }[];
 }
 
 export class AdminLocationResponseDto {

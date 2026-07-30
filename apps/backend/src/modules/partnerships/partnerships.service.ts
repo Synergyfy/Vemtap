@@ -16,6 +16,8 @@ import {
 } from './dto/partnership-query.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { User } from '../users/entities/user.entity';
+import { BusinessStatus } from '../businesses/entities/business.entity';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class PartnershipsService {
@@ -32,9 +34,17 @@ export class PartnershipsService {
     const { branchId, distance = 10000, limit = 20, page = 1 } = query;
     const skip = (page - 1) * limit;
 
-    const sourceBranch = await this.branchesService.findById(branchId);
+    const sourceBranch = await this.branchesService.findById(branchId, [
+      'business',
+    ]);
     if (!sourceBranch) {
       throw new NotFoundException('Source branch not found');
+    }
+
+    if (sourceBranch.business?.status !== BusinessStatus.ACTIVE) {
+      throw new ForbiddenException(
+        'Your business is not verified by admin. You cannot access partnership services until approved.',
+      );
     }
 
     const hasAccess = await this.branchesService.checkBranchAccess(
@@ -59,6 +69,9 @@ export class PartnershipsService {
       .where('b.id != :sourceBranchId', { sourceBranchId: branchId })
       .andWhere('b.businessId != :sourceBusinessId', {
         sourceBusinessId: sourceBranch.businessId,
+      })
+      .andWhere('business.status = :activeStatus', {
+        activeStatus: BusinessStatus.ACTIVE,
       })
       .andWhere('b.isActive = :isActive', { isActive: true })
       .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
@@ -110,9 +123,13 @@ export class PartnershipsService {
 
     const totalQb = this.partnershipRepository.manager
       .createQueryBuilder(Branch, 'b')
+      .innerJoin('b.business', 'business')
       .where('b.id != :sourceBranchId', { sourceBranchId: branchId })
       .andWhere('b.businessId != :sourceBusinessId', {
         sourceBusinessId: sourceBranch.businessId,
+      })
+      .andWhere('business.status = :activeStatus', {
+        activeStatus: BusinessStatus.ACTIVE,
       })
       .andWhere('b.isActive = :isActive', { isActive: true })
       .andWhere('b.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
@@ -159,8 +176,24 @@ export class PartnershipsService {
       throw new BadRequestException('A branch cannot partner with itself');
     }
 
-    const initiator = await this.branchesService.findById(initiatorBranchId);
-    const recipient = await this.branchesService.findById(recipientBranchId);
+    const initiator = await this.branchesService.findById(initiatorBranchId, [
+      'business',
+    ]);
+    const recipient = await this.branchesService.findById(recipientBranchId, [
+      'business',
+    ]);
+
+    if (initiator.business?.status !== BusinessStatus.ACTIVE) {
+      throw new ForbiddenException(
+        'Your business is not verified by admin. You cannot create partnership invitations until approved.',
+      );
+    }
+
+    if (recipient.business?.status !== BusinessStatus.ACTIVE) {
+      throw new BadRequestException(
+        'The recipient business is not verified by admin.',
+      );
+    }
 
     if (initiator.businessId === recipient.businessId) {
       throw new BadRequestException(
@@ -235,6 +268,17 @@ export class PartnershipsService {
       );
     }
 
+    const recipientBranch = await this.branchesService.findById(
+      partnership.recipientBranchId,
+      ['business'],
+    );
+
+    if (recipientBranch.business?.status !== BusinessStatus.ACTIVE) {
+      throw new ForbiddenException(
+        'Your business is not verified by admin. You cannot respond to partnership invitations until approved.',
+      );
+    }
+
     const hasAccess = await this.branchesService.checkBranchAccess(
       user,
       partnership.recipientBranchId,
@@ -283,15 +327,25 @@ export class PartnershipsService {
       qb.andWhere('p.status = :status', { status });
     }
 
-    qb.orderBy('p.createdAt', 'DESC').skip(skip).take(limit);
-
-    const [data, total] = await qb.getManyAndCount();
-
-    return {
-      data,
-      total,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
       page,
       limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'p',
+    });
+
+    return {
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
     };
   }
 }

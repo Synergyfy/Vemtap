@@ -217,7 +217,9 @@ export class DiscoveryController {
   // --- Offers ---
   @Get('admin/offers')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: List all offers with pagination and filters' })
+  @ApiOperation({
+    summary: 'Admin: List all offers with pagination and filters',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
@@ -229,7 +231,9 @@ export class DiscoveryController {
 
   @Get('admin/offers/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get single offer detail with conversion funnel' })
+  @ApiOperation({
+    summary: 'Admin: Get single offer detail with conversion funnel',
+  })
   @ApiParam({ name: 'id', description: 'Offer ID' })
   async getAdminOfferDetail(@Param('id') id: string) {
     return this.discoveryService.getAdminOfferDetail(id);
@@ -238,7 +242,9 @@ export class DiscoveryController {
   // --- Referrals ---
   @Get('admin/referrals')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: List all referrals with pagination and filters' })
+  @ApiOperation({
+    summary: 'Admin: List all referrals with pagination and filters',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
@@ -249,7 +255,9 @@ export class DiscoveryController {
 
   @Get('admin/referrals/:id/investigate')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get fraud investigation detail for a referral' })
+  @ApiOperation({
+    summary: 'Admin: Get fraud investigation detail for a referral',
+  })
   @ApiParam({ name: 'id', description: 'Referral ID' })
   async getAdminReferralInvestigation(@Param('id') id: string) {
     return this.discoveryService.getAdminReferralInvestigation(id);
@@ -279,7 +287,9 @@ export class DiscoveryController {
 
   @Get('admin/sponsored/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get campaign detail with performance/billing/audit tabs' })
+  @ApiOperation({
+    summary: 'Admin: Get campaign detail with performance/billing/audit tabs',
+  })
   @ApiParam({ name: 'id', description: 'Campaign ID' })
   async getAdminSponsoredCampaignDetail(@Param('id') id: string) {
     return this.discoveryService.getAdminSponsoredCampaignDetail(id);
@@ -308,7 +318,9 @@ export class DiscoveryController {
   // --- Attribution ---
   @Get('admin/attribution')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get attribution paths, metrics, and window config' })
+  @ApiOperation({
+    summary: 'Admin: Get attribution paths, metrics, and window config',
+  })
   async getAdminAttribution() {
     return this.discoveryService.getAdminAttribution();
   }
@@ -327,7 +339,9 @@ export class DiscoveryController {
 
   @Get('admin/customers/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get customer profile with activity timeline' })
+  @ApiOperation({
+    summary: 'Admin: Get customer profile with activity timeline',
+  })
   @ApiParam({ name: 'id', description: 'Customer ID' })
   async getAdminCustomerDetail(@Param('id') id: string) {
     return this.discoveryService.getAdminCustomerDetail(id);
@@ -336,7 +350,9 @@ export class DiscoveryController {
   // --- Locations ---
   @Get('admin/locations')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: List all districts with performance metrics' })
+  @ApiOperation({
+    summary: 'Admin: List all districts with performance metrics',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
@@ -346,7 +362,9 @@ export class DiscoveryController {
 
   @Get('admin/locations/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get location detail with businesses, offers, revenue' })
+  @ApiOperation({
+    summary: 'Admin: Get location detail with businesses, offers, revenue',
+  })
   @ApiParam({ name: 'id', description: 'Location ID' })
   async getAdminLocationDetail(@Param('id') id: string) {
     return this.discoveryService.getAdminLocationDetail(id);
@@ -355,7 +373,9 @@ export class DiscoveryController {
   // --- Categories ---
   @Get('admin/categories')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: List all offer categories with conversion data' })
+  @ApiOperation({
+    summary: 'Admin: List all offer categories with conversion data',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
@@ -467,7 +487,9 @@ export class DiscoveryController {
 
   @Get('admin/audit-logs/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get audit log detail with before/after diff' })
+  @ApiOperation({
+    summary: 'Admin: Get audit log detail with before/after diff',
+  })
   @ApiParam({ name: 'id', description: 'Audit Log ID' })
   async getAdminAuditLogDetail(@Param('id') id: string) {
     return this.discoveryService.getAdminAuditLogDetail(id);
@@ -484,7 +506,9 @@ export class DiscoveryController {
   @Patch('admin/settings')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Save global discovery system config' })
-  async updateAdminDiscoverySettings(@Body() dto: UpdateDiscoveryAdminSettingsDto) {
+  async updateAdminDiscoverySettings(
+    @Body() dto: UpdateDiscoveryAdminSettingsDto,
+  ) {
     return this.discoveryService.updateAdminDiscoverySettings(dto);
   }
 

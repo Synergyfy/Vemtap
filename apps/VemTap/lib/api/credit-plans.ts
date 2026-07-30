@@ -9,6 +9,7 @@ export interface CreditPlan {
     smsAmount: number;
     emailAmount: number;
     whatsappAmount: number;
+    aiAmount: number;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -20,6 +21,7 @@ export interface BusinessCredit {
     smsCredits: number;
     emailCredits: number;
     whatsappCredits: number;
+    aiCredits: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -32,6 +34,7 @@ export interface CreditRates {
     creditPriceSms: number;
     creditPriceWhatsapp: number;
     creditPriceEmail: number;
+    creditPriceAi: number;
 }
 
 export const fetchCreditRates = async (): Promise<CreditRates> => {
@@ -62,6 +65,7 @@ export interface PurchaseCustomCreditsRequest {
     smsAmount: number;
     whatsappAmount: number;
     emailAmount: number;
+    aiAmount?: number;
 }
 
 export const purchaseCustomCredits = async (data: PurchaseCustomCreditsRequest): Promise<BusinessCredit> => {

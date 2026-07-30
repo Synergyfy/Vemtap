@@ -39,6 +39,7 @@ export class CreditPlanService {
     smsAmount: number,
     whatsappAmount: number,
     emailAmount: number,
+    aiAmount: number = 0,
   ): Promise<BusinessCreditWallet> {
     // Idempotency: check if reference has already been processed
     const existingPayment =
@@ -55,11 +56,13 @@ export class CreditPlanService {
     const priceSms = Number(settings.creditPriceSms) || 15;
     const priceWhatsapp = Number(settings.creditPriceWhatsapp) || 25;
     const priceEmail = Number(settings.creditPriceEmail) || 2;
+    const priceAi = Number(settings.creditPriceAi) || 50;
 
     const expectedPrice =
       smsAmount * priceSms +
       whatsappAmount * priceWhatsapp +
-      emailAmount * priceEmail;
+      emailAmount * priceEmail +
+      (aiAmount || 0) * priceAi;
 
     if (expectedPrice <= 0) {
       throw new BadRequestException(
@@ -101,9 +104,11 @@ export class CreditPlanService {
         smsAmount,
         whatsappAmount,
         emailAmount,
+        aiAmount,
         priceSms,
         priceWhatsapp,
         priceEmail,
+        priceAi,
         isCustomPurchase: true,
       },
     });
@@ -133,6 +138,15 @@ export class CreditPlanService {
         emailAmount,
         CreditTransactionType.CREDIT_TOPUP,
         `Custom Top-up: ${emailAmount} Email Credits`,
+      );
+    }
+    if (aiAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.AI,
+        aiAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Custom Top-up: ${aiAmount} AI Credits`,
       );
     }
 
@@ -217,6 +231,15 @@ export class CreditPlanService {
         `Top-up: ${plan.name}`,
       );
     }
+    if (plan.aiAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.AI,
+        plan.aiAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Top-up: ${plan.name}`,
+      );
+    }
 
     return this.creditService.getOrCreateWallet(businessId);
   }
@@ -231,6 +254,7 @@ export class CreditPlanService {
       creditPriceSms: Number(settings.creditPriceSms) || 15.0,
       creditPriceWhatsapp: Number(settings.creditPriceWhatsapp) || 25.0,
       creditPriceEmail: Number(settings.creditPriceEmail) || 2.0,
+      creditPriceAi: Number(settings.creditPriceAi) || 50.0,
     };
   }
 

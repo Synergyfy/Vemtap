@@ -15,19 +15,23 @@ export class StaffBot implements IPageBot {
 
     try {
       const [staffStats, topStaffStats] = await Promise.all([
-        this.dataSource.query(
-          `SELECT COUNT(*)::int as count FROM users WHERE "branchId" = $1 AND role = 'Staff'`,
-          [_branchId]
-        ).catch(() => []),
-        this.dataSource.query(
-          `SELECT u."firstName", u."lastName", SUM(s.total) as revenue 
+        this.dataSource
+          .query(
+            `SELECT COUNT(*)::int as count FROM users WHERE "branchId" = $1 AND role = 'Staff'`,
+            [_branchId],
+          )
+          .catch(() => []),
+        this.dataSource
+          .query(
+            `SELECT u."firstName", u."lastName", SUM(s.total) as revenue 
            FROM pos_sales s
            JOIN users u ON u.id = s."cashierId"
            WHERE s."branchId" = $1 AND s.status = 'COMPLETED'
            GROUP BY u.id
            ORDER BY revenue DESC LIMIT 1`,
-          [_branchId]
-        ).catch(() => [])
+            [_branchId],
+          )
+          .catch(() => []),
       ]);
 
       if (staffStats && staffStats.length > 0) {
@@ -35,7 +39,8 @@ export class StaffBot implements IPageBot {
       }
 
       if (topStaffStats && topStaffStats.length > 0) {
-        topStaffByRevenue = `${topStaffStats[0].firstName} ${topStaffStats[0].lastName}`.trim();
+        topStaffByRevenue =
+          `${topStaffStats[0].firstName} ${topStaffStats[0].lastName}`.trim();
       }
     } catch (e) {
       activeStaffCount = 0;

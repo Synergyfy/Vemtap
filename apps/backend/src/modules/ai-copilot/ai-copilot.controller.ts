@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -24,16 +32,20 @@ export class AiCopilotController {
     @Request() req: any,
     @Body() dto: AnalyzeRequestDto,
   ): Promise<AIAnalysisResponse> {
-    const branchId = req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
-    if (!branchId) throw new BadRequestException('Branch or Business ID is required');
+    const branchId =
+      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
+    if (!branchId)
+      throw new BadRequestException('Branch or Business ID is required');
     return this.aiCopilotService.analyze(dto.page, branchId, dto.context);
   }
 
   @Get('credits')
   @ApiOperation({ summary: 'Get available AI copilot credits' })
   async getCredits(@Request() req: any) {
-    const branchId = req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
-    if (!branchId) throw new BadRequestException('Branch or Business ID is required');
+    const branchId =
+      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
+    if (!branchId)
+      throw new BadRequestException('Branch or Business ID is required');
     return this.aiCopilotService.getCredits(branchId);
   }
 }

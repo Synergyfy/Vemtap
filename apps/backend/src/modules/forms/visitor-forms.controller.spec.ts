@@ -65,11 +65,7 @@ describe('VisitorFormsController', () => {
 
     mockFormsService.submitResponse.mockResolvedValue(savedResponse);
 
-    const result = await controller.submitResponse(
-      req,
-      'ABC123XYZ',
-      submitDto as any,
-    );
+    const result = await controller.submitResponse(req, 'ABC123XYZ', submitDto);
 
     expect(service.submitResponse).toHaveBeenCalledWith(
       'ABC123XYZ',

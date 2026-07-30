@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { AIAnalysisResponse, AIInsight, AIRecommendation, AIQuickAction } from '../dto/ai-analysis-response.dto';
+import {
+  AIAnalysisResponse,
+  AIInsight,
+  AIRecommendation,
+  AIQuickAction,
+} from '../dto/ai-analysis-response.dto';
 
 @Injectable()
 export class LocalFallbackService {
@@ -22,18 +27,30 @@ export class LocalFallbackService {
 
   private buildSummary(page: string, data: Record<string, unknown>): string {
     const totalCustomers = (data.totalCustomers as number) || 0;
-    const totalRevenue = (data.totalRevenue as number) || (data.revenueThisMonth as number) || 0;
+    const totalRevenue =
+      (data.totalRevenue as number) || (data.revenueThisMonth as number) || 0;
     const repeatRate = (data.repeatCustomerRate as number) || 0;
 
-    let parts = [`Performance overview for ${page}:`];
-    if (totalCustomers > 0) parts.push(`Engaged ${totalCustomers.toLocaleString()} customers`);
-    if (totalRevenue > 0) parts.push(`generated ₦${(totalRevenue / 1000).toFixed(0)}K tracked revenue`);
-    if (repeatRate > 0) parts.push(`with a ${repeatRate}% repeat customer rate`);
+    const parts = [`Performance overview for ${page}:`];
+    if (totalCustomers > 0)
+      parts.push(`Engaged ${totalCustomers.toLocaleString()} customers`);
+    if (totalRevenue > 0)
+      parts.push(
+        `generated ₦${(totalRevenue / 1000).toFixed(0)}K tracked revenue`,
+      );
+    if (repeatRate > 0)
+      parts.push(`with a ${repeatRate}% repeat customer rate`);
 
-    return parts.join(' ') + '. Focus on key recommendations below to maintain momentum.';
+    return (
+      parts.join(' ') +
+      '. Focus on key recommendations below to maintain momentum.'
+    );
   }
 
-  private buildInsights(page: string, data: Record<string, unknown>): AIInsight[] {
+  private buildInsights(
+    page: string,
+    data: Record<string, unknown>,
+  ): AIInsight[] {
     const insights: AIInsight[] = [];
 
     if (data.totalCustomers !== undefined) {
@@ -43,9 +60,10 @@ export class LocalFallbackService {
         type: 'trend',
         severity: totalCust > 0 ? 'positive' : 'info',
         title: 'Customer Base',
-        description: totalCust > 0 
-          ? `Active customer base is recorded at ${totalCust} profiles.`
-          : `No registered customer profiles recorded yet.`,
+        description:
+          totalCust > 0
+            ? `Active customer base is recorded at ${totalCust} profiles.`
+            : `No registered customer profiles recorded yet.`,
         metric: {
           label: 'Total Customers',
           value: `${totalCust}`,
@@ -54,7 +72,10 @@ export class LocalFallbackService {
       });
     }
 
-    if (data.repeatCustomerRate !== undefined && (data.totalCustomers as number || 0) > 0) {
+    if (
+      data.repeatCustomerRate !== undefined &&
+      ((data.totalCustomers as number) || 0) > 0
+    ) {
       const rate = (data.repeatCustomerRate as number) || 0;
       const isStrong = rate >= 30;
       insights.push({
@@ -71,7 +92,10 @@ export class LocalFallbackService {
       });
     }
 
-    if (data.lowStockCount !== undefined && (data.lowStockCount as number) > 0) {
+    if (
+      data.lowStockCount !== undefined &&
+      (data.lowStockCount as number) > 0
+    ) {
       insights.push({
         id: 'fallback-insight-3',
         type: 'risk',
@@ -89,14 +113,21 @@ export class LocalFallbackService {
     return insights;
   }
 
-  private buildRecommendations(page: string, data: Record<string, unknown>): AIRecommendation[] {
+  private buildRecommendations(
+    page: string,
+    data: Record<string, unknown>,
+  ): AIRecommendation[] {
     const recs: AIRecommendation[] = [];
 
-    if (typeof data.repeatCustomerRate === 'number' && data.repeatCustomerRate < 40) {
+    if (
+      typeof data.repeatCustomerRate === 'number' &&
+      data.repeatCustomerRate < 40
+    ) {
       recs.push({
         id: 'fallback-rec-1',
         title: 'Launch a Loyalty Program',
-        description: 'Drive repeat business by setting up points rewards for returning customers.',
+        description:
+          'Drive repeat business by setting up points rewards for returning customers.',
         impact: 'high',
         actionLabel: 'Setup Loyalty',
         actionRoute: '/dashboard/loyalty',
@@ -106,7 +137,8 @@ export class LocalFallbackService {
     recs.push({
       id: 'fallback-rec-2',
       title: 'Review Customer Profiles',
-      description: 'Explore top spending customer segments and schedule re-engagement offers.',
+      description:
+        'Explore top spending customer segments and schedule re-engagement offers.',
       impact: 'medium',
       actionLabel: 'View Customers',
       actionRoute: '/dashboard/visitors',
@@ -121,20 +153,55 @@ export class LocalFallbackService {
       case 'inventory-stock':
       case 'inventory-low-stock':
         return [
-          { id: 'qa-1', label: 'Add Product', icon: 'Plus', route: '/dashboard/inventory/new' },
-          { id: 'qa-2', label: 'Update Stock', icon: 'Edit', route: '/dashboard/inventory/update' },
+          {
+            id: 'qa-1',
+            label: 'Add Product',
+            icon: 'Plus',
+            route: '/dashboard/inventory/new',
+          },
+          {
+            id: 'qa-2',
+            label: 'Update Stock',
+            icon: 'Edit',
+            route: '/dashboard/inventory/update',
+          },
         ];
       case 'customers':
       case 'visitors':
         return [
-          { id: 'qa-1', label: 'View Customers', icon: 'Users', route: '/dashboard/visitors' },
-          { id: 'qa-2', label: 'Segments', icon: 'Filter', route: '/dashboard/visitors/segments' },
+          {
+            id: 'qa-1',
+            label: 'View Customers',
+            icon: 'Users',
+            route: '/dashboard/visitors',
+          },
+          {
+            id: 'qa-2',
+            label: 'Segments',
+            icon: 'Filter',
+            route: '/dashboard/visitors/segments',
+          },
         ];
       default:
         return [
-          { id: 'qa-1', label: 'View Analytics', icon: 'BarChart3', route: '/dashboard/analytics' },
-          { id: 'qa-2', label: 'Manage Customers', icon: 'Users', route: '/dashboard/visitors' },
-          { id: 'qa-3', label: 'POS Terminal', icon: 'ShoppingCart', route: '/dashboard/pos' },
+          {
+            id: 'qa-1',
+            label: 'View Analytics',
+            icon: 'BarChart3',
+            route: '/dashboard/analytics',
+          },
+          {
+            id: 'qa-2',
+            label: 'Manage Customers',
+            icon: 'Users',
+            route: '/dashboard/visitors',
+          },
+          {
+            id: 'qa-3',
+            label: 'POS Terminal',
+            icon: 'ShoppingCart',
+            route: '/dashboard/pos',
+          },
         ];
     }
   }

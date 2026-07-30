@@ -36,7 +36,9 @@ describe('AiCopilotService', () => {
 
   const mockAiCreditService = {
     consume: jest.fn().mockResolvedValue(undefined),
-    getStatus: jest.fn().mockResolvedValue({ available: 99, used: 1, limit: 100, enabled: true }),
+    getStatus: jest
+      .fn()
+      .mockResolvedValue({ available: 99, used: 1, limit: 100, enabled: true }),
   };
 
   beforeEach(async () => {
@@ -102,7 +104,15 @@ describe('AiCopilotService', () => {
   });
 
   it('should analyze sub-pages (analytics-sales, inventory-low-stock, pos-register, referrals) successfully', async () => {
-    const pages = ['analytics-sales', 'inventory-low-stock', 'pos-register', 'referrals', 'automations', 'support', 'staff'];
+    const pages = [
+      'analytics-sales',
+      'inventory-low-stock',
+      'pos-register',
+      'referrals',
+      'automations',
+      'support',
+      'staff',
+    ];
 
     for (const page of pages) {
       const res = await service.analyze(page, 'branch-123');
@@ -113,11 +123,22 @@ describe('AiCopilotService', () => {
   });
 
   it('should not return a non-zero repeat rate when total customers is 0', async () => {
-    mockDataSource.query.mockResolvedValueOnce([{ total: 0, new_this_month: 0, repeat_rate: null, churn_rate: null, inactive_count: 0, avg_spend: 0 }]);
+    mockDataSource.query.mockResolvedValueOnce([
+      {
+        total: 0,
+        new_this_month: 0,
+        repeat_rate: null,
+        churn_rate: null,
+        inactive_count: 0,
+        avg_spend: 0,
+      },
+    ]);
     const res = await service.analyze('customers', 'branch-empty');
 
     expect(res).toBeDefined();
-    const repeatInsight = res.insights.find((i) => i.title === 'Loyal Retention');
+    const repeatInsight = res.insights.find(
+      (i) => i.title === 'Loyal Retention',
+    );
     expect(repeatInsight).toBeUndefined(); // Should not display loyal retention if total customers is 0
   });
 });

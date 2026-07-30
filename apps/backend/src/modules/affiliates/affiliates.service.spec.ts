@@ -149,7 +149,12 @@ describe('AffiliatesService', () => {
           }),
           createQueryBuilder: jest.fn(() => atomicQb),
           save: jest.fn().mockImplementation((obj) => {
-            if (obj && (obj.userId !== undefined || obj.referralCode !== undefined || obj.availableBalance !== undefined)) {
+            if (
+              obj &&
+              (obj.userId !== undefined ||
+                obj.referralCode !== undefined ||
+                obj.availableBalance !== undefined)
+            ) {
               return profileRepository.save(obj);
             }
             return withdrawalRepository.save(obj);
@@ -267,7 +272,10 @@ describe('AffiliatesService', () => {
     it('should create withdrawal request and deduct balance', async () => {
       const profile = { id: 'p1', availableBalance: 10000 };
       // resolveUser needs a non-OWNER/MANAGER user
-      userRepository.findOne.mockResolvedValue({ id: 'u1', role: UserRole.AGENT });
+      userRepository.findOne.mockResolvedValue({
+        id: 'u1',
+        role: UserRole.AGENT,
+      });
       profileRepository.findOne.mockResolvedValue(profile);
 
       const result = await service.requestWithdrawal('u1', 6000);
@@ -279,7 +287,10 @@ describe('AffiliatesService', () => {
     });
 
     it('should throw BadRequestException for amount below minimum', async () => {
-      userRepository.findOne.mockResolvedValue({ id: 'u1', role: UserRole.AGENT });
+      userRepository.findOne.mockResolvedValue({
+        id: 'u1',
+        role: UserRole.AGENT,
+      });
       profileRepository.findOne.mockResolvedValue({ availableBalance: 10000 });
       await expect(service.requestWithdrawal('u1', 1000)).rejects.toThrow(
         BadRequestException,
@@ -287,7 +298,10 @@ describe('AffiliatesService', () => {
     });
 
     it('should throw BadRequestException for insufficient balance', async () => {
-      userRepository.findOne.mockResolvedValue({ id: 'u1', role: UserRole.AGENT });
+      userRepository.findOne.mockResolvedValue({
+        id: 'u1',
+        role: UserRole.AGENT,
+      });
       profileRepository.findOne.mockResolvedValue({ availableBalance: 4000 });
       await expect(service.requestWithdrawal('u1', 6000)).rejects.toThrow(
         BadRequestException,
@@ -366,8 +380,13 @@ describe('AffiliatesService', () => {
       const result = await service.getLeaderboard(UserRole.AGENT, 10);
 
       expect(profileRepository.createQueryBuilder).toHaveBeenCalledWith('p');
-      expect(queryBuilder.innerJoinAndSelect).toHaveBeenCalledWith('p.user', 'u');
-      expect(queryBuilder.where).toHaveBeenCalledWith('u.role = :role', { role: UserRole.AGENT });
+      expect(queryBuilder.innerJoinAndSelect).toHaveBeenCalledWith(
+        'p.user',
+        'u',
+      );
+      expect(queryBuilder.where).toHaveBeenCalledWith('u.role = :role', {
+        role: UserRole.AGENT,
+      });
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         name: 'Alice Smith',
@@ -384,8 +403,18 @@ describe('AffiliatesService', () => {
       ];
 
       const mockReferringBusinesses = [
-        { uniqueCode: 'BIZ1', name: 'Biz One', balance: 12000, logoUrl: 'logo1' },
-        { uniqueCode: 'BIZ2', name: 'Biz Two', balance: 5000, logoUrl: 'logo2' },
+        {
+          uniqueCode: 'BIZ1',
+          name: 'Biz One',
+          balance: 12000,
+          logoUrl: 'logo1',
+        },
+        {
+          uniqueCode: 'BIZ2',
+          name: 'Biz Two',
+          balance: 5000,
+          logoUrl: 'logo2',
+        },
       ];
 
       const businessRepo = dataSource.getRepository(Business);

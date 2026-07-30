@@ -132,7 +132,10 @@ export class CatalogueOffer extends AbstractBaseEntity {
   audience: string | null;
 
   @ApiProperty({
-    example: ['Valid during business hours', 'Cannot be combined with other offers'],
+    example: [
+      'Valid during business hours',
+      'Cannot be combined with other offers',
+    ],
     description: 'Custom terms and conditions for the offer',
     nullable: true,
   })
@@ -149,7 +152,8 @@ export class CatalogueOffer extends AbstractBaseEntity {
 
   @ApiProperty({
     example: 1,
-    description: 'Maximum number of times a single customer can claim this offer',
+    description:
+      'Maximum number of times a single customer can claim this offer',
     nullable: true,
   })
   @Column({ type: 'int', nullable: true, default: 1 })

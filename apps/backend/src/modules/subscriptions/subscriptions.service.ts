@@ -35,6 +35,7 @@ import { CatalogueCategory } from '../catalogue/entities/catalogue-category.enti
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
@@ -64,6 +65,8 @@ export class SubscriptionsService {
     private readonly catalogueOfferRepository: Repository<CatalogueOffer>,
     @InjectRepository(AutomationRule)
     private readonly automationRuleRepository: Repository<AutomationRule>,
+    @InjectRepository(Reward)
+    private readonly rewardRepository: Repository<Reward>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
@@ -120,7 +123,9 @@ export class SubscriptionsService {
     });
   }
 
-  async cancelSubscription(businessId: string): Promise<{ message: string; subscription: Subscription }> {
+  async cancelSubscription(
+    businessId: string,
+  ): Promise<{ message: string; subscription: Subscription }> {
     const sub = await this.subscriptionRepository.findOne({
       where: {
         businessId,
@@ -130,13 +135,17 @@ export class SubscriptionsService {
     });
 
     if (!sub) {
-      throw new NotFoundException('No active or trial subscription found for this business');
+      throw new NotFoundException(
+        'No active or trial subscription found for this business',
+      );
     }
 
     sub.status = SubscriptionStatus.CANCELED;
     const updatedSub = await this.subscriptionRepository.save(sub);
 
-    this.logger.log(`Subscription ${sub.id} for business ${businessId} has been cancelled`);
+    this.logger.log(
+      `Subscription ${sub.id} for business ${businessId} has been cancelled`,
+    );
 
     return {
       message: 'Subscription cancelled successfully',
@@ -665,7 +674,9 @@ export class SubscriptionsService {
       where: { businessId },
     });
 
-    const usedLoyaltyPrograms = 0;
+    const usedLoyaltyPrograms = await this.rewardRepository.count({
+      where: { businessId },
+    });
 
     const addonCapabilities =
       await this.addonsService.getAddonCapabilities(businessId);
@@ -676,7 +687,7 @@ export class SubscriptionsService {
       (ba) => ({
         id: ba.addon.id,
         name: ba.addon.name,
-        type: ba.addon.type as 'RESOURCE' | 'SERVICE',
+        type: ba.addon.type,
         targetCapability:
           ba.metadata?.targetCapability ??
           ba.addon.targetCapability ??
@@ -740,21 +751,27 @@ export class SubscriptionsService {
         : baseAutomationsLimit;
 
     const baseCatalogueItemsLimit =
-      plan.maxCatalogueItems === -1 ? 'unlimited' : (plan.maxCatalogueItems ?? 0);
+      plan.maxCatalogueItems === -1
+        ? 'unlimited'
+        : (plan.maxCatalogueItems ?? 0);
     const finalCatalogueItemsLimit =
       typeof baseCatalogueItemsLimit === 'number'
         ? baseCatalogueItemsLimit + addonCatalogueItems
         : baseCatalogueItemsLimit;
 
     const baseCatalogueCategoriesLimit =
-      plan.maxCatalogueCategories === -1 ? 'unlimited' : (plan.maxCatalogueCategories ?? 0);
+      plan.maxCatalogueCategories === -1
+        ? 'unlimited'
+        : (plan.maxCatalogueCategories ?? 0);
     const finalCatalogueCategoriesLimit =
       typeof baseCatalogueCategoriesLimit === 'number'
         ? baseCatalogueCategoriesLimit + addonCatalogueCategories
         : baseCatalogueCategoriesLimit;
 
     const baseCatalogueOffersLimit =
-      plan.maxCatalogueOffers === -1 ? 'unlimited' : (plan.maxCatalogueOffers ?? 0);
+      plan.maxCatalogueOffers === -1
+        ? 'unlimited'
+        : (plan.maxCatalogueOffers ?? 0);
     const finalCatalogueOffersLimit =
       typeof baseCatalogueOffersLimit === 'number'
         ? baseCatalogueOffersLimit + addonCatalogueOffers
@@ -873,23 +890,29 @@ export class SubscriptionsService {
         },
         inventory: {
           enabled: plan.inventoryEnabled ?? false,
-          limit: plan.inventoryLimit === -1 ? 'unlimited' : (plan.inventoryLimit ?? 0),
+          limit:
+            plan.inventoryLimit === -1
+              ? 'unlimited'
+              : (plan.inventoryLimit ?? 0),
           used: 0,
           remaining: !plan.inventoryEnabled
             ? 0
             : plan.inventoryLimit === -1
               ? 'unlimited'
-              : plan.inventoryLimit ?? 0,
+              : (plan.inventoryLimit ?? 0),
         },
         pos: {
           enabled: plan.posEnabled ?? false,
-          limit: plan.posTerminalLimit === -1 ? 'unlimited' : (plan.posTerminalLimit ?? 0),
+          limit:
+            plan.posTerminalLimit === -1
+              ? 'unlimited'
+              : (plan.posTerminalLimit ?? 0),
           used: 0,
           remaining: !plan.posEnabled
             ? 0
             : plan.posTerminalLimit === -1
               ? 'unlimited'
-              : plan.posTerminalLimit ?? 0,
+              : (plan.posTerminalLimit ?? 0),
         },
         visitors: {
           enabled: plan.visitorsEnabled ?? false,
@@ -905,46 +928,53 @@ export class SubscriptionsService {
             ? 0
             : plan.formsLimit === -1
               ? 'unlimited'
-              : plan.formsLimit ?? 0,
+              : (plan.formsLimit ?? 0),
         },
         businessQr: {
           enabled: plan.businessQrEnabled ?? false,
         },
         marketingKit: {
           enabled: plan.marketingKitEnabled ?? false,
-          limit: plan.marketingKitLimit === -1 ? 'unlimited' : (plan.marketingKitLimit ?? 0),
+          limit:
+            plan.marketingKitLimit === -1
+              ? 'unlimited'
+              : (plan.marketingKitLimit ?? 0),
           used: 0,
           remaining: !plan.marketingKitEnabled
             ? 0
             : plan.marketingKitLimit === -1
               ? 'unlimited'
-              : plan.marketingKitLimit ?? 0,
+              : (plan.marketingKitLimit ?? 0),
         },
         discovery: {
           enabled: plan.discoveryEnabled ?? false,
         },
         staffRoles: {
           enabled: plan.staffRolesEnabled ?? false,
-          limit: plan.staffRolesLimit === -1 ? 'unlimited' : (plan.staffRolesLimit ?? 0),
+          limit:
+            plan.staffRolesLimit === -1
+              ? 'unlimited'
+              : (plan.staffRolesLimit ?? 0),
           used: 0,
           remaining: !plan.staffRolesEnabled
             ? 0
             : plan.staffRolesLimit === -1
               ? 'unlimited'
-              : plan.staffRolesLimit ?? 0,
+              : (plan.staffRolesLimit ?? 0),
         },
         activityLog: {
           enabled: plan.activityLogEnabled ?? false,
         },
         qrCodes: {
           enabled: plan.qrCodesEnabled ?? false,
-          limit: plan.qrCodesLimit === -1 ? 'unlimited' : (plan.qrCodesLimit ?? 0),
+          limit:
+            plan.qrCodesLimit === -1 ? 'unlimited' : (plan.qrCodesLimit ?? 0),
           used: 0,
           remaining: !plan.qrCodesEnabled
             ? 0
             : plan.qrCodesLimit === -1
               ? 'unlimited'
-              : plan.qrCodesLimit ?? 0,
+              : (plan.qrCodesLimit ?? 0),
         },
         features: plan.features || [],
         credits: {

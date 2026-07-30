@@ -245,7 +245,7 @@ export class MessagingEngineService {
         audienceSize: validUserIds.length,
         content: baseContent,
         templateId,
-      } as any);
+      });
       campaignId = campaign.id;
     }
 

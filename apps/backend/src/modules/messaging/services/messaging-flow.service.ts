@@ -68,7 +68,7 @@ export class MessagingFlowService {
     const branch = await this.branchesService.findById(branchId);
 
     return this.flowRepo.find({
-      where: { businessId: branch.businessId, branchId } as any,
+      where: { businessId: branch.businessId, branchId },
     });
   }
 

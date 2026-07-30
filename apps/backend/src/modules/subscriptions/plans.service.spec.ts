@@ -61,7 +61,7 @@ describe('PlansService', () => {
       features: ['feature1'],
       trialDurationDays: 30,
     };
-    const plan = await service.create(dto as any);
+    const plan = await service.create(dto);
 
     expect(plan.quarterlyPrice).toBe(PricingUtil.calculateQuarterlyPrice(2000));
     expect(plan.yearlyPrice).toBe(PricingUtil.calculateYearlyPrice(2000));
@@ -136,7 +136,7 @@ describe('PlansService', () => {
       mockPlanRepository.findOne.mockResolvedValue(mockPlanWithPerms);
 
       const beforeUpdate = new Date();
-      const result = await service.updatePermissions('1', dto as any);
+      const result = await service.updatePermissions('1', dto);
 
       expect(result.inventoryEnabled).toBe(true);
       expect(result.inventoryLimit).toBe(10);

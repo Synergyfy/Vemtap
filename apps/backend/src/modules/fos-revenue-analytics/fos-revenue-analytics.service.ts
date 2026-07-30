@@ -9,6 +9,7 @@ import {
 import { MetricsSnapshot } from '../fos-dashboard/entities/metrics-snapshot.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import {
   Subscription,
   SubscriptionStatus,
@@ -69,27 +70,36 @@ export class FosRevenueAnalyticsService {
       endDate,
     } = query;
 
-    const where: any = {};
+    const qb = this.transactionRepo.createQueryBuilder('t');
 
-    if (type) where.type = type;
-    if (platform) where.platform = platform;
-    if (businessId) where.businessId = businessId;
-    if (agentId) where.agentId = agentId;
+    if (type) qb.andWhere('t.type = :type', { type });
+    if (platform) qb.andWhere('t.platform = :platform', { platform });
+    if (businessId) qb.andWhere('t.businessId = :businessId', { businessId });
+    if (agentId) qb.andWhere('t.agentId = :agentId', { agentId });
 
     if (startDate && endDate) {
-      where.date = Between(startDate, endDate);
+      qb.andWhere('t.date BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
     } else if (startDate) {
-      where.date = MoreThanOrEqual(startDate);
+      qb.andWhere('t.date >= :startDate', { startDate });
     } else if (endDate) {
-      where.date = LessThanOrEqual(endDate);
+      qb.andWhere('t.date <= :endDate', { endDate });
     }
 
-    const [transactions, total] = await this.transactionRepo.findAndCount({
-      where,
-      order: { date: 'DESC' },
-      skip: (page - 1) * perPage,
-      take: perPage,
+    const paginated = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page,
+      perPage,
+      sortField: 'date',
+      sortOrder: 'DESC',
+      entityAlias: 't',
     });
+
+    const transactions = paginated.data;
+    const total = paginated.total;
 
     const businessIds = [
       ...new Set(
@@ -132,7 +142,14 @@ export class FosRevenueAnalyticsService {
       agentName: t.agentId ? (agentMap.get(t.agentId) ?? null) : null,
     }));
 
-    return { transactions: transactionDtos, total };
+    return {
+      transactions: transactionDtos,
+      total,
+      cursor: paginated.cursor,
+      nextCursor: paginated.nextCursor,
+      prevCursor: paginated.prevCursor,
+      hasNextPage: paginated.hasNextPage,
+    } as any;
   }
 
   // ────────────────────────────────────────────

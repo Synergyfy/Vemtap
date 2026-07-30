@@ -29,7 +29,8 @@ export class FeedbackService {
             branchId,
             customerName: 'Chidi Okonkwo',
             rating: 5,
-            comment: 'Great experience using the digital menu and payment system.',
+            comment:
+              'Great experience using the digital menu and payment system.',
             status: 'replied',
             sentiment: 'positive',
           },
@@ -63,7 +64,9 @@ export class FeedbackService {
     try {
       const query = this.feedbackRepository.createQueryBuilder('f');
       if (branchId) {
-        query.where('f.branchId = :branchId OR f.branchId IS NULL', { branchId });
+        query.where('f.branchId = :branchId OR f.branchId IS NULL', {
+          branchId,
+        });
       }
 
       const reviews = await query.getMany();
@@ -78,11 +81,18 @@ export class FeedbackService {
         };
       }
 
-      const totalScore = reviews.reduce((acc, curr) => acc + (curr.rating || 0), 0);
+      const totalScore = reviews.reduce(
+        (acc, curr) => acc + (curr.rating || 0),
+        0,
+      );
       const avgRating = Number((totalScore / totalReviews).toFixed(1));
 
-      const positiveCount = reviews.filter((r) => (r.rating && r.rating >= 4) || r.sentiment === 'positive').length;
-      const negativeCount = reviews.filter((r) => (r.rating && r.rating <= 2) || r.sentiment === 'negative').length;
+      const positiveCount = reviews.filter(
+        (r) => (r.rating && r.rating >= 4) || r.sentiment === 'positive',
+      ).length;
+      const negativeCount = reviews.filter(
+        (r) => (r.rating && r.rating <= 2) || r.sentiment === 'negative',
+      ).length;
 
       const positive = Math.round((positiveCount / totalReviews) * 100);
       const negative = Math.round((negativeCount / totalReviews) * 100);
@@ -110,7 +120,9 @@ export class FeedbackService {
     try {
       const query = this.feedbackRepository.createQueryBuilder('f');
       if (branchId) {
-        query.where('f.branchId = :branchId OR f.branchId IS NULL', { branchId });
+        query.where('f.branchId = :branchId OR f.branchId IS NULL', {
+          branchId,
+        });
       }
       query.orderBy('f.createdAt', 'DESC');
 
@@ -122,7 +134,11 @@ export class FeedbackService {
         rating: item.rating ?? 5,
         comment: item.comment || '',
         date: item.createdAt
-          ? new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          ? new Date(item.createdAt).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })
           : 'Recently',
         status: item.status || 'new',
         sentiment: item.sentiment || 'positive',

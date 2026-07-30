@@ -8,15 +8,20 @@ export class PromptBuilder {
   ): { system: string; user: string } {
     let focusContext = '';
     if (page.startsWith('pos') || page.startsWith('sales')) {
-      focusContext = '\n- Focus on transaction velocity, average ticket size, and cashier performance.';
+      focusContext =
+        '\n- Focus on transaction velocity, average ticket size, and cashier performance.';
     } else if (page.startsWith('inventory')) {
-      focusContext = '\n- Focus on stock health, reorder urgency, and stockout risk.';
+      focusContext =
+        '\n- Focus on stock health, reorder urgency, and stockout risk.';
     } else if (page.startsWith('customers') || page.startsWith('visitors')) {
-      focusContext = '\n- Focus on retention, repeat rate, and re-engagement opportunity.';
+      focusContext =
+        '\n- Focus on retention, repeat rate, and re-engagement opportunity.';
     } else if (page.startsWith('loyalty')) {
-      focusContext = '\n- Focus on points programme engagement and redemption health.';
+      focusContext =
+        '\n- Focus on points programme engagement and redemption health.';
     } else if (page.startsWith('analytics')) {
-      focusContext = '\n- Focus on revenue trends, period-over-period comparison, and peak patterns.';
+      focusContext =
+        '\n- Focus on revenue trends, period-over-period comparison, and peak patterns.';
     }
 
     const system = `You are a concise, insightful business advisor for small-to-medium business owners on the Vemtap platform.

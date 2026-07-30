@@ -109,7 +109,12 @@ export class CreateCatalogueOfferDto {
   @IsString()
   audience?: string;
 
-  @ApiPropertyOptional({ example: ['Valid during business hours', 'Cannot be combined with other offers'] })
+  @ApiPropertyOptional({
+    example: [
+      'Valid during business hours',
+      'Cannot be combined with other offers',
+    ],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
