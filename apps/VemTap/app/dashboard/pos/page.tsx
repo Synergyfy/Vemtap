@@ -12,6 +12,7 @@ import { useCatalogueOrders } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import OfflineBanner from '@/components/dashboard/pos/OfflineBanner';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 export default function POSPage() {
   const router = useRouter();
@@ -113,6 +114,7 @@ export default function POSPage() {
   );
 
   return (
+    <PageLockWrapper feature="pos" featureName="POS" hideUsage>
     <div className="h-full flex flex-col md:flex-row p-3 md:p-6 gap-4">
       <OfflineBanner />
 
@@ -175,5 +177,6 @@ export default function POSPage() {
         </div>
       )}
     </div>
+    </PageLockWrapper>
   );
 }

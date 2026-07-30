@@ -23,6 +23,16 @@ export default function ProductsDashboard() {
   const categories = categoriesData ?? [];
 
   const activeProducts = products.filter((p: any) => p.status !== 'suspended');
+
+  const getFinalPrice = (item: any) => {
+    const price = Number(item.price) || 0;
+    const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
+    if (!hasDiscount) return price;
+    const dv = Number(item.discountValue) || 0;
+    return item.discountType === 'percentage' ? price - (price * dv / 100) : price - dv;
+  };
+
+  const hasDiscount = (item: any) => item.discountType && item.discountType !== 'none' && item.discountValue;
   const totalProducts = activeProducts.length;
   const lowStockCount = activeProducts.filter((p: any) => p.stockQuantity > 0 && p.stockQuantity <= (p.minStock || 5)).length;
   const outOfStockCount = activeProducts.filter((p: any) => p.stockQuantity === 0).length;
@@ -108,7 +118,10 @@ export default function ProductsDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-black text-[#066CF4]">₦{product.price.toLocaleString()}</p>
+                    <div className="flex flex-col">
+                      <p className="text-sm font-black text-[#066CF4]">₦{getFinalPrice(product).toLocaleString()}</p>
+                      {hasDiscount(product) && <p className="text-[10px] font-bold text-gray-400 line-through">₦{Number(product.price).toLocaleString()}</p>}
+                    </div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{product.stockQuantity} in stock</p>
                   </div>
                 </div>

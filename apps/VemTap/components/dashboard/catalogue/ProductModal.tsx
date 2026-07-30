@@ -13,15 +13,16 @@ import {
     useCreateCatalogueCategory,
     DiscountType,
 } from '@/services/catalogue/hooks';
-import { useMyBusiness } from '@/services/businesses/hooks';
+
 import toast from 'react-hot-toast';
-import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Coins, HelpCircle, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Coins, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { generateBarcodeValue, isValidBarcode } from '@/lib/barcode';
 import { cn } from '@/lib/utils';
 import Cropper, { Point, Area } from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Switch } from '@/components/ui/switch';
 
 const CropperModal: React.FC<{
     image: string;
@@ -143,9 +144,6 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
     const updateMutation = useUpdateCatalogueItem();
     const createCategoryMutation = useCreateCatalogueCategory();
     const { data: categories = [] } = useCatalogueCategories();
-    const { data: myBusiness } = useMyBusiness();
-    const branches = myBusiness?.branches || [];
-
     const [currentStep, setCurrentStep] = useState(0);
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -166,6 +164,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
     const [dimUnit, setDimUnit] = useState('cm');
     const weightUnits = ['kg', 'g', 'lb', 'oz'];
     const dimUnits = ['cm', 'm', 'in', 'ft'];
+    const [showWeight, setShowWeight] = useState(false);
+    const [showDimensions, setShowDimensions] = useState(false);
 
     const mainInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -195,6 +195,15 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
     });
 
     const selectedDiscountType = watch('discountType');
+    const watchedPrice = watch('price');
+    const watchedDiscountValue = watch('discountValue');
+
+    const salesPrice = (() => {
+        const price = Number(watchedPrice) || 0;
+        if (selectedDiscountType === 'none' || !selectedDiscountType || !watchedDiscountValue) return price;
+        const dv = Number(watchedDiscountValue) || 0;
+        return selectedDiscountType === 'percentage' ? price - (price * dv / 100) : price - dv;
+    })();
 
     useEffect(() => {
         if (isOpen) {
@@ -220,6 +229,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                 });
                 setMainImagePreview(product.mainImage || '');
                 setGalleryPreviews(product.galleryImages || []);
+                setShowWeight(!!product.weight);
+                setShowDimensions(!!product.dimensions);
             } else {
                 reset({
                     name: '',
@@ -357,7 +368,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             case 0:
                 return await trigger(['name', 'categoryId', 'description']);
             case 1:
-                return await trigger(['price', 'discountType', 'discountValue', 'stockQuantity', 'branchId', 'loyaltyPointsValue']);
+                return await trigger(['price', 'discountType', 'discountValue', 'stockQuantity', 'loyaltyPointsValue']);
             default:
                 return true;
         }
@@ -494,8 +505,16 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                             >
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-text-secondary">Product Name *</label>
+                                    <p className="text-[10px] text-text-secondary font-medium">The name customers will see on your menu and receipts.</p>
                                     <input {...register('name')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.name ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} placeholder="e.g. Classic Burger" />
                                     {errors.name && <p className="text-[10px] text-red-500 font-semibold">{errors.name.message}</p>}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-text-secondary">Description *</label>
+                                    <p className="text-[10px] text-text-secondary font-medium">Detailed information about ingredients, preparation, or usage.</p>
+                                    <textarea {...register('description')} rows={3} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none resize-none" placeholder="Detailed product information..." />
+                                    {errors.description && <p className="text-[10px] text-red-500 font-semibold">{errors.description.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -505,6 +524,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <Plus size={10} /> {isCreatingCategory ? 'Cancel' : 'New Category'}
                                         </button>
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium">Group this product under a category for easier browsing.</p>
                                     {isCreatingCategory ? (
                                         <div className="flex gap-2">
                                             <input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="Category Name" />
@@ -519,9 +539,13 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     {errors.categoryId && <p className="text-[10px] text-red-500 font-semibold">{errors.categoryId.message}</p>}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
+                                <div className="border-t border-gray-100 pt-3 space-y-3">
+                                    <div className="flex items-center justify-between">
                                         <label className="text-xs font-semibold text-text-secondary">Weight</label>
+                                        <Switch checked={showWeight} onCheckedChange={setShowWeight} />
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-2">Product weight for shipping or serving sizes.</p>
+                                    {showWeight && (
                                         <div className="flex gap-2">
                                             <input
                                                 type="number"
@@ -540,9 +564,16 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                 {weightUnits.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
-                                    </div>
-                                    <div className="space-y-1.5">
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
                                         <label className="text-xs font-semibold text-text-secondary">Dimensions (L × W × H)</label>
+                                        <Switch checked={showDimensions} onCheckedChange={setShowDimensions} />
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-2">Length, Width, and Height for packaging or shipping.</p>
+                                    {showDimensions && (
                                         <div className="flex flex-row items-center gap-2">
                                             <div className="grid grid-cols-3 flex-1 gap-1">
                                                 <div className="relative">
@@ -590,13 +621,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                                 {dimUnits.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-text-secondary">Description *</label>
-                                    <textarea {...register('description')} rows={3} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none resize-none" placeholder="Detailed product information..." />
-                                    {errors.description && <p className="text-[10px] text-red-500 font-semibold">{errors.description.message}</p>}
+                                    )}
                                 </div>
                             </motion.div>
                         )}
@@ -607,34 +632,30 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 animate={{ opacity: 1, x: 0 }}
                                 className="space-y-4"
                             >
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-text-secondary">Original Price (₦) *</label>
-                                    <input type="number" step="0.01" {...register('price')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.price ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} />
-                                    {errors.price && <p className="text-[10px] text-red-500 font-semibold">{errors.price.message}</p>}
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center gap-2">
-                                        <Tag size={14} className="text-primary" />
-                                        <label className="text-xs font-semibold text-text-secondary">Barcode</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">Original Price (₦) *</label>
+                                        <p className="text-[10px] text-text-secondary font-medium">Base price before any discounts are applied.</p>
+                                        <input type="number" step="0.01" {...register('price')} className={cn("w-full h-12 px-4 bg-gray-50 border rounded-xl font-medium text-sm outline-none transition-all", errors.price ? "border-red-500" : "border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary/20")} />
+                                        {errors.price && <p className="text-[10px] text-red-500 font-semibold">{errors.price.message}</p>}
                                     </div>
-                                    <div className="flex flex-col sm:flex-row gap-2">
-                                        <input {...register('barcode')} className="w-full sm:flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
-                                        <button type="button" onClick={handleGenerateBarcode} className="w-full sm:w-auto h-12 px-5 bg-[#066CF4]/10 text-[#066CF4] rounded-xl font-semibold text-xs hover:bg-[#066CF4]/20 transition-all whitespace-nowrap">
-                                            Auto-Generate
-                                        </button>
-                                    </div>
-                                    <canvas ref={barcodeCanvasRef} className="hidden" />
-                                    {barcodePreview && (
-                                        <div className="mt-2 p-3 bg-white border border-gray-100 rounded-xl flex items-center justify-center">
-                                            <img src={barcodePreview} alt="Barcode" className="h-12" />
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-text-secondary">Sales Price (₦)</label>
+                                        <p className="text-[10px] text-text-secondary font-medium">Final price after discount — this is what customers pay.</p>
+                                        <div className="w-full h-12 px-4 bg-gray-100 border border-gray-200 rounded-xl flex items-center text-sm font-black text-text-main">
+                                            ₦{Math.max(0, salesPrice).toLocaleString()}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-text-secondary">Discount Type</label>
+                                        <p className="text-[10px] text-text-secondary font-medium">
+                                            {selectedDiscountType === 'none' ? 'No discount applied.' :
+                                             selectedDiscountType === 'percentage' ? 'Deduct a percentage from the original price.' :
+                                             'Deduct a fixed amount from the original price.'}
+                                        </p>
                                         <select
                                             {...register('discountType')}
                                             className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer"
@@ -650,6 +671,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <label className="text-xs font-semibold text-text-secondary">
                                                 {selectedDiscountType === 'percentage' ? 'Percentage (%)' : 'Discounted Price (₦)'}
                                             </label>
+                                            <p className="text-[10px] text-text-secondary font-medium">{selectedDiscountType === 'percentage' ? 'Enter the percentage to deduct from original price.' : 'Enter the fixed discount amount to deduct.'}</p>
                                             <div className="relative">
                                                 <input
                                                     type="number"
@@ -665,65 +687,58 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-text-secondary">SKU</label>
-                                        <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="Optional" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-text-secondary">Branch *</label>
-                                        <select {...register('branchId')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none cursor-pointer">
-                                            <option value="">Select Branch</option>
-                                            {branches.map((branch: any) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
-                                        </select>
-                                        {errors.branchId && <p className="text-[10px] text-red-500 font-semibold">{errors.branchId.message}</p>}
-                                    </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-text-secondary">SKU</label>
+                                    <p className="text-[10px] text-text-secondary font-medium">Stock Keeping Unit — your internal product reference code.</p>
+                                    <input {...register('sku')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="Optional" />
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-text-secondary">Stock Quantity</label>
+                                        <p className="text-[10px] text-text-secondary font-medium">Current inventory count. Leave at 0 for unlimited or digital products.</p>
                                         <input type="number" {...register('stockQuantity')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none" placeholder="0" />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" {...register('enableLoyaltyPoints')} className="size-5 accent-amber-500 cursor-pointer" />
-                                            <div>
-                                                <p className="text-sm font-semibold text-text-main group-hover:text-amber-600 transition-colors flex items-center gap-2">
-                                                    <Coins size={14} className="text-amber-500" />
-                                                    Loyalty Points
-                                                </p>
-                                            </div>
-                                        </label>
-                                        {watch('enableLoyaltyPoints') && (
-                                            <div className="pl-8 space-y-1.5">
-                                                <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
-                                                <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-medium text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-3 pt-1">
-                                    <label className="flex items-center gap-3 cursor-pointer group">
-                                        <input type="checkbox" {...register('allowBackOrder')} className="size-5 accent-primary cursor-pointer" />
+                                    <label className="flex items-start gap-3 cursor-pointer group p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                        <input type="checkbox" {...register('allowBackOrder')} className="size-5 accent-primary cursor-pointer mt-0.5" />
                                         <div>
-                                            <p className="text-sm font-semibold text-text-main group-hover:text-primary transition-colors">Allow Back Order</p>
+                                            <p className="text-xs font-semibold text-text-main group-hover:text-primary transition-colors">Allow Back Order</p>
                                             <p className="text-[10px] text-text-secondary font-medium">Customers can order even if out of stock</p>
                                         </div>
                                     </label>
+                                </div>
 
-                                    {product && (
-                                        <label className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" {...register('applyGlobally')} className="size-5 accent-primary cursor-pointer" />
-                                            <div>
-                                                <p className="text-sm font-semibold text-text-main group-hover:text-primary transition-colors">Apply Globally</p>
-                                                <p className="text-[10px] text-text-secondary font-medium">Update this product across all branches</p>
-                                            </div>
-                                        </label>
+                                <div className="space-y-2 bg-amber-50/30 rounded-xl p-4 border border-amber-100/50">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Coins size={14} className="text-amber-500" />
+                                            <label className="text-xs font-semibold text-text-secondary">Loyalty Points</label>
+                                        </div>
+                                        <Switch
+                                            checked={watch('enableLoyaltyPoints')}
+                                            onCheckedChange={(v) => setValue('enableLoyaltyPoints', v)}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary font-medium">Award points to customers when this product is purchased.</p>
+                                    {watch('enableLoyaltyPoints') && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-semibold text-text-secondary">Points to Award</label>
+                                            <p className="text-[10px] text-amber-700 font-medium">Points awarded per unit sold. Customer earns this × quantity.</p>
+                                            <input type="number" {...register('loyaltyPointsValue')} className="w-full h-12 px-4 bg-amber-50 border border-amber-200 rounded-xl font-medium text-sm outline-none focus:ring-2 focus:ring-amber-500/20" placeholder="e.g. 10" />
+                                        </div>
                                     )}
                                 </div>
+
+                                {product && (
+                                    <label className="flex items-center gap-3 cursor-pointer group">
+                                        <input type="checkbox" {...register('applyGlobally')} className="size-5 accent-primary cursor-pointer" />
+                                        <div>
+                                            <p className="text-sm font-semibold text-text-main group-hover:text-primary transition-colors">Apply Globally</p>
+                                            <p className="text-[10px] text-text-secondary font-medium">Update this product across all branches</p>
+                                        </div>
+                                    </label>
+                                )}
                             </motion.div>
                         )}
 
@@ -736,6 +751,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 <div className="space-y-3">
                                     <label className="text-xs font-semibold text-text-secondary">Main Product Image</label>
                                     <input type="file" ref={mainInputRef} onChange={handleMainUpload} accept="image/*" className="hidden" />
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-1">Upload a square image. This will be the primary photo on your menu.</p>
                                     <div
                                         onClick={() => mainInputRef.current?.click()}
                                         className={cn(
@@ -766,6 +782,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                         <label className="text-xs font-semibold text-text-secondary">Gallery Images</label>
                                         <span className="text-[10px] font-semibold text-gray-400">{galleryPreviews.length} images</span>
                                     </div>
+                                    <p className="text-[10px] text-text-secondary font-medium -mt-1">Additional photos to showcase your product from different angles.</p>
                                     <input type="file" ref={galleryInputRef} onChange={handleGalleryUpload} accept="image/*" className="hidden" />
                                     <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                                         {galleryPreviews.map((url, idx) => (
@@ -795,6 +812,26 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                             <Plus size={18} />
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <Tag size={14} className="text-primary" />
+                                        <label className="text-xs font-semibold text-text-secondary">Barcode</label>
+                                    </div>
+                                    <p className="text-[10px] text-text-secondary font-medium">Scanned at POS to auto-add to cart. Leave empty to auto-generate on save.</p>
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <input {...register('barcode')} className="w-full sm:flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm outline-none font-mono tracking-wider" placeholder="e.g. VT000001A1B2C3" />
+                                        <button type="button" onClick={handleGenerateBarcode} className="w-full sm:w-auto h-12 px-5 bg-[#066CF4]/10 text-[#066CF4] rounded-xl font-semibold text-xs hover:bg-[#066CF4]/20 transition-all whitespace-nowrap">
+                                            Auto-Generate
+                                        </button>
+                                    </div>
+                                    <canvas ref={barcodeCanvasRef} className="hidden" />
+                                    {barcodePreview && (
+                                        <div className="p-3 bg-white border border-gray-100 rounded-xl flex items-center justify-center">
+                                            <img src={barcodePreview} alt="Barcode" className="h-12" />
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}

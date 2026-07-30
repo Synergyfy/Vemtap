@@ -20,6 +20,16 @@ export default function ProductsList() {
 
   const activeProducts = products.filter((p: any) => p.status !== 'suspended');
 
+  const getFinalPrice = (item: any) => {
+    const price = Number(item.price) || 0;
+    const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
+    if (!hasDiscount) return price;
+    const dv = Number(item.discountValue) || 0;
+    return item.discountType === 'percentage' ? price - (price * dv / 100) : price - dv;
+  };
+
+  const hasDiscount = (item: any) => item.discountType && item.discountType !== 'none' && item.discountValue;
+
   const filteredProducts = activeProducts.filter((p: any) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ((p.sku || '') as string).toLowerCase().includes(searchQuery.toLowerCase());
@@ -127,8 +137,10 @@ export default function ProductsList() {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <p className="text-sm font-black text-gray-900">₦{product.price.toLocaleString()}</p>
-                        <p className="text-[9px] font-bold text-gray-400 mt-0.5">SKU: {product.sku || '-'}</p>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-black text-gray-900">₦{getFinalPrice(product).toLocaleString()}</p>
+                          {hasDiscount(product) && <p className="text-[9px] font-bold text-gray-400 line-through">₦{Number(product.price).toLocaleString()}</p>}
+                        </div>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex flex-col items-end">

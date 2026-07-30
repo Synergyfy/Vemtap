@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { UserPlus, X, Copy, CheckCheck, Download, QrCode, ArrowLeft } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { useAffiliateStats } from '@/services/affiliates/hooks';
 import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
 
@@ -33,8 +34,13 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
     ];
 
     return (
+<<<<<<< HEAD
         <PartnershipVerificationGuard>
             <div className="relative flex flex-col gap-5 md:gap-6 p-4 md:p-8 max-w-7xl mx-auto w-full pb-28 md:pb-10">
+=======
+        <PageLockWrapper feature="discovery" featureName="Business Partnership" hideUsage>
+        <div className="relative flex flex-col gap-5 md:gap-6 p-4 md:p-8 max-w-7xl mx-auto w-full pb-28 md:pb-10">
+>>>>>>> a867ccfbbd9109a758b98bcbadbe1cfe2cd8e005
             {/* Page Header */}
             <div className="flex items-start gap-3">
                 {!isOverview && (
@@ -153,6 +159,10 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
                 )}
             </AnimatePresence>
         </div>
+<<<<<<< HEAD
         </PartnershipVerificationGuard>
+=======
+        </PageLockWrapper>
+>>>>>>> a867ccfbbd9109a758b98bcbadbe1cfe2cd8e005
     );
 }

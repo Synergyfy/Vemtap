@@ -506,7 +506,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             {/* Main Content */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden w-full min-h-0">
                 {/* Top Bar */}
-                <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 shrink-0 sticky top-0 z-40">
+                <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 shrink-0 sticky top-0 z-[300]">
                     <div className="flex items-center gap-4 flex-1">
                         <button onClick={() => setIsMobileOpen(true)} className="p-2 text-gray-500 hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100">
                             <Menu size={20} />
