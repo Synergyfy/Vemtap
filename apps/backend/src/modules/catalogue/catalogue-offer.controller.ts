@@ -25,6 +25,7 @@ import {
   UpdateCatalogueOfferDto,
   CatalogueOfferQueryDto,
   PublicCatalogueOffersQueryDto,
+  GenerateOfferTermsDto,
 } from './dto/offer.dto';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -39,6 +40,20 @@ import { UserRole } from '../users/entities/user.entity';
 @Controller('catalogue/offers')
 export class CatalogueOfferController {
   constructor(private readonly offerService: CatalogueOfferService) {}
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Post('generate-terms')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('inventory')
+  @ApiOperation({
+    summary:
+      'AI-generate terms & conditions for an offer (Deducts 1 AI credit)',
+  })
+  async generateTerms(@Body() dto: GenerateOfferTermsDto, @Req() req: any) {
+    return this.offerService.generateTerms(dto, req.user.businessId);
+  }
 
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)

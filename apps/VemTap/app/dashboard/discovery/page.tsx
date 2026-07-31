@@ -189,6 +189,7 @@ export default function DiscoveryPage() {
                 <CreatePromotionFlow branchId={activeBranchId!} editPromo={editingPromo} onCancel={() => { setIsCreatingPromo(false); setEditingPromo(null); }} />
             )}
         </div>
+        </PartnershipVerificationGuard>
     );
 }
 
@@ -2529,6 +2530,6 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                     </div>
                 )}
             </div>
-        </PartnershipVerificationGuard>
+        </div>
     );
 }

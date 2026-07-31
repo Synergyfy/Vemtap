@@ -893,6 +893,51 @@ export class DiscoveryService {
       .limit(5)
       .getRawMany();
 
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const recentReferrals = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('referrer.name', 'name')
+      .addSelect(
+        'SUM(CASE WHEN visit.createdAt >= :sevenDaysAgo THEN 1 ELSE 0 END)',
+        'recentCount',
+      )
+      .addSelect(
+        'SUM(CASE WHEN visit.createdAt >= :fourteenDaysAgo AND visit.createdAt < :sevenDaysAgo THEN 1 ELSE 0 END)',
+        'priorCount',
+      )
+      .leftJoin('visit.referredByBranch', 'referrer')
+      .where('visit.catalogueOfferId = :id', { id })
+      .andWhere('visit.referredByBranchId IS NOT NULL')
+      .groupBy('referrer.name')
+      .setParameters({ id, sevenDaysAgo, fourteenDaysAgo })
+      .getRawMany();
+
+    const referralStatsMap = new Map<
+      string,
+      { recentCount: number; priorCount: number }
+    >();
+    for (const row of recentReferrals) {
+      const name = row.name || 'Direct';
+      referralStatsMap.set(name, {
+        recentCount: parseInt(row.recentCount || '0', 10),
+        priorCount: parseInt(row.priorCount || '0', 10),
+      });
+    }
+
+    const radius = offer.deliveryRadius
+      ? `${offer.deliveryRadius}${offer.deliveryUnit || 'km'}`
+      : offer.deliveryScope
+        ? offer.deliveryScope
+        : '500m';
+
+    const minSpend =
+      offer.minOrderAmount != null
+        ? Number(offer.minOrderAmount)
+        : Number(offer.calculatedPrice || offer.fixedPrice || 0);
+
     return {
       id: offer.id,
       name: offer.name,
@@ -906,15 +951,28 @@ export class DiscoveryService {
       clicks,
       visits,
       revenue: offer.revenue,
-      radius: '500m',
-      minSpend: 0,
+      radius,
+      minSpend,
       ctr,
       conversion,
-      topReferralSources: topReferralRows.map((r) => ({
-        name: r.name || 'Direct',
-        count: parseInt(r.count || '0', 10),
-        growth: '—',
-      })),
+      topReferralSources: topReferralRows.map((r) => {
+        const name = r.name || 'Direct';
+        const count = parseInt(r.count || '0', 10);
+        const stats = referralStatsMap.get(name);
+        let growth = '+0%';
+        if (stats && stats.priorCount > 0) {
+          const diff =
+            ((stats.recentCount - stats.priorCount) / stats.priorCount) * 100;
+          growth = diff >= 0 ? `+${diff.toFixed(0)}%` : `${diff.toFixed(0)}%`;
+        } else if (stats && stats.recentCount > 0) {
+          growth = '+100%';
+        }
+        return {
+          name,
+          count,
+          growth,
+        };
+      }),
     };
   }
 

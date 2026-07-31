@@ -23,6 +23,9 @@ import {
 } from '@nestjs/common';
 import { In } from 'typeorm';
 
+import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
+import { OpenAIClient } from '../ai-copilot/openai/openai.client';
+
 describe('CatalogueOfferService', () => {
   let service: CatalogueOfferService;
   let offerRepo: any;
@@ -32,13 +35,15 @@ describe('CatalogueOfferService', () => {
   let subscriptionsService: any;
   let branchRepo: any;
   let itemRepo: any;
+  let aiCreditService: any;
+  let openAiClient: any;
 
   const mockOffer = {
     id: 'offer-1',
     name: 'Summer Burger Promo',
     status: CatalogueOfferStatus.ACTIVE,
     startDate: new Date('2026-06-01'),
-    endDate: new Date('2026-07-31'),
+    endDate: new Date('2026-12-31'),
     quantity: 10,
     businessId: 'biz-1',
     pricingType: CatalogueOfferPricingType.SUM,
@@ -110,6 +115,11 @@ describe('CatalogueOfferService', () => {
 
     branchRepo = { findOne: jest.fn().mockResolvedValue(null) };
     itemRepo = { find: jest.fn().mockResolvedValue([]) };
+    aiCreditService = { consume: jest.fn().mockResolvedValue(undefined) };
+    openAiClient = {
+      isAvailable: jest.fn().mockReturnValue(false),
+      analyze: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -132,6 +142,8 @@ describe('CatalogueOfferService', () => {
             del: jest.fn().mockResolvedValue(null),
           },
         },
+        { provide: AiCreditService, useValue: aiCreditService },
+        { provide: OpenAIClient, useValue: openAiClient },
       ],
     }).compile();
 
@@ -352,6 +364,40 @@ describe('CatalogueOfferService', () => {
       await expect(
         service.redeemClaim('VEM-BR123XYZ9-123456', 'biz-1'),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('generateTerms', () => {
+    it('should consume AI credit and return terms using OpenAI when available', async () => {
+      openAiClient.isAvailable.mockReturnValue(true);
+      openAiClient.analyze.mockResolvedValue(
+        JSON.stringify({
+          terms: ['Term 1', 'Term 2', 'Term 3'],
+        }),
+      );
+
+      const result = await service.generateTerms(
+        { title: 'Buy 1 Get 1', description: 'Free item offer' },
+        'biz-1',
+      );
+
+      expect(aiCreditService.consume).toHaveBeenCalledWith('biz-1');
+      expect(result.terms).toEqual(['Term 1', 'Term 2', 'Term 3']);
+    });
+
+    it('should consume AI credit and return fallback terms when OpenAI is unavailable', async () => {
+      openAiClient.isAvailable.mockReturnValue(false);
+
+      const result = await service.generateTerms(
+        { title: 'Free Delivery Deal', description: 'Includes free delivery on orders' },
+        'biz-1',
+      );
+
+      expect(aiCreditService.consume).toHaveBeenCalledWith('biz-1');
+      expect(result.terms.length).toBeGreaterThan(0);
+      expect(result.terms.some((t) => t.includes('Free Delivery Deal'))).toBe(
+        true,
+      );
     });
   });
 });
