@@ -17,8 +17,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TemplatesService } from '../services/templates.service';
-import { CreateTemplateDto } from '../dto/create-template.dto';
-import { UpdateTemplateDto } from '../dto/update-template.dto';
+import { CreateMarketingTemplateDto } from '../dto/create-template.dto';
+import { UpdateMarketingTemplateDto } from '../dto/update-template.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -37,7 +37,7 @@ export class MarketingTemplatesController {
   @ApiOperation({ summary: 'Create a new print template (Admin only)' })
   @ApiResponse({ status: 201, type: MarketingTemplate })
   @Roles(UserRole.ADMIN)
-  create(@Body() createDto: CreateTemplateDto, @Req() req: Request) {
+  create(@Body() createDto: CreateMarketingTemplateDto, @Req() req: Request) {
     return this.templatesService.create(createDto, (req as any).user);
   }
 
@@ -80,7 +80,7 @@ export class MarketingTemplatesController {
   @Roles(UserRole.ADMIN)
   update(
     @Param('id') id: string,
-    @Body() updateDto: UpdateTemplateDto,
+    @Body() updateDto: UpdateMarketingTemplateDto,
     @Req() req: Request,
   ) {
     return this.templatesService.update(id, updateDto, (req as any).user);
