@@ -19,6 +19,7 @@ import {
   UpdateCatalogueOfferDto,
   CatalogueOfferQueryDto,
   PublicCatalogueOffersQueryDto,
+  GenerateOfferTermsDto,
 } from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -31,6 +32,8 @@ import { Otp } from '../auth/entities/otp.entity';
 import { MailService } from '../mail/mail.service';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
+import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
+import { OpenAIClient } from '../ai-copilot/openai/openai.client';
 
 @Injectable()
 export class CatalogueOfferService {
@@ -50,6 +53,9 @@ export class CatalogueOfferService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly mailService: MailService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    @Inject(AiCreditService)
+    private readonly aiCreditService: AiCreditService,
+    @Inject(OpenAIClient) private readonly openAiClient: OpenAIClient,
   ) {}
 
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
@@ -156,6 +162,57 @@ export class CatalogueOfferService {
     const removed = await this.offerRepository.remove(offer);
     await this.clearCache(offer.branchId, id);
     return removed;
+  }
+
+  async generateTerms(
+    dto: GenerateOfferTermsDto,
+    businessId: string,
+  ): Promise<{ terms: string[] }> {
+    // 1. Consume AI credit (throws ForbiddenException if balance is insufficient)
+    await this.aiCreditService.consume(businessId);
+
+    const title = dto.title || dto.name || 'Special Offer';
+    const description = dto.description || '';
+
+    // 2. AI generation via OpenAI if available
+    if (this.openAiClient.isAvailable()) {
+      try {
+        const systemPrompt = `You are an expert promotional offer strategist. Generate 3 to 5 clear, realistic terms and conditions for a business promotion. Output JSON with a "terms" string array.`;
+        const userPrompt = `Offer Title: ${title}\nDescription: ${description}`;
+
+        const responseText = await this.openAiClient.analyze(
+          systemPrompt,
+          userPrompt,
+        );
+        const parsed = JSON.parse(responseText);
+        if (Array.isArray(parsed?.terms) && parsed.terms.length > 0) {
+          return { terms: parsed.terms };
+        }
+      } catch (err) {
+        this.logger.warn(
+          `OpenAI terms generation failed: ${err.message}. Using fallback.`,
+        );
+      }
+    }
+
+    // 3. Fallback standard terms generator
+    const terms: string[] = [
+      `Offer valid for "${title}" during specified promotion period.`,
+      'Cannot be combined with other discounts, coupons, or special offers.',
+      'Redeemable at participating branch locations while stock lasts.',
+      'Merchant reserves the right to modify or terminate this offer at any time.',
+    ];
+
+    if (
+      description.toLowerCase().includes('delivery') ||
+      description.toLowerCase().includes('free delivery')
+    ) {
+      terms.push(
+        'Delivery terms apply as per branch delivery radius and minimum spend requirements.',
+      );
+    }
+
+    return { terms };
   }
 
   async findAllOffersAdmin(businessId: string, branchId?: string) {
