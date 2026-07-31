@@ -203,7 +203,7 @@ export class AnalyticsService {
             )
             .addSelect('COUNT(visit.id)', 'count')
             .groupBy(
-              "COALESCE(device.name, device.serialNumber, 'Main Entrance')",
+              "COALESCE(device.name, device.code, 'Main Entrance')",
             )
             .getRawMany(),
         ]);

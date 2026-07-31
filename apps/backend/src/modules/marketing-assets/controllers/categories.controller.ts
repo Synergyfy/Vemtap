@@ -16,8 +16,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CategoriesService } from '../services/categories.service';
-import { CreateCategoryDto } from '../dto/create-category.dto';
-import { UpdateCategoryDto } from '../dto/update-category.dto';
+import { CreateMarketingCategoryDto } from '../dto/create-category.dto';
+import { UpdateMarketingCategoryDto } from '../dto/update-category.dto';
 import { MarketingCategory } from '../entities/marketing-category.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -35,7 +35,7 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Create a new category (Admin only)' })
   @ApiResponse({ status: 201, type: MarketingCategory })
   @Roles(UserRole.ADMIN)
-  create(@Body() dto: CreateCategoryDto) {
+  create(@Body() dto: CreateMarketingCategoryDto) {
     return this.categoriesService.create(dto);
   }
 
@@ -58,7 +58,7 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Update a category (Admin only)' })
   @ApiResponse({ status: 200, type: MarketingCategory })
   @Roles(UserRole.ADMIN)
-  update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateMarketingCategoryDto) {
     return this.categoriesService.update(id, dto);
   }
 

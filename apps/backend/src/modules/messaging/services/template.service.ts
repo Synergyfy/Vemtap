@@ -11,7 +11,7 @@ import {
   TemplateStatus,
 } from '../entities/message-template.entity';
 import { Channel } from '../enums/channel.enum';
-import { CreateTemplateDto } from '../dto/template/create-template.dto';
+import { CreateMessagingTemplateDto } from '../dto/template/create-template.dto';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { BranchesService } from '../../branches/branches.service';
 
@@ -28,7 +28,7 @@ export class TemplateService {
   }
 
   async createTemplate(
-    dto: CreateTemplateDto,
+    dto: CreateMessagingTemplateDto,
     user: User,
   ): Promise<MessageTemplate> {
     this.validateFormat(dto.channel, dto.content);
@@ -123,7 +123,7 @@ export class TemplateService {
 
   async updateTemplate(
     id: string,
-    dto: Partial<CreateTemplateDto>,
+    dto: Partial<CreateMessagingTemplateDto>,
     user: User,
   ): Promise<MessageTemplate> {
     const template = await this.getTemplate(id, user);

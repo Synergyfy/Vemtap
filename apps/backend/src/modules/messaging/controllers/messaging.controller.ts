@@ -29,7 +29,7 @@ import { AnalyticsService } from '../services/analytics.service';
 import { InboxService } from '../services/inbox.service';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { UpdateMessageDto } from '../dto/update-message.dto';
-import { CreateTemplateDto } from '../dto/template/create-template.dto';
+import { CreateMessagingTemplateDto } from '../dto/template/create-template.dto';
 import { ReplyDto } from '../dto/reply.dto';
 import { Channel } from '../enums/channel.enum';
 import { User, UserRole } from '../../users/entities/user.entity';
@@ -126,10 +126,10 @@ export class MessagingController {
     description:
       'Creates a message template that can be reused for campaigns or direct messages. Access: OWNER, MANAGER, ADMIN',
   })
-  @ApiBody({ type: CreateTemplateDto })
+  @ApiBody({ type: CreateMessagingTemplateDto })
   @ApiResponse({ status: 201, description: 'Template created successfully' })
   async createTemplate(
-    @Body() dto: CreateTemplateDto,
+    @Body() dto: CreateMessagingTemplateDto,
     @Request() req: { user: User },
   ) {
     // Explicitly check for branchId if not provided in DTO for Owners/Admins
@@ -149,11 +149,14 @@ export class MessagingController {
       'Modifies an existing message template. Access: OWNER, MANAGER, ADMIN',
   })
   @ApiParam({ name: 'id', description: 'Template UUID' })
-  @ApiBody({ type: CreateTemplateDto, description: 'Partial template data' })
+  @ApiBody({
+    type: CreateMessagingTemplateDto,
+    description: 'Partial template data',
+  })
   @ApiResponse({ status: 200, description: 'Template updated successfully' })
   async updateTemplate(
     @Param() { id }: IdDto,
-    @Body() dto: Partial<CreateTemplateDto>,
+    @Body() dto: Partial<CreateMessagingTemplateDto>,
     @Request() req: { user: User },
   ) {
     return this.templateService.updateTemplate(id, dto, req.user);

@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { MarketingTemplate } from '../entities/marketing-template.entity';
 import { MarketingCategory } from '../entities/marketing-category.entity';
-import { CreateTemplateDto } from '../dto/create-template.dto';
-import { UpdateTemplateDto } from '../dto/update-template.dto';
+import { CreateMarketingTemplateDto } from '../dto/create-template.dto';
+import { UpdateMarketingTemplateDto } from '../dto/update-template.dto';
 import { AuditLogService } from './audit-log.service';
 import { User } from '../../users/entities/user.entity';
 
@@ -19,7 +19,7 @@ export class TemplatesService {
   ) {}
 
   async create(
-    createDto: CreateTemplateDto,
+    createDto: CreateMarketingTemplateDto,
     user?: User,
   ): Promise<MarketingTemplate> {
     const { categoryIds, ...rest } = createDto;
@@ -88,7 +88,7 @@ export class TemplatesService {
 
   async update(
     id: string,
-    updateDto: UpdateTemplateDto,
+    updateDto: UpdateMarketingTemplateDto,
     user?: User,
   ): Promise<MarketingTemplate> {
     const template = await this.findOne(id);
