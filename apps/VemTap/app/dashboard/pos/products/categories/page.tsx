@@ -51,12 +51,18 @@ export default function CategoriesList() {
     if (editingCategory) {
       updateCategory.mutate(
         { id: editingCategory.id, data: { name: name.trim() } },
-        { onSuccess: () => toast.success('Category updated') }
+        {
+          onSuccess: () => toast.success('Category updated'),
+          onError: (err: any) => toast.error(err?.message || 'Failed to update category'),
+        }
       );
     } else {
       createCategory.mutate(
         { name: name.trim() },
-        { onSuccess: () => toast.success('Category created') }
+        {
+          onSuccess: () => toast.success('Category created'),
+          onError: (err: any) => toast.error(err?.message || 'Failed to create category'),
+        }
       );
     }
     setShowModal(false);

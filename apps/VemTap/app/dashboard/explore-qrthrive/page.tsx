@@ -675,7 +675,40 @@ export default function ExploreQRThrivePage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
+            {/* Coming Soon Overlay */}
+            <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-md p-4">
+                <div className="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-8 md:p-10 text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
+                        <Zap className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">QRThrive is Coming Soon</h2>
+                    <p className="text-gray-500 leading-relaxed mb-6">
+                        QRThrive lets you create dynamic QR codes, track real-time scan analytics, 
+                        design custom-branded frames, build landing pages, and manage everything 
+                        from a single dashboard. We're putting the final touches on it and will 
+                        notify you as soon as it's ready.
+                    </p>
+                    <div className="bg-gray-50 rounded-2xl p-5 space-y-3 text-left">
+                        {[
+                            'Dynamic QR codes with editable destinations',
+                            'Real-time scan analytics & device insights',
+                            'Custom frames, colors, and logo branding',
+                            'Built-in landing page builder',
+                            'SSO dashboard for your team',
+                        ].map((feature, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">{feature}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
             <div className="max-w-7xl mx-auto w-full p-4 lg:p-10">
                 
                 {view === 'hub' && (

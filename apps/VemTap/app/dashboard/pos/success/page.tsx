@@ -10,6 +10,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import Receipt from '@/components/dashboard/pos/shared/Receipt';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
 
 export default function POSSuccessScreen() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function POSSuccessScreen() {
   const { data: myBusiness } = useMyBusiness();
   const { data: branches = [] } = useBranches();
   const { activeBranchId } = useActiveBranch();
+  const posSettings = usePosSettingsStore();
 
   const currentBranch = React.useMemo(() => {
     if (!activeBranchId) return null;
@@ -61,17 +63,17 @@ export default function POSSuccessScreen() {
   }
 
   const businessLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png';
-  const businessName = currentBranch?.name || myBusiness?.name || 'VemTap';
-  const businessAddress = currentBranch?.address || undefined;
-  const businessPhone = currentBranch?.phone || undefined;
 
   const receiptData = {
     business: {
-      name: businessName,
+      name: posSettings.businessName,
       logoUrl: businessLogo,
-      address: businessAddress,
-      phone: businessPhone,
+      address: posSettings.businessAddress || undefined,
+      phone: posSettings.phoneNumber || undefined,
     },
+    receiptHeader: posSettings.receiptHeader || undefined,
+    receiptFooter: posSettings.receiptFooter || undefined,
+    showLogo: posSettings.showLogo,
     receiptNumber: lastCompletedSale.receiptNumber,
     createdAt: lastCompletedSale.createdAt,
     cashierName: lastCompletedSale.cashierName,
