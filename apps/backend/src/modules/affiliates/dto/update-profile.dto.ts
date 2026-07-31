@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsObject, IsString } from 'class-validator';
 
-export class UpdateProfileDto {
+export class UpdateAffiliateProfileDto {
   @ApiPropertyOptional({
     description: 'The type of identification document',
     example: 'NIN',

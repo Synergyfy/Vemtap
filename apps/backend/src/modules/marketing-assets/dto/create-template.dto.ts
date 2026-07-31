@@ -8,7 +8,7 @@ import {
   IsArray,
 } from 'class-validator';
 
-export class CreateTemplateDto {
+export class CreateMarketingTemplateDto {
   @ApiProperty({ example: 'Sleek Table Tent' })
   @IsString()
   @IsNotEmpty()
