@@ -376,7 +376,7 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
             onClose();
         } catch (error) {
             if (toastId) notify.dismiss(toastId);
-            notify.error('Failed to save reward');
+            notify.error((error as any)?.message || 'Failed to save reward');
             console.error('Submit error:', error);
         } finally {
             setIsUploading(false);

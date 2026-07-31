@@ -130,15 +130,11 @@ export const useReward = (id: string) => {
     });
 };
 
-export const useRewardRedemptions = (rewardId: string, branchId?: string) => {
-    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
-
+export const useRewardRedemptions = (rewardId: string) => {
     return useQuery<Redemption[], Error>({
-        queryKey: ['loyalty', 'rewards', rewardId, 'redemptions', resolvedBranchId],
+        queryKey: ['loyalty', 'rewards', rewardId, 'redemptions'],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.get(`/loyalty/rewards/${rewardId}/redemptions?${params.toString()}`);
+            return await api.get(`/loyalty/rewards/${rewardId}/redemptions`);
         },
         enabled: !!rewardId,
     });

@@ -1,221 +1,211 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, ChevronDown, ChevronRight, ExternalLink, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Search, BookOpen, ArrowRight, Lightbulb, Zap } from 'lucide-react';
+import { useKnowledgeBaseStore } from '@/store/useKnowledgeBaseStore';
+import type { ContentBlock } from '@/constants/knowledgeBaseDocs';
 
-type Page = { id: string; title: string; path: string; summary: string };
-type Section = { id: string; title: string; pages: Page[] };
-type Category = { id: string; title: string; sections: Section[] };
-
-const DOCS: Category[] = [
-  {
-    id: 'core',
-    title: 'Core Dashboard',
-    sections: [
-      {
-        id: 'overview',
-        title: 'Overview & Analytics',
-        pages: [
-          { id: 'dashboard-home', title: 'Dashboard Home', path: '/dashboard', summary: 'Main KPIs, charts, quick actions.' },
-          { id: 'analytics', title: 'Analytics', path: '/dashboard/analytics', summary: 'High-level business performance.' },
-          { id: 'analytics-footfall', title: 'Footfall', path: '/dashboard/analytics/footfall', summary: 'Traffic volume trends.' },
-          { id: 'analytics-peak-times', title: 'Peak Times', path: '/dashboard/analytics/peak-times', summary: 'Best and worst operating hours.' },
-        ],
-      },
-      {
-        id: 'visitors',
-        title: 'Visitors',
-        pages: [
-          { id: 'visitors-overview', title: 'Visitors', path: '/dashboard/visitors', summary: 'Visitor list and actions.' },
-          { id: 'visitors-all', title: 'All Visitors', path: '/dashboard/visitors/all', summary: 'Full history and export.' },
-          { id: 'visitors-new', title: 'New Visitors', path: '/dashboard/visitors/new', summary: 'First-time visitors segment.' },
-          { id: 'visitors-returning', title: 'Returning Visitors', path: '/dashboard/visitors/returning', summary: 'Retention segment.' },
-          { id: 'visitor-profile', title: 'Visitor Profile', path: '/dashboard/visitors/[id]', summary: 'Per-visitor timeline.' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'engagement',
-    title: 'Engagement & Growth',
-    sections: [
-      {
-        id: 'forms',
-        title: 'Forms',
-        pages: [
-          { id: 'forms', title: 'Forms Hub', path: '/dashboard/forms', summary: 'Default form and share links.' },
-          { id: 'form-builder', title: 'Form Creator', path: '/dashboard/engagement/forms', summary: 'Build and publish branch forms.' },
-          { id: 'form-responses', title: 'Form Responses', path: '/dashboard/engagement/forms/responses', summary: 'Response metrics by form.' },
-          { id: 'form-response-detail', title: 'Response Detail', path: '/dashboard/engagement/forms/responses/[formId]', summary: 'Deep inspection for one form.' },
-        ],
-      },
-      {
-        id: 'messaging',
-        title: 'Channels',
-        pages: [
-          { id: 'messaging', title: 'Channels', path: '/dashboard/messaging', summary: 'Campaign command center.' },
-          { id: 'messaging-compose', title: 'Compose', path: '/dashboard/messaging/compose', summary: 'Create campaigns with form links.' },
-          { id: 'messaging-history', title: 'History', path: '/dashboard/messaging/history', summary: 'Sent campaigns and outcomes.' },
-          { id: 'messaging-sms', title: 'SMS', path: '/dashboard/messaging/sms', summary: 'SMS flows, templates, settings.' },
-          { id: 'messaging-whatsapp', title: 'WhatsApp', path: '/dashboard/messaging/whatsapp', summary: 'WhatsApp campaigns and templates.' },
-          { id: 'messaging-email', title: 'Email', path: '/dashboard/messaging/email', summary: 'Email campaigns and templates.' },
-        ],
-      },
-      {
-        id: 'loyalty',
-        title: 'Loyalty & Automations',
-        pages: [
-          { id: 'loyalty-overview', title: 'Loyalty', path: '/dashboard/loyalty', summary: 'Program performance and setup.' },
-          { id: 'loyalty-customers', title: 'Loyalty Customers', path: '/dashboard/loyalty/customers', summary: 'Member segmentation.' },
-          { id: 'loyalty-rewards', title: 'Loyalty Rewards', path: '/dashboard/loyalty/rewards', summary: 'Rewards and thresholds.' },
-          { id: 'automations', title: 'Automations', path: '/dashboard/automations', summary: 'Rules and triggers.' },
-          { id: 'automation-logs', title: 'Automation Logs', path: '/dashboard/automations/logs', summary: 'Execution traces and failures.' },
-          { id: 'automation-performance', title: 'Automation Performance', path: '/dashboard/automations/performance', summary: 'Automation outcome metrics.' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'operations',
-    title: 'Operations',
-    sections: [
-      {
-        id: 'devices',
-        title: 'Devices & Tap',
-        pages: [
-          { id: 'devices', title: 'Devices', path: '/dashboard/devices', summary: 'Device list and status.' },
-          { id: 'device-detail', title: 'Device Detail', path: '/dashboard/devices/[id]', summary: 'Configure single device behavior.' },
-          { id: 'business-link', title: 'Business Link', path: '/dashboard/business-link', summary: 'Tap routing and branch targeting.' },
-          { id: 'explore-qrthrive', title: 'Explore QRThrive', path: '/dashboard/explore-qrthrive', summary: 'Discover the synergy between Vemtap and QRThrive.' },
-          { id: 'hardware', title: 'Hardware', path: '/dashboard/hardware', summary: 'Hardware deployment and readiness.' },
-        ],
-      },
-      {
-        id: 'team',
-        title: 'Team & Support',
-        pages: [
-          { id: 'staff', title: 'Staff', path: '/dashboard/staff', summary: 'Users, roles, and permissions.' },
-          { id: 'support', title: 'Support', path: '/dashboard/support', summary: 'Support operations and responses.' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'settings',
-    title: 'Business Settings',
-    sections: [
-      {
-        id: 'profile',
-        title: 'Profile & Structure',
-        pages: [
-          { id: 'settings-home', title: 'Settings', path: '/dashboard/settings', summary: 'Settings entry and module map.' },
-          { id: 'settings-profile', title: 'Profile', path: '/dashboard/settings/profile', summary: 'Brand identity and business details.' },
-          { id: 'settings-branches', title: 'Branches', path: '/dashboard/settings/branches', summary: 'Branch configuration.' },
-        ],
-      },
-      {
-        id: 'engagement-settings',
-        title: 'Engagement Settings',
-        pages: [
-          { id: 'settings-engagement', title: 'Engagement', path: '/dashboard/engagement', summary: 'Engagement control center.' },
-          { id: 'settings-socials', title: 'Socials', path: '/dashboard/engagement/socials', summary: 'Social destination links.' },
-        ],
-      },
-      {
-        id: 'platform',
-        title: 'Platform',
-        pages: [
-          { id: 'settings-devices', title: 'Device Settings', path: '/dashboard/settings/devices', summary: 'Global device behavior defaults.' },
-          { id: 'settings-integrations', title: 'Integrations', path: '/dashboard/settings/integrations', summary: 'Third-party connections.' },
-          { id: 'settings-privacy', title: 'Privacy', path: '/dashboard/settings/privacy', summary: 'Consent and privacy controls.' },
-          { id: 'settings-subscription', title: 'Subscription', path: '/dashboard/settings/subscription', summary: 'Plan and billing management.' },
-        ],
-      },
-    ],
-  },
-];
-
-const firstPage = DOCS[0].sections[0].pages[0];
-
-function stepsFor(page: Page) {
-  return [
-    `Open ${page.title} from the sidebar route ${page.path}.`,
-    `Configure and review the ${page.summary.toLowerCase()}.`,
-    'Validate results in analytics, history, or related dashboard modules.',
-  ];
-}
-
-export default function TutorialDocsPage({ title = 'Business Docs' }: { title?: string }) {
+export default function TutorialDocsPage({ title = 'Knowledge Base' }: { title?: string }) {
+  const docs = useKnowledgeBaseStore((s) => s.docs);
   const [query, setQuery] = useState('');
-  const [activePageId, setActivePageId] = useState(firstPage.id);
-  const [openCats, setOpenCats] = useState<Record<string, boolean>>(Object.fromEntries(DOCS.map((c) => [c.id, true])));
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(
-    Object.fromEntries(DOCS.flatMap((c) => c.sections.map((s) => [s.id, true])))
-  );
+  const [activePageId, setActivePageId] = useState<string | null>(null);
+  const [openCat, setOpenCat] = useState<string | null>(null);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const firstPage = docs[0]?.sections[0]?.pages[0];
+
+  useEffect(() => {
+    if (docs.length && !activePageId) {
+      setActivePageId(firstPage?.id ?? null);
+      setOpenCat(docs[0].id);
+      setOpenSection(docs[0]?.sections[0]?.id ?? null);
+    }
+  }, [docs, activePageId, firstPage?.id]);
 
   const all = useMemo(
-    () => DOCS.flatMap((cat) => cat.sections.flatMap((sec) => sec.pages.map((page) => ({ cat, sec, page })))),
-    []
+    () => docs.flatMap((cat) => cat.sections.flatMap((sec) => sec.pages.map((page) => ({ cat, sec, page })))),
+    [docs]
   );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const path = params.get('path');
+    if (!path) return;
+    const match =
+      all.find((i) => i.page.path === path) ||
+      [...all].sort((a, b) => b.page.path.length - a.page.path.length).find((i) => path.startsWith(i.page.path));
+    if (match) {
+      setActivePageId(match.page.id);
+      setOpenCat(match.cat.id);
+      setOpenSection(match.sec.id);
+      window.scrollTo({ top: 0 });
+    }
+  }, [all]);
+
+  const pageSearchText = (page: { id: string; title: string; path: string; summary: string; blocks: ContentBlock[]; tips?: string[] }) =>
+    `${page.title} ${page.path} ${page.summary} ${page.blocks
+      .map((b) => (b.type === 'steps' ? b.items.join(' ') : b.type === 'image' ? b.caption ?? '' : b.text))
+      .join(' ')} ${(page.tips ?? []).join(' ')}`;
 
   const filtered = useMemo(() => {
     const key = query.trim().toLowerCase();
     if (!key) return all;
-    return all.filter((i) => `${i.cat.title} ${i.sec.title} ${i.page.title} ${i.page.path} ${i.page.summary}`.toLowerCase().includes(key));
+    return all.filter((i) => `${i.cat.title} ${i.sec.title} ${pageSearchText(i.page)}`.toLowerCase().includes(key));
   }, [all, query]);
 
   const active = useMemo(() => filtered.find((i) => i.page.id === activePageId) || filtered[0], [activePageId, filtered]);
 
+  const renderBlocks = (blocks: ContentBlock[]) => (
+    <div className="space-y-4">
+      {blocks.map((block, i) => {
+        switch (block.type) {
+          case 'heading':
+            return (
+              <h3 key={i} className="text-base font-bold text-gray-900 mt-4">
+                {block.text}
+              </h3>
+            );
+          case 'text':
+            return (
+              <p key={i} className="text-sm text-gray-600 leading-relaxed mb-2">
+                {block.text}
+              </p>
+            );
+          case 'steps':
+            return (
+              <div key={i} className="space-y-3">
+                {block.items.map((item, j) => (
+                  <div key={j} className="flex items-start gap-3 ml-1">
+                    <div className="size-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-[11px] font-black">{j + 1}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed flex-1">{item}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          case 'image':
+            return (
+              <figure key={i} className="my-4">
+                <img
+                  src={block.url}
+                  alt={block.caption || 'Article image'}
+                  className="w-full max-h-[420px] object-contain rounded-xl border border-gray-100 bg-gray-50"
+                />
+                {block.caption && (
+                  <figcaption className="text-center text-xs text-gray-400 mt-2">{block.caption}</figcaption>
+                )}
+              </figure>
+            );
+          default:
+            return null;
+        }
+      })}
+    </div>
+  );
+
+  if (!docs.length) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-12 text-center">
+            <BookOpen size={32} className="mx-auto text-gray-300 mb-3" />
+            <p className="text-sm font-semibold text-gray-500">The Knowledge Base is empty.</p>
+            <p className="text-xs text-gray-400 mt-1">Please check back later.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <header className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 mb-6">
+        {/* Header */}
+        <header className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 sm:p-8 mb-6">
           <div className="flex items-center gap-3 mb-3">
-            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <div className="size-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 flex items-center justify-center ring-1 ring-blue-100">
               <BookOpen size={18} />
             </div>
-            <p className="text-xs font-black uppercase tracking-widest text-text-secondary">Business Docs</p>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Documentation</p>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-display font-black text-text-main">{title}</h1>
-          <p className="text-sm text-text-secondary mt-2">Structured tutorial with dropdown modules for the entire business dashboard.</p>
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 h-11 flex items-center gap-2">
-            <Search size={14} className="text-text-secondary" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search modules or routes..." className="w-full bg-transparent text-sm outline-none" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{title}</h1>
+          <p className="text-sm text-gray-500 mt-1.5 max-w-2xl">
+            Everything you need to know about using your business dashboard. Search for a topic or browse by category.
+          </p>
+          <div className="mt-5 relative">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search documentation..."
+              className="w-full h-12 pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-200 transition-all"
+            />
           </div>
-          <p className="text-[11px] text-text-secondary mt-2">{filtered.length} pages documented</p>
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-[12px] font-semibold text-gray-400">{filtered.length} articles</span>
+            <span className="text-gray-200">|</span>
+            <span className="text-[12px] font-semibold text-gray-400">{docs.length} categories</span>
+          </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Sidebar */}
           <aside className="lg:col-span-4 xl:col-span-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-3 lg:sticky lg:top-5 max-h-[80vh] overflow-auto">
-              {DOCS.map((cat) => {
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-3 lg:sticky lg:top-5 max-h-[80vh] overflow-y-auto">
+              {docs.map((cat) => {
                 if (!filtered.some((i) => i.cat.id === cat.id)) return null;
                 return (
-                  <div key={cat.id} className="mb-2">
-                    <button onClick={() => setOpenCats((p) => ({ ...p, [cat.id]: !p[cat.id] }))} className="w-full h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-between">
-                      <span className="text-sm font-black text-text-main">{cat.title}</span>
-                      {openCats[cat.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <div key={cat.id} className="mb-1.5">
+                    <button
+                      onClick={() => setOpenCat((prev) => prev === cat.id ? null : cat.id)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors group"
+                    >
+                      <span className="text-sm font-bold text-gray-800 group-hover:text-gray-900">{cat.title}</span>
+                      {openCat === cat.id ? (
+                        <ChevronDown size={14} className="text-gray-400" />
+                      ) : (
+                        <ChevronRight size={14} className="text-gray-400" />
+                      )}
                     </button>
-                    {openCats[cat.id] && (
-                      <div className="mt-2 space-y-1">
+                    {openCat === cat.id && (
+                      <div className="ml-1 space-y-0.5 mt-0.5">
                         {cat.sections.map((sec) => {
                           if (!filtered.some((i) => i.sec.id === sec.id)) return null;
                           return (
-                            <div key={sec.id} className="border border-slate-200 rounded-xl p-1">
-                              <button onClick={() => setOpenSections((p) => ({ ...p, [sec.id]: !p[sec.id] }))} className="w-full h-9 px-2 rounded-lg hover:bg-slate-50 flex items-center justify-between">
-                                <span className="text-xs font-black text-text-main">{sec.title}</span>
-                                {openSections[sec.id] ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            <div key={sec.id} className="border-l-2 border-gray-100 ml-3 pl-3 py-1">
+                              <button
+                                onClick={() => setOpenSection((prev) => prev === sec.id ? null : sec.id)}
+                                className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                              >
+                                <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wider">{sec.title}</span>
+                                {openSection === sec.id ? (
+                                  <ChevronDown size={11} className="text-gray-300" />
+                                ) : (
+                                  <ChevronRight size={11} className="text-gray-300" />
+                                )}
                               </button>
-                              {openSections[sec.id] && (
-                                <div className="space-y-1 pb-1">
+                                {openSection === sec.id && (
+                                <div className="space-y-0.5 mt-0.5">
                                   {sec.pages
                                     .filter((page) => filtered.some((i) => i.page.id === page.id))
                                     .map((page) => (
                                       <button
                                         key={page.id}
-                                        onClick={() => setActivePageId(page.id)}
-                                        className={`w-full text-left px-2 py-2 rounded-lg text-xs ${active?.page.id === page.id ? 'bg-primary/10 text-primary font-black' : 'text-text-secondary hover:bg-slate-50'}`}
+                                        onClick={() => {
+                                          setActivePageId(page.id);
+                                          setOpenCat(cat.id);
+                                          setOpenSection(sec.id);
+                                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium transition-all ${
+                                          active?.page.id === page.id
+                                            ? 'bg-blue-50 text-blue-700 font-bold'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                        }`}
                                       >
                                         {page.title}
                                       </button>
@@ -233,32 +223,82 @@ export default function TutorialDocsPage({ title = 'Business Docs' }: { title?: 
             </div>
           </aside>
 
+          {/* Main Content */}
           <main className="lg:col-span-8 xl:col-span-9">
             {!active ? (
-              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-text-secondary">No docs match your search.</div>
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-12 text-center">
+                <Search size={32} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-sm font-semibold text-gray-500">No articles match your search.</p>
+                <p className="text-xs text-gray-400 mt-1">Try a different keyword or browse the categories.</p>
+              </div>
             ) : (
-              <article className="rounded-2xl border border-slate-200 bg-white p-6">
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
-                  {active.cat.title} / {active.sec.title}
-                </p>
-                <div className="flex items-center justify-between gap-3 mt-2">
-                  <h2 className="text-2xl font-display font-black text-text-main">{active.page.title}</h2>
-                  <Link href={active.page.path} className="inline-flex items-center gap-1 text-xs font-black text-primary">
-                    Open Page <ExternalLink size={12} />
-                  </Link>
-                </div>
-                <p className="text-sm text-text-secondary mt-2">{active.page.summary}</p>
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Route</p>
-                  <code className="text-sm font-black text-text-main">{active.page.path}</code>
-                </div>
-                <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {stepsFor(active.page).map((step, index) => (
-                    <div key={`${active.page.id}-${index}`} className="rounded-xl border border-slate-200 bg-white p-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-primary">Step {index + 1}</p>
-                      <p className="text-sm text-text-main mt-1">{step}</p>
+              <article className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                {/* Breadcrumb & Title */}
+                <div className="p-6 sm:p-8 pb-0">
+                  <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-400 mb-1">
+                    <span>{active.cat.title}</span>
+                    <ChevronRight size={10} />
+                    <span>{active.sec.title}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{active.page.title}</h2>
+                      <p className="text-sm text-gray-500 mt-2 max-w-2xl">{active.page.summary}</p>
                     </div>
-                  ))}
+                    <Link
+                      href={active.page.path}
+                      className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-[13px] font-bold hover:bg-blue-100 transition-colors shrink-0"
+                    >
+                      Open Page <ExternalLink size={14} />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Content Body */}
+                <div className="p-6 sm:p-8">
+                  {active.page.thumbnail && (
+                    <img
+                      src={active.page.thumbnail}
+                      alt={active.page.title}
+                      className="w-full max-h-72 object-cover rounded-xl border border-gray-100 mb-6"
+                    />
+                  )}
+                  <div className="prose prose-gray max-w-none">
+                    {renderBlocks(active.page.blocks)}
+                  </div>
+
+                  {/* Tips */}
+                  {active.page.tips && active.page.tips.length > 0 && (
+                    <div className="mt-8 p-5 bg-amber-50 border border-amber-100 rounded-xl">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb size={16} className="text-amber-600" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Tips</span>
+                      </div>
+                      <ul className="space-y-2">
+                        {active.page.tips.map((tip, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-sm text-amber-800">
+                            <ArrowRight size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                            <span>{tip}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-gray-100 px-6 sm:px-8 py-4 flex items-center justify-between">
+                  <Link
+                    href={active.page.path}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    Go to {active.page.title} <ExternalLink size={13} />
+                  </Link>
+                  {firstPage && active.page.id !== firstPage.id && (
+                    <span className="text-[11px] text-gray-400">
+                      Article ID: {active.page.id}
+                    </span>
+                  )}
                 </div>
               </article>
             )}
@@ -268,4 +308,3 @@ export default function TutorialDocsPage({ title = 'Business Docs' }: { title?: 
     </div>
   );
 }
-

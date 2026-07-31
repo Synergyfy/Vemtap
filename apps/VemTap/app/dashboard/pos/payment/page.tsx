@@ -254,13 +254,17 @@ export default function PaymentScreen() {
     { id: 'split', label: 'Split Payment', icon: Split, color: 'text-amber-500', bg: 'bg-amber-50' },
   ];
 
+  const posSettings = usePosSettingsStore();
   const receiptPreviewData = {
     business: {
-      name: currentBranch?.name || myBusiness?.name || 'VemTap',
+      name: posSettings.businessName,
       logoUrl: currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png',
-      address: currentBranch?.address || undefined,
-      phone: currentBranch?.phone || undefined,
+      address: posSettings.businessAddress || undefined,
+      phone: posSettings.phoneNumber || undefined,
     },
+    receiptHeader: posSettings.receiptHeader || undefined,
+    receiptFooter: posSettings.receiptFooter || undefined,
+    showLogo: posSettings.showLogo,
     receiptNumber: 'Pending',
     createdAt: new Date().toISOString(),
     cashierName: cashier ? `${cashier.firstName} ${cashier.lastName}` : '',

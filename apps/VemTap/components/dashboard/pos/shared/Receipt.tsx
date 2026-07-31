@@ -17,6 +17,9 @@ export interface ReceiptData {
     address?: string;
     phone?: string;
   };
+  receiptHeader?: string;
+  receiptFooter?: string;
+  showLogo?: boolean;
   receiptNumber: string;
   createdAt: string;
   cashierName: string;
@@ -43,7 +46,7 @@ interface ReceiptProps {
 
 export default function Receipt({ data, showActions = false }: ReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
-  const { business, receiptNumber, createdAt, cashierName, customer, hideCustomerInfo, items, subtotal, discountAmount, total, paymentMethod, amountPaid, change, showLoyaltyOnReceipt, loyaltyPointsEarned, redeemedReward, rewardDiscount, redeemedPromotion } = data;
+  const { business, receiptHeader, receiptFooter, showLogo, receiptNumber, createdAt, cashierName, customer, hideCustomerInfo, items, subtotal, discountAmount, total, paymentMethod, amountPaid, change, showLoyaltyOnReceipt, loyaltyPointsEarned, redeemedReward, rewardDiscount, redeemedPromotion } = data;
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -112,7 +115,8 @@ export default function Receipt({ data, showActions = false }: ReceiptProps) {
     <div>
       <div ref={receiptRef} className="font-mono text-sm text-gray-600">
         <div className="text-center mb-4 border-b border-dashed border-gray-300 pb-4">
-          {business.logoUrl && (
+          {receiptHeader && <p className="text-[10px] font-bold text-gray-600 mb-2">{receiptHeader}</p>}
+          {(showLogo === undefined || showLogo) && business.logoUrl && (
             <div className="size-10 bg-gray-50 flex items-center justify-center mx-auto mb-2 rounded-lg overflow-hidden border border-gray-100">
               <img src={business.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
             </div>
@@ -204,6 +208,7 @@ export default function Receipt({ data, showActions = false }: ReceiptProps) {
         </div>
 
         <div className="text-center text-[10px]">
+          {receiptFooter && <p className="font-bold text-gray-500 mb-2">{receiptFooter}</p>}
           <p className="font-bold text-gray-900 mb-1">Thank you for your patronage!</p>
           <p className="text-gray-400">Powered by VemTap POS</p>
         </div>

@@ -46,16 +46,6 @@ export class CatalogueService {
       );
     }
 
-    if (
-      caps.capabilities.catalogueCategories.limit !== 'unlimited' &&
-      typeof caps.capabilities.catalogueCategories.remaining === 'number' &&
-      caps.capabilities.catalogueCategories.remaining <= 0
-    ) {
-      throw new ForbiddenException(
-        'You have reached the limit for catalogue categories',
-      );
-    }
-
     const category = this.categoryRepository.create({
       ...dto,
       businessId,

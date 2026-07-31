@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { usePosSale, useUpdatePosSaleStatus } from '@/services/pos/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Printer, MessageCircle, Mail, RotateCcw, FileText, Loader2, ArrowLeft } from 'lucide-react';
+import { Printer, MessageCircle, Mail, RotateCcw, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
 import toast from 'react-hot-toast';
 import { RefundModal } from '@/components/dashboard/pos/RefundModal';
 
@@ -30,8 +31,8 @@ export default function SingleTransactionScreen() {
     return branches.find(b => b.id === activeBranchId);
   }, [branches, activeBranchId]);
 
+  const posSettings = usePosSettingsStore();
   const businessLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png';
-  const businessName = currentBranch?.name || myBusiness?.name || 'VemTap';
 
   const handleRefund = (data: { status: 'refunded' | 'partial_refund'; reason?: string; refundItems?: { saleItemId: string; quantity: number }[] }) => {
     updateStatus.mutate(
@@ -100,10 +101,13 @@ export default function SingleTransactionScreen() {
 
             <div className="p-8 pt-10 pb-12 font-mono text-sm text-gray-600 flex flex-col">
               <div className="text-center mb-6 border-b border-dashed border-gray-300 pb-6">
-                <div className="size-12 bg-gray-50 flex items-center justify-center mx-auto mb-3 rounded-xl overflow-hidden border border-gray-100">
-                  <img src={businessLogo} alt="Logo" className="w-full h-full object-contain p-1" />
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900 uppercase tracking-widest">{businessName} Retail</h2>
+                {posSettings.receiptHeader && <p className="text-[10px] font-bold text-gray-600 mb-2">{posSettings.receiptHeader}</p>}
+                {posSettings.showLogo && businessLogo && (
+                  <div className="size-12 bg-gray-50 flex items-center justify-center mx-auto mb-3 rounded-xl overflow-hidden border border-gray-100">
+                    <img src={businessLogo} alt="Logo" className="w-full h-full object-contain p-1" />
+                  </div>
+                )}
+                <h2 className="text-lg font-semibold text-gray-900 uppercase tracking-widest">{posSettings.businessName}</h2>
               </div>
 
               <div className="space-y-1 mb-6 text-xs">
@@ -161,6 +165,9 @@ export default function SingleTransactionScreen() {
                 )}
               </div>
 
+              {posSettings.receiptFooter && (
+                <div className="text-center text-[10px] font-bold text-gray-500 mt-4 mb-2">{posSettings.receiptFooter}</div>
+              )}
               {sale.status !== 'completed' && (
                 <div className="text-center text-xs text-red-500 font-semibold uppercase tracking-widest mt-4 p-2 border-2 border-red-500 rounded">
                   {sale.status.replace('_', ' ')}
@@ -187,7 +194,7 @@ export default function SingleTransactionScreen() {
                 onClick={() => {
                   const phone = sale.customer?.phone || '';
                   if (phone) {
-                    window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Here%20is%20your%20receipt%20${sale.receiptNumber}%20from%20${encodeURIComponent(businessName)}`, '_blank');
+                    window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Here%20is%20your%20receipt%20${sale.receiptNumber}%20from%20${encodeURIComponent(posSettings.businessName)}`, '_blank');
                     toast.success('Opening WhatsApp chat...');
                   } else {
                     toast.error('No customer phone number attached.');
@@ -202,7 +209,7 @@ export default function SingleTransactionScreen() {
                 onClick={() => {
                   const email = sale.customer?.email || '';
                   if (email) {
-                    window.open(`mailto:${email}?subject=Receipt%20from%20${encodeURIComponent(businessName)}&body=Thank%20you%20for%20your%20purchase.%20Here%20is%20your%20receipt%20number:%20${sale.receiptNumber}`, '_blank');
+                    window.open(`mailto:${email}?subject=Receipt%20from%20${encodeURIComponent(posSettings.businessName)}&body=Thank%20you%20for%20your%20purchase.%20Here%20is%20your%20receipt%20number:%20${sale.receiptNumber}`, '_blank');
                     toast.success('Opening email client...');
                   } else {
                     toast.error('No customer email attached.');

@@ -7,6 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Receipt from '@/components/dashboard/pos/shared/Receipt';
 import type { ReceiptData } from '@/components/dashboard/pos/shared/Receipt';
 import { usePosCustomerDetail } from '@/services/pos/hooks';
+import { usePosSettingsStore } from '@/store/usePosSettingsStore';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches } from '@/services/branches/hooks';
 
 export default function CustomerDetailsScreen() {
   const router = useRouter();
@@ -14,6 +18,15 @@ export default function CustomerDetailsScreen() {
   const id = params?.id as string;
   const { data: customer, isLoading, isError } = usePosCustomerDetail(id);
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
+  const posSettings = usePosSettingsStore();
+  const { data: myBusiness } = useMyBusiness();
+  const { data: branches = [] } = useBranches();
+  const { activeBranchId } = useActiveBranch();
+
+  const currentBranch = React.useMemo(() => {
+    if (!activeBranchId) return null;
+    return branches.find(b => b.id === activeBranchId);
+  }, [branches, activeBranchId]);
 
   if (isLoading) {
     return (
@@ -113,7 +126,15 @@ export default function CustomerDetailsScreen() {
               <tbody className="divide-y divide-gray-50">
                 {customer.recentPurchases.map((p, i) => (
                   <tr key={p.id} onClick={() => setSelectedReceipt({
-                    business: { name: 'VemTap Store', address: '123 Lagos Street', phone: '+234 800 000 0000' },
+                    business: {
+                      name: posSettings.businessName,
+                      logoUrl: currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png',
+                      address: posSettings.businessAddress || undefined,
+                      phone: posSettings.phoneNumber || undefined,
+                    },
+                    receiptHeader: posSettings.receiptHeader || undefined,
+                    receiptFooter: posSettings.receiptFooter || undefined,
+                    showLogo: posSettings.showLogo,
                     receiptNumber: p.receipt,
                     createdAt: p.date,
                     cashierName: 'Admin',
