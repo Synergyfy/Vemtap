@@ -305,6 +305,7 @@ export class PosService {
           });
           if (business?.posSettings?.loyaltyEnabled) {
             let totalPoints = 0;
+            let totalSpent = 0;
             for (const item of items) {
               if (item.productId) {
                 const product = await productRepo.findOne({
@@ -319,6 +320,9 @@ export class PosService {
                   // Fallback to legacy loyaltyPoints field
                   totalPoints += product.loyaltyPoints * item.quantity;
                 }
+                if (product?.price) {
+                  totalSpent += product.price * item.quantity;
+                }
               }
             }
             if (totalPoints > 0) {
@@ -330,6 +334,30 @@ export class PosService {
                 `POS Sale ${receiptNumber}`,
                 cashier.id,
               );
+            } else {
+              // Fall back to the business's active loyalty rule (spending-based)
+              const rule = await this.loyaltyService.getRules(
+                branch.businessId,
+                branch.id,
+              );
+              if (rule?.isActive && rule.spendingBaseAmount > 0) {
+                if (totalSpent > 0) {
+                  const rulePoints = Math.floor(
+                    (totalSpent / rule.spendingBaseAmount) *
+                      rule.spendingBasePoints,
+                  );
+                  if (rulePoints > 0) {
+                    await this.loyaltyService.awardPoints(
+                      customer.id,
+                      rulePoints,
+                      branch.businessId,
+                      branch.id,
+                      `POS Sale ${receiptNumber} (spending-based)`,
+                      cashier.id,
+                    );
+                  }
+                }
+              }
             }
           }
         } catch (error) {

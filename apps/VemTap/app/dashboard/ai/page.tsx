@@ -2,24 +2,33 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Coins, TrendingUp, History, Zap, ArrowRight, ExternalLink, Calculator } from 'lucide-react';
+import { Sparkles, Coins, TrendingUp, History, Zap, ArrowRight, ExternalLink, Calculator, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAIStore } from '@/store/useAIStore';
 import { useAICredits } from '@/services/ai/hooks';
 import { AI_CREDIT_COST } from '@/services/ai/types';
 import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { purchaseCustomCredits } from '@/lib/api/credit-plans';
+import { loadPaystackScript } from '@/lib/loadPaystackScript';
 
 const naira = (amount: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
 export default function AICreditsPage() {
   const router = useRouter();
-  useAICredits();
+  const { refetch: refetchCredits } = useAICredits();
   const credits = useAIStore((state) => state.credits);
   const lastUpdated = useAIStore((state) => state.lastUpdated);
   const settings = useSystemSettingsStore();
+  const user = useAuthStore((state) => state.user);
+  const { activeBranchId } = useActiveBranch();
   const [customAmount, setCustomAmount] = useState('');
   const [customCredits, setCustomCredits] = useState(0);
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+
+  const resolvedBranchId = activeBranchId || user?.branchId || '';
 
   const isUnlimited = credits.limit === -1;
   const activePackages = settings.aiCreditPackages.filter(p => p.isActive);
@@ -33,6 +42,62 @@ export default function AICreditsPage() {
     const num = parseInt(value.replace(/[^0-9]/g, ''), 10) || 0;
     setCustomAmount(num.toLocaleString());
     setCustomCredits(Math.floor(num / creditPrice));
+  };
+
+  const handlePurchase = async (aiAmount: number, amount: number, key: string) => {
+    if (purchasing) return;
+    const email = user?.email;
+    if (!email || !resolvedBranchId) {
+      toast.error('Branch not found. Please log in again.');
+      return;
+    }
+    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey || publicKey.includes('placeholder')) {
+      toast.error('Payment system is not configured. Please set up your Paystack key in environment variables or contact support.');
+      return;
+    }
+
+    setPurchasing(key);
+    try {
+      await loadPaystackScript();
+      const reference = `AI-TOPUP-${resolvedBranchId}-${Date.now()}`;
+      // @ts-ignore
+      const handler = window.PaystackPop.setup({
+        key: publicKey,
+        email,
+        amount: amount * 100,
+        currency: 'NGN',
+        ref: reference,
+        onClose: () => {
+          setPurchasing(null);
+          toast.error('Payment window closed');
+        },
+        callback: (response: any) => {
+          (async () => {
+            try {
+              await purchaseCustomCredits({
+                branchId: resolvedBranchId,
+                reference: response.reference,
+                smsAmount: 0,
+                whatsappAmount: 0,
+                emailAmount: 0,
+                aiAmount,
+              });
+              await refetchCredits();
+              toast.success(`${aiAmount.toLocaleString()} AI credits added to your wallet!`);
+            } catch (error: any) {
+              toast.error(error instanceof Error ? error.message : 'Payment verified but activation failed. Please contact support.');
+            } finally {
+              setPurchasing(null);
+            }
+          })();
+        },
+      });
+      handler.openIframe();
+    } catch (error: any) {
+      setPurchasing(null);
+      toast.error(error instanceof Error ? error.message : 'Could not start payment. Please try again.');
+    }
   };
 
   return (
@@ -176,9 +241,22 @@ export default function AICreditsPage() {
                     <p className="text-xs text-gray-400 mt-1">
                       {naira(Math.round(pkg.price / pkg.credits))} / credit
                     </p>
-                    <button className="mt-4 w-full h-11 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-all active:scale-95 flex items-center justify-center gap-2">
-                      Purchase
-                      <ArrowRight size={14} />
+                    <button
+                      onClick={() => handlePurchase(pkg.credits, pkg.price, `pkg-${pkg.id}`)}
+                      disabled={purchasing !== null}
+                      className="mt-4 w-full h-11 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {purchasing === `pkg-${pkg.id}` ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          Purchase
+                          <ArrowRight size={14} />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -219,17 +297,24 @@ export default function AICreditsPage() {
               )}
             </div>
             <button
-              disabled={customCredits === 0}
+              disabled={customCredits === 0 || purchasing !== null}
               className="h-14 px-8 rounded-xl bg-purple-600 text-white font-black text-sm hover:bg-purple-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-600/20 shrink-0"
               onClick={() => {
                 const numAmount = parseInt(customAmount.replace(/[^0-9]/g, ''), 10) || 0;
-                const ref = `CUSTOM-AI-${Date.now()}`;
-                // Purchase call would go here
-                toast.success(`Purchasing ${customCredits} AI credits for ${naira(numAmount)}`);
+                handlePurchase(customCredits, numAmount, 'custom');
               }}
             >
-              <Zap size={18} />
-              Buy Custom Credits
+              {purchasing === 'custom' ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Zap size={18} />
+                  Buy Custom Credits
+                </>
+              )}
             </button>
           </div>
         </div>
