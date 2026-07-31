@@ -17,7 +17,6 @@ import {
     FeaturePermission,
     buildDefaultPermissions,
     mapPlanToConfig,
-    mapConfigToPlanDto,
     featureSupportsLimit,
 } from '@/lib/planPermissions';
 import { cn } from '@/lib/utils';
@@ -251,7 +250,7 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
 
     const handleSave = useCallback(async () => {
         if (!selectedPlanId || !selectedPlan) return;
-        const dto = mapConfigToPlanDto(configs[selectedPlanId], selectedPlan);
+        const dto = pendingChanges;
         if (Object.keys(dto).length === 0) {
             toast('No changes to save');
             return;
@@ -265,7 +264,7 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
         } catch (err) {
             console.error('Failed to save plan permissions:', err);
         }
-    }, [selectedPlanId, selectedPlan, configs, updatePermissionsMutation]);
+    }, [selectedPlanId, selectedPlan, pendingChanges, updatePermissionsMutation]);
 
     if (isLoading) {
         return (

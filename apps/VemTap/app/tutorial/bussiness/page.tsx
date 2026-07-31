@@ -3,5 +3,5 @@
 import TutorialDocsPage from '@/components/tutorial/TutorialDocsPage';
 
 export default function TutorialBusinessPage() {
-    return <TutorialDocsPage title="Business Dashboard Docs" />;
+    return <TutorialDocsPage title="Knowledge Base" />;
 }

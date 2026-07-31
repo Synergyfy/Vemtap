@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import { LifeBuoy, MessageCircle, BookOpen, Mail, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useChatStore } from '@/store/chatStore';
 
 export default function HelpSupportPage() {
   const router = useRouter();
+  const setIsOpen = useChatStore((state) => state.setIsOpen);
   const supportOptions = [
     {
       icon: MessageCircle,
@@ -16,7 +18,7 @@ export default function HelpSupportPage() {
       action: 'Start Chat',
       color: 'bg-blue-50 text-blue-600 border-blue-100',
       hoverColor: 'hover:border-blue-300',
-      onClick: () => router.push('/dashboard/messaging/chat'),
+      onClick: () => setIsOpen(true),
     },
     {
       icon: Mail,
@@ -34,7 +36,7 @@ export default function HelpSupportPage() {
       action: 'Browse Articles',
       color: 'bg-emerald-50 text-emerald-600 border-emerald-100',
       hoverColor: 'hover:border-emerald-300',
-      onClick: () => window.open('https://docs.vemtap.com', '_blank'),
+      onClick: () => router.push('/tutorial/bussiness'),
     },
   ];
 
@@ -47,7 +49,7 @@ export default function HelpSupportPage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24 space-y-8">
+    <div className="max-w-5xl mx-auto flex flex-col pt-4 px-4 md:px-0 pb-24 space-y-8">
       <POSPageHeader
         title="Help & Support"
         subtitle="Get help with your VemTap POS"

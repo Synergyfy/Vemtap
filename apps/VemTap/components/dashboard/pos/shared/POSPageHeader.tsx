@@ -11,12 +11,13 @@ interface POSPageHeaderProps {
   backHref?: string;
   actions?: React.ReactNode;
   showBack?: boolean;
+  compact?: boolean;
 }
 
-export default function POSPageHeader({ title, subtitle, backHref, actions, showBack = true }: POSPageHeaderProps) {
+export default function POSPageHeader({ title, subtitle, backHref, actions, showBack = true, compact }: POSPageHeaderProps) {
   const router = useRouter();
   return (
-    <div className="flex items-center justify-between gap-2 md:gap-3 mb-6 md:mb-8">
+    <div className={`flex items-center justify-between gap-2 md:gap-3 ${compact ? 'mb-2 md:mb-3' : 'mb-6 md:mb-8'}`}>
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
         {showBack && (
           <button

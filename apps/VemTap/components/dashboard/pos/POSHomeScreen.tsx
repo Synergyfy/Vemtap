@@ -154,8 +154,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   return (
     <div className="flex flex-col h-full p-4 md:p-8 overflow-hidden">
       {!isPublic && (
-        <div className="shrink-0 mb-4 md:mb-6 pt-2 px-1 md:px-4">
-          <POSPageHeader title="Point of Sale" showBack={false} />
+        <div className="shrink-0 mb-2 md:mb-3 pt-2 px-1 md:px-4">
+          <POSPageHeader title="Point of Sale" showBack={false} compact />
         </div>
       )}
 

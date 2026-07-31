@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     HelpCircle, X, ChevronLeft, ChevronRight, LayoutDashboard,
     Zap, Activity, ClipboardCheck, ShoppingBag, CreditCard, Users,
@@ -12,7 +12,7 @@ import {
     ShoppingCart, Package, Edit, AlertTriangle, Truck, Link, DollarSign,
     Trophy, Wallet, Shield, Building, HelpCircle as HelpIcon, MessageCircle,
     Smartphone, QrCode, Reply, Store, Key, Bell, Filter, Grid, Lightbulb,
-    CheckSquare, Edit as Pencil
+    CheckSquare, Edit as Pencil, ArrowRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getGuideForPath, type SectionGuide, type TourStep } from '@/constants/pageGuides';
@@ -55,6 +55,7 @@ function StepIcon({ name, className }: { name: string; className?: string }) {
 
 export default function PageGuide() {
     const pathname = usePathname();
+    const router = useRouter();
     const guide = getGuideForPath(pathname);
     const [isActive, setIsActive] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
@@ -120,6 +121,12 @@ export default function PageGuide() {
         setIsActive(false);
         setCurrentStep(0);
     }, [guide]);
+
+    const handleLearnMore = useCallback(() => {
+        setIsActive(false);
+        setCurrentStep(0);
+        router.push(`/tutorial/bussiness?path=${encodeURIComponent(pathname)}`);
+    }, [pathname, router]);
 
     if (!guide) return null;
 
@@ -223,6 +230,20 @@ export default function PageGuide() {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Learn More */}
+                        {isLastStep && (
+                            <div className="px-5 pb-5">
+                                <button
+                                    onClick={handleLearnMore}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 bg-primary/5 text-primary text-[13px] font-bold hover:bg-primary/10 hover:border-primary/50 transition-all"
+                                >
+                                    <BookOpen size={15} />
+                                    Learn More
+                                    <ArrowRight size={15} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
