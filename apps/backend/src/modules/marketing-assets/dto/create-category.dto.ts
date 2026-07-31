@@ -7,7 +7,7 @@ import {
   IsBoolean,
 } from 'class-validator';
 
-export class CreateCategoryDto {
+export class CreateMarketingCategoryDto {
   @ApiProperty({ example: 'Restaurant' })
   @IsString()
   @IsNotEmpty()

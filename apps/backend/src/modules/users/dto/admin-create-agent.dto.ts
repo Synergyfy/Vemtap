@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
-export class AdminCreateAgentDto {
+export class UserAdminCreateAgentDto {
   @ApiProperty({ example: 'agent@vemtap.com' })
   @IsEmail()
   @IsNotEmpty()

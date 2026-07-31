@@ -24,7 +24,7 @@ import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
 import { WithdrawRequestDto } from './dto/withdraw-request.dto';
-import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateAffiliateProfileDto } from './dto/update-profile.dto';
 import { AffiliateStatsDto } from './dto/affiliate-stats.dto';
 import { AffiliateActivityDto } from './dto/affiliate-activity.dto';
 import { AffiliatePerformanceDto } from './dto/affiliate-performance.dto';
@@ -112,7 +112,7 @@ export class AffiliatesController {
   @ApiOkResponse({ type: AffiliateProfile })
   async updateProfile(
     @Req() req,
-    @Body() data: UpdateProfileDto,
+    @Body() data: UpdateAffiliateProfileDto,
   ): Promise<AffiliateProfile> {
     return this.affiliatesService.updateProfile(req.user.id, data);
   }
