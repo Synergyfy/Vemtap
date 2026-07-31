@@ -10,7 +10,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
-import { useRewards } from '@/services/loyalty/hooks';
+import { useRewards, useLoyaltyRules } from '@/services/loyalty/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import Receipt from '@/components/dashboard/pos/shared/Receipt';
 import { TouchKeypad } from '@/components/dashboard/pos/TouchKeypad';
@@ -40,11 +40,19 @@ export default function PaymentScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showLoyaltyOnReceipt, setShowLoyaltyOnReceipt] = useState(true);
   const { data: rewards = [] } = useRewards(activeBranchId ?? undefined, !!attachedCustomer);
+  const { data: loyaltyRule } = useLoyaltyRules(activeBranchId ?? undefined);
   const [redeemedReward, setRedeemedReward] = useState<{ name: string; discount: number } | null>(null);
-  const loyaltyPointsEarned = React.useMemo(() =>
+  const autoPoints = React.useMemo(() =>
     cart.reduce((sum, item) =>
       item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0)
-    + manualLoyaltyPoints, [cart, manualLoyaltyPoints]);
+    , [cart]);
+  const ruleBasedPoints = React.useMemo(() => {
+    if (!loyaltyRule?.isActive || !loyaltyRule.spendingBaseAmount || loyaltyRule.spendingBaseAmount <= 0) return 0;
+    const totalSpent = cart.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
+    if (totalSpent <= 0) return 0;
+    return Math.floor((totalSpent / loyaltyRule.spendingBaseAmount) * (loyaltyRule.spendingBasePoints || 1));
+  }, [cart, loyaltyRule]);
+  const loyaltyPointsEarned = (autoPoints > 0 ? autoPoints : ruleBasedPoints) + manualLoyaltyPoints;
 
   React.useEffect(() => {
     if (cart.length === 0) {
@@ -83,9 +91,9 @@ export default function PaymentScreen() {
   const goToSuccess = (sale: any) => {
     setLastCompletedSale(sale);
     if (attachedCustomer) {
-      const autoPoints = cart.reduce((sum, item) =>
+      const autoPts = cart.reduce((sum, item) =>
         item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
-      const totalPoints = autoPoints + manualLoyaltyPoints;
+      const totalPoints = (autoPts > 0 ? autoPts : ruleBasedPoints) + manualLoyaltyPoints;
       if (totalPoints > 0) {
         const { addPoints, setLastEarned } = usePosLoyaltyStore.getState();
         addPoints(attachedCustomer.id, totalPoints);
@@ -330,7 +338,7 @@ export default function PaymentScreen() {
               const balance = usePosLoyaltyStore.getState().getPointsBalance(attachedCustomer.id);
               const autoPts = cart.reduce((sum, item) =>
                 item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
-              const totalEarned = autoPts + manualLoyaltyPoints;
+              const totalEarned = (autoPts > 0 ? autoPts : ruleBasedPoints) + manualLoyaltyPoints;
               const availableRewards = rewards.filter(r => r.isActive && (r.pointsRequired ?? r.pointCost) <= balance);
               return (
                 <div className="mb-6 p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
@@ -341,9 +349,11 @@ export default function PaymentScreen() {
                     </div>
                     <span className="text-sm font-black text-amber-700">{balance} pts</span>
                   </div>
-                  {autoPts > 0 && (
+                  {autoPts > 0 ? (
                     <p className="text-xs font-medium text-amber-600 mb-2 ml-1">+{autoPts} pts from products in this order</p>
-                  )}
+                  ) : ruleBasedPoints > 0 ? (
+                    <p className="text-xs font-medium text-amber-600 mb-2 ml-1">+{ruleBasedPoints} pts from spending (₦{loyaltyRule?.spendingBaseAmount ?? 0} = {loyaltyRule?.spendingBasePoints ?? 1} pt)</p>
+                  ) : null}
                   <div className="flex items-center gap-2 mb-3">
                     <input
                       type="number"

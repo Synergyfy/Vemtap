@@ -265,6 +265,50 @@ export const createItem = async (data: CreateItemDto) => {
     return await api.post('/catalogue/items', data);
 };
 
+export interface BulkImportItemDto {
+    name: string;
+    price: number;
+    shortDescription?: string;
+    description?: string;
+    category?: string;
+    stockQuantity?: number;
+    sku?: string;
+    barcode?: string;
+}
+
+export interface BulkImportRequest {
+    branchId: string;
+    items: BulkImportItemDto[];
+}
+
+export interface BulkImportRowResult {
+    row: number;
+    success: boolean;
+    error?: string;
+    itemId?: string;
+}
+
+export interface BulkImportResponse {
+    created: number;
+    failed: number;
+    results: BulkImportRowResult[];
+}
+
+export const bulkImportItems = async (data: BulkImportRequest): Promise<BulkImportResponse> => {
+    return await api.post('/catalogue/items/bulk', data);
+};
+
+export const useBulkImportItems = () => {
+    const queryClient = useQueryClient();
+    return useMutation<BulkImportResponse, Error, BulkImportRequest>({
+        mutationFn: bulkImportItems,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'items'] });
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'item'] });
+        },
+    });
+};
+
 export const updateItem = async (id: string, data: UpdateItemDto) => {
     return await api.patch(`/catalogue/items/${id}`, data);
 };
