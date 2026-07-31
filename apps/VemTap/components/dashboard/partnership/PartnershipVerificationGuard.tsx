@@ -13,7 +13,7 @@ export default function PartnershipVerificationGuard({ children }: PartnershipVe
     const router = useRouter();
     const { data: business, isLoading } = useMyBusiness();
 
-    const isPendingOrInactive = !!business && business.status !== 'active';
+    const isPendingOrInactive = !!business && (business.status as string) !== 'APPROVED';
 
     if (isLoading) {
         return <>{children}</>;

@@ -64,6 +64,6 @@ import { Plan } from '../subscriptions/entities/plan.entity';
     OpenAIClient,
     LocalFallbackService,
   ],
-  exports: [AiCopilotService],
+  exports: [AiCopilotService, AiCreditService, OpenAIClient],
 })
 export class AiCopilotModule {}
