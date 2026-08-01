@@ -35,12 +35,17 @@ class SyncManager {
   }
 
   startAutoSync(intervalMs = 30000) {
+    if (this.intervalId) clearInterval(this.intervalId);
     this.intervalId = setInterval(() => this.sync(), intervalMs);
+    window.removeEventListener('online', this._onOnline);
     window.addEventListener('online', this._onOnline);
   }
 
   stopAutoSync() {
-    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
     window.removeEventListener('online', this._onOnline);
   }
 
