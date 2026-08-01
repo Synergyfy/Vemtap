@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { 
     AnalyticsStatsCards 
 } from '@/components/dashboard/analytics/AnalyticsDashboard';
-import { Users, UserPlus, Repeat, Zap, Loader2 } from 'lucide-react';
+import { Users, UserPlus, Repeat, Zap, Loader2, ChevronDown } from 'lucide-react';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
 import { useVisitorGrowthChart } from '@/services/visitors/hooks';
 import { PageGuideButton, AICopilotButton } from '@/components/ai';
@@ -55,19 +55,6 @@ export default function CustomerAnalyticsPage() {
                     <PageGuideButton />
                     <AICopilotButton />
                 </div>
-                <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-                    {(['7D', '30D', '90D', '12M'] as const).map((r) => (
-                        <button
-                            key={r}
-                            onClick={() => setRange(r)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                range === r ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                            }`}
-                        >
-                            {r}
-                        </button>
-                    ))}
-                </div>
             </div>
 
             <AnalyticsStatsCards stats={stats} />
@@ -80,7 +67,18 @@ export default function CustomerAnalyticsPage() {
                             <h3 className="text-base font-bold text-gray-900">Customer Growth Trend</h3>
                             <p className="text-xs text-gray-500 mt-0.5">Total customer acquisitions over time</p>
                         </div>
-                        <span className="text-xs font-bold text-primary bg-primary/5 px-2.5 py-1 rounded-full">{range} Range</span>
+                        <div className="relative">
+                            <select
+                                value={range}
+                                onChange={(e) => setRange(e.target.value as '7D' | '30D' | '90D' | '12M')}
+                                className="appearance-none pl-3 pr-8 h-9 rounded-xl bg-primary/5 text-primary text-xs font-bold border border-primary/10 hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                            >
+                                {([['7D', '7 DAYS'], ['30D', '30 DAYS'], ['90D', '90 DAYS'], ['12M', '12 MONTHS']] as const).map(([value, label]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-primary pointer-events-none" />
+                        </div>
                     </div>
 
                     {growthLoading ? (
@@ -98,10 +96,10 @@ export default function CustomerAnalyticsPage() {
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                                     <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
-                                    <Area type="monotone" dataKey="total" stroke="#066CF4" strokeWidth={2.5} fill="url(#growthGrad)" />
+                                    <Area type="monotone" dataKey="customers" name="Customers" stroke="#066CF4" strokeWidth={2.5} fill="url(#growthGrad)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

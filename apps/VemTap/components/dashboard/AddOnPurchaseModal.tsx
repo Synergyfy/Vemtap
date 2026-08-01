@@ -95,60 +95,67 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addons, credit, bu
             return;
         }
 
-        await loadPaystackScript();
-        // @ts-ignore
-        const handler = window.PaystackPop.setup({
-            key: publicKey,
-            email: email,
-            amount: breakdown.total * 100,
-            currency: 'NGN',
-            ref: `ADDON-${resolvedBusinessId || 'anon'}-${Date.now()}`,
-            onClose: () => {
-                setIsProcessing(false);
-                toast.error('Payment window closed');
-            },
-            callback: async (response: any) => {
-                try {
-                    if (addons.length > 0) {
-                        await new Promise<void>((resolve, reject) => {
-                            purchaseMutation.mutate({
-                                addonIds: addons.map(a => a.id),
-                                paymentReference: response.reference,
-                            }, {
-                                onSuccess: () => resolve(),
-                                onError: (error) => reject(error)
-                            });
-                        });
-                    }
+        try {
+            await loadPaystackScript();
+            // @ts-ignore
+            const handler = window.PaystackPop.setup({
+                key: publicKey,
+                email: email,
+                amount: breakdown.total * 100,
+                currency: 'NGN',
+                ref: `ADDON-${resolvedBusinessId || 'anon'}-${Date.now()}`,
+                onClose: () => {
+                    setIsProcessing(false);
+                    toast.error('Payment window closed');
+                },
+                callback: (response: any) => {
+                    (async () => {
+                        try {
+                            if (addons.length > 0) {
+                                await new Promise<void>((resolve, reject) => {
+                                    purchaseMutation.mutate({
+                                        addonIds: addons.map(a => a.id),
+                                        paymentReference: response.reference,
+                                    }, {
+                                        onSuccess: () => resolve(),
+                                        onError: (error) => reject(error)
+                                    });
+                                });
+                            }
 
-                    if (credit) {
-                        if (credit.type === 'credit-plan') {
-                            await purchaseCreditPlan(credit.plan.id, {
-                                branchId: resolvedBusinessId || '',
-                                reference: response.reference,
-                            });
-                        } else if (credit.type === 'ai') {
-                            await api.post('/ai/credits/purchase', {
-                                packageId: credit.pkg.id,
-                                reference: response.reference,
-                            });
+                            if (credit) {
+                                if (credit.type === 'credit-plan') {
+                                    await purchaseCreditPlan(credit.plan.id, {
+                                        branchId: resolvedBusinessId || '',
+                                        reference: response.reference,
+                                    });
+                                } else if (credit.type === 'ai') {
+                                    await api.post('/ai/credits/purchase', {
+                                        packageId: credit.pkg.id,
+                                        reference: response.reference,
+                                    });
+                                }
+                            }
+
+                            toast.success(hasItems ? 'All items activated!' : 'Purchase complete!');
+                            setIsProcessing(false);
+                            if (onSuccess) {
+                                onSuccess();
+                            } else {
+                                onClose();
+                            }
+                        } catch (error: any) {
+                            setIsProcessing(false);
+                            toast.error(error instanceof Error ? error.message : 'Payment verified but activation failed. Please contact support.');
                         }
-                    }
-
-                    toast.success(hasItems ? 'All items activated!' : 'Purchase complete!');
-                    setIsProcessing(false);
-                    if (onSuccess) {
-                        onSuccess();
-                    } else {
-                        onClose();
-                    }
-                } catch (error: any) {
-                    setIsProcessing(false);
-                    toast.error(error instanceof Error ? error.message : 'Payment verified but activation failed. Please contact support.');
+                    })();
                 }
-            }
-        });
-        handler.openIframe();
+            });
+            handler.openIframe();
+        } catch (error: any) {
+            setIsProcessing(false);
+            toast.error(error instanceof Error ? error.message : 'Could not start payment. Please try again.');
+        }
     };
 
     const creditLabel = credit
