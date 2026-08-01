@@ -11,15 +11,17 @@ interface SerwistGlobal extends ServiceWorkerGlobalScope, SerwistGlobalConfig {
 declare const self: SerwistGlobal;
 
 // API routes that should use NetworkOnly (mutations and real-time data)
+// Note: the API lives on a different origin (NEXT_PUBLIC_API_URL), so these rules
+// match by pathname, not origin — the service worker can intercept and cache
+// cross-origin requests made by controlled pages.
 const mutationPaths = ["/api/pos/sales", "/api/auth", "/api/loyalty/points/give"];
 
 const apiNetworkOnlyRule = {
   matcher: ({ url, request }: { url: URL; request: Request }) => {
     const isApiPath = url.pathname.startsWith("/api/");
-    const isKnownApiHost = url.origin === self.location.origin;
     const isMutation = mutationPaths.some((p) => url.pathname.startsWith(p));
     const isWriteMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
-    return isApiPath && isKnownApiHost && (isMutation || isWriteMethod);
+    return isApiPath && (isMutation || isWriteMethod);
   },
   handler: new NetworkOnly(),
 };
@@ -28,7 +30,6 @@ const apiNetworkOnlyRule = {
 const posCacheRule = {
   matcher: ({ url, request }: { url: URL; request: Request }) => {
     const isApiPath = url.pathname.startsWith("/api/");
-    const isKnownApiHost = url.origin === self.location.origin;
     const isGetMethod = request.method === "GET";
     const isPosData =
       url.pathname.includes("/catalogue") ||
@@ -36,12 +37,15 @@ const posCacheRule = {
       url.pathname.includes("/businesses/my-business") ||
       url.pathname.includes("/branches") ||
       url.pathname.includes("/loyalty/rewards") ||
+      url.pathname.includes("/loyalty/rules") ||
       url.pathname.includes("/loyalty/points/balance") ||
       url.pathname.includes("/pos/settings") ||
       url.pathname.includes("/subscriptions");
-    return isApiPath && isKnownApiHost && isGetMethod && isPosData;
+    return isApiPath && isGetMethod && isPosData;
   },
-  handler: new StaleWhileRevalidate(),
+  handler: new StaleWhileRevalidate({
+    cacheName: "pos-data-cache",
+  }),
 };
 
 // POS pages and RSC payloads cached with NetworkFirst to ensure offline reloads work
