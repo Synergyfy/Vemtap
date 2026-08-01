@@ -42,6 +42,27 @@ export default function PaymentScreen() {
   const { data: rewards = [] } = useRewards(activeBranchId ?? undefined, !!attachedCustomer);
   const { data: loyaltyRule } = useLoyaltyRules(activeBranchId ?? undefined);
   const [redeemedReward, setRedeemedReward] = useState<{ name: string; discount: number } | null>(null);
+
+  const NETWORK_TIMEOUT_MS = 15000;
+
+  const isNetworkError = (err: any) => {
+    if (!err) return false;
+    const msg = String(err?.message || '');
+    return err instanceof TypeError
+      || err?.name === 'TypeError'
+      || err?.code === 'ERR_NETWORK'
+      || /failed to fetch|networkerror|network error|load failed|timeout/i.test(msg);
+  };
+
+  const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Network request timed out')), ms);
+      promise.then(
+        (v) => { clearTimeout(timer); resolve(v); },
+        (e) => { clearTimeout(timer); reject(e); },
+      );
+    });
+
   const autoPoints = React.useMemo(() =>
     cart.reduce((sum, item) =>
       item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0)
@@ -220,22 +241,35 @@ export default function PaymentScreen() {
         createdAt: new Date().toISOString(),
         retries: 0,
       });
+      toast.success('Payment saved offline — will sync automatically when back online');
       goToSuccess(buildOfflineSale());
+    };
+
+    const offlineFallback = async () => {
+      try {
+        await saveAndGoOffline();
+      } catch (err: any) {
+        toast.error(err?.message || 'Could not save the sale offline. Please try again.');
+        setIsProcessing(false);
+      }
     };
 
     // Offline-first: if offline, save locally and go to success immediately
     if (!navigator.onLine) {
-      await saveAndGoOffline();
+      await offlineFallback();
       return;
     }
 
     try {
-      const sale = await createSale.mutateAsync(salePayload);
+      // Bounded request: on flaky connections (WiFi up, server unreachable) the fetch
+      // can hang or fail as a network error — both fall back to the offline queue.
+      // Safe because the backend dedupes on clientRef, so a replayed sale returns
+      // the existing one instead of creating a duplicate.
+      const sale = await withTimeout(createSale.mutateAsync(salePayload), NETWORK_TIMEOUT_MS);
       goToSuccess(sale);
     } catch (err: any) {
-      // Also handle case where we went offline during the request
-      if (!navigator.onLine) {
-        await saveAndGoOffline();
+      if (!navigator.onLine || isNetworkError(err)) {
+        await offlineFallback();
       } else {
         toast.error(err?.message || 'Payment failed. Please try again.');
         setIsProcessing(false);

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, X, User, Check, ScanLine, Smartphone, Mail, CreditCard } from 'lucide-react';
+import { Search, UserPlus, X, User, Check, ScanLine, Smartphone, Mail, CreditCard, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVisitors } from '@/services/visitors/hooks';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { getCachedCustomers, cacheCustomers, OfflineCustomer } from '@/lib/offline/db';
 
 interface Customer {
   id: string;
@@ -32,6 +34,41 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
 
   const { data: paginatedVisitors, isLoading: isLoadingVisitors } = useVisitors(undefined, { search: debouncedSearch });
   const visitors = paginatedVisitors?.data || [];
+
+  const { isOnline } = useNetworkStatus();
+  const [cachedCustomers, setCachedCustomers] = useState<OfflineCustomer[]>([]);
+
+  React.useEffect(() => {
+    getCachedCustomers().then(setCachedCustomers).catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    if (visitors.length > 0) {
+      cacheCustomers(
+        visitors.map((v) => ({
+          id: v.id,
+          name: `${v.firstName} ${v.lastName || ''}`.trim(),
+          phone: v.phone,
+          email: v.email || undefined,
+          pointsBalance: v.loyaltyProfile?.pointsBalance || 0,
+          cachedAt: Date.now(),
+        })),
+      ).catch(() => {});
+    }
+  }, [visitors]);
+
+  const noLiveResults = !isLoadingVisitors && visitors.length === 0;
+  const usingCached = noLiveResults && cachedCustomers.length > 0;
+  const displayVisitors = usingCached
+    ? cachedCustomers.map((c) => ({
+        id: c.id,
+        firstName: (c.name || ' ').split(' ')[0] || 'Customer',
+        lastName: (c.name || '').split(' ').slice(1).join(' '),
+        phone: c.phone,
+        email: c.email,
+        loyaltyProfile: { pointsBalance: c.pointsBalance || 0 },
+      }))
+    : visitors;
 
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -115,10 +152,16 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
               </div>
 
               <div className="space-y-2 mt-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {isLoadingVisitors ? (
+                {usingCached && (
+                  <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg">
+                    <WifiOff size={11} />
+                    {isOnline ? 'Search unavailable — showing saved customers' : 'Offline — showing saved customers'}
+                  </div>
+                )}
+                {isLoadingVisitors && !usingCached ? (
                   <div className="text-center py-8 text-gray-400 text-[10px] font-bold uppercase tracking-widest">Loading customers...</div>
-                ) : visitors.length > 0 ? (
-                  visitors.map(visitor => (
+                ) : displayVisitors.length > 0 ? (
+                  displayVisitors.map(visitor => (
                     <button
                       key={visitor.id}
                       onClick={() => {
