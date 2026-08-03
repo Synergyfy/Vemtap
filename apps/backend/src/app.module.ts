@@ -62,6 +62,7 @@ import { InventoryCountingModule } from './modules/inventory-counting/inventory-
 import { LegalComplianceModule } from './modules/legal-compliance/legal-compliance.module';
 import { AiCopilotModule } from './modules/ai-copilot/ai-copilot.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
 
 @Module({
   imports: [
@@ -179,6 +180,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
     LegalComplianceModule,
     AiCopilotModule,
     FeedbackModule,
+    KnowledgeBaseModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

@@ -21,6 +21,7 @@ import {
   CreateCatalogueItemDto,
   UpdateCatalogueItemDto,
   SuspendItemDto,
+  BulkImportItemsDto,
 } from './dto/item.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -86,6 +87,18 @@ export class AdminCatalogueController {
   @ApiOperation({ summary: 'Create a new catalogue item' })
   async createItem(@Body() dto: CreateCatalogueItemDto, @Req() req: any) {
     return this.catalogueService.createItem(dto, req.user.businessId);
+  }
+
+  @Post('items/bulk')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('catalogue', 'inventory')
+  @ApiOperation({ summary: 'Bulk import catalogue items' })
+  async bulkImportItems(@Body() dto: BulkImportItemsDto, @Req() req: any) {
+    return this.catalogueService.bulkImportItems(
+      dto,
+      req.user.businessId,
+      req.user.branchId || req.user.branch?.id,
+    );
   }
 
   @Get('items')

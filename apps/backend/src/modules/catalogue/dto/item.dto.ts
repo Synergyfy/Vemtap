@@ -9,6 +9,7 @@ import {
   IsArray,
   IsBoolean,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -376,3 +377,63 @@ export class CatalogueQueryDto {
   @IsEnum(['newest', 'oldest', 'most_popular', 'price_asc', 'price_desc'])
   sortBy?: string = 'newest';
 }
+
+export class BulkImportItemRowDto {
+  @ApiProperty({ example: 'Example Product' })
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 99.99 })
+  @IsNotEmpty()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  price: number;
+
+  @ApiPropertyOptional({ example: 'Short description...' })
+  @IsOptional()
+  @IsString()
+  shortDescription?: string;
+
+  @ApiPropertyOptional({ example: 'Full description...' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'Electronics' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  stockQuantity?: number;
+
+  @ApiPropertyOptional({ example: 'EXMP-001' })
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @ApiPropertyOptional({ example: '1234567890123' })
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+}
+
+export class BulkImportItemsDto {
+  @ApiPropertyOptional({ example: 'uuid-of-branch' })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @ApiProperty({ type: [BulkImportItemRowDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BulkImportItemRowDto)
+  items: BulkImportItemRowDto[];
+}
+

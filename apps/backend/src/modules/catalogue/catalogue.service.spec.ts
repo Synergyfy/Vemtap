@@ -274,4 +274,55 @@ describe('CatalogueService', () => {
       ).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe('bulkImportItems', () => {
+    it('should throw BadRequestException if items array is empty or exceeds 1000', async () => {
+      await expect(
+        service.bulkImportItems({ items: [] }, 'bus-1', 'br-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should bulk import valid items and report row errors for invalid ones', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockCategoryRepo.findOne.mockResolvedValue(null);
+      mockItemRepo.findOne.mockResolvedValue(null);
+      mockItemRepo.save.mockImplementation((item) =>
+        Promise.resolve({ id: 'item-uuid-1', ...item }),
+      );
+
+      const result = await service.bulkImportItems(
+        {
+          branchId: 'br-1',
+          items: [
+            {
+              name: 'Item 1',
+              price: 10,
+              category: 'Tech',
+              sku: 'SKU-1',
+            },
+            {
+              name: '',
+              price: -5,
+            },
+          ],
+        },
+        'bus-1',
+      );
+
+      expect(result.created).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.results).toHaveLength(2);
+      expect(result.results[0]).toEqual({
+        row: 2,
+        success: true,
+        itemId: 'item-uuid-1',
+      });
+      expect(result.results[1].success).toBe(false);
+      expect(result.results[1].row).toBe(3);
+    });
+  });
 });
+
