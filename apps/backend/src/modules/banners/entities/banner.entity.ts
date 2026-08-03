@@ -52,4 +52,28 @@ export class Banner extends AbstractBaseEntity {
   @ApiProperty({ example: true, description: 'Whether the banner is active' })
   @Column({ default: true })
   isActive: boolean;
+
+  @ApiProperty({
+    example: 'business',
+    enum: ['business', 'customer'],
+    description: 'Where the banner is displayed (business dashboard or customer app)',
+  })
+  @Column({ default: 'business' })
+  placement: 'business' | 'customer';
+
+  @ApiProperty({
+    example: 'custom',
+    enum: ['custom', 'deals-page', 'deal'],
+    description: 'What the banner CTA links to (custom URL, deals page, or a specific deal campaign)',
+  })
+  @Column({ default: 'custom' })
+  targetType: 'custom' | 'deals-page' | 'deal';
+
+  @ApiProperty({
+    example: 'offer_123',
+    description: 'Deal offer id when targetType is "deal"',
+    required: false,
+  })
+  @Column({ nullable: true })
+  targetId: string;
 }

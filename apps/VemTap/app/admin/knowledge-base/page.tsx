@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     Plus, Trash2, Save, MoveUp, MoveDown, BookOpen, Folder, FileText,
     ChevronDown, ChevronRight, ImagePlus, X, Heading, ListOrdered,
@@ -9,8 +9,23 @@ import {
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { uploadToCloudinary } from '@/lib/cloudinary';
-import { useKnowledgeBaseStore } from '@/store/useKnowledgeBaseStore';
-import type { ContentBlock, KBCategory, KBPage, KBSection } from '@/constants/knowledgeBaseDocs';
+import type { ContentBlock } from '@/constants/knowledgeBaseDocs';
+import {
+    useKnowledgeBaseTree,
+    useKnowledgeBasePage,
+    useCreateKbCategory,
+    useUpdateKbCategory,
+    useDeleteKbCategory,
+    useCreateKbSection,
+    useUpdateKbSection,
+    useDeleteKbSection,
+    useCreateKbPage,
+    useUpdateKbPage,
+    useDeleteKbPage,
+    type KnowledgeBaseTreeCategory,
+    type KnowledgeBaseTreeSection,
+    type KnowledgeBasePage,
+} from '@/services/knowledge-base/hooks';
 
 type Selection =
     | { type: 'cat'; catId: string }
@@ -87,48 +102,84 @@ function UploadField({ value, onChange, label }: { value: string; onChange: (url
     );
 }
 
-function PageEditor({ page, catId, secId, onDeleted }: {
-    page: KBPage;
+function PageEditor({ pageId, catId, secId, onDeleted }: {
+    pageId: string;
     catId: string;
     secId: string;
     onDeleted: () => void;
 }) {
-    const updatePage = useKnowledgeBaseStore((s) => s.updatePage);
-    const [draft, setDraft] = useState<KBPage>(() => JSON.parse(JSON.stringify(page)));
+    const { data: fullPage } = useKnowledgeBasePage(pageId);
+    const { mutate: saveMutation } = useUpdateKbPage();
+    const [draft, setDraft] = useState<KnowledgeBasePage | null>(null);
+    const lastLoaded = useRef<string>('');
 
-    const set = <K extends keyof KBPage>(key: K, value: KBPage[K]) => setDraft((d) => ({ ...d, [key]: value }));
+    useEffect(() => {
+        if (!fullPage) return;
+        const sig = JSON.stringify(fullPage);
+        if (sig !== lastLoaded.current) {
+            lastLoaded.current = sig;
+            setDraft(JSON.parse(JSON.stringify(fullPage)));
+        }
+    }, [fullPage]);
+
+    if (!draft) {
+        return (
+            <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center">
+                <BookOpen size={32} className="mx-auto text-gray-300 mb-3 animate-pulse" />
+                <p className="text-sm font-semibold text-gray-500">Loading article...</p>
+            </div>
+        );
+    }
+
+    const set = <K extends keyof KnowledgeBasePage>(key: K, value: KnowledgeBasePage[K]) =>
+        setDraft((d): KnowledgeBasePage => ({ ...d!, [key]: value }));
 
     const updateBlock = (i: number, patch: Partial<ContentBlock>) =>
-        setDraft((d) => ({
-            ...d,
-            blocks: d.blocks.map((b, j) => (j === i ? ({ ...b, ...patch } as ContentBlock) : b)),
+        setDraft((d): KnowledgeBasePage => ({
+            ...d!,
+            blocks: d!.blocks.map((b, j) => (j === i ? ({ ...b, ...patch } as ContentBlock) : b)),
         }));
 
     const addBlock = (type: ContentBlock['type']) => {
         const template = BLOCK_TYPES.find((t) => t.type === type)!;
-        setDraft((d) => ({ ...d, blocks: [...d.blocks, JSON.parse(JSON.stringify(template.default))] }));
+        setDraft((d): KnowledgeBasePage => ({ ...d!, blocks: [...d!.blocks, JSON.parse(JSON.stringify(template.default))] }));
     };
 
     const moveBlock = (i: number, dir: -1 | 1) =>
-        setDraft((d) => {
-            const blocks = [...d.blocks];
+        setDraft((d): KnowledgeBasePage => {
+            const blocks = [...d!.blocks];
             const to = i + dir;
-            if (to < 0 || to >= blocks.length) return d;
+            if (to < 0 || to >= blocks.length) return d!;
             const [moved] = blocks.splice(i, 1);
             blocks.splice(to, 0, moved);
-            return { ...d, blocks };
+            return { ...d!, blocks };
         });
 
     const removeBlock = (i: number) =>
-        setDraft((d) => ({ ...d, blocks: d.blocks.filter((_, j) => j !== i) }));
+        setDraft((d): KnowledgeBasePage => ({ ...d!, blocks: d!.blocks.filter((_, j) => j !== i) }));
 
     const handleSave = () => {
-        updatePage(catId, secId, page.id, draft);
-        toast.success('Article saved');
+        saveMutation({
+            id: pageId,
+            dto: {
+                title: draft.title,
+                path: draft.path,
+                summary: draft.summary ?? '',
+                thumbnail: draft.thumbnail,
+                blocks: draft.blocks,
+                tips: draft.tips ?? [],
+                order: draft.order,
+                categoryId: draft.categoryId ?? catId,
+                sectionId: draft.sectionId ?? secId,
+            },
+        }, {
+            onSuccess: () => toast.success('Article saved'),
+            onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save article'),
+        });
     };
 
     const handleDiscard = () => {
-        setDraft(JSON.parse(JSON.stringify(page)));
+        if (fullPage) setDraft(JSON.parse(JSON.stringify(fullPage)));
         toast('Changes discarded');
     };
 
@@ -138,7 +189,7 @@ function PageEditor({ page, catId, secId, onDeleted }: {
             <section className="rounded-2xl border border-gray-100 bg-white p-5 space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-black text-text-main">Article Details</h3>
-                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">ID: {page.id}</span>
+                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">ID: {draft.id}</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -152,7 +203,7 @@ function PageEditor({ page, catId, secId, onDeleted }: {
                 </div>
                 <div>
                     <label className={labelCls}>Summary</label>
-                    <textarea rows={2} className={cn(textareaCls, 'mt-1.5')} value={draft.summary} onChange={(e) => set('summary', e.target.value)} placeholder="Short summary shown under the article title" />
+                    <textarea rows={2} className={cn(textareaCls, 'mt-1.5')} value={draft.summary ?? ''} onChange={(e) => set('summary', e.target.value)} placeholder="Short summary shown under the article title" />
                 </div>
                 <div>
                     <label className={labelCls}>Thumbnail</label>
@@ -310,7 +361,7 @@ function PageEditor({ page, catId, secId, onDeleted }: {
             {/* Actions */}
             <div className="rounded-2xl border border-gray-100 bg-white p-4 flex items-center justify-between gap-3">
                 <button
-                    onClick={() => { if (window.confirm('Delete this article?')) { onDeleted(); toast.success('Article deleted'); } }}
+                    onClick={() => { if (window.confirm('Delete this article?')) { onDeleted(); } }}
                     className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-red-100 text-red-500 text-[11px] font-black uppercase tracking-widest hover:bg-red-50 transition-all"
                 >
                     <Trash2 size={13} /> Delete Article
@@ -341,79 +392,163 @@ function PageEditor({ page, catId, secId, onDeleted }: {
 }
 
 export default function AdminKnowledgeBasePage() {
-    const {
-        docs, addCategory, deleteCategory, addSection, deleteSection, addPage, deletePage, movePage, resetDocs,
-    } = useKnowledgeBaseStore();
+    const treeQuery = useKnowledgeBaseTree();
+    const docs = treeQuery.data?.categories ?? [];
+
+    const { mutate: addCategoryMutation } = useCreateKbCategory();
+    const { mutate: updateCategoryMutation } = useUpdateKbCategory();
+    const { mutate: deleteCategoryMutation } = useDeleteKbCategory();
+    const { mutate: addSectionMutation } = useCreateKbSection();
+    const { mutate: updateSectionMutation } = useUpdateKbSection();
+    const { mutate: deleteSectionMutation } = useDeleteKbSection();
+    const { mutate: addPageMutation } = useCreateKbPage();
+    const { mutate: updatePageMutation } = useUpdateKbPage();
+    const { mutate: deletePageMutation } = useDeleteKbPage();
 
     const [selection, setSelection] = useState<Selection>(null);
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
     const toggleExpand = (id: string) => setExpanded((e) => ({ ...e, [id]: !e[id] }));
 
-    const findContext = (sel: Selection): { cat: KBCategory; sec?: KBSection; page?: KBPage } | null => {
+    const findContext = (sel: Selection): { cat: KnowledgeBaseTreeCategory; sec?: KnowledgeBaseTreeSection } | null => {
         if (!sel) return null;
         const cat = docs.find((c) => c.id === sel.catId);
         if (!cat) return null;
         if (sel.type === 'cat') return { cat };
         const sec = cat.sections.find((s) => s.id === sel.secId);
         if (!sec) return null;
-        if (sel.type === 'sec') return { cat, sec };
-        const page = sec.pages.find((p) => p.id === sel.pageId);
-        return page ? { cat, sec, page } : null;
+        return { cat, sec };
     };
 
     const ctx = findContext(selection);
-    const secCtx = ctx && ctx.sec && !ctx.page ? { cat: ctx.cat, sec: ctx.sec } : null;
-    const pageCtx = ctx?.page && ctx.sec ? { cat: ctx.cat, sec: ctx.sec, page: ctx.page } : null;
+    const secCtx = ctx && selection?.type === 'sec' ? { cat: ctx.cat, sec: ctx.sec! } : null;
+    const pageCtx =
+        selection?.type === 'page' && ctx?.sec
+            ? { catId: ctx.cat.id, secId: ctx.sec.id, pageId: selection.pageId }
+            : null;
 
     const handleAddCategory = () => {
-        const id = addCategory('New Category');
-        setSelection({ type: 'cat', catId: id });
-        setExpanded((e) => ({ ...e, [id]: true }));
-        toast.success('Category created — rename it in the editor');
+        addCategoryMutation({ title: 'New Category', order: docs.length }, {
+            onSuccess: (created: any) => {
+                const id = created?.id;
+                if (!id) return;
+                setSelection({ type: 'cat', catId: id });
+                setExpanded((e) => ({ ...e, [id]: true }));
+                toast.success('Category created — rename it in the editor');
+            },
+        });
     };
 
     const handleAddSection = (catId: string) => {
-        const id = addSection(catId, 'New Section');
-        setSelection({ type: 'sec', catId, secId: id });
-        setExpanded((e) => ({ ...e, [catId]: true, [id]: true }));
-        toast.success('Section created — rename it in the editor');
+        const cat = docs.find((c) => c.id === catId);
+        addSectionMutation({ title: 'New Section', categoryId: catId, order: cat?.sections.length ?? 0 }, {
+            onSuccess: (created: any) => {
+                const id = created?.id;
+                if (!id) return;
+                setSelection({ type: 'sec', catId, secId: id });
+                setExpanded((e) => ({ ...e, [catId]: true, [id]: true }));
+                toast.success('Section created — rename it in the editor');
+            },
+        });
     };
 
     const handleAddPage = (catId: string, secId: string) => {
-        const id = addPage(catId, secId);
-        setSelection({ type: 'page', catId, secId, pageId: id });
-        setExpanded((e) => ({ ...e, [catId]: true, [secId]: true }));
-        toast.success('Article created — edit it below');
+        const sec = docs.find((c) => c.id === catId)?.sections.find((s) => s.id === secId);
+        addPageMutation({
+            title: 'New Article',
+            path: `new-article-${Date.now()}`,
+            summary: '',
+            blocks: [{ type: 'text', text: '' }],
+            tips: [],
+            categoryId: catId,
+            sectionId: secId,
+            order: sec?.pages.length ?? 0,
+        }, {
+            onSuccess: (created: any) => {
+                const id = created?.id;
+                if (!id) return;
+                setSelection({ type: 'page', catId, secId, pageId: id });
+                setExpanded((e) => ({ ...e, [catId]: true, [secId]: true }));
+                toast.success('Article created — edit it below');
+            },
+        });
     };
 
-    const handleDeleteCategory = (cat: KBCategory) => {
+    const handleDeleteCategory = (cat: KnowledgeBaseTreeCategory) => {
         if (!window.confirm(`Delete category "${cat.title}" and everything inside it?`)) return;
-        deleteCategory(cat.id);
-        if (selection?.catId === cat.id) setSelection(null);
-        toast.success('Category deleted');
+        deleteCategoryMutation(cat.id, {
+            onSuccess: () => { if (selection?.catId === cat.id) setSelection(null); toast.success('Category deleted'); },
+            onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete category'),
+        });
     };
 
-    const handleDeleteSection = (catId: string, sec: KBSection) => {
+    const handleDeleteSection = (catId: string, sec: KnowledgeBaseTreeSection) => {
         if (!window.confirm(`Delete section "${sec.title}" and all its articles?`)) return;
-        deleteSection(catId, sec.id);
-        if (selection?.type === 'sec' && selection.secId === sec.id) setSelection({ type: 'cat', catId });
-        toast.success('Section deleted');
+        deleteSectionMutation(sec.id, {
+            onSuccess: () => { if (selection?.type === 'sec' && selection.secId === sec.id) setSelection({ type: 'cat', catId }); toast.success('Section deleted'); },
+            onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete section'),
+        });
     };
 
     const handleDeletePage = (catId: string, secId: string) => {
         if (!selection || selection.type !== 'page') return;
-        deletePage(catId, secId, selection.pageId);
-        setSelection({ type: 'sec', catId, secId });
+        deletePageMutation(selection.pageId, {
+            onSuccess: () => { setSelection({ type: 'sec', catId, secId }); toast.success('Article deleted'); },
+            onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete article'),
+        });
     };
 
-    const handleReset = () => {
-        if (!window.confirm('Reset the entire Knowledge Base back to the default content? Your changes will be lost.')) return;
-        resetDocs();
-        setSelection(null);
-        setExpanded({});
-        toast.success('Knowledge Base restored to defaults');
+    const handleMovePage = (catId: string, secId: string, pageId: string, dir: -1 | 1) => {
+        const sec = docs.find((c) => c.id === catId)?.sections.find((s) => s.id === secId);
+        const pages = sec?.pages ?? [];
+        const idx = pages.findIndex((p) => p.id === pageId);
+        const target = pages[idx + dir];
+        if (idx < 0 || !target) return;
+        updatePageMutation({ id: pageId, dto: { order: target.order ?? idx + dir } });
+        updatePageMutation({ id: target.id, dto: { order: pages[idx].order ?? idx } });
+        toast.success('Order updated');
     };
+
+    const renameCategory = (id: string, title: string) =>
+        updateCategoryMutation({ id, dto: { title } }, {
+            onSuccess: () => toast.success('Category renamed'),
+            onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to rename'),
+        });
+
+    const renameSection = (id: string, title: string) =>
+        updateSectionMutation({ id, dto: { title } }, {
+            onSuccess: () => toast.success('Section renamed'),
+            onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to rename'),
+        });
+
+    if (treeQuery.isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <BookOpen size={32} className="mx-auto text-gray-300 mb-3 animate-pulse" />
+                    <p className="text-sm font-semibold text-gray-500">Loading Knowledge Base...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (treeQuery.isError) {
+        return (
+            <div className="p-8 max-w-7xl mx-auto">
+                <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center">
+                    <BookOpen size={32} className="mx-auto text-gray-300 mb-3" />
+                    <p className="text-sm font-bold text-text-main">Could not load the Knowledge Base.</p>
+                    <p className="text-xs text-text-secondary mt-1">Only admins can manage it. If this persists, try again later.</p>
+                    <button
+                        onClick={() => treeQuery.refetch()}
+                        className="mt-4 inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all"
+                    >
+                        <RotateCcw size={13} /> Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -434,12 +569,6 @@ export default function AdminKnowledgeBasePage() {
                     >
                         <ExternalLink size={13} /> View Site
                     </a>
-                    <button
-                        onClick={handleReset}
-                        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-gray-200 bg-white text-gray-600 text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all"
-                    >
-                        <RotateCcw size={13} /> Reset Defaults
-                    </button>
                     <button
                         onClick={handleAddCategory}
                         className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all"
@@ -561,14 +690,14 @@ export default function AdminKnowledgeBasePage() {
                                                                 <span className="flex-1 truncate text-[12px] font-medium">{page.title}</span>
                                                                 <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); movePage(cat.id, sec.id, page.id, -1); }}
+                                                                        onClick={(e) => { e.stopPropagation(); handleMovePage(cat.id, sec.id, page.id, -1); }}
                                                                         disabled={i === 0}
                                                                         className={cn(iconBtn, 'text-gray-400 hover:bg-gray-100 hover:text-gray-700')}
                                                                     >
                                                                         <MoveUp size={11} />
                                                                     </button>
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); movePage(cat.id, sec.id, page.id, 1); }}
+                                                                        onClick={(e) => { e.stopPropagation(); handleMovePage(cat.id, sec.id, page.id, 1); }}
                                                                         disabled={i === sec.pages.length - 1}
                                                                         className={cn(iconBtn, 'text-gray-400 hover:bg-gray-100 hover:text-gray-700')}
                                                                     >
@@ -577,11 +706,8 @@ export default function AdminKnowledgeBasePage() {
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            if (window.confirm(`Delete article "${page.title}"?`)) {
-                                                                                deletePage(cat.id, sec.id, page.id);
-                                                                                setSelection({ type: 'sec', catId: cat.id, secId: sec.id });
-                                                                                toast.success('Article deleted');
-                                                                            }
+                                                                            setSelection({ type: 'page', catId: cat.id, secId: sec.id, pageId: page.id });
+                                                                            if (window.confirm(`Delete article "${page.title}"?`)) handleDeletePage(cat.id, sec.id);
                                                                         }}
                                                                         className={cn(iconBtn, 'text-gray-400 hover:bg-red-50 hover:text-red-500')}
                                                                     >
@@ -613,7 +739,7 @@ export default function AdminKnowledgeBasePage() {
                         </div>
                     )}
 
-                    {ctx && !ctx.sec && (
+                    {ctx && !ctx.sec && selection?.type === 'cat' && (
                         <div key={ctx.cat.id} className="rounded-2xl border border-gray-100 bg-white p-6 space-y-4">
                             <div className="flex items-center gap-2">
                                 <Folder size={16} className="text-amber-500" />
@@ -626,14 +752,12 @@ export default function AdminKnowledgeBasePage() {
                                     defaultValue={ctx.cat.title}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
-                                            useKnowledgeBaseStore.getState().updateCategory(ctx.cat.id, (e.target as HTMLInputElement).value);
-                                            toast.success('Category renamed');
+                                            renameCategory(ctx.cat.id, (e.target as HTMLInputElement).value);
                                         }
                                     }}
                                     onBlur={(e) => {
                                         if (e.target.value !== ctx.cat.title) {
-                                            useKnowledgeBaseStore.getState().updateCategory(ctx.cat.id, e.target.value);
-                                            toast.success('Category renamed');
+                                            renameCategory(ctx.cat.id, e.target.value);
                                         }
                                     }}
                                     placeholder="Category name"
@@ -673,14 +797,12 @@ export default function AdminKnowledgeBasePage() {
                                     defaultValue={secCtx.sec.title}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
-                                            useKnowledgeBaseStore.getState().updateSection(secCtx.cat.id, secCtx.sec.id, (e.target as HTMLInputElement).value);
-                                            toast.success('Section renamed');
+                                            renameSection(secCtx.sec.id, (e.target as HTMLInputElement).value);
                                         }
                                     }}
                                     onBlur={(e) => {
                                         if (e.target.value !== secCtx.sec.title) {
-                                            useKnowledgeBaseStore.getState().updateSection(secCtx.cat.id, secCtx.sec.id, e.target.value);
-                                            toast.success('Section renamed');
+                                            renameSection(secCtx.sec.id, e.target.value);
                                         }
                                     }}
                                     placeholder="Section name"
@@ -708,11 +830,11 @@ export default function AdminKnowledgeBasePage() {
 
                     {pageCtx && (
                         <PageEditor
-                            key={pageCtx.page.id}
-                            page={pageCtx.page}
-                            catId={pageCtx.cat.id}
-                            secId={pageCtx.sec.id}
-                            onDeleted={() => handleDeletePage(pageCtx.cat.id, pageCtx.sec.id)}
+                            key={pageCtx.pageId}
+                            pageId={pageCtx.pageId}
+                            catId={pageCtx.catId}
+                            secId={pageCtx.secId}
+                            onDeleted={() => handleDeletePage(pageCtx.catId, pageCtx.secId)}
                         />
                     )}
                 </main>

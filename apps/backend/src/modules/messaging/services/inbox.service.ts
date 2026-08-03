@@ -398,6 +398,7 @@ export class InboxService {
     content: string,
     customerId: string,
     replyToId?: string,
+    metadata?: any,
   ): Promise<Message> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId, customerId },
@@ -419,10 +420,11 @@ export class InboxService {
       content,
       channel: Channel.IN_HOUSE,
       direction: MessageDirection.INBOUND,
-      status: MessageStatus.DELIVERED,
+      status: MessageStatus.SENT,
       from: thread.customer.phone || thread.customer.email || 'Customer',
       to: thread.branchId,
       replyToId,
+      metadata: metadata || {},
       timestamp: new Date(),
     } as any) as unknown as Message;
 
@@ -556,7 +558,7 @@ export class InboxService {
       content,
       channel: Channel.IN_HOUSE,
       direction: MessageDirection.INBOUND,
-      status: MessageStatus.DELIVERED,
+      status: MessageStatus.SENT,
       from: thread.customer.phone || thread.customer.email || 'Customer',
       to: branchId,
       timestamp: new Date(),

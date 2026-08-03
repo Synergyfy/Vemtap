@@ -133,6 +133,7 @@ export class CustomerMessagingController {
       dto.content,
       req.user.id,
       dto.replyToId,
+      dto.metadata,
     );
   }
 
