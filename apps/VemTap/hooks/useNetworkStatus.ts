@@ -24,13 +24,11 @@ export function useNetworkStatus() {
     });
 
     syncManager.refreshCount();
-    syncManager.startAutoSync();
 
     return () => {
       window.removeEventListener('online', updateOnline);
       window.removeEventListener('offline', updateOnline);
       unsub();
-      syncManager.stopAutoSync();
     };
   }, []);
 

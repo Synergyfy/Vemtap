@@ -24,4 +24,8 @@ export class BusinessCreditWallet extends AbstractBaseEntity {
   @ApiProperty({ example: 500 })
   @Column({ type: 'int', default: 0 })
   whatsappCredits: number;
+
+  @ApiProperty({ example: 100 })
+  @Column({ type: 'int', default: 0 })
+  aiCredits: number;
 }

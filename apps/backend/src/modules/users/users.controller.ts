@@ -25,8 +25,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
+import { UpdateUserProfileDto } from './dto/update-profile.dto';
+import { UserAdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -99,7 +99,7 @@ export class UsersController {
   @Patch('profile')
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, type: User })
-  async updateProfile(@Request() req, @Body() updates: UpdateProfileDto) {
+  async updateProfile(@Request() req, @Body() updates: UpdateUserProfileDto) {
     const targetUserId = await this.getTargetUserId(req);
     return this.usersService.updateProfile(targetUserId, updates);
   }
@@ -226,7 +226,7 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create a new agent account' })
   @ApiResponse({ status: 201, description: 'Agent created successfully' })
-  async adminCreateAgent(@Body() dto: AdminCreateAgentDto) {
+  async adminCreateAgent(@Body() dto: UserAdminCreateAgentDto) {
     return this.usersService.adminCreateAgent(dto);
   }
   @Post('admin')

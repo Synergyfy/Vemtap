@@ -52,6 +52,15 @@ export interface SyncQueueItem {
   lastError?: string;
 }
 
+export interface OfflineCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  pointsBalance?: number;
+  cachedAt: number;
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -148,6 +157,31 @@ export async function clearProducts() {
     store.clear();
     store.transaction.oncomplete = () => { db.close(); resolve(); };
     store.transaction.onerror = (e) => { db.close(); reject(e); };
+  });
+}
+
+// ─── Customers ───
+
+export async function cacheCustomers(customers: OfflineCustomer[]) {
+  const db = await openDb();
+  const store = getStore(db, 'customers', 'readwrite');
+  const now = Date.now();
+  for (const c of customers) {
+    store.put({ ...c, cachedAt: now });
+  }
+  return new Promise<void>((resolve, reject) => {
+    store.transaction.oncomplete = () => { db.close(); resolve(); };
+    store.transaction.onerror = (e) => { db.close(); reject(e); };
+  });
+}
+
+export async function getCachedCustomers(): Promise<OfflineCustomer[]> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const store = getStore(db, 'customers');
+    const request = store.getAll();
+    request.onsuccess = () => { db.close(); resolve(request.result); };
+    request.onerror = () => { db.close(); reject(request.error); };
   });
 }
 

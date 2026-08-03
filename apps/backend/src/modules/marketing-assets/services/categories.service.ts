@@ -7,8 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MarketingCategory } from '../entities/marketing-category.entity';
 import { MarketingTemplate } from '../entities/marketing-template.entity';
-import { CreateCategoryDto } from '../dto/create-category.dto';
-import { UpdateCategoryDto } from '../dto/update-category.dto';
+import { CreateMarketingCategoryDto } from '../dto/create-category.dto';
+import { UpdateMarketingCategoryDto } from '../dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -19,7 +19,7 @@ export class CategoriesService {
     private readonly templateRepo: Repository<MarketingTemplate>,
   ) {}
 
-  async create(dto: CreateCategoryDto): Promise<MarketingCategory> {
+  async create(dto: CreateMarketingCategoryDto): Promise<MarketingCategory> {
     const slug =
       dto.slug ||
       dto.name
@@ -55,7 +55,7 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, dto: UpdateCategoryDto): Promise<MarketingCategory> {
+  async update(id: string, dto: UpdateMarketingCategoryDto): Promise<MarketingCategory> {
     const category = await this.findOne(id);
     if (dto.name && !dto.slug) {
       (dto as any).slug = dto.name

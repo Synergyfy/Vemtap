@@ -17,8 +17,10 @@ import {
     FeaturePermission,
     buildDefaultPermissions,
     mapPlanToConfig,
+    featureSupportsLimit,
 } from '@/lib/planPermissions';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'react-hot-toast';
 import { useUpdatePlanPermissions } from '@/services/pricing/hooks';
 
@@ -30,18 +32,22 @@ interface PlanPermissionsTabProps {
 export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissionsTabProps) {
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
-    const [expandedSection, setExpandedSection] = useState<string | null>(null);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+    const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
     const [configs, setConfigs] = useState<Record<string, PlanPermissionConfig>>({});
-    const [limitModal, setLimitModal] = useState<{
-        planId: string;
-        featureId: string;
-        currentLimit: number;
-    } | null>(null);
-    const [limitInput, setLimitInput] = useState('');
 
     // Tracks only the fields the user has explicitly edited.
     // This acts as the Update DTO — only what's changed gets sent in the PATCH payload.
     const [pendingChanges, setPendingChanges] = useState<Partial<PricingPlan>>({});
+
+    // Normalise nav-tree feature IDs to canonical config IDs used by mapConfigToPlanDto
+    const FEATURE_ID_ALIASES: Record<string, string> = { branches: 'locations' };
+
+    const getAliasUpdates = useCallback((featureId: string, level: PermissionLevel, limit?: number): Record<string, FeaturePermission> => {
+        const canonicalId = FEATURE_ID_ALIASES[featureId];
+        if (!canonicalId) return {};
+        return { [canonicalId]: { level, limit: limit ?? undefined } as FeaturePermission };
+    }, []);
 
     // Maps a feature change to its corresponding PricingPlan fields.
     // This mirrors the backend pattern: Update DTO = Partial<Create DTO>.
@@ -177,41 +183,12 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
     }, [search]);
 
     const toggleSection = useCallback((sectionId: string) => {
-        setExpandedSection(prev => prev === sectionId ? null : sectionId);
+        setExpandedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
     }, []);
 
-    const updateDirectLimit = useCallback((featureId: string, limitVal: number) => {
-        if (!selectedPlanId) return;
-        const val = isNaN(limitVal) || limitVal < 1 ? 1 : limitVal;
-        setConfigs(prev => {
-            const plan = prev[selectedPlanId];
-            if (!plan) return prev;
-            return {
-                ...prev,
-                [selectedPlanId]: {
-                    ...plan,
-                    features: {
-                        ...plan.features,
-                        [featureId]: {
-                            ...plan.features[featureId],
-                            level: 'limited',
-                            limit: val,
-                        },
-                    },
-                },
-            };
-        });
-        setPendingChanges(prev => ({ ...prev, ...getPlanFieldUpdates(featureId, 'limited', val) }));
-    }, [selectedPlanId, getPlanFieldUpdates]);
-
-    const openLimitModal = useCallback((featureId: string) => {
-        if (!selectedPlanId || !config) return;
-        const perm = config.features[featureId];
-        const defaultFeat = PERMISSION_SECTIONS.flatMap(s => s.features).find(f => f.id === featureId);
-        const currentVal = perm?.limit ?? defaultFeat?.defaultLimit ?? 50;
-        setLimitModal({ planId: selectedPlanId, featureId, currentLimit: currentVal });
-        setLimitInput(String(currentVal));
-    }, [selectedPlanId, config]);
+    const toggleParent = useCallback((parentId: string) => {
+        setExpandedParents(prev => ({ ...prev, [parentId]: !prev[parentId] }));
+    }, []);
 
     const setFeatureLevel = useCallback((featureId: string, level: PermissionLevel) => {
         if (!selectedPlanId) return;
@@ -228,38 +205,40 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                     features: {
                         ...plan.features,
                         [featureId]: { level, limit: newLimit },
+                        ...getAliasUpdates(featureId, level, newLimit),
                     },
                 },
             };
         });
         setPendingChanges(prev => ({ ...prev, ...getPlanFieldUpdates(featureId, level) }));
-    }, [selectedPlanId, getPlanFieldUpdates]);
+    }, [selectedPlanId, getPlanFieldUpdates, getAliasUpdates]);
 
-    const saveLimit = useCallback(() => {
-        if (!limitModal) return;
-        const val = parseInt(limitInput, 10);
-        if (isNaN(val) || val < 1) {
-            toast.error('Enter a valid number greater than 0');
-            return;
-        }
-        setConfigs(prev => ({
-            ...prev,
-            [limitModal.planId]: {
-                ...prev[limitModal.planId],
-                features: {
-                    ...prev[limitModal.planId]?.features,
-                    [limitModal.featureId]: {
-                        ...prev[limitModal.planId]?.features[limitModal.featureId],
-                        level: 'limited',
-                        limit: val,
+    const toggleFeature = useCallback((featureId: string) => {
+        if (!selectedPlanId || !config) return;
+        const current = config.features[featureId]?.level || 'no';
+        setFeatureLevel(featureId, current === 'no' ? 'yes' : 'no');
+    }, [selectedPlanId, config, setFeatureLevel]);
+
+    const updateLimit = useCallback((featureId: string, value: number) => {
+        if (!selectedPlanId) return;
+        const val = isNaN(value) || value < 1 ? 1 : value;
+        setConfigs(prev => {
+            const plan = prev[selectedPlanId];
+            if (!plan) return prev;
+            return {
+                ...prev,
+                [selectedPlanId]: {
+                    ...plan,
+                    features: {
+                        ...plan.features,
+                        [featureId]: { level: 'limited', limit: val },
+                        ...getAliasUpdates(featureId, 'limited', val),
                     },
                 },
-            },
-        }));
-        setPendingChanges(prev => ({ ...prev, ...getPlanFieldUpdates(limitModal.featureId, 'limited', val) }));
-        setLimitModal(null);
-        toast.success('Limit updated');
-    }, [limitModal, limitInput, getPlanFieldUpdates]);
+            };
+        });
+        setPendingChanges(prev => ({ ...prev, ...getPlanFieldUpdates(featureId, 'limited', val) }));
+    }, [selectedPlanId, getPlanFieldUpdates, getAliasUpdates]);
 
     const resetPlanDefaults = useCallback(() => {
         if (!selectedPlan) return;
@@ -271,28 +250,21 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
 
     const handleSave = useCallback(async () => {
         if (!selectedPlanId || !selectedPlan) return;
-        if (Object.keys(pendingChanges).length === 0) {
+        const dto = pendingChanges;
+        if (Object.keys(dto).length === 0) {
             toast('No changes to save');
             return;
         }
         try {
             await updatePermissionsMutation.mutateAsync({
                 planId: selectedPlanId,
-                permissions: pendingChanges
+                permissions: dto
             });
             setPendingChanges({});
         } catch (err) {
             console.error('Failed to save plan permissions:', err);
         }
     }, [selectedPlanId, selectedPlan, pendingChanges, updatePermissionsMutation]);
-
-    const getLevelIcon = (level: PermissionLevel) => {
-        switch (level) {
-            case 'yes': return Check;
-            case 'no': return X;
-            case 'limited': return SlidersHorizontal;
-        }
-    };
 
     if (isLoading) {
         return (
@@ -394,10 +366,30 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
             </div>
 
             {/* Feature sections */}
+            <p className="text-[10px] font-bold text-amber-600 bg-amber-50/80 rounded-xl px-4 py-2 -mb-2">
+                Toggle a feature on, then type a number in the <span className="font-black">amber box</span> to set a limit. <span className="font-black">Leave it blank</span> for unlimited access.
+            </p>
             <div className="space-y-4">
                 {filteredSections.map(section => {
                     const sectionConfig = config;
-                    const isOpen = expandedSection === section.id;
+                    const isSectionExpanded = expandedSections[section.id] ?? false;
+
+                    // Group features by parent
+                    const childrenByParent: Record<string, PlanFeature[]> = {};
+                    section.features.forEach(f => {
+                        if (f.parentId) {
+                            if (!childrenByParent[f.parentId]) childrenByParent[f.parentId] = [];
+                            childrenByParent[f.parentId].push(f);
+                        }
+                    });
+                    const topLevelFeatures = section.features.filter(f => !f.parentId);
+                    const totalFeatures = section.features.length;
+                    const enabledCount = sectionConfig
+                        ? section.features.filter(f => {
+                            const perm = sectionConfig.features[f.id];
+                            return perm && perm.level !== 'no';
+                        }).length
+                        : 0;
 
                     return (
                         <div key={section.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
@@ -407,39 +399,23 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                                 className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/50 transition-colors"
                             >
                                 <div className="flex items-center gap-3">
-                                    {isOpen
+                                    {isSectionExpanded
                                         ? <ChevronDown size={16} className="text-gray-400" />
                                         : <ChevronRight size={16} className="text-gray-400" />
                                     }
                                     <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider">
                                         {section.label}
                                     </h3>
+                                    {sectionConfig && (
+                                        <span className="text-[10px] font-bold text-gray-400 ml-2">
+                                            {enabledCount}/{totalFeatures}
+                                        </span>
+                                    )}
                                 </div>
-                                {sectionConfig && (
-                                    <div className="flex items-center gap-2 text-[10px] font-bold">
-                                        {['yes', 'limited', 'no'].map(level => {
-                                            const count = section.features.filter(f => {
-                                                const perm = sectionConfig.features[f.id];
-                                                return perm?.level === level;
-                                            }).length;
-                                            if (count === 0) return null;
-                                            return (
-                                                <span key={level} className={cn(
-                                                    "px-2 py-0.5 rounded",
-                                                    level === 'yes' && "bg-green-50 text-green-600",
-                                                    level === 'limited' && "bg-amber-50 text-amber-600",
-                                                    level === 'no' && "bg-red-50 text-red-500",
-                                                )}>
-                                                    {level === 'yes' ? '✓' : level === 'limited' ? '~' : '✗'} {count}
-                                                </span>
-                                            );
-                                        })}
-                                    </div>
-                                )}
                             </button>
 
                             <AnimatePresence initial={false}>
-                                {isOpen && (
+                                {isSectionExpanded && (
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
@@ -447,90 +423,137 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                                         transition={{ duration: 0.2 }}
                                         className="overflow-hidden"
                                     >
-                                        <div className="border-t border-gray-50">
-                                            {section.features.map((feature, fi) => {
-                                                const perm = sectionConfig?.features[feature.id] || { level: 'no' as PermissionLevel };
-                                                const isChild = !!feature.parentId;
-                                                const LevelIcon = getLevelIcon(perm.level);
+                                        <div className="border-t border-gray-50 divide-y divide-gray-50">
+                                            {topLevelFeatures.map(item => {
+                                                const children = childrenByParent[item.id] || [];
+                                                const hasChildren = children.length > 0;
+
+                                                if (hasChildren) {
+                                                    const isParentExpanded = expandedParents[item.id] ?? false;
+                                                    const childrenEnabled = children.filter(c => {
+                                                        const p = sectionConfig?.features[c.id];
+                                                        return p && p.level !== 'no';
+                                                    }).length;
+
+                                                    return (
+                                                        <div key={item.id}>
+                                                            {/* Parent item row — click anywhere to expand */}
+                                                            <button
+                                                                onClick={() => toggleParent(item.id)}
+                                                                className="w-full flex items-center justify-between px-5 py-3 bg-gray-50/50 hover:bg-gray-100/50 transition-colors text-left"
+                                                            >
+                                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                    {isParentExpanded
+                                                                        ? <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                                                                        : <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                                                                    }
+                                                                    <span className="text-sm font-bold text-gray-800">{item.label}</span>
+                                                                </div>
+                                                                <span className="text-[10px] font-bold text-gray-400">
+                                                                    {childrenEnabled}/{children.length}
+                                                                </span>
+                                                            </button>
+
+                                                            {/* Children */}
+                                                            <AnimatePresence initial={false}>
+                                                                {isParentExpanded && (
+                                                                    <motion.div
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        transition={{ duration: 0.15 }}
+                                                                        className="overflow-hidden"
+                                                                    >
+                                                                        <div className="divide-y divide-gray-50">
+                                                                            {children.map(child => {
+                                                                                const childPerm = sectionConfig?.features[child.id] || { level: 'no' as PermissionLevel };
+                                                                                const isOn = childPerm.level !== 'no';
+                                                                                const canLimit = featureSupportsLimit(child.id);
+
+                                                                                return (
+                                                                                    <div key={child.id} className="flex items-center gap-2 px-5 py-2.5 pl-14">
+                                                                                        <Switch
+                                                                                            checked={isOn}
+                                                                                            onCheckedChange={() => toggleFeature(child.id)}
+                                                                                        />
+                                                                                        <span className="text-sm font-medium text-gray-700">
+                                                                                            {child.label}
+                                                                                        </span>
+
+                                                                                        {isOn && canLimit && (
+                                                                                            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+                                                                                                <input
+                                                                                                    type="number"
+                                                                                                    min="1"
+                                                                                                    value={childPerm.limit ?? ''}
+                                                                                                    onChange={(e) => {
+                                                                                                        if (e.target.value === '') {
+                                                                                                            setFeatureLevel(child.id, 'yes');
+                                                                                                        } else {
+                                                                                                            const v = parseInt(e.target.value, 10);
+                                                                                                            if (!isNaN(v) && v >= 1) updateLimit(child.id, v);
+                                                                                                        }
+                                                                                                    }}
+                                                                                                    placeholder="Unlimited"
+                                                                                                    className="w-14 h-5 text-xs font-bold text-amber-800 text-center bg-transparent border-none outline-none focus:ring-0 p-0 placeholder:text-amber-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                />
+                                                                                                {child.limitUnit && (
+                                                                                                    <span className="text-[10px] font-bold text-amber-600">{child.limitUnit}</span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {isOn && !canLimit && (
+                                                                                            <span className="text-[10px] font-bold text-green-600">On</span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                // Direct feature (no children)
+                                                const perm = sectionConfig?.features[item.id] || { level: 'no' as PermissionLevel };
+                                                const isOn = perm.level !== 'no';
+                                                const canLimit = featureSupportsLimit(item.id);
 
                                                 return (
-                                                    <div
-                                                        key={feature.id}
-                                                        className={cn(
-                                                            "flex items-center justify-between px-5 py-3 transition-colors",
-                                                            fi % 2 === 0 ? "bg-white" : "bg-gray-50/30",
-                                                            isChild && "pl-14"
-                                                        )}
-                                                    >
-                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                            {isChild && (
-                                                                <div className="size-1 rounded-full bg-gray-300 shrink-0" />
-                                                            )}
-                                                            <div className="min-w-0">
-                                                                <p className="text-sm font-bold text-gray-800 truncate">
-                                                                    {feature.label}
-                                                                </p>
-                                                            </div>
-                                                            {/* Inline editable limit input */}
-                                                            {perm.level === 'limited' && (
-                                                                <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200/80 rounded-lg px-2 py-1 shrink-0 shadow-sm">
-                                                                    <input
-                                                                        type="number"
-                                                                        min="1"
-                                                                        value={perm.limit ?? 50}
-                                                                        onChange={(e) => updateDirectLimit(feature.id, parseInt(e.target.value, 10))}
-                                                                        className="w-16 h-6 text-xs font-black text-amber-800 bg-white border border-amber-300 rounded text-center outline-none focus:ring-2 focus:ring-amber-500/30"
-                                                                    />
-                                                                    <span className="text-[10px] font-bold text-amber-700">
-                                                                        {feature.limitUnit || ''}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {perm.level === 'yes' && (
-                                                                <span className="text-[10px] font-bold text-green-600 shrink-0">
-                                                                    Unlimited
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                    <div key={item.id} className="flex items-center gap-2 px-5 py-3">
+                                                        <Switch
+                                                            checked={isOn}
+                                                            onCheckedChange={() => toggleFeature(item.id)}
+                                                        />
+                                                        <span className="text-sm font-bold text-gray-800">{item.label}</span>
 
-                                                        {/* Segmented control */}
-                                                        <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 shrink-0">
-                                                            {(['yes', 'limited', 'no'] as PermissionLevel[]).map(level => {
-                                                                const isCurrent = perm.level === level;
-                                                                const Icon = getLevelIcon(level);
-                                                                return (
-                                                                    <button
-                                                                        key={level}
-                                                                        onClick={() => setFeatureLevel(feature.id, level)}
-                                                                        onDoubleClick={level === 'limited' && perm.level === 'limited' ? () => openLimitModal(feature.id) : undefined}
-                                                                        className={cn(
-                                                                            "px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1",
-                                                                            isCurrent
-                                                                                ? level === 'yes'
-                                                                                    ? 'bg-white text-green-600 shadow-sm'
-                                                                                    : level === 'limited'
-                                                                                        ? 'bg-white text-amber-600 shadow-sm'
-                                                                                        : 'bg-white text-red-500 shadow-sm'
-                                                                                : 'text-gray-400 hover:text-gray-600'
-                                                                        )}
-                                                                    >
-                                                                        <Icon size={11} />
-                                                                        <span className="hidden sm:inline">
-                                                                            {level === 'yes' ? 'Yes' : level === 'no' ? 'No' : 'Limited'}
-                                                                        </span>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                            {perm.level === 'limited' && (
-                                                                <button
-                                                                    onClick={() => openLimitModal(feature.id)}
-                                                                    className="px-1.5 py-1.5 rounded-md text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                                                                    title="Set limit"
-                                                                >
-                                                                    <Info size={12} />
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                        {isOn && canLimit && (
+                                                            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={perm.limit ?? ''}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.value === '') {
+                                                                            setFeatureLevel(item.id, 'yes');
+                                                                        } else {
+                                                                            const v = parseInt(e.target.value, 10);
+                                                                            if (!isNaN(v) && v >= 1) updateLimit(item.id, v);
+                                                                        }
+                                                                    }}
+                                                                    placeholder="Unlimited"
+                                                                    className="w-14 h-5 text-xs font-bold text-amber-800 text-center bg-transparent border-none outline-none focus:ring-0 p-0 placeholder:text-amber-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                />
+                                                                {item.limitUnit && (
+                                                                    <span className="text-[10px] font-bold text-amber-600">{item.limitUnit}</span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {isOn && !canLimit && (
+                                                            <span className="text-[10px] font-bold text-green-600">On</span>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -542,73 +565,6 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                     );
                 })}
             </div>
-
-            {/* Limit popover modal */}
-            <AnimatePresence>
-                {limitModal && (
-                    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setLimitModal(null)}
-                            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 space-y-5"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="size-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                                    <SlidersHorizontal size={18} className="text-amber-500" />
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-bold text-gray-900">
-                                        Set Feature Limit
-                                    </h3>
-                                    <p className="text-xs text-gray-400 font-medium">
-                                        {filteredSections.flatMap(s => s.features).find(f => f.id === limitModal.featureId)?.label || limitModal.featureId}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
-                                    Maximum Limit
-                                </label>
-                                <input
-                                    type="number"
-                                    value={limitInput}
-                                    onChange={(e) => setLimitInput(e.target.value)}
-                                    min={1}
-                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                    autoFocus
-                                />
-                                <p className="text-[10px] text-gray-400 mt-1.5 font-medium">
-                                    Set 0 to disable, or leave blank for unlimited (switch to Yes)
-                                </p>
-                            </div>
-
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setLimitModal(null)}
-                                    className="flex-1 h-11 bg-gray-100 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={saveLimit}
-                                    className="flex-1 h-11 bg-primary text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
-                                >
-                                    Apply Limit
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
         </div>
     );
 }

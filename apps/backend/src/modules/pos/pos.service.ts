@@ -38,6 +38,7 @@ import { PosSaleQueryDto } from './dto/pos-sale-query.dto';
 import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
 import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { PosCustomerQueryDto } from './dto/pos-customer-query.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
@@ -111,7 +112,9 @@ export class PosService {
       if (!branch) throw new NotFoundException('Branch not found');
 
       if (branch.businessId !== cashier.businessId) {
-        throw new BadRequestException('Branch does not belong to your business');
+        throw new BadRequestException(
+          'Branch does not belong to your business',
+        );
       }
 
       if (dto.clientRef) {
@@ -154,7 +157,8 @@ export class PosService {
         }
 
         const itemDiscount = itemDto.discount || 0;
-        const lineTotal = Number(product.price) * itemDto.quantity - itemDiscount;
+        const lineTotal =
+          Number(product.price) * itemDto.quantity - itemDiscount;
 
         const saleItem = saleItemRepo.create({
           productId: itemDto.productId,
@@ -180,7 +184,10 @@ export class PosService {
       const totalDiscountAmount = totalDiscount + cartDiscount;
       const tax = 0;
       const total = subtotal - totalDiscountAmount + tax;
-      const receiptNumber = await this.generateReceiptNumber(branch.businessId, manager);
+      const receiptNumber = await this.generateReceiptNumber(
+        branch.businessId,
+        manager,
+      );
 
       if (dto.payment.method === PaymentMethod.SPLIT) {
         if (!dto.payment.splitDetails || dto.payment.splitDetails.length < 2) {
@@ -260,13 +267,16 @@ export class PosService {
         await userRepo.save(customer);
       }
 
-      await this.recordFosTransaction({
-        businessId: branch.businessId,
-        amount: total,
-        paymentMethod: dto.payment.method,
-        referenceId: savedSale.id,
-        description: `POS Sale ${receiptNumber}`,
-      }, manager);
+      await this.recordFosTransaction(
+        {
+          businessId: branch.businessId,
+          amount: total,
+          paymentMethod: dto.payment.method,
+          referenceId: savedSale.id,
+          description: `POS Sale ${receiptNumber}`,
+        },
+        manager,
+      );
 
       const openRegister = await registerSessionRepo.findOne({
         where: {
@@ -278,7 +288,8 @@ export class PosService {
 
       if (openRegister) {
         openRegister.totalSales = Number(openRegister.totalSales) + total;
-        openRegister.transactionCount = Number(openRegister.transactionCount) + 1;
+        openRegister.transactionCount =
+          Number(openRegister.transactionCount) + 1;
         if (dto.payment.method === PaymentMethod.CASH) {
           openRegister.expectedCash =
             Number(openRegister.expectedCash) + dto.payment.amountPaid;
@@ -294,16 +305,23 @@ export class PosService {
           });
           if (business?.posSettings?.loyaltyEnabled) {
             let totalPoints = 0;
+            let totalSpent = 0;
             for (const item of items) {
               if (item.productId) {
                 const product = await productRepo.findOne({
                   where: { id: item.productId },
                 });
-                if (product?.enableLoyaltyPoints && product.loyaltyPointsValue) {
+                if (
+                  product?.enableLoyaltyPoints &&
+                  product.loyaltyPointsValue
+                ) {
                   totalPoints += product.loyaltyPointsValue * item.quantity;
                 } else if (product?.loyaltyPoints) {
                   // Fallback to legacy loyaltyPoints field
                   totalPoints += product.loyaltyPoints * item.quantity;
+                }
+                if (product?.price) {
+                  totalSpent += product.price * item.quantity;
                 }
               }
             }
@@ -316,6 +334,30 @@ export class PosService {
                 `POS Sale ${receiptNumber}`,
                 cashier.id,
               );
+            } else {
+              // Fall back to the business's active loyalty rule (spending-based)
+              const rule = await this.loyaltyService.getRules(
+                branch.businessId,
+                branch.id,
+              );
+              if (rule?.isActive && rule.spendingBaseAmount > 0) {
+                if (totalSpent > 0) {
+                  const rulePoints = Math.floor(
+                    (totalSpent / rule.spendingBaseAmount) *
+                      rule.spendingBasePoints,
+                  );
+                  if (rulePoints > 0) {
+                    await this.loyaltyService.awardPoints(
+                      customer.id,
+                      rulePoints,
+                      branch.businessId,
+                      branch.id,
+                      `POS Sale ${receiptNumber} (spending-based)`,
+                      cashier.id,
+                    );
+                  }
+                }
+              }
             }
           }
         } catch (error) {
@@ -760,53 +802,61 @@ export class PosService {
       dateTo,
       search,
     } = query;
-    const skip = (page - 1) * limit;
+    const qb = this.saleRepository
+      .createQueryBuilder('sale')
+      .leftJoinAndSelect('sale.items', 'items')
+      .leftJoinAndSelect('sale.splitPayments', 'splitPayments')
+      .leftJoinAndSelect('sale.customer', 'customer')
+      .leftJoinAndSelect('sale.cashier', 'cashier')
+      .leftJoinAndSelect('sale.branch', 'branch')
+      .where('sale.businessId = :businessId', { businessId });
 
-    const where: any = { businessId };
-
-    if (status) where.status = status;
-    if (paymentMethod) where.paymentMethod = paymentMethod;
-    if (branchId) where.branchId = branchId;
-    if (cashierId) where.cashierId = cashierId;
+    if (status) qb.andWhere('sale.status = :status', { status });
+    if (paymentMethod)
+      qb.andWhere('sale.paymentMethod = :paymentMethod', { paymentMethod });
+    if (branchId) qb.andWhere('sale.branchId = :branchId', { branchId });
+    if (cashierId) qb.andWhere('sale.cashierId = :cashierId', { cashierId });
 
     if (dateFrom || dateTo) {
       const start = dateFrom ? new Date(dateFrom) : new Date(0);
       const end = dateTo ? new Date(dateTo) : new Date();
       end.setHours(23, 59, 59, 999);
-      where.createdAt = Between(start, end);
+      qb.andWhere('sale.createdAt BETWEEN :start AND :end', { start, end });
     }
 
     if (search) {
-      const [data, total] = await this.saleRepository.findAndCount({
-        where: [
-          { ...where, receiptNumber: ILike(`%${search}%`) },
-          { ...where, cashierName: ILike(`%${search}%`) },
-          { ...where, customer: { firstName: ILike(`%${search}%`) } },
-          { ...where, customer: { lastName: ILike(`%${search}%`) } },
-          { ...where, customer: { phone: ILike(`%${search}%`) } },
-        ],
-        relations: ['items', 'splitPayments', 'customer', 'cashier', 'branch'],
-        order: { createdAt: 'DESC' },
-        skip,
-        take: limit,
-      });
-
-      return { data, total, page, limit };
+      qb.andWhere(
+        '(sale.receiptNumber ILIKE :search OR sale.cashierName ILIKE :search OR customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.phone ILIKE :search)',
+        { search: `%${search}%` },
+      );
     }
 
-    const [data, total] = await this.saleRepository.findAndCount({
-      where,
-      relations: ['items', 'splitPayments', 'customer', 'cashier', 'branch'],
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'sale',
     });
 
-    return { data, total, page, limit };
+    return {
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+    };
   }
 
   async findOneSale(id: string, businessId: string, manager?: EntityManager) {
-    const saleRepo = manager ? manager.getRepository(PosSale) : this.saleRepository;
+    const saleRepo = manager
+      ? manager.getRepository(PosSale)
+      : this.saleRepository;
     const sale = await saleRepo.findOne({
       where: { id, businessId },
       relations: [
@@ -1267,7 +1317,7 @@ export class PosService {
       .getRawOne();
 
     const customers = await qb
-      .orderBy('totalSpent', 'DESC')
+      .orderBy('"totalSpent"', 'DESC')
       .offset(skip)
       .limit(limit)
       .getRawMany();
@@ -1360,11 +1410,16 @@ export class PosService {
     };
   }
 
-  private async generateReceiptNumber(businessId: string, manager?: EntityManager): Promise<string> {
+  private async generateReceiptNumber(
+    businessId: string,
+    manager?: EntityManager,
+  ): Promise<string> {
     const date = new Date();
     const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
 
-    const saleRepo = manager ? manager.getRepository(PosSale) : this.saleRepository;
+    const saleRepo = manager
+      ? manager.getRepository(PosSale)
+      : this.saleRepository;
     const count = await saleRepo.count({
       where: {
         businessId,
@@ -1390,7 +1445,9 @@ export class PosService {
     },
     manager?: EntityManager,
   ) {
-    const fosRepo = manager ? manager.getRepository(FinancialTransaction) : this.fosTransactionRepository;
+    const fosRepo = manager
+      ? manager.getRepository(FinancialTransaction)
+      : this.fosTransactionRepository;
     const transaction = fosRepo.create({
       type: data.type || FosTransactionType.POS_SALE,
       platform: FosPlatform.VEMTAP,

@@ -33,7 +33,11 @@ export class FraudAlert extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   customerId: string;
 
-  @Column({ type: 'simple-enum', enum: FraudSeverity, default: FraudSeverity.MEDIUM })
+  @Column({
+    type: 'simple-enum',
+    enum: FraudSeverity,
+    default: FraudSeverity.MEDIUM,
+  })
   severity: FraudSeverity;
 
   @Column({ type: 'int', default: 0 })

@@ -22,7 +22,10 @@ import {
 import { User, UserRole } from '../users/entities/user.entity';
 import { SettingsService } from '../settings/settings.service';
 import { ExternalAffiliateService } from './external-affiliate.service';
-import { Business, BusinessStatus } from '../businesses/entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../businesses/entities/business.entity';
 
 @Injectable()
 export class AffiliatesService {
@@ -83,7 +86,9 @@ export class AffiliatesService {
       }
     }
     if (!profile) {
-      throw new NotFoundException('Could not retrieve or create affiliate profile');
+      throw new NotFoundException(
+        'Could not retrieve or create affiliate profile',
+      );
     }
     return profile;
   }
@@ -188,7 +193,9 @@ export class AffiliatesService {
 
     if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
       const businessRepository = this.dataSource.getRepository(Business);
-      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      const business = await businessRepository.findOne({
+        where: { ownerId: userId },
+      });
       if (!business) {
         return {
           totalEarnings: 0,
@@ -205,7 +212,10 @@ export class AffiliatesService {
       });
 
       const activeReferrals = await businessRepository.count({
-        where: { referralCode: business.uniqueCode, status: BusinessStatus.ACTIVE },
+        where: {
+          referralCode: business.uniqueCode,
+          status: BusinessStatus.ACTIVE,
+        },
       });
 
       return {
@@ -246,7 +256,9 @@ export class AffiliatesService {
 
     if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
       const businessRepository = this.dataSource.getRepository(Business);
-      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      const business = await businessRepository.findOne({
+        where: { ownerId: userId },
+      });
       if (!business) return [];
 
       const referred = await businessRepository.find({
@@ -254,7 +266,7 @@ export class AffiliatesService {
         order: { createdAt: 'DESC' },
       });
 
-      return referred.map(b => ({
+      return referred.map((b) => ({
         id: b.id,
         status: b.status === 'active' ? 'Converted' : 'Pending',
         createdAt: b.createdAt,
@@ -320,7 +332,8 @@ export class AffiliatesService {
         status: WithdrawalStatus.PENDING,
       });
 
-      txnProfile.availableBalance = Number(txnProfile.availableBalance) - amount;
+      txnProfile.availableBalance =
+        Number(txnProfile.availableBalance) - amount;
       await manager.save(txnProfile);
 
       return manager.save(request);
@@ -335,7 +348,9 @@ export class AffiliatesService {
 
     if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
       const businessRepository = this.dataSource.getRepository(Business);
-      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      const business = await businessRepository.findOne({
+        where: { ownerId: userId },
+      });
       if (!business) return [];
 
       const referred = await businessRepository.find({
@@ -344,7 +359,7 @@ export class AffiliatesService {
         take: limit,
       });
 
-      return referred.map(b => ({
+      return referred.map((b) => ({
         type: 'referral',
         title: 'New Partner Joined',
         desc: `${b.name} signed up`,
@@ -426,7 +441,9 @@ export class AffiliatesService {
 
     if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
       const businessRepository = this.dataSource.getRepository(Business);
-      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      const business = await businessRepository.findOne({
+        where: { ownerId: userId },
+      });
       if (!business) {
         return monthNames.slice(0, 7).map((name) => ({ name, earnings: 0 }));
       }
@@ -435,7 +452,9 @@ export class AffiliatesService {
         .createQueryBuilder('b')
         .select("TO_CHAR(b.createdAt, 'Mon')", 'month')
         .addSelect('COUNT(b.id)', 'earnings')
-        .where('b.referralCode = :referralCode', { referralCode: business.uniqueCode })
+        .where('b.referralCode = :referralCode', {
+          referralCode: business.uniqueCode,
+        })
         .groupBy("TO_CHAR(b.createdAt, 'Mon')")
         .addGroupBy("DATE_TRUNC('month', b.createdAt)")
         .orderBy("DATE_TRUNC('month', b.createdAt)", 'ASC')
@@ -479,7 +498,10 @@ export class AffiliatesService {
    * Gets leaderboard (filtered by role type to separate agents vs business owners)
    */
   async getLeaderboard(currentUserRole?: UserRole, limit = 10): Promise<any[]> {
-    if (currentUserRole === UserRole.OWNER || currentUserRole === UserRole.MANAGER) {
+    if (
+      currentUserRole === UserRole.OWNER ||
+      currentUserRole === UserRole.MANAGER
+    ) {
       const businessRepository = this.dataSource.getRepository(Business);
       const rawLeaderboard = await businessRepository
         .createQueryBuilder('b')
@@ -491,7 +513,9 @@ export class AffiliatesService {
         .take(limit)
         .getRawMany();
 
-      const uniqueCodes = rawLeaderboard.map(item => item.referralCode).filter(Boolean);
+      const uniqueCodes = rawLeaderboard
+        .map((item) => item.referralCode)
+        .filter(Boolean);
       if (uniqueCodes.length === 0) return [];
 
       const referringBusinesses = await businessRepository.find({
@@ -500,7 +524,9 @@ export class AffiliatesService {
 
       return rawLeaderboard
         .map((item, idx) => {
-          const referring = referringBusinesses.find(b => b.uniqueCode === item.referralCode);
+          const referring = referringBusinesses.find(
+            (b) => b.uniqueCode === item.referralCode,
+          );
           if (!referring) return null;
           return {
             name: referring.name,
@@ -514,7 +540,8 @@ export class AffiliatesService {
         .filter(Boolean);
     }
 
-    const qb = this.profileRepository.createQueryBuilder('p')
+    const qb = this.profileRepository
+      .createQueryBuilder('p')
       .innerJoinAndSelect('p.user', 'u');
 
     if (currentUserRole) {
@@ -523,8 +550,7 @@ export class AffiliatesService {
       }
     }
 
-    qb.orderBy('p.totalEarnings', 'DESC')
-      .take(limit);
+    qb.orderBy('p.totalEarnings', 'DESC').take(limit);
 
     const topProfiles = await qb.getMany();
 
@@ -539,12 +565,16 @@ export class AffiliatesService {
   /**
    * Gets the full profile for an affiliate
    */
-  async getProfile(userId: string): Promise<AffiliateProfile | Record<string, unknown>> {
+  async getProfile(
+    userId: string,
+  ): Promise<AffiliateProfile | Record<string, unknown>> {
     const user = await this.resolveUser(userId);
 
     if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
       const businessRepository = this.dataSource.getRepository(Business);
-      const business = await businessRepository.findOne({ where: { ownerId: userId } });
+      const business = await businessRepository.findOne({
+        where: { ownerId: userId },
+      });
       if (!business) throw new NotFoundException('Business not found');
 
       // Return a business-shaped profile summary — NOT an AffiliateProfile.
@@ -555,7 +585,10 @@ export class AffiliatesService {
         referralCode: business.uniqueCode,
         totalEarnings: Number(business.balance),
         availableBalance: Number(business.balance),
-        kycStatus: business.status === BusinessStatus.ACTIVE ? KycStatus.VERIFIED : KycStatus.PENDING,
+        kycStatus:
+          business.status === BusinessStatus.ACTIVE
+            ? KycStatus.VERIFIED
+            : KycStatus.PENDING,
         bankAccountDetails: null,
       };
     }
@@ -629,7 +662,9 @@ export class AffiliatesService {
       existing.status !== WithdrawalStatus.PENDING &&
       existing.status !== WithdrawalStatus.APPROVED
     ) {
-      throw new BadRequestException('Request has already been processed or rejected');
+      throw new BadRequestException(
+        'Request has already been processed or rejected',
+      );
     }
 
     // If PAID, fire external sync BEFORE the transaction (network call shouldn't hold a DB lock)
@@ -679,7 +714,8 @@ export class AffiliatesService {
           .createQueryBuilder()
           .update(AffiliateProfile)
           .set({
-            availableBalance: () => `"availableBalance" + ${Number(request.amount)}`,
+            availableBalance: () =>
+              `"availableBalance" + ${Number(request.amount)}`,
           })
           .where('id = :id', { id: request.affiliateId })
           .execute();
@@ -839,7 +875,8 @@ export class AffiliatesService {
     });
     return {
       referralCode: profile.referralCode,
-      businessName: business?.name || profile.user.firstName || 'A VEMTAP partner',
+      businessName:
+        business?.name || profile.user.firstName || 'A VEMTAP partner',
     };
   }
 

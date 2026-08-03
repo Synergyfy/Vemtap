@@ -132,7 +132,10 @@ export class CatalogueOffer extends AbstractBaseEntity {
   audience: string | null;
 
   @ApiProperty({
-    example: ['Valid during business hours', 'Cannot be combined with other offers'],
+    example: [
+      'Valid during business hours',
+      'Cannot be combined with other offers',
+    ],
     description: 'Custom terms and conditions for the offer',
     nullable: true,
   })
@@ -149,7 +152,8 @@ export class CatalogueOffer extends AbstractBaseEntity {
 
   @ApiProperty({
     example: 1,
-    description: 'Maximum number of times a single customer can claim this offer',
+    description:
+      'Maximum number of times a single customer can claim this offer',
     nullable: true,
   })
   @Column({ type: 'int', nullable: true, default: 1 })
@@ -162,6 +166,73 @@ export class CatalogueOffer extends AbstractBaseEntity {
   })
   @Column({ type: 'varchar', nullable: true, default: 'all' })
   audienceTarget: string | null;
+
+  @ApiProperty({
+    example: 'same_area',
+    description:
+      'Delivery scope: same_area, city_wide, state_wide, nation_wide, custom_distance',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', nullable: true })
+  deliveryScope: string | null;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Delivery radius in specified unit (1–50)',
+    nullable: true,
+  })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v != null ? parseFloat(v) : null),
+    },
+  })
+  deliveryRadius: number | null;
+
+  @ApiProperty({
+    example: 'km',
+    description: 'Delivery radius unit (km or mi)',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', nullable: true })
+  deliveryUnit: string | null;
+
+  @ApiProperty({
+    example: 'Lagos State',
+    description: 'Delivery region auto-filled from branch location',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', nullable: true })
+  deliveryRegion: string | null;
+
+  @ApiProperty({
+    example: 50.0,
+    description: 'Minimum order amount for free delivery offers',
+    nullable: true,
+  })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v != null ? parseFloat(v) : null),
+    },
+  })
+  minOrderAmount: number | null;
+
+  @ApiProperty({
+    example: 'Detailed description with terms and item information',
+    description: 'Extended detailed description for offer details',
+    nullable: true,
+  })
+  @Column({ type: 'text', nullable: true })
+  longDescription: string | null;
 
   @ApiProperty({
     example: 120,

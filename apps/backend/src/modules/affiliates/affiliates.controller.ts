@@ -11,14 +11,20 @@ import {
   ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiBody,
+} from '@nestjs/swagger';
 import { AffiliatesService } from './affiliates.service';
 import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service';
 import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
 import { WithdrawRequestDto } from './dto/withdraw-request.dto';
-import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateAffiliateProfileDto } from './dto/update-profile.dto';
 import { AffiliateStatsDto } from './dto/affiliate-stats.dto';
 import { AffiliateActivityDto } from './dto/affiliate-activity.dto';
 import { AffiliatePerformanceDto } from './dto/affiliate-performance.dto';
@@ -28,7 +34,10 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
-import { KycStatus, AffiliateProfile } from './entities/affiliate-profile.entity';
+import {
+  KycStatus,
+  AffiliateProfile,
+} from './entities/affiliate-profile.entity';
 import { AffiliateWithdrawalRequest } from './entities/withdrawal-request.entity';
 
 @ApiTags('Affiliates')
@@ -103,7 +112,7 @@ export class AffiliatesController {
   @ApiOkResponse({ type: AffiliateProfile })
   async updateProfile(
     @Req() req,
-    @Body() data: UpdateProfileDto,
+    @Body() data: UpdateAffiliateProfileDto,
   ): Promise<AffiliateProfile> {
     return this.affiliatesService.updateProfile(req.user.id, data);
   }

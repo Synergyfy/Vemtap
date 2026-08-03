@@ -32,6 +32,10 @@ export class CreditPlan extends AbstractBaseEntity {
   @Column({ type: 'int', default: 0 })
   whatsappAmount: number;
 
+  @ApiProperty({ example: 10 })
+  @Column({ type: 'int', default: 0 })
+  aiAmount: number;
+
   @ApiProperty({ example: true })
   @Column({ default: true })
   isActive: boolean;

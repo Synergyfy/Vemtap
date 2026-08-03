@@ -22,12 +22,7 @@ interface TwilioWebhookPayload {
   MessageSid?: string;
   Body?: string;
   MessageStatus?:
-    | 'queued'
-    | 'failed'
-    | 'sent'
-    | 'delivered'
-    | 'undelivered'
-    | 'read';
+    'queued' | 'failed' | 'sent' | 'delivered' | 'undelivered' | 'read';
   ErrorCode?: string;
   ErrorMessage?: string;
   [key: string]: any;

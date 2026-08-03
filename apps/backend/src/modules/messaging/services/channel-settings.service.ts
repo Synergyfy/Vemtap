@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -45,8 +49,13 @@ export class ChannelSettingsService {
 
       return setting;
     } catch (error: any) {
-      this.logger.error(`Failed to retrieve channel settings for business ${businessId}`, error.stack);
-      throw new InternalServerErrorException('Failed to retrieve messaging channel settings');
+      this.logger.error(
+        `Failed to retrieve channel settings for business ${businessId}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Failed to retrieve messaging channel settings',
+      );
     }
   }
 
@@ -104,9 +113,16 @@ export class ChannelSettingsService {
 
       if (
         dto.generateDnsRecords ||
-        (dto.emailCustomDomain && (!setting.emailDnsRecords || setting.emailDnsRecords.length === 0))
+        (dto.emailCustomDomain &&
+          (!setting.emailDnsRecords || setting.emailDnsRecords.length === 0))
       ) {
-        const domain = (dto.emailCustomDomain || setting.emailCustomDomain || 'vemtap.com').trim().toLowerCase();
+        const domain = (
+          dto.emailCustomDomain ||
+          setting.emailCustomDomain ||
+          'vemtap.com'
+        )
+          .trim()
+          .toLowerCase();
         setting.emailDnsRecords = [
           {
             type: 'TXT',
@@ -135,8 +151,13 @@ export class ChannelSettingsService {
 
       return await this.settingsRepo.save(setting);
     } catch (error: any) {
-      this.logger.error(`Failed to update channel settings for business ${businessId}`, error.stack);
-      throw new InternalServerErrorException('Failed to save messaging channel settings');
+      this.logger.error(
+        `Failed to update channel settings for business ${businessId}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Failed to save messaging channel settings',
+      );
     }
   }
 }

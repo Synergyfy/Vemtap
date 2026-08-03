@@ -9,6 +9,8 @@ interface PageLockWrapperProps {
   children: React.ReactNode;
   feature: string;
   featureName: string;
+  hideUsage?: boolean;
+  usedOverride?: number;
 }
 
 const FEATURE_TO_CAP_KEY: Record<string, string> = {
@@ -23,9 +25,11 @@ const FEATURE_TO_CAP_KEY: Record<string, string> = {
   'inventory': 'inventory',
   'pos': 'pos',
   'forms': 'forms',
+  'marketing-kit': 'marketingKit',
+  'discovery': 'discovery',
 };
 
-export default function PageLockWrapper({ children, feature, featureName }: PageLockWrapperProps) {
+export default function PageLockWrapper({ children, feature, featureName, hideUsage, usedOverride }: PageLockWrapperProps) {
   const { capabilities, fetchSubscriptionData, isFeatureLocked } = useSubscriptionStore();
 
   useEffect(() => {
@@ -82,7 +86,7 @@ export default function PageLockWrapper({ children, feature, featureName }: Page
 
   const capKey = FEATURE_TO_CAP_KEY[feature];
   const capData = capKey ? (capabilities.capabilities as any)?.[capKey] : null;
-  const showUsage = capData && (capData.limit !== undefined || capData.used !== undefined);
+  const showUsage = !hideUsage && capData && (capData.limit !== undefined || capData.used !== undefined);
 
   return (
     <>
@@ -91,10 +95,10 @@ export default function PageLockWrapper({ children, feature, featureName }: Page
           <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
             <span>{featureName}</span>
             <span>
-              {capData.used ?? 0} / {capData.limit === -1 ? 'Unlimited' : (capData.limit ?? 0)} used
+              {usedOverride ?? capData.used ?? 0} / {capData.limit === -1 ? 'Unlimited' : (capData.limit ?? 0)} used
               {typeof capData.limit === 'number' && capData.limit > 0 && (
                 <span className="ml-2 text-gray-400">
-                  ({Math.round((capData.used / capData.limit) * 100)}%)
+                  ({Math.round(((usedOverride ?? capData.used ?? 0) / capData.limit) * 100)}%)
                 </span>
               )}
             </span>

@@ -193,7 +193,10 @@ export class UpdateBusinessDto {
     staffActivityAlerts?: boolean;
   };
 
-  @ApiPropertyOptional({ example: 'VEM-ABC-1234', description: 'Referral code from an affiliate partner' })
+  @ApiPropertyOptional({
+    example: 'VEM-ABC-1234',
+    description: 'Referral code from an affiliate partner',
+  })
   @IsOptional()
   @IsString()
   referralCode?: string;

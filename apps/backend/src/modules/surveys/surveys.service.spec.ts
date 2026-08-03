@@ -68,7 +68,7 @@ describe('SurveysService', () => {
         branchId: 'branch-1',
       });
 
-      const result = await service.createOrUpdate('branch-1', dto as any);
+      const result = await service.createOrUpdate('branch-1', dto);
       expect(result.branchId).toBe('branch-1');
     });
   });

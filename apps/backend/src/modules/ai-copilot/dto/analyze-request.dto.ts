@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsObject, MaxLength, Matches } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsObject,
+  MaxLength,
+  Matches,
+} from 'class-validator';
 
 export class AnalyzeRequestDto {
   @IsString()

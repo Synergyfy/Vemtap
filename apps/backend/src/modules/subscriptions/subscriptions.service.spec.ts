@@ -136,10 +136,22 @@ describe('SubscriptionsService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        { provide: getRepositoryToken(CatalogueItem), useValue: { count: jest.fn().mockResolvedValue(0) } },
-        { provide: getRepositoryToken(CatalogueOffer), useValue: { count: jest.fn().mockResolvedValue(0) } },
-        { provide: getRepositoryToken(CatalogueCategory), useValue: { count: jest.fn().mockResolvedValue(0) } },
-        { provide: getRepositoryToken(AutomationRule), useValue: { count: jest.fn().mockResolvedValue(0) } },
+        {
+          provide: getRepositoryToken(CatalogueItem),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(CatalogueOffer),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(CatalogueCategory),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(AutomationRule),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
         SubscriptionsService,
         {
           provide: getRepositoryToken(Subscription),
@@ -393,14 +405,16 @@ describe('SubscriptionsService', () => {
         automationsEnabled: true,
         maxAutomations: -1,
       };
-      
+
       const activeSub = {
         ...mockSubscription,
         plan: unlimitedPlan,
       };
 
       mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
-      mockBranchRepo.find.mockResolvedValueOnce([{ id: 'br-1', isMainBranch: true }]);
+      mockBranchRepo.find.mockResolvedValueOnce([
+        { id: 'br-1', isMainBranch: true },
+      ]);
       mockUserRepo.count.mockResolvedValueOnce(2);
       mockDeviceRepo.count.mockResolvedValueOnce(0);
 
@@ -437,14 +451,16 @@ describe('SubscriptionsService', () => {
         loyaltyLimit: 3,
         maxAutomations: 10,
       };
-      
+
       const activeSub = {
         ...mockSubscription,
         plan: finitePlan,
       };
 
       mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
-      mockBranchRepo.find.mockResolvedValueOnce([{ id: 'br-1', isMainBranch: true }]);
+      mockBranchRepo.find.mockResolvedValueOnce([
+        { id: 'br-1', isMainBranch: true },
+      ]);
       mockUserRepo.count.mockResolvedValueOnce(2);
       mockDeviceRepo.count.mockResolvedValueOnce(0);
 
@@ -475,14 +491,16 @@ describe('SubscriptionsService', () => {
         automationsEnabled: true,
         maxAutomations: null,
       };
-      
+
       const activeSub = {
         ...mockSubscription,
         plan: nullLimitPlan,
       };
 
       mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
-      mockBranchRepo.find.mockResolvedValueOnce([{ id: 'br-1', isMainBranch: true }]);
+      mockBranchRepo.find.mockResolvedValueOnce([
+        { id: 'br-1', isMainBranch: true },
+      ]);
       mockUserRepo.count.mockResolvedValueOnce(2);
       mockDeviceRepo.count.mockResolvedValueOnce(0);
 
@@ -514,7 +532,9 @@ describe('SubscriptionsService', () => {
   describe('cancelSubscription', () => {
     it('should cancel active subscription successfully', async () => {
       mockSubRepository.findOne.mockResolvedValueOnce(mockSubscription);
-      mockSubRepository.save.mockImplementationOnce((sub) => Promise.resolve(sub));
+      mockSubRepository.save.mockImplementationOnce((sub) =>
+        Promise.resolve(sub),
+      );
 
       const result = await service.cancelSubscription('b1');
       expect(result.message).toBe('Subscription cancelled successfully');

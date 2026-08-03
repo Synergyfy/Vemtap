@@ -116,10 +116,7 @@ export class ChatSettingsService {
         throw new BadRequestException(`Invalid day: ${day}`);
       }
 
-      const { startTime, endTime } = config as {
-        startTime: string;
-        endTime: string;
-      };
+      const { startTime, endTime } = config;
       if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
         throw new BadRequestException(
           `Invalid time format for ${day}. Use HH:mm`,

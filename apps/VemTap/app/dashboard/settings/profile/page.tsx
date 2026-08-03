@@ -425,6 +425,11 @@ export default function BusinessProfilePage() {
             setOtherSubcategoryName(myBusiness?.otherSubcategoryName || '');
             setIsRegistered(myBusiness?.isRegistered || false);
             setRegistrationNumber(myBusiness?.registrationNumber || '');
+            if (myBusiness?.documents && Array.isArray(myBusiness.documents)) {
+                if (myBusiness.documents[0]) setCacDocument(myBusiness.documents[0]);
+                if (myBusiness.documents[1]) setIdDocument(myBusiness.documents[1]);
+                if (myBusiness.documents[2]) setUtilityBill(myBusiness.documents[2]);
+            }
             
             // For categories/location, use business data if available, else branch data
             setState(myBusiness?.state || source.state || '');
@@ -668,6 +673,8 @@ export default function BusinessProfilePage() {
             
             const docs = [];
             if (finalCacDocument) docs.push(finalCacDocument);
+            if (finalIdDocument) docs.push(finalIdDocument);
+            if (finalUtilityBill) docs.push(finalUtilityBill);
             if (docs.length > 0) businessUpdates.documents = docs;
 
             if (Object.keys(businessUpdates).length > 0) {
@@ -726,8 +733,6 @@ export default function BusinessProfilePage() {
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
                 if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
-                if (hasChanged(identityNumber, branch.identityNumber)) branchUpdates.identityNumber = identityNumber;
-                if (hasChanged(finalUtilityBill, branch.utilityBill)) branchUpdates.utilityBill = finalUtilityBill;
 
                 // Handle socials via engagement field in branch
                 const currentEngagement = branch.engagement || {};

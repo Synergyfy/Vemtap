@@ -76,7 +76,7 @@ export default function ProductsAndStockDashboard() {
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => router.push('/dashboard/inventory?add=true')}
+                onClick={() => router.push('/dashboard/catalogue/products')}
                 className="flex flex-col items-center justify-center gap-3 p-4 rounded-[24px] border transition-all active:scale-95 text-blue-500 bg-blue-50 border-blue-100"
               >
                 <Plus size={24} />

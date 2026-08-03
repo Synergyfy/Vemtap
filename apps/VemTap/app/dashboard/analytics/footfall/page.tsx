@@ -37,6 +37,37 @@ export default function FootfallReportsPage() {
         return [];
     };
 
+    const downloadReport = () => {
+        const esc = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        const rows: string[][] = [
+            ['Footfall Report'],
+            ['Generated', new Date().toLocaleString()],
+            [],
+            ['Metric', 'Value'],
+            ...stats.map((s) => [s.label, s.value]),
+            [],
+            ['Hour', 'Visits'],
+            ...hourlyData.map((d) => [d.hour, d.count]),
+            [],
+            ['Entrance', 'Count', 'Percentage'],
+            ...trafficByEntrance.map((e) => [e.name, e.count, e.percentage]),
+            [],
+            ['Average Stay', visitDuration.averageStay],
+            ['Trend vs last week', visitDuration.trendText],
+            ...durationDistribution.map((s) => [s.label, s.p, s.time]),
+        ];
+        const csv = rows.map((row) => row.map(esc).join(',')).join('\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `footfall-report-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     const stats = toList<any>(data.stats);
     const hourlyData = toList<any>(data.hourlyData);
     const trafficByEntrance = toList<any>(data.trafficByEntrance);
@@ -50,7 +81,7 @@ export default function FootfallReportsPage() {
                     title="Footfall Analysis"
                     description="Detailed tracking of physical visits and traffic patterns"
                     actions={
-                        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20">
+                        <button onClick={downloadReport} className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20">
                             <span className="material-icons-round text-lg">file_download</span>
                             Download Report
                         </button>

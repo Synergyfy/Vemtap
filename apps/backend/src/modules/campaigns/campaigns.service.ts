@@ -33,7 +33,7 @@ export class CampaignsService {
       ...createCampaignDto,
       branchId,
       businessId: branch.businessId,
-    } as Partial<Campaign>) as unknown as Campaign;
+    } as Partial<Campaign>);
 
     (campaign as any).sent = 0;
     (campaign as any).delivered = '0%';

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav-filter';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
@@ -62,24 +63,36 @@ function LoginPageContent() {
         return Object.keys(errors).length === 0;
     };
 
-    const routeAfterLogin = useCallback((role: string, businessId?: string, isNewUser?: boolean) => {
-        if (redirectTo) {
-            router.push(redirectTo);
-            return;
-        }
+    const routeAfterLogin = useCallback((role: string, businessId?: string, isNewUser?: boolean, permissions: string[] = []) => {
         const normalizedRole = role?.toLowerCase();
+        const isOwnerOrAdmin = normalizedRole === 'owner' || normalizedRole === 'admin';
+        const landing = getFirstPermittedDashboardRoute(normalizedRole, permissions);
+
+        // Only honor ?redirect= when the user can actually access the target.
+        // Otherwise fall through to the topmost page of their permission set.
+        if (redirectTo) {
+            const redirectAllowed =
+                !redirectTo.startsWith('/dashboard') ||
+                isOwnerOrAdmin ||
+                isRouteAllowed(redirectTo, normalizedRole, permissions, isOwnerOrAdmin);
+            if (redirectAllowed) {
+                router.push(redirectTo);
+                return;
+            }
+        }
+
         if (normalizedRole === 'admin') {
             router.push('/admin');
         } else if (normalizedRole === 'owner' && (!businessId || isNewUser)) {
             router.push('/onboarding');
         } else if (businessId && (normalizedRole === 'owner' || normalizedRole === 'manager' || normalizedRole === 'staff')) {
-            router.push('/dashboard');
+            router.push(landing ?? '/dashboard');
         } else if (normalizedRole === 'customer') {
             router.push('/customer/dashboard');
         } else {
-            router.push('/dashboard');
+            router.push(landing ?? '/dashboard');
         }
-    }, [router]);
+    }, [router, redirectTo]);
 
     const handleGoogleSuccess = useCallback(async (credentialResponse: any) => {
         if (!credentialResponse?.credential) {
@@ -97,7 +110,7 @@ function LoginPageContent() {
                 return;
             }
             storeLogin(response.user, response.access_token);
-            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
         } catch (err: any) {
             const message = err?.message || 'Google sign-in failed. Please try again.';
             setGeneralError(message);
@@ -127,7 +140,7 @@ function LoginPageContent() {
             }
 
             storeLogin(response.user, response.access_token);
-            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
         } catch (err: any) {
             const message = err?.message || 'Invalid email, phone number or password';
             setGeneralError(message);

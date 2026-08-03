@@ -9,7 +9,7 @@ import {
     TrendingUp, ArrowRight,
     ChevronRight, BarChart3, Settings as SettingsIcon,
     Activity, Sparkles, FileText, Package,
-    ChevronDown, ChevronUp, Bot
+    ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
@@ -24,8 +24,7 @@ import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 
-import { AIAdvisorCard, AISkeletonCard, PageGuideButton, AICopilotButton } from '@/components/ai';
-import { useAIAnalysis } from '@/services/ai/hooks';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 import { useAIStore } from '@/store/useAIStore';
 
 export default function DashboardPage() {
@@ -94,9 +93,6 @@ export default function DashboardPage() {
     // --- AI Integration ---
     const triggerAnalysis = useAIStore((state) => state.triggerAnalysis);
     const refreshKey = useAIStore((state) => state.refreshKeys['dashboard'] ?? 0);
-    const hasBeenTriggered = refreshKey > 0;
-
-    const { data: aiAnalysis, isLoading: isAiLoading, error: aiError, refetch: refetchAi } = useAIAnalysis('dashboard');
 
     const aiContext = useMemo(() => {
         const toNum = (v: unknown) => parseInt(String(v ?? '').replace(/[^0-9]/g, '') || '0', 10);
@@ -115,10 +111,6 @@ export default function DashboardPage() {
     }, [kpis, dashboard]);
 
     const handleRefreshAnalysis = useCallback(() => {
-        triggerAnalysis('dashboard', aiContext);
-    }, [triggerAnalysis, aiContext]);
-
-    const handleAskAI = useCallback((query: string) => {
         triggerAnalysis('dashboard', aiContext);
     }, [triggerAnalysis, aiContext]);
 
@@ -142,7 +134,7 @@ export default function DashboardPage() {
                             </div>
                         </section>
 
-                        <DashboardBannerWrapper />
+                        <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
 
                         <OnboardingChecklist />
 
@@ -439,7 +431,7 @@ export default function DashboardPage() {
                                 </button>
                             ))}
                         </section>
-                </div>
+                    </div>
             </main>
         </div>
     );

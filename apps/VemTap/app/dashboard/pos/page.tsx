@@ -114,10 +114,11 @@ export default function POSPage() {
   );
 
   return (
-    <PageLockWrapper feature="pos" featureName="POS">
-    <div className="h-full flex flex-col md:flex-row p-3 md:p-6 gap-4">
+    <PageLockWrapper feature="pos" featureName="POS" hideUsage>
+    <div className="h-full flex flex-col min-h-0">
       <OfflineBanner />
 
+      <div className="flex-1 flex flex-col md:flex-row p-3 md:p-6 gap-4 min-h-0">
       {/* Left: Main content — scrolls as a whole */}
       <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
         <POSHomeScreen
@@ -132,6 +133,7 @@ export default function POSPage() {
         <div className="flex-1 min-h-0 overflow-hidden">
           <CartPanel />
         </div>
+      </div>
       </div>
 
       {/* ─── MOBILE: Floating Cart FAB ─── */}

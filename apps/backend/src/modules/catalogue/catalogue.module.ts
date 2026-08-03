@@ -13,6 +13,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { CatalogueOfferClaim } from './entities/catalogue-offer-claim.entity';
 import { Otp } from '../auth/entities/otp.entity';
 import { MailModule } from '../mail/mail.module';
+import { AiCopilotModule } from '../ai-copilot/ai-copilot.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MailModule } from '../mail/mail.module';
     ]),
     SubscriptionsModule,
     MailModule,
+    AiCopilotModule,
   ],
   controllers: [
     AdminCatalogueController,

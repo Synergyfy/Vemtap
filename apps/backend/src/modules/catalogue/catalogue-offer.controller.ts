@@ -25,6 +25,7 @@ import {
   UpdateCatalogueOfferDto,
   CatalogueOfferQueryDto,
   PublicCatalogueOffersQueryDto,
+  GenerateOfferTermsDto,
 } from './dto/offer.dto';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -39,6 +40,20 @@ import { UserRole } from '../users/entities/user.entity';
 @Controller('catalogue/offers')
 export class CatalogueOfferController {
   constructor(private readonly offerService: CatalogueOfferService) {}
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Post('generate-terms')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('inventory')
+  @ApiOperation({
+    summary:
+      'AI-generate terms & conditions for an offer (Deducts 1 AI credit)',
+  })
+  async generateTerms(@Body() dto: GenerateOfferTermsDto, @Req() req: any) {
+    return this.offerService.generateTerms(dto, req.user.businessId);
+  }
 
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -86,7 +101,9 @@ export class CatalogueOfferController {
 
   @Public()
   @Get('public')
-  @ApiOperation({ summary: 'List active promotions across all branches (Public)' })
+  @ApiOperation({
+    summary: 'List active promotions across all branches (Public)',
+  })
   async listAllOffersPublic(@Query() query: PublicCatalogueOffersQueryDto) {
     return this.offerService.findAllOffersPublicGlobal(query);
   }
@@ -140,7 +157,9 @@ export class CatalogueOfferController {
   @Get('claims')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('inventory')
-  @ApiOperation({ summary: 'Get all promotion claims for the business (Admin)' })
+  @ApiOperation({
+    summary: 'Get all promotion claims for the business (Admin)',
+  })
   async getBusinessClaims(@Req() req: any) {
     return this.offerService.getBusinessClaims(req.user.businessId);
   }

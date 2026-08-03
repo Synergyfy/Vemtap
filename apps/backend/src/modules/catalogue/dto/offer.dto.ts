@@ -109,7 +109,12 @@ export class CreateCatalogueOfferDto {
   @IsString()
   audience?: string;
 
-  @ApiPropertyOptional({ example: ['Valid during business hours', 'Cannot be combined with other offers'] })
+  @ApiPropertyOptional({
+    example: [
+      'Valid during business hours',
+      'Cannot be combined with other offers',
+    ],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -131,6 +136,42 @@ export class CreateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   audienceTarget?: string;
+
+  @ApiPropertyOptional({ example: 'same_area' })
+  @IsOptional()
+  @IsString()
+  deliveryScope?: string;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  deliveryRadius?: number;
+
+  @ApiPropertyOptional({ example: 'km' })
+  @IsOptional()
+  @IsString()
+  deliveryUnit?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos State' })
+  @IsOptional()
+  @IsString()
+  deliveryRegion?: string;
+
+  @ApiPropertyOptional({ example: 50.0 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minOrderAmount?: number;
+
+  @ApiPropertyOptional({
+    example: 'Full terms, offer details, and eligible items description',
+  })
+  @IsOptional()
+  @IsString()
+  longDescription?: string;
 }
 
 export class UpdateCatalogueOfferDto {
@@ -246,6 +287,61 @@ export class UpdateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   audienceTarget?: string;
+
+  @ApiPropertyOptional({ example: 'same_area' })
+  @IsOptional()
+  @IsString()
+  deliveryScope?: string;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  deliveryRadius?: number;
+
+  @ApiPropertyOptional({ example: 'km' })
+  @IsOptional()
+  @IsString()
+  deliveryUnit?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos State' })
+  @IsOptional()
+  @IsString()
+  deliveryRegion?: string;
+
+  @ApiPropertyOptional({ example: 50.0 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minOrderAmount?: number;
+
+  @ApiPropertyOptional({
+    example: 'Full terms, offer details, and eligible items description',
+  })
+  @IsOptional()
+  @IsString()
+  longDescription?: string;
+}
+
+export class GenerateOfferTermsDto {
+  @ApiPropertyOptional({ example: 'Summer Special Buy 1 Get 1 Free' })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'Summer Special Buy 1 Get 1 Free' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({
+    example: 'Enjoy 50% off all summer beverages and snacks',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
 
 export class CatalogueOfferQueryDto {

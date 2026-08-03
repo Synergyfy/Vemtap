@@ -45,11 +45,7 @@ async function bootstrap() {
   };
 
   const statuses: (
-    | 'placed'
-    | 'processing'
-    | 'completed'
-    | 'cancelled'
-    | 'rejected'
+    'placed' | 'processing' | 'completed' | 'cancelled' | 'rejected'
   )[] = ['placed', 'processing', 'completed', 'cancelled', 'rejected'];
 
   console.log('Generating test emails...');

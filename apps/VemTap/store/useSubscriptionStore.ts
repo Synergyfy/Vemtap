@@ -118,6 +118,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           'catalogue_items': 'catalogueItems',
           'catalogue_categories': 'catalogueCategories',
           'catalogue_offers': 'catalogueOffers',
+          'marketing-kit': 'marketingKit',
+          'discovery': 'discovery',
         };
 
         const backendFeature = featureMapping[feature] || feature;
@@ -145,11 +147,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           return !caps.capabilities.teamMembers.enabled;
         }
 
-        if (backendFeature === 'catalogue') {
-          return !caps.capabilities.catalogueItems?.enabled;
-        }
-
-        if (backendFeature === 'catalogueItems') {
+        if (backendFeature === 'catalogue' || backendFeature === 'catalogueItems') {
           return !caps.capabilities.catalogueItems?.enabled;
         }
 
@@ -159,6 +157,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
         if (backendFeature === 'catalogueOffers') {
           return !caps.capabilities.catalogueOffers?.enabled;
+        }
+
+        // General check: if the capability exists on the response object with an 'enabled' field, use that directly
+        const cap = (caps.capabilities as any)[backendFeature] || (caps.capabilities as any)[feature];
+        if (cap && typeof cap.enabled === 'boolean') {
+          return !cap.enabled;
         }
 
         return !caps.capabilities.features.includes(backendFeature);

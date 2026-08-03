@@ -126,7 +126,9 @@ describe('SupportBotService', () => {
 
   describe('handleQuery - Keyword Matching Normalization', () => {
     it('should match even with punctuation', async () => {
-      jest.spyOn(knowledgeRepo, 'findOne').mockResolvedValue(mockKnowledge[0] as any);
+      jest
+        .spyOn(knowledgeRepo, 'findOne')
+        .mockResolvedValue(mockKnowledge[0] as any);
 
       const result = await service.handleQuery('user-1', {
         query: 'Credits??',

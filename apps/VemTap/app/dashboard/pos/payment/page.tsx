@@ -10,7 +10,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
-import { useRewards } from '@/services/loyalty/hooks';
+import { useRewards, useLoyaltyRules } from '@/services/loyalty/hooks';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
 import Receipt from '@/components/dashboard/pos/shared/Receipt';
 import { TouchKeypad } from '@/components/dashboard/pos/TouchKeypad';
@@ -40,11 +40,40 @@ export default function PaymentScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showLoyaltyOnReceipt, setShowLoyaltyOnReceipt] = useState(true);
   const { data: rewards = [] } = useRewards(activeBranchId ?? undefined, !!attachedCustomer);
+  const { data: loyaltyRule } = useLoyaltyRules(activeBranchId ?? undefined);
   const [redeemedReward, setRedeemedReward] = useState<{ name: string; discount: number } | null>(null);
-  const loyaltyPointsEarned = React.useMemo(() =>
+
+  const NETWORK_TIMEOUT_MS = 15000;
+
+  const isNetworkError = (err: any) => {
+    if (!err) return false;
+    const msg = String(err?.message || '');
+    return err instanceof TypeError
+      || err?.name === 'TypeError'
+      || err?.code === 'ERR_NETWORK'
+      || /failed to fetch|networkerror|network error|load failed|timeout/i.test(msg);
+  };
+
+  const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Network request timed out')), ms);
+      promise.then(
+        (v) => { clearTimeout(timer); resolve(v); },
+        (e) => { clearTimeout(timer); reject(e); },
+      );
+    });
+
+  const autoPoints = React.useMemo(() =>
     cart.reduce((sum, item) =>
       item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0)
-    + manualLoyaltyPoints, [cart, manualLoyaltyPoints]);
+    , [cart]);
+  const ruleBasedPoints = React.useMemo(() => {
+    if (!loyaltyRule?.isActive || !loyaltyRule.spendingBaseAmount || loyaltyRule.spendingBaseAmount <= 0) return 0;
+    const totalSpent = cart.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
+    if (totalSpent <= 0) return 0;
+    return Math.floor((totalSpent / loyaltyRule.spendingBaseAmount) * (loyaltyRule.spendingBasePoints || 1));
+  }, [cart, loyaltyRule]);
+  const loyaltyPointsEarned = (autoPoints > 0 ? autoPoints : ruleBasedPoints) + manualLoyaltyPoints;
 
   React.useEffect(() => {
     if (cart.length === 0) {
@@ -83,9 +112,9 @@ export default function PaymentScreen() {
   const goToSuccess = (sale: any) => {
     setLastCompletedSale(sale);
     if (attachedCustomer) {
-      const autoPoints = cart.reduce((sum, item) =>
+      const autoPts = cart.reduce((sum, item) =>
         item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
-      const totalPoints = autoPoints + manualLoyaltyPoints;
+      const totalPoints = (autoPts > 0 ? autoPts : ruleBasedPoints) + manualLoyaltyPoints;
       if (totalPoints > 0) {
         const { addPoints, setLastEarned } = usePosLoyaltyStore.getState();
         addPoints(attachedCustomer.id, totalPoints);
@@ -212,22 +241,35 @@ export default function PaymentScreen() {
         createdAt: new Date().toISOString(),
         retries: 0,
       });
+      toast.success('Payment saved offline — will sync automatically when back online');
       goToSuccess(buildOfflineSale());
+    };
+
+    const offlineFallback = async () => {
+      try {
+        await saveAndGoOffline();
+      } catch (err: any) {
+        toast.error(err?.message || 'Could not save the sale offline. Please try again.');
+        setIsProcessing(false);
+      }
     };
 
     // Offline-first: if offline, save locally and go to success immediately
     if (!navigator.onLine) {
-      await saveAndGoOffline();
+      await offlineFallback();
       return;
     }
 
     try {
-      const sale = await createSale.mutateAsync(salePayload);
+      // Bounded request: on flaky connections (WiFi up, server unreachable) the fetch
+      // can hang or fail as a network error — both fall back to the offline queue.
+      // Safe because the backend dedupes on clientRef, so a replayed sale returns
+      // the existing one instead of creating a duplicate.
+      const sale = await withTimeout(createSale.mutateAsync(salePayload), NETWORK_TIMEOUT_MS);
       goToSuccess(sale);
     } catch (err: any) {
-      // Also handle case where we went offline during the request
-      if (!navigator.onLine) {
-        await saveAndGoOffline();
+      if (!navigator.onLine || isNetworkError(err)) {
+        await offlineFallback();
       } else {
         toast.error(err?.message || 'Payment failed. Please try again.');
         setIsProcessing(false);
@@ -254,13 +296,17 @@ export default function PaymentScreen() {
     { id: 'split', label: 'Split Payment', icon: Split, color: 'text-amber-500', bg: 'bg-amber-50' },
   ];
 
+  const posSettings = usePosSettingsStore();
   const receiptPreviewData = {
     business: {
-      name: currentBranch?.name || myBusiness?.name || 'VemTap',
+      name: posSettings.businessName,
       logoUrl: currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png',
-      address: currentBranch?.address || undefined,
-      phone: currentBranch?.phone || undefined,
+      address: posSettings.businessAddress || undefined,
+      phone: posSettings.phoneNumber || undefined,
     },
+    receiptHeader: posSettings.receiptHeader || undefined,
+    receiptFooter: posSettings.receiptFooter || undefined,
+    showLogo: posSettings.showLogo,
     receiptNumber: 'Pending',
     createdAt: new Date().toISOString(),
     cashierName: cashier ? `${cashier.firstName} ${cashier.lastName}` : '',
@@ -326,7 +372,7 @@ export default function PaymentScreen() {
               const balance = usePosLoyaltyStore.getState().getPointsBalance(attachedCustomer.id);
               const autoPts = cart.reduce((sum, item) =>
                 item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
-              const totalEarned = autoPts + manualLoyaltyPoints;
+              const totalEarned = (autoPts > 0 ? autoPts : ruleBasedPoints) + manualLoyaltyPoints;
               const availableRewards = rewards.filter(r => r.isActive && (r.pointsRequired ?? r.pointCost) <= balance);
               return (
                 <div className="mb-6 p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
@@ -337,9 +383,11 @@ export default function PaymentScreen() {
                     </div>
                     <span className="text-sm font-black text-amber-700">{balance} pts</span>
                   </div>
-                  {autoPts > 0 && (
+                  {autoPts > 0 ? (
                     <p className="text-xs font-medium text-amber-600 mb-2 ml-1">+{autoPts} pts from products in this order</p>
-                  )}
+                  ) : ruleBasedPoints > 0 ? (
+                    <p className="text-xs font-medium text-amber-600 mb-2 ml-1">+{ruleBasedPoints} pts from spending (₦{loyaltyRule?.spendingBaseAmount ?? 0} = {loyaltyRule?.spendingBasePoints ?? 1} pt)</p>
+                  ) : null}
                   <div className="flex items-center gap-2 mb-3">
                     <input
                       type="number"

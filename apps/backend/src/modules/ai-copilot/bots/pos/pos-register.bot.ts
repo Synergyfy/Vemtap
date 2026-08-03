@@ -10,7 +10,7 @@ export class PosRegisterBot implements IPageBot {
     branchId: string,
     _context?: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    let registerStatus = 'OPEN';
+    const registerStatus = 'OPEN';
     let shiftTotalSales = 0;
     let shiftTransactionCount = 0;
     let cashSalesTotal = 0;
@@ -20,15 +20,17 @@ export class PosRegisterBot implements IPageBot {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
-      const stats = await this.dataSource.query(
-        `SELECT 
+      const stats = await this.dataSource
+        .query(
+          `SELECT 
            COALESCE(SUM("totalAmount"), 0)::float as total,
            COUNT(*)::int as count,
            COALESCE(SUM(CASE WHEN "paymentMethod" = 'CASH' THEN "totalAmount" END), 0)::float as cash,
            COALESCE(SUM(CASE WHEN "paymentMethod" != 'CASH' THEN "totalAmount" END), 0)::float as digital
          FROM pos_orders WHERE "branchId" = $1 AND "createdAt" >= $2 AND status = 'COMPLETED'`,
-        [branchId, todayStart],
-      ).catch(() => []);
+          [branchId, todayStart],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         shiftTotalSales = Math.round(stats[0].total || 0);

@@ -96,7 +96,7 @@ describe('TemplateService (Strict)', () => {
         isSystem: true,
       };
 
-      const result = await service.createTemplate(dto as any, mockAdminUser);
+      const result = await service.createTemplate(dto, mockAdminUser);
 
       expect(result.isSystem).toBe(true);
       expect(result.branchId).toBeNull();
@@ -128,7 +128,7 @@ describe('TemplateService (Strict)', () => {
         branchId: 'br1',
       };
 
-      const result = await service.createTemplate(dto as any, mockOwnerUser);
+      const result = await service.createTemplate(dto, mockOwnerUser);
 
       expect(result.branchId).toBe('br1');
       expect(result.isSystem).toBe(false);

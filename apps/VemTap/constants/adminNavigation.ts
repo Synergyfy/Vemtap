@@ -1,7 +1,7 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
     Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette,
-    Handshake
+    Handshake, BookOpen
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -241,6 +241,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/banners',
         permission: 'admin:settings',
         keywords: ['ads', 'announcements', 'marketing', 'headers', 'sliders']
+    },
+    {
+        id: 'knowledge-base',
+        label: 'Knowledge Base',
+        icon: BookOpen,
+        href: '/admin/knowledge-base',
+        permission: 'admin:all',
+        keywords: ['tutorial', 'docs', 'documentation', 'articles', 'help', 'kb', 'guides', 'content']
     },
     {
         id: 'settings',

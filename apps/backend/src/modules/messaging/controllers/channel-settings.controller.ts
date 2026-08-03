@@ -78,8 +78,13 @@ export class ChannelSettingsController {
   }
 
   @Post('generate-dns-records')
-  @ApiOperation({ summary: 'Generate DNS records for email domain authentication' })
-  @ApiResponse({ status: 200, description: 'DNS records generated successfully' })
+  @ApiOperation({
+    summary: 'Generate DNS records for email domain authentication',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'DNS records generated successfully',
+  })
   async generateDnsRecords(
     @Request() req: { user: User },
     @Body() dto: { domain?: string; branchId?: string },

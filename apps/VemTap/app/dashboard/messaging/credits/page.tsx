@@ -91,22 +91,25 @@ export default function MessagingCreditsPage() {
   const [smsAmount, setSmsAmount] = useState<number>(0);
   const [whatsappAmount, setWhatsappAmount] = useState<number>(0);
   const [emailAmount, setEmailAmount] = useState<number>(0);
+  const [aiAmount, setAiAmount] = useState<number>(0);
 
   const selectedPlan = plans?.find(p => p.id === selectedPlanId);
 
   const smsPrice = rates?.creditPriceSms ?? 15.00;
   const whatsappPrice = rates?.creditPriceWhatsapp ?? 25.00;
   const emailPrice = rates?.creditPriceEmail ?? 2.00;
+  const aiPrice = rates?.creditPriceAi ?? 50.00;
 
   const smsCost = smsAmount * smsPrice;
   const whatsappCost = whatsappAmount * whatsappPrice;
   const emailCost = emailAmount * emailPrice;
-  const totalCost = smsCost + whatsappCost + emailCost;
+  const aiCost = aiAmount * aiPrice;
+  const totalCost = smsCost + whatsappCost + emailCost + aiCost;
 
   const handlePaymentSuccess = async (
     reference: string,
     mode: 'package' | 'custom',
-    params: { planId?: string; sms?: number; whatsapp?: number; email?: number }
+    params: { planId?: string; sms?: number; whatsapp?: number; email?: number; ai?: number }
   ) => {
     setIsProcessing(true);
     try {
@@ -123,7 +126,8 @@ export default function MessagingCreditsPage() {
           reference: reference,
           smsAmount: params.sms ?? smsAmount,
           whatsappAmount: params.whatsapp ?? whatsappAmount,
-          emailAmount: params.email ?? emailAmount
+          emailAmount: params.email ?? emailAmount,
+          aiAmount: params.ai ?? aiAmount
         });
       }
       notify.success('Credits purchased successfully!');
@@ -134,6 +138,7 @@ export default function MessagingCreditsPage() {
       setSmsAmount(0);
       setWhatsappAmount(0);
       setEmailAmount(0);
+      setAiAmount(0);
     } catch (err: any) {
       notify.error(err.message || 'Failed to complete purchase');
     } finally {
@@ -221,11 +226,11 @@ export default function MessagingCreditsPage() {
     if (!publicKey || publicKey.includes('placeholder')) {
       setIsProcessing(true);
       setTimeout(() => {
-        if (confirm(`[PROTOTYPE SIMULATION] Simulate Paystack payment for Custom Top-Up (₦${totalCost.toLocaleString()})?\n\nBreakdown:\n- SMS: ${smsAmount.toLocaleString()} credits (₦${smsCost.toLocaleString()})\n- WhatsApp: ${whatsappAmount.toLocaleString()} credits (₦${whatsappCost.toLocaleString()})\n- Email: ${emailAmount.toLocaleString()} credits (₦${emailCost.toLocaleString()})`)) {
+        if (confirm(`[PROTOTYPE SIMULATION] Simulate Paystack payment for Custom Top-Up (₦${totalCost.toLocaleString()})?\n\nBreakdown:\n- SMS: ${smsAmount.toLocaleString()} credits (₦${smsCost.toLocaleString()})\n- WhatsApp: ${whatsappAmount.toLocaleString()} credits (₦${whatsappCost.toLocaleString()})\n- Email: ${emailAmount.toLocaleString()} credits (₦${emailCost.toLocaleString()})\n- AI: ${aiAmount.toLocaleString()} credits (₦${aiCost.toLocaleString()})`)) {
           handlePaymentSuccess(
             'sim-ref-' + Date.now(),
             'custom',
-            { sms: smsAmount, whatsapp: whatsappAmount, email: emailAmount }
+            { sms: smsAmount, whatsapp: whatsappAmount, email: emailAmount, ai: aiAmount }
           );
         } else {
           setIsProcessing(false);
@@ -292,7 +297,7 @@ export default function MessagingCreditsPage() {
       </div>
 
       {/* Credit Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <CreditCardComponent 
           title="SMS Credits" 
           amount={credits?.smsCredits || 0} 
@@ -314,6 +319,13 @@ export default function MessagingCreditsPage() {
           icon={Mail} 
           color="bg-purple-500"
           subtitle="Email Newsletters & Alerts"
+        />
+        <CreditCardComponent 
+          title="AI Credits" 
+          amount={credits?.aiCredits || 0} 
+          icon={Sparkles} 
+          color="bg-amber-500"
+          subtitle="AI Copilot & Smart Features"
         />
       </div>
 
@@ -358,6 +370,14 @@ export default function MessagingCreditsPage() {
                       <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                     </div>
                     {plan.emailAmount.toLocaleString()} Email Credits
+                  </li>
+                )}
+                {plan.aiAmount > 0 && (
+                  <li className="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                    <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    </div>
+                    {plan.aiAmount.toLocaleString()} AI Credits
                   </li>
                 )}
               </ul>
@@ -515,6 +535,45 @@ export default function MessagingCreditsPage() {
                   <span>10,000+ credits</span>
                 </div>
               </div>
+
+              {/* AI Credits Slider & Input */}
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600">
+                      <Sparkles size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">AI Credits</h4>
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{aiPrice.toFixed(2)} / credit</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={aiAmount || ''}
+                      onChange={(e) => setAiAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-24 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right font-bold text-slate-800 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    />
+                    <span className="text-slate-400 font-bold text-xs">Qty</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="2000"
+                  step="50"
+                  value={aiAmount}
+                  onChange={(e) => setAiAmount(parseInt(e.target.value))}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none"
+                />
+                <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                  <span>0 credits</span>
+                  <span className="font-semibold text-amber-600">Subtotal: ₦{aiCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <span>2,000+ credits</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -544,6 +603,10 @@ export default function MessagingCreditsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400 font-medium">Email Credits ({emailAmount.toLocaleString()})</span>
                     <span className="text-slate-200 font-bold">₦{emailCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400 font-medium">AI Credits ({aiAmount.toLocaleString()})</span>
+                    <span className="text-slate-200 font-bold">₦{aiCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
                 </div>
 

@@ -18,7 +18,9 @@ describe('ChannelSettingsController', () => {
   };
 
   const mockMessagingHelperService = {
-    resolveBranchId: jest.fn((user, branchId) => Promise.resolve(branchId || 'branch-1')),
+    resolveBranchId: jest.fn((user, branchId) =>
+      Promise.resolve(branchId || 'branch-1'),
+    ),
   };
 
   const mockUser = {
@@ -42,9 +44,13 @@ describe('ChannelSettingsController', () => {
       ],
     }).compile();
 
-    controller = module.get<ChannelSettingsController>(ChannelSettingsController);
+    controller = module.get<ChannelSettingsController>(
+      ChannelSettingsController,
+    );
     service = module.get<ChannelSettingsService>(ChannelSettingsService);
-    messagingHelper = module.get<MessagingHelperService>(MessagingHelperService);
+    messagingHelper = module.get<MessagingHelperService>(
+      MessagingHelperService,
+    );
     jest.clearAllMocks();
   });
 
@@ -67,7 +73,10 @@ describe('ChannelSettingsController', () => {
       });
 
       const res = await controller.getChannelSettings({ user: mockUser }, {});
-      expect(service.getChannelSettings).toHaveBeenCalledWith('biz-100', undefined);
+      expect(service.getChannelSettings).toHaveBeenCalledWith(
+        'biz-100',
+        undefined,
+      );
       expect(res).toEqual({
         smsSenderId: 'VemTap',
         smsRouting: SmsRoutingMode.AFRICA_OPTIMIZED,
@@ -88,8 +97,14 @@ describe('ChannelSettingsController', () => {
         smsRouting: SmsRoutingMode.GLOBAL_FASTEST,
       });
 
-      const res = await controller.updateChannelSettings({ user: mockUser }, dto);
-      expect(service.updateChannelSettings).toHaveBeenCalledWith('biz-100', dto);
+      const res = await controller.updateChannelSettings(
+        { user: mockUser },
+        dto,
+      );
+      expect(service.updateChannelSettings).toHaveBeenCalledWith(
+        'biz-100',
+        dto,
+      );
       expect(res.smsSenderId).toBe('MyStore');
     });
   });

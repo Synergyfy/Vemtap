@@ -154,13 +154,13 @@ export class AdminFlowEngineService implements OnModuleInit {
     );
 
     const totalMessagesSent = await this.logRepo.count({
-      where: { ...logWhere, actionType: 'message_sent' } as any,
+      where: { ...logWhere, actionType: 'message_sent' },
     });
     const activeSessionsCount = await this.executionRepo.count({
-      where: { ...executionWhere, status: ExecutionStatus.RUNNING } as any,
+      where: { ...executionWhere, status: ExecutionStatus.RUNNING },
     });
     const loyaltyAssigned = await this.logRepo.count({
-      where: { ...logWhere, actionType: 'loyalty_assigned' } as any,
+      where: { ...logWhere, actionType: 'loyalty_assigned' },
     });
 
     return {

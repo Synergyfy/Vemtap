@@ -252,7 +252,7 @@ export class AuthService {
     }
 
     const { password: _password, ...result } = user;
-    return this.generateAuthResponse(result as User);
+    return this.generateAuthResponse(result);
   }
 
   async googleLogin(dto: GoogleLoginDto) {
@@ -478,7 +478,7 @@ export class AuthService {
     await this.otpRepository.remove(otpRecord);
 
     const { password: _password, ...result } = user;
-    return this.generateAuthResponse(result as User, isNewUser);
+    return this.generateAuthResponse(result, isNewUser);
   }
 
   // --- New Dedicated Owner Registration ---
@@ -567,9 +567,7 @@ export class AuthService {
             ? UserStatus.ACTIVE
             : UserStatus.PENDING,
         phone,
-        authProvider: isGoogleUser
-          ? AuthProvider.GOOGLE
-          : (AuthProvider.LOCAL as any),
+        authProvider: isGoogleUser ? AuthProvider.GOOGLE : AuthProvider.LOCAL,
       });
     }
 
@@ -659,7 +657,9 @@ export class AuthService {
       );
 
       if (affiliate) {
-        const business = await this.businessesService.findByOwner(updatedUser.id);
+        const business = await this.businessesService.findByOwner(
+          updatedUser.id,
+        );
         await this.affiliatesService.recordReferral(
           affiliate.id,
           business?.id,
@@ -904,7 +904,10 @@ export class AuthService {
     return { message: 'Default password resent successfully' };
   }
 
-  private async handleB2BReferralAndPartnership(referralCode: string, referredUserId: string) {
+  private async handleB2BReferralAndPartnership(
+    referralCode: string,
+    referredUserId: string,
+  ) {
     try {
       const business = await this.businessesService.findByOwner(referredUserId);
       if (!business) return;
@@ -924,7 +927,7 @@ export class AuthService {
         // Record the referral code on the referred business
         await this.businessesService.update(business.id, {
           referralCode,
-        } as any);
+        });
 
         // Fetch fresh branches
         const referredUser = await this.usersService.findOne(referredUserId);
@@ -937,18 +940,26 @@ export class AuthService {
           // Check if partnership already exists
           const existingPartnership = await manager.findOne('partnerships', {
             where: [
-              { initiatorBranchId: referringBranchId, recipientBranchId: referredBranchId },
-              { initiatorBranchId: referredBranchId, recipientBranchId: referringBranchId }
-            ]
+              {
+                initiatorBranchId: referringBranchId,
+                recipientBranchId: referredBranchId,
+              },
+              {
+                initiatorBranchId: referredBranchId,
+                recipientBranchId: referringBranchId,
+              },
+            ],
           });
 
           if (!existingPartnership) {
             await manager.insert('partnerships', {
               initiatorBranchId: referringBranchId,
               recipientBranchId: referredBranchId,
-              status: 'Accepted'
+              status: 'Accepted',
             });
-            console.log(`[PARTNERSHIP] Auto-established B2B partnership between branch ${referringBranchId} and branch ${referredBranchId}`);
+            console.log(
+              `[PARTNERSHIP] Auto-established B2B partnership between branch ${referringBranchId} and branch ${referredBranchId}`,
+            );
           }
         }
       } else {
@@ -960,7 +971,7 @@ export class AuthService {
         if (externalAffiliate.valid) {
           await this.businessesService.update(business.id, {
             referralCode,
-          } as any);
+          });
         }
       }
     } catch (error) {

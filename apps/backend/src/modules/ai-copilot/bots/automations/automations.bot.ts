@@ -13,10 +13,12 @@ export class AutomationsBot implements IPageBot {
     let activeTriggersCount = 0;
 
     try {
-      const stats = await this.dataSource.query(
-        `SELECT COUNT(*)::int as count FROM automation_rules WHERE "branchId" = $1 AND "isActive" = true`,
-        [_branchId]
-      ).catch(() => []);
+      const stats = await this.dataSource
+        .query(
+          `SELECT COUNT(*)::int as count FROM automation_rules WHERE "branchId" = $1 AND "isActive" = true`,
+          [_branchId],
+        )
+        .catch(() => []);
 
       if (stats && stats.length > 0) {
         activeTriggersCount = stats[0].count || 0;

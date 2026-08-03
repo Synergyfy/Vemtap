@@ -21,6 +21,7 @@ import { Device, DeviceStatus } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import {
   VisitorResponseDto,
@@ -336,7 +337,7 @@ export class VisitorsService {
 
     try {
       const now = new Date();
-      let startDate = new Date();
+      const startDate = new Date();
       let buckets: { name: string; customers: number }[] = [];
 
       if (activeRange === '7D') {
@@ -365,11 +366,14 @@ export class VisitorsService {
           qb.andWhere('visit.businessId = :businessId', { businessId });
         }
 
-        const rawResults = await qb.groupBy('DATE(visit.createdAt)').getRawMany();
+        const rawResults = await qb
+          .groupBy('DATE(visit.createdAt)')
+          .getRawMany();
 
         rawResults.forEach((row) => {
           if (!row.date) return;
-          const dateStr = typeof row.date === 'string' ? row.date : row.date.toISOString();
+          const dateStr =
+            typeof row.date === 'string' ? row.date : row.date.toISOString();
           const d = new Date(dateStr);
           // Use UTC day to avoid timezone offset shifts on YYYY-MM-DD strings
           const dayName = daysOfWeek[isNaN(d.getTime()) ? 0 : d.getUTCDay()];
@@ -520,7 +524,10 @@ export class VisitorsService {
         data: buckets,
       };
     } catch (error) {
-      console.error('[VisitorsService] Error generating growth chart data:', error);
+      console.error(
+        '[VisitorsService] Error generating growth chart data:',
+        error,
+      );
       throw new BadRequestException('Failed to generate growth chart data');
     }
   }
@@ -1243,6 +1250,7 @@ export class VisitorsService {
     context: { branchId?: string; businessId?: string },
     page: number = 1,
     limit: number = 20,
+    cursor?: string,
   ): Promise<PaginatedActivityFeedResponseDto> {
     const skip = (page - 1) * limit;
 
@@ -1263,11 +1271,18 @@ export class VisitorsService {
       });
     }
 
-    const [visits, total] = await qb
-      .orderBy('visit.createdAt', 'DESC')
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'visit',
+    });
+
+    const visits = result.data;
+    const total = result.total;
 
     const data: ActivityFeedItemDto[] = visits.map((visit) => {
       const customerName = visit.customer
@@ -1317,7 +1332,16 @@ export class VisitorsService {
       };
     });
 
-    return { data, total, page, limit };
+    return {
+      data,
+      total,
+      page,
+      limit,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+    } as any;
   }
 
   // ─── Smart Visit Recording ────────────────────────────────────────────────

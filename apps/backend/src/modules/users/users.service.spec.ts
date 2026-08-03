@@ -105,7 +105,7 @@ describe('UsersService', () => {
       expect(result.password).toBe('hashed_password');
       expect(result.role).toBe(UserRole.STAFF);
       expect(result.roleTag).toBe('Staff');
-      
+
       const expectedPassword = (bcrypt.hash as jest.Mock).mock.calls[0][0];
       expect(expectedPassword).toMatch(/^\d{6}$/);
       expect(bcrypt.hash).toHaveBeenCalledWith(expectedPassword, 10);
@@ -147,7 +147,11 @@ describe('UsersService', () => {
 
     it('should throw BadRequestException if email already exists', async () => {
       userRepository.findOne.mockResolvedValue({ id: '1' });
-      const dto = { email: 'staff@example.com', firstName: 'Staff', role: 'Staff' };
+      const dto = {
+        email: 'staff@example.com',
+        firstName: 'Staff',
+        role: 'Staff',
+      };
       await expect(service.inviteStaff('br-1', dto as any)).rejects.toThrow(
         BadRequestException,
       );
@@ -170,7 +174,13 @@ describe('UsersService', () => {
 
   describe('updateStaff', () => {
     it('should update staff details including custom role', async () => {
-      const existingUser = { id: '1', branchId: 'br-1', firstName: 'Old', role: UserRole.STAFF, roleTag: 'Staff' };
+      const existingUser = {
+        id: '1',
+        branchId: 'br-1',
+        firstName: 'Old',
+        role: UserRole.STAFF,
+        roleTag: 'Staff',
+      };
       userRepository.findOne.mockResolvedValue(existingUser);
 
       const updates: any = { name: 'New Name', role: 'Supervisor' };
@@ -198,7 +208,14 @@ describe('UsersService', () => {
     });
 
     it('should update staff with compound permission keys', async () => {
-      const existingUser = { id: '1', branchId: 'br-1', firstName: 'Old', role: UserRole.STAFF, roleTag: 'Staff', permissions: ['pos'] };
+      const existingUser = {
+        id: '1',
+        branchId: 'br-1',
+        firstName: 'Old',
+        role: UserRole.STAFF,
+        roleTag: 'Staff',
+        permissions: ['pos'],
+      };
       userRepository.findOne.mockResolvedValue(existingUser);
 
       const updates: any = {
@@ -208,7 +225,12 @@ describe('UsersService', () => {
       };
       const result = await service.updateStaff('1', 'br-1', updates);
 
-      expect(result.permissions).toEqual(['pos', 'pos:pos-home', 'pos:orders', 'pos:settings']);
+      expect(result.permissions).toEqual([
+        'pos',
+        'pos:pos-home',
+        'pos:orders',
+        'pos:settings',
+      ]);
       expect(userRepository.save).toHaveBeenCalled();
     });
   });

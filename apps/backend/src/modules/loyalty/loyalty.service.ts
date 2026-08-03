@@ -23,9 +23,12 @@ import {
   PointTransaction,
   PointTransactionType,
 } from './entities/point-transaction.entity';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { PointCode } from './entities/point-code.entity';
 import { RedemptionCode } from './entities/redemption-code.entity';
+import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { BranchesService } from '../branches/branches.service';
 import { RewardQueryDto } from './dto/loyalty-query.dto';
@@ -38,6 +41,7 @@ import {
   GenerateRedemptionCodeDto,
   RedeemRewardDto,
 } from './dto/loyalty.dto';
+import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
 
 @Injectable()
 export class LoyaltyService {
@@ -58,10 +62,48 @@ export class LoyaltyService {
     private branchRepo: Repository<Branch>,
     @InjectRepository(Visit)
     private visitRepo: Repository<Visit>,
+    @InjectRepository(LoyaltyRule)
+    private loyaltyRuleRepo: Repository<LoyaltyRule>,
+    @InjectRepository(Business)
+    private businessRepo: Repository<Business>,
     private dataSource: DataSource,
     @Inject(forwardRef(() => BranchesService))
     private branchesService: BranchesService,
   ) {}
+
+  // --- Loyalty Rules ---
+  async getRules(businessId: string, branchId?: string) {
+    const where: FindOptionsWhere<LoyaltyRule> = { businessId };
+    if (branchId) where.branchId = branchId;
+
+    let rule = await this.loyaltyRuleRepo.findOne({ where });
+
+    if (!rule) {
+      rule = this.loyaltyRuleRepo.create({ businessId, branchId });
+      rule = await this.loyaltyRuleRepo.save(rule);
+    }
+
+    return rule;
+  }
+
+  async upsertRules(
+    businessId: string,
+    dto: UpdateLoyaltyRuleDto,
+    branchId?: string,
+  ) {
+    const where: FindOptionsWhere<LoyaltyRule> = { businessId };
+    if (branchId) where.branchId = branchId;
+
+    let rule = await this.loyaltyRuleRepo.findOne({ where });
+
+    if (rule) {
+      Object.assign(rule, dto);
+    } else {
+      rule = this.loyaltyRuleRepo.create({ ...dto, businessId, branchId });
+    }
+
+    return this.loyaltyRuleRepo.save(rule);
+  }
 
   // --- Point Balance ---
   async getBusinessPoints(userId: string, businessId: string): Promise<number> {
@@ -75,16 +117,33 @@ export class LoyaltyService {
     return parseInt(result?.sum || '0', 10);
   }
 
-  async getPointLogs(userId: string, businessId: string, page = 1, limit = 10) {
-    const transactions = await this.pointTransactionRepo.find({
-      where: { customerId: userId, businessId },
-      order: { createdAt: 'DESC' },
-      take: limit,
-      skip: (page - 1) * limit,
-      relations: ['givenBy', 'branch'],
+  async getPointLogs(
+    userId: string,
+    businessId: string,
+    page = 1,
+    limit = 10,
+    cursor?: string,
+  ) {
+    const qb = this.pointTransactionRepo
+      .createQueryBuilder('pt')
+      .leftJoinAndSelect('pt.givenBy', 'givenBy')
+      .leftJoinAndSelect('pt.branch', 'branch')
+      .where('pt.customerId = :userId AND pt.businessId = :businessId', {
+        userId,
+        businessId,
+      });
+
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'pt',
     });
 
-    return transactions.map((t) => ({
+    return result.data.map((t) => ({
       id: t.id,
       amount: t.amount,
       type: t.type,
@@ -112,27 +171,51 @@ export class LoyaltyService {
     branchId?: string,
     page = 1,
     limit = 10,
-  ): Promise<{ data: PointTransaction[]; total: number; page: number; limit: number }> {
+    cursor?: string,
+  ): Promise<{
+    data: PointTransaction[];
+    total: number;
+    page: number;
+    limit: number;
+    cursor?: string | null;
+    nextCursor?: string | null;
+    prevCursor?: string | null;
+    hasNextPage?: boolean;
+  }> {
     try {
       const validPage = Math.max(1, page);
       const validLimit = Math.min(Math.max(1, limit), 100);
-      const where: any = {};
-      if (businessId) where.businessId = businessId;
-      if (branchId && branchId !== 'all') where.branchId = branchId;
 
-      const [data, total] = await this.pointTransactionRepo.findAndCount({
-        where,
-        order: { createdAt: 'DESC' },
-        take: validLimit,
-        skip: (validPage - 1) * validLimit,
-        relations: ['customer', 'givenBy', 'branch'],
+      const qb = this.pointTransactionRepo
+        .createQueryBuilder('pt')
+        .leftJoinAndSelect('pt.customer', 'customer')
+        .leftJoinAndSelect('pt.givenBy', 'givenBy')
+        .leftJoinAndSelect('pt.branch', 'branch');
+
+      if (businessId)
+        qb.andWhere('pt.businessId = :businessId', { businessId });
+      if (branchId && branchId !== 'all')
+        qb.andWhere('pt.branchId = :branchId', { branchId });
+
+      const result = await paginateWithCursor({
+        queryBuilder: qb,
+        cursor,
+        page: validPage,
+        limit: validLimit,
+        sortField: 'createdAt',
+        sortOrder: 'DESC',
+        entityAlias: 'pt',
       });
 
       return {
-        data,
-        total,
+        data: result.data,
+        total: result.total,
         page: validPage,
         limit: validLimit,
+        cursor: result.cursor,
+        nextCursor: result.nextCursor,
+        prevCursor: result.prevCursor,
+        hasNextPage: result.hasNextPage,
       };
     } catch (error) {
       console.error('[LoyaltyService] Error in getBusinessPointLogs:', error);
@@ -152,8 +235,27 @@ export class LoyaltyService {
     });
     if (!branch) throw new NotFoundException('Branch not found');
 
+    let pointsToAward = dto.points;
+
+    // If no explicit points but spendingAmount provided, calculate from rules
+    if (!pointsToAward && dto.spendingAmount) {
+      const rule = await this.getRules(branch.businessId, branch.id);
+      if (rule && rule.isActive) {
+        pointsToAward = Math.floor(
+          (dto.spendingAmount / rule.spendingBaseAmount) *
+            rule.spendingBasePoints,
+        );
+      }
+    }
+
+    if (!pointsToAward || pointsToAward <= 0) {
+      throw new BadRequestException(
+        'No points to award. Provide points or a valid spendingAmount with an active loyalty rule.',
+      );
+    }
+
     const transaction = this.pointTransactionRepo.create({
-      amount: dto.points,
+      amount: pointsToAward,
       type: PointTransactionType.EARNED,
       reason: dto.reason || 'Points given by staff',
       customerId: customer.id,
@@ -747,14 +849,24 @@ export class LoyaltyService {
 
       // 1. Total unique customers (from visits or point transactions)
       const ptsCustQuery = this.pointTransactionRepo.createQueryBuilder('pt');
-      if (businessId) ptsCustQuery.andWhere('pt.businessId = :businessId', { businessId });
-      if (branchId && branchId !== 'all') ptsCustQuery.andWhere('pt.branchId = :branchId', { branchId });
-      const ptsCustRaw = await ptsCustQuery.select('COUNT(DISTINCT pt.customerId)', 'count').getRawOne();
+      if (businessId)
+        ptsCustQuery.andWhere('pt.businessId = :businessId', { businessId });
+      if (branchId && branchId !== 'all')
+        ptsCustQuery.andWhere('pt.branchId = :branchId', { branchId });
+      const ptsCustRaw = await ptsCustQuery
+        .select('COUNT(DISTINCT pt.customerId)', 'count')
+        .getRawOne();
 
       const visitCustQuery = this.visitRepo.createQueryBuilder('visit');
-      if (businessId) visitCustQuery.andWhere('visit.businessId = :businessId', { businessId });
-      if (branchId && branchId !== 'all') visitCustQuery.andWhere('visit.branchId = :branchId', { branchId });
-      const visitCustRaw = await visitCustQuery.select('COUNT(DISTINCT visit.customerId)', 'count').getRawOne();
+      if (businessId)
+        visitCustQuery.andWhere('visit.businessId = :businessId', {
+          businessId,
+        });
+      if (branchId && branchId !== 'all')
+        visitCustQuery.andWhere('visit.branchId = :branchId', { branchId });
+      const visitCustRaw = await visitCustQuery
+        .select('COUNT(DISTINCT visit.customerId)', 'count')
+        .getRawOne();
 
       const totalCustomersCount = Math.max(
         parseInt(ptsCustRaw?.count || '0', 10),
@@ -763,19 +875,28 @@ export class LoyaltyService {
 
       // 2. Points Issued
       const pointQuery = this.pointTransactionRepo.createQueryBuilder('pt');
-      if (businessId) pointQuery.andWhere('pt.businessId = :businessId', { businessId });
-      if (branchId && branchId !== 'all') pointQuery.andWhere('pt.branchId = :branchId', { branchId });
+      if (businessId)
+        pointQuery.andWhere('pt.businessId = :businessId', { businessId });
+      if (branchId && branchId !== 'all')
+        pointQuery.andWhere('pt.branchId = :branchId', { branchId });
       const pointAgg = await pointQuery
         .andWhere('pt.type = :type', { type: PointTransactionType.EARNED })
         .select('SUM(pt.amount)', 'totalPointsEarned')
         .getRawOne();
-      const totalPointsEarned = parseInt(pointAgg?.totalPointsEarned || '0', 10);
+      const totalPointsEarned = parseInt(
+        pointAgg?.totalPointsEarned || '0',
+        10,
+      );
 
       // 3. Rewards Redeemed
       const redemptionQuery = this.redemptionCodeRepo.createQueryBuilder('rc');
-      if (businessId) redemptionQuery.andWhere('rc.businessId = :businessId', { businessId });
-      if (branchId && branchId !== 'all') redemptionQuery.andWhere('rc.branchId = :branchId', { branchId });
-      const totalRedemptions = await redemptionQuery.andWhere('rc.isUsed = true').getCount();
+      if (businessId)
+        redemptionQuery.andWhere('rc.businessId = :businessId', { businessId });
+      if (branchId && branchId !== 'all')
+        redemptionQuery.andWhere('rc.branchId = :branchId', { branchId });
+      const totalRedemptions = await redemptionQuery
+        .andWhere('rc.isUsed = true')
+        .getCount();
 
       // 4. Activity Trend (Last 4 Weeks)
       const now = new Date();
@@ -794,8 +915,10 @@ export class LoyaltyService {
         .select('pt.createdAt', 'createdAt')
         .addSelect('pt.amount', 'amount')
         .where('pt.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo });
-      if (businessId) recentTxQuery.andWhere('pt.businessId = :businessId', { businessId });
-      if (branchId && branchId !== 'all') recentTxQuery.andWhere('pt.branchId = :branchId', { branchId });
+      if (businessId)
+        recentTxQuery.andWhere('pt.businessId = :businessId', { businessId });
+      if (branchId && branchId !== 'all')
+        recentTxQuery.andWhere('pt.branchId = :branchId', { branchId });
 
       const recentTx = await recentTxQuery.getRawMany();
       recentTx.forEach((tx) => {
@@ -817,11 +940,13 @@ export class LoyaltyService {
         else entry.claims += Math.abs(amt);
       });
 
-      const activityTrend = Array.from(trendMap.entries()).map(([name, val]) => ({
-        name,
-        earnings: val.earnings,
-        claims: val.claims,
-      }));
+      const activityTrend = Array.from(trendMap.entries()).map(
+        ([name, val]) => ({
+          name,
+          earnings: val.earnings,
+          claims: val.claims,
+        }),
+      );
 
       return {
         stats: [
@@ -851,16 +976,34 @@ export class LoyaltyService {
           },
         ],
         tierDistribution: [
-          { label: 'Bronze (<100 pts)', value: Math.max(totalCustomersCount - 5, 0), color: '#CD7F32' },
-          { label: 'Silver (100-499 pts)', value: totalCustomersCount > 5 ? 3 : 0, color: '#C0C0C0' },
-          { label: 'Gold (500-999 pts)', value: totalCustomersCount > 8 ? 2 : 0, color: '#FFD700' },
+          {
+            label: 'Bronze (<100 pts)',
+            value: Math.max(totalCustomersCount - 5, 0),
+            color: '#CD7F32',
+          },
+          {
+            label: 'Silver (100-499 pts)',
+            value: totalCustomersCount > 5 ? 3 : 0,
+            color: '#C0C0C0',
+          },
+          {
+            label: 'Gold (500-999 pts)',
+            value: totalCustomersCount > 8 ? 2 : 0,
+            color: '#FFD700',
+          },
         ],
         activityTrend,
-        growthForecast: 'Reward programs with active participation see up to 24% more customer visits.',
+        growthForecast:
+          'Reward programs with active participation see up to 24% more customer visits.',
       };
     } catch (error) {
-      console.error('[LoyaltyService] Error in getBusinessLoyaltyStats:', error);
-      throw new BadRequestException('Failed to retrieve business loyalty statistics');
+      console.error(
+        '[LoyaltyService] Error in getBusinessLoyaltyStats:',
+        error,
+      );
+      throw new BadRequestException(
+        'Failed to retrieve business loyalty statistics',
+      );
     }
   }
 }

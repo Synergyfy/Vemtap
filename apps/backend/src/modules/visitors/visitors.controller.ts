@@ -186,9 +186,8 @@ export class VisitorsController {
   async getGrowthChart(
     @Req() req: any,
     @Query() query: VisitorGrowthQueryDto,
-    @Query() filter: BranchFilterDto,
   ): Promise<VisitorGrowthResponseDto> {
-    const context = await this.getResolvedContext(req, filter);
+    const context = await this.getResolvedContext(req, query);
     return this.visitorsService.getGrowthChartData(
       query.range || '7D',
       context.branchId,
@@ -357,7 +356,7 @@ export class VisitorsController {
     @Query() filter: BranchFilterDto,
   ): Promise<any> {
     const branchId = await this.getBranchId(req, filter.branchId);
-    return this.visitorsService.sendCampaign(branchId, body as any);
+    return this.visitorsService.sendCampaign(branchId, body);
   }
 
   @Post('welcome-campaign')

@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Search, LayoutGrid, List, Loader2, ScanLine, ChevronDown, Clock } from 'lucide-react';
+import { ShoppingBag, Search, LayoutGrid, List, Loader2, ScanLine, ChevronDown, Clock, WifiOff } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useCatalogueItemsPublic, useCatalogueCategoriesPublic } from '@/services/catalogue/hooks';
 import { cn } from '@/lib/utils';
 import POSPageHeader from './shared/POSPageHeader';
 import BarcodeScanner from '@/components/dashboard/catalogue/BarcodeScanner';
 import toast from 'react-hot-toast';
-import { cacheProducts } from '@/lib/offline/db';
+import { cacheProducts, getCachedProducts, OfflineProduct } from '@/lib/offline/db';
 import { useRouter } from 'next/navigation';
 
 interface POSHomeScreenProps {
@@ -30,6 +31,29 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   const { data: categoriesData = [] } = useCatalogueCategoriesPublic(branchId ?? '');
   const products = productsData?.data ?? [];
   const categories = categoriesData ?? [];
+
+  const { isOnline } = useNetworkStatus();
+  const [cachedProducts, setCachedProducts] = useState<OfflineProduct[]>([]);
+
+  useEffect(() => {
+    getCachedProducts().then(setCachedProducts).catch(() => {});
+  }, []);
+
+  const usingCached = cachedProducts.length > 0 && (products.length === 0 || !isOnline);
+  const displayProducts = usingCached ? cachedProducts : products;
+  const cachedAt = usingCached
+    ? new Date(Math.max(...cachedProducts.map((p) => p.cachedAt || 0))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  const getFinalPrice = (item: any) => {
+    const price = Number(item.price) || 0;
+    const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
+    if (!hasDiscount) return price;
+    const dv = Number(item.discountValue) || 0;
+    return item.discountType === 'percentage' ? price - (price * dv / 100) : price - dv;
+  };
+
+  const hasDiscount = (item: any) => item.discountType && item.discountType !== 'none' && item.discountValue;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [categorySearch, setCategorySearch] = useState('');
@@ -55,7 +79,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
     searchInputRef.current?.focus();
   }, []);
 
-  const filteredProducts = products.filter((p: any) => {
+  const filteredProducts = displayProducts.filter((p: any) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = p.name.toLowerCase().includes(query) ||
       (p.barcode && p.barcode.toLowerCase().includes(query)) ||
@@ -108,13 +132,13 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         id: product.id,
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: getFinalPrice(product),
         costPrice: product.costPrice || 0,
         quantity: 1,
         stockQuantity: product.stockQuantity,
         sku: product.sku || '',
         barcode: product.barcode || '',
-        image: product.image || '',
+        image: product.image || product.mainImage || '',
         enableLoyaltyPoints: product.enableLoyaltyPoints || false,
         loyaltyPointsValue: product.loyaltyPointsValue || 0,
       });
@@ -123,17 +147,17 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
     setShowBarcodeScanner(false);
   };
 
-  const scannedProducts = products.map((p: any) => ({
+  const scannedProducts = displayProducts.map((p: any) => ({
     id: p.id,
     name: p.name,
     price: p.price,
     barcode: p.barcode || '',
-    image: p.mainImage || '',
+    image: p.mainImage || p.image || '',
     categoryId: p.categoryId,
     sku: p.sku || '',
   }));
 
-  if (loadingProducts) {
+  if (loadingProducts && products.length === 0 && cachedProducts.length === 0) {
     return (
       <div className="flex items-center justify-center h-full min-h-[300px]">
         <Loader2 size={32} className="animate-spin text-gray-400" />
@@ -144,8 +168,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   return (
     <div className="flex flex-col h-full p-4 md:p-8 overflow-hidden">
       {!isPublic && (
-        <div className="shrink-0 mb-4 md:mb-6 pt-2 px-1 md:px-4">
-          <POSPageHeader title="Point of Sale" showBack={false} />
+        <div className="shrink-0 mb-2 md:mb-3 pt-2 px-1 md:px-4">
+          <POSPageHeader title="Point of Sale" showBack={false} compact />
         </div>
       )}
 
@@ -244,7 +268,15 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
 
       {/* View toggle */}
       <div className="shrink-0 mb-4 px-1 md:px-4 flex items-center justify-between">
-        <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{filteredProducts.length} items</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{filteredProducts.length} items</span>
+          {usingCached && (
+            <span className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shrink-0" title="Showing saved catalog — stock may be stale">
+              <WifiOff size={11} />
+              Offline catalog{!isOnline && cachedAt ? ` · saved ${cachedAt}` : ''}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
           <button
             onClick={() => setViewMode('list')}
@@ -289,7 +321,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                         id: product.id,
                         productId: product.id,
                         name: product.name,
-                        price: product.price,
+                        price: getFinalPrice(product),
                         costPrice: product.costPrice || 0,
                         quantity: 1,
                         stockQuantity: product.stockQuantity,
@@ -334,7 +366,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                       {product.name}
                     </h3>
                     <p className="text-xs font-extrabold text-[#066CF4]">
-                      ₦{product.price.toLocaleString()}
+                      ₦{getFinalPrice(product).toLocaleString()}
+                      {hasDiscount(product) && <span className="text-[9px] font-bold text-gray-400 line-through ml-1">₦{Number(product.price).toLocaleString()}</span>}
                     </p>
                     <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
                       {product.stockQuantity} left
@@ -394,7 +427,8 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm md:text-base font-black text-gray-900 truncate">{product.name}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm font-black text-[#066CF4]">₦{product.price.toLocaleString()}</span>
+                        <span className="text-sm font-black text-[#066CF4]">₦{getFinalPrice(product).toLocaleString()}</span>
+                        {hasDiscount(product) && <span className="text-[11px] font-bold text-gray-400 line-through">₦{Number(product.price).toLocaleString()}</span>}
                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{product.stockQuantity} left</span>
                       </div>
                     </div>

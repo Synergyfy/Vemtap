@@ -43,17 +43,41 @@ export class AddDiscoverySettingsColumns1783792876160 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryApprovalRequired"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryEmailEnabled"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoverySmsEnabled"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryPushEnabled"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryAttributionWindow"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryMaxRadius"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryDefaultRadius"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryMaxOffersPerDay"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryMaxOffersPerVisit"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryEnablePartnerships"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryEnableSponsored"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "discoveryEnableNetwork"`);
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryApprovalRequired"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryEmailEnabled"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoverySmsEnabled"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryPushEnabled"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryAttributionWindow"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryMaxRadius"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryDefaultRadius"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryMaxOffersPerDay"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryMaxOffersPerVisit"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryEnablePartnerships"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryEnableSponsored"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "discoveryEnableNetwork"`,
+    );
   }
 }

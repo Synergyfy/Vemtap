@@ -132,6 +132,7 @@ const CAPABILITIES = [
     { value: 'smsCredits', label: 'SMS Credits' },
     { value: 'emailCredits', label: 'Email Credits' },
     { value: 'whatsappCredits', label: 'WhatsApp Credits' },
+    { value: 'aiCredits', label: 'AI Copilot Credits' },
 ];
 
 const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({

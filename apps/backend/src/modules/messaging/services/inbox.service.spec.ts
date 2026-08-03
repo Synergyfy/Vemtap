@@ -71,7 +71,11 @@ describe('InboxService', () => {
     visitRepoMock = {
       findOne: jest.fn(),
       create: jest.fn().mockImplementation((v) => v),
-      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'new-visit-id', ...v })),
+      save: jest
+        .fn()
+        .mockImplementation((v) =>
+          Promise.resolve({ id: 'new-visit-id', ...v }),
+        ),
     };
 
     branchRepoMock = {
@@ -200,7 +204,12 @@ describe('InboxService', () => {
 
   describe('startCustomerConversation', () => {
     const branch = { id: 'br1', businessId: 'bus1' };
-    const customer = { id: 'c1', firstName: 'John', phone: null, email: 'j@test.com' };
+    const customer = {
+      id: 'c1',
+      firstName: 'John',
+      phone: null,
+      email: 'j@test.com',
+    };
 
     it('should auto-create a chat visit and new thread when customer has no prior visit', async () => {
       // No prior visit
@@ -209,7 +218,11 @@ describe('InboxService', () => {
       userRepoMock.findOne.mockResolvedValue(customer);
       threadRepoMock.findOne.mockResolvedValue(null);
 
-      const result = await service.startCustomerConversation('c1', 'br1', 'hello branch');
+      const result = await service.startCustomerConversation(
+        'c1',
+        'br1',
+        'hello branch',
+      );
 
       // Visit upsert should have been called with visitType='chat'
       expect(visitRepoMock.create).toHaveBeenCalledWith(
