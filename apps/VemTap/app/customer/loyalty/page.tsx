@@ -111,45 +111,45 @@ export default function CustomerLoyaltyPage() {
     };
 
     return (
-        <div className="space-y-10 pb-20">
+        <div className="space-y-5 md:space-y-8">
             {/* Points Hero Card - Redesigned for Premium Feel */}
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="relative bg-slate-900 rounded-[2.5rem] p-10 md:p-14 text-white overflow-hidden shadow-2xl shadow-primary/20 group"
+                className="relative bg-slate-900 rounded-3xl md:rounded-[2.5rem] p-5 md:p-10 text-white overflow-hidden shadow-2xl shadow-primary/20 group"
             >
                 {/* Mesh Gradients & Abstract Shapes */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-[100px] group-hover:bg-primary/30 transition-colors duration-1000" />
                 <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-[80px]" />
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
                 
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
-                    <div className="space-y-6 text-center md:text-left flex-1">
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12">
+                    <div className="space-y-4 md:space-y-6 text-center md:text-left flex-1">
                         <div className="flex flex-col items-center md:items-start gap-2">
-                            <span className="px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-[0.25em] border border-white/10 flex items-center gap-2">
+                            <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-[0.2em] border border-white/10 flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                                 Elite Member
                             </span>
-                            <h2 className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px]">Your Current Balance</h2>
+                            <h2 className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[9px]">Your Current Balance</h2>
                         </div>
 
-                        <div className="flex items-baseline justify-center md:justify-start gap-3">
-                            <p className="text-7xl md:text-8xl font-black tracking-tighter bg-linear-to-b from-white to-white/50 bg-clip-text text-transparent">
+                        <div className="flex items-baseline justify-center md:justify-start gap-2">
+                            <p className="text-5xl md:text-7xl font-black tracking-tighter bg-linear-to-b from-white to-white/50 bg-clip-text text-transparent">
                                 {userPoints.toLocaleString()}
                             </p>
-                            <span className="text-2xl font-bold text-slate-500 uppercase tracking-widest">pts</span>
+                            <span className="text-lg md:text-xl font-bold text-slate-500 uppercase tracking-widest">pts</span>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-3">
                             <Button 
                                 onClick={() => setShowQR(true)}
-                                className="h-16 px-10 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-50 transition-all shadow-xl shadow-white/10 flex items-center gap-3 active:scale-95 text-base"
+                                className="h-12 px-6 bg-white text-slate-900 font-black rounded-xl hover:bg-slate-50 transition-all shadow-xl shadow-white/10 flex items-center gap-2.5 active:scale-95 text-sm"
                             >
-                                <QrCode size={20} className="stroke-[3]" />
+                                <QrCode size={18} className="stroke-[3]" />
                                 REDEEM NOW
                             </Button>
                             <Link href="/customer/loyalty/history">
-                                <Button variant="ghost" className="h-16 px-8 text-white font-bold rounded-2xl hover:bg-white/5 border border-white/10 backdrop-blur-sm gap-2">
+                                <Button variant="ghost" className="h-12 px-5 text-white font-bold rounded-xl hover:bg-white/5 border border-white/10 backdrop-blur-sm gap-2 text-sm">
                                     <History size={18} />
                                     Activity
                                 </Button>
@@ -159,13 +159,13 @@ export default function CustomerLoyaltyPage() {
                     
                     <div className="hidden lg:block w-px h-40 bg-white/10" />
                     
-                    <div className="flex flex-col gap-8 w-full md:w-auto">
-                        <div className="flex items-center gap-5 justify-center md:justify-start">
-                            <div className="size-14 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center shadow-lg shadow-primary/20">
-                                <Gift className="text-primary" size={28} />
+                    <div className="flex flex-col gap-5 w-full md:w-auto">
+                        <div className="flex items-center gap-4 justify-center md:justify-start">
+                            <div className="size-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shadow-lg shadow-primary/20">
+                                <Gift className="text-primary" size={24} />
                             </div>
                             <div className="text-left">
-                                <p className="text-lg font-black">{readyRewards.length} Unlocked</p>
+                                <p className="text-base font-black">{readyRewards.length} Unlocked</p>
                                 {nextReward ? (
                                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Next at {nextReward.pointCost} points</p>
                                 ) : (
@@ -174,12 +174,12 @@ export default function CustomerLoyaltyPage() {
                             </div>
                         </div>
                         
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
                                 <span>Progress</span>
                                 <span>{progressToNext}%</span>
                             </div>
-                            <div className="w-full md:w-64 h-3 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
+                            <div className="w-full md:w-56 h-2.5 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
                                 <motion.div 
                                     initial={{ width: 0 }}
                                     animate={{ width: `${progressToNext}%` }}
@@ -194,22 +194,22 @@ export default function CustomerLoyaltyPage() {
             </motion.div>
 
             {/* Quick Stats - Enhanced Visuals */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
                 {stats.map((stat, i) => (
                     <motion.div
                         key={stat.label}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.1 }}
-                        className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-500 group"
+                        className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-500 group"
                     >
-                        <div className="flex items-center gap-6">
-                            <div className={`size-16 rounded-[1.25rem] ${stat.bg} ${stat.color} flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 duration-500`}>
-                                <stat.icon size={30} className="stroke-[2.5]" />
+                        <div className="flex items-center gap-4">
+                            <div className={`size-12 md:size-14 rounded-xl md:rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 duration-500`}>
+                                <stat.icon size={24} className="stroke-[2.5]" />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 min-w-0">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.label}</p>
-                                <p className="text-3xl font-black text-slate-900">{stat.value}</p>
+                                <p className="text-2xl md:text-3xl font-black text-slate-900">{stat.value}</p>
                             </div>
                         </div>
                     </motion.div>
@@ -217,21 +217,21 @@ export default function CustomerLoyaltyPage() {
             </div>
 
             {/* Available Rewards Preview - Boutique Grid */}
-            <section className="space-y-8">
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-8 bg-primary rounded-full" />
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Handpicked Rewards</h3>
+            <section className="space-y-4 md:space-y-6">
+                <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-1.5 h-6 bg-primary rounded-full" />
+                        <h3 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">Handpicked Rewards</h3>
                     </div>
-                    <Link href={`/customer/rewards?business_uid=${businessId}`} className="text-xs font-black text-primary uppercase tracking-[0.2em] hover:translate-x-1 transition-transform flex items-center gap-1 bg-primary/5 px-4 py-2 rounded-full">
+                    <Link href={`/customer/rewards?business_uid=${businessId}`} className="text-xs font-black text-primary uppercase tracking-[0.2em] hover:translate-x-1 transition-transform flex items-center gap-1 bg-primary/5 px-3 py-1.5 rounded-full">
                         View Catalog <ChevronRight size={14} />
                     </Link>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
                     {isRewardsLoading && rewards.length === 0 ? (
-                        <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs flex flex-col items-center gap-4 bg-white rounded-[3rem] border border-dashed border-slate-200">
-                            <Loader2 className="animate-spin text-primary" size={32} />
+                        <div className="col-span-full py-16 text-center text-slate-400 font-bold uppercase tracking-widest text-xs flex flex-col items-center gap-4 bg-white rounded-3xl border border-dashed border-slate-200">
+                            <Loader2 className="animate-spin text-primary" size={28} />
                             Curating your experience...
                         </div>
                     ) : rewards.length > 0 ? (
@@ -240,9 +240,9 @@ export default function CustomerLoyaltyPage() {
                                 key={reward.id}
                                 whileHover={{ y: -8 }}
                                 onClick={() => setSelectedReward(reward)}
-                                className="bg-white border border-slate-100 rounded-[2.5rem] p-6 flex flex-col gap-6 shadow-sm hover:shadow-2xl hover:border-primary/20 transition-all duration-500 cursor-pointer h-full group"
+                                className="bg-white border border-slate-100 rounded-3xl p-4 flex flex-col gap-4 shadow-sm hover:shadow-2xl hover:border-primary/20 transition-all duration-500 cursor-pointer h-full group"
                             >
-                                <div className="w-full aspect-square rounded-[2rem] bg-slate-50 flex items-center justify-center text-slate-300 relative overflow-hidden group-hover:bg-primary/5 transition-colors">
+                                <div className="w-full aspect-square rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 relative overflow-hidden group-hover:bg-primary/5 transition-colors">
                                     {(reward.imageUrl || (reward.imageUrls && reward.imageUrls.length > 0)) ? (
                                         <img 
                                             src={reward.imageUrl || reward.imageUrls![0]} 
@@ -256,26 +256,26 @@ export default function CustomerLoyaltyPage() {
                                     )}
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full translate-x-8 -translate-y-8 blur-2xl group-hover:blur-xl transition-all" />
                                 </div>
-                                <div className="space-y-3 px-1">
+                                <div className="space-y-2.5 px-0.5">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">REWARD</span>
                                         <span className={`text-[10px] font-black uppercase tracking-widest ${userPoints >= (reward?.pointCost || 0) ? 'text-green-500' : 'text-slate-300'}`}>
                                             {userPoints >= (reward?.pointCost || 0) ? 'Unlocked' : 'Locked'}
                                         </span>
                                     </div>
-                                    <h4 className="font-black text-slate-900 text-lg leading-tight group-hover:text-primary transition-colors">{reward.name}</h4>
+                                    <h4 className="font-black text-slate-900 text-base leading-tight group-hover:text-primary transition-colors">{reward.name}</h4>
                                     <div className="flex items-center gap-2">
                                         <Star size={12} className="text-amber-500 fill-amber-500" />
                                         <p className="text-sm font-bold text-slate-500">{(reward?.pointCost || 0).toLocaleString()} <span className="text-[10px] uppercase tracking-widest opacity-60">Points</span></p>
                                     </div>
                                 </div>
-                                <button className="w-full h-12 rounded-xl bg-slate-50 text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] group-hover:bg-primary group-hover:text-white transition-all">
+                                <button className="w-full h-11 rounded-xl bg-slate-50 text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] group-hover:bg-primary group-hover:text-white transition-all">
                                     View Details
                                 </button>
                             </motion.div>
                         ))
                     ) : (
-                        <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs bg-white rounded-[3rem] border border-dashed border-slate-200">
+                        <div className="col-span-full py-16 text-center text-slate-400 font-bold uppercase tracking-widest text-xs bg-white rounded-3xl border border-dashed border-slate-200">
                             No rewards available yet.
                         </div>
                     )}
@@ -297,26 +297,26 @@ export default function CustomerLoyaltyPage() {
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="bg-white rounded-[3rem] p-8 max-w-sm w-full relative z-10 shadow-2xl overflow-hidden"
+                            className="bg-white rounded-[2rem] md:rounded-[3rem] p-5 max-w-sm w-full relative z-10 shadow-2xl overflow-hidden"
                         >
                             <button 
                                 onClick={() => setShowQR(false)}
-                                className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+                                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-xl transition-colors"
                             >
-                                <X size={24} />
+                                <X size={20} />
                             </button>
 
-                            <div className="text-center space-y-6 pt-4">
-                                <div className="space-y-2">
-                                    <h3 className="text-2xl font-black text-gray-900">Show to Redeem</h3>
-                                    <p className="text-sm text-gray-500 px-8">Ask the merchant to scan this QR code to process your reward.</p>
+                            <div className="text-center space-y-4 pt-2">
+                                <div className="space-y-1.5">
+                                    <h3 className="text-xl font-black text-gray-900">Show to Redeem</h3>
+                                    <p className="text-sm text-gray-500 px-6">Ask the merchant to scan this QR code to process your reward.</p>
                                 </div>
 
-                                <div className="bg-gray-50 p-6 rounded-[2.5rem] border border-gray-100 shadow-inner flex flex-col items-center gap-4">
-                                    <div className="bg-white p-4 rounded-3xl shadow-md border border-gray-100">
+                                <div className="bg-gray-50 p-5 rounded-[2rem] border border-gray-100 shadow-inner flex flex-col items-center gap-3">
+                                    <div className="bg-white p-3 rounded-3xl shadow-md border border-gray-100">
                                         <QRCodeCanvas 
                                             value={user?.id || "demo-user-id"} 
-                                            size={200}
+                                            size={180}
                                             level="H"
                                             includeMargin={false}
                                         />
@@ -327,14 +327,14 @@ export default function CustomerLoyaltyPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 justify-center py-2 text-emerald-500 font-bold">
+                                <div className="flex items-center gap-2 justify-center py-1 text-emerald-500 font-bold">
                                     <CheckCircle2 size={18} />
                                     <span className="text-xs uppercase tracking-widest">Active & Ready</span>
                                 </div>
 
                                 <Button 
                                     onClick={() => setShowQR(false)}
-                                    className="w-full h-14 rounded-2xl bg-gray-900 text-white font-black text-xs uppercase tracking-widest"
+                                    className="w-full h-12 rounded-2xl bg-gray-900 text-white font-black text-xs uppercase tracking-widest"
                                 >
                                     Done
                                 </Button>
@@ -365,10 +365,10 @@ export default function CustomerLoyaltyPage() {
                             )}
                         </div>
 
-                        <div className="p-8">
-                            <div className="flex items-start justify-between mb-8">
+                        <div className="p-5">
+                            <div className="flex items-start justify-between mb-5">
                                 <div>
-                                    <h2 className="text-2xl font-display font-bold text-slate-900 mb-1">{selectedReward.name}</h2>
+                                    <h2 className="text-xl font-display font-bold text-slate-900 mb-1">{selectedReward.name}</h2>
                                     <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
                                         <Star size={12} />
                                         Verified Reward
@@ -380,7 +380,7 @@ export default function CustomerLoyaltyPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 mb-8">
+                            <div className="space-y-4 mb-5">
                                 <div className="flex gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
                                     <Clock className="text-primary shrink-0" size={18} />
                                     <div>
@@ -410,7 +410,7 @@ export default function CustomerLoyaltyPage() {
                                     </div>
                                     <button
                                         onClick={() => handleRedeem(selectedReward!)}
-                                        className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-lg hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3"
+                                        className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest rounded-lg hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3"
                                     >
                                         Redeem Now
                                     </button>
@@ -454,10 +454,10 @@ export default function CustomerLoyaltyPage() {
                 title="Enter Redemption Code"
                 size="md"
             >
-                <div className="space-y-6">
+                <div className="space-y-5">
                     <div className="text-center p-4 bg-primary/5 rounded-xl border border-primary/10">
-                        <Gift className="mx-auto text-primary mb-3" size={40} />
-                        <h3 className="text-lg font-bold text-text-main uppercase tracking-tight">
+                        <Gift className="mx-auto text-primary mb-2" size={32} />
+                        <h3 className="text-base font-bold text-text-main uppercase tracking-tight">
                             Redeeming {selectedReward?.name}
                         </h3>
                         <p className="text-xs text-text-secondary font-medium mt-1">
@@ -474,7 +474,7 @@ export default function CustomerLoyaltyPage() {
                             placeholder="123-456-789"
                             value={redemptionCodeInput}
                             onChange={(e) => setRedemptionCodeInput(e.target.value)}
-                            className="w-full h-16 text-center text-2xl font-display font-bold tracking-[0.2em] bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            className="w-full h-14 text-center text-xl font-display font-bold tracking-[0.2em] bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                             maxLength={11}
                         />
                     </div>
@@ -483,7 +483,7 @@ export default function CustomerLoyaltyPage() {
                         <button
                             onClick={submitRedemption}
                             disabled={isSubmittingCode || !redemptionCodeInput}
-                            className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
+                            className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
                         >
                             {isSubmittingCode ? (
                                 <Loader2 className="animate-spin" size={20} />

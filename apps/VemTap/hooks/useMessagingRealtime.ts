@@ -38,6 +38,17 @@ const appendToMessagesCache = (existing: any, message: any) => {
     return existing;
 };
 
+const patchMessageStatusInCache = (existing: any, messageId: string, status: string) => {
+    if (!existing) return existing;
+    const patch = (item: any) =>
+        item?.id === messageId ? { ...item, status } : item;
+    if (Array.isArray(existing)) return existing.map(patch);
+    if (Array.isArray((existing as any)?.data)) {
+        return { ...existing, data: (existing as any).data.map(patch) };
+    }
+    return existing;
+};
+
 export const useMessagingRealtime = ({
     activeThreadId,
     branchId,
@@ -72,17 +83,75 @@ export const useMessagingRealtime = ({
         [branchId, isCustomer, queryClient]
     );
 
+    const patchMessageStatus = useCallback(
+        (threadId: string, messageId: string, status: string) => {
+            if (!threadId || !messageId) return;
+            queryClient.setQueryData(
+                ['chat-messages', threadId, branchId, isCustomer],
+                (existing) => patchMessageStatusInCache(existing, messageId, status)
+            );
+        },
+        [branchId, isCustomer, queryClient]
+    );
+
+    const patchMessagesStatus = useCallback(
+        (threadId: string, messageIds: string[], status: string) => {
+            if (!threadId || !messageIds?.length) return;
+            const idSet = new Set(messageIds);
+            queryClient.setQueryData(
+                ['chat-messages', threadId, branchId, isCustomer],
+                (existing) => {
+                    if (!existing) return existing;
+                    const patch = (item: any) =>
+                        item?.id && idSet.has(item.id) ? { ...item, status } : item;
+                    if (Array.isArray(existing)) return existing.map(patch);
+                    if (Array.isArray((existing as any)?.data)) {
+                        return { ...existing, data: (existing as any).data.map(patch) };
+                    }
+                    return existing;
+                }
+            );
+        },
+        [branchId, isCustomer, queryClient]
+    );
+
+    const activeThreadRef = useRef(activeThreadId);
+    useEffect(() => {
+        activeThreadRef.current = activeThreadId;
+    }, [activeThreadId]);
+
+    const ackReceivedMessage = useCallback(
+        (message: any) => {
+            const threadId = resolveThreadId(message);
+            if (!threadId || !socket) return;
+            const messageId = message?.id;
+            // Only ack messages sent by the other side (not our own)
+            const isOwn = isCustomer
+                ? message?.direction === 'INBOUND'
+                : message?.direction === 'OUTBOUND';
+            if (isOwn || !messageId) return;
+
+            socket.emit('markDelivered', { messageId, threadId });
+            if (activeThreadRef.current === threadId) {
+                socket.emit('markRead', { threadId, messageIds: [messageId] });
+            }
+        },
+        [isCustomer, socket]
+    );
+
     useEffect(() => {
         if (!socket) return;
 
         const handleNewMessage = (message: any) => {
             upsertMessageCache(message);
+            ackReceivedMessage(message);
             invalidateThreads();
         };
 
         const handleInboxUpdate = (payload: any) => {
             if (payload?.message) {
                 upsertMessageCache(payload.message);
+                ackReceivedMessage(payload.message);
             }
             invalidateThreads();
         };
@@ -102,22 +171,51 @@ export const useMessagingRealtime = ({
             }
         };
 
+        const handleMessageStatus = (payload: any) => {
+            patchMessageStatus(
+                payload?.threadId,
+                payload?.messageId,
+                payload?.status
+            );
+        };
+
+        const handleMessageRead = (payload: any) => {
+            patchMessagesStatus(
+                payload?.threadId,
+                payload?.messageIds,
+                payload?.status || 'READ'
+            );
+        };
+
         socket.on('newMessage', handleNewMessage);
         socket.on('inboxUpdate', handleInboxUpdate);
         socket.on('userTyping', handleUserTyping);
         socket.on('notification', handleInboxUpdate);
+        socket.on('messageStatus', handleMessageStatus);
+        socket.on('messageRead', handleMessageRead);
 
         return () => {
             socket.off('newMessage', handleNewMessage);
             socket.off('inboxUpdate', handleInboxUpdate);
             socket.off('userTyping', handleUserTyping);
             socket.off('notification', handleInboxUpdate);
+            socket.off('messageStatus', handleMessageStatus);
+            socket.off('messageRead', handleMessageRead);
         };
-    }, [invalidateThreads, setTyping, socket, upsertMessageCache]);
+    }, [
+        ackReceivedMessage,
+        invalidateThreads,
+        patchMessageStatus,
+        patchMessagesStatus,
+        setTyping,
+        socket,
+        upsertMessageCache,
+    ]);
 
     useEffect(() => {
         if (!socket || !activeThreadId || isPendingThread) return;
         socket.emit('joinThread', { threadId: activeThreadId });
+        socket.emit('markRead', { threadId: activeThreadId });
         return () => {
             socket.emit('leaveThread', { threadId: activeThreadId });
         };

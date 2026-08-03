@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { BannersService } from './banners.service';
@@ -36,8 +37,8 @@ export class BannersController {
     description: 'Active banners retrieved',
     type: [Banner],
   })
-  async getActiveBanners() {
-    return this.bannersService.findActive();
+  async getActiveBanners(@Query('placement') placement?: 'business' | 'customer') {
+    return this.bannersService.findActive(placement);
   }
 }
 
@@ -56,8 +57,8 @@ export class AdminBannersController {
     description: 'All banners retrieved',
     type: [Banner],
   })
-  async findAll() {
-    return this.bannersService.findAll();
+  async findAll(@Query('placement') placement?: 'business' | 'customer') {
+    return this.bannersService.findAll(placement);
   }
 
   @Get(':id')

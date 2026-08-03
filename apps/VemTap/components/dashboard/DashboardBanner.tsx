@@ -17,6 +17,9 @@ export interface BannerSlide {
     color?: string;
     tag?: string;
     isLight?: boolean;
+    children?: React.ReactNode;
+    targetType?: 'custom' | 'deals-page' | 'deal';
+    targetId?: string;
 }
 
 interface DashboardBannerProps {
@@ -42,6 +45,7 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
 
     const currentSlide = slides[currentIndex];
     const isLight = currentSlide.isLight;
+    const hasCustomContent = !!currentSlide.children;
 
     return (
         <div 
@@ -56,18 +60,50 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     className={cn(
-                        "rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-10 border-none shadow-lg shadow-blue-500/5 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 transition-all duration-500 min-h-[140px] md:min-h-[220px]",
+                        "rounded-[2rem] md:rounded-[2.5rem] border-none shadow-lg shadow-blue-500/5 transition-all duration-500",
+                        hasCustomContent
+                            ? "p-0 overflow-hidden"
+                            : "p-4 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 min-h-[140px] md:min-h-[220px]",
                         currentSlide.color || "bg-gradient-to-r from-[#066CF4] to-[#4293FF]"
                     )}
                 >
+                    {hasCustomContent ? (
+                        <>
+                            <div className="relative w-full">
+                                {currentSlide.children}
+                            </div>
+                            {slides.length > 1 && (
+                                <div className="absolute bottom-3 right-4 flex gap-1.5 z-10">
+                                    {slides.map((_, i) => (
+                                        <div 
+                                            key={i} 
+                                            className={cn(
+                                                "h-1 rounded-full transition-all duration-300",
+                                                currentIndex === i 
+                                                    ? "w-6 bg-white" 
+                                                    : "w-1.5 bg-white/40"
+                                            )} 
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                    <>
                     <div className="flex items-start gap-3 md:gap-6 flex-1 min-w-0">
-                        {currentSlide.icon && (
+                        {(currentSlide.icon || currentSlide.image) && (
                             <div className={cn(
-                                "size-10 md:size-16 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                                "size-10 md:size-16 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden",
                                 isLight ? "bg-[#066CF4]/5 text-[#066CF4]" : "bg-white/20 text-white"
                             )}>
-                                <currentSlide.icon size={isLight ? 24 : 20} className="md:hidden" />
-                                <currentSlide.icon size={isLight ? 32 : 28} className="hidden md:block" />
+                                {currentSlide.image ? (
+                                    <img src={currentSlide.image} alt={currentSlide.title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <>
+                                        <currentSlide.icon size={isLight ? 24 : 20} className="md:hidden" />
+                                        <currentSlide.icon size={isLight ? 32 : 28} className="hidden md:block" />
+                                    </>
+                                )}
                             </div>
                         )}
                         <div className="min-w-0">
@@ -135,6 +171,8 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
                     {/* Decorative background element for Light mode */}
                     {isLight && (
                         <div className="absolute -right-12 -top-12 size-48 bg-[#066CF4]/5 rounded-full blur-3xl pointer-events-none" />
+                    )}
+                    </>
                     )}
                 </motion.div>
             </AnimatePresence>
