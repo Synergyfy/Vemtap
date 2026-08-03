@@ -85,22 +85,22 @@ export default function CustomersDashboard() {
                     </section>
                     
                     <CRMQuickActions />
-                </div>
-
-                {/* RIGHT COLUMN: Recent & Activity */}
-                <div className="lg:col-span-4 space-y-12">
-                    <section>
-                         <div className="flex items-center justify-between mb-6 px-1">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Latest Members</h2>
-                        </div>
-                        <CRMRecentCustomers customers={visitors} />
-                    </section>
 
                     <section>
                          <div className="flex items-center justify-between mb-6 px-1">
                             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Activity Log</h2>
                         </div>
                         <CRMActivityFeed activities={activities} />
+                    </section>
+                </div>
+
+                {/* RIGHT COLUMN: Recent Customers */}
+                <div className="lg:col-span-4 space-y-12">
+                    <section>
+                         <div className="flex items-center justify-between mb-6 px-1">
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Latest Members</h2>
+                        </div>
+                        <CRMRecentCustomers customers={visitors} />
                     </section>
                 </div>
             </div>

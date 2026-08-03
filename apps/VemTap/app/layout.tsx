@@ -78,6 +78,7 @@ export const viewport = {
 };
 
 import QueryProvider from "./providers/QueryProvider";
+import OfflineSyncProvider from "./providers/OfflineSyncProvider";
 import AuthProvider from "@/components/providers/AuthProvider";
 import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
@@ -105,17 +106,19 @@ export default function RootLayout({
                 suppressHydrationWarning
             >
                 <QueryProvider>
-                    <AuthProvider>
-                        <GoogleAuthProvider>
-                            <ToastProvider />
-                            <ConflictModal />
-                            <AdminViewerBanner />
-                            {children}
-                            <CookieBanner />
-                            <SupportChatbot />
-                            <InstallPWA />
-                        </GoogleAuthProvider>
-                    </AuthProvider>
+                    <OfflineSyncProvider>
+                        <AuthProvider>
+                            <GoogleAuthProvider>
+                                <ToastProvider />
+                                <ConflictModal />
+                                <AdminViewerBanner />
+                                {children}
+                                <CookieBanner />
+                                <SupportChatbot />
+                                <InstallPWA />
+                            </GoogleAuthProvider>
+                        </AuthProvider>
+                    </OfflineSyncProvider>
                 </QueryProvider>
             </body>
         </html>

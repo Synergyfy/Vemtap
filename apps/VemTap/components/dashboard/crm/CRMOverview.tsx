@@ -146,33 +146,38 @@ export function CRMActivityFeed({ activities = [] }: { activities?: { id: string
         );
     }
 
+    const shown = activities.slice(0, 8);
+
     return (
-        <div className="rounded-[2.5rem] bg-white p-8 shadow-sm border border-gray-100">
-            <div className="space-y-6">
-                {activities.map((act, i) => {
-                    const { icon: Icon, color } = getActivityIcon(act.type);
-                    return (
-                        <div key={act.id || i} className="flex gap-4 relative group">
-                            {i < activities.length - 1 && (
-                                <div className="absolute left-6 top-12 bottom-[-24px] w-0.5 bg-gray-50 group-hover:bg-[#066CF4]/5 transition-colors" />
-                            )}
-                            <div className="size-12 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 shadow-sm z-10 transition-transform group-hover:scale-110">
-                                <Icon size={20} className={color} />
-                            </div>
-                            <div className="flex-1 pb-6 border-b border-gray-50 last:border-0">
-                                <div className="flex justify-between items-start mb-1">
-                                    <h4 className="text-xs font-black text-gray-900">{act.userName}</h4>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase">{timeAgo(act.timestamp)}</span>
+        <div className="rounded-[2.5rem] bg-white p-4 md:p-6 shadow-sm border border-gray-100 flex flex-col">
+            <div className="max-h-[360px] overflow-y-auto pr-1 -mr-1 no-scrollbar">
+                <div className="relative">
+                    <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gray-50" aria-hidden />
+                    <div className="space-y-1">
+                        {shown.map((act, i) => {
+                            const { icon: Icon, color } = getActivityIcon(act.type);
+                            return (
+                                <div key={act.id || i} className="flex gap-3 relative items-start py-2">
+                                    <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 z-10 border border-gray-100">
+                                        <Icon size={14} className={color} />
+                                    </div>
+                                    <div className="flex-1 min-w-0 pt-0.5">
+                                        <div className="flex justify-between items-baseline gap-2">
+                                            <h4 className="text-xs font-black text-gray-900 truncate">{act.userName}</h4>
+                                            <span className="text-[10px] font-bold text-gray-300 uppercase whitespace-nowrap shrink-0">{timeAgo(act.timestamp)}</span>
+                                        </div>
+                                        <p className="text-[10px] font-semibold text-gray-500 leading-snug mt-0.5 line-clamp-2">{act.description}</p>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] font-bold text-gray-400 leading-relaxed uppercase tracking-tight">{act.description}</p>
-                            </div>
-                        </div>
-                    );
-                })}
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
-            <Link href="/dashboard/visitors/activity" className="mt-6 block">
-                <Button className="w-full h-12 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-400 text-[10px] font-black uppercase tracking-widest border-none">
-                    View Full Feed
+
+            <Link href="/dashboard/visitors/activity" className="mt-4 block">
+                <Button className="w-full h-11 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest border-none">
+                    {activities.length > shown.length ? `View All ${activities.length} Activity` : 'View Full Feed'}
                 </Button>
             </Link>
         </div>
