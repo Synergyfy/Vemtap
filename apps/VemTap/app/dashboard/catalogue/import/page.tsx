@@ -489,12 +489,12 @@ export default function ConfigureBulkImportPage() {
                         {importResult && (
                             <>
                                 <div className={`size-20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner ${
-                                    importResult.failed === 0 ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
+                                    importResult.failedCount === 0 ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
                                 }`}>
-                                    {importResult.failed === 0 ? <CheckCircle2 size={40} /> : <AlertCircle size={40} />}
+                                    {importResult.failedCount === 0 ? <CheckCircle2 size={40} /> : <AlertCircle size={40} />}
                                 </div>
                                 <h2 className="text-2xl font-black text-gray-900 text-center mb-2">
-                                    {importResult.failed === 0 ? 'Import Complete!' : `Imported with ${importResult.failed} error${importResult.failed === 1 ? '' : 's'}`}
+                                    {importResult.failedCount === 0 ? 'Import Complete!' : `Imported with ${importResult.failedCount} error${importResult.failedCount === 1 ? '' : 's'}`}
                                 </h2>
                                 <p className="text-sm font-medium text-gray-500 text-center max-w-md mx-auto mb-8">
                                     {importResult.created} item{importResult.created === 1 ? '' : 's'} added to your catalogue.
@@ -507,7 +507,7 @@ export default function ConfigureBulkImportPage() {
                                     </div>
                                     <div className="w-px h-12 bg-gray-200" />
                                     <div>
-                                        <div className="text-3xl font-black text-red-500">{importResult.failed}</div>
+                                        <div className="text-3xl font-black text-red-500">{importResult.failedCount}</div>
                                         <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Failed</div>
                                     </div>
                                 </div>

@@ -289,8 +289,9 @@ export interface BulkImportRowResult {
 }
 
 export interface BulkImportResponse {
-    created: number;
-    failed: number;
+    createdCount: number;
+    failedCount: number;
+    totalProcessed: number;
     results: BulkImportRowResult[];
 }
 
