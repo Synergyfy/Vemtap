@@ -451,7 +451,7 @@ export class MessagingEngineService {
         direction: MessageDirection.OUTBOUND,
         status:
           channel === Channel.IN_HOUSE
-            ? MessageStatus.DELIVERED
+            ? MessageStatus.SENT
             : MessageStatus.PENDING,
         from,
         to:
@@ -672,7 +672,7 @@ export class MessagingEngineService {
       ...data,
       status:
         data.channel === Channel.IN_HOUSE
-          ? MessageStatus.DELIVERED
+          ? MessageStatus.SENT
           : MessageStatus.PENDING,
       timestamp: new Date(),
     }) as unknown as Message;

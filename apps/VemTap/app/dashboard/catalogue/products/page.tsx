@@ -185,7 +185,7 @@ export default function ProductsPage() {
 
     return (
         <PageLockWrapper feature="catalogue" featureName="Catalogue">
-            <div className="p-4 md:p-8 space-y-6">
+            <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto">
                 <div>
                     <UsageIndicator
                         label="Products Limit"

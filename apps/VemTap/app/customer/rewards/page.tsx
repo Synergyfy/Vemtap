@@ -92,13 +92,13 @@ export default function CustomerRewardsPage() {
     const lockedRewards = filteredRewards.filter((r: Reward) => userPoints < r.pointCost);
 
     return (
-        <div className="max-w-6xl mx-auto space-y-12 pb-20 p-4 md:p-0">
+        <div className="max-w-6xl mx-auto space-y-5 md:space-y-8 pb-20 p-4 md:p-0">
 
             {/* Hero Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-text-main mb-2 tracking-tight uppercase">Rewards Vault</h1>
-                    <p className="text-text-secondary font-medium text-base">You have <span className="text-primary font-black">{userPoints.toLocaleString()} points</span> available</p>
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-text-main mb-1 tracking-tight uppercase">Rewards Vault</h1>
+                    <p className="text-text-secondary font-medium text-sm">You have <span className="text-primary font-black">{userPoints.toLocaleString()} points</span> available</p>
                 </div>
                 <div className="relative w-full md:w-80">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -107,45 +107,45 @@ export default function CustomerRewardsPage() {
                         placeholder="Search for rewards..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                        className="w-full h-11 pl-12 pr-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                     />
                 </div>
             </div>
 
             {isLoading && availableRewards.length === 0 ? (
-                <div className="py-20 text-center">
-                    <Loader2 className="animate-spin mx-auto text-primary" size={40} />
-                    <p className="text-text-secondary mt-4 font-bold uppercase tracking-widest text-xs">Syncing Rewards...</p>
+                <div className="py-12 text-center">
+                    <Loader2 className="animate-spin mx-auto text-primary" size={28} />
+                    <p className="text-text-secondary mt-3 font-bold uppercase tracking-widest text-xs">Syncing Rewards...</p>
                 </div>
             ) : (
                 <>
                     {/* Redeemable Now Section */}
                     {readyToRedeem.length > 0 && (
                         <section>
-                            <div className="flex items-center justify-between mb-8">
-                                <h2 className="text-xl font-display font-bold text-text-main flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                        <Star className="text-primary" size={20} fill="currentColor" />
+                            <div className="flex items-center justify-between mb-4 md:mb-6">
+                                <h2 className="text-lg md:text-xl font-display font-bold text-text-main flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <Star className="text-primary" size={16} fill="currentColor" />
                                     </div>
                                     Ready to Redeem
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
                                 {readyToRedeem.map((reward: Reward) => (
-                                    <div key={reward.id} className="bg-white rounded-lg border-2 border-primary/20 p-8 flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                                    <div key={reward.id} className="bg-white rounded-2xl border-2 border-primary/20 p-4 md:p-5 flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700" />
 
-                                        <div className="w-16 h-16 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-6 shadow-sm">
-                                            {getRewardIcon(reward.name, 32)}
+                                        <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4 shadow-sm">
+                                            {getRewardIcon(reward.name, 26)}
                                         </div>
 
                                         <div className="flex-1">
-                                            <h3 className="text-xl font-bold text-text-main mb-1 group-hover:text-primary transition-colors">{reward.name}</h3>
-                                            <p className="text-xs text-text-secondary font-medium leading-relaxed mb-8 line-clamp-2">{reward.description}</p>
+                                            <h3 className="text-base font-bold text-text-main mb-1 group-hover:text-primary transition-colors">{reward.name}</h3>
+                                            <p className="text-xs text-text-secondary font-medium leading-relaxed mb-4 line-clamp-2">{reward.description}</p>
                                         </div>
 
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             <div className="flex justify-between items-center text-xs font-black uppercase tracking-tighter">
                                                 <span className="text-primary">{(reward?.pointCost || 0).toLocaleString()} Points</span>
                                                 <span className="text-green-600 flex items-center gap-1">
@@ -155,7 +155,7 @@ export default function CustomerRewardsPage() {
                                             </div>
                                             <button
                                                 onClick={() => setSelectedReward(reward)}
-                                                className="w-full h-14 bg-primary text-white text-sm font-black uppercase tracking-widest rounded-lg hover:bg-primary-hover transition-all shadow-xl shadow-primary/25 active:scale-95 flex items-center justify-center gap-2"
+                                                className="w-full h-12 bg-primary text-white text-sm font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/25 active:scale-95 flex items-center justify-center gap-2"
                                             >
                                                 Redeem Now
                                                 <Gift size={18} />
@@ -169,21 +169,21 @@ export default function CustomerRewardsPage() {
 
                     {/* Locked Rewards / Catalog */}
                     {lockedRewards.length > 0 && (
-                        <section className="mt-16">
-                            <div className="flex items-center justify-between mb-8">
-                                <h2 className="text-xl font-display font-bold text-text-main">Future Rewards</h2>
+                        <section className="mt-6 md:mt-10">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg md:text-xl font-display font-bold text-text-main">Future Rewards</h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                                 {lockedRewards.map((reward: Reward) => {
                                     const progress = Math.min(100, Math.floor((userPoints / (reward?.pointCost || 1)) * 100));
                                     return (
                                         <div
                                             key={reward.id}
-                                            className="bg-white rounded-lg border border-gray-100 p-6 transition-all hover:bg-gray-50 hover:shadow-xl hover:border-transparent group cursor-pointer"
+                                            className="bg-white rounded-2xl border border-gray-100 p-4 transition-all hover:bg-gray-50 hover:shadow-xl hover:border-transparent group cursor-pointer"
                                             onClick={() => setSelectedReward(reward)}
                                         >
-                                            <div className="w-14 h-14 rounded-lg bg-gray-50 text-gray-400 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500">
-                                                {getRewardIcon(reward.name, 24)}
+                                            <div className="w-11 h-11 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-500">
+                                                {getRewardIcon(reward.name, 22)}
                                             </div>
                                             <h3 className="font-bold text-sm text-text-main mb-1 group-hover:text-primary transition-colors">{reward.name}</h3>
 
@@ -223,10 +223,10 @@ export default function CustomerRewardsPage() {
                             <Gift size={48} />
                         </div>
 
-                        <div className="p-8">
-                            <div className="flex items-start justify-between mb-8">
+                        <div className="p-5">
+                            <div className="flex items-start justify-between mb-5">
                                 <div>
-                                    <h2 className="text-2xl font-display font-bold text-slate-900 mb-1">{selectedReward.name}</h2>
+                                    <h2 className="text-xl font-display font-bold text-slate-900 mb-1">{selectedReward.name}</h2>
                                     <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
                                         <Star size={12} />
                                         Verified Reward
@@ -238,7 +238,7 @@ export default function CustomerRewardsPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 mb-8">
+                            <div className="space-y-4 mb-5">
                                 <div className="flex gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
                                     <Clock className="text-primary shrink-0" size={18} />
                                     <div>
@@ -255,14 +255,14 @@ export default function CustomerRewardsPage() {
                             </div>
 
                             {userPoints >= (selectedReward?.pointCost || 0) ? (
-                                <div className="space-y-6">
-                                    <div className="bg-slate-50 rounded-lg p-6 border-2 border-dashed border-slate-200 text-center flex flex-col items-center">
-                                        <QrCode size={80} className="text-slate-300 mb-3" />
+                                <div className="space-y-5">
+                                    <div className="bg-slate-50 rounded-xl p-4 border-2 border-dashed border-slate-200 text-center flex flex-col items-center">
+                                        <QrCode size={56} className="text-slate-300 mb-2" />
                                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-tight">Secure Activation</p>
                                     </div>
                                     <button
                                         onClick={() => handleRedeem(selectedReward!)}
-                                        className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-lg hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3"
+                                        className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3"
                                     >
                                         Redeem Now
                                     </button>
@@ -306,10 +306,10 @@ export default function CustomerRewardsPage() {
                 title="Enter Redemption Code"
                 size="md"
             >
-                <div className="space-y-6">
+                <div className="space-y-5">
                     <div className="text-center p-4 bg-primary/5 rounded-xl border border-primary/10">
-                        <Gift className="mx-auto text-primary mb-3" size={40} />
-                        <h3 className="text-lg font-bold text-text-main uppercase tracking-tight">
+                        <Gift className="mx-auto text-primary mb-2" size={32} />
+                        <h3 className="text-base font-bold text-text-main uppercase tracking-tight">
                             Redeeming {selectedReward?.name}
                         </h3>
                         <p className="text-xs text-text-secondary font-medium mt-1">
@@ -326,7 +326,7 @@ export default function CustomerRewardsPage() {
                             placeholder="123-456-789"
                             value={redemptionCodeInput}
                             onChange={(e) => setRedemptionCodeInput(e.target.value)}
-                            className="w-full h-16 text-center text-2xl font-display font-bold tracking-[0.2em] bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            className="w-full h-14 text-center text-xl font-display font-bold tracking-[0.2em] bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                             maxLength={11}
                         />
                     </div>
@@ -335,7 +335,7 @@ export default function CustomerRewardsPage() {
                         <button
                             onClick={submitRedemption}
                             disabled={isSubmittingCode || !redemptionCodeInput}
-                            className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
+                            className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
                         >
                             {isSubmittingCode ? (
                                 <Loader2 className="animate-spin" size={20} />

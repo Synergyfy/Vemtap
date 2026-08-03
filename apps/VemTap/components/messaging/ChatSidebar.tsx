@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Trash2, Settings, Megaphone, Users, Tag } from 'lucide-react';
+import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Trash2, Settings, Megaphone, Users, Tag, ArrowLeft } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads, useInitBranchConversation, useDeleteThread } from '@/hooks/useMessaging';
@@ -406,6 +406,11 @@ export default function ChatSidebar() {
                 {/* Header */}
                 <header className="p-4 flex justify-between items-center bg-white/95 backdrop-blur-sm z-40 sticky top-0 border-b border-slate-100">
                     <div className="flex items-center gap-2 min-w-0">
+                        {isCustomer && (
+                            <Link href="/customer/dashboard" className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg" title="Back to Dashboard">
+                                <ArrowLeft size={20} />
+                            </Link>
+                        )}
                         {mounted && headerLogo ? (
                             <img src={headerLogo} alt={headerName} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                         ) : (

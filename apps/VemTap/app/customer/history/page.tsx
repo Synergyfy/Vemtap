@@ -28,13 +28,13 @@ export default function CustomerHistoryPage() {
     );
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 pb-12 p-4 md:p-0">
+        <div className="max-w-5xl mx-auto space-y-5 md:space-y-8 pb-12 p-4 md:p-0">
 
             {/* Header & Controls */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-text-main mb-2">Check-in Ledger</h1>
-                    <p className="text-text-secondary font-medium text-base">You've had <span className="text-primary font-black">{recentTransactions.length} activities</span> across all locations.</p>
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-text-main mb-1">Check-in Ledger</h1>
+                    <p className="text-text-secondary font-medium text-sm">You've had <span className="text-primary font-black">{recentTransactions.length} activities</span> across all locations.</p>
                 </div>
                 <div className="flex gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
@@ -44,30 +44,30 @@ export default function CustomerHistoryPage() {
                             placeholder="Search history..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            className="w-full h-11 pl-12 pr-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Visits Timeline */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-gray-50/50 border-b">
                             <tr>
-                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Venue & Identity</th>
-                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Date & Time</th>
-                                <th className="text-left md:text-right py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Points</th>
-                                <th className="text-center py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Actions</th>
+                                <th className="text-left py-3.5 md:py-5 px-4 md:px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary">Venue & Identity</th>
+                                <th className="text-left py-3.5 md:py-5 px-4 md:px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary">Date & Time</th>
+                                <th className="text-left md:text-right py-3.5 md:py-5 px-4 md:px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary">Points</th>
+                                <th className="text-center py-3.5 md:py-5 px-4 md:px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {isLoading && filteredTransactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="py-20 text-center">
-                                        <Loader2 className="animate-spin mx-auto text-primary" size={32} />
-                                        <p className="text-sm text-text-secondary mt-4 font-bold">Retrieving your activity log...</p>
+                                    <td colSpan={4} className="py-14 text-center">
+                                        <Loader2 className="animate-spin mx-auto text-primary" size={28} />
+                                        <p className="text-sm text-text-secondary mt-3 font-bold">Retrieving your activity log...</p>
                                     </td>
                                 </tr>
                             ) : filteredTransactions.length > 0 ? (
@@ -80,7 +80,7 @@ export default function CustomerHistoryPage() {
                                             className="hover:bg-gray-50/50 transition-all group cursor-pointer"
                                             onClick={() => setSelectedVisit(tx)}
                                         >
-                                            <td className="py-4 md:py-6 px-4 md:px-8">
+                                            <td className="py-3.5 md:py-5 px-4 md:px-6">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-gray-50 flex items-center justify-center text-text-secondary group-hover:bg-primary group-hover:text-white transition-all duration-300">
                                                         <Icon size={20} />
@@ -91,7 +91,7 @@ export default function CustomerHistoryPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 md:py-6 px-4 md:px-8">
+                                            <td className="py-3.5 md:py-5 px-4 md:px-6">
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-1.5 text-xs text-text-main font-bold">
                                                         <Calendar size={12} className="text-primary" />
@@ -103,7 +103,7 @@ export default function CustomerHistoryPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 md:py-6 px-4 md:px-8 text-right">
+                                            <td className="py-3.5 md:py-5 px-4 md:px-6 text-right">
                                                 <p className={cn(
                                                     "font-display font-bold text-sm",
                                                     (tx.amount ?? tx.pointsAmount ?? 0) > 0 ? "text-green-600" : "text-orange-600"
@@ -111,7 +111,7 @@ export default function CustomerHistoryPage() {
                                                     {(tx.amount ?? tx.pointsAmount ?? 0) > 0 ? '+' : ''}{(tx.amount ?? tx.pointsAmount ?? 0).toLocaleString()} pts
                                                 </p>
                                             </td>
-                                            <td className="py-4 md:py-6 px-4 md:px-8 text-center">
+                                            <td className="py-3.5 md:py-5 px-4 md:px-6 text-center">
                                                 <button className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all">
                                                     <MoreVertical size={18} />
                                                 </button>
@@ -121,7 +121,7 @@ export default function CustomerHistoryPage() {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan={4} className="py-20 text-center">
+                                    <td colSpan={4} className="py-14 text-center">
                                         <p className="text-sm font-medium text-text-secondary">No recent activity found.</p>
                                     </td>
                                 </tr>
@@ -135,11 +135,11 @@ export default function CustomerHistoryPage() {
             {selectedVisit && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-text-main/80 backdrop-blur-xl animate-in fade-in" onClick={() => setSelectedVisit(null)}></div>
-                    <div className="relative w-full max-w-lg bg-white rounded-lg overflow-hidden shadow-2xl animate-in zoom-in slide-in-from-bottom-10 duration-500">
-                        <div className="p-10">
-                            <div className="flex justify-between items-start mb-10">
-                                <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                    <Clock size={32} />
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in slide-in-from-bottom-10 duration-500">
+                        <div className="p-5">
+                            <div className="flex justify-between items-start mb-5">
+                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <Clock size={24} />
                                 </div>
                                 <button
                                     onClick={() => setSelectedVisit(null)}
@@ -149,12 +149,12 @@ export default function CustomerHistoryPage() {
                                 </button>
                             </div>
 
-                            <div className="space-y-1 mb-8">
-                                <h2 className="text-3xl font-display font-bold text-text-main">{selectedVisit.reason}</h2>
-                                <p className="text-sm font-bold text-primary uppercase tracking-widest">LOYALTY ACTIVITY</p>
+                            <div className="space-y-1 mb-4">
+                                <h2 className="text-xl font-display font-bold text-text-main">{selectedVisit.reason}</h2>
+                                <p className="text-xs font-bold text-primary uppercase tracking-widest">LOYALTY ACTIVITY</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-8 py-8 border-y border-gray-100 mb-8">
+                            <div className="grid grid-cols-2 gap-4 py-5 border-y border-gray-100 mb-4">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Transaction Date</p>
                                     <p className="text-sm font-bold text-text-main">
@@ -194,10 +194,10 @@ export default function CustomerHistoryPage() {
                                 </div>
                             </div>
 
-                            <div className="mt-12">
+                            <div className="mt-5">
                                 <button
                                     onClick={() => setSelectedVisit(null)}
-                                    className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                                    className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2"
                                 >
                                     Dismiss Detailed View
                                 </button>

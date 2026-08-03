@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Smile, Paperclip, Camera, Send, X, CornerUpLeft, MoreHorizontal, Gift, ShoppingBag, Tag } from 'lucide-react';
+import { Smile, Paperclip, Camera, Send, X, CornerUpLeft, MoreHorizontal, Gift, ShoppingBag, Tag, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { useSendReply, useChatTemplates, useStartConversation, useInitBranchConversation } from '@/hooks/useMessaging';
 import { useRewards } from '@/services/loyalty/hooks';
 import { useCatalogueItems, useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
@@ -11,7 +12,7 @@ import { useBranches } from '@/services/branches/hooks';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
-import Spinner from '../ui/Spinner';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface ChatInputProps {
     conversationId?: string;
@@ -22,7 +23,17 @@ interface ChatInputProps {
     onConversationStarted?: (threadId: string) => void;
 }
 
-const COMMON_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '✨', '🙌', '😮', '😢', '😍', '🤔', '🎉', '✅', '🚀', '👋'];
+interface AttachmentItem {
+    id: string;
+    file: File;
+    type: 'image' | 'file';
+    name: string;
+    url: string;
+}
+
+const MAX_INPUT_HEIGHT = 200;
+
+const fileToPreviewUrl = (file: File): string => URL.createObjectURL(file);
 
 export default function ChatInput({
     conversationId,
@@ -36,6 +47,8 @@ export default function ChatInput({
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showMediaOptions, setShowMediaOptions] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
+    const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+    const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
     const user = useAuthStore(s => s.user);
     const isCustomer = user?.role?.toLowerCase() === 'customer';
     const { activeBranchId, setActiveBranch } = useActiveBranch();
@@ -65,10 +78,12 @@ export default function ChatInput({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isTypingRef = useRef(false);
     const emojiRef = useRef<HTMLDivElement>(null);
     const mediaOptionsRef = useRef<HTMLDivElement>(null);
+    const attachmentIdRef = useRef(0);
 
     useEffect(() => {
         if (!user || user?.role?.toLowerCase() === 'customer') return;
@@ -82,9 +97,21 @@ export default function ChatInput({
             if (mediaOptionsRef.current && !mediaOptionsRef.current.contains(event.target as Node)) {
                 setShowMediaOptions(false);
             }
+            if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) {
+                setShowEmojiPicker(false);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const resizeTextarea = useCallback(() => {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        ta.style.height = 'auto';
+        const next = Math.min(ta.scrollHeight, MAX_INPUT_HEIGHT);
+        ta.style.height = `${next}px`;
+        ta.style.overflowY = ta.scrollHeight > MAX_INPUT_HEIGHT ? 'auto' : 'hidden';
     }, []);
 
     useEffect(() => {
@@ -102,9 +129,10 @@ export default function ChatInput({
             if (textareaRef.current) {
                 textareaRef.current.style.height = '';
                 textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+                resizeTextarea();
             }
         }, 10);
-    }, [conversationId]);
+    }, [conversationId, resizeTextarea]);
 
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
@@ -141,8 +169,7 @@ export default function ChatInput({
         );
     }, [catalogueItems, catalogueOffers, commandSearch]);
 
-    const emitTyping = useCallback((next: boolean) => {
-        if (!onTypingChange) return;
+    const emitTyping = useCallback((next: boolean) => {        if (!onTypingChange) return;
         if (isTypingRef.current === next) return;
         isTypingRef.current = next;
         onTypingChange(next);
@@ -243,6 +270,7 @@ export default function ChatInput({
         setText(value);
         if (conversationId) setDraft(conversationId, value);
         handleTypingActivity(value);
+        resizeTextarea();
 
         const textBeforeCursor = value.slice(0, cursorPosition);
         const match = textBeforeCursor.match(/(?:^|\s)([@\/#!])(\w*)$/);
@@ -275,22 +303,60 @@ export default function ChatInput({
 
     const isSending = replyMutation.isPending || startConversationMutation.isPending || initBranchConvMutation.isPending || isStarting;
 
+    const uploadAttachments = async (): Promise<{ url: string; type: 'image' | 'file'; name: string }[]> => {
+        if (attachments.length === 0) return [];
+        setIsUploadingAttachments(true);
+        try {
+            const results = await Promise.all(
+                attachments.map(async (att) => {
+                    const url = await uploadToCloudinary(att.file);
+                    return { url, type: att.type, name: att.name };
+                })
+            );
+            return results;
+        } finally {
+            setIsUploadingAttachments(false);
+        }
+    };
+
+    const clearAttachments = () => {
+        setAttachments((prev) => {
+            prev.forEach((a) => URL.revokeObjectURL(a.url));
+            return [];
+        });
+    };
+
+    const resetComposer = useCallback(() => {
+        setText('');
+        clearAttachments();
+        setShowEmojiPicker(false);
+        emitTyping(false);
+        if (textareaRef.current) {
+            textareaRef.current.style.height = '';
+            textareaRef.current.style.overflowY = 'hidden';
+            textareaRef.current.focus();
+        }
+    }, [clearAttachments, emitTyping]);
+
     const handleSend = useCallback(async () => {
-        if (!text.trim() || isSending || isStarting) return;
+        const hasText = !!text.trim();
+        const hasAttachments = attachments.length > 0;
+        if ((!hasText && !hasAttachments) || isSending || isStarting || isUploadingAttachments) return;
+
+        const uploaded = await uploadAttachments();
+        const metaAttachments = uploaded.map((u) => ({ ...u }));
 
         if (canStartConversation) {
             setIsStarting(true);
             try {
                 const response: any = await startConversationMutation.mutateAsync({
                     branchId: startBranchId!,
-                    content: text.trim(),
+                    content: hasText ? text.trim() : (metaAttachments.length ? `📎 ${metaAttachments.map((m) => m.url).join(', ')}` : ''),
                 });
                 const threadId = response?.threadId || response?.thread?.id || response?.id;
                 if (threadId) onConversationStarted?.(threadId);
                 if (conversationId) clearDraft(conversationId);
-                setText('');
-                setShowEmojiPicker(false);
-                emitTyping(false);
+                resetComposer();
                 onCancelReply?.();
             } catch (error: any) {
                 toast.error(error.message || 'Failed to start conversation');
@@ -311,13 +377,18 @@ export default function ChatInput({
                 const initResponse: any = await initBranchConvMutation.mutateAsync({ branchId, customerId });
                 const realThreadId = initResponse?.threadId || initResponse?.thread?.id || initResponse?.id;
                 if (realThreadId) {
-                    await replyMutation.mutateAsync({ threadId: realThreadId, content: text.trim(), branchId });
+                    await replyMutation.mutateAsync({
+                        threadId: realThreadId,
+                        content: hasText ? text.trim() : (metaAttachments.length ? '📎 Attachment' : ''),
+                        branchId,
+                        metadata: metaAttachments.length ? { attachments: metaAttachments } : undefined,
+                    });
                     setActiveConversation(realThreadId);
                     linkPendingThread(conversationId, realThreadId);
                     onConversationStarted?.(realThreadId);
                 }
-                setText('');
                 if (conversationId) clearDraft(conversationId);
+                resetComposer();
                 onCancelReply?.();
             } catch (error: any) {
                 toast.error(error.message || 'Failed to start conversation');
@@ -335,18 +406,18 @@ export default function ChatInput({
         try {
             await replyMutation.mutateAsync({ 
                 threadId: conversationId, 
-                content: text.trim(), 
+                content: hasText ? text.trim() : (metaAttachments.length ? '📎 Attachment' : ''),
                 branchId,
                 replyToId: replyTo?.id,
+                metadata: metaAttachments.length ? { attachments: metaAttachments } : undefined,
             });
-            setText('');
             if (conversationId) clearDraft(conversationId);
+            resetComposer();
             onCancelReply?.();
-            if (textareaRef.current) textareaRef.current.style.height = '';
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');
         }
-    }, [text, isSending, isStarting, canStartConversation, startConversationMutation, startBranchId, onConversationStarted, conversationId, clearDraft, emitTyping, onCancelReply, canBranchStartConversation, branchId, initBranchConvMutation, replyMutation, setActiveConversation, linkPendingThread, replyTo?.id]);
+    }, [text, attachments, isSending, isStarting, isUploadingAttachments, canStartConversation, startConversationMutation, startBranchId, onConversationStarted, conversationId, clearDraft, onCancelReply, canBranchStartConversation, branchId, initBranchConvMutation, replyMutation, setActiveConversation, linkPendingThread, replyTo?.id, uploadAttachments, resetComposer]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         const isPopperOpen = (showTemplates && filteredTemplates.length > 0) || (showRewards && filteredRewards.length > 0) || (showCatalogue && filteredCatalogue.length > 0);
@@ -388,8 +459,44 @@ export default function ChatInput({
     };
 
     const addEmoji = (emoji: string) => {
-        setText(prev => prev + emoji);
+        const ta = textareaRef.current;
+        const start = ta?.selectionStart ?? text.length;
+        const end = ta?.selectionEnd ?? text.length;
+        const next = text.slice(0, start) + emoji + text.slice(end);
+        setText(next);
+        if (conversationId) setDraft(conversationId, next);
+        requestAnimationFrame(() => {
+            resizeTextarea();
+            if (ta) {
+                const pos = start + emoji.length;
+                ta.focus();
+                ta.setSelectionRange(pos, pos);
+            }
+        });
+    };
+
+    const handleAttachFiles = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file') => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        const next: AttachmentItem[] = files.map((file) => ({
+            id: `att-${++attachmentIdRef.current}`,
+            file,
+            type,
+            name: file.name,
+            url: fileToPreviewUrl(file),
+        }));
+        setAttachments((prev) => [...prev, ...next]);
+        setShowMediaOptions(false);
+        e.target.value = '';
         textareaRef.current?.focus();
+    };
+
+    const removeAttachment = (id: string) => {
+        setAttachments((prev) => {
+            const target = prev.find((a) => a.id === id);
+            if (target) URL.revokeObjectURL(target.url);
+            return prev.filter((a) => a.id !== id);
+        });
     };
 
     return (
@@ -483,24 +590,148 @@ export default function ChatInput({
                 </div>
             )}
 
-            <div className="flex items-end gap-2">
-                <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2 border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all flex items-end">
+            {/* Attachment chips */}
+            {attachments.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                    {attachments.map((att) => (
+                        <div key={att.id} className="relative group bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
+                            {att.type === 'image' ? (
+                                <img src={att.url} alt={att.name} className="h-16 w-20 object-cover" />
+                            ) : (
+                                <div className="h-16 w-20 flex flex-col items-center justify-center gap-1 px-1">
+                                    <FileText size={20} className="text-slate-400" />
+                                    <span className="text-[9px] font-bold text-slate-500 truncate w-full text-center px-1">{att.name}</span>
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => removeAttachment(att.id)}
+                                className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="flex items-end gap-1.5">
+                {/* Left controls */}
+                <div className="relative" ref={mediaOptionsRef}>
+                    <button
+                        type="button"
+                        onClick={() => { setShowMediaOptions(!showMediaOptions); setShowEmojiPicker(false); }}
+                        className={`flex items-center justify-center size-10 rounded-full transition-all mb-1 ${showMediaOptions ? 'bg-primary/10 text-primary' : 'text-slate-400 hover:text-primary hover:bg-slate-100'}`}
+                        aria-label="Attach"
+                    >
+                        <Paperclip size={20} />
+                    </button>
+
+                    {showMediaOptions && (
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowMediaOptions(false)} />
+                            <div className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                <button
+                                    type="button"
+                                    onClick={() => imageInputRef.current?.click()}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                    <span className="size-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><ImageIcon size={16} /></span>
+                                    Photo &amp; Video
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => cameraInputRef.current?.click()}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                    <span className="size-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><Camera size={16} /></span>
+                                    Camera
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                    <span className="size-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><FileText size={16} /></span>
+                                    Document
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                <div className="relative" ref={emojiRef}>
+                    <button
+                        type="button"
+                        onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowMediaOptions(false); }}
+                        className={`flex items-center justify-center size-10 rounded-full transition-all mb-1 ${showEmojiPicker ? 'bg-primary/10 text-primary' : 'text-slate-400 hover:text-primary hover:bg-slate-100'}`}
+                        aria-label="Emoji"
+                    >
+                        <Smile size={20} />
+                    </button>
+
+                    {showEmojiPicker && (
+                        <div className="absolute bottom-full left-0 mb-2 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-100 animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-[calc(100vw-2rem)]">
+                            <EmojiPicker
+                                onEmojiClick={(emojiData: EmojiClickData) => addEmoji(emojiData.emoji)}
+                                autoFocusSearch={false}
+                                width={360}
+                                height={320}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* Textarea */}
+                <div className="flex-1 bg-slate-100 rounded-[1.6rem] px-4 py-1.5 border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all flex items-end">
                     <textarea
                         ref={textareaRef}
                         rows={1}
                         value={text}
                         onChange={handleTextChange}
                         placeholder={isCustomer ? "Type a message..." : "Type a message... (Use / for templates, # for rewards, ! for items)"}
-                        disabled={isSending}
+                        disabled={isSending || isUploadingAttachments}
                         onKeyDown={handleKeyDown}
-                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm max-h-32 resize-none py-1 outline-none"
+                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-[15px] resize-none py-2 outline-none leading-[1.35]"
                     />
                 </div>
 
-                <button type="button" onClick={handleSend} disabled={!text.trim() || isSending} className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 mb-1">
-                    {isSending ? <Spinner size="sm" color="white" /> : <Send size={18} />}
+                {/* Send */}
+                <button
+                    type="button"
+                    onClick={handleSend}
+                    disabled={(!text.trim() && attachments.length === 0) || isSending || isStarting || isUploadingAttachments}
+                    className="size-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all transform active:scale-95 disabled:opacity-40 disabled:hover:scale-100 mb-1 shrink-0"
+                    aria-label="Send"
+                >
+                    {isSending || isUploadingAttachments ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                 </button>
             </div>
+
+            {/* Hidden file inputs */}
+            <input
+                type="file"
+                ref={imageInputRef}
+                accept="image/*,video/*"
+                multiple
+                onChange={(e) => handleAttachFiles(e, 'image')}
+                className="hidden"
+            />
+            <input
+                type="file"
+                ref={cameraInputRef}
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => handleAttachFiles(e, 'image')}
+                className="hidden"
+            />
+            <input
+                type="file"
+                ref={fileInputRef}
+                multiple
+                onChange={(e) => handleAttachFiles(e, 'file')}
+                className="hidden"
+            />
         </footer>
     );
 }
