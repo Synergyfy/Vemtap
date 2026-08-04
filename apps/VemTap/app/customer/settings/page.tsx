@@ -384,17 +384,17 @@ readOnly={!profileEditing}
                                             className={`w-full h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold transition-all outline-none ${profileEditing ? 'bg-white focus:outline-none focus:ring-4 focus:ring-primary/10' : 'bg-gray-50/50 cursor-default'}`}
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 md:col-span-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-2">
                                             <Mail size={12} className="text-primary" />
                                             Email Domain
                                         </label>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 min-w-0">
                                             <input
                                                 type="email"
                                                 value={user?.email || ''}
                                                 disabled
-                                                className="flex-1 h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-gray-100/50 text-text-secondary focus:outline-none transition-all outline-none cursor-not-allowed"
+                                                className="flex-1 min-w-0 h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-gray-100/50 text-text-secondary focus:outline-none transition-all outline-none cursor-not-allowed"
                                             />
                                             {user?.emailVerified ? (
                                                 <span className="flex items-center gap-1 px-3 h-12 bg-green-50 text-green-700 text-[10px] font-black uppercase tracking-wider rounded-xl whitespace-nowrap">
