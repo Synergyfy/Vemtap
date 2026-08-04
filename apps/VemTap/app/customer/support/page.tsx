@@ -67,8 +67,10 @@ export default function CustomerSupportPage() {
                                                 <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-md">{ticket.id}</span>
                                                 <h4 className="font-bold text-text-main mt-2 group-hover:text-primary transition-colors text-sm">{ticket.subject}</h4>
                                             </div>
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${ticket.status === 'Open' ? 'bg-green-100 text-green-700' :
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${ticket.status === 'Open' || ticket.status === 'Pending' ? 'bg-amber-50 text-amber-700' :
                                                 ticket.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                                                ticket.status === 'Resolved' ? 'bg-green-100 text-green-700' :
+                                                ticket.status === 'Cancelled' || ticket.status === 'Closed' ? 'bg-gray-100 text-gray-500' :
                                                     'bg-gray-100 text-gray-500'
                                                 }`}>
                                                 {ticket.status}

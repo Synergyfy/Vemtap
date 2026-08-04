@@ -18,6 +18,7 @@ import type { BannerSlide } from '@/components/dashboard/DashboardBanner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode } from '@/lib/api/devices';
+import { customerApi } from '@/lib/api/customer';
 import { notify } from '@/lib/notify';
 import Tooltip2 from '@/components/ui/Tooltip2';
 import {
@@ -121,6 +122,20 @@ export default function CustomerDashboardPage() {
         }
         setSelectedReward({ id: rewardId, name, points });
         setShowRedeemModal(true);
+    };
+
+    const handleQrScanResult = async (decodedText: string) => {
+        setShowQrScanner(false);
+        try {
+            const context = await customerApi.getDeviceInfo(decodedText);
+            if (context?.business?.id) {
+                router.push(`/tap/${context.business.id}/${decodedText}`);
+            } else {
+                notify.error('No business found for this QR code');
+            }
+        } catch (error: any) {
+            notify.error(error?.message || 'Invalid or unrecognized QR code');
+        }
     };
 
     const submitRedemption = async () => {
@@ -469,6 +484,7 @@ export default function CustomerDashboardPage() {
             <QRScannerModal
                 isOpen={showQrScanner}
                 onClose={() => setShowQrScanner(false)}
+                onResult={handleQrScanResult}
             />
 
             <Modal

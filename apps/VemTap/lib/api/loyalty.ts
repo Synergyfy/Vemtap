@@ -72,14 +72,15 @@ export const loyaltyApi = {
   },
 
   // Fetch customer overall analytics (visits, points, savings)
-  fetchCustomerAnalytics: async (): Promise<{
+  fetchCustomerAnalytics: async (days?: number): Promise<{
     totalVisits: number;
     currentPointsBalance: number;
     netSavings: number;
     visitTrends: { month: string; visits: number }[];
     pointsByVenue: { venueName: string; points: number }[];
     topVenues: { venueName: string; points: number }[];
+    trends?: { totalVisits?: string; rewardPoints?: string; netSavings?: string };
   }> => {
-    return api.get('/loyalty/analytics');
+    return api.get(days ? `/loyalty/analytics?days=${days}` : '/loyalty/analytics');
   }
 };

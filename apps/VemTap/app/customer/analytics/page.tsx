@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Coffee, Dumbbell, Smartphone, History, Star, PiggyBank, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { loyaltyApi } from '@/lib/api/loyalty';
@@ -8,9 +8,10 @@ import { TbCurrencyNaira } from "react-icons/tb";
 import Tooltip2 from '@/components/ui/Tooltip2';
 
 export default function CustomerAnalyticsPage() {
+    const [periodDays, setPeriodDays] = useState<number>(30);
     const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ['customer-analytics'],
-        queryFn: () => loyaltyApi.fetchCustomerAnalytics(),
+        queryKey: ['customer-analytics', periodDays],
+        queryFn: () => loyaltyApi.fetchCustomerAnalytics(periodDays),
     });
 
     if (isLoading) {
@@ -46,7 +47,7 @@ export default function CustomerAnalyticsPage() {
             value: data?.totalVisits || 0, 
             icon: History, 
             color: 'blue', 
-            trend: { value: '+0%', isUp: true, label: 'vs last month' },
+            trend: { value: data?.trends?.totalVisits || '+0%', isUp: !String(data?.trends?.totalVisits || '').startsWith('-'), label: 'vs last month' },
             tooltip: 'The total number of times you\'ve visited and tapped at any VemTap enabled business location.'
         },
         { 
@@ -54,7 +55,7 @@ export default function CustomerAnalyticsPage() {
             value: (data?.currentPointsBalance || 0).toLocaleString(), 
             icon: Star, 
             color: 'primary', 
-            trend: { value: '0', isUp: true, label: 'this month' },
+            trend: { value: data?.trends?.rewardPoints || '0', isUp: !String(data?.trends?.rewardPoints || '').startsWith('-'), label: 'this month' },
             tooltip: 'Your current balance of points earned from visits and activities, ready to be redeemed for rewards.'
         },
         { 
@@ -63,7 +64,7 @@ export default function CustomerAnalyticsPage() {
             icon: PiggyBank, 
             color: 'green', 
             isCurrency: true, 
-            trend: { value: '+₦0', isUp: true, label: 'this month' },
+            trend: { value: data?.trends?.netSavings || '+₦0', isUp: !String(data?.trends?.netSavings || '').startsWith('-'), label: 'this month' },
             tooltip: 'The total monetary value you\'ve saved through redeemed rewards, exclusive discounts, and point-based offers.'
         },
     ];
@@ -119,11 +120,16 @@ export default function CustomerAnalyticsPage() {
                         <h3 className="font-display font-bold text-lg text-text-main">Detailed Breakdown</h3>
                         <p className="text-xs text-text-secondary font-medium mt-0.5">Track your progress over time</p>
                     </div>
-                    <select className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-text-main focus:outline-none focus:ring-2 focus:ring-primary/20">
-                        <option>Last 30 Days</option>
-                        <option>Last 90 Days</option>
-                        <option>This Year</option>
-                        <option>All Time</option>
+                    <select
+                        value={periodDays}
+                        onChange={(e) => setPeriodDays(Number(e.target.value))}
+                        className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-text-main focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                        <option value={7}>Last 7 Days</option>
+                        <option value={30}>Last 30 Days</option>
+                        <option value={90}>Last 90 Days</option>
+                        <option value={365}>This Year</option>
+                        <option value={3650}>All Time</option>
                     </select>
                 </div>
 
