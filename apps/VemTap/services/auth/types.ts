@@ -45,8 +45,7 @@ export interface LoginRequest {
 
 export interface TwoFactorSetupResponse {
     secret: string;
-    qrCodeUrl: string;
-    backupCodes: string[];
+    otpauthUrl: string;
 }
 
 export interface RegisterRequest {

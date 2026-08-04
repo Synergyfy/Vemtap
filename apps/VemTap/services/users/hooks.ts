@@ -162,12 +162,13 @@ export const useCheckPhone = () => {
 
 export interface LinkedDevice {
     id: string;
-    name: string;
-    os: string;
-    browser: string;
-    lastActive: string;
+    deviceName: string;
+    platform: string;
+    userAgent: string;
+    ipAddress: string;
+    lastActiveAt: string;
+    revokedAt: string | null;
     createdAt: string;
-    isCurrent: boolean;
 }
 
 export const useLinkedDevices = () => {
@@ -182,9 +183,9 @@ export const useLinkedDevices = () => {
 
 export const useRenameDevice = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, { id: string; name: string }>({
-        mutationFn: async ({ id, name }) => {
-            await api.patch(`/users/linked-devices/${id}`, { name });
+    return useMutation<void, Error, { id: string; deviceName: string }>({
+        mutationFn: async ({ id, deviceName }) => {
+            await api.patch(`/users/linked-devices/${id}`, { deviceName });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['linked-devices'] });

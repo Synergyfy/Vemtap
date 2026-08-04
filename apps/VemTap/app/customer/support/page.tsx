@@ -27,11 +27,15 @@ export default function CustomerSupportPage() {
         });
     };
 
-    const { data: faqsData = [] } = useSupportFaqs();
-    const faqs = (faqsData || []).map((faq: any) => ({
-        q: faq.question ?? faq.q ?? faq.title ?? '',
-        a: faq.answer ?? faq.a ?? faq.body ?? '',
-    })).filter((faq: any) => faq.q && faq.a);
+    const { data: faqsData } = useSupportFaqs();
+    const faqs = (faqsData?.categories || []).flatMap((cat: any) =>
+        (cat.sections || []).flatMap((section: any) =>
+            (section.pages || []).map((page: any) => ({
+                q: page.title || '',
+                a: page.summary || '',
+            }))
+        )
+    ).filter((faq: any) => faq.q);
 
     return (
         <>

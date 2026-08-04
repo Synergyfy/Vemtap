@@ -258,11 +258,11 @@ export const useSendEmailVerification = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const sendVerification = async (email: string): Promise<any> => {
+    const sendVerification = async (): Promise<any> => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await api.post('/auth/email-verification/send', { email });
+            const response = await api.post('/auth/email-verification/send', {});
             return response;
         } catch (err: any) {
             const errorMessage = err.message || 'Failed to send verification email';
@@ -348,11 +348,11 @@ export const useDisable2FA = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const disable = async (password: string): Promise<any> => {
+    const disable = async (code: string): Promise<any> => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await api.post('/auth/2fa/disable', { password });
+            const response = await api.post('/auth/2fa/disable', { code });
             return response;
         } catch (err: any) {
             const errorMessage = err.message || 'Failed to disable 2FA';

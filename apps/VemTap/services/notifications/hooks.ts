@@ -77,26 +77,16 @@ export const useRegisterVisitorPushToken = () => {
 };
 
 export interface NotificationPreferences {
-    email: {
-        marketing: boolean;
-        orderUpdates: boolean;
-        rewardAlerts: boolean;
-        activityDigest: boolean;
-    };
-    sms: {
-        securityAlerts: boolean;
-        orderUpdates: boolean;
-    };
-    push: {
-        enabled: boolean;
-        orderUpdates: boolean;
-        rewardAlerts: boolean;
-    };
-    inApp: {
-        enabled: boolean;
-        rewardAlerts: boolean;
-        activityDigest: boolean;
-    };
+    push: boolean;
+    email: boolean;
+    sms: boolean;
+    marketing: boolean;
+    orderUpdates: boolean;
+    loyalty: boolean;
+    support: boolean;
+    rewardAlerts: boolean;
+    activityDigest: boolean;
+    smsSecurity: boolean;
 }
 
 export const useNotificationPreferences = () => {
@@ -105,10 +95,17 @@ export const useNotificationPreferences = () => {
         queryFn: async () => {
             const res = await api.get('/notifications/preferences');
             return {
-                email: { marketing: false, orderUpdates: true, rewardAlerts: true, activityDigest: true, ...(res?.email || {}) },
-                sms: { securityAlerts: true, orderUpdates: false, ...(res?.sms || {}) },
-                push: { enabled: true, orderUpdates: true, rewardAlerts: true, ...(res?.push || {}) },
-                inApp: { enabled: true, rewardAlerts: true, activityDigest: true, ...(res?.inApp || {}) },
+                push: true,
+                email: true,
+                sms: true,
+                marketing: true,
+                orderUpdates: true,
+                loyalty: true,
+                support: true,
+                rewardAlerts: true,
+                activityDigest: true,
+                smsSecurity: false,
+                ...(res || {}),
             };
         },
     });
