@@ -96,7 +96,7 @@ describe('ProfilingLogicHelper', () => {
         'Property information gap and low listing visibility.',
       );
       expect(result.insights.recommendations).toContain(
-        'Deploy a Digital Property Listing system via QR to provide instant access to high-quality photos and specs.',
+        'Deploy a digital property listing system via QR codes on signage to provide instant access to high-quality photos and specs.',
       );
     });
   });

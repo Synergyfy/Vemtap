@@ -23,14 +23,14 @@ export class TrialRestrictionGuard implements CanActivate {
       return true;
     }
 
-    // const businessId = await this.branchesService.getBusinessId(user.branchId);
-    // const sub = await this.subscriptionsService.activeSubscription(businessId);
+    const businessId = await this.branchesService.getBusinessId(user.branchId);
+    const sub = await this.subscriptionsService.activeSubscription(businessId);
 
-    // if (sub && sub.status === SubscriptionStatus.TRIAL) {
-    //   throw new ForbiddenException(
-    //     'Messaging features are disabled during trial period.',
-    //   );
-    // }
+    if (sub && sub.status === SubscriptionStatus.TRIAL) {
+      throw new ForbiddenException(
+        'Messaging features are disabled during trial period.',
+      );
+    }
 
     return true;
   }

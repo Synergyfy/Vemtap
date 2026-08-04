@@ -259,7 +259,7 @@ describe('MessagingEngineService', () => {
             'Hello Tobi Adeyemi, welcome to VemTap Global. Your email is tobi@example.com. Link: https://vemtap.com. Points: 500',
         }),
       );
-      expect(mockIndividualQueue.add).toHaveBeenCalled();
+      expect(mockProviderRouter.sendMessage).toHaveBeenCalled();
     });
   });
 });

@@ -8,6 +8,8 @@ import {
   FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
 import { MetricsSnapshot } from '../fos-dashboard/entities/metrics-snapshot.entity';
+import { Expense } from '../fos-core/entities/expense.entity';
+import { CashFlow } from '../fos-core/entities/cash-flow.entity';
 
 describe('FosPnlService', () => {
   let service: FosPnlService;
@@ -21,6 +23,8 @@ describe('FosPnlService', () => {
   const mockSnapshotRepo = {
     find: jest.fn(),
   };
+  const mockExpenseRepo = {};
+  const mockCashFlowRepo = {};
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -34,6 +38,8 @@ describe('FosPnlService', () => {
           provide: getRepositoryToken(MetricsSnapshot),
           useValue: mockSnapshotRepo,
         },
+        { provide: getRepositoryToken(Expense), useValue: mockExpenseRepo },
+        { provide: getRepositoryToken(CashFlow), useValue: mockCashFlowRepo },
       ],
     }).compile();
 

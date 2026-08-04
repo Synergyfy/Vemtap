@@ -11,6 +11,8 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
+import { LoyaltyRule } from '../entities/loyalty-rule.entity';
+import { Business } from '../../businesses/entities/business.entity';
 
 describe('LoyaltyService', () => {
   let service: LoyaltyService;
@@ -46,7 +48,7 @@ describe('LoyaltyService', () => {
   });
 
   const mockBranchesService = {
-    checkBranchAccess: jest.fn(),
+    checkBranchAccess: jest.fn().mockResolvedValue(true),
     findById: jest.fn(),
   };
 
@@ -75,6 +77,8 @@ describe('LoyaltyService', () => {
         { provide: getRepositoryToken(User), useFactory: mockRepo },
         { provide: getRepositoryToken(Branch), useFactory: mockRepo },
         { provide: getRepositoryToken(Visit), useFactory: mockRepo },
+        { provide: getRepositoryToken(LoyaltyRule), useFactory: mockRepo },
+        { provide: getRepositoryToken(Business), useFactory: mockRepo },
         { provide: DataSource, useValue: mockDataSource },
         { provide: BranchesService, useValue: mockBranchesService },
       ],
@@ -136,6 +140,7 @@ describe('LoyaltyService', () => {
     });
 
     it('should throw error if customer not found', async () => {
+      branchRepo.findOne.mockResolvedValue({ id: 'Y', businessId: 'biz1' });
       userRepo.findOne.mockResolvedValue(null);
       await expect(
         service.givePoints({} as User, {
