@@ -5,8 +5,9 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
+import { UserSession } from './entities/user-session.entity';
 import * as bcrypt from 'bcrypt';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
@@ -22,6 +23,8 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
     private readonly mailService: MailService,
     private readonly eventsGateway: EventsGateway,
   ) {}
@@ -143,6 +146,65 @@ export class UsersService {
     return this.usersRepository.findOne({
       where: [{ email: trimmed.toLowerCase() }, { phone: trimmed }],
     });
+  }
+
+  async getTwoFactorState(id: string): Promise<Pick<User, 'twoFactorEnabled' | 'twoFactorSecret'> | null> {
+    return this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'twoFactorEnabled', 'twoFactorSecret'],
+    });
+  }
+
+  async createSession(userId: string, metadata?: Partial<UserSession>) {
+    const session = this.userSessionRepository.create({
+      userId,
+      deviceName: metadata?.deviceName || 'Web browser',
+      platform: metadata?.platform || 'web',
+      userAgent: metadata?.userAgent || null,
+      ipAddress: metadata?.ipAddress || null,
+      lastActiveAt: new Date(),
+      revokedAt: null,
+    });
+    return this.userSessionRepository.save(session);
+  }
+
+  async findActiveSession(id: string, userId: string) {
+    return this.userSessionRepository.findOne({ where: { id, userId, revokedAt: IsNull() } });
+  }
+
+  async listSessions(userId: string) {
+    return this.userSessionRepository.find({
+      where: { userId },
+      order: { lastActiveAt: 'DESC' },
+      select: ['id', 'deviceName', 'platform', 'userAgent', 'ipAddress', 'lastActiveAt', 'revokedAt', 'createdAt'],
+    });
+  }
+
+  async renameSession(userId: string, sessionId: string, deviceName: string) {
+    const session = await this.userSessionRepository.findOne({ where: { id: sessionId, userId } });
+    if (!session) throw new NotFoundException('Linked device not found');
+    session.deviceName = deviceName;
+    return this.userSessionRepository.save(session);
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    const session = await this.userSessionRepository.findOne({ where: { id: sessionId, userId } });
+    if (!session) throw new NotFoundException('Linked device not found');
+    session.revokedAt = new Date();
+    await this.userSessionRepository.save(session);
+    return { success: true };
+  }
+
+  async revokeOtherSessions(userId: string, currentSessionId: string) {
+    await this.userSessionRepository
+      .createQueryBuilder()
+      .update(UserSession)
+      .set({ revokedAt: new Date() })
+      .where('userId = :userId', { userId })
+      .andWhere('id != :currentSessionId', { currentSessionId })
+      .andWhere('revokedAt IS NULL')
+      .execute();
+    return { success: true };
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {

@@ -18,6 +18,7 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { Message } from '../../messaging/entities/message.entity';
 import { ConversationThread } from '../../messaging/entities/conversation-thread.entity';
 import { Segment } from '../../contacts/entities/segment.entity';
+import { UserSession } from './user-session.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
@@ -147,6 +148,9 @@ export class User extends AbstractBaseEntity {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
+  @OneToMany(() => UserSession, (session) => session.user)
+  sessions: UserSession[];
+
   @OneToMany(() => Visit, (visit) => visit.customer)
   visits: Visit[];
 
@@ -167,12 +171,25 @@ export class User extends AbstractBaseEntity {
   @Column({ default: false })
   optOut: boolean;
 
+  @Column({ type: 'jsonb', nullable: true })
+  notificationPreferences: Record<string, boolean> | null;
+
+  @Column({ default: false })
+  emailVerified: boolean;
+
   @ApiProperty({
     example: false,
     description: 'Whether the user has changed their default password',
   })
   @Column({ default: false })
   isPasswordChanged: boolean;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  twoFactorEnabled: boolean;
+
+  @Column({ type: 'text', nullable: true, select: false })
+  twoFactorSecret: string | null;
 
   @BeforeInsert()
   @BeforeUpdate()

@@ -117,9 +117,19 @@ export class LoyaltyService {
     return parseInt(result?.sum || '0', 10);
   }
 
+  async getCustomerPoints(userId: string, businessId?: string): Promise<number> {
+    const query = this.pointTransactionRepo
+      .createQueryBuilder('transaction')
+      .select('SUM(transaction.amount)', 'sum')
+      .where('transaction.customerId = :userId', { userId });
+    if (businessId) query.andWhere('transaction.businessId = :businessId', { businessId });
+    const result = await query.getRawOne();
+    return parseInt(result?.sum || '0', 10);
+  }
+
   async getPointLogs(
     userId: string,
-    businessId: string,
+    businessId?: string,
     page = 1,
     limit = 10,
     cursor?: string,
@@ -128,10 +138,11 @@ export class LoyaltyService {
       .createQueryBuilder('pt')
       .leftJoinAndSelect('pt.givenBy', 'givenBy')
       .leftJoinAndSelect('pt.branch', 'branch')
-      .where('pt.customerId = :userId AND pt.businessId = :businessId', {
-        userId,
-        businessId,
-      });
+      .where('pt.customerId = :userId', { userId });
+
+    if (businessId) {
+      qb.andWhere('pt.businessId = :businessId', { businessId });
+    }
 
     const result = await paginateWithCursor({
       queryBuilder: qb,
@@ -427,6 +438,7 @@ export class LoyaltyService {
     const {
       branchId,
       branchCode,
+      businessId,
       search,
       newest,
       oldest,
@@ -439,8 +451,8 @@ export class LoyaltyService {
       limit = 10,
     } = query;
 
-    if (!branchId && !branchCode) {
-      throw new BadRequestException('Branch ID or Code is required');
+    if (!branchId && !branchCode && !businessId) {
+      throw new BadRequestException('Branch ID or Code is required unless Business ID is provided');
     }
 
     let resolvedBranchId = branchId;
@@ -456,10 +468,12 @@ export class LoyaltyService {
     }
 
     const where: FindOptionsWhere<Reward> = {
-      branchId: resolvedBranchId,
       isActive: true,
       expiryDate: MoreThanOrEqual(new Date()),
     };
+
+    if (resolvedBranchId) where.branchId = resolvedBranchId;
+    else where.businessId = businessId;
 
     // If quantity is not -1 (infinity), it must be at least 1
     // Using a more complex where clause for TypeORM to handle OR condition
@@ -800,11 +814,28 @@ export class LoyaltyService {
       .andWhere('t.createdAt >= :start', { start: currentMonthStart })
       .getRawOne();
 
+    const currentMonthSavings = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(ABS(t.amount))', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.REDEEMED })
+      .andWhere('t.createdAt >= :start', { start: currentMonthStart })
+      .getRawOne();
+
     const prevMonthPoints = await this.pointTransactionRepo
       .createQueryBuilder('t')
       .select('SUM(t.amount)', 'sum')
       .where('t.customerId = :userId', { userId })
       .andWhere('t.type = :type', { type: PointTransactionType.EARNED })
+      .andWhere('t.createdAt >= :start', { start: prevMonthStart })
+      .andWhere('t.createdAt < :end', { end: currentMonthStart })
+      .getRawOne();
+
+    const prevMonthSavings = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(ABS(t.amount))', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.REDEEMED })
       .andWhere('t.createdAt >= :start', { start: prevMonthStart })
       .andWhere('t.createdAt < :end', { end: currentMonthStart })
       .getRawOne();
@@ -827,6 +858,10 @@ export class LoyaltyService {
         rewardPoints: calculateTrend(
           parseInt(currentMonthPoints?.sum || '0', 10),
           parseInt(prevMonthPoints?.sum || '0', 10),
+        ),
+        netSavings: calculateTrend(
+          parseInt(currentMonthSavings?.sum || '0', 10),
+          parseInt(prevMonthSavings?.sum || '0', 10),
         ),
       },
     };

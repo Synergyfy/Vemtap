@@ -42,6 +42,7 @@ import {
   CustomerAnalyticsQueryDto,
   PointLogsQueryDto,
   RewardQueryDto,
+  CustomerPointLogsQueryDto,
 } from './dto/loyalty-query.dto';
 
 import { Public } from '../../common/decorators/public.decorator';
@@ -76,8 +77,8 @@ export class LoyaltyController {
   })
   @ApiQuery({
     name: 'businessId',
-    required: true,
-    description: 'The ID of the business',
+    required: false,
+    description: 'Optional business filter; omit for global customer balance',
   })
   @ApiResponse({
     status: 200,
@@ -86,9 +87,9 @@ export class LoyaltyController {
   })
   async getBalance(
     @Request() req: { user: User },
-    @Query('businessId') businessId: string,
+    @Query('businessId') businessId?: string,
   ) {
-    return this.loyaltyService.getBusinessPoints(req.user.id, businessId);
+    return this.loyaltyService.getCustomerPoints(req.user.id, businessId);
   }
 
   @Get('points/logs')
@@ -100,8 +101,8 @@ export class LoyaltyController {
   })
   @ApiQuery({
     name: 'businessId',
-    required: true,
-    description: 'The ID of the business',
+    required: false,
+    description: 'Optional business filter; omit for global customer history',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -132,12 +133,11 @@ export class LoyaltyController {
   })
   async getMyLogs(
     @Request() req: { user: User },
-    @Query('businessId') businessId: string,
-    @Query() query: PaginationQueryDto,
+    @Query() query: CustomerPointLogsQueryDto,
   ) {
     return this.loyaltyService.getPointLogs(
       req.user.id,
-      businessId,
+      query.businessId,
       query.page,
       query.limit,
     );

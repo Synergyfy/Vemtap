@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User, UserRole } from './entities/user.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
+import { UserSession } from './entities/user-session.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { EventsGateway } from '../../common/gateways/events.gateway';
@@ -53,6 +54,16 @@ describe('UsersService', () => {
           useValue: {
             create: jest.fn(),
             save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(UserSession),
+          useValue: {
+            create: jest.fn().mockImplementation((session) => session),
+            save: jest.fn().mockImplementation((session) => Promise.resolve({ id: 'session-1', ...session })),
+            findOne: jest.fn(),
+            find: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         { provide: MailService, useValue: mailService },
