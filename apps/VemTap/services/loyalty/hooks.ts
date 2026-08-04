@@ -378,7 +378,10 @@ export const useApplyLoyaltyTemplate = (branchId?: string) => {
 export const usePointsBalance = (businessId: string) => {
     return useQuery<{ balance: number }, Error>({
         queryKey: ['loyalty', 'points-balance', businessId],
-        queryFn: async () => await api.get(`/loyalty/points/balance?businessId=${businessId}`),
+        queryFn: async () => {
+            const res = await api.get(`/loyalty/points/balance?businessId=${businessId}`);
+            return typeof res === 'number' ? { balance: res } : (res && typeof res === 'object' ? res : { balance: 0 });
+        },
         enabled: !!businessId,
     });
 };

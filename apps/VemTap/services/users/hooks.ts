@@ -157,3 +157,49 @@ export const useCheckPhone = () => {
         mutationFn: checkPhone,
     });
 };
+
+// --- Linked Devices ---
+
+export interface LinkedDevice {
+    id: string;
+    name: string;
+    os: string;
+    browser: string;
+    lastActive: string;
+    createdAt: string;
+    isCurrent: boolean;
+}
+
+export const useLinkedDevices = () => {
+    return useQuery<LinkedDevice[], Error>({
+        queryKey: ['linked-devices'],
+        queryFn: async () => {
+            const res = await api.get('/users/linked-devices');
+            return Array.isArray(res) ? res : (res?.data || []);
+        },
+    });
+};
+
+export const useRenameDevice = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, { id: string; name: string }>({
+        mutationFn: async ({ id, name }) => {
+            await api.patch(`/users/linked-devices/${id}`, { name });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['linked-devices'] });
+        },
+    });
+};
+
+export const useRevokeDevice = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, string>({
+        mutationFn: async (id) => {
+            await api.delete(`/users/linked-devices/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['linked-devices'] });
+        },
+    });
+};

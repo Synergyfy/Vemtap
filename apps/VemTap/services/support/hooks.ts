@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+export const useSupportFaqs = () => {
+  return useQuery<{ question: string; answer: string }[], Error>({
+    queryKey: ['support-faqs'],
+    queryFn: () => api.get('/support/faqs'),
+  });
+};
+
 export const useSupportTickets = (params?: { type?: string; isAssigned?: boolean; page?: number; limit?: number }) => {
   return useQuery({
     queryKey: ['support-tickets', params],

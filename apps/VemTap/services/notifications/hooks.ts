@@ -75,3 +75,53 @@ export const useRegisterVisitorPushToken = () => {
         },
     });
 };
+
+export interface NotificationPreferences {
+    email: {
+        marketing: boolean;
+        orderUpdates: boolean;
+        rewardAlerts: boolean;
+        activityDigest: boolean;
+    };
+    sms: {
+        securityAlerts: boolean;
+        orderUpdates: boolean;
+    };
+    push: {
+        enabled: boolean;
+        orderUpdates: boolean;
+        rewardAlerts: boolean;
+    };
+    inApp: {
+        enabled: boolean;
+        rewardAlerts: boolean;
+        activityDigest: boolean;
+    };
+}
+
+export const useNotificationPreferences = () => {
+    return useQuery<NotificationPreferences, Error>({
+        queryKey: ['notification-preferences'],
+        queryFn: async () => {
+            const res = await api.get('/notifications/preferences');
+            return {
+                email: { marketing: false, orderUpdates: true, rewardAlerts: true, activityDigest: true, ...(res?.email || {}) },
+                sms: { securityAlerts: true, orderUpdates: false, ...(res?.sms || {}) },
+                push: { enabled: true, orderUpdates: true, rewardAlerts: true, ...(res?.push || {}) },
+                inApp: { enabled: true, rewardAlerts: true, activityDigest: true, ...(res?.inApp || {}) },
+            };
+        },
+    });
+};
+
+export const useUpdateNotificationPreferences = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, Partial<NotificationPreferences>>({
+        mutationFn: async (prefs) => {
+            await api.patch('/notifications/preferences', prefs);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+        },
+    });
+};

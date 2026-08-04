@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest, RequestOwnerOtpRequest, ChangePasswordRequest } from './types';
+import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest, RequestOwnerOtpRequest, ChangePasswordRequest, TwoFactorSetupResponse } from './types';
 
 export const useRegisterOwner = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -250,5 +250,119 @@ export const useGoogleLogin = () => {
     };
 
     return { googleLogin, isLoading, error };
+};
+
+// --- Email Verification ---
+
+export const useSendEmailVerification = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const sendVerification = async (email: string): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/email-verification/send', { email });
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to send verification email';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { sendVerification, isLoading, error };
+};
+
+export const useVerifyEmail = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const verifyEmail = async (payload: { email: string; code: string }): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/email-verification/verify', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Invalid verification code';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { verifyEmail, isLoading, error };
+};
+
+// --- Two-Factor Authentication ---
+
+export const useSetup2FA = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const setup = async (): Promise<TwoFactorSetupResponse> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/2fa/setup', {});
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to set up 2FA';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { setup, isLoading, error };
+};
+
+export const useConfirm2FA = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const confirm = async (code: string): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/2fa/confirm', { code });
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Invalid 2FA code';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { confirm, isLoading, error };
+};
+
+export const useDisable2FA = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const disable = async (password: string): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/2fa/disable', { password });
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to disable 2FA';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { disable, isLoading, error };
 };
 

@@ -6,7 +6,9 @@ import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, Chevron
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useChangePassword } from '@/services/auth/hooks';
-import { useRegisterPushToken } from '@/services/notifications/hooks';
+import { useRegisterPushToken, useNotificationPreferences, useUpdateNotificationPreferences } from '@/services/notifications/hooks';
+import { useLinkedDevices, useRenameDevice, useRevokeDevice } from '@/services/users/hooks';
+import { useSetup2FA, useConfirm2FA, useDisable2FA, useSendEmailVerification, useVerifyEmail } from '@/services/auth/hooks';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export default function CustomerSettingsPage() {
@@ -136,25 +138,29 @@ export default function CustomerSettingsPage() {
     const [phone, setPhone] = useState(user?.phone || '');
     const [profileEditing, setProfileEditing] = useState(false);
 
-    // Alert Matrix preferences (persisted in localStorage)
-    const [rewardAlerts, setRewardAlerts] = useState(true);
-    const [activityDigest, setActivityDigest] = useState(true);
-    const [smsSecurity, setSmsSecurity] = useState(false);
-
-    useEffect(() => {
-        try {
-            const saved = JSON.parse(localStorage.getItem('alert-prefs') || '{}');
-            if (saved.rewardAlerts !== undefined) setRewardAlerts(saved.rewardAlerts);
-            if (saved.activityDigest !== undefined) setActivityDigest(saved.activityDigest);
-            if (saved.smsSecurity !== undefined) setSmsSecurity(saved.smsSecurity);
-        } catch {}
-    }, []);
-
-    const saveAlertPrefs = (prefs: { rewardAlerts: boolean; activityDigest: boolean; smsSecurity: boolean }) => {
-        localStorage.setItem('alert-prefs', JSON.stringify(prefs));
-    };
+    // Notification preferences from backend
+    const { data: notifPrefs } = useNotificationPreferences();
+    const updatePrefs = useUpdateNotificationPreferences();
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [renamingDeviceId, setRenamingDeviceId] = useState<string | null>(null);
+    const [deviceName, setDeviceName] = useState('');
+    const { data: devices = [] } = useLinkedDevices();
+    const renameDevice = useRenameDevice();
+    const revokeDevice = useRevokeDevice();
+    const setup2FA = useSetup2FA();
+    const confirm2FA = useConfirm2FA();
+    const disable2FA = useDisable2FA();
+    const sendEmailVerification = useSendEmailVerification();
+    const verifyEmail = useVerifyEmail();
+    const [twoFASetup, setTwoFASetup] = useState<{ secret: string; qrCodeUrl: string; backupCodes: string[] } | null>(null);
+    const [twoFACode, setTwoFACode] = useState('');
+    const [show2FASetup, setShow2FASetup] = useState(false);
+    const [show2FADisable, setShow2FADisable] = useState(false);
+    const [disable2FAPassword, setDisable2FAPassword] = useState('');
+    const [emailVerifyMode, setEmailVerifyMode] = useState(false);
+    const [emailVerifyCode, setEmailVerifyCode] = useState('');
+    const [emailVerifySent, setEmailVerifySent] = useState(false);
 
 
     useEffect(() => {
@@ -383,12 +389,57 @@ readOnly={!profileEditing}
                                             <Mail size={12} className="text-primary" />
                                             Email Domain
                                         </label>
-                                        <input
-                                            type="email"
-                                            value={user?.email || ''}
-                                            disabled
-                                            className="w-full h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-gray-100/50 text-text-secondary focus:outline-none transition-all outline-none cursor-not-allowed"
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="email"
+                                                value={user?.email || ''}
+                                                disabled
+                                                className="flex-1 h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-gray-100/50 text-text-secondary focus:outline-none transition-all outline-none cursor-not-allowed"
+                                            />
+                                            {user?.emailVerified ? (
+                                                <span className="flex items-center gap-1 px-3 h-12 bg-green-50 text-green-700 text-[10px] font-black uppercase tracking-wider rounded-xl whitespace-nowrap">
+                                                    <Check size={14} /> Verified
+                                                </span>
+                                            ) : emailVerifyMode ? null : (
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await sendEmailVerification.sendVerification(user?.email || '');
+                                                            setEmailVerifySent(true);
+                                                            setEmailVerifyMode(true);
+                                                            notify.success('Verification code sent to your email');
+                                                        } catch {}
+                                                    }}
+                                                    disabled={sendEmailVerification.isLoading}
+                                                    className="px-3 h-12 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-primary/20 transition-all whitespace-nowrap disabled:opacity-50"
+                                                >{sendEmailVerification.isLoading ? 'Sending...' : 'Verify'}</button>
+                                            )}
+                                        </div>
+                                        {emailVerifyMode && emailVerifySent && (
+                                            <div className="flex gap-2 mt-2">
+                                                <input
+                                                    type="text"
+                                                    value={emailVerifyCode}
+                                                    onChange={(e) => setEmailVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                    placeholder="Enter 6-digit code"
+                                                    className="flex-1 h-10 px-4 border border-gray-200 rounded-xl text-sm font-bold tracking-wider focus:outline-none focus:ring-4 focus:ring-primary/10"
+                                                />
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await verifyEmail.verifyEmail({ email: user?.email || '', code: emailVerifyCode });
+                                                            setEmailVerifyMode(false);
+                                                            setEmailVerifyCode('');
+                                                            setEmailVerifySent(false);
+                                                            notify.success('Email verified!');
+                                                        } catch {}
+                                                    }}
+                                                    disabled={emailVerifyCode.length !== 6 || verifyEmail.isLoading}
+                                                    className="px-4 h-10 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
+                                                >{verifyEmail.isLoading ? 'Verifying...' : 'Submit'}</button>
+                                                {verifyEmail.error && <p className="text-xs text-red-500 w-full">{verifyEmail.error}</p>}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-2">
@@ -428,9 +479,9 @@ readOnly={!profileEditing}
                                         </div>
 
                                         {[
-                                            { label: 'Reward Unlocked Notifications', desc: 'Alert me instantly when a voucher is ready for use', checked: rewardAlerts, onToggle: (v: boolean) => { setRewardAlerts(v); saveAlertPrefs({ rewardAlerts: v, activityDigest, smsSecurity }); } },
-                                            { label: 'Activity Summaries', desc: 'Weekly digest of my check-ins and savings', checked: activityDigest, onToggle: (v: boolean) => { setActivityDigest(v); saveAlertPrefs({ rewardAlerts, activityDigest: v, smsSecurity }); } },
-                                            { label: 'SMS Security Alerts', desc: 'Notice for logins from unrecognized devices', checked: smsSecurity, onToggle: (v: boolean) => { setSmsSecurity(v); saveAlertPrefs({ rewardAlerts, activityDigest, smsSecurity: v }); } },
+                                            { label: 'Reward Unlocked Notifications', desc: 'Alert me instantly when a voucher is ready for use', checked: notifPrefs?.inApp?.rewardAlerts ?? true, onToggle: (v: boolean) => updatePrefs.mutate({ inApp: { enabled: notifPrefs?.inApp?.enabled ?? true, rewardAlerts: v, activityDigest: notifPrefs?.inApp?.activityDigest ?? true } }) },
+                                            { label: 'Activity Summaries', desc: 'Weekly digest of my check-ins and savings', checked: notifPrefs?.inApp?.activityDigest ?? true, onToggle: (v: boolean) => updatePrefs.mutate({ inApp: { enabled: notifPrefs?.inApp?.enabled ?? true, rewardAlerts: notifPrefs?.inApp?.rewardAlerts ?? true, activityDigest: v } }) },
+                                            { label: 'SMS Security Alerts', desc: 'Notice for logins from unrecognized devices', checked: notifPrefs?.sms?.securityAlerts ?? false, onToggle: (v: boolean) => updatePrefs.mutate({ sms: { securityAlerts: v, orderUpdates: notifPrefs?.sms?.orderUpdates ?? false } }) },
                                         ].map((pref, i) => (
                                             <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-all cursor-pointer group">
                                                 <div>
@@ -576,17 +627,182 @@ readOnly={!profileEditing}
                                             <p className="text-xs text-text-secondary mt-2 max-w-sm leading-relaxed">
                                                 Add an extra layer of security to your account by enabling two-factor authentication.
                                             </p>
+                                            {user?.twoFactorEnabled && (
+                                                <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-black uppercase tracking-wider text-green-700 bg-green-50 px-2 py-1 rounded-full">
+                                                    <Check size={12} /> Enabled
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="flex items-center h-10 px-4 rounded-xl bg-gray-200/50 text-text-secondary font-bold text-[10px] uppercase tracking-widest">
-                                            Coming Soon
-                                        </div>
+                                        {user?.twoFactorEnabled ? (
+                                            <button
+                                                onClick={() => setShow2FADisable(true)}
+                                                className="h-10 px-4 rounded-xl bg-red-50 text-red-600 font-bold text-[10px] uppercase tracking-widest hover:bg-red-100 transition-all"
+                                            >Disable</button>
+                                        ) : show2FASetup ? null : (
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const result = await setup2FA.setup();
+                                                        setTwoFASetup(result);
+                                                        setShow2FASetup(true);
+                                                    } catch {}
+                                                }}
+                                                disabled={setup2FA.isLoading}
+                                                className="h-10 px-4 rounded-xl bg-primary text-white font-bold text-[10px] uppercase tracking-widest hover:bg-primary-hover transition-all disabled:opacity-50"
+                                            >{setup2FA.isLoading ? 'Setting up...' : 'Enable'}</button>
+                                        )}
                                     </div>
+                                    {show2FASetup && twoFASetup && (
+                                        <div className="mt-4 p-4 bg-white border border-gray-200 rounded-xl space-y-4">
+                                            <p className="text-xs text-text-secondary font-medium">1. Scan this QR code with your authenticator app:</p>
+                                            <div className="flex justify-center">
+                                                <img src={twoFASetup.qrCodeUrl} alt="2FA QR Code" className="w-48 h-48 rounded-lg border border-gray-100" />
+                                            </div>
+                                            <p className="text-xs text-text-secondary font-medium text-center">Or enter this key manually: <span className="font-bold text-text-main">{twoFASetup.secret}</span></p>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">2. Enter the 6-digit code from your app</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={twoFACode}
+                                                        onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                        placeholder="000000"
+                                                        className="flex-1 h-11 px-4 border border-gray-200 rounded-xl text-sm font-bold text-center tracking-[0.3em] focus:outline-none focus:ring-4 focus:ring-primary/10"
+                                                    />
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await confirm2FA.confirm(twoFACode);
+                                                                setShow2FASetup(false);
+                                                                setTwoFASetup(null);
+                                                                setTwoFACode('');
+                                                                notify.success('Two-factor authentication enabled!');
+                                                            } catch {}
+                                                        }}
+                                                        disabled={twoFACode.length !== 6 || confirm2FA.isLoading}
+                                                        className="px-6 h-11 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
+                                                    >{confirm2FA.isLoading ? 'Verifying...' : 'Verify'}</button>
+                                                </div>
+                                                {confirm2FA.error && <p className="text-xs text-red-500">{confirm2FA.error}</p>}
+                                            </div>
+                                            {twoFASetup.backupCodes && twoFASetup.backupCodes.length > 0 && (
+                                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                                    <p className="text-[10px] font-black uppercase tracking-wider text-amber-700 mb-2">Backup Codes — Save these somewhere safe</p>
+                                                    <div className="grid grid-cols-2 gap-1">
+                                                        {twoFASetup.backupCodes.map((code, i) => (
+                                                            <span key={i} className="text-xs font-mono font-bold text-amber-800">{code}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <button onClick={() => { setShow2FASetup(false); setTwoFASetup(null); }} className="text-xs text-text-secondary font-bold">Cancel</button>
+                                        </div>
+                                    )}
+                                    {show2FADisable && (
+                                        <div className="mt-4 p-4 bg-white border border-red-200 rounded-xl space-y-3">
+                                            <p className="text-xs text-text-secondary font-medium">Enter your password to disable 2FA:</p>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="password"
+                                                    value={disable2FAPassword}
+                                                    onChange={(e) => setDisable2FAPassword(e.target.value)}
+                                                    placeholder="Password"
+                                                    className="flex-1 h-11 px-4 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10"
+                                                />
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await disable2FA.disable(disable2FAPassword);
+                                                            setShow2FADisable(false);
+                                                            setDisable2FAPassword('');
+                                                            notify.success('2FA disabled');
+                                                        } catch {}
+                                                    }}
+                                                    disabled={!disable2FAPassword || disable2FA.isLoading}
+                                                    className="px-6 h-11 bg-red-600 text-white font-bold text-xs rounded-xl hover:bg-red-700 transition-all disabled:opacity-50"
+                                                >{disable2FA.isLoading ? 'Disabling...' : 'Disable'}</button>
+                                            </div>
+                                            {disable2FA.error && <p className="text-xs text-red-500">{disable2FA.error}</p>}
+                                            <button onClick={() => { setShow2FADisable(false); setDisable2FAPassword(''); }} className="text-xs text-text-secondary font-bold">Cancel</button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {(activeTab !== 'profile' && activeTab !== 'security') && (
+                    {activeTab === 'devices' && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 shadow-sm">
+                            <h3 className="text-lg font-display font-bold text-text-main mb-4 md:mb-6 flex items-center gap-3">
+                                <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                                Linked Devices
+                            </h3>
+                            {devices.length === 0 ? (
+                                <div className="text-center py-8 text-text-secondary">
+                                    <Laptop size={32} className="mx-auto mb-3 text-gray-300" />
+                                    <p className="font-bold text-sm">No linked devices</p>
+                                    <p className="text-xs mt-1">Devices you use to access VemTap will appear here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {devices.map((device) => (
+                                        <div key={device.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-all">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
+                                                    {device.os?.toLowerCase().includes('ios') || device.os?.toLowerCase().includes('iphone') ? <Smartphone size={18} /> : <Laptop size={18} />}
+                                                </div>
+                                                <div>
+                                                    {renamingDeviceId === device.id ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={deviceName}
+                                                                onChange={(e) => setDeviceName(e.target.value)}
+                                                                className="h-8 px-2 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                                autoFocus
+                                                            />
+                                                            <button
+                                                                onClick={() => {
+                                                                    renameDevice.mutate({ id: device.id, name: deviceName }, { onSuccess: () => { setRenamingDeviceId(null); setDeviceName(''); } });
+                                                                }}
+                                                                className="text-primary text-xs font-bold"
+                                                            >Save</button>
+                                                            <button onClick={() => setRenamingDeviceId(null)} className="text-text-secondary text-xs font-bold">Cancel</button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <p className="font-bold text-sm text-text-main flex items-center gap-2">
+                                                                {device.name || `${device.os} - ${device.browser}`}
+                                                                {device.isCurrent && <span className="text-[9px] font-black uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">This device</span>}
+                                                            </p>
+                                                            <p className="text-xs text-text-secondary">Last active: {device.lastActive ? new Date(device.lastActive).toLocaleDateString() : 'Unknown'}</p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {!device.isCurrent && (
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => { setRenamingDeviceId(device.id); setDeviceName(device.name || ''); }}
+                                                        className="text-xs text-text-secondary hover:text-primary font-bold transition-colors"
+                                                    >Rename</button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm('Revoke access for this device?')) {
+                                                                revokeDevice.mutate(device.id);
+                                                            }
+                                                        }}
+                                                        className="text-xs text-red-500 hover:text-red-700 font-bold transition-colors"
+                                                    >Revoke</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {activeTab !== 'profile' && activeTab !== 'security' && activeTab !== 'devices' && activeTab !== 'notifications' && (
                         <div className="bg-white rounded-2xl border border-gray-100 p-10 shadow-sm flex flex-col items-center justify-center text-center">
                             <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-3 border border-gray-100">
                                 <Laptop size={22} className="text-gray-400" />
