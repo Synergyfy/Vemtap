@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Not, IsNull, FindOptionsWhere } from 'typeorm';
 import {
   SupportTicket,
+  TicketPriority,
   TicketStatus,
   TicketType,
 } from './entities/support-ticket.entity';
@@ -135,6 +136,7 @@ export class SupportService {
       subject: dto.subject,
       category: dto.category,
       status: TicketStatus.PENDING,
+      priority: dto.priority ?? TicketPriority.NORMAL,
       type: TicketType.TICKET,
     });
     await this.ticketRepository.save(ticket);

@@ -36,7 +36,9 @@ export class PushNotificationService {
     private readonly contactRepo: Repository<Contact>,
     private readonly configService: ConfigService,
   ) {
-    const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
+    const publicKey =
+      this.configService.get<string>('VAPID_PUBLIC_KEY') ||
+      this.configService.get<string>('NEXT_PUBLIC_VAPID_PUBLIC_KEY');
     const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
     const email = this.configService.get<string>(
       'VAPID_EMAIL',
@@ -83,6 +85,21 @@ export class PushNotificationService {
     data: Record<string, any> = {},
     isUser = true,
   ): Promise<{ queued: true } | { queued: false; reason: string }> {
+    if (isUser) {
+      const user = await this.userRepo.findOne({
+        where: { id: targetId },
+        select: ['id', 'notificationPreferences'],
+      });
+      const preferenceKey = data.category || data.type;
+      if (
+        preferenceKey &&
+        user?.notificationPreferences &&
+        user.notificationPreferences[preferenceKey] === false
+      ) {
+        return { queued: false, reason: 'disabled-by-user-preference' };
+      }
+    }
+
     if (!this.isConfigured) {
       this.logger.debug(
         'Push notifications disabled (VAPID not configured) — skipping',

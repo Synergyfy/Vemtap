@@ -9,8 +9,10 @@ import { RedemptionCode } from './entities/redemption-code.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { BranchesService } from '../branches/branches.service';
 import { DataSource } from 'typeorm';
+import { Business } from '../businesses/entities/business.entity';
 
 describe('LoyaltyService', () => {
   let service: LoyaltyService;
@@ -73,6 +75,14 @@ describe('LoyaltyService', () => {
         },
         {
           provide: getRepositoryToken(Visit),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(LoyaltyRule),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Business),
           useValue: mockRepository,
         },
         {

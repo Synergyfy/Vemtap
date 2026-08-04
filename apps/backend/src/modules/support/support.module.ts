@@ -21,6 +21,8 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { SupportGateway } from './support.gateway';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
+import { SupportFaqController } from './support-faq.controller';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       User,
       BusinessCreditWallet,
     ]),
+    KnowledgeBaseModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -45,7 +48,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
     }),
   ],
-  controllers: [SupportController, AgentSupportController],
+  controllers: [SupportController, AgentSupportController, SupportFaqController],
   providers: [
     SupportService,
     SupportBotService,

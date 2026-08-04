@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VisitorsService } from './visitors.service';
 import { VisitorsController } from './visitors.controller';
+import { TapController } from './tap.controller';
 import { Visit } from './entities/visit.entity';
 import { User } from '../users/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -25,7 +26,7 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
     BranchesModule,
     LoyaltyModule,
   ],
-  controllers: [VisitorsController],
+  controllers: [VisitorsController, TapController],
   providers: [VisitorsService],
   exports: [VisitorsService],
 })
