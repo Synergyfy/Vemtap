@@ -1,6 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+export interface FaqPage {
+  id: string;
+  title: string;
+  path: string;
+  summary: string;
+  thumbnail: string | null;
+  order: number;
+}
+
+export interface FaqSection {
+  id: string;
+  title: string;
+  order: number;
+  pages: FaqPage[];
+}
+
+export interface FaqCategory {
+  id: string;
+  title: string;
+  order: number;
+  sections: FaqSection[];
+}
+
+export const useSupportFaqs = () => {
+  return useQuery<{ categories: FaqCategory[] }, Error>({
+    queryKey: ['support-faqs'],
+    queryFn: () => api.get('/support/faqs'),
+  });
+};
+
 export const useSupportTickets = (params?: { type?: string; isAssigned?: boolean; page?: number; limit?: number }) => {
   return useQuery({
     queryKey: ['support-tickets', params],

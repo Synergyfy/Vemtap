@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 import CreateTicketModal from '@/components/ui/CreateTicketModal';
 import { notify } from '@/lib/notify';
 import { useCreateCustomerSupportTicket, useCustomerSupportTickets } from '@/services/customer/hooks';
+import { useSupportFaqs } from '@/services/support/hooks';
 
 export default function CustomerSupportPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -26,11 +27,15 @@ export default function CustomerSupportPage() {
         });
     };
 
-    const faqs = [
-        { q: 'How do I earn points?', a: 'Just tap your phone on any VemTap terminal at participating businesses.' },
-        { q: 'Can I transfer points?', a: 'Currently, points are tied to your specific identity and cannot be transferred.' },
-        { q: 'What happens if a reward expires?', a: 'Expired rewards cannot be reclaimed, but you can always earn new ones!' },
-    ];
+    const { data: faqsData } = useSupportFaqs();
+    const faqs = (faqsData?.categories || []).flatMap((cat: any) =>
+        (cat.sections || []).flatMap((section: any) =>
+            (section.pages || []).map((page: any) => ({
+                q: page.title || '',
+                a: page.summary || '',
+            }))
+        )
+    ).filter((faq: any) => faq.q);
 
     return (
         <>

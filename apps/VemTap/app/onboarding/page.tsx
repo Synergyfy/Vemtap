@@ -1734,22 +1734,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
 
         const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
         if (!publicKey || publicKey.includes('placeholder')) {
-            setIsProcessing(true);
-            try {
-                await subscribe.mutateAsync({
-                    planId: plan!.id,
-                    billingPeriod: billingCycle,
-                    businessId: user?.businessId,
-                    isTrial: isTrialMode,
-                    paymentReference: `mock-ref-${Date.now()}`,
-                });
-                setIsProcessing(false);
-                setIsSuccess(true);
-                setTimeout(() => onNext({}), 2000);
-            } catch (err: any) {
-                toast.error(err?.message || 'Failed to activate subscription');
-                setIsProcessing(false);
-            }
+            toast.error('Payment gateway not configured. Please contact support.');
             return;
         }
 

@@ -63,6 +63,10 @@ export interface User {
   // QR-Thrive integration
   qrThriveUserId?: string;
   qrThriveProvisioned?: boolean;
+
+  // Security fields
+  twoFactorEnabled?: boolean;
+  emailVerified?: boolean;
 }
 
 export interface AuthState {

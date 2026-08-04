@@ -42,6 +42,9 @@ function LoginPageContent() {
     });
     const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
     const [generalError, setGeneralError] = useState<string | null>(null);
+    const [requires2FA, setRequires2FA] = useState(false);
+    const [twoFACode, setTwoFACode] = useState('');
+    const [pendingLogin, setPendingLogin] = useState<{ identifier: string; password: string } | null>(null);
 
     const validate = () => {
         const errors: { email?: string; password?: string } = {};
@@ -134,6 +137,13 @@ function LoginPageContent() {
                 password: formData.password,
             });
 
+            if (response?.requiresTwoFactor) {
+                setRequires2FA(true);
+                setPendingLogin({ identifier: formData.email.trim(), password: formData.password });
+                setIsLoggingIn(false);
+                return;
+            }
+
             if (!response?.user || !response?.access_token) {
                 setGeneralError('Invalid response from server');
                 return;
@@ -144,6 +154,29 @@ function LoginPageContent() {
         } catch (err: any) {
             const message = err?.message || 'Invalid email, phone number or password';
             setGeneralError(message);
+        } finally {
+            setIsLoggingIn(false);
+        }
+    };
+
+    const handle2FASubmit = async () => {
+        setGeneralError(null);
+        if (twoFACode.length !== 6 || !pendingLogin) return;
+        setIsLoggingIn(true);
+        try {
+            const response = await api.post('/auth/login', {
+                identifier: pendingLogin.identifier,
+                password: pendingLogin.password,
+                twoFactorCode: twoFACode,
+            });
+            if (!response?.user || !response?.access_token) {
+                setGeneralError('Invalid 2FA code');
+                return;
+            }
+            storeLogin(response.user, response.access_token);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
+        } catch (err: any) {
+            setGeneralError(err?.message || 'Invalid 2FA code');
         } finally {
             setIsLoggingIn(false);
         }
@@ -212,8 +245,50 @@ function LoginPageContent() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email or Phone Number</label>
+                        {requires2FA ? (
+                            <>
+                                <div className="text-center mb-4">
+                                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                        <ShieldCheck size={28} className="text-primary" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-900">Two-Factor Authentication</h3>
+                                    <p className="text-sm text-gray-400 mt-1">Enter the 6-digit code from your authenticator app</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        value={twoFACode}
+                                        onChange={(e) => {
+                                            setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                                            if (generalError) setGeneralError(null);
+                                        }}
+                                        placeholder="000000"
+                                        autoFocus
+                                        className="w-full h-16 bg-gray-50 border-2 border-transparent rounded-2xl outline-none font-bold text-lg text-center tracking-[0.4em] focus:ring-2 focus:ring-[#066CF4]/10 transition-all"
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    disabled={isLoggingIn || twoFACode.length !== 6}
+                                    onClick={handle2FASubmit}
+                                    className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                >
+                                    {isLoggingIn ? (
+                                        <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        'Verify Code'
+                                    )}
+                                </Button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setRequires2FA(false); setTwoFACode(''); setPendingLogin(null); }}
+                                    className="w-full text-sm font-bold text-gray-400 hover:text-[#066CF4] transition-colors"
+                                >Back to login</button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email or Phone Number</label>
                             <div className="relative">
                                 <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                                 <input
@@ -291,6 +366,8 @@ function LoginPageContent() {
                                 'Login To Dashboard'
                             )}
                         </Button>
+                        </>
+                        )}
                     </form>
 
                     <div className="mt-10">
