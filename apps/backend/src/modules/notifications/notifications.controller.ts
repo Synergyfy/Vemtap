@@ -51,6 +51,14 @@ export class NotificationsController {
     return this.pushNotificationService.registerToken(req.user.id, dto.token, true);
   }
 
+  @Post('device-token')
+  @ApiOperation({ summary: 'Register a device/FCM push token for the current user' })
+  @ApiBody({ type: RegisterPushTokenDto })
+  @ApiResponse({ status: 201, description: 'Device token registered successfully' })
+  async registerDeviceToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
+    return this.pushNotificationService.registerToken(req.user.id, dto.token, true);
+  }
+
   @Post('visitor/push-token')
   @ApiOperation({ summary: 'Register a push token for the current visitor' })
   @ApiBody({
