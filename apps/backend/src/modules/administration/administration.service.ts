@@ -359,11 +359,10 @@ export class AdministrationService {
   async grantNfcQuota(adminId: string, dto: AdminNfcGrantDto) {
     const auditLog = this.auditLogRepository.create({
       actorId: adminId,
-      actorRole: 'Admin',
-      action: 'NFC_QUOTA_GRANT',
-      module: BackendModule.DEVICES,
-      targetEntity: 'Business',
-      targetId: dto.businessId,
+      businessId: dto.businessId,
+      module: BackendModule.BUSINESSES,
+      method: 'POST',
+      endpoint: '/administration/nfc-grants',
       payload: {
         quantity: dto.quantity,
         grantType: dto.grantType || 'MANUAL_GRANT',
