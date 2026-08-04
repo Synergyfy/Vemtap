@@ -52,7 +52,7 @@ export default function CustomerLoyaltyPage() {
 
     const userPoints = profile?.currentPointsBalance || analytics?.currentPointsBalance || 0;
     const totalEarned = history.reduce((acc: number, tx: any) => (tx?.pointsAmount || 0) > 0 ? acc + (tx.pointsAmount || 0) : acc, 0);
-    const rewardsClaimed = history.filter((tx: any) => tx?.transactionType === 'REDEEMED' || (tx?.pointsAmount || 0) < 0).length;
+    const rewardsClaimed = history.filter((tx: any) => tx?.transactionType === 'redeemed' || tx?.transactionType === 'REDEEMED' || (tx?.pointsAmount || 0) < 0).length;
 
     const readyRewards = rewards.filter((r: any) => userPoints >= (r?.pointCost || 0));
     const lockedRewards = rewards.filter((r: any) => userPoints < (r?.pointCost || 0)).sort((a: any, b: any) => (a?.pointCost || 0) - (b?.pointCost || 0));
@@ -315,7 +315,7 @@ export default function CustomerLoyaltyPage() {
                                 <div className="bg-gray-50 p-5 rounded-[2rem] border border-gray-100 shadow-inner flex flex-col items-center gap-3">
                                     <div className="bg-white p-3 rounded-3xl shadow-md border border-gray-100">
                                         <QRCodeCanvas 
-                                            value={user?.id || "demo-user-id"} 
+                                            value={user?.id || ''} 
                                             size={180}
                                             level="H"
                                             includeMargin={false}
@@ -323,7 +323,7 @@ export default function CustomerLoyaltyPage() {
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Customer ID</p>
-                                        <p className="text-sm font-bold text-gray-900">#{user?.id?.slice(0, 8).toUpperCase() || "VEMTAP-881"}</p>
+                                        <p className="text-sm font-bold text-gray-900">#{user?.id?.slice(0, 8).toUpperCase() || 'VEMTAP-MEMBER'}</p>
                                     </div>
                                 </div>
 
@@ -401,7 +401,7 @@ export default function CustomerLoyaltyPage() {
                                     <div className="bg-slate-50 rounded-lg p-6 border-2 border-dashed border-slate-200 text-center flex flex-col items-center">
                                         <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-3">
                                             <QRCodeCanvas 
-                                                value={user?.id || "demo-user-id"} 
+                                                value={user?.id || ''} 
                                                 size={120}
                                                 level="H"
                                             />

@@ -87,8 +87,9 @@ export default function CreateTicketModal({ isOpen, onClose, onSubmit, isLoading
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white focus:border-primary/20 transition-all appearance-none cursor-pointer"
                         >
                             <option value="Low">Low - General Inquiry</option>
-                            <option value="Medium">Medium - Affecting Experience</option>
+                            <option value="Normal">Normal - Affecting Experience</option>
                             <option value="High">High - Critical Issue</option>
+                            <option value="Urgent">Urgent - Service Down</option>
                         </select>
                     </div>
 
