@@ -1,10 +1,18 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+  Request,
+  Body,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { FeedbackService } from './feedback.service';
+import { CreateFeedbackDto } from './dto/create-feedback.dto';
 
 @ApiTags('feedback')
 @ApiBearerAuth()
@@ -12,6 +20,13 @@ import { FeedbackService } from './feedback.service';
 @Controller('feedback')
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
+
+  @Post()
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Submit customer feedback' })
+  async create(@Request() req: any, @Body() dto: CreateFeedbackDto) {
+    return this.feedbackService.create(dto, req.user);
+  }
 
   @Get('stats')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)

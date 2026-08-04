@@ -1,7 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Feedback } from './entities/feedback.entity';
+import { CreateFeedbackDto } from './dto/create-feedback.dto';
+import { User } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
 
 @Injectable()
 export class FeedbackService {
@@ -12,55 +15,29 @@ export class FeedbackService {
     private readonly feedbackRepository: Repository<Feedback>,
   ) {}
 
-  private async ensureSeedData(branchId?: string) {
-    try {
-      const count = await this.feedbackRepository.count();
-      if (count === 0) {
-        const initialFeedback = [
-          {
-            branchId,
-            customerName: 'Amina Bello',
-            rating: 5,
-            comment: 'Excellent service and super fast checkout with VemTap!',
-            status: 'new',
-            sentiment: 'positive',
-          },
-          {
-            branchId,
-            customerName: 'Chidi Okonkwo',
-            rating: 5,
-            comment:
-              'Great experience using the digital menu and payment system.',
-            status: 'replied',
-            sentiment: 'positive',
-          },
-          {
-            branchId,
-            customerName: 'Tunde Bakare',
-            rating: 4,
-            comment: 'Very seamless flow, would love even more reward options.',
-            status: 'new',
-            sentiment: 'positive',
-          },
-          {
-            branchId,
-            customerName: 'Emem Udo',
-            rating: 2,
-            comment: 'Had a short wait time during peak hours.',
-            status: 'flagged',
-            sentiment: 'negative',
-          },
-        ];
-        await this.feedbackRepository.save(initialFeedback);
-      }
-    } catch (err) {
-      this.logger.warn(`Could not seed initial feedback data: ${err.message}`);
-    }
+  async create(dto: CreateFeedbackDto, customer: User) {
+    const branch = await this.feedbackRepository.manager
+      .getRepository(Branch)
+      .findOne({
+        where: { id: dto.branchId },
+      });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const feedback = this.feedbackRepository.create({
+      branchId: branch.id,
+      businessId: branch.businessId,
+      customerId: customer.id,
+      customerName: `${customer.firstName} ${customer.lastName}`.trim(),
+      rating: dto.rating,
+      comment: dto.comment.trim(),
+      status: 'new',
+      sentiment:
+        dto.rating >= 4 ? 'positive' : dto.rating <= 2 ? 'negative' : 'neutral',
+    });
+    return this.feedbackRepository.save(feedback);
   }
 
   async getStats(branchId?: string) {
-    await this.ensureSeedData(branchId);
-
     try {
       const query = this.feedbackRepository.createQueryBuilder('f');
       if (branchId) {
@@ -115,8 +92,6 @@ export class FeedbackService {
   }
 
   async getReviews(branchId?: string) {
-    await this.ensureSeedData(branchId);
-
     try {
       const query = this.feedbackRepository.createQueryBuilder('f');
       if (branchId) {

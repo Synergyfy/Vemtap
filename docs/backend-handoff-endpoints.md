@@ -16,6 +16,74 @@ This document is for frontend integration. It describes the backend contracts ch
 
 ## Loyalty
 
+### Backend Audit Coverage
+
+The following audited screens already have backend contracts and should not
+use local-only state:
+
+- Catalogue categories: `GET/POST/PATCH/DELETE /api/v1/catalogue/categories`
+- Messaging automations: `/api/v1/messaging/automations`
+- Support agents and tickets: `/api/v1/support/agent` and `/api/v1/support`
+- Notification preferences: `GET/PATCH /api/v1/notifications/preferences`
+- Branch partnership management: `/api/v1/partnerships`
+- Affiliate analytics: `/api/v1/affiliates/stats`, `/activity`, and `/performance`
+
+Branch customer-capture configuration is persisted in the branch `engagement`
+JSON field through `GET/PATCH /api/v1/branches/:id/customer-capture`.
+
+### Business Loyalty Analytics
+
+`GET /api/v1/loyalty/business-stats`
+
+The business loyalty statistics response is calculated from persisted point
+transactions, visits, rewards, and redemption codes. KPI changes are calculated
+against the preceding 30-day period, tier distribution is derived from actual
+customer balances, and the growth message is based on actual redemption data.
+
+### Stock Movement History
+
+`GET /api/v1/inventory/counting/movements`
+
+Roles: `Owner`, `Manager`, `Staff`
+
+Optional query parameters are `branchId`, `itemId`, `page`, and `limit`.
+Movement records are created for manual stock adjustments, POS sales, POS
+returns, and approved stock-count variances.
+
+### POS Cash Drops and Z-Report
+
+`POST /api/v1/pos/register/cash-drop`
+
+```json
+{
+  "amount": 5000,
+  "reason": "Safe drop"
+}
+```
+
+`GET /api/v1/pos/register/z-report`
+
+Cash drops are persisted against the open register session. The Z-report
+returns opening cash, sales, cash sales, cash drops, expected cash, payment
+breakdown, and transaction count.
+
+### Submit Feedback
+
+`POST /api/v1/feedback`
+
+Roles: `Customer`
+
+```json
+{
+  "branchId": "f6e9a9b9-23bc-4e22-a9a5-8a0f4d4e5f11",
+  "rating": 5,
+  "comment": "Excellent service"
+}
+```
+
+Feedback is persisted with the authenticated customer identity. Runtime fake
+feedback seeding has been removed.
+
 ### Award Points to a Customer
 
 `POST /api/v1/loyalty/points/give`

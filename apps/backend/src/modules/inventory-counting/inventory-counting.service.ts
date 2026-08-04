@@ -23,6 +23,8 @@ import {
 } from './dto/approve-variance.dto';
 import { CountSessionQueryDto } from './dto/count-session-query.dto';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
+import { StockMovementService } from './stock-movement.service';
+import { StockMovementType } from './entities/stock-movement.entity';
 
 @Injectable()
 export class InventoryCountingService {
@@ -35,6 +37,7 @@ export class InventoryCountingService {
     private readonly catalogueItemRepository: Repository<CatalogueItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    private readonly stockMovementService: StockMovementService,
   ) {}
 
   async createSession(dto: CreateCountSessionDto, user: User) {
@@ -367,10 +370,22 @@ export class InventoryCountingService {
 
         const catalogueItem = itemMap.get(countItem.itemId);
         if (catalogueItem) {
+          const previousQuantity = catalogueItem.stockQuantity ?? 0;
           catalogueItem.stockQuantity = Math.max(
             0,
             countItem.countedQuantity ?? 0,
           );
+          await this.stockMovementService.record({
+            itemId: catalogueItem.id,
+            businessId,
+            branchId: session.branchId,
+            userId: user.id,
+            type: StockMovementType.COUNT_VARIANCE,
+            previousQuantity,
+            newQuantity: catalogueItem.stockQuantity,
+            reason: `Stock count variance approved: ${session.id}`,
+            referenceId: session.id,
+          });
         }
       }
 

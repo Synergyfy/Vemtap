@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
+import { UpdateCustomerCaptureDto } from './dto/customer-capture.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
@@ -74,6 +75,28 @@ export class BranchesController {
       updateBranchDto,
       req.user,
     );
+  }
+
+  @Get(':id/customer-capture')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Get persisted customer-capture configuration' })
+  async getCustomerCapture(@Request() req, @Param('id') id: string) {
+    const businessId = await this.getBusinessId(req.user);
+    const branch = await this.branchesService.findOne(businessId, id);
+    return branch.engagement?.customerCapture || null;
+  }
+
+  @Patch(':id/customer-capture')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Persist customer-capture configuration' })
+  async updateCustomerCapture(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomerCaptureDto,
+  ) {
+    const businessId = await this.getBusinessId(req.user);
+    const branch = await this.branchesService.findOne(businessId, id);
+    return this.branchesService.updateCustomerCapture(branch, dto);
   }
 
   @Post(':id/request-delete-otp')

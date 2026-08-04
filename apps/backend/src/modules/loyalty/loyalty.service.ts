@@ -1080,10 +1080,127 @@ export class LoyaltyService {
         .andWhere('rc.isUsed = true')
         .getCount();
 
+      const periodNow = new Date();
+      const currentPeriodStart = new Date(
+        periodNow.getTime() - 30 * 24 * 60 * 60 * 1000,
+      );
+      const previousPeriodStart = new Date(
+        periodNow.getTime() - 60 * 24 * 60 * 60 * 1000,
+      );
+      const previousPeriodEnd = currentPeriodStart;
+
+      const periodPointTotal = async (start: Date, end?: Date) => {
+        const query = this.pointTransactionRepo
+          .createQueryBuilder('pt')
+          .select('COALESCE(SUM(pt.amount), 0)', 'total')
+          .where('pt.type = :type', { type: PointTransactionType.EARNED })
+          .andWhere('pt.createdAt >= :start', { start });
+        if (businessId)
+          query.andWhere('pt.businessId = :businessId', { businessId });
+        if (branchId && branchId !== 'all')
+          query.andWhere('pt.branchId = :branchId', { branchId });
+        if (end) query.andWhere('pt.createdAt < :end', { end });
+        const result = await query.getRawOne();
+        return Number(result?.total || 0);
+      };
+
+      const periodRedemptionCount = async (start: Date, end?: Date) => {
+        const query = this.redemptionCodeRepo
+          .createQueryBuilder('rc')
+          .select('COUNT(rc.id)', 'count')
+          .where('rc.isUsed = true')
+          .andWhere('rc.usedAt >= :start', { start });
+        if (businessId)
+          query.andWhere('rc.businessId = :businessId', { businessId });
+        if (branchId && branchId !== 'all')
+          query.andWhere('rc.branchId = :branchId', { branchId });
+        if (end) query.andWhere('rc.usedAt < :end', { end });
+        const result = await query.getRawOne();
+        return Number(result?.count || 0);
+      };
+
+      const periodCustomerCount = async (start: Date, end?: Date) => {
+        const query = this.pointTransactionRepo
+          .createQueryBuilder('pt')
+          .select('COUNT(DISTINCT pt.customerId)', 'count')
+          .where('pt.createdAt >= :start', { start });
+        if (businessId)
+          query.andWhere('pt.businessId = :businessId', { businessId });
+        if (branchId && branchId !== 'all')
+          query.andWhere('pt.branchId = :branchId', { branchId });
+        if (end) query.andWhere('pt.createdAt < :end', { end });
+        const result = await query.getRawOne();
+        return Number(result?.count || 0);
+      };
+
+      const [
+        currentPoints,
+        previousPoints,
+        currentRedemptions,
+        previousRedemptions,
+        currentCustomers,
+        previousCustomers,
+      ] = await Promise.all([
+        periodPointTotal(currentPeriodStart),
+        periodPointTotal(previousPeriodStart, previousPeriodEnd),
+        periodRedemptionCount(currentPeriodStart),
+        periodRedemptionCount(previousPeriodStart, previousPeriodEnd),
+        periodCustomerCount(currentPeriodStart),
+        periodCustomerCount(previousPeriodStart, previousPeriodEnd),
+      ]);
+
+      const calculateChange = (current: number, previous: number) => {
+        if (previous === 0) return current === 0 ? 0 : 100;
+        return Math.round(((current - previous) / previous) * 100);
+      };
+
+      const customerBalances = await this.pointTransactionRepo
+        .createQueryBuilder('pt')
+        .select('pt.customerId', 'customerId')
+        .addSelect('SUM(pt.amount)', 'balance')
+        .where(
+          businessId ? 'pt.businessId = :businessId' : '1=1',
+          businessId ? { businessId } : {},
+        )
+        .andWhere(
+          branchId && branchId !== 'all' ? 'pt.branchId = :branchId' : '1=1',
+          branchId && branchId !== 'all' ? { branchId } : {},
+        )
+        .groupBy('pt.customerId')
+        .getRawMany();
+      const tierDistribution = [
+        {
+          label: 'Bronze (<100 pts)',
+          value: customerBalances.filter((row) => Number(row.balance) < 100)
+            .length,
+          color: '#CD7F32',
+        },
+        {
+          label: 'Silver (100-499 pts)',
+          value: customerBalances.filter(
+            (row) => Number(row.balance) >= 100 && Number(row.balance) < 500,
+          ).length,
+          color: '#C0C0C0',
+        },
+        {
+          label: 'Gold (500-999 pts)',
+          value: customerBalances.filter(
+            (row) => Number(row.balance) >= 500 && Number(row.balance) < 1000,
+          ).length,
+          color: '#FFD700',
+        },
+        {
+          label: 'Platinum (1000+ pts)',
+          value: customerBalances.filter((row) => Number(row.balance) >= 1000)
+            .length,
+          color: '#7B68EE',
+        },
+      ];
+
       // 4. Activity Trend (Last 4 Weeks)
-      const now = new Date();
+      const activityNow = new Date();
       const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setDate(activityNow.getDate() - 30);
 
       const trendMap = new Map<string, { earnings: number; claims: number }>([
         ['Week 1', { earnings: 0, claims: 0 }],
@@ -1109,7 +1226,7 @@ export class LoyaltyService {
         if (isNaN(txDate.getTime())) return;
 
         const diffDays = Math.floor(
-          (now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24),
+          (activityNow.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24),
         );
         let weekKey = 'Week 4';
         if (diffDays >= 22) weekKey = 'Week 1';
@@ -1135,19 +1252,19 @@ export class LoyaltyService {
           {
             label: 'Total Customers',
             value: totalCustomersCount.toLocaleString(),
-            change: 12,
+            change: calculateChange(currentCustomers, previousCustomers),
             trend: 'up' as const,
           },
           {
             label: 'Points Issued',
             value: totalPointsEarned.toLocaleString(),
-            change: 8,
+            change: calculateChange(currentPoints, previousPoints),
             trend: 'up' as const,
           },
           {
             label: 'Rewards Redeemed',
             value: totalRedemptions.toLocaleString(),
-            change: 15,
+            change: calculateChange(currentRedemptions, previousRedemptions),
             trend: 'up' as const,
           },
           {
@@ -1157,26 +1274,12 @@ export class LoyaltyService {
             trend: 'up' as const,
           },
         ],
-        tierDistribution: [
-          {
-            label: 'Bronze (<100 pts)',
-            value: Math.max(totalCustomersCount - 5, 0),
-            color: '#CD7F32',
-          },
-          {
-            label: 'Silver (100-499 pts)',
-            value: totalCustomersCount > 5 ? 3 : 0,
-            color: '#C0C0C0',
-          },
-          {
-            label: 'Gold (500-999 pts)',
-            value: totalCustomersCount > 8 ? 2 : 0,
-            color: '#FFD700',
-          },
-        ],
+        tierDistribution,
         activityTrend,
         growthForecast:
-          'Reward programs with active participation see up to 24% more customer visits.',
+          totalCustomersCount > 0
+            ? `${Math.round((totalRedemptions / totalCustomersCount) * 100)}% of tracked customers have redeemed a reward.`
+            : 'No customer redemption data is available yet.',
       };
     } catch (error) {
       console.error(

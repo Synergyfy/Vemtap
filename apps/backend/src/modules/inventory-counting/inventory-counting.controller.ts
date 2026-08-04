@@ -19,6 +19,7 @@ import {
   RejectVarianceDto,
 } from './dto/approve-variance.dto';
 import { CountSessionQueryDto } from './dto/count-session-query.dto';
+import { StockMovementService } from './stock-movement.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -30,7 +31,28 @@ interface RequestWithUser extends Request {
 @ApiBearerAuth()
 @Controller('inventory/counting')
 export class InventoryCountingController {
-  constructor(private readonly countingService: InventoryCountingService) {}
+  constructor(
+    private readonly countingService: InventoryCountingService,
+    private readonly stockMovementService: StockMovementService,
+  ) {}
+
+  @Get('movements')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'List stock movements for the current business' })
+  async listMovements(
+    @Query('branchId') branchId: string | undefined,
+    @Query('itemId') itemId: string | undefined,
+    @Query('page') page: number | undefined,
+    @Query('limit') limit: number | undefined,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.stockMovementService.list(req.user.businessId, {
+      branchId,
+      itemId,
+      page,
+      limit,
+    });
+  }
 
   @Post('sessions')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
