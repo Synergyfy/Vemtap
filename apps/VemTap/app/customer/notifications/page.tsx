@@ -5,7 +5,7 @@ import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Trash2, ArrowLeft, More
 import { notify } from '@/lib/notify';
 import Link from 'next/link';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
-import { Notification } from '@/services/notifications/types';
+import type { Notification } from '@/services/notifications/types';
 
 export default function CustomerNotificationsPage() {
     const { data: notifications = [], isLoading } = useNotifications();
@@ -14,8 +14,30 @@ export default function CustomerNotificationsPage() {
 
     const handleReadAll = () => {
         readAllMutation.mutate(undefined, {
-            onSuccess: () => notify.success('Platform cleared: All alerts marked as read')
+            onSuccess: () => notify.success('Platform cleared: All alerts marked as read'),
+            onError: () => notify.error('Failed to clear inbox. Please try again.')
         });
+    };
+
+    const handleCustomizeSettings = async () => {
+        if (!('Notification' in window)) {
+            notify.error('Push notifications are not supported in this browser.');
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            notify.success('Push notifications are already enabled.');
+            return;
+        }
+        if (Notification.permission === 'denied') {
+            notify.error('Push notifications were blocked. Please enable them in your browser settings.');
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            notify.success('Push notifications enabled!');
+        } else {
+            notify.error('Push notifications permission was denied.');
+        }
     };
 
     const getIcon = (type: string, title: string) => {
@@ -51,10 +73,10 @@ export default function CustomerNotificationsPage() {
                 <div className="flex gap-3">
                     <button
                         onClick={handleReadAll}
-                        disabled={notifications.length === 0}
+                        disabled={notifications.length === 0 || readAllMutation.isPending}
                         className="h-12 px-6 bg-white border border-gray-200 text-text-main font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
                     >
-                        Clear Inbox
+                        {readAllMutation.isPending ? 'Clearing...' : 'Clear Inbox'}
                     </button>
                 </div>
             </div>
@@ -152,7 +174,10 @@ export default function CustomerNotificationsPage() {
                         <h3 className="text-2xl font-display font-bold mb-2">Missed an alert?</h3>
                         <p className="text-blue-100 font-medium max-w-sm">Enable push notifications on your mobile device to never miss a premium voucher or check-in verification.</p>
                     </div>
-                    <button className="h-14 px-8 bg-white text-primary font-black uppercase tracking-widest text-xs rounded-lg shadow-xl hover:shadow-2xl transition-all active:scale-95 whitespace-nowrap">
+                    <button
+                        onClick={handleCustomizeSettings}
+                        className="h-14 px-8 bg-white text-primary font-black uppercase tracking-widest text-xs rounded-lg shadow-xl hover:shadow-2xl transition-all active:scale-95 whitespace-nowrap"
+                    >
                         Customize Settings
                     </button>
                 </div>

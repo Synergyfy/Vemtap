@@ -312,7 +312,7 @@ export default function ChatWindow() {
             </header>
 
             <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'md:pr-80' : ''}`}>
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-24 md:pb-6">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-4 md:pb-6">
                     {isLoading ? (
                         <div className="flex-1 space-y-4 animate-pulse">
                             {[1, 2, 3].map(i => <div key={i} className={`h-10 w-2/3 rounded-xl ${i % 2 === 0 ? 'ml-auto bg-primary/10' : 'bg-slate-100'}`} />)}
@@ -360,7 +360,7 @@ export default function ChatWindow() {
                 </div>
 
                 <div 
-                    className="md:shrink-0 bg-white fixed md:relative bottom-0 left-0 right-0 w-full z-20 md:z-10 border-t border-slate-200"
+                    className="shrink-0 relative bg-white w-full z-10 border-t border-slate-200"
                     style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
                 >
                     <ChatInput

@@ -392,7 +392,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                                         <Link
                                             href={getPersistedLink("/customer/notifications")}
                                             className="text-xs font-bold text-primary hover:text-primary-hover"
-                                            onClick={() => setShowNotifications(false)}
+                                            onClick={(e) => { e.stopPropagation(); setShowNotifications(false); }}
                                         >
                                             View All Notifications
                                         </Link>
@@ -403,7 +403,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-8">
+                <main className={`flex-1 overflow-y-auto bg-gray-50 ${pathname?.includes('/messaging/chat') ? '' : 'p-4'} lg:p-8`}>
                     {children}
                 </main>
             </div>
