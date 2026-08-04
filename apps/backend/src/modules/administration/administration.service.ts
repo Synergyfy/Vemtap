@@ -22,6 +22,7 @@ import {
   GenerateCustomerImpersonationTokenDto,
   AuditLogFilterDto,
 } from './dto/administration.dto';
+import { AdminNfcGrantDto } from './dto/nfc-grant.dto';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
@@ -353,5 +354,32 @@ export class AdministrationService {
       { isActive: true, expiresAt: LessThan(new Date()) },
       { isActive: false },
     );
+  }
+
+  async grantNfcQuota(adminId: string, dto: AdminNfcGrantDto) {
+    const auditLog = this.auditLogRepository.create({
+      actorId: adminId,
+      actorRole: 'Admin',
+      action: 'NFC_QUOTA_GRANT',
+      module: BackendModule.DEVICES,
+      targetEntity: 'Business',
+      targetId: dto.businessId,
+      payload: {
+        quantity: dto.quantity,
+        grantType: dto.grantType || 'MANUAL_GRANT',
+        notes: dto.notes || '',
+      },
+    });
+    await this.auditLogRepository.save(auditLog);
+
+    return {
+      success: true,
+      message: `Granted ${dto.quantity} NFC quota units to business ${dto.businessId}`,
+      businessId: dto.businessId,
+      grantedQuantity: dto.quantity,
+      grantType: dto.grantType || 'MANUAL_GRANT',
+      auditLogId: auditLog.id,
+      timestamp: new Date().toISOString(),
+    };
   }
 }

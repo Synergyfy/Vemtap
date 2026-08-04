@@ -18,6 +18,7 @@ import {
   GenerateCustomerImpersonationTokenDto,
   AuditLogFilterDto,
 } from './dto/administration.dto';
+import { AdminNfcGrantDto } from './dto/nfc-grant.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import {
   ApiTags,
@@ -138,5 +139,17 @@ export class AdministrationController {
   @ApiOperation({ summary: 'Admin: View and filter immutable audit logs' })
   async getAuditLogs(@Query() filter: AuditLogFilterDto) {
     return this.adminService.getAuditLogs(filter);
+  }
+
+  @Post('nfc-grants')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Grant manual NFC quota to a business',
+    description:
+      'Manual administrative NFC quota allocation with audit trail logging.',
+  })
+  @ApiResponse({ status: 201, description: 'NFC quota granted successfully' })
+  async grantNfcQuota(@Request() req, @Body() dto: AdminNfcGrantDto) {
+    return this.adminService.grantNfcQuota(req.user.id, dto);
   }
 }
