@@ -28,6 +28,7 @@ import {
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import {
   CreateRewardTemplateDto,
+  UpdateRewardTemplateDto,
   CreateRewardDto,
   GivePointsDto,
   GeneratePointCodeDto,
@@ -337,6 +338,38 @@ export class LoyaltyController {
   })
   async getTemplates() {
     return this.loyaltyService.getTemplates();
+  }
+
+  @Patch('reward-templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin updates a reward template',
+    description: 'Modifies an existing reward template. Access: ADMIN',
+  })
+  @ApiParam({ name: 'id', description: 'Reward Template UUID' })
+  @ApiBody({ type: UpdateRewardTemplateDto })
+  @ApiResponse({ status: 200, description: 'Template updated successfully' })
+  async updateRewardTemplate(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Body() dto: UpdateRewardTemplateDto,
+  ) {
+    return this.loyaltyService.updateTemplate(req.user, id, dto);
+  }
+
+  @Delete('reward-templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin deletes a reward template',
+    description: 'Permanently removes a reward template. Access: ADMIN',
+  })
+  @ApiParam({ name: 'id', description: 'Reward Template UUID' })
+  @ApiResponse({ status: 200, description: 'Template deleted successfully' })
+  async deleteRewardTemplate(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+  ) {
+    return this.loyaltyService.deleteTemplate(req.user, id);
   }
 
   @Post('reward-templates/:id/apply')

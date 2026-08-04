@@ -35,6 +35,7 @@ import { BranchesService } from '../branches/branches.service';
 import { RewardQueryDto } from './dto/loyalty-query.dto';
 import {
   CreateRewardTemplateDto,
+  UpdateRewardTemplateDto,
   CreateRewardDto,
   GivePointsDto,
   GeneratePointCodeDto,
@@ -397,6 +398,26 @@ export class LoyaltyService {
 
   async getTemplates() {
     return this.rewardTemplateRepo.find();
+  }
+
+  async updateTemplate(
+    admin: User,
+    id: string,
+    dto: UpdateRewardTemplateDto,
+  ) {
+    const template = await this.rewardTemplateRepo.findOne({ where: { id } });
+    if (!template) throw new NotFoundException('Reward template not found');
+
+    Object.assign(template, dto);
+    return this.rewardTemplateRepo.save(template);
+  }
+
+  async deleteTemplate(admin: User, id: string) {
+    const template = await this.rewardTemplateRepo.findOne({ where: { id } });
+    if (!template) throw new NotFoundException('Reward template not found');
+
+    await this.rewardTemplateRepo.remove(template);
+    return { success: true, message: 'Reward template deleted successfully' };
   }
 
   async applyTemplate(

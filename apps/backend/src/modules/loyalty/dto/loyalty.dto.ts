@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   IsString,
   IsEnum,
@@ -42,6 +42,10 @@ export class CreateRewardTemplateDto {
   @IsString({ each: true })
   galleryImages?: string[];
 }
+
+export class UpdateRewardTemplateDto extends PartialType(
+  CreateRewardTemplateDto,
+) {}
 
 export class CreateRewardDto extends CreateRewardTemplateDto {
   @ApiProperty()
