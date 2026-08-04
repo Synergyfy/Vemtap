@@ -21,7 +21,7 @@ import {
   SubscriptionStatus,
 } from '../../src/modules/subscriptions/entities/subscription.entity';
 import { BusinessCreditWallet } from '../../src/modules/messaging/entities/business-credit-wallet.entity';
-import { TermiiProvider } from '../../src/modules/messaging/providers/termii.provider';
+import { TwilioProvider } from '../../src/modules/messaging/providers/twilio.provider';
 import { BestBulkSmsProvider } from '../../src/modules/messaging/providers/bestbulksms.provider';
 import * as bcrypt from 'bcrypt';
 
@@ -42,7 +42,7 @@ describe('Messaging (e2e)', () => {
 
   beforeAll(async () => {
     app = await createTestApp((builder) => {
-      builder.overrideProvider(TermiiProvider).useValue({
+      builder.overrideProvider(TwilioProvider).useValue({
         sendMessage: jest.fn().mockResolvedValue({
           messageId: 'test-msg-id',
           status: 'sent',

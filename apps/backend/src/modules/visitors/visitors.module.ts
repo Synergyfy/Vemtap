@@ -14,6 +14,7 @@ import { MailModule } from '../mail/mail.module';
 import { DevicesModule } from '../devices/devices.module';
 import { BranchesModule } from '../branches/branches.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
     forwardRef(() => DevicesModule),
     BranchesModule,
     LoyaltyModule,
+    forwardRef(() => AuthModule),
   ],
   controllers: [VisitorsController, TapController],
   providers: [VisitorsService],

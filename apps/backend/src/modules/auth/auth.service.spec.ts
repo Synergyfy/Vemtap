@@ -871,7 +871,7 @@ describe('AuthService', () => {
 
   // ==================== resendDefaultPassword ====================
   describe('resendDefaultPassword', () => {
-    it('should resend default password if password not changed', async () => {
+    it('should rotate to a fresh random temporary password', async () => {
       usersService.findByIdentifier.mockResolvedValue({
         id: 'cust-1',
         email: 'real@example.com',
@@ -885,10 +885,15 @@ describe('AuthService', () => {
       expect(mailService.sendWelcomeEmail).toHaveBeenCalledWith(
         'real@example.com',
         'Test User',
-        '123456',
+        expect.any(String),
+      );
+      const sentPassword = mailService.sendWelcomeEmail.mock.calls[0][2];
+      expect(sentPassword).not.toBe('123456');
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ password: expect.any(String) }),
       );
       expect(result).toEqual({
-        message: 'Default password resent successfully',
+        message: 'Temporary password sent successfully',
       });
     });
 

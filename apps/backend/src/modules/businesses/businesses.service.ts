@@ -16,6 +16,7 @@ import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { ImportCustomersDto } from './dto/import-customers.dto';
 import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
@@ -373,8 +374,6 @@ export class BusinessesService {
   }
 
   async importCustomers(branchId: string, importDto: ImportCustomersDto) {
-    const defaultPassword = '123456';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const results = {
       imported: 0,
       skipped: 0,
@@ -392,6 +391,11 @@ export class BusinessesService {
           results.skipped++;
           continue;
         }
+
+        // Each imported customer gets a unique random password (emailed to
+        // them) — never a shared constant.
+        const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
         const newUser = this.usersRepository.create({
           firstName: customerData.firstName,
@@ -412,7 +416,7 @@ export class BusinessesService {
           .sendWelcomeEmail(
             email,
             `${customerData.firstName} ${customerData.lastName}`,
-            defaultPassword,
+            tempPassword,
           )
           .catch((err) =>
             console.error(`Failed to send welcome email to ${email}:`, err),

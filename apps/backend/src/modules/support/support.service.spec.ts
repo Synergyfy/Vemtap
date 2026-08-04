@@ -178,4 +178,85 @@ describe('SupportService', () => {
       expect(mockTicketRepository.save).toHaveBeenCalled();
     });
   });
+
+  describe('addAttachments', () => {
+    it('persists a message carrying validated attachments', async () => {
+      const ticket = { id: '1', status: TicketStatus.PENDING };
+      const message = {
+        id: 'm1',
+        ticketId: '1',
+        message: '<attachment>',
+        attachments: [
+          {
+            url: 'data:image/png;base64,AAAA',
+            name: 'receipt.png',
+            mimeType: 'image/png',
+            size: 2048,
+          },
+        ],
+      };
+
+      mockTicketRepository.findOne.mockResolvedValue(ticket);
+      mockMessageRepository.create.mockReturnValue(message);
+      mockMessageRepository.save.mockResolvedValue(message);
+
+      const result = await service.addAttachments('1', 'user1', {
+        attachments: message.attachments,
+      });
+
+      expect(result).toEqual(message);
+      expect(mockMessageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          senderRole: 'CUSTOMER',
+          attachments: expect.arrayContaining([
+            expect.objectContaining({ mimeType: 'image/png' }),
+          ]),
+        }),
+      );
+    });
+
+    it('rejects attachments exceeding the per-file size limit', async () => {
+      mockTicketRepository.findOne.mockResolvedValue({
+        id: '1',
+        status: TicketStatus.PENDING,
+      });
+
+      await expect(
+        service.addAttachments('1', 'user1', {
+          attachments: [
+            {
+              url: 'x',
+              name: 'big.bin',
+              mimeType: 'application/octet-stream',
+              size: 11 * 1024 * 1024,
+            },
+          ],
+        }),
+      ).rejects.toThrow('10 MB per-file limit');
+    });
+
+    it('enforces limits against the real decoded size of a data URL', async () => {
+      // A data URL whose decoded payload is ~10.5MB, regardless of the spoofed
+      // tiny `size` field (14MB base64 * 3/4 ≈ 10.5MB decoded).
+      const bigBase64 = 'x'.repeat(14 * 1024 * 1024);
+      await expect(
+        service.addAttachments('1', 'user1', {
+          attachments: [
+            {
+              url: `data:application/octet-stream;base64,${bigBase64}`,
+              name: 'sneaky.bin',
+              mimeType: 'application/octet-stream',
+              size: 10,
+            },
+          ],
+        }),
+      ).rejects.toThrow('10 MB per-file limit');
+    });
+
+    it('rejects empty attachment lists', async () => {
+      await expect(
+        service.addAttachments('1', 'user1', { attachments: [] }),
+      ).rejects.toThrow('At least one attachment is required');
+    });
+  });
 });

@@ -933,7 +933,7 @@ describe('PosService', () => {
   });
 
   describe('Offline Sync & Idempotency', () => {
-    let originalFindOne: unknown;
+    let originalFindOne: typeof mockSaleRepo.findOne;
 
     beforeEach(() => {
       originalFindOne = mockSaleRepo.findOne;
@@ -1073,7 +1073,7 @@ describe('PosService', () => {
   });
 
   describe('batchSyncSales', () => {
-    let originalFindOne: unknown;
+    let originalFindOne: typeof mockSaleRepo.findOne;
 
     beforeEach(() => {
       originalFindOne = mockSaleRepo.findOne;

@@ -13,6 +13,7 @@ import { MailService } from '../mail/mail.service';
 import { DataSource } from 'typeorm';
 import { BranchesService } from '../branches/branches.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { AuthService } from '../auth/auth.service';
 
 describe('VisitorsService', () => {
   let service: VisitorsService;
@@ -130,6 +131,17 @@ describe('VisitorsService', () => {
           useValue: {
             getBusinessPoints: jest.fn().mockResolvedValue(0),
             createReward: jest.fn(),
+          },
+        },
+        {
+          provide: AuthService,
+          useValue: {
+            buildAuthResponse: jest.fn().mockResolvedValue({
+              access_token: 'jwt-token',
+              sessionId: 'sess-1',
+              user: { id: '1', email: 'x@example.com' },
+              isNewUser: true,
+            }),
           },
         },
       ],

@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere } from 'typeorm';
+import { Repository, FindOptionsWhere, SelectQueryBuilder } from 'typeorm';
+import { createHash } from 'crypto';
 import { Product, ProductStatus } from './entities/product.entity';
+import {
+  ProductReview,
+  ProductReviewStatus,
+} from './entities/product-review.entity';
 import { Quote, QuoteStatus } from './entities/quote.entity';
 import {
   QuoteNegotiation,
@@ -16,6 +21,14 @@ import { UpdateProductTypeDto } from './dto/update-product-type.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
+import {
+  AdminProductQueryDto,
+  ProductQueryDto,
+  ProductSortField,
+  ProductSortOrder,
+} from './dto/product-query.dto';
+import { CreateProductReviewDto } from './dto/product-review.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { User, UserRole } from '../users/entities/user.entity';
 import {
   ForbiddenException,
@@ -25,11 +38,15 @@ import {
 import { PaymentsService } from '../payments/payments.service';
 import { PaymentStatus as OrderPaymentStatus } from './entities/order.entity';
 
+const PRODUCT_ALIAS = 'product';
+
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    @InjectRepository(ProductReview)
+    private productReviewRepository: Repository<ProductReview>,
     @InjectRepository(Quote)
     private quoteRepository: Repository<Quote>,
     @InjectRepository(QuoteNegotiation)
@@ -152,32 +169,161 @@ export class ProductsService {
     return this.orderRepository.save(order);
   }
 
-  async findAllPublished(productTypeId?: string): Promise<Product[]> {
-    const where: FindOptionsWhere<Product> = {
-      status: ProductStatus.PUBLISHED,
-    };
-    if (productTypeId) {
-      where.productTypeId = productTypeId;
-    }
-    return this.productRepository.find({
-      where,
-      relations: ['productType'],
-      order: { createdAt: 'DESC' },
+  async findAllPublished(query: ProductQueryDto = {}) {
+    const qb = this.productRepository
+      .createQueryBuilder(PRODUCT_ALIAS)
+      .leftJoinAndSelect(`${PRODUCT_ALIAS}.productType`, 'productType')
+      .where(`${PRODUCT_ALIAS}.status = :status`, {
+        status: ProductStatus.PUBLISHED,
+      });
+
+    this.applyProductFilters(qb, query);
+
+    const result = await paginateWithCursor<Product>({
+      queryBuilder: qb,
+      cursor: query.cursor,
+      nextCursor: query.nextCursor,
+      page: query.page,
+      limit: query.limit,
+      sortField: query.sortBy || ProductSortField.CREATED_AT,
+      sortOrder: query.sortOrder || ProductSortOrder.DESC,
+      idField: 'id',
+      entityAlias: PRODUCT_ALIAS,
     });
+
+    await this.attachReviewStats(result.data);
+
+    return {
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.meta.lastPage,
+      hasNextPage: result.hasNextPage,
+      hasPrevPage: result.hasPrevPage,
+    };
   }
 
-  async findAllAdmin(): Promise<Product[]> {
-    return this.productRepository.find({
-      relations: ['productType'],
-      order: { createdAt: 'DESC' },
+  async findAllAdmin(query: AdminProductQueryDto = {}) {
+    const qb = this.productRepository
+      .createQueryBuilder(PRODUCT_ALIAS)
+      .leftJoinAndSelect(`${PRODUCT_ALIAS}.productType`, 'productType');
+
+    if (query.status) {
+      qb.andWhere(`${PRODUCT_ALIAS}.status = :status`, {
+        status: query.status,
+      });
+    }
+
+    this.applyProductFilters(qb, query);
+
+    const result = await paginateWithCursor<Product>({
+      queryBuilder: qb,
+      cursor: query.cursor,
+      nextCursor: query.nextCursor,
+      page: query.page,
+      limit: query.limit,
+      sortField: query.sortBy || ProductSortField.CREATED_AT,
+      sortOrder: query.sortOrder || ProductSortOrder.DESC,
+      idField: 'id',
+      entityAlias: PRODUCT_ALIAS,
     });
+
+    await this.attachReviewStats(result.data);
+
+    return {
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.meta.lastPage,
+      hasNextPage: result.hasNextPage,
+      hasPrevPage: result.hasPrevPage,
+    };
+  }
+
+  private applyProductFilters(
+    qb: SelectQueryBuilder<Product>,
+    query: ProductQueryDto,
+  ) {
+    if (query.search) {
+      qb.andWhere(
+        `(${PRODUCT_ALIAS}.name ILIKE :search OR ${PRODUCT_ALIAS}.description ILIKE :search)`,
+        { search: `%${query.search}%` },
+      );
+    }
+
+    if (query.minPrice !== undefined) {
+      qb.andWhere(`${PRODUCT_ALIAS}.price >= :minPrice`, {
+        minPrice: query.minPrice,
+      });
+    }
+
+    if (query.maxPrice !== undefined) {
+      qb.andWhere(`${PRODUCT_ALIAS}.price <= :maxPrice`, {
+        maxPrice: query.maxPrice,
+      });
+    }
+
+    const categoryId = query.productTypeId || query.category;
+    if (categoryId) {
+      qb.andWhere(
+        `(${PRODUCT_ALIAS}.productTypeId = :category OR productType.name = :category OR productType.slug = :category)`,
+        { category: categoryId },
+      );
+    }
+  }
+
+  private async attachReviewStats(products: Product[]): Promise<void> {
+    if (!products.length) return;
+
+    const ids = products.map((p) => p.id);
+    const rows: { productId: string; avg: string | number }[] =
+      await this.productReviewRepository
+        .createQueryBuilder('review')
+        .select('review.productId', 'productId')
+        .addSelect('AVG(review.rating)', 'avg')
+        .where('review.productId IN (:...ids)', { ids })
+        .andWhere('review.status = :status', {
+          status: ProductReviewStatus.APPROVED,
+        })
+        .groupBy('review.productId')
+        .getRawMany();
+
+    const avgMap = new Map<string, number>();
+    for (const row of rows) {
+      avgMap.set(row.productId, Number(row.avg));
+    }
+
+    for (const product of products) {
+      if (avgMap.has(product.id)) {
+        product.rating = avgMap.get(product.id) as number;
+      }
+    }
   }
 
   async findOne(id: string): Promise<Product> {
-    const product = await this.productRepository.findOne({ where: { id } });
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: ['productType'],
+    });
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
+
+    const [{ avg }] = await this.productReviewRepository
+      .createQueryBuilder('review')
+      .select('AVG(review.rating)', 'avg')
+      .where('review.productId = :id', { id })
+      .andWhere('review.status = :status', {
+        status: ProductReviewStatus.APPROVED,
+      })
+      .getRawMany<{ avg: string | null }>();
+
+    if (avg !== null && avg !== undefined && Number(avg) > 0) {
+      product.rating = Number(avg);
+    }
+
     return product;
   }
 
@@ -410,5 +556,179 @@ export class ProductsService {
       published,
       lowStock: lowStockCount,
     };
+  }
+
+  // --- Product Reviews ---
+
+  async createReview(
+    user: User | undefined,
+    productId: string,
+    dto: CreateProductReviewDto,
+    ip?: string,
+  ): Promise<Record<string, unknown>> {
+    const product = await this.findOne(productId);
+
+    const reviewerName =
+      dto.name?.trim() ||
+      (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '') ||
+      'Anonymous';
+
+    // Anti-spam: one review per authenticated user per product; anonymous
+    // reviews are limited to one per IP per product within 24h.
+    let reviewIpHash: string | null = null;
+    if (user?.id) {
+      const existing = await this.productReviewRepository.findOne({
+        where: { productId: product.id, userId: user.id },
+      });
+      if (existing) {
+        throw new BadRequestException('You have already reviewed this product');
+      }
+    } else if (ip) {
+      reviewIpHash = createHash('sha256').update(ip).digest('hex');
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const existing = await this.productReviewRepository
+        .createQueryBuilder('review')
+        .where('review.productId = :productId', { productId: product.id })
+        .andWhere('review.ipHash = :ipHash', { ipHash: reviewIpHash })
+        .andWhere('review.createdAt >= :since', { since })
+        .getOne();
+      if (existing) {
+        throw new BadRequestException(
+          'A review from this device was already submitted in the last 24 hours',
+        );
+      }
+    }
+
+    const review = this.productReviewRepository.create({
+      product,
+      productId: product.id,
+      userId: user?.id,
+      ipHash: reviewIpHash ?? null,
+      reviewerName,
+      rating: dto.rating,
+      comment: dto.comment,
+      status: ProductReviewStatus.PENDING,
+    });
+
+    const saved = await this.productReviewRepository.save(review);
+
+    return {
+      id: saved.id,
+      user: saved.reviewerName,
+      rating: saved.rating,
+      comment: saved.comment,
+      date: saved.createdAt,
+      status: saved.status,
+    };
+  }
+
+  async findApprovedReviews(productId: string, page = 1, limit = 10) {
+    await this.findOne(productId);
+
+    const [data, total] = await this.productReviewRepository.findAndCount({
+      where: { productId, status: ProductReviewStatus.APPROVED },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      data: data.map((r) => ({
+        id: r.id,
+        user: r.reviewerName,
+        rating: r.rating,
+        comment: r.comment,
+        date: r.createdAt,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findReviewsAdmin(
+    status: ProductReviewStatus | undefined,
+    page = 1,
+    limit = 10,
+  ) {
+    const where: FindOptionsWhere<ProductReview> = {};
+    if (status) {
+      where.status = status;
+    }
+
+    const [data, total] = await this.productReviewRepository.findAndCount({
+      where,
+      relations: ['product'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async updateReviewStatus(
+    reviewId: string,
+    status: ProductReviewStatus,
+  ): Promise<ProductReview> {
+    if (
+      status !== ProductReviewStatus.APPROVED &&
+      status !== ProductReviewStatus.REJECTED &&
+      status !== ProductReviewStatus.PENDING
+    ) {
+      throw new BadRequestException('Invalid review status');
+    }
+
+    const review = await this.productReviewRepository.findOne({
+      where: { id: reviewId },
+    });
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    const previousStatus = review.status;
+    review.status = status;
+    await this.productReviewRepository.save(review);
+
+    await this.syncReviewCount(review.productId);
+
+    if (status === ProductReviewStatus.APPROVED) {
+      await this.syncProductRating(review.productId);
+    } else if (previousStatus === ProductReviewStatus.APPROVED) {
+      await this.syncProductRating(review.productId);
+    }
+
+    return review;
+  }
+
+  private async syncReviewCount(productId: string): Promise<void> {
+    const count = await this.productReviewRepository.count({
+      where: { productId, status: ProductReviewStatus.APPROVED },
+    });
+    await this.productRepository.update(productId, { reviewCount: count });
+  }
+
+  private async syncProductRating(productId: string): Promise<void> {
+    const [{ avg }] = await this.productReviewRepository
+      .createQueryBuilder('review')
+      .select('AVG(review.rating)', 'avg')
+      .where('review.productId = :productId', { productId })
+      .andWhere('review.status = :status', {
+        status: ProductReviewStatus.APPROVED,
+      })
+      .getRawMany<{ avg: string | null }>();
+
+    if (avg !== null && avg !== undefined && Number(avg) > 0) {
+      await this.productRepository.update(productId, {
+        rating: Number(avg),
+      });
+    }
   }
 }

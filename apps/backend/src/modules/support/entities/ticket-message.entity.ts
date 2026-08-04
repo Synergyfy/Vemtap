@@ -9,6 +9,13 @@ import {
 import { SupportTicket } from './support-ticket.entity';
 import { User } from '../../users/entities/user.entity';
 
+export interface TicketAttachment {
+  url: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
 @Entity('ticket_messages')
 export class TicketMessage {
   @PrimaryGeneratedColumn('uuid')
@@ -37,6 +44,9 @@ export class TicketMessage {
     default: 'CUSTOMER',
   })
   senderRole: 'CUSTOMER' | 'AGENT' | 'BOT' | 'SYSTEM';
+
+  @Column({ type: 'jsonb', nullable: true })
+  attachments: TicketAttachment[] | null;
 
   @CreateDateColumn()
   createdAt: Date;
