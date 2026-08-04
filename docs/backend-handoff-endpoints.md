@@ -16,6 +16,147 @@ This document is for frontend integration. It describes the backend contracts ch
 
 ## Loyalty
 
+### Backend Audit Coverage
+
+The following audited screens already have backend contracts and should not
+use local-only state:
+
+- Catalogue categories: `GET/POST/PATCH/DELETE /api/v1/catalogue/categories`
+- Messaging automations: `/api/v1/messaging/automations`
+- Support agents and tickets: `/api/v1/support/agent` and `/api/v1/support`
+- Notification preferences: `GET/PATCH /api/v1/notifications/preferences`
+- Branch partnership management: `/api/v1/partnerships`
+- Affiliate analytics: `/api/v1/affiliates/stats`, `/activity`, and `/performance`
+
+Branch customer-capture configuration is persisted in the branch `engagement`
+JSON field through `GET/PATCH /api/v1/branches/:id/customer-capture`.
+
+### Business Loyalty Analytics
+
+`GET /api/v1/loyalty/business-stats`
+
+The business loyalty statistics response is calculated from persisted point
+transactions, visits, rewards, and redemption codes. KPI changes are calculated
+against the preceding 30-day period, tier distribution is derived from actual
+customer balances, and the growth message is based on actual redemption data.
+
+### Stock Movement History
+
+`GET /api/v1/inventory/counting/movements`
+
+Roles: `Owner`, `Manager`, `Staff`
+
+Optional query parameters are `branchId`, `itemId`, `page`, and `limit`.
+Movement records are created for manual stock adjustments, POS sales, POS
+returns, and approved stock-count variances.
+
+### POS Cash Drops and Z-Report
+
+`POST /api/v1/pos/register/cash-drop`
+
+```json
+{
+  "amount": 5000,
+  "reason": "Safe drop"
+}
+```
+
+`GET /api/v1/pos/register/z-report`
+
+Cash drops are persisted against the open register session. The Z-report
+returns opening cash, sales, cash sales, cash drops, expected cash, payment
+breakdown, and transaction count.
+
+### Submit Feedback
+
+`POST /api/v1/feedback`
+
+Roles: `Customer`
+
+```json
+{
+  "branchId": "f6e9a9b9-23bc-4e22-a9a5-8a0f4d4e5f11",
+  "rating": 5,
+  "comment": "Excellent service"
+}
+```
+
+Feedback is persisted with the authenticated customer identity. Runtime fake
+feedback seeding has been removed.
+
+### Award Points to a Customer
+
+`POST /api/v1/loyalty/points/give`
+
+Roles: `Owner`, `Manager`, `Staff`
+
+The customer is resolved from the authenticated business operation. Prefer
+`customerId`; `userId` is accepted as a compatibility alias for existing
+clients. `customerCode` remains supported for code-based POS flows.
+
+```json
+{
+  "customerId": "a3d1b1b6-46ab-4d9e-aee4-1fa7f2f93121",
+  "points": 50,
+  "reason": "Manual award",
+  "branchId": "f6e9a9b9-23bc-4e22-a9a5-8a0f4d4e5f11"
+}
+```
+
+The branch must be accessible to the acting staff member. The customer must
+be a customer account; customer identity is not selected from an arbitrary
+business context.
+
+### Apply a Reward Template
+
+`POST /api/v1/loyalty/reward-templates/:id/apply`
+
+Roles: `Owner`, `Manager`
+
+```json
+{
+  "branchId": "f6e9a9b9-23bc-4e22-a9a5-8a0f4d4e5f11",
+  "totalQuantity": 100,
+  "expiryDate": "2026-12-31T23:59:59.000Z",
+  "audienceType": "all"
+}
+```
+
+The template is not mutated. A branch-scoped reward instance is created with
+the template's name, description, points, category, images, and `templateId`.
+
+### Redeem a Reward Directly
+
+`POST /api/v1/loyalty/redemption/redeem-reward`
+
+Roles: `Customer`
+
+```json
+{
+  "rewardId": "d9b2d63d-a233-4123-8478-438acb679b32"
+}
+```
+
+The customer is always taken from the JWT. The operation validates balance,
+expiry, active state, and stock atomically, and returns a generated consumed
+redemption code for consistent redemption reporting.
+
+### Verify a Redemption Code
+
+`POST /api/v1/loyalty/verify-redemption`
+
+Roles: `Owner`, `Manager`, `Staff`
+
+```json
+{
+  "code": "123456789"
+}
+```
+
+Verification is read-only and requires POS permission plus access to the code's
+branch. It returns `valid`, reward details, usage state, expiry, and a reason
+such as `NOT_FOUND`, `ALREADY_USED`, `EXPIRED`, or `INACTIVE_REWARD`.
+
 ### Get Customer Point Balance
 
 `GET /api/v1/loyalty/points/balance`
@@ -26,9 +167,9 @@ Returns the authenticated customer's points balance. The business filter is opti
 
 Query parameters:
 
-| Name | Type | Required | Description |
-| --- | --- | --- | --- |
-| `businessId` | UUID | No | Restrict the balance to one business. Omit for the global customer balance. |
+| Name         | Type | Required | Description                                                                 |
+| ------------ | ---- | -------- | --------------------------------------------------------------------------- |
+| `businessId` | UUID | No       | Restrict the balance to one business. Omit for the global customer balance. |
 
 Example:
 
@@ -59,11 +200,11 @@ Returns point transactions for the authenticated customer. Omitting `businessId`
 
 Query parameters:
 
-| Name | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `businessId` | UUID | No | None | Restrict history to one business. |
-| `page` | Integer | No | `1` | Page number, minimum `1`. |
-| `limit` | Integer | No | `10` | Page size, minimum `1`. |
+| Name         | Type    | Required | Default | Description                       |
+| ------------ | ------- | -------- | ------- | --------------------------------- |
+| `businessId` | UUID    | No       | None    | Restrict history to one business. |
+| `page`       | Integer | No       | `1`     | Page number, minimum `1`.         |
+| `limit`      | Integer | No       | `10`    | Page size, minimum `1`.           |
 
 Response `200`:
 
@@ -109,21 +250,21 @@ At least one of `branchId`, `branchCode`, or `businessId` is required. `business
 
 Query parameters:
 
-| Name | Type | Required | Description |
-| --- | --- | --- | --- |
-| `branchId` | UUID | Conditional | Return rewards for one branch. |
-| `branchCode` | String | Conditional | Resolve and filter by branch code. |
-| `businessId` | UUID | Conditional | Return rewards across a business. |
-| `search` | String | No | Case-insensitive reward name search. |
-| `newest` | Boolean | No | Sort newest first. |
-| `oldest` | Boolean | No | Sort oldest first. |
-| `lowestQuantity` | Boolean | No | Sort by remaining quantity ascending. |
-| `highestQuantity` | Boolean | No | Sort by remaining quantity descending. |
-| `aboutToExpire` | Boolean | No | Sort by expiry date ascending. |
-| `highestPoints` | Boolean | No | Sort by points required descending. |
-| `lowestPoints` | Boolean | No | Sort by points required ascending. |
-| `page` | Integer | No | Default `1`. |
-| `limit` | Integer | No | Default `10`. |
+| Name              | Type    | Required    | Description                            |
+| ----------------- | ------- | ----------- | -------------------------------------- |
+| `branchId`        | UUID    | Conditional | Return rewards for one branch.         |
+| `branchCode`      | String  | Conditional | Resolve and filter by branch code.     |
+| `businessId`      | UUID    | Conditional | Return rewards across a business.      |
+| `search`          | String  | No          | Case-insensitive reward name search.   |
+| `newest`          | Boolean | No          | Sort newest first.                     |
+| `oldest`          | Boolean | No          | Sort oldest first.                     |
+| `lowestQuantity`  | Boolean | No          | Sort by remaining quantity ascending.  |
+| `highestQuantity` | Boolean | No          | Sort by remaining quantity descending. |
+| `aboutToExpire`   | Boolean | No          | Sort by expiry date ascending.         |
+| `highestPoints`   | Boolean | No          | Sort by points required descending.    |
+| `lowestPoints`    | Boolean | No          | Sort by points required ascending.     |
+| `page`            | Integer | No          | Default `1`.                           |
+| `limit`           | Integer | No          | Default `10`.                          |
 
 Response `200`:
 
@@ -163,9 +304,9 @@ Roles: `Customer`
 
 Query parameters:
 
-| Name | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `days` | Integer | No | `30` | Number of days included in visit analytics. |
+| Name   | Type    | Required | Default | Description                                 |
+| ------ | ------- | -------- | ------- | ------------------------------------------- |
+| `days` | Integer | No       | `30`    | Number of days included in visit analytics. |
 
 Response `200`:
 
@@ -174,15 +315,9 @@ Response `200`:
   "totalVisits": 12,
   "currentPointsBalance": 450,
   "netSavings": 1500,
-  "visitTrends": [
-    { "month": "Aug", "visits": 12 }
-  ],
-  "pointsByVenue": [
-    { "venueName": "Downtown Cafe", "points": 300 }
-  ],
-  "topVenues": [
-    { "venueName": "Downtown Cafe", "points": 8 }
-  ],
+  "visitTrends": [{ "month": "Aug", "visits": 12 }],
+  "pointsByVenue": [{ "venueName": "Downtown Cafe", "points": 300 }],
+  "topVenues": [{ "venueName": "Downtown Cafe", "points": 8 }],
   "trends": {
     "totalVisits": "+25%",
     "rewardPoints": "+10%",
@@ -205,9 +340,9 @@ Records a visit using a device code. The route delegates to the existing fraud-c
 
 Path parameters:
 
-| Name | Type | Required | Description |
-| --- | --- | --- | --- |
-| `code` | String | Yes | Device code printed on the tap device. |
+| Name   | Type   | Required | Description                            |
+| ------ | ------ | -------- | -------------------------------------- |
+| `code` | String | Yes      | Device code printed on the tap device. |
 
 Optional header:
 
@@ -265,12 +400,12 @@ Body DTO: `CreateTicketDto`
 
 Fields:
 
-| Field | Type | Required | Allowed values |
-| --- | --- | --- | --- |
-| `subject` | String | Yes | Non-empty string. |
-| `category` | String | Yes | Non-empty string. |
-| `message` | String | Yes | Non-empty string. |
-| `priority` | String | No | `Low`, `Normal`, `High`, `Urgent`; defaults to `Normal`. |
+| Field      | Type   | Required | Allowed values                                           |
+| ---------- | ------ | -------- | -------------------------------------------------------- |
+| `subject`  | String | Yes      | Non-empty string.                                        |
+| `category` | String | Yes      | Non-empty string.                                        |
+| `message`  | String | Yes      | Non-empty string.                                        |
+| `priority` | String | No       | `Low`, `Normal`, `High`, `Urgent`; defaults to `Normal`. |
 
 Response `201`:
 
@@ -296,9 +431,9 @@ Public endpoint.
 
 Optional query parameter:
 
-| Name | Type | Required | Description |
-| --- | --- | --- | --- |
-| `search` | String | No | Searches page title and summary. |
+| Name     | Type   | Required | Description                      |
+| -------- | ------ | -------- | -------------------------------- |
+| `search` | String | No       | Searches page title and summary. |
 
 Response `200`:
 
@@ -656,12 +791,12 @@ The browser subscription flow must use the public VAPID key from `NEXT_PUBLIC_VA
 
 The backend web-push configuration uses the matching key pair:
 
-| Variable | Purpose |
-| --- | --- |
-| `VAPID_PUBLIC_KEY` | Public VAPID key used by the web-push server. |
-| `VAPID_PRIVATE_KEY` | Private VAPID key used to sign push requests. |
-| `VAPID_EMAIL` | Contact address included in VAPID details. |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Compatibility fallback for the public key. |
+| Variable                       | Purpose                                       |
+| ------------------------------ | --------------------------------------------- |
+| `VAPID_PUBLIC_KEY`             | Public VAPID key used by the web-push server. |
+| `VAPID_PRIVATE_KEY`            | Private VAPID key used to sign push requests. |
+| `VAPID_EMAIL`                  | Contact address included in VAPID details.    |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Compatibility fallback for the public key.    |
 
 The frontend public key and backend VAPID keys must come from the same key pair. A disabled/misconfigured push service returns a non-queued result rather than changing the request contract.
 

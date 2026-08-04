@@ -9,6 +9,9 @@ export class Feedback extends AbstractBaseEntity {
   @Column({ nullable: true })
   branchId: string;
 
+  @Column({ nullable: true })
+  customerId: string;
+
   @Column()
   customerName: string;
 

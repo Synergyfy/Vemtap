@@ -34,6 +34,9 @@ import {
   UsePointCodeDto,
   GenerateRedemptionCodeDto,
   RedeemRewardDto,
+  RedeemRewardByIdDto,
+  VerifyRedemptionDto,
+  ApplyRewardTemplateDto,
   BranchIdParamDto,
 } from './dto/loyalty.dto';
 import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
@@ -336,6 +339,20 @@ export class LoyaltyController {
     return this.loyaltyService.getTemplates();
   }
 
+  @Post('reward-templates/:id/apply')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('marketing')
+  @ApiOperation({ summary: 'Apply a reward template to a branch' })
+  @ApiParam({ name: 'id', description: 'The ID of the reward template' })
+  @ApiBody({ type: ApplyRewardTemplateDto })
+  async applyTemplate(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Body() dto: ApplyRewardTemplateDto,
+  ) {
+    return this.loyaltyService.applyTemplate(req.user, id, dto);
+  }
+
   // --- Rewards ---
   @Post('rewards')
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
@@ -565,6 +582,29 @@ export class LoyaltyController {
     @Body() dto: RedeemRewardDto,
   ) {
     return this.loyaltyService.redeemReward(req.user, dto);
+  }
+
+  @Post('redemption/redeem-reward')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Customer redeems a reward directly using points' })
+  @ApiBody({ type: RedeemRewardByIdDto })
+  async redeemRewardById(
+    @Request() req: { user: User },
+    @Body() dto: RedeemRewardByIdDto,
+  ) {
+    return this.loyaltyService.redeemRewardById(req.user, dto);
+  }
+
+  @Post('verify-redemption')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('pos')
+  @ApiOperation({ summary: 'Verify a redemption code without consuming it' })
+  @ApiBody({ type: VerifyRedemptionDto })
+  async verifyRedemption(
+    @Request() req: { user: User },
+    @Body() dto: VerifyRedemptionDto,
+  ) {
+    return this.loyaltyService.verifyRedemption(req.user, dto);
   }
 
   @Get('analytics')

@@ -9,6 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { Branch } from './entities/branch.entity';
+import { UpdateCustomerCaptureDto } from './dto/customer-capture.dto';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { NearbyBranchesQueryDto } from './dto/nearby-branches-query.dto';
 import {
@@ -301,6 +302,20 @@ export class BranchesService {
     const savedBranch = await this.branchesRepository.save(branch);
 
     return savedBranch;
+  }
+
+  async updateCustomerCapture(
+    branch: Branch,
+    dto: UpdateCustomerCaptureDto,
+  ): Promise<Branch> {
+    branch.engagement = {
+      ...(branch.engagement || {}),
+      customerCapture: {
+        ...(branch.engagement?.customerCapture || {}),
+        ...dto,
+      },
+    };
+    return this.branchesRepository.save(branch);
   }
 
   private deleteOtps = new Map<string, { code: string; expiresAt: number }>();

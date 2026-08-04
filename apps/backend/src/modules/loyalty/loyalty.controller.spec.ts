@@ -23,6 +23,9 @@ describe('LoyaltyController', () => {
     deleteReward: jest.fn(),
     generateRedemptionCode: jest.fn(),
     redeemReward: jest.fn(),
+    redeemRewardById: jest.fn(),
+    verifyRedemption: jest.fn(),
+    applyTemplate: jest.fn(),
     getCustomerAnalytics: jest.fn(),
   };
 
@@ -81,5 +84,18 @@ describe('LoyaltyController', () => {
       await controller.givePoints(mockReq as any, dto as any);
       expect(service.givePoints).toHaveBeenCalledWith(mockUser, dto);
     });
+  });
+
+  it('calls direct reward redemption for the authenticated customer', async () => {
+    const dto = { rewardId: 'reward-1' };
+    await controller.redeemRewardById(mockReq as any, dto);
+    expect(service.redeemRewardById).toHaveBeenCalledWith(mockUser, dto);
+  });
+
+  it('calls redemption verification for staff', async () => {
+    const staffReq = { user: { id: 'staff-1', role: UserRole.STAFF } };
+    const dto = { code: '123456789' };
+    await controller.verifyRedemption(staffReq as any, dto);
+    expect(service.verifyRedemption).toHaveBeenCalledWith(staffReq.user, dto);
   });
 });

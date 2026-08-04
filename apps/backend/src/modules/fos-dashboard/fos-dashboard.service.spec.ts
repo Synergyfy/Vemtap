@@ -19,7 +19,7 @@ describe('FosDashboardService', () => {
   };
 
   const mockSnapshotRepo = {
-    find: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn(),
   };
 
@@ -83,10 +83,12 @@ describe('FosDashboardService', () => {
         },
       ]);
 
-      mockSnapshotRepo.findOne.mockResolvedValue({
-        churnRate: '5.2',
-        conversionRate: '12.8',
-      });
+      mockSnapshotRepo.find.mockResolvedValue([
+        {
+          churnRate: '5.2',
+          conversionRate: '12.8',
+        },
+      ]);
 
       const result = await service.getStats();
 
@@ -103,7 +105,7 @@ describe('FosDashboardService', () => {
 
     it('should return zero stats when no transactions exist', async () => {
       mockTransactionRepo.find.mockResolvedValue([]);
-      mockSnapshotRepo.findOne.mockResolvedValue(null);
+      mockSnapshotRepo.find.mockResolvedValue([]);
 
       const result = await service.getStats();
 

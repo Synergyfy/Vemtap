@@ -45,6 +45,6 @@ export class QrThriveCallbackController {
         );
     }
 
-    return { status: 'success', message: 'Callback processed' };
+    return { status: 'success', message: 'Callback received' };
   }
 }

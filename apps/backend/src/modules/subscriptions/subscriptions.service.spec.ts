@@ -24,6 +24,7 @@ import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BranchesService } from '../branches/branches.service';
+import { Reward } from '../loyalty/entities/reward.entity';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -150,6 +151,10 @@ describe('SubscriptionsService', () => {
         },
         {
           provide: getRepositoryToken(AutomationRule),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(Reward),
           useValue: { count: jest.fn().mockResolvedValue(0) },
         },
         SubscriptionsService,

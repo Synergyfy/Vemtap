@@ -980,9 +980,7 @@ export class ProfilingLogicHelper {
 
     // PROPERTY VISIBILITY PROBLEM
     if (q7 === 'No' || q7 === 'Partially' || q8 === 'High') {
-      problems.push(
-        'Poor property visibility or information gap leads to repetitive inquiries.',
-      );
+      problems.push('Property information gap and low listing visibility.');
       recommendations.push(
         'Deploy a digital property listing system via QR codes on signage to provide instant access to high-quality photos and specs.',
       );
