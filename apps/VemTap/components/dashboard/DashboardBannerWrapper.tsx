@@ -1,27 +1,28 @@
 'use client';
 
 import React, { useEffect, useMemo } from 'react';
-import DashboardBanner from './DashboardBanner';
+import DashboardBanner, { BannerSlide } from './DashboardBanner';
 import { useBannerStore, getIconByName } from '@/store/useBannerStore';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { PartyPopper, Sparkles, Bot } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
+import { resolveBannerText } from '@/lib/utils';
 
 interface DashboardBannerWrapperProps {
     onAnalyzeDashboard?: () => void;
 }
 
 export default function DashboardBannerWrapper({ onAnalyzeDashboard }: DashboardBannerWrapperProps) {
-    const { slides, fetchBanners } = useBannerStore();
+    const { businessSlides, fetchBanners } = useBannerStore();
     const { percentage, isComplete, nextPendingItem } = useOnboarding();
     const { activeBranchId } = useActiveBranch();
     const { data: branches = [] } = useBranches();
     const businessName = useAuthStore((state) => state.user?.businessName);
 
     useEffect(() => {
-        fetchBanners();
+        fetchBanners('business');
     }, [fetchBanners]);
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
@@ -34,19 +35,33 @@ export default function DashboardBannerWrapper({ onAnalyzeDashboard }: Dashboard
     }, [activeBranch, activeBranchId, businessName]);
 
     const bannerSlides = useMemo(() => {
-        let allSlides = slides.length > 0 
-            ? slides.map(s => ({ ...s, icon: getIconByName(s.iconName), tag: 'NEWS' }))
-            : [{
-                id: 'default-welcome',
-                title: `Welcome to ${branchDisplayName} Dashboard`,
-                description: 'Manage your visitors, loyalty programs, and messaging all in one place. Explore our new features to grow your business.',
-                icon: Sparkles,
-                color: 'bg-gradient-to-r from-[#066CF4] to-[#4293FF]',
-                tag: 'NEWS'
-              }];
+        const resolveVars = {
+            businessName: businessName || branchDisplayName,
+            branchName: branchDisplayName,
+            firstName: businessName || branchDisplayName,
+        };
+
+        const allSlides: BannerSlide[] =
+            businessSlides.length > 0
+                ? businessSlides.map(s => ({ ...s, icon: getIconByName(s.iconName), tag: 'NEWS' }))
+                : [{
+                    id: 'default-welcome',
+                    title: `Welcome to {businessName} Dashboard`,
+                    description: 'Track visitors, loyalty, and messaging all in one place. Use the menu to manage your day-to-day.',
+                    icon: Sparkles,
+                    color: 'bg-gradient-to-r from-[#066CF4] to-[#4293FF]',
+                    tag: 'NEWS'
+                }];
+
+        const resolved: BannerSlide[] = allSlides.map((s) => ({
+            ...s,
+            title: resolveBannerText(s.title, resolveVars),
+            description: resolveBannerText(s.description, resolveVars),
+            actionLabel: resolveBannerText(s.actionLabel, resolveVars),
+        }));
 
         if (!isComplete) {
-            const onboardingSlide = {
+            const onboardingSlide: BannerSlide = {
                 id: 'onboarding-progress',
                 title: `${percentage}% Setup Complete`,
                 description: nextPendingItem?.description || 'Your journey to seamless customer engagement starts here.',
@@ -57,11 +72,11 @@ export default function DashboardBannerWrapper({ onAnalyzeDashboard }: Dashboard
                 tag: 'SETUP',
                 isLight: true
             };
-            return [onboardingSlide, ...allSlides];
+            return [onboardingSlide, ...resolved];
         }
 
-        return allSlides;
-    }, [slides, isComplete, percentage, nextPendingItem]);
+        return resolved;
+    }, [businessSlides, isComplete, percentage, nextPendingItem, businessName, branchDisplayName]);
 
     const businessAdvisorSlide = useMemo(() => ({
         id: 'business-advisor',

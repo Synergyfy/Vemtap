@@ -18,6 +18,7 @@ type UserRole = 'business_owner' | 'customer' | null;
 export default function SupportChatbot() {
     const pathname = usePathname();
     const { history, addMessage, clearHistory, isOpen, setIsOpen, isVisible, setIsVisible } = useChatStore();
+
     const { isAuthenticated, user } = useAuthStore();
     
     const [isFullScreen, setIsFullScreen] = useState(false);
@@ -200,6 +201,12 @@ export default function SupportChatbot() {
         scrollToBottom();
     }, [history, isLoading, isTyping]);
 
+    // Hide floating chatbot inside the authenticated dashboard
+    // (placed after all hooks to satisfy the Rules of Hooks)
+    if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/dashboard/')) {
+        return null;
+    }
+
     const getContext = () => {
         let context = "General Dashboard";
         if (pathname?.includes('messaging')) context = "Message Management";
@@ -372,7 +379,7 @@ export default function SupportChatbot() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-className="fixed bottom-6 right-6 z-60"
+className="fixed bottom-6 right-6 z-60 hidden md:block"
                     >
                         <Draggable nodeRef={floatingButtonRef} bounds="parent">
                             <div ref={floatingButtonRef} className="cursor-grab active:cursor-grabbing">

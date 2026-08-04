@@ -22,24 +22,27 @@ export class BannersService {
     private readonly cacheManager: Cache,
   ) {}
 
-  async findAll(): Promise<Banner[]> {
-    const cached = await this.cacheManager.get<Banner[]>(CACHE_KEY_ALL);
+  async findAll(placement?: 'business' | 'customer'): Promise<Banner[]> {
+    const cacheKey = placement ? `${CACHE_KEY_ALL}:${placement}` : CACHE_KEY_ALL;
+    const cached = await this.cacheManager.get<Banner[]>(cacheKey);
     if (cached) return cached;
     const banners = await this.bannerRepository.find({
+      where: placement ? { placement } : {},
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
-    await this.cacheManager.set(CACHE_KEY_ALL, banners);
+    await this.cacheManager.set(cacheKey, banners);
     return banners;
   }
 
-  async findActive(): Promise<Banner[]> {
-    const cached = await this.cacheManager.get<Banner[]>(CACHE_KEY_ACTIVE);
+  async findActive(placement?: 'business' | 'customer'): Promise<Banner[]> {
+    const cacheKey = placement ? `${CACHE_KEY_ACTIVE}:${placement}` : CACHE_KEY_ACTIVE;
+    const cached = await this.cacheManager.get<Banner[]>(cacheKey);
     if (cached) return cached;
     const banners = await this.bannerRepository.find({
-      where: { isActive: true },
+      where: placement ? { isActive: true, placement } : { isActive: true },
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
-    await this.cacheManager.set(CACHE_KEY_ACTIVE, banners);
+    await this.cacheManager.set(cacheKey, banners);
     return banners;
   }
 

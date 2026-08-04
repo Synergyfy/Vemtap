@@ -19,21 +19,21 @@ export default function CustomerHistoryPage() {
 
     if (isLoading && history.length === 0) {
         return (
-            <div className="py-20 text-center flex flex-col items-center justify-center gap-4">
-                <Loader2 className="animate-spin text-primary" size={40} />
+            <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
+                <Loader2 className="animate-spin text-primary" size={28} />
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Fetching your history...</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">Points History</h2>
+                <h2 className="text-lg font-bold text-gray-900">Points History</h2>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{history.length} Transactions</p>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {history.map((tx: any, idx: number) => {
                     const { type, name, icon: IconComp } = getTransactionDetails(tx);
                     return (
@@ -42,17 +42,17 @@ export default function CustomerHistoryPage() {
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.05 }}
-                            className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center justify-between shadow-sm hover:border-primary/20 transition-colors"
+                            className="bg-white rounded-2xl border border-gray-100 p-3.5 flex items-center justify-between shadow-sm hover:border-primary/20 transition-colors"
                         >
-                            <div className="flex items-center gap-4">
-                                <div className={`size-12 rounded-2xl flex items-center justify-center ${
+                            <div className="flex items-center gap-3">
+                                <div className={`size-10 rounded-xl flex items-center justify-center ${
                                     type === 'earned' ? 'bg-green-50 text-green-600' : 'bg-primary/10 text-primary'
                                 }`}>
-                                    <IconComp size={20} />
+                                    <IconComp size={18} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-900 text-sm line-clamp-1">{name}</h3>
-                                    <p className="text-xs text-gray-400 font-medium">
+                                    <h3 className="font-bold text-gray-900 text-[13px] line-clamp-1">{name}</h3>
+                                    <p className="text-[11px] text-gray-400 font-medium">
                                         {new Date(tx.createdAt).toLocaleDateString(undefined, { 
                                             month: 'short', 
                                             day: 'numeric', 
@@ -77,8 +77,8 @@ export default function CustomerHistoryPage() {
             </div>
 
             {history.length === 0 && (
-                <div className="py-20 text-center bg-white rounded-[2.5rem] border border-dashed border-gray-200">
-                    <p className="text-gray-400 font-medium">Your history is currently empty.</p>
+                <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-gray-200">
+                    <p className="text-gray-400 font-medium text-sm">Your history is currently empty.</p>
                     <p className="text-xs text-gray-400 mt-1">Start tapping at VemTap terminals to earn points!</p>
                 </div>
             )}

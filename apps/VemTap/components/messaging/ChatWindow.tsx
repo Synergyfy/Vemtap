@@ -180,15 +180,39 @@ export default function ChatWindow() {
     });
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesScrollRef = useRef<HTMLDivElement>(null);
+    const inputWrapperRef = useRef<HTMLDivElement>(null);
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [showProfile, setShowProfile] = React.useState(false);
     const [replyToMessage, setReplyToMessage] = React.useState<any | null>(null);
+
+    const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior, block: 'nearest' });
+        }
+    }, []);
 
     useEffect(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     }, [messages?.length, activeConversationId]);
+
+    // Keep the latest message visible when the composer grows/shrinks
+    useEffect(() => {
+        const wrapper = inputWrapperRef.current;
+        if (!wrapper || typeof ResizeObserver === 'undefined') return;
+        let timeout: ReturnType<typeof setTimeout> | null = null;
+        const observer = new ResizeObserver(() => {
+            if (timeout) clearTimeout(timeout);
+            timeout = setTimeout(() => scrollToBottom('auto'), 60);
+        });
+        observer.observe(wrapper);
+        return () => {
+            observer.disconnect();
+            if (timeout) clearTimeout(timeout);
+        };
+    }, [scrollToBottom, activeConversationId]);
 
     useEffect(() => {
         setShowProfile(false);
@@ -312,7 +336,7 @@ export default function ChatWindow() {
             </header>
 
             <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'md:pr-80' : ''}`}>
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-4 md:pb-6">
+                <div ref={messagesScrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-6">
                     {isLoading ? (
                         <div className="flex-1 space-y-4 animate-pulse">
                             {[1, 2, 3].map(i => <div key={i} className={`h-10 w-2/3 rounded-xl ${i % 2 === 0 ? 'ml-auto bg-primary/10' : 'bg-slate-100'}`} />)}
@@ -359,8 +383,9 @@ export default function ChatWindow() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div 
-                    className="shrink-0 relative bg-white w-full z-10 border-t border-slate-200"
+                <div
+                    ref={inputWrapperRef}
+                    className="md:shrink-0 bg-white relative w-full z-20 md:z-10 border-t border-slate-200"
                     style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
                 >
                     <ChatInput
@@ -427,17 +452,56 @@ function MessageBubble({ message, isCustomer, branchId, onReply, onDelete }: { m
     const isMine = isCustomer ? message.direction === 'INBOUND' : message.direction === 'OUTBOUND';
     const metadata = message.metadata || {};
     const [showActions, setShowActions] = useState(false);
+    const attachments = metadata.attachments || [];
+    const hasRichCard = metadata.rewardId || metadata.itemId || metadata.offerId;
+
+    const handleDownload = (url: string, name: string) => {
+        window.open(url, '_blank');
+    };
 
     return (
         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[85%] ${isMine ? 'ml-auto' : ''}`} onClick={() => setShowActions(!showActions)}>
-            <div className={`p-3 shadow-sm relative group ${isMine ? 'bg-primary text-white bubble-right' : 'bg-white border border-slate-200 text-slate-700 bubble-left'}`}>
+            <div className={`p-2.5 shadow-sm relative group ${isMine ? 'bg-primary text-white bubble-right' : 'bg-white border border-slate-200 text-slate-700 bubble-left'}`}>
+                {/* Attachment Media */}
+                {attachments.length > 0 && (
+                    <div className={`space-y-2 ${!hasRichCard ? 'mb-1.5' : ''}`}>
+                        {attachments.map((att: any, idx: number) => (
+                            att.type === 'image' ? (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}
+                                    className="block w-full max-w-[280px] overflow-hidden rounded-lg bg-slate-900 cursor-pointer"
+                                >
+                                    <img src={att.url} alt={att.name || 'Attachment'} className="w-full max-h-64 object-cover" />
+                                </button>
+                            ) : (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}
+                                    className={`flex items-center gap-3 w-full max-w-[280px] rounded-lg px-3 py-2 border text-left transition-colors ${isMine ? 'bg-white/10 border-white/20 hover:bg-white/20' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}
+                                >
+                                    <span className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${isMine ? 'bg-white/20' : 'bg-white border border-slate-200'}`}>
+                                        <FileText size={18} className={isMine ? 'text-white' : 'text-slate-500'} />
+                                    </span>
+                                    <span className="min-w-0">
+                                        <span className={`block text-xs font-bold truncate ${isMine ? 'text-white' : 'text-slate-700'}`}>{att.name || 'Attachment'}</span>
+                                        <span className={`block text-[10px] font-semibold ${isMine ? 'text-white/70' : 'text-slate-400'}`}>Tap to open</span>
+                                    </span>
+                                </button>
+                            )
+                        ))}
+                    </div>
+                )}
+
                 {/* Meta Components */}
                 {metadata.rewardId && <RewardCard id={metadata.rewardId} isMine={isMine} />}
                 {metadata.itemId && <CatalogueItemCard id={metadata.itemId} isMine={isMine} isCustomer={isCustomer} branchId={branchId} />}
                 {metadata.offerId && <CatalogueOfferCard id={metadata.offerId} isMine={isMine} isCustomer={isCustomer} branchId={branchId} />}
                 
                 {!metadata.rewardId && !metadata.itemId && !metadata.offerId && (
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed px-0.5">{message.content}</p>
                 )}
                 
                 {/* Actions */}
