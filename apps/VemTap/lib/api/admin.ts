@@ -13,7 +13,6 @@ export const adminUsersApi = {
         if (params?.limit) q.set('limit', String(params.limit));
         return api.get(`/users/admin?${q.toString()}`);
     },
-    getStats: () => api.get('/users/admin/stats'),
     create: (data: any) => api.post('/users/admin', data),
     update: (id: string, data: any) => api.patch(`/users/admin/${id}`, data),
     delete: (id: string) => api.delete(`/users/admin/${id}`),
@@ -183,7 +182,7 @@ export const adminMessagingApi = {
     }) => api.post('/messaging/templates', data),
     updateTemplateStatus: (id: string, status: 'pending' | 'approved' | 'rejected') =>
         api.post(`/messaging/admin/templates/${id}/status`, { status }),
-    deleteTemplate: (id: string) => api.delete(`/messaging/templates/${id}/delete`),
+    deleteTemplate: (id: string) => api.delete(`/messaging/templates/${id}`),
 };
 
 export const adminNotificationsApi = {
