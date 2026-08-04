@@ -37,7 +37,10 @@ describe('QrThriveCallbackController', () => {
 
   describe('handleCallback', () => {
     it('should acknowledge receipt of valid payload', async () => {
-      const payload = { event: 'subscription.updated', userId: '123' };
+      const payload = {
+        event: 'subscription.updated',
+        data: { userId: '123' },
+      };
       const loggerSpy = jest.spyOn(controller['logger'], 'log');
 
       const result = await controller.handleCallback(payload);
@@ -47,7 +50,7 @@ describe('QrThriveCallbackController', () => {
         message: 'Callback received',
       });
       expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining(JSON.stringify(payload)),
+        expect.stringContaining(JSON.stringify(payload.data)),
       );
     });
 

@@ -9,6 +9,9 @@ import {
 import { Business } from '../../businesses/entities/business.entity';
 import { PaymentsService } from '../../payments/payments.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { SettingsService } from '../../settings/settings.service';
+import { BundleDiscountsService } from './bundle-discounts.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 describe('AddonsService', () => {
   let service: AddonsService;
@@ -112,6 +115,12 @@ describe('AddonsService', () => {
     recordPayment: jest.fn().mockResolvedValue({}),
   };
 
+  const mockSettingsService = {};
+  const mockBundleDiscountsService = {
+    getActiveDiscounts: jest.fn().mockResolvedValue([]),
+  };
+  const mockCache = { del: jest.fn(), get: jest.fn(), set: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -126,6 +135,12 @@ describe('AddonsService', () => {
           useValue: mockBusinessRepository,
         },
         { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: SettingsService, useValue: mockSettingsService },
+        {
+          provide: BundleDiscountsService,
+          useValue: mockBundleDiscountsService,
+        },
+        { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
 
