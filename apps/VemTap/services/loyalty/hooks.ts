@@ -282,7 +282,10 @@ export const useLoyaltyHistory = (branchId?: string) => {
 
 export const useGenerateRedemptionCode = () => {
     return useMutation<Redemption, Error, { rewardId: string; branchId?: string }>({
-        mutationFn: async (dto) => await api.post('/loyalty/generate-code', dto)
+        mutationFn: async (dto) => {
+            const result: any = await api.post('/loyalty/redemption/generate-code', dto);
+            return { ...result, redemptionCode: result.redemptionCode ?? result.code };
+        }
     });
 };
 
