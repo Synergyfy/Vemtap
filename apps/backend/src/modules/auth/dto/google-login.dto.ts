@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '../../users/entities/user.entity';
 import { Transform } from 'class-transformer';
@@ -28,4 +28,10 @@ export class GoogleLoginDto {
   })
   @IsEnum(UserRole)
   role?: UserRole;
+
+  @ApiProperty({ example: '123456', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  twoFactorCode?: string;
 }

@@ -112,7 +112,10 @@ export default function CustomerHistoryPage() {
                                                 </p>
                                             </td>
                                             <td className="py-3.5 md:py-5 px-4 md:px-6 text-center">
-                                                <button className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedVisit(tx); }}
+                                                    className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                                                >
                                                     <MoreVertical size={18} />
                                                 </button>
                                             </td>

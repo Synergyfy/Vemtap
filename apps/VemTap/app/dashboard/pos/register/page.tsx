@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRegisterStatus, useOpenRegister, useCloseRegister, usePosDashboard } from '@/services/pos/hooks';
+import { useRegisterStatus, useOpenRegister, useCloseRegister, usePosDashboard, useCashDrop, useZReport } from '@/services/pos/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import POSPageHeader from '@/components/dashboard/pos/shared/POSPageHeader';
-import { Lock, Unlock, Banknote, FileText } from 'lucide-react';
+import { Lock, Unlock, Banknote, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 export default function RegisterManagementScreen() {
   const router = useRouter();
@@ -21,6 +22,11 @@ export default function RegisterManagementScreen() {
   const [actualCash, setActualCash] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [closeReport, setCloseReport] = useState<{ expectedCash: number; totalSales: number; transactionCount: number } | null>(null);
+  const [cashDropAmount, setCashDropAmount] = useState('');
+  const [cashDropReason, setCashDropReason] = useState('');
+  const [showCashDrop, setShowCashDrop] = useState(false);
+  const cashDropMut = useCashDrop();
+  const zReportQuery = useZReport();
 
   const isRegisterOpen = registerStatus?.isOpen ?? false;
   const session = registerStatus?.session;
@@ -164,16 +170,108 @@ export default function RegisterManagementScreen() {
           <div className="bg-gray-900 text-white border border-gray-800 rounded-[32px] p-6 shadow-xl shadow-gray-900/10">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
-              <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors">
+              <button
+                onClick={() => setShowCashDrop(true)}
+                className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors"
+              >
                 <Banknote size={20} className="text-gray-300" />
                 <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">Cash Drop</span>
               </button>
-              <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors">
-                <FileText size={20} className="text-gray-300" />
+              <button
+                onClick={() => {
+                  if (zReportQuery.data) {
+                    const r = zReportQuery.data;
+                    const lines = [
+                      '=== Z-REPORT ===',
+                      `Date: ${new Date().toLocaleString()}`,
+                      '',
+                      `Opening Cash: ₦${r.openingCash.toLocaleString()}`,
+                      `Total Sales: ₦${r.totalSales.toLocaleString()}`,
+                      `Cash Sales: ₦${r.cashSales.toLocaleString()}`,
+                      `Card Sales: ₦${r.cardSales.toLocaleString()}`,
+                      `Cash Drops: ₦${r.totalCashDrops.toLocaleString()}`,
+                      `Expected Cash: ₦${r.expectedCashInDrawer.toLocaleString()}`,
+                      `Transactions: ${r.transactionCount}`,
+                    ].join('\n');
+                    const blob = new Blob([lines], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `z-report-${new Date().toISOString().slice(0, 10)}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success('Z-Report downloaded');
+                  } else {
+                    toast.error('Loading Z-Report...');
+                    zReportQuery.refetch();
+                  }
+                }}
+                disabled={zReportQuery.isLoading}
+                className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors"
+              >
+                {zReportQuery.isLoading ? <Loader2 size={20} className="text-gray-300 animate-spin" /> : <FileText size={20} className="text-gray-300" />}
                 <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">Print Z-Report</span>
               </button>
             </div>
           </div>
+
+          {showCashDrop && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-8">
+                <h3 className="text-lg font-black text-gray-900 mb-1">Cash Drop</h3>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">Move cash from the drawer to the safe.</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Amount (₦)</label>
+                    <input
+                      type="number"
+                      value={cashDropAmount}
+                      onChange={(e) => setCashDropAmount(e.target.value)}
+                      className="w-full h-14 px-4 rounded-2xl border-2 border-gray-200 text-2xl font-black text-gray-900 focus:outline-none focus:border-[#066CF4]"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Reason</label>
+                    <input
+                      type="text"
+                      value={cashDropReason}
+                      onChange={(e) => setCashDropReason(e.target.value)}
+                      placeholder="e.g. Midday safe drop"
+                      className="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-[#066CF4]/10"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => { setShowCashDrop(false); setCashDropAmount(''); setCashDropReason(''); }}
+                    className="flex-1 h-12 rounded-xl bg-gray-100 text-gray-600 font-bold text-xs hover:bg-gray-200 transition-colors"
+                  >Cancel</button>
+                  <button
+                    onClick={() => {
+                      cashDropMut.mutate(
+                        { amount: Number(cashDropAmount), reason: cashDropReason },
+                        {
+                          onSuccess: () => {
+                            toast.success('Cash drop recorded');
+                            setShowCashDrop(false);
+                            setCashDropAmount('');
+                            setCashDropReason('');
+                          },
+                          onError: (err) => toast.error(err.message || 'Failed'),
+                        }
+                      );
+                    }}
+                    disabled={!cashDropAmount || Number(cashDropAmount) <= 0 || !cashDropReason || cashDropMut.isPending}
+                    className="flex-1 h-12 rounded-xl bg-gray-900 text-white font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {cashDropMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <Banknote size={16} />}
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex flex-col">

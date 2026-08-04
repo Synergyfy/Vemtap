@@ -15,6 +15,7 @@ import { PosHeldSaleItem } from './entities/pos-held-sale-item.entity';
 import { PosRegisterSession } from './entities/pos-register-session.entity';
 import { PosRefund } from './entities/pos-refund.entity';
 import { PosRefundItem } from './entities/pos-refund-item.entity';
+import { PosCashDrop } from './entities/pos-cash-drop.entity';
 import {
   CatalogueItem,
   CatalogueItemStatus,
@@ -34,6 +35,7 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PushNotificationService } from '../notifications/push-notification.service';
 import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { StockMovementService } from '../inventory-counting/stock-movement.service';
 
 describe('PosService', () => {
   let service: PosService;
@@ -123,6 +125,16 @@ describe('PosService', () => {
       ),
   };
 
+  const mockCashDropRepo = {
+    create: jest.fn().mockImplementation((dto) => ({ ...dto })),
+    save: jest
+      .fn()
+      .mockImplementation((drop) =>
+        Promise.resolve({ id: 'cash-drop-1', ...drop }),
+      ),
+    find: jest.fn().mockResolvedValue([]),
+  };
+
   const mockOfferRepo = {
     findOne: jest.fn(),
     save: jest.fn().mockImplementation((o) => Promise.resolve(o)),
@@ -148,6 +160,10 @@ describe('PosService', () => {
 
   const mockLoyaltyService = {
     awardPoints: jest.fn(),
+  };
+
+  const mockStockMovementService = {
+    record: jest.fn().mockResolvedValue({}),
   };
 
   const mockBusinessRepo = {
@@ -218,6 +234,7 @@ describe('PosService', () => {
       if (entity === PosRegisterSession) return mockRegisterSessionRepo;
       if (entity === PosRefund) return mockRefundRepo;
       if (entity === PosRefundItem) return mockRefundItemRepo;
+      if (entity === PosCashDrop) return mockCashDropRepo;
       if (entity === CatalogueItem) return mockProductRepo;
       if (entity === CatalogueOffer) return mockOfferRepo;
       if (entity === CatalogueOrder) return mockOrderRepo;
@@ -289,6 +306,10 @@ describe('PosService', () => {
           useValue: mockRefundItemRepo,
         },
         {
+          provide: getRepositoryToken(PosCashDrop),
+          useValue: mockCashDropRepo,
+        },
+        {
           provide: getRepositoryToken(CatalogueItem),
           useValue: mockProductRepo,
         },
@@ -317,6 +338,7 @@ describe('PosService', () => {
         },
         { provide: CatalogueOrderService, useValue: mockCatalogueOrderService },
         { provide: LoyaltyService, useValue: mockLoyaltyService },
+        { provide: StockMovementService, useValue: mockStockMovementService },
       ],
     }).compile();
 
@@ -1123,6 +1145,32 @@ describe('PosService', () => {
       expect(results[1].success).toBe(true);
       expect(results[0].clientRef).toBe('ref-1');
       expect(results[1].clientRef).toBe('ref-2');
+    });
+  });
+
+  describe('cash controls', () => {
+    it('records a cash drop against the open register session', async () => {
+      mockRegisterSessionRepo.findOne.mockResolvedValueOnce({
+        id: 'register-1',
+        businessId: 'bus-1',
+        branchId: 'br-1',
+        cashierId: 'cashier-1',
+        status: RegisterSessionStatus.OPEN,
+      });
+
+      const result = await service.cashDrop(
+        { amount: 5000, reason: 'Safe drop' },
+        mockCashier,
+      );
+
+      expect(mockCashDropRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          registerSessionId: 'register-1',
+          amount: 5000,
+          reason: 'Safe drop',
+        }),
+      );
+      expect(result.id).toBe('cash-drop-1');
     });
   });
 });

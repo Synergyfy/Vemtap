@@ -48,7 +48,13 @@ The Vemtap project is built as a TypeScript monorepo using **Turbo** and **PNPM*
 -   Real-time updates are pushed via **Socket.io**.
 -   **Twilio** and **WhatsApp API** are the primary external communication providers.
 
-### 4. Branch Username System
+### 4. Account Security & Sessions
+-   Authenticated logins create persisted `UserSession` records for linked-device management.
+-   JWTs include a session identifier; revoked sessions are rejected by `JwtStrategy`.
+-   TOTP secrets are encrypted at rest and 2FA is confirmed before enablement.
+-   Notification and Alert Matrix preferences are persisted on the user record.
+
+### 5. Branch Username System
 -   Branches can have a unique `username` field (3-30 chars, lowercase, alphanumeric + hyphens).
 -   Access branch UBL page via `/b/[username]` instead of `/[slug]/[deviceCode]`.
 -   New endpoint: `GET /tap/context-by-username/:username` returns the same context as `/tap/context/:code`.

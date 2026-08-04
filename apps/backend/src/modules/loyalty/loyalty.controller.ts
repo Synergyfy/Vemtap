@@ -28,12 +28,16 @@ import {
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import {
   CreateRewardTemplateDto,
+  UpdateRewardTemplateDto,
   CreateRewardDto,
   GivePointsDto,
   GeneratePointCodeDto,
   UsePointCodeDto,
   GenerateRedemptionCodeDto,
   RedeemRewardDto,
+  RedeemRewardByIdDto,
+  VerifyRedemptionDto,
+  ApplyRewardTemplateDto,
   BranchIdParamDto,
 } from './dto/loyalty.dto';
 import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
@@ -42,6 +46,7 @@ import {
   CustomerAnalyticsQueryDto,
   PointLogsQueryDto,
   RewardQueryDto,
+  CustomerPointLogsQueryDto,
 } from './dto/loyalty-query.dto';
 
 import { Public } from '../../common/decorators/public.decorator';
@@ -76,8 +81,8 @@ export class LoyaltyController {
   })
   @ApiQuery({
     name: 'businessId',
-    required: true,
-    description: 'The ID of the business',
+    required: false,
+    description: 'Optional business filter; omit for global customer balance',
   })
   @ApiResponse({
     status: 200,
@@ -86,9 +91,9 @@ export class LoyaltyController {
   })
   async getBalance(
     @Request() req: { user: User },
-    @Query('businessId') businessId: string,
+    @Query('businessId') businessId?: string,
   ) {
-    return this.loyaltyService.getBusinessPoints(req.user.id, businessId);
+    return this.loyaltyService.getCustomerPoints(req.user.id, businessId);
   }
 
   @Get('points/logs')
@@ -100,8 +105,8 @@ export class LoyaltyController {
   })
   @ApiQuery({
     name: 'businessId',
-    required: true,
-    description: 'The ID of the business',
+    required: false,
+    description: 'Optional business filter; omit for global customer history',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -132,12 +137,11 @@ export class LoyaltyController {
   })
   async getMyLogs(
     @Request() req: { user: User },
-    @Query('businessId') businessId: string,
-    @Query() query: PaginationQueryDto,
+    @Query() query: CustomerPointLogsQueryDto,
   ) {
     return this.loyaltyService.getPointLogs(
       req.user.id,
-      businessId,
+      query.businessId,
       query.page,
       query.limit,
     );
@@ -334,6 +338,52 @@ export class LoyaltyController {
   })
   async getTemplates() {
     return this.loyaltyService.getTemplates();
+  }
+
+  @Patch('reward-templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin updates a reward template',
+    description: 'Modifies an existing reward template. Access: ADMIN',
+  })
+  @ApiParam({ name: 'id', description: 'Reward Template UUID' })
+  @ApiBody({ type: UpdateRewardTemplateDto })
+  @ApiResponse({ status: 200, description: 'Template updated successfully' })
+  async updateRewardTemplate(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Body() dto: UpdateRewardTemplateDto,
+  ) {
+    return this.loyaltyService.updateTemplate(req.user, id, dto);
+  }
+
+  @Delete('reward-templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin deletes a reward template',
+    description: 'Permanently removes a reward template. Access: ADMIN',
+  })
+  @ApiParam({ name: 'id', description: 'Reward Template UUID' })
+  @ApiResponse({ status: 200, description: 'Template deleted successfully' })
+  async deleteRewardTemplate(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+  ) {
+    return this.loyaltyService.deleteTemplate(req.user, id);
+  }
+
+  @Post('reward-templates/:id/apply')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('marketing')
+  @ApiOperation({ summary: 'Apply a reward template to a branch' })
+  @ApiParam({ name: 'id', description: 'The ID of the reward template' })
+  @ApiBody({ type: ApplyRewardTemplateDto })
+  async applyTemplate(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Body() dto: ApplyRewardTemplateDto,
+  ) {
+    return this.loyaltyService.applyTemplate(req.user, id, dto);
   }
 
   // --- Rewards ---
@@ -565,6 +615,29 @@ export class LoyaltyController {
     @Body() dto: RedeemRewardDto,
   ) {
     return this.loyaltyService.redeemReward(req.user, dto);
+  }
+
+  @Post('redemption/redeem-reward')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Customer redeems a reward directly using points' })
+  @ApiBody({ type: RedeemRewardByIdDto })
+  async redeemRewardById(
+    @Request() req: { user: User },
+    @Body() dto: RedeemRewardByIdDto,
+  ) {
+    return this.loyaltyService.redeemRewardById(req.user, dto);
+  }
+
+  @Post('verify-redemption')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('pos')
+  @ApiOperation({ summary: 'Verify a redemption code without consuming it' })
+  @ApiBody({ type: VerifyRedemptionDto })
+  async verifyRedemption(
+    @Request() req: { user: User },
+    @Body() dto: VerifyRedemptionDto,
+  ) {
+    return this.loyaltyService.verifyRedemption(req.user, dto);
   }
 
   @Get('analytics')

@@ -6,11 +6,13 @@ import { Reward } from './entities/reward.entity';
 import { PointTransaction } from './entities/point-transaction.entity';
 import { PointCode } from './entities/point-code.entity';
 import { RedemptionCode } from './entities/redemption-code.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { BranchesService } from '../branches/branches.service';
 import { DataSource } from 'typeorm';
+import { Business } from '../businesses/entities/business.entity';
 
 describe('LoyaltyService', () => {
   let service: LoyaltyService;
@@ -73,6 +75,14 @@ describe('LoyaltyService', () => {
         },
         {
           provide: getRepositoryToken(Visit),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(LoyaltyRule),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Business),
           useValue: mockRepository,
         },
         {
@@ -236,6 +246,91 @@ describe('LoyaltyService', () => {
           branchId: 'b1',
         }),
       ).rejects.toThrow('Reward out of stock');
+    });
+  });
+
+  describe('givePoints', () => {
+    it('resolves a customer by ID and scopes the award to an authorized branch', async () => {
+      const branch = { id: 'b1', businessId: 'biz1' } as any;
+      const customer = { id: 'customer-1', role: UserRole.CUSTOMER } as any;
+      const branchRepo = module.get(getRepositoryToken(Branch));
+      const userRepo = module.get(getRepositoryToken(User));
+      const transactionRepo = module.get(getRepositoryToken(PointTransaction));
+
+      jest.spyOn(branchRepo, 'findOne').mockResolvedValueOnce(branch);
+      jest.spyOn(userRepo, 'findOne').mockResolvedValueOnce(customer);
+      mockBranchesService.checkBranchAccess.mockResolvedValueOnce(true);
+
+      await service.givePoints({ id: 'staff-1' } as any, {
+        customerId: customer.id,
+        points: 25,
+        branchId: branch.id,
+      });
+
+      expect(userRepo.findOne).toHaveBeenCalledWith({
+        where: { id: customer.id, role: UserRole.CUSTOMER },
+      });
+      expect(transactionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerId: customer.id,
+          businessId: branch.businessId,
+          branchId: branch.id,
+          amount: 25,
+        }),
+      );
+    });
+  });
+
+  describe('applyTemplate', () => {
+    it('creates a branch reward from a template', async () => {
+      const templateRepo = module.get(getRepositoryToken(RewardTemplate));
+      const rewardRepo = module.get(getRepositoryToken(Reward));
+      const branchRepo = module.get(getRepositoryToken(Branch));
+      const template = {
+        id: 'template-1',
+        name: 'Free Coffee',
+        description: 'Coffee reward',
+        pointsRequired: 50,
+        category: 'free_product',
+      } as any;
+      const branch = { id: 'branch-1', businessId: 'business-1' } as any;
+
+      mockBranchesService.checkBranchAccess.mockResolvedValueOnce(true);
+      jest.spyOn(templateRepo, 'findOne').mockResolvedValueOnce(template);
+      jest.spyOn(branchRepo, 'findOne').mockResolvedValueOnce(branch);
+
+      await service.applyTemplate({ id: 'owner-1' } as any, template.id, {
+        branchId: branch.id,
+        totalQuantity: 10,
+        expiryDate: '2030-01-01T00:00:00.000Z',
+      });
+
+      expect(rewardRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateId: template.id,
+          branchId: branch.id,
+          businessId: branch.businessId,
+          totalQuantity: 10,
+          remainingQuantity: 10,
+        }),
+      );
+    });
+  });
+
+  describe('verifyRedemption', () => {
+    it('returns invalid for an unknown code without leaking tenant data', async () => {
+      const redemptionRepo = module.get(getRepositoryToken(RedemptionCode));
+      jest.spyOn(redemptionRepo, 'findOne').mockResolvedValueOnce(null);
+
+      await expect(
+        service.verifyRedemption({ id: 'staff-1' } as any, {
+          code: 'unknown',
+        }),
+      ).resolves.toEqual({
+        valid: false,
+        code: 'unknown',
+        reason: 'NOT_FOUND',
+      });
     });
   });
 });

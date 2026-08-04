@@ -164,4 +164,11 @@ export class Setting extends AbstractBaseEntity {
   })
   @Column({ default: true })
   discoveryApprovalRequired: boolean;
+
+  @ApiProperty({
+    example: [],
+    description: 'B2B Partnership reward tiers configuration',
+  })
+  @Column({ type: 'json', nullable: true })
+  partnershipRewardTiers: any;
 }

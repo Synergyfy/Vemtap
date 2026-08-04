@@ -34,6 +34,58 @@ import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from '../users/entities/user.entity';
 import { Business } from '../businesses/entities/business.entity';
+import { TwoFactorCodeDto } from './dto/two-factor.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { randomBytes, createCipheriv, createDecipheriv, createHmac } from 'crypto';
+
+const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function encodeBase32(value: Buffer): string {
+  let bits = 0;
+  let buffer = 0;
+  let output = '';
+  for (const byte of value) {
+    buffer = (buffer << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += BASE32[(buffer >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += BASE32[(buffer << (5 - bits)) & 31];
+  return output;
+}
+
+function decodeBase32(value: string): Buffer {
+  let bits = 0;
+  let buffer = 0;
+  const bytes: number[] = [];
+  for (const char of value.replace(/=+$/, '').toUpperCase()) {
+    const index = BASE32.indexOf(char);
+    if (index < 0) throw new BadRequestException('Invalid 2FA secret');
+    buffer = (buffer << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((buffer >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function totp(secret: string, timestamp = Date.now()): string {
+  const counter = Math.floor(timestamp / 30000);
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+  counterBuffer.writeUInt32BE(counter >>> 0, 4);
+  const digest = createHmac('sha1', decodeBase32(secret)).update(counterBuffer).digest();
+  const offset = digest[digest.length - 1] & 15;
+  const code = ((digest[offset] & 127) << 24) |
+    (digest[offset + 1] << 16) |
+    (digest[offset + 2] << 8) |
+    digest[offset + 3];
+  return String(code % 1000000).padStart(6, '0');
+}
 
 @Injectable()
 export class AuthService {
@@ -201,6 +253,7 @@ export class AuthService {
       }
     }
 
+    const session = await this.usersService.createSession(user.id as string);
     const payload = {
       email: user.email,
       sub: user.id,
@@ -208,6 +261,7 @@ export class AuthService {
       branchId: branchId,
       businessId: businessId || (user as any).businessId,
       referralCode,
+      sid: session.id,
     };
     delete user.password;
     // Background sync subscription to QR-Thrive
@@ -224,6 +278,7 @@ export class AuthService {
 
     return {
       access_token: this.jwtService.sign(payload),
+      sessionId: session.id,
       user: {
         ...user,
         businessId: businessId || (user as any).businessId,
@@ -234,7 +289,7 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto): Promise<any> {
     const user = await this.usersService.findByIdentifier(dto.identifier);
     if (!user) {
       throw new UnauthorizedException('Invalid email/phone or password');
@@ -251,8 +306,115 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email/phone or password');
     }
 
+    const twoFactor = await this.usersService.getTwoFactorState(user.id);
+    if (twoFactor?.twoFactorEnabled) {
+      if (!dto.twoFactorCode) {
+        return { requiresTwoFactor: true };
+      }
+      if (!this.verifyTwoFactorCode(twoFactor.twoFactorSecret, dto.twoFactorCode)) {
+        throw new UnauthorizedException('Invalid two-factor code');
+      }
+    }
+
     const { password: _password, ...result } = user;
     return this.generateAuthResponse(result);
+  }
+
+  async sendVerificationEmail(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    if (user.emailVerified) return { verified: true, message: 'Email is already verified' };
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await this.otpRepository.save(
+      this.otpRepository.create({
+        email: user.email.toLowerCase(),
+        code,
+        expiresAt,
+        metadata: { purpose: 'email-verification', userId },
+      }),
+    );
+    const sent = await this.mailService.sendVerificationEmail(user.email, code);
+    if (!sent) throw new BadRequestException('Unable to send verification email');
+    return { verified: false, message: 'Verification email sent' };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    const email = dto.email.toLowerCase();
+    const records = await this.otpRepository.find({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+    const otp = records.find((record) => record.metadata?.purpose === 'email-verification');
+    if (!otp) throw new BadRequestException('Verification code not found');
+    if (otp.isVerified) throw new BadRequestException('Verification code already used');
+    if (otp.code !== dto.code) throw new BadRequestException('Invalid verification code');
+    if (new Date() > otp.expiresAt) throw new BadRequestException('Verification code expired');
+
+    const user = await this.usersService.findByEmail(email);
+    if (!user || user.id !== otp.metadata?.userId) throw new BadRequestException('Verification code is invalid');
+    otp.isVerified = true;
+    await this.otpRepository.save(otp);
+    await this.usersService.update(user.id, { emailVerified: true });
+    return { verified: true };
+  }
+
+  async setupTwoFactor(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    const secret = encodeBase32(randomBytes(20));
+    await this.usersService.update(userId, {
+      twoFactorEnabled: false,
+      twoFactorSecret: this.encryptTwoFactorSecret(secret),
+    });
+    return {
+      secret,
+      otpauthUrl: `otpauth://totp/VemTap:${encodeURIComponent(user.email)}?secret=${secret}&issuer=VemTap`,
+    };
+  }
+
+  async confirmTwoFactor(userId: string, dto: TwoFactorCodeDto) {
+    const state = await this.usersService.getTwoFactorState(userId);
+    if (!state?.twoFactorSecret) throw new BadRequestException('2FA setup has not been started');
+    if (!this.verifyTwoFactorCode(state.twoFactorSecret, dto.code)) throw new BadRequestException('Invalid two-factor code');
+    await this.usersService.update(userId, { twoFactorEnabled: true });
+    return { enabled: true };
+  }
+
+  async disableTwoFactor(userId: string, dto: TwoFactorCodeDto) {
+    const state = await this.usersService.getTwoFactorState(userId);
+    if (!state?.twoFactorEnabled || !state.twoFactorSecret) return { enabled: false };
+    if (!this.verifyTwoFactorCode(state.twoFactorSecret, dto.code)) throw new UnauthorizedException('Invalid two-factor code');
+    await this.usersService.update(userId, { twoFactorEnabled: false, twoFactorSecret: null });
+    return { enabled: false };
+  }
+
+  private verifyTwoFactorCode(encryptedSecret: string | null, code: string) {
+    if (!encryptedSecret) return false;
+    const secret = this.decryptTwoFactorSecret(encryptedSecret);
+    const now = Date.now();
+    return [totp(secret, now - 30000), totp(secret, now), totp(secret, now + 30000)].includes(code);
+  }
+
+  private encryptionKey() {
+    return createHmac('sha256', this.configService.get<string>('JWT_SECRET') || 'development-secret')
+      .update('vemtap-2fa')
+      .digest();
+  }
+
+  private encryptTwoFactorSecret(secret: string) {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', this.encryptionKey(), iv);
+    const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+    return `${iv.toString('base64')}.${cipher.getAuthTag().toString('base64')}.${encrypted.toString('base64')}`;
+  }
+
+  private decryptTwoFactorSecret(value: string) {
+    const [iv, tag, encrypted] = value.split('.').map((part) => Buffer.from(part, 'base64'));
+    const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey(), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
   }
 
   async googleLogin(dto: GoogleLoginDto) {
@@ -307,6 +469,13 @@ export class AuthService {
         }
 
         user = await this.usersService.create(user);
+        const twoFactor = await this.usersService.getTwoFactorState(user.id);
+        if (twoFactor?.twoFactorEnabled) {
+          if (!dto.twoFactorCode) return { requiresTwoFactor: true };
+          if (!this.verifyTwoFactorCode(twoFactor.twoFactorSecret, dto.twoFactorCode)) {
+            throw new UnauthorizedException('Invalid two-factor code');
+          }
+        }
         return this.generateAuthResponse(user, false);
       } else {
         // 3. Create new user

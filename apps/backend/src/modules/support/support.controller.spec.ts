@@ -3,6 +3,8 @@ import { SupportController } from './support.controller';
 import { SupportService } from './support.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UserRole } from '../users/entities/user.entity';
+import { SupportBotService } from './support-bot.service';
+import { ConversationContextService } from './conversation-context.service';
 
 describe('SupportController', () => {
   let controller: SupportController;
@@ -25,6 +27,8 @@ describe('SupportController', () => {
           provide: SupportService,
           useValue: mockSupportService,
         },
+        { provide: SupportBotService, useValue: {} },
+        { provide: ConversationContextService, useValue: {} },
       ],
     }).compile();
 
@@ -63,6 +67,7 @@ describe('SupportController', () => {
         mockUser.id,
         query.page,
         query.limit,
+        undefined,
       );
     });
   });

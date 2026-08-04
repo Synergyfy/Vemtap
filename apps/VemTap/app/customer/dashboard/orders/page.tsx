@@ -25,6 +25,8 @@ const StatusBadge = ({ status }: { status: string }) => {
         completed: { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: CheckCircle2, label: 'Completed' },
         cancelled: { bg: 'bg-slate-50', text: 'text-slate-600', icon: XCircle, label: 'Cancelled' },
         rejected: { bg: 'bg-red-50', text: 'text-red-600', icon: XCircle, label: 'Rejected' },
+        refunded: { bg: 'bg-violet-50', text: 'text-violet-600', icon: XCircle, label: 'Refunded' },
+        partial_refund: { bg: 'bg-pink-50', text: 'text-pink-600', icon: AlertCircle, label: 'Partially Refunded' },
     };
 
     const config = configs[status] || configs.new;
@@ -92,10 +94,17 @@ export default function CustomerOrdersPage() {
                                     {order.items.map((oi: OrderItem) => (
                                         <div key={oi.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100/50">
                                             <div className="size-11 rounded-lg bg-white overflow-hidden shrink-0 border border-slate-100">
-                                                <img 
-                                                    src={oi.offer?.mainImage || oi.item?.mainImage || '/placeholder.png'} 
-                                                    className="size-full object-cover" 
-                                                />
+                                                {(oi.offer?.mainImage || oi.item?.mainImage) ? (
+                                                    <img 
+                                                        src={oi.offer?.mainImage || oi.item?.mainImage} 
+                                                        alt=""
+                                                        className="size-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="size-full flex items-center justify-center text-slate-200">
+                                                        <Star size={18} />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-black text-slate-900 truncate">

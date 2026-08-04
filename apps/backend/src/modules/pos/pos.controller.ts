@@ -21,6 +21,7 @@ import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
 import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
 import { PosCustomerQueryDto } from './dto/pos-customer-query.dto';
+import { CashDropDto } from './dto/cash-drop.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -151,6 +152,20 @@ export class PosController {
   @ApiOperation({ summary: 'Get current register status' })
   async getRegisterStatus(@Req() req: RequestWithUser) {
     return this.posService.getRegisterStatus(req.user);
+  }
+
+  @Post('register/cash-drop')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Record a cash drop from the open register' })
+  async cashDrop(@Body() dto: CashDropDto, @Req() req: RequestWithUser) {
+    return this.posService.cashDrop(dto, req.user);
+  }
+
+  @Get('register/z-report')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get the current or last closed register Z-report' })
+  async zReport(@Req() req: RequestWithUser) {
+    return this.posService.getZReport(req.user);
   }
 
   @Get('register/history')

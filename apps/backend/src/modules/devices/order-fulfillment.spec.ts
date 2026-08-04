@@ -19,6 +19,7 @@ describe('DevicesService - Order Fulfillment', () => {
     save: jest.fn(),
     findOneBy: jest.fn(),
     count: jest.fn(),
+    countBy: jest.fn(),
     find: jest.fn(),
   };
 
@@ -75,6 +76,7 @@ describe('DevicesService - Order Fulfillment', () => {
 
       mockOrderRepo.findOne.mockResolvedValue(order);
       mockDeviceRepo.count.mockResolvedValue(0); // No existing devices
+      mockDeviceRepo.countBy.mockResolvedValue(0);
       mockDeviceRepo.find.mockResolvedValue([]); // Unique codes in bulk check
       mockDeviceRepo.create.mockImplementation((dto) => dto);
       mockDeviceRepo.save.mockImplementation((dto) => dto);

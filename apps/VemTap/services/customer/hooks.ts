@@ -77,3 +77,14 @@ export const useCreateCustomerSupportTicket = () => {
     });
 };
 
+export const useSubmitFeedback = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { branchId: string; rating: number; comment: string; orderId?: string }) =>
+            customerApi.submitFeedback(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'feedback'] });
+        },
+    });
+};
+

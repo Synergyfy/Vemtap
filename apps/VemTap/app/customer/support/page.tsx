@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 import CreateTicketModal from '@/components/ui/CreateTicketModal';
 import { notify } from '@/lib/notify';
 import { useCreateCustomerSupportTicket, useCustomerSupportTickets } from '@/services/customer/hooks';
+import { useSupportFaqs } from '@/services/support/hooks';
 
 export default function CustomerSupportPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -26,11 +27,15 @@ export default function CustomerSupportPage() {
         });
     };
 
-    const faqs = [
-        { q: 'How do I earn points?', a: 'Just tap your phone on any VemTap terminal at participating businesses.' },
-        { q: 'Can I transfer points?', a: 'Currently, points are tied to your specific identity and cannot be transferred.' },
-        { q: 'What happens if a reward expires?', a: 'Expired rewards cannot be reclaimed, but you can always earn new ones!' },
-    ];
+    const { data: faqsData } = useSupportFaqs();
+    const faqs = (faqsData?.categories || []).flatMap((cat: any) =>
+        (cat.sections || []).flatMap((section: any) =>
+            (section.pages || []).map((page: any) => ({
+                q: page.title || '',
+                a: page.summary || '',
+            }))
+        )
+    ).filter((faq: any) => faq.q);
 
     return (
         <>
@@ -67,8 +72,10 @@ export default function CustomerSupportPage() {
                                                 <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-md">{ticket.id}</span>
                                                 <h4 className="font-bold text-text-main mt-2 group-hover:text-primary transition-colors text-sm">{ticket.subject}</h4>
                                             </div>
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${ticket.status === 'Open' ? 'bg-green-100 text-green-700' :
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${ticket.status === 'Open' || ticket.status === 'Pending' ? 'bg-amber-50 text-amber-700' :
                                                 ticket.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                                                ticket.status === 'Resolved' ? 'bg-green-100 text-green-700' :
+                                                ticket.status === 'Cancelled' || ticket.status === 'Closed' ? 'bg-gray-100 text-gray-500' :
                                                     'bg-gray-100 text-gray-500'
                                                 }`}>
                                                 {ticket.status}

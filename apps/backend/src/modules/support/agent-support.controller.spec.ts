@@ -69,6 +69,7 @@ describe('AgentSupportController', () => {
         TicketType.CHAT,
         1,
         10,
+        undefined,
       );
     });
   });
@@ -86,6 +87,7 @@ describe('AgentSupportController', () => {
         TicketType.TICKET,
         1,
         10,
+        undefined,
       );
     });
   });
