@@ -226,7 +226,7 @@ export const useEarnPoints = () => {
     const queryClient = useQueryClient();
 
     return useMutation<PointEarnResponse, Error, PointEarnRequest>({
-        mutationFn: async (dto) => await api.post('/loyalty/earn', dto),
+        mutationFn: async (dto) => await api.post('/loyalty/points/give', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty'] });
         },

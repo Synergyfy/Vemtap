@@ -55,6 +55,9 @@ export const customerApi = {
     getSupportTicketDetails: (id: string) => api.get(`/support/tickets/${id}`),
     replyToSupportTicket: (id: string, message: string) => api.post(`/support/tickets/${id}/message`, { message }),
 
+    submitFeedback: (data: { branchId: string; rating: number; comment: string; orderId?: string }) =>
+        api.post('/feedback', data),
+
     visitorSignup: (data: Record<string, any>) => api.post('/visitors/signup', data),
     recordVisit: (code: string, payload?: { visitorId?: string; name?: string; email?: string; phone?: string }) => api.post(`/tap/record/${code}`, payload ?? {}),
 };

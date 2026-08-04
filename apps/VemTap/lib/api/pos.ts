@@ -66,4 +66,10 @@ export const posApi = {
 
   getCustomer: (id: string) =>
     api.get(`/pos/customers/${id}`),
+
+  cashDrop: (dto: { amount: number; reason: string }) =>
+    api.post('/pos/register/cash-drop', dto),
+
+  getZReport: () =>
+    api.get('/pos/register/z-report'),
 };
