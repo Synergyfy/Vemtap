@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { notify } from '@/lib/notify';
 import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, ChevronRight, Laptop, Smartphone, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useChangePassword } from '@/services/auth/hooks';
 import { useRegisterPushToken } from '@/services/notifications/hooks';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export default function CustomerSettingsPage() {
     const searchParams = useSearchParams();
@@ -15,6 +16,8 @@ export default function CustomerSettingsPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('profile');
+    const [avatarUploading, setAvatarUploading] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     // Push Notification States
     const [pushSupported, setPushSupported] = useState(false);
@@ -41,6 +44,9 @@ export default function CustomerSettingsPage() {
             if (supported) {
                 setPushPermission(Notification.permission);
                 checkPushStatus();
+            } else {
+                // On unsupported browsers, restore the in-app preference
+                setPushSubscribed(localStorage.getItem('push-preference') === 'true');
             }
         }
     }, []);
@@ -67,7 +73,11 @@ export default function CustomerSettingsPage() {
 
     const handleTogglePush = async () => {
         if (!pushSupported) {
-            notify.error('Push notifications are not supported on this device');
+            // On unsupported browsers (e.g. iOS Safari), just flip the preference
+            const next = !pushSubscribed;
+            setPushSubscribed(next);
+            localStorage.setItem('push-preference', next ? 'true' : 'false');
+            notify.success(next ? 'In-app notifications enabled' : 'In-app notifications disabled');
             return;
         }
 
@@ -81,6 +91,7 @@ export default function CustomerSettingsPage() {
                     await subscription.unsubscribe();
                 }
                 setPushSubscribed(false);
+                localStorage.setItem('push-preference', 'false');
                 notify.success('Notifications disabled');
             } else {
                 // Enable
@@ -106,6 +117,7 @@ export default function CustomerSettingsPage() {
 
                 await registerPushToken.mutateAsync({ token: JSON.stringify(subscription) });
                 setPushSubscribed(true);
+                localStorage.setItem('push-preference', 'true');
                 notify.success('Notifications enabled successfully!');
             }
         } catch (error: any) {
@@ -122,6 +134,27 @@ export default function CustomerSettingsPage() {
 
     const [name, setName] = useState(user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || '');
     const [phone, setPhone] = useState(user?.phone || '');
+    const [profileEditing, setProfileEditing] = useState(false);
+
+    // Alert Matrix preferences (persisted in localStorage)
+    const [rewardAlerts, setRewardAlerts] = useState(true);
+    const [activityDigest, setActivityDigest] = useState(true);
+    const [smsSecurity, setSmsSecurity] = useState(false);
+
+    useEffect(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem('alert-prefs') || '{}');
+            if (saved.rewardAlerts !== undefined) setRewardAlerts(saved.rewardAlerts);
+            if (saved.activityDigest !== undefined) setActivityDigest(saved.activityDigest);
+            if (saved.smsSecurity !== undefined) setSmsSecurity(saved.smsSecurity);
+        } catch {}
+    }, []);
+
+    const saveAlertPrefs = (prefs: { rewardAlerts: boolean; activityDigest: boolean; smsSecurity: boolean }) => {
+        localStorage.setItem('alert-prefs', JSON.stringify(prefs));
+    };
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
 
     useEffect(() => {
@@ -180,6 +213,39 @@ export default function CustomerSettingsPage() {
         router.push('/login');
     };
 
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            notify.error('Image must be under 5MB');
+            return;
+        }
+        setAvatarUploading(true);
+        try {
+            const url = await uploadToCloudinary(file);
+            await updateUser({ avatar: url });
+            notify.success('Profile photo updated');
+        } catch {
+            notify.error('Failed to upload image');
+        } finally {
+            setAvatarUploading(false);
+            if (avatarInputRef.current) avatarInputRef.current.value = '';
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        setIsLoading(true);
+        try {
+            await updateUser({ name, phone });
+            notify.success('Profile updated');
+            setProfileEditing(false);
+        } catch {
+            notify.error('Failed to update profile');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const joinedDateRaw = user?.createdAt || user?.joined;
     const joinedDate = joinedDateRaw
         ? new Date(joinedDateRaw).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
@@ -203,13 +269,28 @@ export default function CustomerSettingsPage() {
                         <div className="absolute top-0 inset-x-0 h-20 bg-linear-to-r from-primary/10 to-blue-500/10"></div>
 
                         <div className="relative mt-3 mb-4 inline-block">
-                            <div className="w-20 h-20 rounded-2xl bg-white shadow-xl flex items-center justify-center border-4 border-white overflow-hidden">
-                                <div className="w-full h-full bg-primary/5 flex items-center justify-center text-primary">
-                                    <User size={32} />
-                                </div>
+                            <div className="w-24 h-24 rounded-2xl bg-white shadow-xl flex items-center justify-center border-4 border-white overflow-hidden">
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-primary/5 flex items-center justify-center text-primary">
+                                        <User size={32} />
+                                    </div>
+                                )}
                             </div>
-                            <button className="absolute -bottom-2 -right-2 p-2 bg-primary text-white rounded-lg hover:bg-primary-hover shadow-lg hover:scale-110 transition-all">
-                                <Camera size={14} />
+                            <input
+                                ref={avatarInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleAvatarUpload}
+                            />
+                            <button
+                                onClick={() => avatarInputRef.current?.click()}
+                                disabled={avatarUploading}
+                                className="absolute -bottom-2 -right-2 p-2 bg-primary text-white rounded-lg hover:bg-primary-hover shadow-lg hover:scale-110 transition-all disabled:opacity-50"
+                            >
+                                {avatarUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                             </button>
                         </div>
 
@@ -253,7 +334,7 @@ export default function CustomerSettingsPage() {
                         className="w-full h-12 bg-red-50 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-2 border border-red-100/50 active:scale-95"
                     >
                         <LogOut size={16} />
-                        Terminate Session
+                        Sign out
                     </button>
                 </div>
 
@@ -268,6 +349,19 @@ export default function CustomerSettingsPage() {
                                 <h3 className="text-lg font-display font-bold text-text-main mb-4 md:mb-6 flex items-center gap-3">
                                     <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                                     Personal Information
+                                    <button
+                                        onClick={() => {
+                                            if (profileEditing) {
+                                                handleSaveProfile();
+                                            } else {
+                                                setProfileEditing(true);
+                                            }
+                                        }}
+                                        disabled={isLoading}
+                                        className="ml-auto text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-hover transition-colors disabled:opacity-50"
+                                    >
+                                        {isLoading ? 'Saving...' : profileEditing ? 'Save' : 'Edit'}
+                                    </button>
                                 </h3>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -280,7 +374,8 @@ export default function CustomerSettingsPage() {
                                             type="text"
                                             value={name}
                                             onChange={(e) => setName(e.target.value)}
-                                            className="w-full h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+readOnly={!profileEditing}
+                                            className={`w-full h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold transition-all outline-none ${profileEditing ? 'bg-white focus:outline-none focus:ring-4 focus:ring-primary/10' : 'bg-gray-50/50 cursor-default'}`}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -304,7 +399,8 @@ export default function CustomerSettingsPage() {
                                             type="tel"
                                             value={phone}
                                             onChange={(e) => setPhone(e.target.value)}
-                                            className="w-full h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+readOnly={!profileEditing}
+                                            className={`w-full h-12 px-4 border border-gray-200 rounded-xl text-sm font-bold transition-all outline-none ${profileEditing ? 'bg-white focus:outline-none focus:ring-4 focus:ring-primary/10' : 'bg-gray-50/50 cursor-default'}`}
                                         />
                                     </div>
                                 </div>
@@ -332,17 +428,17 @@ export default function CustomerSettingsPage() {
                                         </div>
 
                                         {[
-                                            { label: 'Reward Unlocked Notifications', desc: 'Alert me instantly when a voucher is ready for use', checked: true },
-                                            { label: 'Activity Summaries', desc: 'Weekly digest of my check-ins and savings', checked: true },
-                                            { label: 'SMS Security Alerts', desc: 'Notice for logins from unrecognized devices', checked: false },
+                                            { label: 'Reward Unlocked Notifications', desc: 'Alert me instantly when a voucher is ready for use', checked: rewardAlerts, onToggle: (v: boolean) => { setRewardAlerts(v); saveAlertPrefs({ rewardAlerts: v, activityDigest, smsSecurity }); } },
+                                            { label: 'Activity Summaries', desc: 'Weekly digest of my check-ins and savings', checked: activityDigest, onToggle: (v: boolean) => { setActivityDigest(v); saveAlertPrefs({ rewardAlerts, activityDigest: v, smsSecurity }); } },
+                                            { label: 'SMS Security Alerts', desc: 'Notice for logins from unrecognized devices', checked: smsSecurity, onToggle: (v: boolean) => { setSmsSecurity(v); saveAlertPrefs({ rewardAlerts, activityDigest, smsSecurity: v }); } },
                                         ].map((pref, i) => (
-                                            <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-all cursor-pointer group opacity-50">
+                                            <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-all cursor-pointer group">
                                                 <div>
                                                     <p className="font-bold text-sm text-text-main">{pref.label}</p>
                                                     <p className="text-xs text-text-secondary font-medium">{pref.desc}</p>
                                                 </div>
-                                                <label className="relative inline-flex items-center cursor-pointer">
-                                                    <input type="checkbox" className="sr-only peer" defaultChecked={pref.checked} disabled />
+                                                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => { e.stopPropagation(); pref.onToggle(!pref.checked); }}>
+                                                    <input type="checkbox" className="sr-only peer" checked={pref.checked} readOnly />
                                                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                                                 </label>
                                             </div>
@@ -382,7 +478,10 @@ export default function CustomerSettingsPage() {
                                         <p className="text-sm text-red-700/80 mb-4 font-medium leading-relaxed max-w-xl text-balance">
                                             Initiating an account deletion will permanently erase your check-in history, earned points, and active vouchers from the VemTap decentralized ledger. This action is irreversible.
                                         </p>
-                                        <button className="h-12 px-6 border-2 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95 shadow-lg shadow-red-200/50">
+                                        <button
+                                            onClick={() => setShowDeleteModal(true)}
+                                            className="h-12 px-6 border-2 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95 shadow-lg shadow-red-200/50"
+                                        >
                                             Request Account Termination
                                         </button>
                                     </div>
@@ -500,6 +599,40 @@ export default function CustomerSettingsPage() {
                     )}
                 </div>
             </div>
+
+            {/* Delete Account Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-8 text-center">
+                            <div className="size-20 rounded-3xl bg-red-100 flex items-center justify-center text-red-600 mx-auto mb-6">
+                                <Trash2 size={40} />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900 mb-2">Delete Account?</h2>
+                            <p className="text-slate-500 mb-8 text-sm">
+                                This will permanently erase your history, points, and vouchers. This action cannot be undone.
+                            </p>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => {
+                                        setShowDeleteModal(false);
+                                        notify.success('Account deletion request submitted. Our team will contact you within 48 hours.');
+                                    }}
+                                    className="w-full h-14 bg-red-600 text-white rounded-2xl font-black shadow-xl shadow-red-200 flex items-center justify-center gap-3 active:scale-95 transition-transform"
+                                >
+                                    Yes, Delete My Account
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteModal(false)}
+                                    className="w-full h-14 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -15,7 +15,7 @@ import type { Promotion, PromotionBusiness } from '@/lib/promotions';
 import { formatDealPrice } from '@/lib/promotions';
 import { cn } from '@/lib/utils';
 import type { MockPromotion } from '@/lib/mock/promotions';
-import type { GeolocationCoordinates } from '@/lib/geolocation';
+import { reverseGeocode, type GeolocationCoordinates } from '@/lib/geolocation';
 
 function toPromotionBusiness(offer: DealOffer): PromotionBusiness {
     const branch = offer.branch;
@@ -119,7 +119,6 @@ export default function PromotionsPage() {
     const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
     const [locationLabel, setLocationLabel] = useState('');
     const [showLocationModal, setShowLocationModal] = useState(false);
-
     const queryParams = useMemo(() => ({
         search: search || undefined,
         categoryId: selectedCategory || undefined,
@@ -143,6 +142,22 @@ export default function PromotionsPage() {
             setShowLocationModal(true);
         }
     }, []);
+
+    useEffect(() => {
+        if (!location || locationLabel) return;
+        let cancelled = false;
+        reverseGeocode(location)
+            .then((label) => {
+                if (cancelled) return;
+                setLocationLabel(label);
+                localStorage.setItem('vemtap_user_location_label', label);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.warn('Reverse geocoding failed:', err);
+            });
+        return () => { cancelled = true; };
+    }, [location, locationLabel]);
 
     const handleLocationSet = (coords: GeolocationCoordinates, label?: string) => {
         setLocation(coords);
@@ -274,14 +289,18 @@ export default function PromotionsPage() {
 
                     {location && (
                         <div className="flex items-center gap-2 mt-3">
-                            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full px-3 py-1.5">
-                                <MapPin size={12} className="text-primary" />
-                                <span className="text-[10px] font-bold text-primary">
+                            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full pl-3 pr-1 py-1.5 max-w-xs sm:max-w-md">
+                                <MapPin size={12} className="text-primary shrink-0" />
+                                <span
+                                    className="text-[10px] font-bold text-primary truncate"
+                                    title={locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
+                                >
                                     {locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
                                 </span>
                                 <button
                                     onClick={handleClearLocation}
-                                    className="p-0.5 hover:bg-primary/10 rounded-full transition-colors"
+                                    className="p-1 hover:bg-primary/10 rounded-full transition-colors shrink-0"
+                                    aria-label="Clear location"
                                 >
                                     <X size={10} className="text-primary" />
                                 </button>

@@ -81,7 +81,7 @@ export default function UnifiedCartPage() {
 
     if (isEmpty) {
         return (
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+            <div className="h-full bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-24 h-24 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
                     <ShoppingBag className="w-12 h-12 text-slate-200" />
                 </div>

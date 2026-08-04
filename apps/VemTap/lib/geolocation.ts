@@ -85,3 +85,48 @@ async function geocodeWithNominatim(address: string): Promise<GeolocationCoordin
     lng: parseFloat(data[0].lon),
   };
 }
+
+export async function reverseGeocode(coords: GeolocationCoordinates): Promise<string> {
+  const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  if (googleApiKey) {
+    try {
+      return await reverseGeocodeWithGoogle(coords, googleApiKey);
+    } catch (err) {
+      console.warn('Google Maps reverse geocoding failed, falling back to Nominatim:', err);
+    }
+  }
+
+  return reverseGeocodeWithNominatim(coords);
+}
+
+async function reverseGeocodeWithGoogle(coords: GeolocationCoordinates, apiKey: string): Promise<string> {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.lat},${coords.lng}&key=${apiKey}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data.status !== 'OK' || !data.results?.length) {
+    throw new Error(`Google reverse geocoding failed: ${data.status}`);
+  }
+
+  return data.results[0].formatted_address;
+}
+
+async function reverseGeocodeWithNominatim(coords: GeolocationCoordinates): Promise<string> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?lat=${coords.lat}&lon=${coords.lng}&format=json&zoom=14`,
+    { headers: { 'Accept-Language': 'en', 'User-Agent': 'VemTap/1.0' } },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Reverse geocoding service returned ${res.status}`);
+  }
+
+  const data = await res.json();
+
+  if (!data?.display_name) {
+    throw new Error('No address found for these coordinates');
+  }
+
+  return data.display_name;
+}

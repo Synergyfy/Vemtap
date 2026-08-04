@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { MapPin, Navigation, Search, X, Loader2 } from 'lucide-react';
-import { getBrowserLocation, geocodeAddress, GeolocationCoordinates } from '@/lib/geolocation';
+import { getBrowserLocation, geocodeAddress, reverseGeocode, GeolocationCoordinates } from '@/lib/geolocation';
 
 interface LocationModalProps {
     isOpen: boolean;
@@ -23,7 +23,13 @@ export default function LocationModal({ isOpen, onClose, onLocationSet }: Locati
         setError('');
         try {
             const coords = await getBrowserLocation();
-            onLocationSet(coords);
+            let label: string | undefined;
+            try {
+                label = await reverseGeocode(coords);
+            } catch (reverseErr) {
+                console.warn('Reverse geocoding failed:', reverseErr);
+            }
+            onLocationSet(coords, label);
             onClose();
         } catch (err: any) {
             setError(err.message || 'Could not get your location');
