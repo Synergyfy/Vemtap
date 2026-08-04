@@ -16,6 +16,7 @@ import {
   ILike,
   FindOptionsOrder,
 } from 'typeorm';
+import { randomInt } from 'crypto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
@@ -40,6 +41,9 @@ import {
   UsePointCodeDto,
   GenerateRedemptionCodeDto,
   RedeemRewardDto,
+  RedeemRewardByIdDto,
+  VerifyRedemptionDto,
+  ApplyRewardTemplateDto,
 } from './dto/loyalty.dto';
 import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
 
@@ -117,12 +121,16 @@ export class LoyaltyService {
     return parseInt(result?.sum || '0', 10);
   }
 
-  async getCustomerPoints(userId: string, businessId?: string): Promise<number> {
+  async getCustomerPoints(
+    userId: string,
+    businessId?: string,
+  ): Promise<number> {
     const query = this.pointTransactionRepo
       .createQueryBuilder('transaction')
       .select('SUM(transaction.amount)', 'sum')
       .where('transaction.customerId = :userId', { userId });
-    if (businessId) query.andWhere('transaction.businessId = :businessId', { businessId });
+    if (businessId)
+      query.andWhere('transaction.businessId = :businessId', { businessId });
     const result = await query.getRawOne();
     return parseInt(result?.sum || '0', 10);
   }
@@ -236,15 +244,25 @@ export class LoyaltyService {
 
   // --- Point Earning ---
   async givePoints(staff: User, dto: GivePointsDto) {
-    const customer = await this.userRepo.findOne({
-      where: { uniqueCode: dto.customerCode, role: UserRole.CUSTOMER },
-    });
-    if (!customer) throw new NotFoundException('Customer not found');
-
     const branch = await this.branchRepo.findOne({
       where: { id: dto.branchId },
     });
     if (!branch) throw new NotFoundException('Branch not found');
+
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      staff,
+      dto.branchId,
+    );
+    if (!hasAccess)
+      throw new ForbiddenException('You do not have access to this branch');
+
+    const customer = await this.userRepo.findOne({
+      where:
+        dto.customerId || dto.userId
+          ? { id: dto.customerId || dto.userId, role: UserRole.CUSTOMER }
+          : { uniqueCode: dto.customerCode, role: UserRole.CUSTOMER },
+    });
+    if (!customer) throw new NotFoundException('Customer not found');
 
     let pointsToAward = dto.points;
 
@@ -381,6 +399,43 @@ export class LoyaltyService {
     return this.rewardTemplateRepo.find();
   }
 
+  async applyTemplate(
+    user: User,
+    templateId: string,
+    dto: ApplyRewardTemplateDto,
+  ) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      dto.branchId,
+    );
+    if (!hasAccess) throw new ForbiddenException('Not your business or branch');
+
+    const [template, branch] = await Promise.all([
+      this.rewardTemplateRepo.findOne({ where: { id: templateId } }),
+      this.branchRepo.findOne({ where: { id: dto.branchId } }),
+    ]);
+    if (!template) throw new NotFoundException('Reward template not found');
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const reward = this.rewardRepo.create({
+      name: template.name,
+      description: template.description,
+      pointsRequired: template.pointsRequired,
+      category: template.category,
+      coverImage: template.coverImage,
+      galleryImages: template.galleryImages,
+      totalQuantity: dto.totalQuantity,
+      remainingQuantity: dto.totalQuantity,
+      expiryDate: new Date(dto.expiryDate),
+      audienceType: dto.audienceType,
+      templateId: template.id,
+      businessId: branch.businessId,
+      branchId: branch.id,
+    });
+
+    return this.rewardRepo.save(reward);
+  }
+
   async createReward(user: User, dto: CreateRewardDto) {
     const hasAccess = await this.branchesService.checkBranchAccess(
       user,
@@ -452,7 +507,9 @@ export class LoyaltyService {
     } = query;
 
     if (!branchId && !branchCode && !businessId) {
-      throw new BadRequestException('Branch ID or Code is required unless Business ID is provided');
+      throw new BadRequestException(
+        'Branch ID or Code is required unless Business ID is provided',
+      );
     }
 
     let resolvedBranchId = branchId;
@@ -613,24 +670,84 @@ export class LoyaltyService {
   }
 
   async redeemReward(customer: User, dto: RedeemRewardDto) {
+    return this.redeemRewardInTransaction(customer, { code: dto.code });
+  }
+
+  async redeemRewardById(customer: User, dto: RedeemRewardByIdDto) {
+    return this.redeemRewardInTransaction(customer, { rewardId: dto.rewardId });
+  }
+
+  async verifyRedemption(staff: User, dto: VerifyRedemptionDto) {
+    const redemptionCode = await this.redemptionCodeRepo.findOne({
+      where: { code: dto.code },
+      relations: ['reward'],
+    });
+
+    if (!redemptionCode) {
+      return { valid: false, code: dto.code, reason: 'NOT_FOUND' };
+    }
+
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      staff,
+      redemptionCode.branchId,
+    );
+    if (!hasAccess)
+      throw new ForbiddenException('You do not have access to this branch');
+
+    const expired = new Date() > new Date(redemptionCode.reward.expiryDate);
+    return {
+      valid:
+        !redemptionCode.isUsed && !expired && redemptionCode.reward.isActive,
+      code: redemptionCode.code,
+      isUsed: redemptionCode.isUsed,
+      usedAt: redemptionCode.usedAt,
+      reason: redemptionCode.isUsed
+        ? 'ALREADY_USED'
+        : expired
+          ? 'EXPIRED'
+          : !redemptionCode.reward.isActive
+            ? 'INACTIVE_REWARD'
+            : null,
+      reward: {
+        id: redemptionCode.reward.id,
+        name: redemptionCode.reward.name,
+        pointsRequired: redemptionCode.reward.pointsRequired,
+      },
+      branchId: redemptionCode.branchId,
+      expiresAt: redemptionCode.reward.expiryDate,
+    };
+  }
+
+  private async redeemRewardInTransaction(
+    customer: User,
+    target: { code?: string; rewardId?: string },
+  ) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const redemptionCode = await queryRunner.manager.findOne(RedemptionCode, {
-        where: { code: dto.code },
-        relations: ['reward'],
-        lock: { mode: 'pessimistic_write' },
-      });
+      let redemptionCode = target.code
+        ? await queryRunner.manager.findOne(RedemptionCode, {
+            where: { code: target.code },
+            relations: ['reward'],
+            lock: { mode: 'pessimistic_write' },
+          })
+        : null;
 
-      if (!redemptionCode) {
+      if (target.code && !redemptionCode) {
         throw new BadRequestException('Invalid or already used code');
       }
 
-      const reward = redemptionCode.reward;
+      const reward = redemptionCode
+        ? redemptionCode.reward
+        : await queryRunner.manager.findOne(Reward, {
+            where: { id: target.rewardId },
+            lock: { mode: 'pessimistic_write' },
+          });
+      if (!reward) throw new NotFoundException('Reward not found');
 
-      if (redemptionCode.isUsed) {
+      if (redemptionCode?.isUsed) {
         if (redemptionCode.usedById === customer.id) {
           // Idempotency: user already successfully redeemed it
           await queryRunner.commitTransaction();
@@ -639,15 +756,21 @@ export class LoyaltyService {
         throw new BadRequestException('Invalid or already used code');
       }
 
+      if (!reward.isActive) {
+        throw new BadRequestException('Reward is inactive');
+      }
+
       if (new Date() > new Date(reward.expiryDate)) {
         throw new BadRequestException('Reward has expired');
       }
 
       // Re-fetch the reward with a lock to ensure its remainingQuantity is correct under concurrency
-      const lockedReward = await queryRunner.manager.findOne(Reward, {
-        where: { id: reward.id },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const lockedReward = redemptionCode
+        ? await queryRunner.manager.findOne(Reward, {
+            where: { id: reward.id },
+            lock: { mode: 'pessimistic_write' },
+          })
+        : reward;
 
       if (!lockedReward) {
         throw new BadRequestException('Reward not found');
@@ -675,6 +798,15 @@ export class LoyaltyService {
         throw new BadRequestException('Insufficient points');
       }
 
+      if (!redemptionCode) {
+        redemptionCode = queryRunner.manager.create(RedemptionCode, {
+          code: await this.createUniqueRedemptionCode(queryRunner.manager),
+          rewardId: lockedReward.id,
+          createdById: customer.id,
+          businessId: lockedReward.businessId,
+          branchId: lockedReward.branchId,
+        });
+      }
       redemptionCode.isUsed = true;
       redemptionCode.usedById = customer.id;
       redemptionCode.usedAt = new Date();
@@ -699,13 +831,28 @@ export class LoyaltyService {
       await queryRunner.manager.save(transaction);
 
       await queryRunner.commitTransaction();
-      return { success: true, reward: lockedReward.name };
+      return {
+        success: true,
+        reward: lockedReward.name,
+        redemptionCode: redemptionCode.code,
+      };
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
       await queryRunner.release();
     }
+  }
+
+  private async createUniqueRedemptionCode(manager: any): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const code = randomInt(100000000, 1000000000).toString();
+      const existing = await manager.findOne(RedemptionCode, {
+        where: { code },
+      });
+      if (!existing) return code;
+    }
+    throw new BadRequestException('Unable to generate a redemption code');
   }
 
   // --- Analytics ---
