@@ -9,6 +9,7 @@ describe('LoyaltyController', () => {
 
   const mockLoyaltyService = {
     getBusinessPoints: jest.fn(),
+    getCustomerPoints: jest.fn(),
     getPointLogs: jest.fn(),
     getBusinessPointLogs: jest.fn(),
     givePoints: jest.fn(),
@@ -51,7 +52,7 @@ describe('LoyaltyController', () => {
     it('should call getBusinessPoints', async () => {
       const businessId = 'biz-1';
       await controller.getBalance(mockReq as any, businessId);
-      expect(service.getBusinessPoints).toHaveBeenCalledWith(
+      expect(service.getCustomerPoints).toHaveBeenCalledWith(
         mockUser.id,
         businessId,
       );
@@ -60,14 +61,14 @@ describe('LoyaltyController', () => {
 
   describe('getMyLogs', () => {
     it('should call getPointLogs', async () => {
-      const businessId = 'biz-1';
-      await controller.getMyLogs(mockReq as any, businessId, {
+      await controller.getMyLogs(mockReq as any, {
+        businessId: 'biz-1',
         page: 1,
         limit: 10,
       });
       expect(service.getPointLogs).toHaveBeenCalledWith(
         mockUser.id,
-        businessId,
+        'biz-1',
         1,
         10,
       );

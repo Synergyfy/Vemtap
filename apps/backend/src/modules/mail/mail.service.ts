@@ -35,6 +35,29 @@ export class MailService {
     }
   }
 
+  async sendVerificationEmail(email: string, code: string) {
+    try {
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: 'Verify your VemTap email address',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2>Verify your email address</h2>
+            <p>Use the verification code below to confirm your VemTap email address:</p>
+            <h1 style="letter-spacing: 5px;">${code}</h1>
+            <p>This code expires in 10 minutes.</p>
+          </div>
+        `,
+      });
+      this.logger.log(`Verification email sent to ${email}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Error sending verification email to ${email}:`, error);
+      return false;
+    }
+  }
+
   async sendWelcomeEmail(email: string, name: string, password?: string) {
     try {
       await this.resend.emails.send({

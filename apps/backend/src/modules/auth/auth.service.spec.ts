@@ -50,6 +50,11 @@ describe('AuthService', () => {
     findByPhone: jest.fn(),
     findByGoogleId: jest.fn(),
     findByIdentifier: jest.fn(),
+    getTwoFactorState: jest.fn().mockResolvedValue({
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+    }),
+    createSession: jest.fn().mockResolvedValue({ id: 'session-1' }),
     findOne: jest.fn(),
     create: jest
       .fn()
