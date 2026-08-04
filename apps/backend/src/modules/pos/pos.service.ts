@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, ILike, DataSource, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { PosSale } from './entities/pos-sale.entity';
 import { PaymentMethod, SaleStatus } from './entities/pos-enums';
 import { PosSaleItem } from './entities/pos-sale-item.entity';
@@ -461,7 +462,9 @@ export class PosService {
         });
       }
       if (!customer) {
-        const defaultPassword = '123456';
+        const defaultPassword = randomBytes(9)
+          .toString('base64url')
+          .slice(0, 12);
         const hashedPassword = await bcrypt.hash(defaultPassword, 10);
         const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
         customer = this.userRepository.create({

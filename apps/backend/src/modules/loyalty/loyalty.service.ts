@@ -17,6 +17,7 @@ import {
   FindOptionsOrder,
 } from 'typeorm';
 import { randomInt } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
@@ -47,6 +48,7 @@ import {
   ApplyRewardTemplateDto,
 } from './dto/loyalty.dto';
 import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
+import { VisitorPointsEarnDto } from './dto/visitor-loyalty.dto';
 
 @Injectable()
 export class LoyaltyService {
@@ -400,11 +402,7 @@ export class LoyaltyService {
     return this.rewardTemplateRepo.find();
   }
 
-  async updateTemplate(
-    admin: User,
-    id: string,
-    dto: UpdateRewardTemplateDto,
-  ) {
+  async updateTemplate(admin: User, id: string, dto: UpdateRewardTemplateDto) {
     const template = await this.rewardTemplateRepo.findOne({ where: { id } });
     if (!template) throw new NotFoundException('Reward template not found');
 
@@ -691,11 +689,13 @@ export class LoyaltyService {
   }
 
   async redeemReward(customer: User, dto: RedeemRewardDto) {
-    return this.redeemRewardInTransaction(customer, { code: dto.code });
+    return this.redeemRewardInTransaction(customer.id, { code: dto.code });
   }
 
   async redeemRewardById(customer: User, dto: RedeemRewardByIdDto) {
-    return this.redeemRewardInTransaction(customer, { rewardId: dto.rewardId });
+    return this.redeemRewardInTransaction(customer.id, {
+      rewardId: dto.rewardId,
+    });
   }
 
   async verifyRedemption(staff: User, dto: VerifyRedemptionDto) {
@@ -740,7 +740,7 @@ export class LoyaltyService {
   }
 
   private async redeemRewardInTransaction(
-    customer: User,
+    customerId: string,
     target: { code?: string; rewardId?: string },
   ) {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -769,7 +769,7 @@ export class LoyaltyService {
       if (!reward) throw new NotFoundException('Reward not found');
 
       if (redemptionCode?.isUsed) {
-        if (redemptionCode.usedById === customer.id) {
+        if (redemptionCode.usedById === customerId) {
           // Idempotency: user already successfully redeemed it
           await queryRunner.commitTransaction();
           return { success: true, reward: reward.name };
@@ -808,7 +808,7 @@ export class LoyaltyService {
       const balanceResult = await queryRunner.manager
         .createQueryBuilder(PointTransaction, 'transaction')
         .select('SUM(transaction.amount)', 'sum')
-        .where('transaction.customerId = :userId', { userId: customer.id })
+        .where('transaction.customerId = :userId', { userId: customerId })
         .andWhere('transaction.businessId = :businessId', {
           businessId: lockedReward.businessId,
         })
@@ -823,13 +823,13 @@ export class LoyaltyService {
         redemptionCode = queryRunner.manager.create(RedemptionCode, {
           code: await this.createUniqueRedemptionCode(queryRunner.manager),
           rewardId: lockedReward.id,
-          createdById: customer.id,
+          createdById: customerId,
           businessId: lockedReward.businessId,
           branchId: lockedReward.branchId,
         });
       }
       redemptionCode.isUsed = true;
-      redemptionCode.usedById = customer.id;
+      redemptionCode.usedById = customerId;
       redemptionCode.usedAt = new Date();
       await queryRunner.manager.save(redemptionCode);
 
@@ -843,7 +843,7 @@ export class LoyaltyService {
         amount: -lockedReward.pointsRequired,
         type: PointTransactionType.REDEEMED,
         reason: `Redeemed reward: ${lockedReward.name}`,
-        customerId: customer.id,
+        customerId,
         givenById: redemptionCode.createdById,
         businessId: lockedReward.businessId,
         branchId: lockedReward.branchId,
@@ -874,6 +874,170 @@ export class LoyaltyService {
       if (!existing) return code;
     }
     throw new BadRequestException('Unable to generate a redemption code');
+  }
+
+  // --- Visitor (unauthenticated) Loyalty Flows ---
+
+  private async resolveBranchByIdentifier(dto: {
+    branchId?: string;
+    branchCode?: string;
+  }): Promise<Branch> {
+    if (dto.branchId && dto.branchCode) {
+      throw new BadRequestException(
+        'Provide either branchId or branchCode, not both',
+      );
+    }
+
+    if (!dto.branchId && !dto.branchCode) {
+      throw new BadRequestException(
+        'branchId or branchCode is required for this action',
+      );
+    }
+
+    let branch: Branch | null = null;
+    if (dto.branchId) {
+      branch = await this.branchRepo.findOne({ where: { id: dto.branchId } });
+    } else if (dto.branchCode) {
+      branch = await this.branchRepo.findOne({
+        where: { uniqueCode: dto.branchCode },
+      });
+    }
+
+    if (!branch) throw new NotFoundException('Branch not found');
+    return branch;
+  }
+
+  private async generateUniqueCustomerCode(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const code = `CUST-${Math.floor(100000 + Math.random() * 900000)}`;
+      const existing = await this.userRepo.findOne({
+        where: { uniqueCode: code },
+      });
+      if (!existing) return code;
+    }
+    throw new BadRequestException('Unable to generate a customer code');
+  }
+
+  private async resolveOrCreateVisitorCustomer(dto: {
+    email?: string;
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+  }): Promise<{ customer: User; isNewCustomer: boolean }> {
+    if (!dto.email && !dto.phone) {
+      throw new BadRequestException(
+        'At least one of email or phone is required to identify the customer',
+      );
+    }
+
+    let customer: User | null = null;
+    if (dto.email) {
+      customer = await this.userRepo.findOne({ where: { email: dto.email } });
+    }
+    if (!customer && dto.phone) {
+      customer = await this.userRepo.findOne({ where: { phone: dto.phone } });
+    }
+
+    if (customer) {
+      if (customer.role !== UserRole.CUSTOMER) {
+        throw new BadRequestException(
+          'The provided identity is linked to a non-customer account',
+        );
+      }
+      return { customer, isNewCustomer: false };
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      randomInt(100000, 999999).toString(),
+      10,
+    );
+    const created = this.userRepo.create({
+      email: dto.email ? dto.email.toLowerCase() : undefined,
+      phone: dto.phone,
+      firstName: dto.firstName || 'Visitor',
+      lastName: dto.lastName || '',
+      password: hashedPassword,
+      role: UserRole.CUSTOMER,
+      uniqueCode: await this.generateUniqueCustomerCode(),
+    });
+
+    try {
+      const saved = await this.userRepo.save(created);
+      return { customer: saved, isNewCustomer: true };
+    } catch (err) {
+      // Concurrent identical signups can race past the lookup and collide on
+      // the unique email/phone constraint — re-fetch instead of surfacing a 500.
+      const existing = await this.userRepo.findOne({
+        where: dto.email
+          ? { email: dto.email.toLowerCase() }
+          : { phone: dto.phone },
+      });
+      if (existing && existing.role === UserRole.CUSTOMER) {
+        return { customer: existing, isNewCustomer: false };
+      }
+      throw err;
+    }
+  }
+
+  async earnForVisitor(dto: VisitorPointsEarnDto) {
+    if (!dto.isVisit) {
+      throw new BadRequestException(
+        'The public earn flow only supports visit-based earning',
+      );
+    }
+
+    const branch = await this.resolveBranchByIdentifier(dto);
+
+    const { customer, isNewCustomer } =
+      await this.resolveOrCreateVisitorCustomer(dto);
+
+    // Respect the branch's configured loyalty rule. Never auto-create a rule
+    // from a public (unauthenticated) request.
+    const rule = await this.loyaltyRuleRepo.findOne({
+      where: { businessId: branch.businessId },
+    });
+    if (!rule || !rule.isActive) {
+      throw new BadRequestException('Loyalty is not enabled for this branch');
+    }
+
+    let pointsToAward = rule.visitPoints || 0;
+    const breakdown: Record<string, number> = {
+      visitPoints: pointsToAward,
+    };
+
+    if (isNewCustomer && (rule.firstVisitBonus || 0) > 0) {
+      pointsToAward += rule.firstVisitBonus;
+      breakdown.bonusPoints = rule.firstVisitBonus;
+    }
+
+    const transaction = this.pointTransactionRepo.create({
+      amount: pointsToAward,
+      type: PointTransactionType.EARNED,
+      reason: 'Points earned for visit',
+      customerId: customer.id,
+      businessId: branch.businessId,
+      branchId: branch.id,
+    });
+    await this.pointTransactionRepo.save(transaction);
+
+    const newBalance = await this.getBusinessPoints(
+      customer.id,
+      branch.businessId,
+    );
+
+    return {
+      success: true,
+      pointsEarned: pointsToAward,
+      newBalance,
+      message: `You earned ${pointsToAward} points!`,
+      breakdown,
+      customer: {
+        id: customer.id,
+        uniqueCode: customer.uniqueCode,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+      },
+    };
   }
 
   // --- Analytics ---

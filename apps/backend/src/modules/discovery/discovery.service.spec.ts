@@ -989,7 +989,7 @@ describe('DiscoveryService', () => {
             id: 'r1',
             name: 'Monthly Report',
             type: 'Full Summary',
-            status: ReportStatus.COMPLETED,
+            status: ReportStatus.READY,
             fileSize: '2.5MB',
             createdAt: new Date('2025-01-01'),
             generatedBy: { firstName: 'Admin' },

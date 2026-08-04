@@ -131,4 +131,75 @@ export class SupportGateway
       timestamp: new Date(),
     });
   }
+
+  // --- Voice / Video Call Signaling ---
+  // The backend only relays WebRTC signaling between participants in a
+  // ticket room. Media flows peer-to-peer between the browsers.
+
+  private relayCall(
+    client: Socket,
+    event: string,
+    payload: { ticketId: string; to?: string; [key: string]: any },
+  ) {
+    const fromUserId = client.data.userId ?? null;
+
+    const envelope = {
+      ...payload,
+      from: fromUserId,
+      fromClientId: client.id,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (payload.to) {
+      this.server.to(`user_${payload.to}`).emit(event, envelope);
+      return;
+    }
+
+    if (payload.ticketId) {
+      this.server.to(`ticket_${payload.ticketId}`).emit(event, envelope);
+      return;
+    }
+
+    client.broadcast.emit(event, envelope);
+  }
+
+  @SubscribeMessage('call:offer')
+  handleCallOffer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { ticketId: string; to?: string; sdp: any },
+  ) {
+    this.relayCall(client, 'call:offer', payload);
+  }
+
+  @SubscribeMessage('call:answer')
+  handleCallAnswer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { ticketId: string; to?: string; sdp: any },
+  ) {
+    this.relayCall(client, 'call:answer', payload);
+  }
+
+  @SubscribeMessage('call:ice')
+  handleCallIce(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { ticketId: string; to?: string; candidate: any },
+  ) {
+    this.relayCall(client, 'call:ice', payload);
+  }
+
+  @SubscribeMessage('call:end')
+  handleCallEnd(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { ticketId: string; to?: string; reason?: string },
+  ) {
+    this.relayCall(client, 'call:end', payload);
+  }
+
+  @SubscribeMessage('call:reject')
+  handleCallReject(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { ticketId: string; to?: string; reason?: string },
+  ) {
+    this.relayCall(client, 'call:reject', payload);
+  }
 }

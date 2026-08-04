@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
 import { Product } from './entities/product.entity';
+import { ProductReview } from './entities/product-review.entity';
 import { Quote } from './entities/quote.entity';
 import { QuoteNegotiation } from './entities/quote-negotiation.entity';
 import { Order } from './entities/order.entity';
@@ -13,6 +14,7 @@ import { PaymentsModule } from '../payments/payments.module';
   imports: [
     TypeOrmModule.forFeature([
       Product,
+      ProductReview,
       Quote,
       QuoteNegotiation,
       Order,
