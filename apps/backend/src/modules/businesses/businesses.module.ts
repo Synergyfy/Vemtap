@@ -42,6 +42,6 @@ import {
   ],
   providers: [BusinessesService, GeocodingProcessor, BusinessVerifiedGuard],
   controllers: [BusinessesController, PublicBusinessesController],
-  exports: [BusinessesService, BusinessVerifiedGuard],
+  exports: [TypeOrmModule, BusinessesService, BusinessVerifiedGuard],
 })
 export class BusinessesModule {}
