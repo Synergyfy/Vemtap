@@ -59,8 +59,8 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
         setExpandedMenus(prev => (prev.includes(menu) ? [] : [menu]));
     };
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 

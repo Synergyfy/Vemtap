@@ -48,6 +48,10 @@ import {
   RewardQueryDto,
   CustomerPointLogsQueryDto,
 } from './dto/loyalty-query.dto';
+import {
+  LegacyVisitorPointsEarnDto,
+  VisitorPointsEarnDto,
+} from './dto/visitor-loyalty.dto';
 
 import { Public } from '../../common/decorators/public.decorator';
 
@@ -69,6 +73,54 @@ export class LoyaltyController {
   async getReward(@Param('id') id: string) {
     console.log('[LoyaltyController] Fetching item-details:', id);
     return this.loyaltyService.findOne(id);
+  }
+
+  // --- Visitor (unauthenticated) Flows ---
+
+  @Public()
+  @Post('visitor/points/earn')
+  @ApiOperation({
+    summary: 'Publicly earn points for an identified visitor',
+    description:
+      'Resolves or creates a CUSTOMER from the provided email/phone and awards loyalty points for a visit or spend, scoped to the branch.',
+  })
+  @ApiBody({ type: VisitorPointsEarnDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Points awarded',
+    schema: {
+      example: {
+        success: true,
+        pointsEarned: 50,
+        newBalance: 50,
+        message: 'You earned 50 points!',
+        customer: { id: 'uuid', uniqueCode: 'CUST-123456' },
+      },
+    },
+  })
+  async earnVisitorPoints(@Body() dto: VisitorPointsEarnDto) {
+    return this.loyaltyService.earnForVisitor(dto);
+  }
+
+  @Public()
+  @Post('earn')
+  @ApiOperation({
+    summary: 'Legacy alias for public visitor visit points',
+  })
+  @ApiBody({ type: LegacyVisitorPointsEarnDto })
+  async earnLegacyVisitorPoints(
+    @Query('branchId') branchId: string,
+    @Body() dto: LegacyVisitorPointsEarnDto,
+  ) {
+    const identity = dto.userId.includes('@')
+      ? { email: dto.userId }
+      : { phone: dto.userId };
+
+    return this.loyaltyService.earnForVisitor({
+      ...identity,
+      branchId,
+      isVisit: dto.isVisit,
+    });
   }
 
   // --- Point Logs ---

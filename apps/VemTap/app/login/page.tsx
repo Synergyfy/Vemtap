@@ -112,7 +112,7 @@ function LoginPageContent() {
                 setGeneralError('Invalid response from server');
                 return;
             }
-            storeLogin(response.user, response.access_token);
+            await storeLogin(response.user, response.access_token);
             routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
         } catch (err: any) {
             const message = err?.message || 'Google sign-in failed. Please try again.';
@@ -149,7 +149,7 @@ function LoginPageContent() {
                 return;
             }
 
-            storeLogin(response.user, response.access_token);
+            await storeLogin(response.user, response.access_token);
             routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
         } catch (err: any) {
             const message = err?.message || 'Invalid email, phone number or password';
@@ -173,7 +173,7 @@ function LoginPageContent() {
                 setGeneralError('Invalid 2FA code');
                 return;
             }
-            storeLogin(response.user, response.access_token);
+            await storeLogin(response.user, response.access_token);
             routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
         } catch (err: any) {
             setGeneralError(err?.message || 'Invalid 2FA code');

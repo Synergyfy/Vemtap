@@ -333,4 +333,121 @@ describe('LoyaltyService', () => {
       });
     });
   });
+
+  describe('earnForVisitor', () => {
+    it('creates a customer from an email and awards visit points', async () => {
+      const branch = { id: 'b1', businessId: 'biz1' } as any;
+      const rule = {
+        id: 'rule-1',
+        isActive: true,
+        visitPoints: 50,
+        firstVisitBonus: 100,
+        spendingBaseAmount: 10,
+        spendingBasePoints: 1,
+      } as any;
+      const savedCustomer = {
+        id: 'customer-1',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        uniqueCode: 'CUST-123456',
+        role: UserRole.CUSTOMER,
+      } as any;
+
+      const findOne = mockRepository.findOne;
+      findOne
+        .mockResolvedValueOnce(branch) // resolveBranchByIdentifier
+        .mockResolvedValueOnce(null) // identity lookup by email
+        .mockResolvedValueOnce(null) // unique code generation
+        .mockResolvedValueOnce(rule); // getRules
+      mockRepository.save.mockResolvedValueOnce(savedCustomer);
+
+      const result = await service.earnForVisitor({
+        email: 'jane@example.com',
+        branchId: 'b1',
+        isVisit: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.pointsEarned).toBe(150);
+      expect(result.customer.uniqueCode).toBe('CUST-123456');
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: UserRole.CUSTOMER,
+          email: 'jane@example.com',
+        }),
+      );
+    });
+
+    it('throws when no identity is provided', async () => {
+      const findOne = mockRepository.findOne;
+      findOne.mockResolvedValueOnce({ id: 'b1', businessId: 'biz1' } as any);
+
+      await expect(
+        service.earnForVisitor({ branchId: 'b1', isVisit: true } as any),
+      ).rejects.toThrow('At least one of email or phone');
+    });
+
+    it('rejects earning without a visit (no self-served points/spend)', async () => {
+      await expect(
+        service.earnForVisitor({
+          branchId: 'b1',
+          email: 'jane@example.com',
+        } as any),
+      ).rejects.toThrow('only supports visit-based earning');
+    });
+
+    it('rejects providing both branchId and branchCode', async () => {
+      await expect(
+        service.earnForVisitor({
+          branchId: 'b1',
+          branchCode: 'CODE123',
+          email: 'jane@example.com',
+          isVisit: true,
+        } as any),
+      ).rejects.toThrow('not both');
+    });
+
+    it('recovers from a concurrent unique-constraint race by re-fetching', async () => {
+      const branch = { id: 'b1', businessId: 'biz1' } as any;
+      const rule = {
+        id: 'rule-1',
+        isActive: true,
+        visitPoints: 50,
+        firstVisitBonus: 100,
+      } as any;
+      const existingCustomer = {
+        id: 'customer-1',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        uniqueCode: 'CUST-123456',
+        role: UserRole.CUSTOMER,
+      } as any;
+
+      const findOne = mockRepository.findOne;
+      findOne
+        .mockResolvedValueOnce(branch) // branch
+        .mockResolvedValueOnce(null) // identity lookup
+        .mockResolvedValueOnce(null) // unique code gen
+        .mockResolvedValueOnce(existingCustomer) // re-fetch after collision
+        .mockResolvedValueOnce(rule); // rule
+      // First save collides on the unique constraint
+      const save = mockRepository.save;
+      save
+        .mockRejectedValueOnce(
+          new Error('duplicate key value violates unique constraint'),
+        )
+        .mockResolvedValueOnce(existingCustomer);
+
+      const result = await service.earnForVisitor({
+        email: 'jane@example.com',
+        branchId: 'b1',
+        isVisit: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.customer.id).toBe('customer-1');
+    });
+  });
 });

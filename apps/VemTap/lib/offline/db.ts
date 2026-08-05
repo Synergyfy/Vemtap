@@ -288,3 +288,23 @@ export async function getQueueCount(): Promise<number> {
   const items = await getSyncQueue();
   return items.length;
 }
+
+// ─── Full cache wipe (account switch / logout) ───
+
+export async function clearOfflineCache() {
+  const db = await openDb();
+  const storeNames = ['products', 'customers', 'orders', 'sync-queue'];
+  return new Promise<void>((resolve, reject) => {
+    try {
+      const tx = db.transaction(storeNames, 'readwrite');
+      storeNames.forEach((name) => {
+        tx.objectStore(name).clear();
+      });
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = (e) => { db.close(); reject(e); };
+    } catch (e) {
+      db.close();
+      reject(e);
+    }
+  });
+}

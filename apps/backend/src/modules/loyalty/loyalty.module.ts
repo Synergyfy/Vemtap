@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoyaltyService } from './loyalty.service';
 import { LoyaltyController } from './loyalty.controller';
+import { PublicLoyaltyController } from './public-loyalty.controller';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
 import { PointTransaction } from './entities/point-transaction.entity';
@@ -37,7 +38,7 @@ import { Visit } from '../visitors/entities/visit.entity';
     forwardRef(() => UsersModule),
     forwardRef(() => BranchesModule),
   ],
-  controllers: [LoyaltyController],
+  controllers: [LoyaltyController, PublicLoyaltyController],
   providers: [LoyaltyService],
   exports: [LoyaltyService],
 })

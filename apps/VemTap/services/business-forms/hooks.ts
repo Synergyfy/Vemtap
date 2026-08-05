@@ -299,7 +299,7 @@ export const useUpdateBranchFormSettings = (branchId?: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
       if (targetBranchId) {
-        queryClient.invalidateQueries({ queryKey: ['branches', targetBranchId] });
+        queryClient.invalidateQueries({ queryKey: ['branch'] });
         queryClient.invalidateQueries({ queryKey: ['public-branch-info', targetBranchId] });
       }
     },

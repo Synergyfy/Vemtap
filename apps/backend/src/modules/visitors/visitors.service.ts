@@ -39,10 +39,12 @@ import { TriggerType } from '../messaging/enums/automation.enum';
 import { Channel } from '../messaging/enums/channel.enum';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { MailService } from '../mail/mail.service';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { BranchesService } from '../branches/branches.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { AuthService } from '../auth/auth.service';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
@@ -81,6 +83,7 @@ export class VisitorsService {
     private mailService: MailService,
     private branchesService: BranchesService,
     private loyaltyService: LoyaltyService,
+    private authService: AuthService,
   ) {}
 
   async getVisitedBranches(
@@ -535,7 +538,14 @@ export class VisitorsService {
   async create(
     createVisitorDto: CreateVisitorDto | VisitorSignupDto,
     branchId?: string,
-  ): Promise<VisitorResponseDto> {
+  ): Promise<
+    VisitorResponseDto & {
+      access_token?: string;
+      sessionId?: string;
+      user?: Partial<User>;
+      isNewUser?: boolean;
+    }
+  > {
     const dto = createVisitorDto as CreateVisitorDto & {
       deviceId?: string;
     };
@@ -557,9 +567,15 @@ export class VisitorsService {
       }
     }
 
-    const defaultPassword = '123456';
+    // New customers receive a per-account random password (emailed to them)
+    // instead of a shared default, so the constant can never be used as a
+    // universal backdoor. Immediate auto-login is provided by the auth token
+    // returned from this endpoint (see buildAuthResponse below).
+    const defaultPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    let isNewCustomer = false;
 
     if (!user) {
+      isNewCustomer = true;
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       user = this.userRepository.create({
         email: dto.email,
@@ -652,7 +668,34 @@ export class VisitorsService {
       },
     });
 
-    return this.mapToVisitorDto(updatedUser!, branchId);
+    const visitorDto = this.mapToVisitorDto(updatedUser!, branchId);
+
+    // Public visitor signups auto-login: return a JWT alongside the visitor
+    // payload so clients no longer need to rely on a shared default password.
+    if (isNewCustomer) {
+      try {
+        const authResponse = await this.authService.buildAuthResponse(
+          updatedUser!,
+          true,
+        );
+        return {
+          ...visitorDto,
+          access_token: authResponse.access_token,
+          sessionId: authResponse.sessionId,
+          user: authResponse.user,
+          isNewUser: true,
+        };
+      } catch (err) {
+        // Token issuance is non-blocking for the signup — fall back to the
+        // legacy response shape if anything fails.
+        console.error(
+          '[VisitorsService] Failed to issue auth token on signup:',
+          err,
+        );
+      }
+    }
+
+    return visitorDto;
   }
 
   async findOne(
