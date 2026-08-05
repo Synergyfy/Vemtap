@@ -222,7 +222,10 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         id: 'health',
         label: 'System Health',
         icon: Activity,
-        href: '/admin/health',
+        submenu: [
+            { label: 'Health Monitor', href: '/admin/health', keywords: ['monitor', 'cpu', 'memory', 'infrastructure', 'live'] },
+            { label: 'Status Page', href: '/admin/status', keywords: ['components', 'incidents', 'uptime', 'public', 'systems'] },
+        ],
         permission: 'admin:health',
         keywords: ['status', 'uptime', 'database', 'servers', 'monitoring', 'cpu']
     },
