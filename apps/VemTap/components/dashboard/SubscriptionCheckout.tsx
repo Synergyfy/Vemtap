@@ -8,6 +8,7 @@ import { useSubscribe } from '@/services/subscriptions/hooks';
 import { useAddOns, useBundleDiscounts } from '@/services/addons/hooks';
 import AddOnSelectionList from './AddOnSelectionList';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import toast from 'react-hot-toast';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { PricingPlan } from '@/types/pricing';
@@ -26,6 +27,7 @@ interface Props {
 export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', onBillingPeriodChange, businessId, isTrial = false, onSuccess }: Props) {
     const router = useRouter();
     const { user } = useAuthStore();
+    const refreshSubscriptionData = useSubscriptionStore((state) => state.refreshSubscriptionData);
     const subscribeMutation = useSubscribe();
     const { data: addons = [] } = useAddOns();
     const { data: discountRules = [] } = useBundleDiscounts();
@@ -79,9 +81,14 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                             onClose();
                         }
                     },
-                    onError: (error) => {
+                    onError: () => {
                         setIsProcessing(false);
-                        toast.error(error instanceof Error ? error.message : 'Subscription sync failed. Please contact support.');
+                        toast.error('Your payment was received, but the plan could not be activated right now. We are checking your account - if it does not reflect shortly, please contact support.', { duration: 8000 });
+                        // Payment already completed - close the checkout so the user
+                        // is not prompted to pay again, and refresh to pick up the plan
+                        // if the server actually created it.
+                        refreshSubscriptionData();
+                        onClose();
                     }
                 });
             }, 1500);
@@ -136,10 +143,15 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                             }, 100);
                         }
                     },
-                    onError: (error) => {
+                    onError: () => {
                         setIsProcessing(false);
                         paymentSuccessful.current = false; // Reset on error so user can retry
-                        toast.error(error instanceof Error ? error.message : 'Payment verified but subscription sync failed. Please contact support.');
+                        toast.error('Your payment was received, but the plan could not be activated right now. We are checking your account - if it does not reflect shortly, please contact support.', { duration: 8000 });
+                        // Payment already completed - close the checkout so the user
+                        // is not prompted to pay again, and refresh to pick up the plan
+                        // if the server actually created it.
+                        refreshSubscriptionData();
+                        onClose();
                     }
                 });
             }

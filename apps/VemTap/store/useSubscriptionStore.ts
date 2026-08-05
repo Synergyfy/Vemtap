@@ -12,6 +12,7 @@ interface SubscriptionState {
   forceLockedFeatures: string[];
   setSubscriptionExpired: (expired: boolean) => void;
   fetchSubscriptionData: () => Promise<void>;
+  refreshSubscriptionData: () => Promise<void>;
   fetchCapabilities: () => Promise<void>;
   hasFeature: (feature: string) => boolean;
   isFeatureLocked: (feature: string) => boolean;
@@ -34,6 +35,13 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       fetchSubscriptionData: async () => {
         set({ isLoading: true, error: null });
+        await get().refreshSubscriptionData();
+        set({ isLoading: false });
+      },
+
+      // Background refresh - never toggles isLoading so mounted UI
+      // (modals, pages) is not unmounted/re-rendered mid-flow
+      refreshSubscriptionData: async () => {
         try {
           const [capsRes, subRes] = await Promise.allSettled([
             subscriptionsApi.getCapabilities(),
@@ -41,7 +49,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           ]);
           
           const capabilities = capsRes.status === 'fulfilled' ? capsRes.value : get().capabilities;
-          const activeSubscription = subRes.status === 'fulfilled' ? subRes.value : null;
+          const activeSubscription = subRes.status === 'fulfilled' ? subRes.value : get().activeSubscription;
           
           const isExpired = activeSubscription?.status === 'expired' || activeSubscription?.status === 'cancelled';
           
@@ -49,11 +57,10 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             capabilities, 
             activeSubscription, 
             isSubscriptionExpired: isExpired,
-            isLoading: false,
             error: capsRes.status === 'rejected' ? (capsRes.reason as Error).message : null 
           });
         } catch (err: any) {
-          set({ error: err.message || 'Failed to fetch subscription data', isLoading: false });
+          set({ error: err.message || 'Failed to fetch subscription data' });
         }
       },
 
