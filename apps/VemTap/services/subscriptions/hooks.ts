@@ -32,15 +32,16 @@ import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
 export const useSubscribe = () => {
     const queryClient = useQueryClient();
-    const fetchSubscriptionData = useSubscriptionStore((state) => state.fetchSubscriptionData);
+    const refreshSubscriptionData = useSubscriptionStore((state) => state.refreshSubscriptionData);
 
     return useMutation<Subscription, Error, SubscribeRequest>({
         mutationFn: async (dto) => await api.post('/subscriptions/subscribe', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription', 'active'] });
             queryClient.invalidateQueries({ queryKey: ['subscription', 'capabilities'] });
-            // Force Zustand store to refresh
-            fetchSubscriptionData();
+            // Silently refresh the Zustand store so the active plan updates
+            // immediately without unmounting/remounting the current page
+            refreshSubscriptionData();
         },
     });
 };
