@@ -86,6 +86,10 @@ async function resetClientStores() {
 export async function resetSessionData() {
   // 1. Drop every server-fetched cache (products, staff, business profile, ...)
   try {
+    // Cancel in-flight requests first: otherwise a request still carrying the
+    // previous account's token can resolve after clear() and re-populate the
+    // static query keys (['my-business'], ['branches']) with the old account's data.
+    queryClient.cancelQueries();
     queryClient.clear();
   } catch (e) {
     console.error('Failed to clear query cache:', e);
