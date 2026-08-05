@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { AffiliateProfile } from './entities/affiliate-profile.entity';
@@ -29,7 +29,7 @@ import { BusinessesModule } from '../businesses/businesses.module';
     SettingsModule,
     NotificationsModule,
     ExternalAffiliateModule,
-    BusinessesModule,
+    forwardRef(() => BusinessesModule),
   ],
   controllers: [AffiliatesController],
   providers: [AffiliatesService, VemtapAffiliateAgentsService],
