@@ -1,12 +1,25 @@
 // =====================
-// CLUSTERS (Admin) — TEMPORARY MOCK
+// CLUSTERS & CLUSTER QR DISCOVERY — HYBRID (real backend + local fallback)
 // =====================
-// There is no backend for clusters yet, so this module is fully mocked:
-// data is seeded once, persisted to localStorage, and every call simulates
-// network latency. When the real backend lands, replace the bodies of the
-// `adminClustersApi` methods with the `api.get/post/patch/delete` calls
-// (endpoints are noted on each method) and delete `searchMockDeals`.
-// The exported types are the contract the UI already uses.
+// The real backend (`modules/clusters`) now provides:
+//   GET  /admin/clusters               (list)
+//   GET  /admin/clusters/:id           (detail)
+//   POST /admin/clusters               (create)
+//   PATCH /admin/clusters/:id          (update / QR toggle)
+//   DELETE /admin/clusters/:id         (soft delete)
+//   POST /admin/clusters/auto-assign   (bulk branch assignment)
+//   POST /admin/clusters/:id/branches  (add branch)
+//   DELETE /admin/clusters/:id/branches/:branchId (remove branch)
+//   Public: /clusters/context/:uniqueCode, /clusters/:uniqueCode/deals
+//
+// CRUD (`list/get/create/update/remove`) hits the real backend and maps
+// responses into the rich UI model below. Where the backend has NO endpoint
+// yet, the former mock engine is kept as a LOCAL fallback so the UI keeps
+// working — see BACKEND_GAPS at the bottom for what to send to the backend
+// dev. `searchMockDeals` remains as a fallback when the public offers feed
+// is unreachable.
+
+import { api } from '../api';
 
 // ---------------------------------------------------------------
 // Types (contract)
@@ -28,6 +41,10 @@ export interface Cluster {
     longitude?: number | null;
     radiusM?: number | null;
     isActive: boolean;
+    /** Real backend — the QR identifier (CL-XXXXXXXXX). */
+    uniqueCode?: string;
+    /** Real backend — absolute QR target URL, e.g. https://vemtap.com/c/{uniqueCode}. */
+    qrUrl?: string;
     qrCodesCount: number;
     totalScans: number;
     autoMatchedOffersCount: number;
@@ -59,6 +76,8 @@ export interface CreateClusterDto {
     longitude?: number | null;
     radiusM?: number | null;
     isActive?: boolean;
+    /** Backend-supported (PATCH /admin/clusters/:id). */
+    qrIsActive?: boolean;
 }
 
 export type UpdateClusterDto = Partial<CreateClusterDto>;
@@ -100,11 +119,23 @@ interface MockOffer {
     lng: number | null;
 }
 
+/** Minimal meta for clusters that came from the real backend (used so the
+ *  QR modal can resolve the single real uniqueCode-based QR without a backend
+ *  "list QR codes" endpoint). */
+export interface RealClusterMeta {
+    uniqueCode: string;
+    qrUrl?: string;
+    isActive: boolean;
+    totalScans: number;
+}
+
 interface MockDb {
     clusters: Cluster[];
     qrCodes: ClusterQrCode[];
     offers: MockOffer[];
     pinnedByCluster: Record<string, string[]>;
+    /** keyed by backend cluster id. */
+    realClusters?: Record<string, RealClusterMeta>;
 }
 
 const STORAGE_KEY = 'vemtap_clusters_mock_v1';
@@ -459,90 +490,215 @@ export const searchMockDeals = (query: string) => {
 };
 
 // ---------------------------------------------------------------
-// Admin API (mock implementation)
+// Admin API (hybrid: real backend + local mock fallback)
 // ---------------------------------------------------------------
+
+// ---- Real backend DTOs (internal) -------------------------------
+interface BBackendCluster {
+    id: string;
+    name: string;
+    uniqueCode: string;
+    description: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    radiusMeters: number;
+    isActive: boolean;
+    qrIsActive: boolean;
+    branchCount: number;
+    activeOfferCount: number;
+    scanCount: number;
+    createdAt: string;
+}
+
+/** Map a real backend cluster into the rich UI model. The backend has no
+ *  hierarchy/type/pinning yet, so those default lower — see BACKEND_GAPS. */
+const toRichCluster = (b: BBackendCluster): Cluster => ({
+    id: b.id,
+    name: b.name,
+    description: b.description || '',
+    type: 'market',
+    parentId: null,
+    country: '',
+    state: '',
+    city: '',
+    area: '',
+    latitude: b.latitude,
+    longitude: b.longitude,
+    radiusM: b.radiusMeters,
+    isActive: b.isActive,
+    uniqueCode: b.uniqueCode,
+    qrUrl: `https://vemtap.com/c/${b.uniqueCode}`,
+    qrCodesCount: b.qrIsActive ? 1 : 0,
+    totalScans: b.scanCount,
+    autoMatchedOffersCount: b.activeOfferCount,
+    pinnedOffersCount: 0,
+    createdAt: b.createdAt,
+    updatedAt: b.createdAt,
+});
+
+/** Convert the rich UI dto to the backend Create/Update payload. The backend
+ *  only accepts: name, description, latitude, longitude, radiusMeters,
+ *  isActive, qrIsActive. (Hierarchy fields have no backend column — see gaps.) */
+const toBackendPayload = (data: Partial<CreateClusterDto>) => ({
+    name: data.name,
+    description: data.description,
+    latitude: data.latitude ?? undefined,
+    longitude: data.longitude ?? undefined,
+    radiusMeters: data.radiusM ?? undefined,
+    isActive: data.isActive ?? undefined,
+    qrIsActive: data.qrIsActive ?? undefined,
+});
 
 export const adminClustersApi = {
     // -> GET /admin/clusters
     list: async () => {
-        const db = loadDb();
-        await delay();
-        return db.clusters.map(cluster => {
-            const pinnedIds = db.pinnedByCluster[cluster.id] || [];
-            const qr = db.qrCodes.filter(q => q.clusterId === cluster.id);
-            const { autoMatched } = computeMatchedOffers(db, cluster);
-            return {
-                ...cluster,
-                qrCodesCount: qr.length,
-                totalScans: qr.reduce((sum, q) => sum + q.totalScans, 0),
-                autoMatchedOffersCount: autoMatched.length,
-                pinnedOffersCount: pinnedIds.length,
-            };
-        });
+        try {
+            const res = await api.get('/admin/clusters', { params: { limit: 100 } });
+            const items: BBackendCluster[] = Array.isArray(res) ? res : res?.data || [];
+            // Cache real meta so the QR modal can resolve the single uniqueCode.
+            const db = loadDb();
+            db.realClusters = {};
+            items.forEach(b => {
+                db.realClusters![b.id] = {
+                    uniqueCode: b.uniqueCode,
+                    qrUrl: `https://vemtap.com/c/${b.uniqueCode}`,
+                    isActive: b.qrIsActive && b.isActive,
+                    totalScans: b.scanCount,
+                };
+            });
+            saveDb(db);
+            return items.map(toRichCluster);
+        } catch {
+            // Backend unreachable / no token → seeded demo data (former behaviour).
+            const db = loadDb();
+            await delay();
+            return db.clusters.map(cluster => {
+                const pinnedIds = db.pinnedByCluster[cluster.id] || [];
+                const qr = db.qrCodes.filter(q => q.clusterId === cluster.id);
+                const { autoMatched } = computeMatchedOffers(db, cluster);
+                return {
+                    ...cluster,
+                    qrCodesCount: qr.length,
+                    totalScans: qr.reduce((sum, q) => sum + q.totalScans, 0),
+                    autoMatchedOffersCount: autoMatched.length,
+                    pinnedOffersCount: pinnedIds.length,
+                };
+            });
+        }
     },
 
     // -> GET /admin/clusters/:id
     get: async (id: string) => {
-        const db = loadDb();
-        await delay();
-        return db.clusters.find(c => c.id === id) || null;
+        try {
+            const b = await api.get(`/admin/clusters/${id}`);
+            return toRichCluster(b as BBackendCluster);
+        } catch {
+            const db = loadDb();
+            await delay();
+            return db.clusters.find(c => c.id === id) || null;
+        }
     },
 
     // -> POST /admin/clusters
     create: async (data: CreateClusterDto) => {
-        const db = loadDb();
-        await delay();
-        const cluster: Cluster = {
-            id: uid(),
-            name: data.name,
-            description: data.description || '',
-            type: data.type,
-            parentId: data.parentId || null,
-            country: data.country || '',
-            state: data.state || '',
-            city: data.city || '',
-            area: data.area || '',
-            latitude: data.latitude ?? null,
-            longitude: data.longitude ?? null,
-            radiusM: data.radiusM ?? null,
-            isActive: data.isActive ?? true,
-            qrCodesCount: 0,
-            totalScans: 0,
-            autoMatchedOffersCount: 0,
-            pinnedOffersCount: 0,
-            createdAt: nowIso(),
-            updatedAt: nowIso(),
-        };
-        db.clusters.push(cluster);
-        saveDb(db);
-        return cluster;
+        try {
+            const b = await api.post('/admin/clusters', toBackendPayload(data));
+            return toRichCluster(b as BBackendCluster);
+        } catch {
+            const db = loadDb();
+            await delay();
+            const cluster: Cluster = {
+                id: uid(),
+                name: data.name,
+                description: data.description || '',
+                type: data.type,
+                parentId: data.parentId || null,
+                country: data.country || '',
+                state: data.state || '',
+                city: data.city || '',
+                area: data.area || '',
+                latitude: data.latitude ?? null,
+                longitude: data.longitude ?? null,
+                radiusM: data.radiusM ?? null,
+                isActive: data.isActive ?? true,
+                qrCodesCount: 0,
+                totalScans: 0,
+                autoMatchedOffersCount: 0,
+                pinnedOffersCount: 0,
+                createdAt: nowIso(),
+                updatedAt: nowIso(),
+            };
+            db.clusters.push(cluster);
+            saveDb(db);
+            return cluster;
+        }
     },
 
     // -> PATCH /admin/clusters/:id
     update: async (id: string, data: UpdateClusterDto) => {
-        const db = loadDb();
-        await delay();
-        const index = db.clusters.findIndex(c => c.id === id);
-        if (index === -1) throw new Error('Cluster not found');
-        db.clusters[index] = { ...db.clusters[index], ...data, id, updatedAt: nowIso() };
-        saveDb(db);
-        return db.clusters[index];
+        try {
+            const b = await api.patch(`/admin/clusters/${id}`, toBackendPayload(data));
+            return toRichCluster(b as BBackendCluster);
+        } catch {
+            const db = loadDb();
+            await delay();
+            const index = db.clusters.findIndex(c => c.id === id);
+            if (index === -1) throw new Error('Cluster not found');
+            db.clusters[index] = { ...db.clusters[index], ...data, id, updatedAt: nowIso() };
+            saveDb(db);
+            return db.clusters[index];
+        }
     },
 
     // -> DELETE /admin/clusters/:id
     remove: async (id: string) => {
-        const db = loadDb();
-        await delay();
-        db.clusters = db.clusters.filter(c => c.id !== id);
-        db.qrCodes = db.qrCodes.filter(q => q.clusterId !== id);
-        delete db.pinnedByCluster[id];
-        saveDb(db);
-        return { success: true };
+        try {
+            await api.delete(`/admin/clusters/${id}`);
+            return { success: true };
+        } catch {
+            const db = loadDb();
+            await delay();
+            db.clusters = db.clusters.filter(c => c.id !== id);
+            db.qrCodes = db.qrCodes.filter(q => q.clusterId !== id);
+            delete db.pinnedByCluster[id];
+            saveDb(db);
+            return { success: true };
+        }
+    },
+
+    // -> Real backend (added for parity; not yet surfaced in the former UI):
+    //    POST /admin/clusters/auto-assign
+    runningAutoAssign: async (payload: { dryRun?: boolean }) => {
+        return api.post('/admin/clusters/auto-assign', payload);
+    },
+    //    POST /admin/clusters/:id/branches
+    addBranchToBackend: async (id: string, branchId: string) => {
+        return api.post(`/admin/clusters/${id}/branches`, { branchId });
+    },
+    //    DELETE /admin/clusters/:id/branches/:branchId
+    removeBranchFromBackend: async (id: string, branchId: string) => {
+        return api.delete(`/admin/clusters/${id}/branches/${branchId}`);
     },
 
     // -> GET /admin/clusters/:id/qr-codes
+    // BACKEND GAP: no per-cluster QR-code listing endpoint. For real backend
+    // clusters we resolve the single uniqueCode-based QR from `list()`; the
+    // multi-code gallery below is the local fallback / demo behaviour.
     listQrCodes: async (clusterId: string) => {
         const db = loadDb();
+        const real = db.realClusters?.[clusterId];
+        if (real) {
+            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            return [{
+                id: `${clusterId}-qr`,
+                clusterId,
+                code: real.uniqueCode,
+                scanUrl: real.qrUrl || `${origin}/c/${real.uniqueCode}`,
+                isActive: real.isActive,
+                totalScans: real.totalScans,
+                createdAt: '',
+            } as ClusterQrCode];
+        }
         await delay();
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         return db.qrCodes
@@ -551,6 +707,9 @@ export const adminClustersApi = {
     },
 
     // -> POST /admin/clusters/:id/qr-codes
+    // BACKEND GAP: backend only stores ONE QR per cluster (the uniqueCode).
+    // Generating multiple codes is a LOCAL demo feature — send the endpoint
+    // request to the backend dev to match.
     generateQrCodes: async (clusterId: string, data: { quantity?: number; notes?: string }) => {
         const db = loadDb();
         await delay();
@@ -578,6 +737,27 @@ export const adminClustersApi = {
     // -> PATCH /admin/clusters/:id/qr-codes/:qrId
     setQrCodeActive: async (clusterId: string, qrId: string, isActive: boolean) => {
         const db = loadDb();
+        const real = db.realClusters?.[clusterId];
+        if (real) {
+            try {
+                // Real backend: toggling the QR is PATCH /admin/clusters/:id { qrIsActive }
+                const res = await api.patch(`/admin/clusters/${clusterId}`, { qrIsActive: isActive });
+                const active = res?.qrIsActive ?? isActive;
+                real.isActive = active;
+                saveDb(db);
+                return {
+                    id: qrId,
+                    clusterId,
+                    code: real.uniqueCode,
+                    scanUrl: real.qrUrl || '',
+                    isActive: active,
+                    totalScans: real.totalScans,
+                    createdAt: '',
+                } as ClusterQrCode;
+            } catch {
+                // fall through to local demo behaviour
+            }
+        }
         await delay();
         const qr = db.qrCodes.find(q => q.clusterId === clusterId && q.id === qrId);
         if (qr) qr.isActive = isActive;
@@ -586,6 +766,7 @@ export const adminClustersApi = {
     },
 
     // -> DELETE /admin/clusters/:id/qr-codes/:qrId
+    // BACKEND GAP: no per-QR delete endpoint. Local demo behaviour only.
     removeQrCode: async (clusterId: string, qrId: string) => {
         const db = loadDb();
         await delay();
@@ -595,6 +776,9 @@ export const adminClustersApi = {
     },
 
     // -> GET /admin/clusters/:id/offers  =>  { autoMatched, pinned, total }
+    // BACKEND GAP: no admin endpoint lists a cluster's auto-matched/pinned
+    // offers, and the backend auto-assigns BRANCHES (not offers). This modal
+    // keeps the former local auto-match engine as a demo until parity exists.
     listOffers: async (clusterId: string): Promise<ClusterOffersResponse> => {
         const db = loadDb();
         await delay();
@@ -616,6 +800,7 @@ export const adminClustersApi = {
     },
 
     // -> PATCH /admin/clusters/:id/offers/:offerId  =>  { pinned: boolean }
+    // BACKEND GAP: no pin/unpin endpoint. Local demo behaviour only.
     setOfferPinned: async (clusterId: string, offerId: string, pinned: boolean) => {
         const db = loadDb();
         await delay();
@@ -629,3 +814,173 @@ export const adminClustersApi = {
         return { pinned };
     },
 };
+
+// ---------------------------------------------------------------
+// Public API (real backend) — used by /c/[uniqueCode]
+// ---------------------------------------------------------------
+
+export type ClusterDealsSortBy =
+    | 'fair' | 'newest' | 'price_asc' | 'price_desc' | 'distance_asc' | 'distance_desc';
+
+export interface ClusterDeal {
+    id: string;
+    name: string;
+    description: string;
+    longDescription: string;
+    terms: string[];
+    pricingType: 'sum' | 'percentage_discount' | 'fixed_discount_price';
+    discountValue: number | null;
+    fixedPrice: number | null;
+    calculatedPrice: number;
+    originalPrice: number;
+    dealPrice: number;
+    discountPercent: number;
+    mainImage: string | null;
+    galleryImages: string[];
+    startDate: string | null;
+    endDate: string | null;
+    isExpired: boolean;
+    isTrending: boolean;
+    claimedCount: number;
+    maxClaims: number;
+    remainingLimit: number | null;
+    status: 'active' | 'inactive';
+    views: number;
+    offerType: string | null;
+    audience: string | null;
+    audienceTarget: string | null;
+    maxClaimsPerCustomer: number | null;
+    claimCodePrefix: string | null;
+    branchId: string;
+    businessId: string;
+    distanceMeters: number | null;
+    branch: {
+        id: string;
+        name: string;
+        slug: string;
+        logoUrl: string | null;
+        address: string | null;
+        city: string | null;
+        state: string | null;
+    } | null;
+    business: { id: string; name: string; logoUrl: string | null } | null;
+}
+
+export interface ClusterContextResponse {
+    qrActive: boolean;
+    cluster: {
+        id: string;
+        name: string;
+        uniqueCode: string;
+        description: string | null;
+        qrUrl: string;
+        branchCount: number;
+        radiusMeters: number;
+    };
+    branches: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        logoUrl: string | null;
+        address: string | null;
+        city: string | null;
+        state: string | null;
+        latitude: number;
+        longitude: number;
+    }>;
+}
+
+export interface ClusterDealsResponse {
+    active: boolean;
+    reason?: 'qr_deactivated' | 'cluster_inactive';
+    data: ClusterDeal[];
+    total: number;
+    page: number;
+    limit: number;
+    sortBy: ClusterDealsSortBy;
+    seed: number | null;
+    bucket: number | null;
+    reference: { lat: number; lng: number; source: 'customer' | 'cluster_center' };
+}
+
+export interface ClusterDealsQuery {
+    page?: number;
+    limit?: number;
+    search?: string;
+    categoryId?: string;
+    sortBy?: ClusterDealsSortBy;
+    lat?: number;
+    lng?: number;
+}
+
+export const clustersPublicApi = {
+    // -> GET /clusters/context/:uniqueCode
+    getContext: (uniqueCode: string) =>
+        api.get(`/clusters/context/${uniqueCode}`) as Promise<ClusterContextResponse>,
+    // -> GET /clusters/:uniqueCode/deals
+    getDeals: (uniqueCode: string, query: ClusterDealsQuery = {}) =>
+        api.get(`/clusters/${uniqueCode}/deals`, { params: query }) as Promise<ClusterDealsResponse>,
+};
+
+// ---------------------------------------------------------------
+// BACKEND GAPS — what the backend must add to fully match this frontend
+// ---------------------------------------------------------------
+// Each gap maps to a former UI feature the admin control tower renders but the
+// backend does not yet model. Send these to the backend dev.
+export const BACKEND_GAPS = [
+    {
+        feature: 'Cluster hierarchy & type',
+        ui: 'Tree groups clusters into Country > State > Market / Building > Custom (parentId + type + country/state/city/area on CreateClusterDto).',
+        missing: [
+            'Cluster entity fields: type (country|state|market|building|custom), parentId, country, state, city, area',
+            'GET /admin/clusters + GET /admin/clusters/:id return these fields',
+            'CreateClusterDto/UpdateClusterDto accept type, parentId, country, state, city, area',
+        ],
+        suggestedRoutes: [],
+    },
+    {
+        feature: 'Multiple QR codes per cluster',
+        ui: 'QR modal lists/generates several scannable codes per cluster, each with its own scan count, active toggle and delete.',
+        missing: [
+            'GET /admin/clusters/:id/qr-codes',
+            'POST /admin/clusters/:id/qr-codes        { quantity? }',
+            'PATCH /admin/clusters/:id/qr-codes/:qrId  { isActive }',
+            'DELETE /admin/clusters/:id/qr-codes/:qrId',
+            'each QR maps to a scannable URL + individual scanCount',
+        ],
+        suggestedRoutes: [
+            'GET  /admin/clusters/:id/qr-codes',
+            'POST /admin/clusters/:id/qr-codes',
+            'PATCH /admin/clusters/:id/qr-codes/:qrId',
+            'DELETE /admin/clusters/:id/qr-codes/:qrId',
+        ],
+    },
+    {
+        feature: 'Cluster deals: auto-match + pin/unpin',
+        ui: 'Deals modal shows auto-matched offers for a cluster and lets admins manually pin/unpin offers.',
+        missing: [
+            'GET /admin/clusters/:id/offers  -> { autoMatched[], pinned[], total }',
+            'PATCH /admin/clusters/:id/offers/:offerId  -> { pinned }',
+        ],
+        suggestedRoutes: [
+            'GET /admin/clusters/:id/offers',
+            'PATCH /admin/clusters/:id/offers/:offerId',
+        ],
+    },
+    {
+        feature: 'Branch membership management UI',
+        ui: 'Admin should add/remove branches and run auto-assign from the UI.',
+        missing: [
+            '(Supported in backend — see below)',
+        ],
+        suggestedRoutes: [],
+    },
+];
+
+// ------------------------------------------------------------------
+// The following are ALREADY supported by the backend and are surfaced in
+// `adminClustersApi` (but not yet wired into the former UI):
+//   POST /admin/clusters/auto-assign
+//   POST /admin/clusters/:id/branches
+//   DELETE /admin/clusters/:id/branches/:branchId
+// ------------------------------------------------------------------
