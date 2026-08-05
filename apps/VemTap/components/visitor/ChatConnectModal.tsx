@@ -12,6 +12,7 @@ import Spinner from '@/components/ui/Spinner';
 import { GoogleAuthButton } from '../auth/GoogleAuthButton';
 import { toast } from 'react-hot-toast';
 import { api } from '@/lib/api';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const signupSchema = z.object({
@@ -62,24 +63,9 @@ export const ChatConnectModal: React.FC<ChatConnectModalProps> = ({
     const handleSignupSubmit = async (data: SignupData) => {
         setIsSubmitting(true);
         try {
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
+            await signupVisitorAndLogin({ email: data.email, phone: data.phone, name: data.name });
 
-            await api.post('/visitors/signup', {
-                firstName,
-                lastName,
-                email: data.email,
-                phone: data.phone || undefined,
-            });
-
-            const authResponse = await api.post('/auth/login', {
-                identifier: data.email,
-                password: '123456',
-            });
-
-            if (authResponse?.access_token) {
-                login(authResponse.user, authResponse.access_token);
+            if (useAuthStore.getState().isAuthenticated) {
                 toast.success('Account created successfully!');
                 onSuccess();
             }
