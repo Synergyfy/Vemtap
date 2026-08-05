@@ -9,7 +9,7 @@ import {
     Home, ChevronRight, ChevronLeft, ShieldCheck, Truck, Headset,
     Share2, X, CheckCircle2, Play, ChevronDown, AlertTriangle
 } from 'lucide-react';
-import { fetchProductDetail, requestQuote, createOrder } from '@/lib/api/marketplace';
+import { fetchProductDetail, fetchProductReviews, submitProductReview, requestQuote, createOrder } from '@/lib/api/marketplace';
 import { ProductDetailSkeleton } from '@/components/marketplace/Skeletons';
 import useEmblaCarousel from 'embla-carousel-react';
 import toast from 'react-hot-toast';
@@ -59,10 +59,11 @@ export default function ProductClient({ id }: { id: string }) {
             }));
         }
     }, [user]);
-    const [reviews, setReviews] = React.useState([
-        { id: 1, user: 'Samuel O.', rating: 5, date: '2 days ago', comment: 'Excellent quality, exactly what we needed for our office access system.', approved: true },
-        { id: 2, user: 'Chioma A.', rating: 4, date: '1 week ago', comment: 'Good value for money. Setup was straightforward.', approved: true },
-    ]);
+    const { data: reviewsData, refetch: refetchReviews } = useQuery({
+        queryKey: ['product-reviews', id],
+        queryFn: () => fetchProductReviews(id)
+    });
+    const reviews = reviewsData?.data || [];
     const [newReview, setNewReview] = React.useState({ rating: 5, comment: '' });
     const [showReviewSuccess, setShowReviewSuccess] = React.useState(false);
     const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
@@ -521,7 +522,7 @@ export default function ProductClient({ id }: { id: string }) {
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-2xl font-bold text-slate-900">Customer Reviews</h3>
                                         <span className="text-sm text-slate-500 font-medium">
-                                            {reviews.filter(r => r.approved).length} Approved Reviews
+                                            {reviews.length} Approved Reviews
                                         </span>
                                     </div>
 
@@ -543,7 +544,7 @@ export default function ProductClient({ id }: { id: string }) {
 
                                     {/* Approved Reviews */}
                                     <div className="space-y-6">
-                                        {reviews.filter(r => r.approved).map((review) => (
+                                        {reviews.map((review) => (
                                             <div key={review.id} className="p-6 border border-slate-100 bg-slate-50/50 rounded-2xl">
                                                 <div className="flex justify-between items-center mb-4">
                                                     <div className="flex items-center gap-1">
@@ -551,7 +552,7 @@ export default function ProductClient({ id }: { id: string }) {
                                                             <Star key={i} size={14} className={i < review.rating ? "text-primary fill-primary" : "text-slate-300"} />
                                                         ))}
                                                     </div>
-                                                    <span className="text-xs text-slate-400 font-medium">{review.date}</span>
+                                                    <span className="text-xs text-slate-400 font-medium">{new Date(review.date).toLocaleDateString()}</span>
                                                 </div>
                                                 <p className="text-slate-700 font-medium mb-2">{review.comment}</p>
                                                 <p className="text-xs font-bold text-slate-900">— {review.user}</p>
@@ -562,26 +563,26 @@ export default function ProductClient({ id }: { id: string }) {
                                     {/* Add Review Form */}
                                     <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
                                         <h4 className="text-lg font-bold text-slate-900 mb-4">Write a Review</h4>
-                                        <form onSubmit={(e) => {
+                                        <form onSubmit={async (e) => {
                                             e.preventDefault();
                                             if (!newReview.comment.trim()) {
                                                 toast.error('Please write a review comment');
                                                 return;
                                             }
-                                            // Add review as pending (approved: false)
-                                            const pendingReview = {
-                                                id: reviews.length + 1,
-                                                user: user?.name || 'Anonymous',
-                                                rating: newReview.rating,
-                                                date: 'Just now',
-                                                comment: newReview.comment,
-                                                approved: false // Pending admin approval
-                                            };
-                                            setReviews([...reviews, pendingReview]);
-                                            setNewReview({ rating: 5, comment: '' });
-                                            setShowReviewSuccess(true);
-                                            // Auto-hide success message after 5 seconds
-                                            setTimeout(() => setShowReviewSuccess(false), 5000);
+                                            try {
+                                                await submitProductReview(product.id, {
+                                                    rating: newReview.rating,
+                                                    comment: newReview.comment,
+                                                    name: user?.name || undefined
+                                                });
+                                                setNewReview({ rating: 5, comment: '' });
+                                                setShowReviewSuccess(true);
+                                                refetchReviews();
+                                                // Auto-hide success message after 5 seconds
+                                                setTimeout(() => setShowReviewSuccess(false), 5000);
+                                            } catch (err: any) {
+                                                toast.error(err.message || 'Failed to submit review');
+                                            }
                                         }} className="space-y-4">
                                             <div>
                                                 <label className="block text-sm font-bold text-slate-600 mb-2">Rating</label>

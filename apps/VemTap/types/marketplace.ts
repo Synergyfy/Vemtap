@@ -16,6 +16,7 @@ export interface Product {
     productType?: ProductCategory; // The full relation object
     productTypeId?: string;
     rating: number;
+    reviewCount?: number;
     price: number;
     originalPrice?: number | null;
     costPrice?: number | null;
@@ -95,6 +96,22 @@ export type ProductsResponse = {
     products: Product[];
     totalPages: number;
     totalCount: number;
+};
+
+export interface ProductReview {
+    id: string;
+    user: string;
+    rating: number;
+    comment: string;
+    date: string;
+}
+
+export type ProductReviewsResponse = {
+    data: ProductReview[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
 };
 
 export interface CartItem {
